@@ -444,11 +444,29 @@ recusas, e só a terceira cede a `--forcar`:
 |---|---|---|
 | `migrar_pausa` (em `instalar.sh`) | `docs/fila/.orq-pause` → `docs/fila/PAUSAR`, motivo preservado (§7) | `mv`; recusa com os dois presentes |
 | `migrar-liberacoes.ts` | `liberacoes.json` de qualquer forma viva (§6.1) para v2 | `--aplicar` grava e deixa `.bak` |
+| `migrar-config.ts` | `000-config.json` schema 1 → 2, pela tabela de `config-tabela.ts` | **`--propor` só**: grava `000-config.proposto.json` ao lado. O oficial nunca é tocado pelo instalador |
 | `relatar_gitignore` (em `instalar.sh`) | nada — RELATA o que o repo deve ignorar (§7) | nunca escreve |
 
 Ele roda **depois** da cópia do motor. Se alguém parar no meio, o repo fica com
 motor novo sobre dados velhos — que funciona, porque desde a K8b-1 o motor lê
 todas as formas vivas. O contrário (dados novos, motor velho) é o repo travado.
+
+**O config é a exceção, e é a peça funcionando.** As outras migrações mudam a
+forma de um fato já decidido (um token foi liberado; a fila está pausada). O
+config é DECISÃO: o proposto sai com placeholders nas decisões que a v1 nunca
+tomou (teto de orçamento, `launchd.label`, `juiz.paths_alto_risco`), e gravar
+isso por cima de um config em uso trocaria um arquivo que funciona por um
+formulário. O `--aplicar` do `migrar-config.ts` é passo humano, depois de
+preencher e reler — e ele MOVE o proposto revisado, sem recalcular: recalcular
+aplicaria um arquivo diferente do que foi lido.
+
+A tabela `de → para` vive em `scripts/orquestrador/config-tabela.ts`, escrita à
+mão. Três grupos: `RENOMES` (o motor lê a mesma coisa por outro nome — renomear
+é COPIAR, o nome antigo fica), `NOVAS` (chave do schema 2 que a v1 não tinha,
+com `procedencia` = `politica` | `local` | `derivada`) e `PROPRIAS_DE_REPO` (fica
+intocada e vira item nomeado do relatório, para a K11). Chave obrigatória que a
+tabela não cobre aparece no relatório como `AINDA AUSENTE` — silêncio ali seria
+a migração declarando completo o que não é.
 
 E o instalador sugere **dois commits**, não um: o motor é vendorizado e o diff
 dele é "o kit mudou"; `docs/fila/**` são os dados do dono e o diff é "os meus

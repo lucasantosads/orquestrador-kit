@@ -312,3 +312,46 @@ o que o `jq` devolveu. Três achados mandaram no desenho:
   então o relato vai acusar `docs/fila/PAUSAR` faltando, e é acusação correta: depois da
   migração o kill switch muda de nome, e sem a linha ele apareceria no `git status` como
   arquivo novo bem no meio de uma pausa.
+
+- **K8b-4** — `000-config.json` schema 1 → 2, por tabela explícita.
+  `scripts/orquestrador/config-tabela.ts` é a tabela, escrita à mão a partir do PASSO 0 e
+  em três grupos: `RENOMES` (o motor lê a mesma coisa por outro nome), `NOVAS` (chave do
+  schema 2 que a v1 não tinha, com `procedencia` = `politica` | `local` | `derivada`) e
+  `PROPRIAS_DE_REPO` (fica intocada e vira item nomeado do relatório, para a K11).
+  **Renomear é COPIAR:** o nome antigo continua no arquivo. `migrar-config.ts` aplica.
+  *Os três renomes que o disco justificou:* `supabase_project_id` → `ambiente_id` (Comarka;
+  sem ele o preflight de identidade compara o ref real com a string "null" e ABORTA o run
+  inteiro, corretamente e pelo motivo errado) e `avaliador_model` → `modelos.juiz_alto` **e**
+  `modelos.juiz_baixo` — os dois, porque a v1 tinha UM juiz só e copiar para ambos preserva
+  o comportamento exato; baratear o juiz de risco baixo é decisão de custo, e migração que
+  economiza dinheiro sozinha muda o veredito de alguém sem avisar. Mais um renome de VALOR:
+  `gates[].tipo` `tsc_baseline` → `baseline` (Comarka), porque `gates.ts:151` só honra
+  `baseline` — com o nome que o motor não conhece, os 3 erros herdados em `qualificacao*`
+  reprovariam TODO ticket, para sempre, sem o motivo aparecer em lugar nenhum.
+  *Dois renomes que pareciam simétricos e NÃO entraram:* `executor_model → modelos.executor`
+  e `retry_final_model → modelos.retry_final`. O motor lê os aliases v1 direto e não lê o
+  mapa; copiar dado para chave que ninguém lê é mover dado para o vazio. Quem achou foi o
+  teste `toda chave "para" de um renome é lida pelo motor`, não a leitura.
+  *Nada é inventado:* decisão local vira PLACEHOLDER `<...>` e `orq config` recusa, alto.
+  Chutar um teto de gasto é pior que não ter teto — o número errado nunca dispara, e aí não
+  é teto. `_execucao_dos_gates.ordem_obrigatoria` é DERIVADA de `gates[]`, na ordem do
+  arquivo, porque `gates.ts` erra se a ordem divergir.
+  *O config é a única migração que o instalador NÃO aplica*, nem com `--migrar`: ele grava
+  `000-config.proposto.json` ao lado e imprime os quatro passos humanos. O `--aplicar` MOVE
+  o proposto revisado, sem recalcular — recalcular aplicaria um arquivo diferente do que foi
+  lido.
+  *Medido nos configs reais (só leitura, cópias em tmp):* Actus 26 → 14 violações, Comarka
+  28 → 15. Tudo que sobra é placeholder de decisão local, mais o `zona_proibida` do Comarka,
+  que a tabela deliberadamente NÃO renomeia a partir de `c0_intocavel`: mover a fronteira do
+  enforcement por semelhança de nome é a mudança mais cara que uma migração automática
+  poderia fazer errado. O relatório grita que ela está ausente.
+  *Teste:* `test/orquestrador-migrar-config.test.ts`, 36 casos, mais o caso (i5b) de
+  `scripts/kit/test-instalar.sh` (9 checks, **8 vermelhos antes**; o vitest inteiro não
+  carregava sem os módulos). Inclui "TODA chave do config real sobrevive no proposto",
+  arquivo por arquivo e valor por valor, contra os dois configs reais.
+  *O que o CI faz diferente:* nada. Com o config do CI migrado, a linha `GATE` sai
+  **caractere a caractere** igual à de hoje (`901 GATE typecheck=ok testes=falha
+  enforcement=ok criterios=3/3 build=nao-rodou`), `gates` e `_execucao_dos_gates`
+  atravessam sem um byte de diferença, e a ÚNICA chave que a migração acrescenta é
+  `launchd.label` — a que a K6c tornou obrigatória e que já é passo humano pendente desde a
+  etapa 3.

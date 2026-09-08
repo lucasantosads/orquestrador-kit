@@ -368,6 +368,38 @@ printf '%s' "$saida" | grep -q 'ok       docs/fila/runs/ já é ignorado' \
   || falha "não reconheceu o runs/.gitignore com '*'"
 rm -rf "$SEM_GI"
 
+echo "-- (i5b) K8b-4: o config é PROPOSTO, nunca aplicado pelo instalador --"
+# O fixture nasce em schema 2 e completo; para exercitar a proposta, o config
+# dele vira o do Comarka (schema 1, com c0_intocavel e tsc_baseline).
+CFG_ANTES="$(cksum < "$MIG/docs/fila/000-config.json")"
+COMARKA_CFG="$HOME/Projetos/comarka-operacional/docs/fila/000-config.json"
+if [ -f "$COMARKA_CFG" ]; then
+  cp "$COMARKA_CFG" "$MIG/docs/fila/000-config.json"
+  CK_V1="$(cksum < "$MIG/docs/fila/000-config.json")"
+  saida="$(bash "$KIT/instalar.sh" --atualizar "$MIG" --migrar 2>&1)"
+  printf '%s' "$saida" | grep -q 'supabase_project_id → ambiente_id' \
+    && ok "relata o renome supabase_project_id → ambiente_id" || falha "não relatou o renome"
+  printf '%s' "$saida" | grep -q "tipo 'tsc_baseline' → 'baseline'" \
+    && ok "relata a conversão do tipo do gate" || falha "não relatou o tipo do gate"
+  printf '%s' "$saida" | grep -q 'MANTIDA (própria do comarka-operacional, para a K11 decidir): c0_intocavel' \
+    && ok "c0_intocavel vira item NOMEADO do relatório" || falha "não nomeou o c0_intocavel"
+  printf '%s' "$saida" | grep -q 'AINDA AUSENTE, e a tabela não cobre: zona_proibida' \
+    && ok "grita que zona_proibida continua ausente" || falha "não acusou a zona_proibida ausente"
+  [ "$(cksum < "$MIG/docs/fila/000-config.json")" = "$CK_V1" ] \
+    && ok "o 000-config.json OFICIAL não foi tocado" || falha "o instalador SOBRESCREVEU o config oficial"
+  [ -f "$MIG/docs/fila/000-config.proposto.json" ] \
+    && ok "000-config.proposto.json gravado ao lado" || falha "não gravou o proposto"
+  [ "$(jq -r '."$schema_versao"' "$MIG/docs/fila/000-config.proposto.json")" = 2 ] \
+    && ok "o proposto está em schema 2" || falha "o proposto não é schema 2"
+  [ "$(jq -r '.c0_intocavel.no_write_prefixes[0]' "$MIG/docs/fila/000-config.proposto.json")" = 'trafego_' ] \
+    && ok "c0_intocavel atravessa INTACTA para o proposto" || falha "o c0_intocavel se perdeu"
+  printf '%s' "$saida" | grep -q 'O config NÃO foi aplicado' \
+    && ok "diz que não aplicou, e dá os 4 passos humanos" || falha "não explicou o passo humano"
+  rm -f "$MIG/docs/fila/000-config.proposto.json"
+else
+  printf '  PULADO: %s não existe nesta máquina\n' "$COMARKA_CFG"
+fi
+
 echo "-- (i6) --dry-run PREVÊ a recusa em vez de dizer que está tudo bem --"
 rm -f "$MIG/docs/fila/PAUSAR"
 saida="$(bash "$KIT/instalar.sh" --atualizar "$MIG" --dry-run 2>&1)"; rc=$?

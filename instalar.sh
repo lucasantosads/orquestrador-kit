@@ -289,6 +289,27 @@ migrar_tudo() {
     printf 'MIGRAR-LIBERACOES  nada a fazer: %s não existe\n' "$lib"
   fi
   printf '\n'
+  # --- config (peça K8b-4): PROPOSTA, nunca aplicação -----------------------
+  # É a única migração que o instalador NÃO aplica, nem com `--migrar`. Config
+  # não é dado, é DECISÃO: o proposto sai com placeholders nas decisões que a v1
+  # nunca tomou, e gravar isso por cima de um config que funciona trocaria um
+  # arquivo em uso por um formulário. O `--aplicar` do migrar-config.ts é passo
+  # humano, depois de preencher e reler.
+  local cfg="$repo/docs/fila/000-config.json"
+  if [ -f "$cfg" ]; then
+    ( cd "$KIT" && npx tsx scripts/orquestrador/migrar-config.ts "$cfg" \
+        "$([ "$modo" = aplicar ] && echo --propor || echo --dry-run)" ) || true
+    if [ "$modo" = aplicar ]; then
+      printf '\nO config NÃO foi aplicado, e isso é a peça funcionando. Passo humano:\n'
+      printf '  1. leia %s/docs/fila/000-config.proposto.json\n' "$repo"
+      printf '  2. preencha os placeholders <...> (o relatório acima lista cada um e por quê)\n'
+      printf '  3. cd %s && npx tsx scripts/orquestrador/migrar-config.ts docs/fila/000-config.json --aplicar\n' "$repo"
+      printf '  4. bash scripts/orq config   # tem de sair 0 violações\n'
+    fi
+  else
+    printf 'MIGRAR-CONFIG  nada a fazer: %s não existe\n' "$cfg"
+  fi
+  printf '\n'
   relatar_gitignore "$repo"
 }
 

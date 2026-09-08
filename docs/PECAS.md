@@ -325,6 +325,23 @@
   nome e apareceria no `git status` no meio de uma pausa.
 
 
+- **K8b-4 · config schema 1 → 2 por tabela explícita.** `config-tabela.ts` (a tabela, à
+  mão, em três grupos) + `migrar-config.ts` (aplica). Renomear é COPIAR. Decisão local vira
+  placeholder; política do motor vem preenchida; a ordem dos gates é derivada. O instalador
+  PROPÕE (`000-config.proposto.json`) e nunca aplica: config é decisão, não dado.
+  *Evidência:* o PASSO 0 — Actus e Comarka em `$schema_versao: 1`; `supabase_project_id` do
+  Comarka é o `ambiente_id` do motor; `tipo: "tsc_baseline"` contra o `"baseline"` de
+  `gates.ts:151`. Dois renomes que pareciam simétricos ficaram de fora porque o motor não lê
+  o destino — e quem achou foi o teste, não a leitura.
+  *Teste:* `test/orquestrador-migrar-config.test.ts` (36 casos) + caso (i5b) de
+  `scripts/kit/test-instalar.sh` (**8 vermelhos antes**).
+  *Medido:* Actus 26 → 14 violações, Comarka 28 → 15; o resto é decisão local mais o
+  `zona_proibida` do Comarka, que a tabela NÃO renomeia a partir de `c0_intocavel`.
+  *O que o CI faz diferente:* nada — a linha `GATE` sai caractere a caractere igual, `gates`
+  e `_execucao_dos_gates` atravessam sem um byte de diferença, e a única chave acrescentada
+  é `launchd.label`.
+
+
 ## PENDENTES
 
 - **K6d · `scripts/kit/pureza.sh`.** O grep que TRANCA a pureza: em CÓDIGO (não em
@@ -338,13 +355,6 @@
   justamente o script que transforma "não achei" em "não há".
   *Teste:* pureza = 0 em código, com o caso NEGATIVO de que um `apps/web` reintroduzido em
   código faz o script sair 1.
-
-- **K8b-4 · config schema 1 → 2 por tabela explícita.** `migrar-config.ts`, com a tabela
-  `de → para` escrita à mão a partir do PASSO 0. Chave sem correspondente FICA e aparece no
-  relatório; nunca remove `_` de documentação; o oficial só é substituído por passo humano.
-  *Evidência:* Actus e Comarka em `$schema_versao: 1`; `tipo: "tsc_baseline"` do Comarka
-  contra o `"baseline"` que `gates.ts:151` reconhece.
-  *Teste:* os dois configs reais copiados para fixture.
 
 - **K8b-5 · bloco JSON dos tickets pendentes.** `migrar-tickets.ts`: só `pendente`, só o
   bloco ```json, prosa intacta byte a byte. `tentativas_consumidas` → `tentativas`,
