@@ -1,0 +1,22 @@
+# .gitignore do repo de fixture. O nome no template é `gitignore` (sem ponto) e o
+# scripts/kit/fixture.sh o renomeia ao instanciar: um `.gitignore` de verdade
+# aqui dentro valeria para a árvore do KIT, não só para o fixture.
+
+# As DUAS formas de node_modules, de propósito (é a lição já paga em
+# _referencia-ci/gitignore.ci): `node_modules/` com barra só casa DIRETÓRIO, e
+# aqui — como nas worktrees do executor — node_modules é um SYMLINK. Sem a forma
+# sem barra ele aparece como `?? node_modules` no porcelain, que é exatamente o
+# que o preflight de árvore limpa reprova.
+node_modules
+node_modules/
+
+# Evidência de run é efêmera. docs/fila/runs/.gitignore continua no DISCO (o
+# fixture.sh o escreve) e fora do índice: é dele que o teste do wrapper do
+# launchd lê o `*`.
+docs/fila/runs/
+
+# Kill switch da fila: estado local da máquina, nunca versionado.
+docs/fila/PAUSAR
+
+# Só existe pela chave SUPABASE_URL que o preflight de identidade confere.
+.env.local

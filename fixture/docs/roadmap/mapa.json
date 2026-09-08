@@ -1,0 +1,33 @@
+{
+  "$schema_versao": 1,
+  "projeto": "orq-fixture",
+  "blocos": [
+    {
+      "id": "B0",
+      "nome": "Aritmética mínima",
+      "por_que": "O fixture precisa de uma frente real para o ticket 001 pertencer a alguma coisa; sem bloco e frente, o lint do mapa não tem o que conferir.",
+      "dod": [
+        "src/soma.ts exporta as funções que os testes de test/soma.test.ts exercitam",
+        "npx vitest run sai verde e npx tsc --noEmit sai limpo"
+      ],
+      "gates_humanos": [],
+      "status": "em_andamento",
+      "frentes": [
+        {
+          "id": "B0-F1",
+          "entrega": "Funções puras de soma em src/soma.ts, com teste por caso em test/soma.test.ts",
+          "allowlist": [
+            "src/**",
+            "test/**"
+          ],
+          "cria_novo": false,
+          "deps": [],
+          "adrs": [],
+          "status": "pronta",
+          "tickets_estimados": 1,
+          "lotes_descartados_consecutivos": 0
+        }
+      ]
+    }
+  ]
+}

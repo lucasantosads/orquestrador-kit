@@ -1,0 +1,273 @@
+{
+  "$schema_versao": 2,
+  "descricao": "Config do repo de FIXTURE do kit. Mínimo por construção: só as chaves que o motor LÊ hoje, levantadas por grep no disco (grep -ohE \"cfg '[^']*'\" scripts/orquestrador/*.sh, mais os acessos diretos dos .ts). Cada chave traz um comentário _<chave> com a procedência do valor.",
+  "_procedencia_geral": "Valores de forma vêm de doutrina/templates/config.json; valores de conteúdo, de _referencia-ci/000-config.ci.json (o config REAL do conteudos-infinitos @711ab5e) quando um teste do motor cobra o número exato; o resto é do fixture.",
+
+  "branch_alvo": "staging-auto",
+  "_branch_alvo": "doutrina/templates/config.json:branch_alvo — lido por lib.sh:53 (CFG_BRANCH_ALVO).",
+  "branch_protegida": "main",
+  "_branch_protegida": "local-loop.sh:28 lê '.branch_protegida' (o template chama de branch_principal; o motor lê ESTE nome).",
+
+  "max_retries": 2,
+  "_max_retries": "_referencia-ci/000-config.ci.json:max_retries — lido por lib.sh:54 e decisao.ts:273.",
+  "cooldown_minutes": 60,
+  "_cooldown_minutes": "_referencia-ci/000-config.ci.json:cooldown_minutes — lido por lib.sh (cooldown_arm).",
+
+  "politica_adiamento": {
+    "regra": "Falha de INFRAESTRUTURA adia. Nunca reprova.",
+    "causas_que_adiam": [
+      "erro de conexão",
+      "sessão expirada",
+      "rate limit",
+      "quota estourada",
+      "timeout de claude_timeout_secs",
+      "gate interrompido no meio",
+      "veredito do juiz ilegível"
+    ],
+    "efeito": {
+      "status": "pendente",
+      "conta_como_retry": false,
+      "cooldown": "grava runs/.cooldown-until = agora + cooldown_minutes"
+    }
+  },
+  "_politica_adiamento": "As 7 causas, na ordem, de _referencia-ci/000-config.ci.json — test-lib-config.sh:58 cobra exatamente 7 e :61 cobra a do juiz pelo nome; decisao.ts:113 itera a lista.",
+
+  "politica_retry": {
+    "por_causa": {
+      "diff_cap": {
+        "modelo": "MANTER",
+        "acao": "estreitar o escopo no prompt de retry (fatiar o ticket, reduzir pathspec_allowlist)"
+      },
+      "enforcement": {
+        "modelo": "MANTER",
+        "acao": "estreitar o escopo no prompt de retry (respeitar a pathspec_allowlist, sair da zona proibida)"
+      },
+      "criterio_qualidade": {
+        "modelo": "ESCALAR",
+        "acao": "subir para retry_final_model e repetir com o mesmo escopo"
+      }
+    },
+    "proibicao": "NUNCA escalar modelo por falha de tamanho (diff_cap) nem por violação de fronteira (enforcement)."
+  },
+  "_politica_retry": "_referencia-ci/000-config.ci.json:politica_retry, sem os campos _porque — decisao.ts:277 indexa por_causa[causa] e rejeita config que mande escalar por diff_cap/enforcement.",
+
+  "migrations_dir": "db/migrations",
+  "_migrations_dir": "enforcement-core.ts:128 usa para classificar .sql como artefato inerte. O fixture não tem banco; o diretório existe só para a chave não ser nula.",
+  "sql_pendente_dir": "docs/sql-pendente",
+  "_sql_pendente_dir": "enforcement-core.ts:128, mesmo par que migrations_dir.",
+
+  "worktrees_dir": "../_worktrees",
+  "_worktrees_dir": "RELATIVO ao checkout principal (lib.sh:77). Como o fixture é instanciado em <tmp>/repo, isto resolve para <tmp>/_worktrees — nunca ~/Projetos/_worktrees.",
+  "worktrees_prefixo": "fx-",
+  "_worktrees_prefixo": "decisao.ts:363. 'fx-' em vez do 'ci-' do conteudos-infinitos: prefixo diferente é o que impede colisão de nome de worktree entre repos.",
+
+  "runs_dir": "docs/fila/runs",
+  "_runs_dir": "doutrina/templates/config.json:runs_dir — lib.sh:72 (RUNS_BASE).",
+  "liberacoes_file": "docs/fila/liberacoes.json",
+  "_liberacoes_file": "doutrina/templates/config.json — lib.sh:56 (CFG_LIBERACOES).",
+  "decisoes_file": "docs/fila/decisoes-pendentes.md",
+  "_decisoes_file": "doutrina/templates/config.json — lib.sh:723.",
+  "pausar_file": "docs/fila/PAUSAR",
+  "_pausar_file": "doutrina/templates/config.json — lib.sh:615 (kill switch em arquivo).",
+
+  "modelos": {
+    "classificador": "haiku",
+    "executor": "sonnet",
+    "planejador": "sonnet",
+    "juiz_baixo": "sonnet",
+    "juiz_alto": "opus",
+    "juiz_ticket": "opus",
+    "retry_final": "opus"
+  },
+  "executor_model": "sonnet",
+  "avaliador_model": "opus",
+  "retry_final_model": "opus",
+  "_modelos": "Escada de _referencia-ci/000-config.ci.json (sonnet/opus/opus). juiz.ts:76 lê modelos.juiz_alto/juiz_baixo; executor.sh:149 e decisao.ts:292 leem os três aliases v1.",
+
+  "restricao_execucao": {
+    "ativa": false,
+    "tickets_permitidos": [],
+    "recusa_exit_code": 78,
+    "recusa_mensagem": "RECUSADO: há modelo por papel em PENDENTE_* e a restrição de execução está ativa.",
+    "desbloqueio": "preencha executor_model/avaliador_model/retry_final_model em docs/fila/000-config.json"
+  },
+  "_restricao_execucao": "decisao.ts:71 lê o objeto inteiro; executor.sh:154 lê .desbloqueio na mensagem de aborto. Inativa aqui: nenhum papel é PENDENTE_*.",
+
+  "diff_cap_linhas": 600,
+  "_diff_cap_linhas": "600 de _referencia-ci/000-config.ci.json — test-lib-config.sh:50 cobra literalmente 600 ('o NOSSO, não o 2500 do comarka-os').",
+  "claude_timeout_secs": 900,
+  "_claude_timeout_secs": "Metade do 1800 do CI: o ticket do fixture é de ~40 linhas e um timeout longo só atrasa o diagnóstico quando o agente trava.",
+  "claude_max_turns": 40,
+  "_claude_max_turns": "doutrina/templates/config.json:claude_max_turns (o CI usa 80; 40 basta para um ticket de dois arquivos).",
+
+  "preflight_probe": true,
+  "_preflight_probe": "LIGADO, e não por gosto: executor.sh:146 sai cedo quando o valor é `false`, e test-retry-worktree.sh:216 exercita `probe_modelos` inteiro (com `claude_run` stubado, sem chamada paga) contra ESTE config — com `false` a seção 4 daquele teste cai em 5 falhas. O preço é uma sondagem real de ~60s ('responda apenas: ok') por drenagem de verdade, que o gate de orçamento mede e o custo.json registra.",
+  "preflight_env_keys": [],
+  "_preflight_env_keys": "Vazio: executor.sh:123 itera esta lista e aborta por env faltando. O fixture não tem serviço externo nenhum.",
+
+  "commit_checkpoint": {
+    "obrigatorio": true,
+    "quando": "a cada unidade lógica que passe typecheck + teste — não só no fim do ticket",
+    "_regra": "Passou typecheck e teste? Commita. Trabalho verificado e não commitado não existe."
+  },
+  "_commit_checkpoint": "executor.sh lê .commit_checkpoint.quando e ._regra para montar o prompt; texto de _referencia-ci/000-config.ci.json.",
+
+  "repo_origin_deve_conter": "fixture/orq-fixture",
+  "_repo_origin_deve_conter": "Casa o origin FALSO que o scripts/kit/fixture.sh registra (git@example.invalid:fixture/orq-fixture.git). executor.sh:104-108 aborta o run inteiro se o origin não contiver isto.",
+  "ambiente_id": "orqfixture",
+  "_ambiente_id": "executor.sh:111-114 compara com o ref extraído de SUPABASE_URL do .env.local, que o fixture.sh escreve como https://orqfixture.supabase.co. test-lib-config.sh:48 cobra que não seja vazio nem null.",
+
+  "zona_proibida": {
+    "descricao": "Tudo que o loop NUNCA escreve. Globs relativos à raiz do repo.",
+    "revisado_humano": true,
+    "no_write_paths": [
+      ".env*",
+      "**/.env*",
+      "docs/orquestrador/**",
+      "scripts/orquestrador/**"
+    ],
+    "no_write_credenciais": {
+      "padroes": [
+        "**/*.pem",
+        "**/*.key",
+        "**/id_rsa*",
+        "**/credentials*",
+        "**/secrets*"
+      ]
+    },
+    "no_write_tables": "TODAS"
+  },
+  "_zona_proibida": "Recorte do de _referencia-ci/000-config.ci.json: enforcement-core.ts:211-215 lê no_write_paths + no_write_credenciais.padroes, e :212 trata no_write_tables == 'TODAS' como negação total. Sem banco no fixture, 'TODAS' é a leitura honesta.",
+
+  "paths_harness": [
+    "scripts/orquestrador/**",
+    "docs/orquestrador/**",
+    "docs/fila/000-config.json",
+    ".claude/**"
+  ],
+  "_paths_harness": "doutrina/templates/config.json:paths_harness, sem mudança — o motor vendorizado mora nos mesmos caminhos aqui. Lido pelo check 5 de scripts/roadmap/lint-mapa.py.",
+
+  "_execucao_dos_gates": {
+    "ordem_obrigatoria": [
+      "typecheck",
+      "test"
+    ],
+    "interrupcao": "NAO_VALE_PARCIALMENTE"
+  },
+  "_ordem": "gates.ts:176-178 ordena .gates[] por esta lista e ERRA se divergir. Dois gates porque o package.json do fixture tem dois scripts: typecheck e test.",
+
+  "gates": [
+    {
+      "nome": "typecheck",
+      "cmd": "npm run typecheck",
+      "tipo": "exit_code",
+      "descricao": "tsc --noEmit do package.json do fixture."
+    },
+    {
+      "nome": "test",
+      "cmd": "npm test",
+      "tipo": "exit_code",
+      "descricao": "vitest run do package.json do fixture."
+    }
+  ],
+  "_gates": "cmd = os scripts do fixture/package.json, verificados no disco. tipo exit_code (não baseline): o fixture nasce com 0 erro de tipo e 3 testes verdes, então não há erro herdado a tolerar.",
+
+  "canal_notificacao": "arquivo",
+  "_canal_notificacao": "lib.sh:820-823: qualquer valor diferente de 'notificacao_nativa' faz a notificação ficar SÓ no arquivo runs/notificacoes.log. É o padrão que a peça K10 quer para todo repo.",
+  "push_suprimido": true,
+  "_push_suprimido": "O origin do fixture é inválido de propósito (example.invalid). Publicar daqui não é opção — e lib.sh:staging_linha já imprime 'push suprimido' no snapshot.",
+
+  "juiz": {
+    "diff_max_baixo": 300,
+    "max_tokens_veredicto": 300,
+    "paths_alto_risco": [],
+    "palavras_alto_risco": [
+      "auth",
+      "login",
+      "senha",
+      "token",
+      "pagamento",
+      "billing",
+      "migration",
+      "schema",
+      "rls",
+      "permiss"
+    ]
+  },
+  "_juiz": "juiz.ts:64-76 lê os quatro campos. paths_alto_risco VAZIO: o fixture só tem src/ e test/, e listar glob que não casa nada seria config decorativa. As palavras são as do doutrina/templates/config.json.",
+
+  "gate_ticket": {
+    "juiz_para_humano": false,
+    "max_paths_allowlist": 8,
+    "timeout_cmd_secs": 120,
+    "cmd_prefixos_permitidos": [
+      "npx vitest run",
+      "npx tsc",
+      "npm run test",
+      "npm run typecheck",
+      "node scripts/",
+      "test -f",
+      "test -s",
+      "grep -",
+      "jq "
+    ],
+    "filtros_permitidos": [
+      "grep",
+      "wc",
+      "head",
+      "tail",
+      "jq",
+      "cut",
+      "sort",
+      "uniq",
+      "tr"
+    ],
+    "proibido_no_cmd": [
+      "$(",
+      "`",
+      "sh -c",
+      "bash",
+      "eval",
+      "sudo",
+      "rm ",
+      "curl http",
+      "curl https",
+      "wget",
+      "> ",
+      ">>"
+    ]
+  },
+  "_gate_ticket": "gate-ticket.ts:carregarCfg lê SÓ proibido_no_cmd e cmd_prefixos_permitidos (os dois nomes conferidos no disco). Os prefixos são o subconjunto do doutrina/templates/config.json que existe neste fixture: sem npm run build, sem npm run lint, sem curl (não há servidor local).",
+
+  "orcamento": {
+    "usd_dia": 5,
+    "tokens_dia": 2000000,
+    "usd_ticket": 1,
+    "custo_file": "docs/fila/runs/custo.json",
+    "campos_usage": {
+      "custo_usd": "total_cost_usd",
+      "tokens_in": "usage.input_tokens",
+      "tokens_out": "usage.output_tokens",
+      "tokens_cache": "usage.cache_read_input_tokens"
+    }
+  },
+  "_orcamento": "campos_usage copiados de _referencia-ci/000-config.ci.json (nomes confirmados lá por sondagem real de claude -p --output-format json). Os TETOS são do fixture e propositalmente baixos: usd_ticket 1 contra os 10 do CI — um ticket de dois arquivos que passe de US$ 1 é sintoma, não trabalho.",
+
+  "executor": {
+    "auto_verificacao_max": 2,
+    "modo_arquiteto_para_alto": false,
+    "saida_compactada": true,
+    "narracao_proibida": true,
+    "trailer_commit": "Orq-Ticket"
+  },
+  "_executor": "local-loop.sh:95 lê .executor.trailer_commit para o trailer do merge commit; o resto é o default de doutrina/templates/config.json.",
+
+  "proibicoes_absolutas": [
+    "nunca push na branch principal",
+    "nunca escrever na zona proibida",
+    "nunca tocar credenciais/segredos",
+    "nunca escrever em paths_harness pela fila",
+    "git add sempre por pathspec explícito"
+  ],
+  "_proibicoes_absolutas": "doutrina/templates/config.json, sem as duas linhas de DDL/banco: o fixture não tem banco."
+}
