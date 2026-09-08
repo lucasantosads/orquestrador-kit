@@ -564,6 +564,27 @@
   fixture do kit já nascem com as duas metades.
 
 
+- **K8b-7 · datar as liberações migradas.** `migrar-liberacoes.ts` ganha `datadorGit`:
+  quando o `liberacoes.json` é RASTREADO pelo git, `git log --format='%cs %an'
+  -S'<token>' -- <arquivo>` responde quando e por quem cada token entrou, e o commit que
+  vale é o MAIS VELHO (o que introduziu), não o mais novo (que é a última vez que alguém
+  mexeu na linha). Sem história — arquivo fora do git, `git` ausente, timeout, saída
+  ilegível —, `desconhecido` FICA: a migração continua não inventando dado.
+  *A busca é pelo token SEM o prefixo `humano:`*, que é acrescentado pela própria
+  migração; procurar a forma com prefixo não acharia nada justamente no Actus, o repo
+  que grava sem ele.
+  *NUNCA sobrescreve dado presente:* data escrita à mão carrega intenção, e a data do
+  commit é a data em que o registro foi COMMITADO — parecidas, não iguais. Preenche só o
+  buraco, campo a campo.
+  *Teste:* `test/orquestrador-datar-liberacoes.test.ts`, 11 casos, **9 vermelhos antes**,
+  com um repo git de VERDADE e dois commits reais (datas e autores por
+  `GIT_COMMITTER_DATE`, nunca pelo relógio da máquina).
+  *O que o CI faz diferente:* os 7 tokens dele estão em v1 canônica e sem data; um
+  `instalar.sh --atualizar <ci> --migrar` de novo agora os DATA pelo git. É passo humano
+  OPCIONAL e sem efeito no motor — `liberacao_ok` resolve token por token, e nunca lê
+  `liberado_em`.
+
+
 ## PENDENTES
 
 - **K11a-4 · o resto do enforcement do Actus (E, F e a exceção de teste-SQL).** A K11a-1
