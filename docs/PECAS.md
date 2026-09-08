@@ -359,6 +359,20 @@
   *O que o CI faz diferente:* nada a migrar — os 6 pendentes dele já usam os nomes novos.
 
 
+- **K8b-6 · `instalar.sh --novo <repo>`.** Cria o layout de `CONTRATO.md` §1.2 num repo git
+  sem `docs/fila`: `vendorizar_motor` (a MESMA função que o `--atualizar` usa) + os
+  artefatos de `doutrina/templates/` + `liberacoes.json` em v2 vazio + `.gitignore`. Duas
+  recusas: não é repo git, e `docs/fila` já existe. Nada de launchd — agendar é passo
+  separado, e os próximos passos impressos o põem por último.
+  *Evidência:* `CONTRATO.md` §10, divergência 1 (agora fechada). O template do config ganhou
+  as 6 chaves obrigatórias que faltavam, medidas pelo `orq config` no PASSO 0: sem elas o
+  dono teria de AUTORAR chave, não só preencher.
+  *Teste:* caso (j) de `scripts/kit/test-instalar.sh`, 33 checks, **30 vermelhos antes** —
+  repo vazio → `--novo` → `orq config` lista placeholders e NENHUMA chave ausente →
+  `--verificar` idêntico.
+  *O que o CI faz diferente:* nada — ele já tem `docs/fila` e receberia a recusa 2.
+
+
 ## PENDENTES
 
 - **K6d · `scripts/kit/pureza.sh`.** O grep que TRANCA a pureza: em CÓDIGO (não em
@@ -372,12 +386,6 @@
   justamente o script que transforma "não achei" em "não há".
   *Teste:* pureza = 0 em código, com o caso NEGATIVO de que um `apps/web` reintroduzido em
   código faz o script sair 1.
-
-- **K8b-6 · `instalar.sh --novo <repo>`.** Do mesmo bloco de vendorização do
-  `scripts/kit/fixture.sh`, mais os artefatos que a doutrina manda vir do template. Recusa
-  se `docs/fila` já existir. `--atualizar --migrar` encadeia K8b-2 a K8b-5.
-  *Evidência:* `CONTRATO.md` §10, divergência 1.
-  *Teste:* repo temporário vazio → `--novo` → `orq config` lista os placeholders.
 
 - **K8e · os testes que ainda não viajam.** Três baldes, achados da K8d, cada um com uma
   saída diferente. (i) Os 17 re-apontados para `FX_CHECKOUT`/`test/fixtures/checkout` nas

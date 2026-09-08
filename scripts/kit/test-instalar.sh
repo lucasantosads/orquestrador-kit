@@ -445,6 +445,83 @@ printf '%s' "$saida" | grep -qi 'não está pausado' \
   && ok "e diz o motivo (sem pausa)" || falha "não disse o motivo"
 printf '%s\n' "$MOTIVO" > "$MIG/docs/fila/PAUSAR"
 
+# --- (j) · K8b-6 · --novo num repo git sem docs/fila --------------------------
+# O pronto-quando da peça: repo temporário vazio → --novo → `orq config` lista os
+# placeholders (e NENHUMA chave ausente) → `--verificar` idêntico.
+echo
+echo "== (j) --novo: repo git sem docs/fila =="
+NOVO="$(mktemp -d /tmp/orq-novo-XXXXXX)"
+trap 'bash "$KIT/scripts/kit/fixture.sh" --limpar "$FX" >/dev/null 2>&1; rm -rf "$COPIA" "$COPIA_ROADMAP" "$COPIA_UPD" "$COPIA_EXTRA" "$COPIA_SUJA" "$COPIA_TESTES" "$COPIA_MIGRAR" "$NOVO"' EXIT
+( cd "$NOVO" && git init -q && printf 'node_modules/\n' > .gitignore \
+  && git add -A && git -c user.email=t@example.invalid -c user.name=t commit -qm inicial ) >/dev/null 2>&1
+# node_modules por symlink: o `orq config` roda `npx tsx`, e sem isso o npx
+# tentaria BAIXAR o tsx da rede no meio de um teste.
+ln -sfn "$KIT/node_modules" "$NOVO/node_modules"
+
+echo "-- (j1) o repo nasce inteiro --"
+saida="$(bash "$KIT/instalar.sh" --novo "$NOVO" 2>&1)"; rc=$?
+printf '%s\n' "$saida" | sed 's/^/  | /'
+[ "$rc" = 0 ] && ok "rc 0" || falha "rc $rc (esperava 0)"
+for f in docs/fila/000-config.json docs/fila/_TEMPLATE.md docs/fila/liberacoes.json \
+         docs/fila/decisoes-pendentes.md docs/fila/rascunhos/.gitkeep \
+         docs/roadmap/mapa.json docs/roadmap/MAPA.md \
+         docs/orquestrador/PLAYBOOK.md docs/orquestrador/PECAS.md \
+         docs/orquestrador/skill/SKILL.md docs/orquestrador/skill/VERSAO \
+         scripts/orq scripts/orquestrador/lib.sh scripts/roadmap/lint-mapa.py \
+         test/fixtures/orq-harness.ts docs/fila/runs/.gitignore; do
+  [ -e "$NOVO/$f" ] && ok "criou $f" || falha "NÃO criou $f"
+done
+[ "$(cat "$NOVO/docs/orquestrador/skill/VERSAO")" = "$(cat "$KIT/VERSAO")" ] \
+  && ok "VERSAO carimbado" || falha "VERSAO não carimbado"
+[ "$(jq -r '."$schema_versao"' "$NOVO/docs/fila/liberacoes.json")" = 2 ] \
+  && ok "liberacoes.json nasce em v2" || falha "liberacoes.json não nasce em v2"
+
+echo "-- (j2) NADA de launchd: agendar é passo separado --"
+[ -z "$(find "$NOVO" -name '*.plist' ! -name '*.plist.template' 2>/dev/null)" ] \
+  && ok "nenhum plist instanciado no repo" || falha "o --novo instanciou um plist"
+printf '%s' "$saida" | grep -q 'SÓ ENTÃO agendar' \
+  && ok "os próximos passos põem o agendamento por ÚLTIMO" || falha "não explicou a ordem"
+
+echo "-- (j3) orq config: só placeholders, NENHUMA chave ausente --"
+saida_cfg="$( cd "$NOVO" && bash scripts/orq config 2>&1 )"; rc=$?
+[ "$rc" = 1 ] && ok "rc 1 (formulário em branco é config inválido, e tem de ser)" || falha "rc $rc (esperava 1)"
+printf '%s' "$saida_cfg" | grep -q 'placeholder não preenchido' \
+  && ok "lista os placeholders" || falha "não listou placeholder nenhum"
+printf '%s' "$saida_cfg" | grep -q 'chave obrigatória ausente' \
+  && falha "o template do kit está INCOMPLETO: falta chave obrigatória" \
+  || ok "nenhuma chave obrigatória AUSENTE (o template só precisa ser preenchido)"
+
+echo "-- (j4) --verificar: idêntico ao kit --"
+saida="$(bash "$KIT/instalar.sh" --verificar "$NOVO" 2>&1)"; rc=$?
+printf '%s\n' "$saida" | tail -3 | sed 's/^/  | /'
+[ "$rc" = 0 ] && ok "rc 0" || falha "rc $rc (esperava 0)"
+printf '%s' "$saida" | grep -q "idêntico ao kit $(cat "$KIT/VERSAO")" \
+  && ok "idêntico ao kit" || falha "não ficou idêntico"
+
+echo "-- (j5) .gitignore: acrescenta o que falta, preserva o que havia --"
+grep -qx 'node_modules/' "$NOVO/.gitignore" \
+  && ok "a linha que já existia sobreviveu" || falha "o --novo apagou o .gitignore do repo"
+grep -qx 'docs/fila/PAUSAR' "$NOVO/.gitignore" \
+  && ok "acrescentou docs/fila/PAUSAR" || falha "não acrescentou o PAUSAR"
+git -C "$NOVO" check-ignore -q docs/fila/runs/x \
+  && ok "docs/fila/runs/ é ignorado (o git confirma)" || falha "runs/ não é ignorado"
+
+echo "-- (j6) rodar de novo RECUSA: com fila, o verbo é --atualizar --"
+saida="$(bash "$KIT/instalar.sh" --novo "$NOVO" 2>&1)"; rc=$?
+[ "$rc" = 1 ] && ok "rc 1" || falha "rc $rc (esperava 1)"
+printf '%s' "$saida" | grep -q 'já tem docs/fila' \
+  && ok "a recusa diz por quê e aponta o --atualizar" || falha "recusa sem explicação"
+
+echo "-- (j7) repo que não é git: RECUSA antes de escrever qualquer coisa --"
+SEMGIT="$(mktemp -d /tmp/orq-novo-XXXXXX)"
+saida="$(bash "$KIT/instalar.sh" --novo "$SEMGIT" 2>&1)"; rc=$?
+[ "$rc" = 1 ] && ok "rc 1" || falha "rc $rc (esperava 1)"
+printf '%s' "$saida" | grep -q 'não é um repositório git' \
+  && ok "a recusa nomeia a causa" || falha "recusa sem causa"
+[ -z "$(ls -A "$SEMGIT")" ] \
+  && ok "não escreveu NADA no diretório recusado" || falha "escreveu antes de recusar"
+rm -rf "$SEMGIT"
+
 # --- (c) ---------------------------------------------------------------------
 echo
 echo "== (c) $CI_CHECKOUT (SÓ LEITURA — o resultado é achado, não gate) =="

@@ -389,3 +389,40 @@ o que o `jq` devolveu. Três achados mandaram no desenho:
   `scripts/kit/test-instalar.sh` — **3 vermelhos antes** ali, e o vitest inteiro sem carregar.
   *O que o CI faz diferente:* nada a migrar. Os 6 pendentes do CI já usam `recon`/`tentativas`;
   `migrarFila` sai com 0 migrados e nenhum arquivo tocado.
+
+- **K8b-6** — `instalar.sh --novo <repo>`. Instala num repo git que ainda não tem
+  `docs/fila`: motor vendorizado, fila, roadmap, PLAYBOOK e PECAS, `.gitignore` e o carimbo
+  `VERSAO`. Fecha a divergência 1 do `CONTRATO.md` §10.
+  *O bloco de vendorização virou uma função só* — `vendorizar_motor` —, usada pelo `--novo` e
+  pelo `--atualizar`. Duas cópias do mesmo mapa origem→destino divergiriam no primeiro
+  caminho que alguém acrescentasse, que é exatamente o que a peça K8c já pagou uma vez.
+  *Os artefatos do repo vêm de `doutrina/templates/`*, nunca de uma segunda cópia:
+  `config.json` → `000-config.json`, `TICKET.md` → `_TEMPLATE.md`, `decisoes-pendentes.md`,
+  `mapa.json`, `MAPA.md`, `PLAYBOOK-seed.md` → `PLAYBOOK.md` e o novo `PECAS-seed.md` →
+  `PECAS.md`. `liberacoes.json` nasce em **v2 vazio** — nascer em v1 obrigaria uma migração
+  no primeiro dia.
+  *O template do config ganhou as 6 chaves obrigatórias que faltavam* (`branch_protegida`,
+  `worktrees_prefixo`, `_execucao_dos_gates.{ordem_obrigatoria,interrupcao}`,
+  `politica_adiamento.causas_que_adiam`, `politica_retry.por_causa`), com os mesmos valores e
+  as mesmas razões da tabela da K8b-4. Antes disto, um repo criado pelo `--novo` sairia com
+  6 chaves AUSENTES além dos placeholders: o dono teria de AUTORAR chave, não só preencher.
+  Um check do caso (j) tranca isso — `orq config` pode listar placeholder à vontade, mas
+  `chave obrigatória ausente` é FALHA do teste.
+  *Duas recusas com rc 1, e nenhuma escreve antes de recusar:* o diretório não é repo git
+  (sem git não há ground truth, e "log não é verdade" vira "nada é verdade"), e `docs/fila`
+  já existe — aí o verbo é `--atualizar`, porque um `--novo` que sobrescreve fila é um
+  `--novo` que apaga tickets.
+  *`--novo` ESCREVE o `.gitignore`; `--atualizar --migrar` só RELATA.* A diferença é
+  deliberada: num repo novo o arquivo não tem opinião sobre `docs/fila`, e não há ordem nem
+  comentário de ninguém para atropelar. Ele acrescenta o que falta e preserva o resto.
+  *Nada de launchd*, e os próximos passos impressos põem o agendamento por ÚLTIMO:
+  `instalar-launchd.sh` RECUSA sem `launchd.label`, e o label é um dos placeholders do
+  formulário. Agendar um loop cujo config ainda é formulário é agendar um loop que não roda.
+  *Teste:* caso (j) de `scripts/kit/test-instalar.sh`, 7 blocos e 33 checks, **30 vermelhos
+  antes**. O pronto-quando da peça, ponta a ponta: repo temporário vazio → `--novo` → `orq
+  config` lista os placeholders e NENHUMA chave ausente → `--verificar` idêntico ao kit.
+  *O que o CI faz diferente:* nada — `--novo` não roda em repo instalado, e o CI já tem
+  `docs/fila`. Ele receberia a recusa 2, que é a resposta certa.
+
+Passos humanos para o CI receber esta etapa: ver o relatório em
+`~/orq-sessoes/relatorio-kit-etapa5.md`.

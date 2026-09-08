@@ -60,6 +60,7 @@ uso() {
   cat <<'USO'
 uso: bash instalar.sh --verificar <repo>
      bash instalar.sh --atualizar <repo> [--dry-run] [--forcar] [--migrar]
+     bash instalar.sh --novo <repo>
 
   --verificar <repo>   compara o motor vendorizado em <repo> com o do kit
   --atualizar <repo>   copia o motor do kit por cima do de <repo>
@@ -68,7 +69,7 @@ uso: bash instalar.sh --verificar <repo>
                        (NÃO passa por cima da pausa nem do STATUS)
       --migrar         TAMBÉM migra docs/fila/** (pausa, liberações) — o único
                        caso em que o instalador toca os dados do dono
-  --novo <repo>        (peça K8b-6)
+  --novo <repo>        instala num repo git que ainda NÃO tem docs/fila
 USO
 }
 
@@ -450,26 +451,7 @@ atualizar() {
   # garante que um plist do REPO nunca seja apagado por engano.
   printf 'ATUALIZAR  kit %s (%s)\n' "$VERSAO" "$KIT"
   printf '           repo %s\n\n' "$repo"
-  local stage
-  stage="$(mktemp -d /tmp/orq-atualizar-XXXXXX)"
-  mkdir -p "$stage/orquestrador"
-  cp -R "$KIT/scripts/orquestrador/." "$stage/orquestrador/"
-  find "$stage/orquestrador" -name '*.plist' ! -name '*.plist.template' -exec rm -f {} +
-
-  mkdir -p "$repo/scripts/orquestrador" "$repo/scripts/roadmap" "$repo/docs/orquestrador/skill"
-  cp -R "$stage/orquestrador/." "$repo/scripts/orquestrador/"
-  cp "$KIT/scripts/orq" "$repo/scripts/orq"; chmod +x "$repo/scripts/orq"
-  cp -R "$KIT/scripts/roadmap/." "$repo/scripts/roadmap/"
-  cp -R "$KIT/doutrina/." "$repo/docs/orquestrador/skill/"
-  cp "$KIT/VERSAO" "$repo/docs/orquestrador/skill/VERSAO"
-  # Os testes do harness, um a um (peça K8d). `mkdir -p` do diretório de cada
-  # arquivo: um repo que ainda não tem `test/fixtures/trilha/` recebe a árvore.
-  local t
-  for t in $TESTES_HARNESS $FIXTURES_HARNESS; do
-    mkdir -p "$repo/$(dirname "$t")"
-    cp "$KIT/$t" "$repo/$t"
-  done
-  rm -rf "$stage"
+  vendorizar_motor "$repo"
   printf 'copiado: scripts/orquestrador/ · scripts/orq · scripts/roadmap/ · docs/orquestrador/skill/ (+ VERSAO %s)\n' "$VERSAO"
   printf 'copiado: %s teste(s) de harness e %s fixture(s) de teste (peça K8d)\n\n' \
     "$(printf '%s\n' $TESTES_HARNESS | wc -l | tr -d ' ')" \
@@ -503,13 +485,182 @@ atualizar() {
   return "$rc"
 }
 
+# --- --novo (peça K8b-6) ------------------------------------------------------
+# Instala o orquestrador num repo git que ainda NÃO tem `docs/fila`.
+#
+# O bloco de vendorização é o MESMO do `--atualizar` — `vendorizar_motor` —, que
+# por sua vez é o mesmo mapa origem→destino do `scripts/kit/fixture.sh` e do
+# ORIGEM.md. Três lugares executando o mesmo mapa é o que o kit já pagou uma vez
+# (peça K8c); aqui eles compartilham a função.
+#
+# O que o `--novo` cria além do motor, e de onde vem cada um:
+#
+#   docs/fila/000-config.json      doutrina/templates/config.json  (FORMULÁRIO)
+#   docs/fila/_TEMPLATE.md         doutrina/templates/TICKET.md
+#   docs/fila/liberacoes.json      v2 vazio, escrito aqui
+#   docs/fila/decisoes-pendentes.md  doutrina/templates/decisoes-pendentes.md
+#   docs/fila/rascunhos/.gitkeep   diretório que o leitor da fila NÃO desce
+#   docs/roadmap/mapa.json         doutrina/templates/mapa.json
+#   docs/roadmap/MAPA.md           doutrina/templates/MAPA.md
+#   docs/orquestrador/PLAYBOOK.md  doutrina/templates/PLAYBOOK-seed.md
+#   docs/orquestrador/PECAS.md     doutrina/templates/PECAS-seed.md
+#   .gitignore                     acrescenta as linhas que faltam; cria se não existir
+#
+# NADA de launchd. Instalar o job é passo separado (`instalar-launchd.sh`),
+# DEPOIS do config preenchido — ele RECUSA sem `launchd.label`, e o label é uma
+# das decisões que o formulário deixa em branco. Agendar um loop cujo config
+# ainda é formulário é agendar um loop que não roda.
+#
+# RECUSA se `docs/fila` já existir: aí o verbo é `--atualizar`. Um `--novo` que
+# sobrescreve fila é um `--novo` que apaga tickets.
+
+# copiar_se_ausente <origem> <destino> — nunca sobrescreve. O `--novo` recusa
+# repo com fila, mas pode encontrar um `.gitignore` ou um `docs/roadmap` que já
+# existem por outro motivo.
+copiar_se_ausente() {
+  local de="$1" para="$2"
+  if [ -e "$para" ]; then printf 'já existe  %s (não sobrescrevo)\n' "${para#"$REPO_NOVO"/}"; return 0; fi
+  mkdir -p "$(dirname "$para")"
+  cp "$de" "$para"
+  printf 'criado     %s\n' "${para#"$REPO_NOVO"/}"
+}
+
+# vendorizar_motor <repo> — o mapa origem→destino, executado. Compartilhado por
+# `--novo` e `--atualizar`: duas cópias deste bloco divergiriam no primeiro
+# caminho que alguém acrescentasse.
+vendorizar_motor() {
+  local repo="$1" stage t
+  # Staging intermediário só por causa do plist INSTANCIADO: ele é artefato de
+  # uma máquina e não pode viajar. Filtrar no staging (e não no destino) é o que
+  # garante que um plist do REPO nunca seja apagado por engano.
+  stage="$(mktemp -d /tmp/orq-atualizar-XXXXXX)"
+  mkdir -p "$stage/orquestrador"
+  cp -R "$KIT/scripts/orquestrador/." "$stage/orquestrador/"
+  find "$stage/orquestrador" -name '*.plist' ! -name '*.plist.template' -exec rm -f {} +
+
+  mkdir -p "$repo/scripts/orquestrador" "$repo/scripts/roadmap" "$repo/docs/orquestrador/skill"
+  cp -R "$stage/orquestrador/." "$repo/scripts/orquestrador/"
+  cp "$KIT/scripts/orq" "$repo/scripts/orq"; chmod +x "$repo/scripts/orq"
+  cp -R "$KIT/scripts/roadmap/." "$repo/scripts/roadmap/"
+  cp -R "$KIT/doutrina/." "$repo/docs/orquestrador/skill/"
+  cp "$KIT/VERSAO" "$repo/docs/orquestrador/skill/VERSAO"
+  # Os testes do harness, um a um (peça K8d). `mkdir -p` do diretório de cada
+  # arquivo: um repo que ainda não tem `test/fixtures/trilha/` recebe a árvore.
+  for t in $TESTES_HARNESS $FIXTURES_HARNESS; do
+    mkdir -p "$repo/$(dirname "$t")"
+    cp "$KIT/$t" "$repo/$t"
+  done
+  rm -rf "$stage"
+}
+
+# As linhas que o `.gitignore` de um repo instalado precisa ter. `--novo`
+# ACRESCENTA o que falta (ou cria o arquivo); `--atualizar --migrar` só RELATA
+# (relatar_gitignore), porque lá o arquivo já é do dono e tem ordem própria.
+GITIGNORE_LINHAS='docs/fila/PAUSAR
+docs/fila/runs/'
+
+REPO_NOVO=''
+
+novo() {
+  local repo="${1:-}"
+  [ -n "$repo" ] || die "--novo exige o caminho do repo"
+  [ -d "$repo" ] || die "'$repo' não é um diretório"
+  repo="$(cd "$repo" && pwd -P)"
+  REPO_NOVO="$repo"
+
+  git -C "$repo" rev-parse --git-dir >/dev/null 2>&1 \
+    || recusa "'$repo' não é um repositório git. O orquestrador é uma máquina que audita pelo git: sem git não há ground truth, e 'log não é verdade' vira 'nada é verdade'. Rode 'git init' e faça o primeiro commit antes."
+
+  [ ! -d "$repo/docs/fila" ] \
+    || recusa "'$repo' já tem docs/fila — este é o verbo errado. Um --novo que sobrescreve fila é um --novo que apaga tickets. Use: bash instalar.sh --atualizar $repo"
+
+  printf 'NOVO       kit %s (%s)\n' "$VERSAO" "$KIT"
+  printf '           repo %s\n\n' "$repo"
+
+  # --- 1. o motor -----------------------------------------------------------
+  vendorizar_motor "$repo"
+  printf 'criado     scripts/orquestrador/ · scripts/orq · scripts/roadmap/ · docs/orquestrador/skill/ (VERSAO %s)\n' "$VERSAO"
+  printf 'criado     %s teste(s) de harness e %s fixture(s) (peça K8d)\n\n' \
+    "$(printf '%s\n' $TESTES_HARNESS | wc -l | tr -d ' ')" \
+    "$(printf '%s\n' $FIXTURES_HARNESS | wc -l | tr -d ' ')"
+
+  # --- 2. a fila ------------------------------------------------------------
+  mkdir -p "$repo/docs/fila/rascunhos"
+  : > "$repo/docs/fila/rascunhos/.gitkeep"
+  printf 'criado     docs/fila/rascunhos/.gitkeep\n'
+  copiar_se_ausente "$KIT/doutrina/templates/config.json"            "$repo/docs/fila/000-config.json"
+  copiar_se_ausente "$KIT/doutrina/templates/TICKET.md"              "$repo/docs/fila/_TEMPLATE.md"
+  copiar_se_ausente "$KIT/doutrina/templates/decisoes-pendentes.md"  "$repo/docs/fila/decisoes-pendentes.md"
+  # liberacoes.json nasce em v2 (peça K8b-2): é o formato que `orq liberar`
+  # escreve, e nascer em v1 obrigaria uma migração no primeiro dia.
+  printf '{\n  "$schema_versao": 2,\n  "tokens": []\n}\n' > "$repo/docs/fila/liberacoes.json"
+  printf 'criado     docs/fila/liberacoes.json (v2 vazio)\n'
+
+  # --- 3. roadmap e memória -------------------------------------------------
+  copiar_se_ausente "$KIT/doutrina/templates/mapa.json"        "$repo/docs/roadmap/mapa.json"
+  copiar_se_ausente "$KIT/doutrina/templates/MAPA.md"          "$repo/docs/roadmap/MAPA.md"
+  copiar_se_ausente "$KIT/doutrina/templates/PLAYBOOK-seed.md" "$repo/docs/orquestrador/PLAYBOOK.md"
+  copiar_se_ausente "$KIT/doutrina/templates/PECAS-seed.md"    "$repo/docs/orquestrador/PECAS.md"
+
+  # --- 4. .gitignore --------------------------------------------------------
+  # Aqui o instalador ESCREVE, e é a diferença deliberada para o `--atualizar
+  # --migrar`: num repo novo o arquivo ou não existe, ou não tem opinião sobre
+  # `docs/fila` — não há ordem nem comentário de ninguém para atropelar.
+  local gi="$repo/.gitignore" linha faltando=0
+  while IFS= read -r linha; do
+    [ -n "$linha" ] || continue
+    if [ -f "$gi" ] && grep -qxF "$linha" "$gi"; then continue; fi
+    if [ "$faltando" = 0 ]; then
+      [ -f "$gi" ] && printf '\n' >> "$gi"
+      printf '# orquestrador — estado local da máquina e evidência efêmera; nunca versionar.\n' >> "$gi"
+      printf '# Sem estas linhas, o run suja a árvore e o preflight do run SEGUINTE morre.\n' >> "$gi"
+    fi
+    printf '%s\n' "$linha" >> "$gi"
+    faltando=$((faltando + 1))
+  done <<< "$GITIGNORE_LINHAS"
+  if [ "$faltando" = 0 ]; then printf 'já existe  .gitignore com as duas linhas\n'
+  else printf 'escrito    .gitignore (+%s linha(s))\n' "$faltando"; fi
+
+  # `runs/` também se ignora por dentro: é a convenção do CI e a que sobrevive a
+  # alguém reescrever o .gitignore da raiz.
+  mkdir -p "$repo/docs/fila/runs"
+  cat > "$repo/docs/fila/runs/.gitignore" <<'GI'
+# Evidência de run é efêmera: fica no disco, nunca no git.
+# Sem isto, o run suja a árvore e o preflight do run SEGUINTE morre.
+*
+!.gitkeep
+!.gitignore
+GI
+  printf 'criado     docs/fila/runs/.gitignore\n'
+  printf '{"dias":{}}\n' > "$repo/docs/fila/runs/custo.json"
+  printf 'criado     docs/fila/runs/custo.json\n\n'
+
+  # --- 5. o veredito, e os próximos passos ----------------------------------
+  local rc=0
+  verificar "$repo" || rc=$?
+
+  printf '\n--- orq config (o formulário ainda está em branco; é assim que ele nasce) ---\n'
+  ( cd "$repo" && bash scripts/orq config ) || true
+
+  printf '\nPRÓXIMOS PASSOS, nesta ordem:\n'
+  printf '  1. preencha docs/fila/000-config.json — cada placeholder <...> acima é uma decisão local\n'
+  printf '  2. bash scripts/orq config           # tem de sair 0 violações\n'
+  printf '  3. pré-voo: docs/orquestrador/skill/references/pre-voo.md, categorias 0 a 6\n'
+  printf '  4. um ticket-fixture trivial atravessa o loop, com merge na staging\n'
+  printf '  5. SÓ ENTÃO agendar: bash scripts/orquestrador/instalar-launchd.sh\n'
+  printf '     (ele RECUSA sem launchd.label, e o label é um dos placeholders do passo 1)\n'
+  printf '\ncommit sugerido, no repo, com pathspec explícito:\n'
+  printf '  cd %s\n' "$repo"
+  printf '  git add .gitignore scripts/orquestrador scripts/orq scripts/roadmap docs \\\n'
+  printf '    %s\n' "$(printf '%s ' $TESTES_HARNESS $FIXTURES_HARNESS)"
+  printf "  git commit -m 'orquestrador: instalação inicial, kit %s'\n" "$VERSAO"
+  return "$rc"
+}
+
 case "${1:-}" in
   --verificar)  shift; verificar "${1:-}" ;;
   --atualizar)  shift; atualizar "$@" ;;
-  --novo)
-    printf 'ainda não: peça K8b\n'
-    exit 2
-    ;;
+  --novo)       shift; novo "${1:-}" ;;
   -h|--help|'') uso; [ -z "${1:-}" ] && exit 2 || exit 0 ;;
   *) uso >&2; die "verbo desconhecido: $1" ;;
 esac

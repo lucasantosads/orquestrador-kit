@@ -3,6 +3,10 @@
   "descricao": "Config do Orquestrador Autônomo v2. Fonte única de: zona proibida, gates, branch alvo, retry/cooldown, identidade, modelos por papel, orçamento, kill switches, gate de ticket, planejador, sentinela, contexto. Lida pelos scripts via jq a cada drenagem e entre tickets. Placeholders <ASSIM> são decisões locais: preencha todos antes do primeiro run. Campos v1 mantidos com o mesmo nome.",
   "branch_alvo": "staging-auto",
   "branch_principal": "main",
+  "_branch_protegida": "O motor lê ESTE nome (local-loop.sh:28, executor.sh:130) — `branch_principal` é o alias de leitura humana. É a branch que o loop NUNCA empurra; deixá-la ausente faz o `jq -r` devolver a string \"null\", e a proibição passa a valer para uma branch chamada \"null\".",
+  "branch_protegida": "<a branch que o loop NUNCA empurra — ex.: main>",
+  "worktrees_prefixo": "<prefixo curto das worktrees deste repo — ex.: ci-, os-, fx->",
+  "_worktrees_prefixo": "lib.sh:498, decisao.ts:363. Prefixo diferente por repo é o que impede dois repos de colidirem na mesma worktree; um default igual para todos anularia a única coisa que a chave faz.",
   "max_retries": 2,
   "cooldown_minutes": 60,
   "_cooldown": "Adiamento por limite (rate limit/quota/timeout/orçamento) grava runs/.cooldown-until. NÃO conta como retry; status volta a pendente.",
@@ -215,6 +219,52 @@
     "start_interval": 1800
   },
   "_launchd": "Peça K6c. `label` é o Label do job do launchd e NÃO tem default: scripts/orquestrador/instalar-launchd.sh RECUSA sem ele, em vez de inventar um. Label inventado não dá erro visível — carrega um SEGUNDO job ao lado do antigo, os dois disparando no mesmo checkout. Um label por repo: para o launchd, dois repos com o mesmo label são o MESMO job. `start_interval` é o StartInterval em segundos; 1800 é o valor medido em 06/set/2026 (mediana 294s, p90 2509s por ticket), e a medição inteira está no comentário do com.orquestrador.plist.template — refaça-a antes de trocar o número.",
+
+  "_execucao_dos_gates": {
+    "_descricao": "gates.ts:176-177. `ordem_obrigatoria` tem de listar os MESMOS nomes de `gates[]`, na mesma ordem: rodar fora de ordem invalida o resultado mesmo que todos os comandos saiam verdes. Gate de `tipo: preparacao` (limpeza de artefato) vem primeiro — um artefato de build velho JÁ dessincronizou tsc e build numa sessão real, e sem humano olhando isso vira APROVAÇÃO FALSA.",
+    "ordem_obrigatoria": ["typecheck", "testes", "build"],
+    "interrupcao": "NAO_VALE_PARCIALMENTE",
+    "_interrupcao": "Gate interrompido no meio (timeout, kill, máquina dormindo) NÃO conta como parcialmente aprovado: nenhum resultado anterior é reaproveitado e a sequência reexecuta inteira. Um gate só vale quando a ordem completa rodou de ponta a ponta na mesma execução."
+  },
+  "politica_adiamento": {
+    "regra": "Falha de INFRAESTRUTURA adia. Nunca reprova.",
+    "_porque": "Reprovar por queda de conexão consome retry e, no limite, bloqueia um ticket que nunca foi julgado pelo mérito. O executor não errou — o ambiente caiu. Só o AVALIADOR reprova, e só por conteúdo do diff.",
+    "causas_que_adiam": [
+      "erro de conexão",
+      "sessão expirada",
+      "rate limit",
+      "quota estourada",
+      "timeout de claude_timeout_secs",
+      "gate interrompido no meio",
+      "veredito do juiz ilegível"
+    ],
+    "efeito": {
+      "status": "pendente",
+      "conta_como_retry": false,
+      "cooldown": "grava runs/.cooldown-until = agora + cooldown_minutes"
+    }
+  },
+  "politica_retry": {
+    "_descricao": "decisao.ts:277, e decisao.ts REJEITA a config que mandar o contrário. A causa da reprovação decide o que muda no retry: tamanho, fronteira e qualidade são problemas diferentes e não compartilham remédio.",
+    "por_causa": {
+      "diff_cap": {
+        "modelo": "MANTER",
+        "acao": "estreitar o escopo no prompt de retry (fatiar o ticket, reduzir pathspec_allowlist)",
+        "_porque": "Estourar diff_cap é falha de TAMANHO, não de capacidade. Um modelo mais forte escreve o mesmo excesso — só mais caro."
+      },
+      "enforcement": {
+        "modelo": "MANTER",
+        "acao": "estreitar o escopo no prompt de retry (respeitar a pathspec_allowlist, sair da zona proibida)",
+        "_porque": "Violação de FRONTEIRA não é falha de qualidade. Um modelo mais forte cruza a mesma fronteira."
+      },
+      "criterio_qualidade": {
+        "modelo": "ESCALAR",
+        "acao": "subir para retry_final_model e repetir com o mesmo escopo",
+        "_porque": "Reprovação do avaliador é falha de CAPACIDADE; aí escalar é o remédio certo."
+      }
+    },
+    "proibicao": "NUNCA escalar modelo por falha de tamanho (diff_cap) nem por violação de fronteira (enforcement)."
+  },
 
   "gates": [
     {

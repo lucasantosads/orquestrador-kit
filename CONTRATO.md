@@ -422,7 +422,7 @@ processo. Se `orq` puder alterar estado, alguém vai alterá-lo no meio de um ru
 |---|---|
 | `--verificar <repo>` | compara o motor de `<repo>` com o do kit; rc 0 se idêntico, 1 se não |
 | `--atualizar <repo> [--dry-run] [--forcar] [--migrar]` | copia o motor por cima e carimba o `VERSAO`; com `--migrar`, também migra `docs/fila/**` |
-| `--novo <repo>` | **ainda não** (peça K8b-6): diz isso e sai 2 |
+| `--novo <repo>` | instala num repo git que ainda **não** tem `docs/fila` |
 
 `--dry-run` **prevê as recusas** em vez de dizer que está tudo bem: ele continua
 saindo 0 (não é o gate), mas imprime `O --atualizar de verdade RECUSARIA, por:`
@@ -437,6 +437,26 @@ recusas, e só a terceira cede a `--forcar`:
 2. `runs/STATUS.md` que não diz `ocioso` (ausência não é recusa);
 3. modificação não commitada no motor do repo — nos MESMOS caminhos que o bloco
    de cópia escreve, `scripts/roadmap/` e os testes de harness incluídos.
+
+`--novo` cria o layout de §1.2 do zero. O bloco de vendorização é o MESMO do
+`--atualizar` (`vendorizar_motor`), e os artefatos do repo vêm de
+`doutrina/templates/`: `config.json` → `000-config.json` (FORMULÁRIO, com
+placeholders), `TICKET.md` → `_TEMPLATE.md`, `decisoes-pendentes.md`,
+`mapa.json`, `MAPA.md`, `PLAYBOOK-seed.md` → `PLAYBOOK.md`, `PECAS-seed.md` →
+`PECAS.md`; `liberacoes.json` nasce em **v2 vazio**. Duas recusas com rc 1: o
+diretório não é repo git (sem git não há ground truth), e `docs/fila` já existe
+(aí o verbo é `--atualizar` — um `--novo` que sobrescreve fila é um `--novo` que
+apaga tickets).
+
+`--novo` **escreve** o `.gitignore`, e é a diferença deliberada para o
+`--atualizar --migrar`, que só relata (§7): num repo novo o arquivo ou não
+existe, ou não tem opinião sobre `docs/fila` — não há ordem nem comentário de
+ninguém para atropelar. Ele ACRESCENTA o que falta e não reescreve o resto.
+
+**Nada de launchd.** Instalar o job é passo separado (`instalar-launchd.sh`),
+depois do config preenchido: ele RECUSA sem `launchd.label`, e o label é um dos
+placeholders do formulário. Agendar um loop cujo config ainda é formulário é
+agendar um loop que não roda.
 
 ### 9.3 As migrações (no kit, chamadas por `--atualizar --migrar`)
 
@@ -519,7 +539,7 @@ O que este contrato **não** descreve como gostaria, e a peça que fecha cada um
 
 | # | Divergência | Peça |
 |---|---|---|
-| 1 | `--novo` não existe: o layout de §1 é criado hoje por `scripts/kit/fixture.sh` (para o fixture) e por `--atualizar` (para repo já instalado). O `--novo` sai 2. Os dois artefatos que a doutrina manda vir do template (`TICKET.md` → `docs/fila/_TEMPLATE.md`, `PLAYBOOK-seed.md` → `docs/orquestrador/PLAYBOOK.md`) só são copiados pelo `fixture.sh`. | **K8b** |
+| 1 | ~~`--novo` não existe.~~ **FECHADA pela K8b-6:** `--novo <repo>` cria o layout de §1.2 do zero, com `vendorizar_motor` compartilhado com o `--atualizar` e os artefatos vindos de `doutrina/templates/`. | ~~K8b-6~~ **feita** |
 | 2 | ~~`tokens` de OBJETOS não resolvia dependência nenhuma, em silêncio.~~ **FECHADA pela K8b-1:** `liberacao_ok` resolve as quatro formas vivas (§6.1), normalizando o prefixo dos dois lados, e `lint-mapa.py` monta `sat` pela mesma regra. O schema continua sendo documento e insumo, nunca gate. | ~~K8b-1~~ **feita** |
 | 3 | `gate-ticket.ts` NÃO valida contra `schemas/ticket.schema.json`: continua com os checks escritos à mão. O schema é documento e insumo do `orq config`. | **"gate valida pelo schema"** (em PENDENTES) |
 | 4 | `schemas/ticket.schema.json` fecha `status` no vocabulário do gate (6 valores). `doutrina/templates/TICKET.md` cita ainda `candidato` (ticket do planejador antes do gate) e `descartado` (só do gate) — dois status que o motor de hoje não conhece, porque planejador e sentinela nascem desligados. | **K10** (doutrina v2) |
