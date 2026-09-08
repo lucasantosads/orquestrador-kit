@@ -82,11 +82,24 @@ ticket_files() {
   find "$FILA_DIR" -maxdepth 1 -type f -name '[0-9]*.md' 2>/dev/null | sort
 }
 
-# Extrai o bloco ```json ... ``` de um ticket .md.
+# Extrai o PRIMEIRO bloco ```json ... ``` de um ticket .md.
+#
+# Divergência 10 do CONTRATO, FECHADA: o ticket é o PRIMEIRO bloco; qualquer
+# outro bloco JSON no arquivo é PROSA (exemplo de payload, saída esperada — o
+# que um ticket sobre API descreve o tempo todo). Antes esta função concatenava
+# TODOS os blocos, e com dois o resultado não parseava: `jq` morria, o preflight
+# derrubava o run inteiro e ninguém sabia por quê. Os outros dois leitores
+# (`gate-ticket.ts:blocoJson`, `fila-read.ts:extractJsonBlock`) já liam o
+# primeiro; agora os três dão a mesma resposta.
+#
+# A cerca é comparada com `gsub` de espaço em volta, e não literalmente, porque
+# os dois leitores de TS usam `linha.trim() === '```json'`. Três leitores que
+# concordam sobre QUAL bloco e discordam sobre o que é uma cerca não concordam.
 ticket_json() {
   awk '
-    /^```json$/ { inblk=1; next }
-    inblk && /^```$/ { inblk=0; next }
+    { cerca = $0; gsub(/^[ \t]+|[ \t]+$/, "", cerca) }
+    !feito && !inblk && cerca == "```json" { inblk=1; next }
+    inblk && cerca == "```" { inblk=0; feito=1; next }
     inblk { print }
   ' "$1"
 }
@@ -111,9 +124,14 @@ ticket_set() {
   local tmpjson tmpout
   tmpjson="$(mktemp)"; tmpout="$(mktemp)"
   ticket_json "$file" | jq "$@" "$filter" > "$tmpjson"
+  # SÓ o primeiro bloco é reescrito (divergência 10). Sem o `feito`, a segunda
+  # cerca ```json da prosa disparava a mesma regra e o JSON do ticket era
+  # DESPEJADO por cima do exemplo — um ticket com dois blocos saía do
+  # `ticket_set` com o bloco de máquina duplicado e a prosa destruída.
   awk -v f="$tmpjson" '
-    /^```json$/ { print; while ((getline line < f) > 0) print line; close(f); inblk=1; next }
-    inblk && /^```$/ { print; inblk=0; next }
+    { cerca = $0; gsub(/^[ \t]+|[ \t]+$/, "", cerca) }
+    !feito && !inblk && cerca == "```json" { print; while ((getline line < f) > 0) print line; close(f); inblk=1; next }
+    inblk && cerca == "```" { print; inblk=0; feito=1; next }
     inblk { next }
     { print }
   ' "$file" > "$tmpout"

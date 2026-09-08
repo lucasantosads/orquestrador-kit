@@ -83,8 +83,14 @@ se ela sujar a árvore, o preflight do run SEGUINTE morre.
 ## 2. Ticket
 
 Um arquivo `.md` por ticket em `docs/fila/`, nomeado `<id>-<slug>.md`. A **fonte
-de verdade de máquina** é o ÚLTIMO bloco ```json``` do arquivo; a prosa é para
-humanos e a automação a ignora. Schema em `schemas/ticket.schema.json`.
+de verdade de máquina** é o PRIMEIRO bloco ```json``` do arquivo; a prosa é para
+humanos e a automação a ignora, e isso inclui QUALQUER outro bloco ```json do
+arquivo — um exemplo de payload no meio do texto é prosa, não ticket. Schema em
+`schemas/ticket.schema.json`.
+
+Os três leitores concordam, e a cerca é comparada sem o espaço em volta nos
+três: `gate-ticket.ts:blocoJson` (`:99`), `fila-read.ts:extractJsonBlock` e
+`lib.sh:ticket_json` (`:86`). `ticket_set` reescreve SÓ o primeiro bloco.
 
 O que o gate cobra hoje (`scripts/orquestrador/gate-ticket.ts`):
 
@@ -559,4 +565,4 @@ O que este contrato **não** descreve como gostaria, e a peça que fecha cada um
 | 7 | O `drenar` não roda o gate de ticket antes de gastar agente. | **1c** |
 | 8 | Dois testes de harness são byte-idênticos ao do CI e ainda assim não viajam com o motor, porque hardcodam valores do config do CI (`orq-cli.test.ts:205,237`; `orquestrador-observabilidade.test.ts:216-217`). | **K8e** |
 | 9 | Não há alarme para "job do launchd carregado e mudo". O incidente de 2026-09-08 passou 1h40 sem detecção automática. | **K12a** |
-| 10 | **Qual bloco ```json vale, num ticket com mais de um.** Esta seção (§2) diz o ÚLTIMO; `gate-ticket.ts:blocoJson` (`:99-105`) lê o PRIMEIRO e para no primeiro fence de fechamento; `lib.sh:ticket_json` (`:86-92`) concatena o conteúdo de TODOS, e com dois blocos o resultado nem parseia. Três leitores, três respostas. Achado no PASSO 0 da etapa 5, e LATENTE: nenhum dos 517 tickets dos três repos tem mais de um bloco. `migrar-tickets.ts` PULA esses tickets e nomeia os três leitores na mensagem, em vez de desempatar. | peça própria (uma linha, três leitores — não é migração) |
+| 10 | ~~**Qual bloco ```json vale, num ticket com mais de um.** Três leitores, três respostas.~~ **FECHADA pela D10:** o ticket é o **PRIMEIRO** bloco; qualquer outro é prosa. `lib.sh:ticket_json` deixou de concatenar e `ticket_set` de reescrever mais de um; `gate-ticket.ts` e `fila-read.ts` já liam o primeiro; §2 diz isso; `migrar-tickets.ts` deixou de pular e passou a NOTAR. | ~~D10~~ **feita** |

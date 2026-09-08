@@ -102,15 +102,14 @@ export function migrarTicket(md: string): { depois: string | null; notas: string
   const b = acharBloco(md)
   if (!b) return { depois: null, notas, pulado: 'sem bloco ```json' }
 
-  // Mais de um bloco é o caso em que os TRÊS leitores do repo discordam:
-  // `gate-ticket.ts:blocoJson` pega o PRIMEIRO, `lib.sh:ticket_json` concatena
-  // TODOS (e o resultado não parseia), e o `CONTRATO.md` §2 diz que vale o
-  // ÚLTIMO. Escolher um aqui seria a migração desempatando uma divergência do
-  // motor por conta própria. Nenhum ticket dos três repos está nesse estado
-  // hoje (medido no PASSO 0), então o custo de recusar é zero e o de adivinhar
-  // não é.
+  // Mais de um bloco NÃO é mais motivo para pular (peça D10). A divergência 10
+  // foi FECHADA no motor: o ticket é o PRIMEIRO bloco, e os três leitores
+  // (`gate-ticket.ts:blocoJson`, `fila-read.ts:extractJsonBlock`,
+  // `lib.sh:ticket_json`) concordam. A migração segue o motor — `acharBloco` já
+  // aponta para o primeiro —, e o `quantos` continua sendo contado só para a
+  // NOTA: quem lê o relatório merece saber que o arquivo tem outro bloco.
   if (b.quantos > 1) {
-    return { depois: null, notas, pulado: `${b.quantos} blocos \`\`\`json — gate-ticket.ts lê o primeiro, lib.sh concatena todos e o CONTRATO §2 diz o último; a migração não desempata isso` }
+    notas.push(`${b.quantos} blocos \`\`\`json no arquivo — o ticket é o PRIMEIRO (CONTRATO §2); os demais são prosa e saem intactos`)
   }
 
   const linhas = md.split('\n')

@@ -504,6 +504,33 @@
   `orquestrador-gates.test.ts` seguem verdes sem edição.
 
 
+- **D10 · o ticket é o PRIMEIRO bloco ```json.** Divergência 10 do `CONTRATO.md`,
+  FECHADA. `lib.sh:ticket_json` deixou de CONCATENAR todos os blocos (com dois, o
+  resultado não parseava e o `jq` derrubava o preflight do run inteiro) e passou a ler
+  só o primeiro; `ticket_set` deixou de reescrever mais de um (com dois blocos ele
+  DESPEJAVA o JSON do ticket por cima do exemplo da prosa); `gate-ticket.ts` e
+  `fila-read.ts` já liam o primeiro e não mudaram; `migrar-tickets.ts` deixou de PULAR
+  e passou a NOTAR; o `CONTRATO.md` §2 diz PRIMEIRO.
+  *Por que o primeiro, e não o último que a §2 dizia:* dois dos três leitores já liam o
+  primeiro, e o ticket abre o arquivo. Um bloco JSON no meio da prosa é exemplo de
+  payload — coisa que todo ticket sobre API descreve —, e "vale o último" transforma
+  qualquer exemplo colado no fim numa troca silenciosa da fonte de verdade da máquina.
+  *De quebra:* a cerca passou a ser comparada SEM o espaço em volta também no `lib.sh`,
+  como os dois leitores de TS já faziam (`linha.trim() === '```json'`). Três leitores
+  que concordam sobre qual bloco e discordam sobre o que é uma cerca não concordam.
+  *Teste:* `test/orquestrador-dois-blocos-json.test.ts`, 13 casos, **8 vermelhos antes**,
+  com uma fixture que tem o bloco de máquina e um segundo bloco no meio da prosa: os
+  três leitores devolvem o MESMO objeto, a migração renomeia no primeiro e o segundo
+  sai byte a byte igual.
+  *Uma asserção antiga foi REVERTIDA, com o porquê escrito no arquivo:* o caso "DOIS
+  blocos: pulado" da K8b-5 virou "migra o PRIMEIRO e NOTA o segundo". Quando ele foi
+  escrito, o motor discordava de si mesmo e recusar era o certo; agora a migração
+  seguiria o motor, e pular seria a migração discordando dele.
+  *O que o CI faz diferente:* nada — nenhum dos 517 tickets dos três repos tem mais de
+  um bloco (medido no PASSO 0 da etapa 5), então esta peça muda o comportamento em ZERO
+  arquivo vivo. Ela fecha um buraco latente antes de alguém cair nele.
+
+
 ## PENDENTES
 
 - **K11a-4 · o resto do enforcement do Actus (E, F e a exceção de teste-SQL).** A K11a-1

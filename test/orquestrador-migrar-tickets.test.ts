@@ -214,14 +214,23 @@ describe('não inventa nada', () => {
 
 // ─── casos de borda que a fila real não tem, e por isso importam ────────────
 describe('o que ele recusa a adivinhar', () => {
-  it('DOIS blocos ```json: pulado, e a mensagem nomeia os três leitores que discordam', () => {
+  // ASSERÇÃO REVERTIDA na peça D10, e o porquê fica aqui: quando este caso foi
+  // escrito (K8b-5), os três leitores do motor discordavam sobre QUAL bloco é o
+  // ticket, e a migração se recusava a desempatar uma divergência do motor por
+  // conta própria — recusar era o certo, e o custo era zero (nenhum dos 517
+  // tickets do disco tinha dois blocos). A D10 desempatou NO MOTOR: o ticket é
+  // o PRIMEIRO bloco, os três leitores concordam e o CONTRATO §2 diz isso.
+  // Agora a migração SEGUE o motor, e pular seria a migração discordando dele.
+  it('DOIS blocos ```json: migra o PRIMEIRO e NOTA o segundo (D10)', () => {
     const antes =
       '# t\n\n```json\n{"id":"900","status":"pendente","recon_esperado":[1]}\n```\n\nprosa\n\n```json\n{"outro":true}\n```\n';
     const r = migrarTicket(antes);
-    expect(r.depois).toBeNull();
-    expect(r.pulado).toMatch(/gate-ticket\.ts lê o primeiro/);
-    expect(r.pulado).toMatch(/lib\.sh concatena todos/);
-    expect(r.pulado).toMatch(/CONTRATO §2 diz o último/);
+    expect(r.pulado).toBeUndefined();
+    expect(r.depois).toContain('"recon": [');
+    expect(r.depois).not.toContain('recon_esperado');
+    // O segundo bloco sai byte a byte igual.
+    expect(r.depois).toContain('```json\n{"outro":true}\n```');
+    expect(r.notas.join(' ')).toMatch(/2 blocos .*o ticket é o PRIMEIRO/);
   });
 
   it('bloco que não parseia: pulado com o motivo, nunca "consertado"', () => {
