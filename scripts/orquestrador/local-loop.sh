@@ -226,6 +226,40 @@ cleanup_frente() {
   return 0
 }
 
+# --- PRÉ-VOO ⚡ (peça K11a-2) -------------------------------------------------
+# Roda depois do lock e da pausa, e ANTES do reconcile: em NO-GO nenhum TICKET é
+# tocado e nenhum retry é consumido, que é a propriedade que o `pre-voo.mjs` do
+# Actus garante. A ordem em relação ao lock é diferente da de lá de propósito:
+# aqui quem protege o run alheio é o `lock_adquirir`, que sai 0 sem tocar em
+# lock nenhum quando há outro vivo — então rodar o pré-voo antes dele só faria
+# um run condenado gritar por cima de um run saudável. E a PAUSA vem antes de
+# tudo: é a palavra do humano, e quem pausou não quer diagnóstico de ambiente.
+# Nenhuma chamada paga: a sondagem de modelo é LIDA de runs/.
+#
+# Isolada para ser substituível por stub nos testes, como `run_executor_once`.
+run_prevoo() {
+  npx tsx "$ORQ_LIB_DIR/prevoo.ts" "$MAIN_CHECKOUT" 2>&1
+}
+
+prevoo_ou_sai() {
+  local saida rc=0 linha token
+  saida="$(run_prevoo)" || rc=$?
+  if [ "$rc" = 0 ]; then
+    say "pré-voo: GO ($(printf '%s' "$saida" | grep -c '^ok ') ok, $(printf '%s' "$saida" | grep -c '^info ') info)"
+    return 0
+  fi
+  linha="$(printf '%s\n' "$saida" | grep '^NO-GO ' | head -1)"
+  token="$(printf '%s' "$linha" | awk '{print $2}')"
+  [ -n "$token" ] || token='?'
+  say "pré-voo NO-GO: ${linha:-rc=$rc sem linha NO-GO}"
+  printf '%s\n' "$saida" | while IFS= read -r l; do say "  prevoo> $l"; done
+  event '---' PREVOO_NOGO "item=$token"
+  notificar "Orquestrador: pré-voo NO-GO" "${linha:-rc=$rc}"
+  status_set "estado=ocioso" "fase=—" "ticket=—" "motivo=prevoo_nogo $token"
+  say "========== local-loop fim (pré-voo NO-GO) =========="
+  exit 1
+}
+
 main_local_loop() {
   mkdir -p "$(dirname "$LOG")"
   exec >>"$LOG" 2>&1
@@ -244,6 +278,10 @@ main_local_loop() {
     say "========== local-loop fim (pausado) =========="
     exit 0
   fi
+  # PRÉ-VOO ⚡: depois do kill switch, ANTES do reconcile — que é o primeiro
+  # passo que ESCREVE em ticket. A pausa vem primeiro porque é a palavra do
+  # humano: quem pausou não quer diagnóstico de ambiente, quer silêncio.
+  prevoo_ou_sai
   git -C "$REPO" fetch origin --quiet 2>/dev/null || say "aviso: fetch falhou (segue offline)"
   bash "$ORQ_LIB_DIR/executor.sh" --reconcile || say "aviso: reconcile falhou (não fatal)"
   drenar

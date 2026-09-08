@@ -424,6 +424,35 @@
   de um objeto existente, que é o que a regra 1 permite).
 
 
+- **K11a-2 · pré-voo ⚡.** `scripts/orquestrador/prevoo.ts` (porte do `pre-voo.mjs` do
+  Actus) + `orq prevoo` (READ-ONLY, GO/NO-GO, um item por linha, rc 1 em NO-GO) +
+  `prevoo_ou_sai` no `local-loop.sh`. Três checagens com veredito — spec vendorizada
+  presente COM conteúdo e com ≥ 5 arquivos commitados, identidade por origin e
+  `ambiente_id`, estrutura da fila com `liberacoes.json` legível — e uma INFORMATIVA:
+  a última sondagem de modelo, LIDA de `runs/` (o papel `probe` do `custo.json` e os
+  `probe-falha-*`), nunca refeita. Nenhuma chamada paga: a cat.3 do Actus é um
+  `claude -p` novo por drenagem, e aqui quem sonda é o `probe_modelos` do executor
+  (ORQ-07), que já distingue config errada de ambiente caído. `notificar` saiu de
+  dentro do `notificar_fim` (lib.sh) para que o NO-GO use o mesmo canal sem uma
+  segunda cópia da entrega.
+  *Evidência:* `~/Projetos/actus-saas/scripts/orquestrador/pre-voo.mjs` e
+  `pre-voo.test.mjs`, lidos no PASSO 0 (só leitura).
+  *Ordem, e é a decisão da peça:* lock → PAUSA → pré-voo → reconcile → drenar. Difere
+  do Actus (lá o pré-voo vem antes do lock) por dois motivos escritos no código: quem
+  protege o run alheio aqui é o `lock_adquirir`, que sai 0 sem tocar lock nenhum
+  quando há outro vivo; e a pausa é a palavra do humano — quem pausou quer silêncio,
+  não diagnóstico de ambiente. A propriedade que importa se mantém: em NO-GO nenhum
+  TICKET é tocado, porque o primeiro passo que escreve em ticket é o `--reconcile`.
+  *Teste:* `test/orquestrador-prevoo.test.ts`, 34 casos — **34 vermelhos antes** (o
+  arquivo não coletava: `prevoo.ts` não existia); com o módulo no lugar e o
+  `local-loop.sh` de antes, **4 vermelhos**, que são os do driver.
+  *O que o CI faz diferente:* uma linha a mais no `local-loop.log` por drenagem.
+  Medido contra `~/Projetos/conteudos-infinitos` (só leitura): `GO`, rc 0, quatro
+  linhas, `git status` limpo depois. Contra o Actus e o Comarka: **NO-GO cat.0**,
+  `docs/orquestrador/skill/EXECUTOR.md` ausente — os dois ainda não têm o motor
+  vendorizado, que é o primeiro passo da adoção.
+
+
 ## PENDENTES
 
 - **K11a-4 · o resto do enforcement do Actus (E, F e a exceção de teste-SQL).** A K11a-1

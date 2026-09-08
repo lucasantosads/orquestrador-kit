@@ -32,6 +32,7 @@
 #   orq validar [ids]    gate de ticket nos tickets dados (ou --pendentes)
 #   orq versao           VERSAO do motor instalado (e compara com --kit <dir>)
 #   orq config           acusa placeholder e chave faltando em docs/fila/000-config.json
+#   orq prevoo           pré-voo relâmpago: GO/NO-GO, um item por linha (rc 1 em NO-GO)
 #   orq pausar [motivo]  cria o pausar_file (a drenagem para ENTRE tickets)
 #   orq retomar          remove o pausar_file
 #   orq liberar <humano:token> [nota]   registra a liberação humana (v2)
@@ -301,6 +302,14 @@ cmd_validar() {
 # Divergir do kit também não é erro: o `orq` é read-only e não instala nada. Ele
 # informa; quem decide atualizar roda o instalar.sh, e é lá que estão as três
 # recusas que protegem uma drenagem viva.
+# --- orq prevoo ---------------------------------------------------------------
+# READ-ONLY, e sem NENHUMA chamada paga: a sondagem de modelo é lida de `runs/`,
+# não refeita (quem sonda é o `probe_modelos` do executor, ORQ-07).
+cmd_prevoo() {
+  [ "$#" = 0 ] || die "orq prevoo não recebe argumento"
+  npx tsx "$ORQ_DIR/orquestrador/prevoo.ts" "$MAIN_CHECKOUT"
+}
+
 cmd_versao() {
   local kit=""
   case "${1:-}" in
@@ -375,6 +384,7 @@ case "${1:-}" in
   mapa)       shift; cmd_mapa "$@" ;;
   validar)    shift; cmd_validar "$@" ;;
   versao)     shift; cmd_versao "$@" ;;
+  prevoo)     shift; cmd_prevoo "$@" ;;
   config)     : ;;   # despachado no topo, antes do lib.sh — veja o comentário lá
   pausar)     shift; cmd_pausar "$@" ;;
   retomar)    cmd_retomar ;;

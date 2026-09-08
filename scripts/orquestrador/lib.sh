@@ -837,12 +837,13 @@ deve_notificar() {
   return 0
 }
 
-# notificar_fim <aprovados> <bloqueados> <adiados> <dur_min>
-notificar_fim() {
-  local ap="${1:-0}" bl="${2:-0}" ad="${3:-0}" dur="${4:-0}" titulo corpo ultimo canal
-  ultimo="$(jq -r '.ultimo // "—"' "$STATUS_STATE" 2>/dev/null || echo '—')"
-  titulo="Orquestrador CI: $ap aprovados, $bl bloqueados"
-  corpo="duração ${dur}min · adiados $ad · último: ${ultimo:-—}"
+# notificar <titulo> <corpo> — a ENTREGA, sem nenhuma regra de quando notificar.
+#
+# Extraída do `notificar_fim` na peça K11a-2, sem mudar um byte do que ela faz:
+# o pré-voo em NO-GO também precisa avisar, e o corpo dele não é um placar de
+# drenagem. Duas cópias desta função seriam dois lugares para o canal divergir.
+notificar() {
+  local titulo="${1:-Orquestrador}" corpo="${2:-}" canal
   # 1) arquivo, sempre e primeiro: é a única entrega garantida.
   mkdir -p "$RUNS_BASE" 2>/dev/null || true
   printf '%s | %s | %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z' 2>/dev/null || echo '?')" "$titulo" "$corpo" \
@@ -868,6 +869,14 @@ notificar_fim() {
     log "notificação: osascript falhou — vale o arquivo ($NOTIF_FILE)"
   fi
   return 0
+}
+
+# notificar_fim <aprovados> <bloqueados> <adiados> <dur_min>
+notificar_fim() {
+  local ap="${1:-0}" bl="${2:-0}" ad="${3:-0}" dur="${4:-0}" ultimo
+  ultimo="$(jq -r '.ultimo // "—"' "$STATUS_STATE" 2>/dev/null || echo '—')"
+  notificar "Orquestrador CI: $ap aprovados, $bl bloqueados" \
+            "duração ${dur}min · adiados $ad · último: ${ultimo:-—}"
 }
 
 # --- ORÇAMENTO E CUSTO (regra 17: orçamento é GATE, não relatório) ------------

@@ -102,6 +102,11 @@ describe('pausar_file presente encerra a drenagem em ocioso, sem erro', () => {
     const raiz = criarFixture(FILA);
     const { log } = drenagem(raiz);
     expect(log).not.toMatch(/PAUSA ativa/);
+    // K11a-2: e a prova de que ela seguiu ADIANTE do guard de pausa é o passo
+    // seguinte aparecer no log. Este fixture é um diretório mínimo — não tem
+    // `docs/orquestrador/skill/` nem git —, então o pré-voo o reprova em cat.0,
+    // que é a resposta CERTA para um repo sem motor vendorizado.
+    expect(log).toMatch(/pré-voo NO-GO: NO-GO cat\.0/);
   });
 
   it('o sentinela legado (.orq-pause) continua pausando', () => {
