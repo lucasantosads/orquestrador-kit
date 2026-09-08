@@ -342,6 +342,23 @@
   é `launchd.label`.
 
 
+- **K8b-5 · bloco JSON dos tickets pendentes.** `migrar-tickets.ts`: `tentativas_consumidas`
+  → `tentativas` e `recon_esperado` → `recon`, na POSIÇÃO original da chave; só `pendente`,
+  só os `[0-9]*.md`. Prosa intacta byte a byte — é a afirmação central, e o teste a compara
+  byte a byte. Não inventa `tipo`, `risco` nem `bloco`; não toca `perfil`/`lane`. Única
+  migração sem `.bak` (o ticket é versionado). Depois dela o instalador roda
+  `orq validar --pendentes` para o relatório, sem corrigir nada.
+  *Evidência:* o PASSO 0 — 250 `recon_esperado` e 39 `tentativas_consumidas` no disco, 44
+  entre os pendentes do Comarka. Medido: **uma linha muda por ticket**, e as 44 são a mesma.
+  *Achado:* com mais de um bloco ```json os três leitores discordam (contrato §2 = último,
+  `gate-ticket.ts:99` = primeiro, `lib.sh:86` = todos concatenados). Latente — nenhum dos 517
+  tickets está nesse estado. Virou a divergência 10 do `CONTRATO.md`; a migração PULA e
+  nomeia os três, em vez de desempatar.
+  *Teste:* `test/orquestrador-migrar-tickets.test.ts` (32 casos) + caso (i5c) de
+  `scripts/kit/test-instalar.sh` (**3 vermelhos antes**).
+  *O que o CI faz diferente:* nada a migrar — os 6 pendentes dele já usam os nomes novos.
+
+
 ## PENDENTES
 
 - **K6d · `scripts/kit/pureza.sh`.** O grep que TRANCA a pureza: em CÓDIGO (não em
@@ -355,12 +372,6 @@
   justamente o script que transforma "não achei" em "não há".
   *Teste:* pureza = 0 em código, com o caso NEGATIVO de que um `apps/web` reintroduzido em
   código faz o script sair 1.
-
-- **K8b-5 · bloco JSON dos tickets pendentes.** `migrar-tickets.ts`: só `pendente`, só o
-  bloco ```json, prosa intacta byte a byte. `tentativas_consumidas` → `tentativas`,
-  `recon_esperado` → `recon`. Não inventa `tipo`, `risco` nem `bloco`.
-  *Evidência:* o PASSO 0 — 250 `recon_esperado` e 39 `tentativas_consumidas` no disco.
-  *Teste:* o NEGATIVO de que a prosa não se move.
 
 - **K8b-6 · `instalar.sh --novo <repo>`.** Do mesmo bloco de vendorização do
   `scripts/kit/fixture.sh`, mais os artefatos que a doutrina manda vir do template. Recusa

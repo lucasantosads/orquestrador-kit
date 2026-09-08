@@ -295,6 +295,16 @@ migrar_tudo() {
   # nunca tomou, e gravar isso por cima de um config que funciona trocaria um
   # arquivo em uso por um formulário. O `--aplicar` do migrar-config.ts é passo
   # humano, depois de preencher e reler.
+  # --- tickets (peça K8b-5) --------------------------------------------------
+  local fila="$repo/docs/fila"
+  if [ -d "$fila" ]; then
+    ( cd "$KIT" && npx tsx scripts/orquestrador/migrar-tickets.ts "$fila" \
+        "$([ "$modo" = aplicar ] && echo --aplicar || echo --dry-run)" ) || true
+  else
+    printf 'MIGRAR-TICKETS  nada a fazer: %s não existe\n' "$fila"
+  fi
+
+  printf '\n'
   local cfg="$repo/docs/fila/000-config.json"
   if [ -f "$cfg" ]; then
     ( cd "$KIT" && npx tsx scripts/orquestrador/migrar-config.ts "$cfg" \
@@ -311,6 +321,18 @@ migrar_tudo() {
   fi
   printf '\n'
   relatar_gitignore "$repo"
+
+  # --- o gate de ticket sobre a fila migrada, para o RELATÓRIO ---------------
+  # Ele não conserta nada, e não pode: `orq validar` é read-only, e ticket é
+  # texto de humano. O que ele faz é dizer, com nome e sobrenome, o que a
+  # migração deliberadamente NÃO inventou — `tipo` de critério, `risco`,
+  # `bloco`. Sem esta seção, o silêncio depois da migração pareceria aprovação.
+  printf -- '--- orq validar --pendentes (só relatório; NADA é corrigido) ---\n'
+  if [ -x "$repo/scripts/orq" ]; then
+    ( cd "$repo" && bash scripts/orq validar --pendentes ) || true
+  else
+    printf '(o repo ainda não tem scripts/orq executável)\n'
+  fi
 }
 
 # --- --atualizar (peça K8a) ---------------------------------------------------

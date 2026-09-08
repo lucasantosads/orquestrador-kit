@@ -355,3 +355,37 @@ o que o `jq` devolveu. Três achados mandaram no desenho:
   atravessam sem um byte de diferença, e a ÚNICA chave que a migração acrescenta é
   `launchd.label` — a que a K6c tornou obrigatória e que já é passo humano pendente desde a
   etapa 3.
+
+- **K8b-5** — o bloco JSON dos tickets pendentes. `scripts/orquestrador/migrar-tickets.ts`:
+  `tentativas_consumidas` → `tentativas` e `recon_esperado` → `recon`, **na posição original
+  da chave** (reconstruir na ordem certa é o que faz o diff mostrar uma linha trocada em vez
+  do bloco embaralhado — e diff embaralhado é diff que ninguém lê). Só tickets `pendente`,
+  só os `[0-9]*.md` que o `ticket_files` do motor enxerga.
+  *A afirmação central é NEGATIVA: a prosa não se move um byte.* O retorno é literalmente o
+  array de linhas original com a fatia do bloco trocada; o teste compara byte a byte, não
+  por semelhança. Medido nos 44 tickets reais do Comarka: **uma única linha muda por
+  ticket**, e as 44 são a mesma (`+  "recon": [`).
+  *Não inventa:* `tipo` de critério (depende de o comando FALHAR na base atual — é o passo 3
+  do gate, não um chute; 178 critérios do Comarka e os 10 do Actus não têm), `risco` (o gate
+  classifica no passo 6), `bloco` (os 46 pendentes do Comarka usam
+  `frente`/`onda`/`serie`/`camada`). Não toca `perfil` nem `lane`.
+  *Única migração sem `.bak`:* o ticket é versionado, o git já é o backup e o commit é
+  humano; 46 `.bak` na fila deixariam a árvore suja, que mata o preflight do run seguinte.
+  *Depois dela, `instalar.sh --migrar` roda `orq validar --pendentes` e joga a saída no
+  relatório, sem corrigir nada.* É o que dá nome e sobrenome ao que a migração deliberadamente
+  não inventou; sem essa seção, o silêncio depois da migração pareceria aprovação.
+  *ACHADO, e vira divergência 10 do `CONTRATO.md`:* num ticket com MAIS DE UM bloco ```json,
+  os três leitores discordam — o contrato §2 diz o ÚLTIMO, `gate-ticket.ts:99-105` lê o
+  PRIMEIRO, e `lib.sh:86-92` concatena TODOS (e o resultado nem parseia). É LATENTE: nenhum
+  dos 517 tickets dos três repos tem mais de um bloco. A migração PULA esses tickets e nomeia
+  os três leitores na mensagem, em vez de desempatar uma divergência do motor por conta
+  própria.
+  *Segundo achado, menor:* o `_TEMPLATE.md` do Actus tem `status: pendente` e
+  `tentativas_consumidas: 0` — é um ticket pendente de mentira. Fica de fora pela regra do
+  motor (`[0-9]*.md`), e o teste afirma isso: migrar o formulário que todo ticket novo copia
+  não é errado, mas é decisão, e não desta peça.
+  *Teste:* `test/orquestrador-migrar-tickets.test.ts`, 32 casos, contra as filas reais dos
+  três repos (cópias em tmp; os repos são só leitura), mais o caso (i5c) de
+  `scripts/kit/test-instalar.sh` — **3 vermelhos antes** ali, e o vitest inteiro sem carregar.
+  *O que o CI faz diferente:* nada a migrar. Os 6 pendentes do CI já usam `recon`/`tentativas`;
+  `migrarFila` sai com 0 migrados e nenhum arquivo tocado.

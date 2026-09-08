@@ -445,7 +445,22 @@ recusas, e só a terceira cede a `--forcar`:
 | `migrar_pausa` (em `instalar.sh`) | `docs/fila/.orq-pause` → `docs/fila/PAUSAR`, motivo preservado (§7) | `mv`; recusa com os dois presentes |
 | `migrar-liberacoes.ts` | `liberacoes.json` de qualquer forma viva (§6.1) para v2 | `--aplicar` grava e deixa `.bak` |
 | `migrar-config.ts` | `000-config.json` schema 1 → 2, pela tabela de `config-tabela.ts` | **`--propor` só**: grava `000-config.proposto.json` ao lado. O oficial nunca é tocado pelo instalador |
+| `migrar-tickets.ts` | o bloco ```json dos tickets `pendente`: `tentativas_consumidas` → `tentativas`, `recon_esperado` → `recon` | `--aplicar` grava **sem** `.bak` |
 | `relatar_gitignore` (em `instalar.sh`) | nada — RELATA o que o repo deve ignorar (§7) | nunca escreve |
+| `orq validar --pendentes` | nada — RELATA o que a migração deliberadamente não inventou | read-only |
+
+**Tickets: a prosa não se move um byte.** O migrador troca só as linhas do bloco
+```json; tudo fora delas é o array de linhas original, devolvido intacto. Ele não
+inventa `tipo` de critério (depende de o comando FALHAR na base atual — é o passo
+3 do gate, não um chute), nem `risco` (o gate classifica no passo 6), nem `bloco`
+(os 46 pendentes do Comarka usam `frente`/`onda`/`serie`/`camada`, outro modelo de
+roadmap), e não toca `perfil` nem `lane`. É a única migração **sem `.bak`**: o
+ticket é versionado, o git já é o backup, e 46 arquivos `.bak` na fila deixariam
+a árvore suja — que mata o preflight do run seguinte.
+
+Ticket com **mais de um** bloco ```json é PULADO, nomeado no relatório: é
+exatamente o caso em que os três leitores discordam (ver §10, divergência 10), e
+a migração não desempata divergência do motor por conta própria.
 
 Ele roda **depois** da cópia do motor. Se alguém parar no meio, o repo fica com
 motor novo sobre dados velhos — que funciona, porque desde a K8b-1 o motor lê
@@ -513,3 +528,4 @@ O que este contrato **não** descreve como gostaria, e a peça que fecha cada um
 | 7 | O `drenar` não roda o gate de ticket antes de gastar agente. | **1c** |
 | 8 | Dois testes de harness são byte-idênticos ao do CI e ainda assim não viajam com o motor, porque hardcodam valores do config do CI (`orq-cli.test.ts:205,237`; `orquestrador-observabilidade.test.ts:216-217`). | **K8e** |
 | 9 | Não há alarme para "job do launchd carregado e mudo". O incidente de 2026-09-08 passou 1h40 sem detecção automática. | **K12a** |
+| 10 | **Qual bloco ```json vale, num ticket com mais de um.** Esta seção (§2) diz o ÚLTIMO; `gate-ticket.ts:blocoJson` (`:99-105`) lê o PRIMEIRO e para no primeiro fence de fechamento; `lib.sh:ticket_json` (`:86-92`) concatena o conteúdo de TODOS, e com dois blocos o resultado nem parseia. Três leitores, três respostas. Achado no PASSO 0 da etapa 5, e LATENTE: nenhum dos 517 tickets dos três repos tem mais de um bloco. `migrar-tickets.ts` PULA esses tickets e nomeia os três leitores na mensagem, em vez de desempatar. | peça própria (uma linha, três leitores — não é migração) |
