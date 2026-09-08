@@ -177,3 +177,52 @@ export function orq(raiz: string, ...args: string[]): { rc: number; out: string;
 export function ler(caminho: string): string {
   return existsSync(caminho) ? readFileSync(caminho, 'utf8') : '';
 }
+
+// ─── Stub de launchctl (peça K6e) ─────────────────────────────────────────
+// Nenhum teste do kit pode tocar o launchd desta máquina. A regra nasceu de um
+// incidente real (2026-09-08): o "vermelho antes" da K6c rodou o instalador
+// ANTIGO — que ignorava `--dry-run` — e carregou o job do CI apontando para um
+// fixture em `/private/tmp`, por 1h40, com três ticks mortos em rc 127.
+//
+// `comLaunchctlStub()` devolve o ambiente que TODO teste de instalador tem de
+// passar ao processo filho:
+//   PATH               com `test/fixtures/bin` NA FRENTE (o stub ganha do real)
+//   HOME               um tmp descartável — `~/Library/LaunchAgents` da máquina
+//                      não é destino de teste nem quando o launchctl é falso
+//   ORQ_LAUNCHCTL_LOG  onde o stub grava uma linha por chamada
+//
+// `chamadas()` lê esse log. Um teste que afirma "instalou" prova pelo que o
+// stub REGISTROU, e um teste que afirma "não instalou" prova pelo log vazio.
+
+export const BIN_STUB = join(import.meta.dirname, 'bin');
+
+export interface LaunchctlStub {
+  /** Variáveis de ambiente para o processo filho (PATH, HOME, ORQ_LAUNCHCTL_LOG). */
+  env: Record<string, string>;
+  /** Caminho do log de chamadas. */
+  log: string;
+  /** HOME falso — é aqui que um `Library/LaunchAgents` de teste apareceria. */
+  home: string;
+  /** Uma entrada por chamada de launchctl, na ordem. */
+  chamadas: () => string[];
+}
+
+export function comLaunchctlStub(): LaunchctlStub {
+  const raiz = mkdtempSync(join(tmpdir(), 'orq-launchctl-'));
+  const log = join(raiz, 'chamadas.log');
+  const home = join(raiz, 'home');
+  mkdirSync(home, { recursive: true });
+  return {
+    env: {
+      PATH: `${BIN_STUB}:${process.env.PATH ?? ''}`,
+      HOME: home,
+      ORQ_LAUNCHCTL_LOG: log,
+    },
+    log,
+    home,
+    chamadas: () =>
+      existsSync(log)
+        ? readFileSync(log, 'utf8').split('\n').filter((l) => l.trim() !== '')
+        : [],
+  };
+}

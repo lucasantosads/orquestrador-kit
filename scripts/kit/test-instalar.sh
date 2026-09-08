@@ -22,6 +22,18 @@
 
 set -uo pipefail
 
+# --- ORQ_TESTE=1 para TUDO que roda daqui (peça K6e) --------------------------
+# Duas travas de uma variável só:
+#   1. `lib.sh` (escrita_de_teste_permitida) recusa escrever trilha/STATUS/custo
+#      fora de `$ORQ_EXEC_ROOT` — e quem roda motor aqui é o `fixture.sh`, que
+#      declara o próprio `ORQ_EXEC_ROOT` antes do `source`;
+#   2. `instalar-launchd.sh` recusa INSTALAR o job do launchd. Este script não
+#      chama o instalador hoje, e é exatamente por isso que a variável entra
+#      agora: em 2026-09-08 um teste que "só ia renderizar o plist" carregou um
+#      job de verdade apontando para um fixture em /private/tmp, por 1h40. A
+#      guarda tem de estar de pé ANTES de alguém precisar dela.
+export ORQ_TESTE=1
+
 KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CI_CHECKOUT="${ORQ_CI_CHECKOUT:-$HOME/Projetos/conteudos-infinitos}"
 

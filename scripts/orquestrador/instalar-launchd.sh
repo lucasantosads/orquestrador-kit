@@ -12,6 +12,9 @@ set -euo pipefail
 # Uso:
 #   bash scripts/orquestrador/instalar-launchd.sh            instala e carrega
 #   bash scripts/orquestrador/instalar-launchd.sh --dry-run  so imprime o plist
+#   bash scripts/orquestrador/instalar-launchd.sh --permitir-tmp
+#                                                 instala mesmo de um checkout
+#                                                 sob /tmp (veja a guarda K6e)
 #
 # PORTABILIDADE: CHECKOUT sai do proprio arquivo; NODE_DIR sai do `which node`.
 # Rodar este script e o ato que "hospeda" o loop aqui.
@@ -27,13 +30,28 @@ set -euo pipefail
 # carregado ao lado do que ja existia, os dois disparando no mesmo checkout, e
 # ninguem descobre isso ate ver duas drenagens concorrendo pelo mesmo lock.
 # Recusar e barulhento; adivinhar e silencioso e caro.
+#
+# POR QUE ELE RECUSA CHECKOUT SOB /tmp (peca K6e). Incidente de 2026-09-08: o
+# "vermelho antes" da K6c chamou ESTE script com `--dry-run` contra a versao
+# vendorizada DENTRO de um fixture; aquela versao nao conhecia a flag, ignorou-a
+# e instalou de verdade. Das 12:24 as 14:05 o job `com.conteudos.orquestrador`
+# apontou para `/private/tmp/orq-fixture-6qRp23`, tres ticks morreram com rc 127
+# e nada alarmou. A licao nao e "escreva a flag antes": e que um checkout
+# descartavel NUNCA e destino de instalacao, e que a guarda tem de morar em quem
+# instala, nao em quem chama. Fixture vive em /tmp; repo de verdade, nao.
+# `--dry-run` continua valendo la (renderizar nao instala) e `--permitir-tmp`
+# existe para o caso raro em que alguem hospeda o loop num tmp de proposito — e
+# entao a decisao esta escrita na linha de comando de quem a tomou.
 
 DRY=0
-case "${1:-}" in
-  --dry-run) DRY=1 ;;
-  '') : ;;
-  *) echo "uso: $0 [--dry-run]" >&2; exit 2 ;;
-esac
+PERMITIR_TMP=0
+for a in "$@"; do
+  case "$a" in
+    --dry-run)      DRY=1 ;;
+    --permitir-tmp) PERMITIR_TMP=1 ;;
+    *) echo "uso: $0 [--dry-run] [--permitir-tmp]" >&2; exit 2 ;;
+  esac
+done
 
 UID_NUM="$(id -u)"
 CHECKOUT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -83,6 +101,46 @@ renderiza() {
       -e "s|{{START_INTERVAL}}|$START_INTERVAL|g" \
       "$TEMPLATE"
 }
+
+# --- GUARDA K6e: de onde este script NAO instala -----------------------------
+# Roda DEPOIS do --dry-run? Nao: antes. O --dry-run e liberado explicitamente
+# dentro dela, para que a guarda seja um lugar so e ninguem precise lembrar de
+# duas ordens de checagem. O que ela barra e a INSTALACAO, nunca a renderizacao.
+#
+# Dois sinais, e os dois bastam sozinhos:
+#   caminho  o checkout resolvido esta sob /tmp ou /private/tmp (no macOS /tmp e
+#            symlink de /private/tmp, entao os dois lados sao testados: logico e
+#            fisico). E onde o scripts/kit/fixture.sh instancia.
+#   ORQ_TESTE=1  a declaracao explicita "quem esta rodando e script de TESTE" que
+#            o lib.sh ja usa para recusar escrita fora do fixture. Um teste pode
+#            copiar o fixture para fora de /tmp; a variavel viaja junto.
+CHECKOUT_FIS="$(cd "$CHECKOUT" && pwd -P)"
+sob_tmp=0
+case "$CHECKOUT/"     in /tmp/*|/private/tmp/*) sob_tmp=1 ;; esac
+case "$CHECKOUT_FIS/" in /tmp/*|/private/tmp/*) sob_tmp=1 ;; esac
+
+if [ "$DRY" = 0 ] && [ "$PERMITIR_TMP" = 0 ]; then
+  if [ "${ORQ_TESTE:-0}" = 1 ]; then
+    echo "ERRO: ORQ_TESTE=1 — RECUSO instalar o job do launchd." >&2
+    echo "      checkout: $CHECKOUT" >&2
+    echo "      ORQ_TESTE=1 declara que quem esta rodando e script de TESTE, e" >&2
+    echo "      teste nao carrega job no launchd desta maquina (incidente de" >&2
+    echo "      2026-09-08). Use --dry-run para ver o plist, ou --permitir-tmp" >&2
+    echo "      se a instalacao e mesmo o que voce quer." >&2
+    exit 1
+  fi
+  if [ "$sob_tmp" = 1 ]; then
+    echo "ERRO: checkout sob /tmp — RECUSO instalar o job do launchd." >&2
+    echo "      checkout: $CHECKOUT" >&2
+    echo "      (fisico:  $CHECKOUT_FIS)" >&2
+    echo "      Um checkout descartavel nao e destino de instalacao: em" >&2
+    echo "      2026-09-08 um job do launchd ficou 1h40 apontando para um" >&2
+    echo "      fixture em /private/tmp, com tres ticks mortos em rc 127." >&2
+    echo "      Use --dry-run para ver o plist, ou --permitir-tmp se voce" >&2
+    echo "      hospeda o loop neste caminho de proposito." >&2
+    exit 1
+  fi
+fi
 
 if [ "$DRY" = 1 ]; then
   echo "# --dry-run: nada e escrito, nada e carregado." >&2

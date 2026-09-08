@@ -117,6 +117,27 @@ attempt registra como `ok`. Não derruba o run; faz a trilha mentir.
   a peça K7c existe para não repetir; a procedência está em
   `docs/e2e/2026-09-08-1154-001/PROCEDENCIA.md`.
 
+### Etapa 4 — o contrato escrito, e o instalador que não pode ser sequestrado
+
+- **K6e** — nenhum teste do kit toca o launchd desta máquina. `test/fixtures/bin/launchctl`
+  é um STUB que grava uma linha por chamada em `$ORQ_LAUNCHCTL_LOG` e sai 0 (`print` e
+  `bootout` devolvem saída plausível para o script sob teste seguir o mesmo caminho de
+  código); `comLaunchctlStub()` no harness o põe na frente do PATH e troca o `HOME` por um
+  tmp descartável. `instalar-launchd.sh` RECUSA instalar (rc 1) quando o checkout resolvido
+  está sob `/tmp`/`/private/tmp` (logico E fisico) ou quando `ORQ_TESTE=1`, salvo
+  `--permitir-tmp`; `--dry-run` continua funcionando nesses casos, e argumento desconhecido
+  agora sai 2 em vez de ser ignorado. `scripts/kit/test-instalar.sh` e
+  `scripts/kit/fixture-e2e.sh` exportam `ORQ_TESTE=1`, com UMA exceção nomeada: o
+  `local-loop.sh` da drenagem do e2e roda com `env -u ORQ_TESTE`, porque
+  `escrita_de_teste_permitida` (`lib.sh:168`) recusaria a trilha do próprio fixture — medido:
+  com a variável ligada e `ORQ_EXEC_ROOT` vazio, `event` grava 0 linhas e loga a recusa.
+  `docs/PLAYBOOK.md` do kit nasce com o incidente de 2026-09-08 (job do CI apontando para
+  `/private/tmp/orq-fixture-6qRp23` das 12:24 às 14:05, três ticks em rc 127, detecção humana).
+  O alarme que faltava virou peça K12a em `docs/PECAS.md`, com o teste que prova.
+  *O que o CI faz diferente:* nada. O instalador do CI só ganha uma recusa que o checkout
+  dele nunca dispara (`~/Projetos/conteudos-infinitos` não está sob `/tmp` e o CI não roda
+  com `ORQ_TESTE=1`).
+
 Passos humanos que faltam para o CI receber este motor (não são desta sessão):
 `launchd.label: com.conteudos.orquestrador` no `000-config.json` do CI; `orq pausar`;
 `--atualizar --dry-run`, `--atualizar`, `npx vitest run` no CI, `--verificar` idêntico; apagar

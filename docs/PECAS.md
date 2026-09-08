@@ -156,6 +156,25 @@
   `doutrina/templates/config.json`, com o comentário `_launchd`.
   *Teste:* `test/orquestrador-launchd-config.test.ts`, 11 casos (10 vermelhos antes).
 
+- **K6e · o instalador não pode ser sequestrado por teste.** `test/fixtures/bin/launchctl`
+  é um stub que grava cada chamada em `$ORQ_LAUNCHCTL_LOG` e sai 0; o harness ganhou
+  `comLaunchctlStub()`, que o põe na frente do PATH e troca o `HOME` por um tmp
+  descartável. `instalar-launchd.sh` RECUSA instalar (rc 1) de um checkout sob
+  `/tmp`/`/private/tmp` ou com `ORQ_TESTE=1`, salvo `--permitir-tmp`; `--dry-run`
+  continua valendo lá. `test-instalar.sh` e `fixture-e2e.sh` exportam `ORQ_TESTE=1`,
+  com UMA exceção: o `local-loop.sh` do e2e roda com `env -u ORQ_TESTE`, porque
+  `escrita_de_teste_permitida` (`lib.sh:168`) recusaria a trilha do próprio fixture —
+  o loop nunca define `ORQ_EXEC_ROOT` (`grep -n ORQ_EXEC_ROOT` em `local-loop.sh`,
+  `executor.sh` e `launchd-run.sh` não devolve nada).
+  *Evidência:* o incidente de 2026-09-08, agora em `docs/PLAYBOOK.md` — job do CI
+  apontando para `/private/tmp/orq-fixture-6qRp23` das 12:24 às 14:05, três ticks em
+  rc 127, detecção humana por `launchctl print`.
+  *Teste:* `test/orquestrador-launchd-config.test.ts`, 15 casos (3 vermelhos antes),
+  todos com o stub; o caso novo prova que a instalação inteira passa pelo stub
+  (`print` → `bootout` → `bootstrap`, todos com o label do config), que o plist foi
+  para o HOME descartável, e que `launchctl print` REAL do label do fixture continua
+  saindo != 0.
+
 - **1d · gate mudo por symlink, CONSERTADO.** O guard de CLI do `gate-ticket.ts` compara os
   dois lados com `realpathSync`, num `chamadoComoCli()` com try/catch. Antes, `resolve(argv[1])`
   não resolvia symlink e o `import.meta.url` vinha fisicamente resolvido: sob caminho com
@@ -261,6 +280,24 @@
   *Evidência:* inventário §4 decisão 18, §6 item 6 (1.935 linhas Python, dois scripts, mora dentro
   do Comarka e ainda notifica o macOS).
   *Teste:* o painel lê um repo de fixture sem nenhum ramo por nome de repo.
+
+- **K12a · alarme de job carregado e mudo** (peça K6e item (e); NÃO implementar antes de K12).
+  O painel alarma quando, para um repo do `~/.orq/repos.json`, o job do launchd está
+  CARREGADO e uma das duas condições vale: `last exit code` != 0 no `launchctl print`, ou a
+  última linha `DRENAGEM_FIM` de `runs/events.log` é mais velha que 2× o
+  `launchd.start_interval` do config daquele repo. As duas, porque medem coisas
+  diferentes: a primeira pega o tick que morre antes de escrever (`rc 127`), a segunda
+  pega o loop que roda e não conclui.
+  *Evidência:* o incidente de 2026-09-08 (`docs/PLAYBOOK.md`): 1h40 com o job carregado,
+  três ticks em rc 127, `launchd.log` nunca escrito, e a detecção veio de um `launchctl
+  print` humano. "Carregado" foi lido como "saudável" porque nada media o contrário.
+  *Teste:* dois fixtures de estado, sem launchd real (o `print` vem do stub da K6e,
+  `test/fixtures/bin/launchctl`, cuja saída plausível o teste sobrescreve por caso):
+  (a) `last exit code = 127` + trilha recente → alarma, e a mensagem diz `rc`;
+  (b) `last exit code = 0` + `DRENAGEM_FIM` de 3× `start_interval` atrás → alarma, e a
+  mensagem diz há quanto tempo; mais os dois NEGATIVOS — job carregado, rc 0 e drenagem
+  dentro da janela → silêncio; job NÃO carregado → silêncio (repo desagendado de
+  propósito não é incidente).
 
 - **K13 · python → TS.** `scripts/roadmap/lint-mapa.py` vira TS; triagem de `orq-telemetria.py`,
   `orq-granularidade.py`, `orq-contrato.py` e `gera_tickets.py` (Comarka) na fase do Comarka.

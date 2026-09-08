@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# launchctl STUB — peça K6e.
+#
+# Existe por causa de um incidente, não por higiene. Em 2026-09-08 o "vermelho
+# antes" da peça K6c chamou `instalar-launchd.sh --dry-run` contra o instalador
+# ANTIGO, vendorizado dentro do fixture; aquela versão não conhecia a flag,
+# ignorou-a e INSTALOU de verdade: das 12:24 às 14:05 o job
+# `com.conteudos.orquestrador` do CI apontou para `/private/tmp/orq-fixture-6qRp23`,
+# três ticks morreram com rc 127 e nada alarmou. Um teste não pode ter esse
+# poder de fogo.
+#
+# Contrato deste stub:
+#   1. grava UMA linha por chamada (os argumentos, como vieram) em
+#      $ORQ_LAUNCHCTL_LOG — é essa lista que o teste assevera;
+#   2. sai 0 SEMPRE. Ele não simula falha: quem quiser testar falha de launchd
+#      testa contra o plist renderizado, não contra um stub que finge;
+#   3. `bootout` e `print` devolvem saída plausível, para que o script sob teste
+#      siga o mesmo caminho de código que seguiria com o launchctl de verdade.
+#
+# Sem $ORQ_LAUNCHCTL_LOG ele ainda sai 0, mas não registra nada — teste que
+# esqueceu a variável falha na asserção, não em silêncio.
+
+if [ -n "${ORQ_LAUNCHCTL_LOG:-}" ]; then
+  mkdir -p "$(dirname "$ORQ_LAUNCHCTL_LOG")" 2>/dev/null || true
+  printf '%s\n' "$*" >> "$ORQ_LAUNCHCTL_LOG" 2>/dev/null || true
+fi
+
+case "${1:-}" in
+  print)
+    # `launchctl print gui/<uid>/<label>` de um job CARREGADO. O instalador usa o
+    # rc para decidir se faz bootout antes do bootstrap; devolver 0 aqui é o
+    # caminho MAIS longo (bootout + bootstrap), que é o que se quer exercitar.
+    printf '%s = {\n\tactive count = 1\n\tstate = waiting\n\tlast exit code = 0\n}\n' "${2:-gui/0/stub}"
+    ;;
+  bootout)
+    printf 'Boot-out of %s complete.\n' "${2:-gui/0/stub}"
+    ;;
+  bootstrap)
+    : # o launchctl real é mudo no sucesso.
+    ;;
+  *)
+    : # kickstart, list, o que vier: registrado acima, silencioso aqui.
+    ;;
+esac
+exit 0

@@ -28,6 +28,23 @@
 
 set -uo pipefail
 
+# --- ORQ_TESTE=1, com UMA exceção nomeada (peça K6e) --------------------------
+# A variável liga a guarda do `instalar-launchd.sh`, que RECUSA instalar o job
+# do launchd a partir de um checkout de teste. É a trava que faltava em
+# 2026-09-08, quando um "vermelho antes" carregou um job apontando para um
+# fixture em /private/tmp por 1h40.
+#
+# A EXCEÇÃO é o `local-loop.sh` da drenagem, e ela foi conferida no `lib.sh`
+# antes de ser escrita: `escrita_de_teste_permitida` (lib.sh:168) recusa toda
+# escrita de trilha, STATUS e custo que caia fora de `$ORQ_EXEC_ROOT` — e o
+# `local-loop.sh` NUNCA define essa variável (nem ele, nem o `executor.sh`, nem
+# o `launchd-run.sh`: `grep -n ORQ_EXEC_ROOT` neles não devolve nada). Com
+# ORQ_TESTE=1 e ORQ_EXEC_ROOT vazio, a drenagem rodaria e a trilha do fixture
+# ficaria VAZIA — o e2e existe justamente para produzir essa trilha. Então o
+# loop roda com `env -u ORQ_TESTE`, e a guarda do instalador sobra pelo outro
+# caminho, o do /tmp, que o fixture satisfaz sempre.
+export ORQ_TESTE=1
+
 KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CFG_TEMPLATE="$KIT/fixture/docs/fila/000-config.json"
 
@@ -117,7 +134,9 @@ TOUT=$(( $(jq -r '.claude_timeout_secs' "$FX/docs/fila/000-config.json") + 120 )
 # corte.
 printf '== drenagem (watchdog %ss) ==\n' "$TOUT"
 t0=$(date +%s)
-( set -m; exec bash "$FX/scripts/orquestrador/local-loop.sh" ) &
+# `env -u ORQ_TESTE`: a exceção explicada no topo. Sem isto a drenagem roda e
+# não grava trilha nenhuma — o e2e voltaria a perder a própria evidência.
+( set -m; exec env -u ORQ_TESTE bash "$FX/scripts/orquestrador/local-loop.sh" ) &
 LOOP_PID=$!
 ( sleep "$TOUT"
   kill -TERM -"$LOOP_PID" 2>/dev/null || kill -TERM "$LOOP_PID" 2>/dev/null
