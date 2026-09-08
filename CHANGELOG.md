@@ -65,3 +65,11 @@ attempt registra como `ok`. Não derruba o run; faz a trilha mentir.
   MAIN_CHECKOUT, `scripts/orq:226`) e o `fixture.sh` já o copiava; o verificador não o via, e
   um `lint-mapa.py` desatualizado no repo passava por "idêntico". Caso (d) do
   `scripts/kit/test-instalar.sh` prova o vermelho-antes.
+- **K8a** — `instalar.sh --atualizar <repo> [--dry-run] [--forcar]`: copia o motor do kit
+  por cima do de `<repo>` (`scripts/orquestrador/` sem plist instanciado, `scripts/orq`,
+  `scripts/roadmap/`, `doutrina/` → `docs/orquestrador/skill/`) e carimba o `VERSAO`. É `cp`,
+  não `rsync --delete`: nada que só exista no repo é apagado — sobra como `só no repo` no
+  `--verificar` que ele imprime no fim, junto da linha de commit por pathspec. Não toca
+  `docs/fila/**` (migrações são K8b). Três recusas com rc 1: loop não pausado, `STATUS.md`
+  que não diz `ocioso`, motor do repo com modificação não commitada — só a terceira cede a
+  `--forcar`. Casos (e) e (f) do `test-instalar.sh`.

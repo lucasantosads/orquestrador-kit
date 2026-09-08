@@ -1,15 +1,23 @@
 #!/usr/bin/env bash
 # instalar.sh — instalador do kit do Orquestrador Autônomo.
 #
-# Nesta etapa existe UM verbo: `--verificar`. `--novo` e `--atualizar` são a
-# peça K8 e, se chamados, dizem isso e saem 2 — verbo que finge existir é pior
-# que verbo ausente.
+# Dois verbos: `--verificar` (K5) e `--atualizar` (K8a). `--novo` é a peça K8b
+# e, se chamado, diz isso e sai 2 — verbo que finge existir é pior que verbo
+# ausente.
 #
 #   bash instalar.sh --verificar <repo>
+#   bash instalar.sh --atualizar <repo> [--dry-run] [--forcar]
 #
-# O que ele prova: a cópia VENDORIZADA do motor dentro de `<repo>` é idêntica à
-# do kit. É a decisão 2 do inventário (vendorizado por cópia, hash conferido no
-# pré-voo) reduzida ao mínimo que dá para checar sem rodar nada.
+# O que o `--verificar` prova: a cópia VENDORIZADA do motor dentro de `<repo>` é
+# idêntica à do kit. É a decisão 2 do inventário (vendorizado por cópia, hash
+# conferido no pré-voo) reduzida ao mínimo que dá para checar sem rodar nada.
+#
+# O que o `--atualizar` faz: copia o motor do kit POR CIMA do de `<repo>` e
+# carimba `docs/orquestrador/skill/VERSAO`. É `cp`, não `rsync --delete`: nada
+# que só exista no repo é apagado — o que sobra aparece como `só no repo` no
+# `--verificar` que ele imprime no fim. Não toca `docs/fila/**` (tickets,
+# `000-config.json`, `liberacoes.json`), nem PLAYBOOK, nem PECAS do repo:
+# migração de artefato legado é a peça K8b.
 #
 # O mapa origem -> destino é o do ORIGEM.md, e o mesmo que o
 # scripts/kit/fixture.sh usa para instanciar:
@@ -49,12 +57,20 @@ die() { printf 'instalar.sh: %s\n' "$*" >&2; exit 2; }
 uso() {
   cat <<'USO'
 uso: bash instalar.sh --verificar <repo>
+     bash instalar.sh --atualizar <repo> [--dry-run] [--forcar]
 
   --verificar <repo>   compara o motor vendorizado em <repo> com o do kit
-  --novo <repo>        (peça K8)
-  --atualizar <repo>   (peça K8)
+  --atualizar <repo>   copia o motor do kit por cima do de <repo>
+      --dry-run        só lista o que mudaria (idêntico ao --verificar) e sai 0
+      --forcar         segue mesmo com modificação não commitada no motor do repo
+                       (NÃO passa por cima da pausa nem do STATUS)
+  --novo <repo>        (peça K8b)
 USO
 }
+
+# recusa <mensagem> — rc 1, e a mensagem diz O QUÊ. Distinto do die() (rc 2, erro
+# de uso): recusa é o instalador funcionando e dizendo não.
+recusa() { printf 'RECUSADO: %s\n' "$*" >&2; exit 1; }
 
 # --- comparação ---------------------------------------------------------------
 # `diff -rq` fala em inglês só com LC_ALL=C. Sem isso, a máquina do usuário em
@@ -108,6 +124,23 @@ comparar_arquivo() {
   if ! cmp -s "$a" "$b"; then printf 'diferente   %s\n' "$rotulo"; DIFERENCAS=$((DIFERENCAS+1)); fi
 }
 
+# comparar_tudo <repo> — as quatro comparações do mapa origem->destino. Existe
+# separada do verificar() porque o --atualizar --dry-run mostra EXATAMENTE esta
+# lista: duas listas que se pretendem iguais e são montadas em dois lugares
+# divergem no primeiro caminho que alguém acrescentar.
+comparar_tudo() {
+  local repo="$1"
+  comparar_dir 'scripts/orquestrador' \
+    "$KIT/scripts/orquestrador" "$repo/scripts/orquestrador" \
+    -x '*.plist' -x runs
+  comparar_arquivo 'scripts/orq' "$KIT/scripts/orq" "$repo/scripts/orq"
+  comparar_dir 'scripts/roadmap' \
+    "$KIT/scripts/roadmap" "$repo/scripts/roadmap"
+  comparar_dir 'docs/orquestrador/skill' \
+    "$KIT/doutrina" "$repo/docs/orquestrador/skill" \
+    -x VERSAO -x runs
+}
+
 verificar() {
   local repo="${1:-}"
   [ -n "$repo" ] || die "--verificar exige o caminho do repo"
@@ -127,15 +160,7 @@ verificar() {
   fi
   printf '\n'
 
-  comparar_dir 'scripts/orquestrador' \
-    "$KIT/scripts/orquestrador" "$repo/scripts/orquestrador" \
-    -x '*.plist' -x runs
-  comparar_arquivo 'scripts/orq' "$KIT/scripts/orq" "$repo/scripts/orq"
-  comparar_dir 'scripts/roadmap' \
-    "$KIT/scripts/roadmap" "$repo/scripts/roadmap"
-  comparar_dir 'docs/orquestrador/skill' \
-    "$KIT/doutrina" "$repo/docs/orquestrador/skill" \
-    -x VERSAO -x runs
+  comparar_tudo "$repo"
 
   printf '\n'
   if [ "$DIFERENCAS" = 0 ]; then
@@ -146,10 +171,117 @@ verificar() {
   return 1
 }
 
+# --- --atualizar (peça K8a) ---------------------------------------------------
+# O que ele COPIA (o mesmo mapa do ORIGEM.md e do scripts/kit/fixture.sh):
+#   kit scripts/orquestrador/  ->  repo scripts/orquestrador/   (sem plist instanciado)
+#   kit scripts/orq            ->  repo scripts/orq
+#   kit scripts/roadmap/       ->  repo scripts/roadmap/
+#   kit doutrina/              ->  repo docs/orquestrador/skill/
+#   kit VERSAO                 ->  repo docs/orquestrador/skill/VERSAO
+#
+# O que ele NÃO toca: docs/fila/** (tickets, 000-config.json, liberacoes.json),
+# PLAYBOOK e PECAS do repo. Migração de artefato legado é K8b.
+#
+# As três recusas, e por que cada uma:
+#   1. loop não pausado — copiar o motor por baixo de uma drenagem viva troca o
+#      lib.sh de um executor que já está rodando. `--forcar` NÃO passa por cima:
+#      não existe pressa que justifique isso.
+#   2. STATUS.md diz outra coisa que não `ocioso` — mesmo motivo, por outra
+#      testemunha: o snapshot é o que o próprio loop afirma sobre si. Ausência de
+#      STATUS.md não é recusa (repo que nunca drenou).
+#   3. modificação não commitada no motor do repo — copiar por cima apaga
+#      trabalho sem registro no git. É a ÚNICA que `--forcar` dispensa, porque
+#      às vezes a modificação é lixo conhecido, e aí a perda é decisão de quem
+#      olhou.
+atualizar() {
+  local repo="" dry=0 forcar=0 a
+  for a in "$@"; do
+    case "$a" in
+      --dry-run) dry=1 ;;
+      --forcar)  forcar=1 ;;
+      -*)        die "--atualizar: opção desconhecida '$a'" ;;
+      *)         [ -z "$repo" ] || die "--atualizar aceita UM repo (recebi '$repo' e '$a')"; repo="$a" ;;
+    esac
+  done
+  [ -n "$repo" ] || die "--atualizar exige o caminho do repo"
+  [ -d "$repo" ] || die "'$repo' não é um diretório"
+  repo="$(cd "$repo" && pwd -P)"
+
+  if [ "$dry" = 1 ]; then
+    printf 'ATUALIZAR  --dry-run: NADA é escrito; a lista abaixo é o que mudaria.\n\n'
+    verificar "$repo" || true
+    return 0
+  fi
+
+  # --- recusa 1 · o loop tem de estar parado ---------------------------------
+  # Os dois arquivos, porque o motor reconhece os dois (lib.sh:615-619):
+  # CFG_PAUSAR_FILE (o `pausar_file` do config, `docs/fila/PAUSAR` tanto no
+  # template quanto no config do CI) e o legado `docs/fila/.orq-pause`.
+  if [ ! -f "$repo/docs/fila/PAUSAR" ] && [ ! -f "$repo/docs/fila/.orq-pause" ]; then
+    recusa "o loop de '$repo' não está pausado: não existe nem docs/fila/PAUSAR nem docs/fila/.orq-pause. Rode 'bash scripts/orq pausar \"atualizando o motor\"' dentro do repo e tente de novo."
+  fi
+
+  # --- recusa 2 · o snapshot tem de dizer ocioso -----------------------------
+  local status_md="$repo/docs/fila/runs/STATUS.md"
+  if [ -f "$status_md" ] && ! grep -qE '^ESTADO +ocioso *$' "$status_md"; then
+    recusa "docs/fila/runs/STATUS.md de '$repo' não diz 'ocioso': $(grep -E '^ESTADO' "$status_md" | head -1 | sed 's/  */ /g'). Espere a drenagem em curso terminar."
+  fi
+
+  # --- recusa 3 · o motor do repo não pode ter mudança fora do git -----------
+  local sujo=''
+  if git -C "$repo" rev-parse --git-dir >/dev/null 2>&1; then
+    sujo="$(git -C "$repo" status --porcelain -- \
+      scripts/orquestrador scripts/orq docs/orquestrador/skill 2>/dev/null || true)"
+  fi
+  if [ -n "$sujo" ] && [ "$forcar" = 0 ]; then
+    printf '%s\n' "$sujo" >&2
+    recusa "'$repo' tem modificação não commitada no motor (acima). Commite ou descarte antes — ou repita com --forcar, que apaga isso."
+  fi
+  if [ -n "$sujo" ] && [ "$forcar" = 1 ]; then
+    printf '%s\n' "$sujo" >&2
+    printf -- '--forcar: passando por cima de %s caminho(s) modificado(s) no motor do repo.\n\n' \
+      "$(printf '%s\n' "$sujo" | wc -l | tr -d ' ')"
+  fi
+
+  # --- a cópia ---------------------------------------------------------------
+  # Staging intermediário só por causa do plist INSTANCIADO: ele é artefato de
+  # uma máquina e não pode viajar. Filtrar no staging (e não no destino) é o que
+  # garante que um plist do REPO nunca seja apagado por engano.
+  printf 'ATUALIZAR  kit %s (%s)\n' "$VERSAO" "$KIT"
+  printf '           repo %s\n\n' "$repo"
+  local stage
+  stage="$(mktemp -d /tmp/orq-atualizar-XXXXXX)"
+  mkdir -p "$stage/orquestrador"
+  cp -R "$KIT/scripts/orquestrador/." "$stage/orquestrador/"
+  find "$stage/orquestrador" -name '*.plist' ! -name '*.plist.template' -exec rm -f {} +
+
+  mkdir -p "$repo/scripts/orquestrador" "$repo/scripts/roadmap" "$repo/docs/orquestrador/skill"
+  cp -R "$stage/orquestrador/." "$repo/scripts/orquestrador/"
+  cp "$KIT/scripts/orq" "$repo/scripts/orq"; chmod +x "$repo/scripts/orq"
+  cp -R "$KIT/scripts/roadmap/." "$repo/scripts/roadmap/"
+  cp -R "$KIT/doutrina/." "$repo/docs/orquestrador/skill/"
+  cp "$KIT/VERSAO" "$repo/docs/orquestrador/skill/VERSAO"
+  rm -rf "$stage"
+  printf 'copiado: scripts/orquestrador/ · scripts/orq · scripts/roadmap/ · docs/orquestrador/skill/ (+ VERSAO %s)\n\n' "$VERSAO"
+
+  # --- o veredito é do verificador, não deste bloco --------------------------
+  # Dizer "atualizado" sem reler o disco é como um instalador mente. O que sobrar
+  # de `só no repo` aqui é justamente o que NÃO foi apagado, e é para ser lido.
+  local rc=0
+  verificar "$repo" || rc=$?
+
+  printf '\ncommit sugerido, no repo, com pathspec explícito:\n'
+  printf '  cd %s\n' "$repo"
+  printf '  git add scripts/orquestrador scripts/orq scripts/roadmap docs/orquestrador/skill\n'
+  printf "  git commit -m 'motor: kit %s'\n" "$VERSAO"
+  return "$rc"
+}
+
 case "${1:-}" in
   --verificar)  shift; verificar "${1:-}" ;;
-  --novo|--atualizar)
-    printf 'ainda não: peça K8\n'
+  --atualizar)  shift; atualizar "$@" ;;
+  --novo)
+    printf 'ainda não: peça K8b\n'
     exit 2
     ;;
   -h|--help|'') uso; [ -z "${1:-}" ] && exit 2 || exit 0 ;;
