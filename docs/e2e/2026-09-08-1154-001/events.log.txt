@@ -1,0 +1,7 @@
+2026-09-08T11:54:02-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=1
+2026-09-08T11:54:09-0300 001 INICIO attempt=1 model=sonnet
+2026-09-08T11:54:45-0300 001 GATE typecheck=nao-rodou testes=nao-rodou enforcement=ok criterios=4/4 build=nao-rodou
+2026-09-08T11:54:52-0300 001 JUIZ veredito=aprovado classe=baixo modelo=sonnet attempt=1
+2026-09-08T11:54:53-0300 001 APROVADO merge=aguardando dur=32s attempt=1
+2026-09-08T11:54:53-0300 001 MERGE alvo=staging-auto sha=5d7c32d
+2026-09-08T11:54:53-0300 --- DRENAGEM_FIM aprovados=1 bloqueados=0 adiados=0 refatiar=0 dur=1min

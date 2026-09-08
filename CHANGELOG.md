@@ -101,3 +101,18 @@ attempt registra como `ok`. Não derruba o run; faz a trilha mentir.
   gate saía 0 com stdout VAZIO — indistinguível de gate que aprovou. Com o conserto, o
   contorno do `scripts/kit/fixture.sh` (`pwd -P`) saiu, e o fixture voltou a nascer sob
   caminho com symlink: é o que expõe qualquer regressão dessa família.
+- **K7c** — `scripts/kit/fixture-e2e.sh` preserva a evidência ANTES de qualquer outra coisa:
+  `preservar_evidencia` copia `docs/fila/runs/<id>/attempt-*/` inteiro, `events.log` e
+  `custo.json` para `docs/e2e/<AAAA-MM-DD-HHMM>-<id>/` no kit, renomeando `*.log` para
+  `*.log.txt` (o `.gitignore` do kit barra `*.log`), e imprime o caminho. O `.gitignore` não
+  muda: abrir exceção para `docs/e2e/**` valeria para todo log futuro, inclusive o que
+  ninguém revisou. O script ganhou modo `ORQ_E2E_SOURCED=1` para o teste
+  (`test/kit-e2e-evidencia.test.ts`) exercitar a preservação sem gastar nada.
+- **A evidência bruta do run de 2026-09-08 11:54 NÃO foi preservada.** O fixture morava em
+  `/tmp` e foi removido: os `attempt-*/` daquele run — `gates.txt`, `criterios.txt`,
+  `enforcement.json`, `meta.json`, prompt, diff, veredito cru do juiz — não existem mais e não
+  voltam. Sobrou o `custo.json`; o `events.log` estava no disco mas fora do git (`*.log`), e
+  foi resgatado agora como `events.log.txt`. O resto daquele attempt só sobrevive no que foi
+  copiado à mão para a mensagem do commit `8525c49` e para `docs/PECAS.md`. É essa perda que
+  a peça K7c existe para não repetir; a procedência está em
+  `docs/e2e/2026-09-08-1154-001/PROCEDENCIA.md`.
