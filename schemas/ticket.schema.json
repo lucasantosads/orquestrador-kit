@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orquestrador.kit/schemas/ticket.schema.json",
+  "title": "Ticket da fila do Orquestrador Autônomo",
+  "description": "UNIÃO de duas fontes, e nenhuma delas é opinião. (1) O que a fila do CI USA: docs/INVENTARIO-2026-09-07.md §2, linha 'Schema de ticket' — v2 em 51 de 73 tickets (risco, frente, diff_estimado, cria_novo, origem, sinal_hash, hash_candidato, gate_ok, adiado_ate), 'tipo' presente em 811 de 949 critérios, ids com sufixo (001a, 001b). (2) O que scripts/orquestrador/gate-ticket.ts COBRA: STATUS_VALIDOS (:28), CAMPOS_PENDENTE (:46), TIPOS_CRITERIO (:59), RE_ID (:61). ESTE SCHEMA NÃO É GATE: o gate-ticket.ts continua com os checks escritos à mão (CONTRATO.md §10, divergência 3). Ele é documento e insumo — do 'orq config' e da peça K8b.",
+
+  "type": "object",
+  "required": ["id", "status"],
+  "additionalProperties": true,
+  "$comment": "additionalProperties true de propósito: a fila do CI tem três gerações de schema convivendo, e um schema fechado reprovaria 259 tickets já entregues por carregarem campos de v3/v4.1 (onda, serie, camada, tam, perfil, lane, recon_esperado). Cobrar campo de quem já entregou não é gate, é ruído.",
+
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^\\d{3}[a-z]?$",
+      "description": "Três dígitos, sufixo de letra opcional para o ticket enxertado (001a, 309a). É RE_ID em gate-ticket.ts:61, e o gate também exige que ele bata com o prefixo do nome do arquivo (:398). Identidade estável: dependências referenciam ESTE campo, nunca o nome do arquivo."
+    },
+    "slug": { "type": "string", "minLength": 1 },
+    "bloco": { "type": "string", "description": "Id de bloco do mapa.json. Obrigatório em ticket pendente (CAMPOS_PENDENTE)." },
+    "frente": { "type": "string", "description": "Id de frente do mapa.json. v2." },
+    "origem": {
+      "enum": ["humano", "planejador", "sentinela"],
+      "description": "Decide se o juiz de ticket roda e para quem 'refatiar' volta."
+    },
+    "objetivo": { "type": "string", "minLength": 1, "description": "Frase imperativa; vira o corpo do prompt do executor." },
+    "pathspec_allowlist": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Globs. O enforcement FALHA se o diff tocar arquivo fora. Teto: gate_ticket.max_paths_allowlist."
+    },
+    "cria_novo": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths da allowlist que ainda NÃO existem. Qualquer outro path da allowlist precisa existir no disco."
+    },
+    "dependencias": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "anyOf": [
+          { "pattern": "^\\d{3}[a-z]?$", "$comment": "id de outro ticket: resolve quando aquele estiver done" },
+          { "pattern": "^humano:", "$comment": "token humano: resolve pelo liberacoes.json, INTEIRO e com prefixo" }
+        ]
+      },
+      "description": "Lista vazia é o caso NORMAL. O gate cobra que a chave exista e seja lista, nada além: exigir lista não-vazia reprovaria dezenas de tickets por serem independentes, que é a coisa certa a ser."
+    },
+    "diff_estimado": { "type": "integer", "minimum": 0, "description": "Linhas. Acima de gate_ticket.diff_cap_ticket o gate descarta." },
+    "risco": {
+      "enum": ["", "baixo", "alto"],
+      "description": "OPCIONAL e podendo ser VAZIO — quem o preenche é o PASSO 6 do gate (classe de risco), que ainda não existe. Exigir valor aqui seria o gate reprovando ticket por não ter feito o que o próprio gate não faz (gate-ticket.ts:377-386). Humano pode forçar 'alto', nunca 'baixo'."
+    },
+    "criterios_aceite": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tipo", "cmd", "espera", "descricao"],
+        "additionalProperties": true,
+        "properties": {
+          "tipo": {
+            "enum": ["alvo", "guarda", "avaliador"],
+            "description": "TIPOS_CRITERIO (gate-ticket.ts:59). alvo: DEVE falhar antes e passar depois (mínimo 1 por ticket). guarda: regressão, pode estar verde antes. avaliador: instrução ao juiz, com cmd 'true'."
+          },
+          "cmd": { "type": "string", "minLength": 1, "description": "Só prefixos de gate_ticket.cmd_prefixos_permitidos; nada de gate_ticket.proibido_no_cmd. Roda com timeout, em worktree, sem env de produção." },
+          "espera": { "type": "string", "description": "String de propósito: o critério compara SAÍDA de comando, e '0' é texto." },
+          "descricao": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "status": {
+      "enum": ["pendente", "em_execucao", "done", "bloqueado", "obsoleto", "refatiar"],
+      "description": "STATUS_VALIDOS (gate-ticket.ts:28). Os terminais — done, obsoleto, bloqueado — só precisam parsear: o resto dos campos obrigatórios vale só para 'pendente'. doutrina/templates/TICKET.md ainda cita 'candidato' e 'descartado', que o motor de hoje NÃO conhece (planejador e sentinela nascem desligados) — CONTRATO.md §10, divergência 4."
+    },
+    "notas_status": { "type": "string", "description": "Último motivo (aprovação, reprovação com o passo do gate, bloqueio). Alimenta o diagnóstico do retry." },
+    "hash_candidato": { "type": "string", "description": "sha256 de objetivo + allowlist + critérios + dependencias. Hash repetido em 7 dias é descartado sem gate." },
+    "sinal_hash": { "type": "string", "description": "Só sentinela. Liga o ticket ao sinal, para dedupe e baseline." },
+    "gate_ok": { "type": "string", "description": "Timestamp do último gate verde (passos 1 a 6). Vazio em ticket humano novo." },
+    "pid": { "type": ["integer", "null"] },
+    "iniciado_em": { "type": "string" },
+    "adiado_ate": { "type": "string", "description": "AAAA-MM-DD. Data no futuro = não processável hoje (lib.sh, deps_resolvidas)." }
+  },
+
+  "allOf": [
+    {
+      "$comment": "Campos obrigatórios SÓ para pendente — é literalmente o CAMPOS_PENDENTE do gate-ticket.ts:46. Terminal basta parsear.",
+      "if": { "properties": { "status": { "const": "pendente" } }, "required": ["status"] },
+      "then": {
+        "required": ["id", "slug", "bloco", "objetivo", "pathspec_allowlist", "dependencias", "criterios_aceite", "status", "risco"]
+      }
+    }
+  ]
+}

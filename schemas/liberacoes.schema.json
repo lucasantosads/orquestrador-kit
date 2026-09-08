@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orquestrador.kit/schemas/liberacoes.schema.json",
+  "title": "docs/fila/liberacoes.json — as liberações humanas",
+  "description": "ATENÇÃO, LEIA ANTES DE USAR: este schema descreve o formato-ALVO (v2, tokens como OBJETOS), que é o destino da migração da peça K8b. O motor de HOJE lê 'tokens' como lista de STRINGS — lib.sh:426, `(.tokens // []) | index($t)` — e um objeto ali NÃO resolve dependência nenhuma, em silêncio. Está registrado em CONTRATO.md §10, divergência 2. Enquanto essa peça não fecha, o formato que o motor obedece é o de scripts/orquestrador/lib.sh:423 (liberacao_ok), e é ele que vale no disco. Este arquivo é documento e insumo, nunca gate.",
+
+  "type": "object",
+  "required": ["$schema_versao", "tokens"],
+  "additionalProperties": true,
+
+  "properties": {
+    "$schema_versao": {
+      "const": 2,
+      "description": "Mesmo carimbo do 000-config.json. A v1 do Comarka tinha DUAS listas — 'liberadas' (24 objetos, com campo 'em') e 'tokens' (30 strings) — e nenhum prefixo 'humano:'; a migração K8b funde as duas aqui."
+    },
+    "tokens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["token", "liberado_em", "por"],
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^humano:[a-z-]+-[0-9A-Za-z-]+$",
+            "description": "O token INTEIRO, prefixo incluído — é a forma que a dependência do ticket usa. A v1 guardava sem prefixo e consultava sem prefixo, mas o ticket dependia COM: nenhum token liberado resolvia dependência nenhuma, e o ticket ficava pendente para sempre em silêncio (PLAYBOOK do CI, 2026-09-03). O padrão foi conferido contra os 7 tokens reais do CI (docs/fila/liberacoes.json): humano:custo-sinal-real, humano:migration-0025..0028, humano:migration-0030, humano:tk-201-arquetipos — todos casam."
+          },
+          "liberado_em": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}([T ]\\d{2}:\\d{2}(:\\d{2})?([+-]\\d{4}|Z)?)?$",
+            "description": "AAAA-MM-DD, com hora opcional. Na v1 do Comarka o campo se chamava 'em'; o rename é da migração K8b."
+          },
+          "por": { "type": "string", "minLength": 1, "description": "Quem liberou. Liberação sem dono não é liberação: é um arquivo que alguém editou." },
+          "nota": { "type": "string", "description": "Opcional. Por que foi liberado — o que o humano conferiu antes de destravar o ticket." }
+        }
+      }
+    },
+    "liberadas": {
+      "type": "array",
+      "description": "LEGADO. O formato antigo (.liberadas[].token, SEM prefixo) ainda resolve no motor, gravando AVISO no log, e sai na próxima mudança de schema (lib.sh:428-433). Não escreva aqui.",
+      "deprecated": true,
+      "items": { "type": "object" }
+    }
+  }
+}

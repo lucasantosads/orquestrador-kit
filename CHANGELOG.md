@@ -164,6 +164,17 @@ attempt registra como `ok`. Não derruba o run; faz a trilha mentir.
   test/orquestrador-pacotes.test.ts`. O harness do kit não REMOVE nada do harness do CI: o
   bloco de 5 linhas que sai virou a função `configDeReferencia()`, que num repo com
   `docs/fila` lê o mesmo arquivo de antes.
+- **K9** — `CONTRATO.md` na raiz do kit e `schemas/{ticket,liberacoes}.schema.json` +
+  `schemas/motivo_categoria.json`. O contrato é DESCRITIVO: cada afirmação traz o arquivo e a
+  linha de onde saiu, e o que o código não faz está na §10 "Divergências conhecidas" — 9
+  itens, cada um com a peça que o fecha — em vez de aparecer como se fosse feito. Vocabulário
+  de eventos fechado em 19; a linha `GATE` documentada com os quatro valores
+  (`ok`/`falha`/`nao-rodou`/`nao-configurado`) e os dois campos condicionais (`lint=`,
+  `fora_do_pathspec=`). O schema de ticket foi RODADO contra a fila real: 76 tickets do CI e
+  1 do fixture, 0 violações. Os 8 baldes de `motivo_categoria` vieram do disco do
+  comarka-operacional (`orq-telemetria.py:78`), com a origem registrada dentro do arquivo —
+  eles não existem em `_referencia-ci/`. `gate-ticket.ts` NÃO passa a validar pelo schema
+  nesta etapa: é peça própria, registrada em PENDENTES.
 
 Passos humanos que faltam para o CI receber este motor (não são desta sessão):
 `launchd.label: com.conteudos.orquestrador` no `000-config.json` do CI; `orq pausar`;

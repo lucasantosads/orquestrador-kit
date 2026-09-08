@@ -205,6 +205,23 @@
   atualizado sai rc 0 (8 arquivos, 62 testes) — é essa a prova de portabilidade, contra um
   config que não é o do kit nem o do CI. 3 vermelhos antes.
 
+- **K9 · contrato e schemas.** `CONTRATO.md` na raiz: layout de arquivos (motor × repo ×
+  `runs/`), ticket, `STATUS.md`, `events.log` (vocabulário FECHADO de 19 eventos e a linha
+  `GATE` com `ok | falha | nao-rodou | nao-configurado` e `lint=` condicional), `custo.json`,
+  `meta.json`, `attempt-N/`, `liberacoes.json`, `PAUSAR`, config, e os verbos de `orq`,
+  `instalar.sh` e `instalar-launchd.sh`. Mais `schemas/ticket.schema.json`,
+  `schemas/liberacoes.schema.json` e `schemas/motivo_categoria.json`.
+  *Evidência:* tudo conferido por grep no código deste kit, com arquivo e linha em cada
+  afirmação. Os 8 baldes de `motivo_categoria` foram COPIADOS DO DISCO de
+  `~/Projetos/comarka-operacional/scripts/orquestrador/orq-telemetria.py:78`
+  (`CATEGORIAS_MOTIVO`), só leitura — eles não estão em `_referencia-ci/`, e a origem está
+  escrita dentro do arquivo.
+  *Teste:* o schema de ticket foi rodado contra a fila REAL: **76 tickets do CI e 1 do
+  fixture, 0 violações** (id, status, campos obrigatórios de `pendente`, `risco`, `tipo` de
+  critério). O padrão de token do schema de liberações casa os 7 tokens reais do CI. Onde o
+  desejado difere do feito, a §10 "Divergências conhecidas" lista 9 itens, cada um com a
+  peça que o fecha — nenhuma foi consertada na prosa.
+
 - **1d · gate mudo por symlink, CONSERTADO.** O guard de CLI do `gate-ticket.ts` compara os
   dois lados com `realpathSync`, num `chamadoComoCli()` com try/catch. Antes, `resolve(argv[1])`
   não resolvia symlink e o `import.meta.url` vinha fisicamente resolvido: sob caminho com
@@ -270,12 +287,25 @@
   *Teste:* o mesmo (h3) de `scripts/kit/test-instalar.sh` — `npx vitest run` dentro do repo
   atualizado sai 0 com o arquivo na lista; e o NEGATIVO de que ele falhava lá antes.
 
-- **K9 · contrato.** `CONTRATO.md`, `ticket.schema.json`, `liberacoes.schema.json` e o enum
-  `motivo_categoria` (os 8 baldes do `orq-telemetria.py` do Comarka). `risco` é derivado (passo 6
-  do gate), não exigido do humano.
-  *Evidência:* inventário §4 decisões 4 e 9, §8 item 5.
-  *Teste:* o schema recusa os defeitos reais catalogados no §6 item 8 (ID com sufixo, `tipo`
-  ausente, três gerações de schema).
+- **Gate valida pelo schema.** `gate-ticket.ts` valida contra `schemas/ticket.schema.json`
+  em vez dos checks escritos à mão. NÃO foi feito na K9 por decisão: trocar o motor do gate
+  na mesma peça que escreve o documento juntaria duas mudanças com raios de alcance muito
+  diferentes — o documento não pode reprovar ticket nenhum, o gate reprova.
+  *Evidência:* `CONTRATO.md` §10, divergência 3; `gate-ticket.ts:361-461`, os checks 2 a 8
+  escritos um a um. O schema já é fiel: rodado contra a fila real do CI, 76 tickets, 0
+  violações.
+  *Teste:* os mesmos casos de `test/orquestrador-gate-ticket.test.ts` continuam verdes com o
+  validador trocado, mais o NEGATIVO de que um campo novo no schema passa a reprovar sem
+  edição de código.
+
+- **`liberacao_ok` lê o formato v2 (objetos).** `schemas/liberacoes.schema.json` descreve
+  `tokens` como lista de OBJETOS — o alvo da migração K8b —, e o motor lê lista de STRINGS
+  (`lib.sh:426`, `index($t)`). Um objeto ali não resolve dependência nenhuma, em SILÊNCIO,
+  que é exatamente o modo de falha da v1 (PLAYBOOK do CI, 2026-09-03). As duas pontas têm de
+  chegar juntas: ou a K8b não produz objetos, ou o motor aprende a lê-los ANTES da migração.
+  *Evidência:* `CONTRATO.md` §10, divergência 2.
+  *Teste:* dependência `humano:<t>` resolve com o token em objeto e em string; e o NEGATIVO
+  de que hoje ela NÃO resolve com objeto.
 
 - **K10 · doutrina v2.** A regra "nunca copie scripts de outro repo" reescrita para "motor único
   versionado sem premissa local; o que varia vive no config"; faixa de IDs por bloco → sequencial

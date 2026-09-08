@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orquestrador.kit/schemas/motivo_categoria.json",
+  "title": "motivo_categoria — os 8 baldes de motivo de reprovação",
+  "description": "PROCEDÊNCIA: copiados do disco, de ~/Projetos/comarka-operacional/scripts/orquestrador/orq-telemetria.py, constante CATEGORIAS_MOTIVO (linha 78) e função categoriza_motivo logo abaixo. Lido em 2026-09-08, só leitura, sem alterar o repo de origem. Não vieram de _referencia-ci/: o orq-telemetria.py é do Comarka e NÃO está no kit — este arquivo é a única cópia versionada aqui, e é por isso que a origem está escrita.\n\nNADA no motor deste kit usa estes baldes hoje: eles entram com o painel (peça K12), que aplica a MESMA taxonomia ao motivo do verdict.json. É essa a razão de existirem como arquivo em vez de ficarem inline em dois lugares — no Comarka a taxonomia já existia inline em motivos() e uma segunda cópia divergiria em silêncio.\n\nA ORDEM É SIGNIFICATIVA: a categorização é por PADRÃO no texto da nota, não pelo texto inteiro, e o PRIMEIRO que casa vence. Reordenar muda a classificação.",
+
+  "type": "string",
+  "enum": [
+    "allowlist incompleta (fora_do_pathspec)",
+    "suite de testes vermelha",
+    "criterio mecanico nao bateu",
+    "diff acima do cap",
+    "recon_esperado divergiu",
+    "limite de assinatura",
+    "timeout",
+    "outro"
+  ],
+
+  "$defs": {
+    "regras_de_casamento": {
+      "$comment": "Transcrição fiel de categoriza_motivo(nota) do orq-telemetria.py, na ordem em que os testes acontecem. O motivo vem do notas_status do ticket, não do meta.json.",
+      "const": [
+        { "se_a_nota_contem": ["fora_do_pathspec"], "categoria": "allowlist incompleta (fora_do_pathspec)" },
+        { "se_a_nota_contem": ["suíte vermelha", "suite vermelha"], "categoria": "suite de testes vermelha" },
+        { "se_a_nota_contem_todos": ["criterio[", "mecânico"], "categoria": "criterio mecanico nao bateu" },
+        { "se_a_nota_contem": ["diff grande"], "categoria": "diff acima do cap" },
+        { "se_a_nota_contem": ["recon"], "categoria": "recon_esperado divergiu" },
+        { "se_a_nota_contem": ["limite", "quota", "rate"], "categoria": "limite de assinatura" },
+        { "se_a_nota_contem": ["timeout"], "categoria": "timeout" },
+        { "senao": true, "categoria": "outro" }
+      ]
+    }
+  }
+}
