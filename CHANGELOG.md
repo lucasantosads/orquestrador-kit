@@ -469,3 +469,44 @@ o que o `jq` devolveu. Três achados mandaram no desenho:
 
 Passos humanos para o CI receber esta etapa: ver o relatório em
 `~/orq-sessoes/relatorio-kit-etapa5.md`.
+
+### Etapa 6 — o que o Actus pagou com incidente, e o motor do CI não tinha
+
+Sete peças, sete commits. Cada uma julgada pela mesma pergunta: **o Actus perde alguma
+proteção ao trocar de motor?**
+
+- **K11a-1** `6f37c21` — as regras B (migrations por faixa), C (escrita por tabela) e D
+  (colunas congeladas e sombras) do `enforcement.mjs` do actus-saas, agora por CONFIG e
+  todas DESLIGADAS sem a chave. Duas decisões ficam escritas no código: C e D auditam
+  também o `artefato_sql` (proibição NOMEADA dentro de uma migration é o caso que se quer
+  pegar; negação em bloco ali dentro foi o falso positivo do ORQ-11), e `migrations.dir`
+  NÃO entra na tabela de renomes — quem cobra o dir é o `orq config`, para a regra nascer
+  ligada de propósito e nunca de arrasto. 41 casos, 16 vermelhos antes.
+- **K11a-2** `9944986` — `prevoo.ts` + `orq prevoo` + `prevoo_ou_sai` no `local-loop.sh`.
+  A cat.3 do Actus (um `claude -p` novo por drenagem) NÃO virou chamada: o pré-voo LÊ o
+  resultado da última sondagem em `runs/`, porque quem sonda é o `probe_modelos` do
+  executor. Ordem: lock → PAUSA → pré-voo → reconcile. 34 casos, 34 vermelhos antes.
+  Medido contra o CI (só leitura): GO, rc 0, árvore limpa depois.
+- **K11a-3** `96d711d` — os seis padrões de autenticação do Actus e o par
+  `service unavailable`/`503` em `decisao.ts`. O texto é o do incidente de 13/08/2026,
+  copiado dos testes de lá. Duas divergências deliberadas ficam registradas no teste.
+  13 casos, 5 vermelhos antes.
+- **G** `d0eecdb` — gate `tipo: baseline` com `direcao`, `contagem_regex` e `preparo`. E um
+  DEFEITO consertado no caminho: em `direcao: max` quem decide é a CONTAGEM, não o exit
+  code — um `tsc` com 3 erros herdados sempre sai != 0, e exigir exit 0 junto tornava todo
+  `baseline > 0` impossível de satisfazer, em silêncio. 21 casos, 10 vermelhos antes.
+- **D10** `50a4f6c` — o ticket é o PRIMEIRO bloco ```json. Divergência 10 do `CONTRATO.md`
+  fechada: `ticket_json` deixou de concatenar (com dois blocos o resultado nem parseava) e
+  `ticket_set` de reescrever mais de um. 13 casos, 8 vermelhos antes; muda o comportamento
+  em ZERO arquivo vivo — é buraco latente fechado antes de alguém cair nele.
+- **T17** `22794fd` — piso de `--disallowedTools` por config, com a lista do Comarka mais
+  `pnpm install`/`npm install`/`npm ci`. O piso vai na flag E sai da allowlist derivada:
+  duas trancas, porque depender da precedência entre as duas flags é depender de uma regra
+  do CLI que não é deste repo. 23 casos, 21 vermelhos antes.
+- **K8b-7** `4caa1ac` — `migrar-liberacoes.ts` data os tokens pelo git (`-S`, o commit MAIS
+  VELHO). 11 casos, 9 vermelhos antes, com repo git de verdade e dois commits reais.
+  Medido no Actus: **1 de 5** tokens datado — os outros 4 estão na árvore de trabalho e
+  ainda não foram commitados, então `desconhecido` fica, que é a resposta certa.
+
+Passos humanos para o CI receber esta etapa: ver o relatório em
+`~/orq-sessoes/relatorio-kit-etapa6.md`.

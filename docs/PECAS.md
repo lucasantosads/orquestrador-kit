@@ -649,14 +649,32 @@
   *Teste:* o mesmo `test/doutrina-v2.test.ts` — nenhuma lição triada carrega detalhe local
   do repo de origem, e toda uma traz data e origem.
 
-- **K11 · absorções, uma sessão cada, teste junto.** Pré-voo do Actus (`pre-voo.mjs` → TS, chamado
-  pelo preflight); enforcement como união por config (Comarka: C0 com DDL/TRIGGER/VIEW, janela de
-  comentário, isenção de fixture; Actus: faixa de migrations com faixa reservada, escrita por
-  schema/tabela, colunas-sombra); `detectarAdiamento` do Actus em `decisao.ts` (stdout vazio, texto
-  real, case-insensitive); placar/telemetria do Actus em `orq custo`; `perfis_tools` do Comarka como
-  mapa opcional.
-  *Evidência:* inventário §5 (a tabela de doação) e §8 item 3.
-  *Teste:* o teste que vem junto com cada doador, listado no §5.
+- **K11b · o que falta do COMARKA (refinada com o que o PASSO 0 da etapa 6 mostrou).** A K11
+  original juntava Actus e Comarka; o lado do Actus saiu nas peças K11a-1/2/3 desta etapa (o que
+  sobra dele está em K11a-4). O que resta é do Comarka, e o PASSO 0 mostrou que DUAS das quatro
+  linhas já estavam cobertas:
+  · **C0 por tabela — JÁ COBERTO pela K11a-1.** O `c0_intocavel` do Comarka tem a mesma forma de
+    `zona_proibida` (`no_write_tables`, `no_write_prefixes`, `os_owned_excecoes`) mais duas listas
+    próprias. A regra C nova lê `no_write_tables` como LISTA, que é exatamente o que o C0 é. O que
+    falta é uma DECISÃO, não código: `config-tabela.ts` não renomeia `c0_intocavel` para
+    `zona_proibida` — mover a fronteira do enforcement por semelhança de nome é a mudança mais cara
+    que uma migração automática poderia fazer errado.
+  · **janela de comentário — JÁ COBERTA, e antes desta etapa.** `test/orquestrador-enforcement.test.ts:106`
+    exercita a mutação na janela seguinte ao `.from()` (encadeamento em várias linhas), e a regra C
+    nova trabalha sobre o BLOCO de linhas do arquivo, não sobre a linha solta.
+  · **DDL/TRIGGER/VIEW e `no_write_prefixes` — FALTA.** É a regra E do Actus e o `no_write_prefixes`
+    do Comarka (`trafego_`, `vw_`): a MESMA regra, com dois donos. Entra junto com a K11a-4, e é o
+    argumento para fazê-la antes da adoção do Comarka.
+  · **`perfis_tools` como mapa opcional — FALTA.** `toolsForPerfil` (`perfil.ts:213`) já existe e já
+    recebe o mapa por parâmetro; ninguém o chama. O que falta é o executor ler `perfis_tools` do
+    config e o `perfil` do ticket. Com a T17, o piso passa a valer DEPOIS do perfil escolhido.
+  · **gate streak (`gate_streak_limite`) — FALTA, e é conceito novo.** Contagem de reprovações
+    seguidas antes de parar a frente; o motor do kit não tem nada equivalente.
+  *Evidência:* o PASSO 0 da etapa 6 — `c0_intocavel` e `perfis_tools` no
+  `~/Projetos/comarka-operacional/docs/fila/000-config.json`, `executor.sh:46-48` (as duas listas de
+  tools) e `:119-125` (o `gate_tsc` por escopo), todos só leitura.
+  *Teste:* um caso por linha, com o config REAL do Comarka em fixture — e, para o C0, o NEGATIVO de
+  que a migração NÃO move `c0_intocavel` sozinha.
 
 - **1b · o gate executa o que hoje só lê.** `alvo` que já passa contra HEAD, `guarda` que já falha,
   `recon[]` — em worktree descartável com timeout.

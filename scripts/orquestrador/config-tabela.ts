@@ -379,17 +379,18 @@ export const PROPRIAS_DE_REPO: PropriaDeRepo[] = [
     chave: 'migrations_faixa_loop',
     repo: 'actus-saas',
     porque:
-      'faixa de numeração de migrations reservada ao loop ("0250-0299"). É enforcement do Actus, candidato a união por config na K11.',
+      'faixa de numeração de migrations reservada ao loop ("0250-0299"). ABSORVIDA na K11a-1: o motor passou a ler a mesma faixa em `migrations.faixa`, e a tabela COPIA o valor para lá (o renome acima). A chave v1 fica intocada porque o motor não a lê — e porque quem edita o config do Actus à mão procura por este nome.',
   },
   {
     chave: 'zona_proibida.no_write_columns',
     repo: 'actus-saas',
     porque:
-      'proibição por COLUNA, não por tabela. O enforcement do kit só conhece tabelas e prefixos; a coluna fica registrada esperando a K11.',
+      'proibição por COLUNA, não por tabela. ABSORVIDA na K11a-1: o enforcement do kit passou a ler `zona_proibida.colunas_congeladas`, e a tabela copia o valor para lá. A chave v1 fica intocada pelo mesmo motivo da anterior.',
   },
   {
     chave: 'zona_proibida.padroes_proibidos_no_diff',
     repo: 'actus-saas',
-    porque: 'padrões de texto proibidos no diff. Mesma família do anterior, mesmo destino.',
+    porque:
+      'padrões de texto proibidos no diff (regexes com flags inline `(?i)/(?is)`, três no Actus: reancoragem de tenant_id em tabela particionada, session_replication_role, DELETE físico). AINDA NÃO absorvida — é a regra F, e está em K11a-4 no PECAS.md. Enquanto ela não entrar, o Actus PERDE esta proteção ao trocar de motor.',
   },
 ]
