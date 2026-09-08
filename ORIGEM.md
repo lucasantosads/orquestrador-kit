@@ -90,3 +90,20 @@ package.json -> _referencia-ci/package.ci.json
 tsconfig.json -> _referencia-ci/tsconfig.json
 vitest.config.ts -> _referencia-ci/vitest.config.ts
 ```
+
+## Adendo · 2026-09-08 · K2 (helpers de teste que ficaram no CI)
+
+O extrator trouxe `test/*.test.ts` mas não os helpers que eles importam. Copiados
+depois, do mesmo commit 711ab5e do conteudos-infinitos:
+
+| origem no CI | destino no kit | blob sha (CI @711ab5e) |
+|---|---|---|
+| `test/fixtures/orq-harness.ts` | `test/fixtures/orq-harness.ts` | `db20a21a6532f994e6dc4f60505517b03aff5e44` |
+
+Cópia byte-idêntica (`git hash-object` do kit == `git rev-parse 711ab5e:<path>` do
+CI). O harness importa só `node:*`, então não arrastou mais nada do `test/` do CI.
+
+`test/db.ts` NÃO entra no kit e não é pendência: não existe no CI. A string
+`from './db.js'` que aparece em `test/orquestrador-enforcement.test.ts:300` é
+conteúdo de um diff SINTÉTICO passado como argumento para o enforcement — não é
+um import. Nenhuma linha de import do kit referencia `db.js`.
