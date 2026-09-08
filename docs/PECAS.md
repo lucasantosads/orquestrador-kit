@@ -171,6 +171,20 @@
   *Evidência:* inventário §5 (linha do validador de ticket).
   *Teste:* um caso por check, mais o NEGATIVO do gate barrando antes do agente.
 
+- **1d · gate mudo por symlink no caminho.** O guard de CLI do `gate-ticket.ts` compara
+  `import.meta.url` com `argv[1]` sem `realpath`; chamado por caminho com symlink (macOS
+  `/tmp` → `/private/tmp`) sai 0 sem rodar nada: gate mudo. Conserto no MOTOR: `realpath`
+  dos dois lados.
+  *Evidência:* `scripts/orquestrador/gate-ticket.ts:549-551`
+  (`if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href)`);
+  `resolve()` normaliza mas NÃO resolve symlink, e o `import.meta.url` que o node entrega vem
+  fisicamente resolvido. Medido na etapa 2: com o fixture em `/tmp/orq-fixture-*/repo`,
+  `orq validar --relatorio 001` saía rc 0 com stdout VAZIO; com `/private/tmp/...`, imprimia o
+  relatório. Contornado no kit (o `scripts/kit/fixture.sh` imprime `pwd -P`), não consertado —
+  o buraco espera qualquer repo instalado sob caminho com symlink.
+  *Teste:* chamar o gate por um symlink e EXIGIR saída — o caso negativo é o que falta hoje:
+  gate que sai 0 sem imprimir nada é indistinguível de gate que aprovou.
+
 - **K12 · painel.** `orq-server.py` + `orq-painel.py` do Comarka entram como `painel/`, refatorados
   para ler só o contrato (STATUS, events, custo, liberacoes v2, PAUSAR, tickets); `LABELS` →
   `~/.orq/repos.json`; ações via `orq`; notificação nativa desligada; zero `if repo`.
