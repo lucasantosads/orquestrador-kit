@@ -455,34 +455,94 @@ gate_marca() {
   esac
 }
 
-# Combina os dois gates de typecheck deste repo (root e web) numa marca so:
-# falha de qualquer um e falha do typecheck.
-typecheck_marca() {
-  local f="$1" r w
-  r="$(gate_marca "$f" typecheck_root)"; w="$(gate_marca "$f" typecheck_web)"
-  case "$r/$w" in
-    *falha*) echo falha ;;
-    ok/ok)   echo ok ;;
-    *)       echo nao-rodou ;;
+# --- 7b.1 · PAPEL de um gate (peca K6b) -------------------------------------
+# A linha GATE da trilha fala em typecheck / testes / build / lint. Os gates do
+# config falam o nome que o REPO deu a eles. O papel e a ponte, e ate esta peca
+# ela era uma lista de nomes do conteudos-infinitos dentro do motor
+# (typecheck_root, typecheck_web, testes_por_pacote, build) — num repo cujos
+# gates se chamem `typecheck` e `test`, a trilha do e2e de 2026-09-08 gravou
+# `typecheck=nao-rodou testes=nao-rodou build=nao-rodou` sobre gates que o
+# gates.txt do MESMO attempt registra como `ok`. A trilha mentiu por premissa.
+#
+# papel_do_gate <nome> [papel_declarado] -> typecheck | testes | build | lint | ''
+# Declarado ganha do inferido: `"papel": "testes"` num gate chamado `verificacao`
+# e a unica saida para nome que nenhuma heuristica adivinha. A inferencia so
+# existe para nao obrigar todo config de hoje a ser reescrito.
+#
+# Ordem dos casos e significativa: `typecheck` NAO contem `test` (t-y-p-e-c-h-e-c-k),
+# entao os dois nao colidem; `lint` e `build` vem antes de `test` so por clareza.
+papel_do_gate() {
+  local nome="$1" declarado="${2:-}"
+  case "$declarado" in
+    ''|null) : ;;
+    *) printf '%s' "$declarado"; return 0 ;;
   esac
+  case "$nome" in
+    *typecheck*|*tsc*|*types*) printf 'typecheck' ;;
+    *lint*)                    printf 'lint' ;;
+    *build*|*compil*)          printf 'build' ;;
+    *test*|*spec*)             printf 'testes' ;;
+    *)                         printf '' ;;
+  esac
+}
+
+# gates_do_papel <papel> -> os NOMES dos gates do config com esse papel.
+# Sai do CONFIG, nunca do gates.txt: e por isso que "o repo nao tem gate de
+# build" (nao-configurado) e distinguivel de "tem, e nao chegou a rodar"
+# (nao-rodou).
+gates_do_papel() {
+  local papel="$1" nome declarado
+  while IFS=$'\t' read -r nome declarado; do
+    [ -n "$nome" ] || continue
+    [ "$(papel_do_gate "$nome" "$declarado")" = "$papel" ] && printf '%s\n' "$nome"
+  done < <(cfg '.gates[]? | [.nome, (.papel // "")] | @tsv' 2>/dev/null || true)
+  return 0
+}
+
+# papel_marca <gates.txt> <papel> -> ok | falha | nao-rodou | nao-configurado
+# Combina TODOS os gates daquele papel (o CI tem dois de typecheck): falha de
+# qualquer um e falha do papel, e so e `ok` quando todos rodaram e passaram.
+papel_marca() {
+  local f="$1" papel="$2" nome n=0 falhou=0 naorodou=0
+  while IFS= read -r nome; do
+    [ -n "$nome" ] || continue
+    n=$((n + 1))
+    case "$(gate_marca "$f" "$nome")" in
+      falha)     falhou=1 ;;
+      nao-rodou) naorodou=1 ;;
+    esac
+  done < <(gates_do_papel "$papel")
+  if   [ "$n" = 0 ];       then echo nao-configurado
+  elif [ "$falhou" = 1 ];  then echo falha
+  elif [ "$naorodou" = 1 ]; then echo nao-rodou
+  else echo ok
+  fi
 }
 
 # event_gate <id> <rundir> <enf_ok>
 # fora_do_pathspec= so entra quando o ENFORCEMENT reprova: e o dado que
 # transforma um beco sem saida em ticket acionavel (colisao de teste na SKILL).
+#
+# lint= e CONDICIONAL, e de proposito: acrescentar um campo fixo mudaria a linha
+# de todo repo que nao tem lint — inclusive a do CI, que esta peca se obriga a
+# nao mexer. Quem tem gate de lint ganha o campo; quem nao tem, ganha a mesma
+# linha de sempre.
 event_gate() {
-  local id="$1" rundir="$2" enf_ok="$3" gt="$2/gates.txt" fora="" n_falhos=0
+  local id="$1" rundir="$2" enf_ok="$3" gt="$2/gates.txt" fora="" n_falhos=0 lint
   [ -z "$CRITERIOS_FALHOS" ] || n_falhos="$(printf '%s' "$CRITERIOS_FALHOS" | awk -F';' '{print NF}')"
   if [ "$enf_ok" = 0 ] && [ -s "$rundir/enforcement.json" ]; then
     fora="$(jq -r '[.violations[]? | select(.tipo == "fora_do_pathspec") | .detalhe] | join(",")' \
       "$rundir/enforcement.json" 2>/dev/null || true)"
   fi
+  lint="$(papel_marca "$gt" lint)"
+  [ "$lint" = nao-configurado ] && lint=''
   event "$id" GATE \
-    "typecheck=$(typecheck_marca "$gt")" \
-    "testes=$(gate_marca "$gt" testes_por_pacote)" \
+    "typecheck=$(papel_marca "$gt" typecheck)" \
+    "testes=$(papel_marca "$gt" testes)" \
     "enforcement=$([ "$enf_ok" = 1 ] && echo ok || echo falha)" \
     "criterios=$(( CRITERIOS_TOTAL - n_falhos ))/$CRITERIOS_TOTAL" \
-    "build=$(gate_marca "$gt" build)" \
+    "build=$(papel_marca "$gt" build)" \
+    ${lint:+"lint=$lint"} \
     ${fora:+"fora_do_pathspec=$fora"}
 }
 

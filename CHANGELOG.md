@@ -80,3 +80,11 @@ attempt registra como `ok`. Não derruba o run; faz a trilha mentir.
   árvore do conteudos-infinitos escrita dentro do motor. `LC_ALL=C sort` reproduz a ordem
   antiga item a item. Contra o checkout real do CI as duas listas saem idênticas: o CI não
   faz nada diferente.
+- **K6b** — `executor.sh`: a linha `GATE` da trilha passa a sair do RESULTADO dos gates, não
+  do nome deles no monorepo do CI. Cada gate do config tem um PAPEL (`typecheck` | `testes` |
+  `build` | `lint`), declarado por `"papel"` ou inferido do nome; `papel_marca` combina todos
+  os gates daquele papel. Vocabulário novo: `nao-configurado` (o repo não tem gate com esse
+  papel) — `nao-rodou` volta a significar só o que sempre devia. `lint=` é campo condicional,
+  para não mexer na linha de quem não tem lint. `typecheck_marca` (que casava
+  `typecheck_root`/`typecheck_web` por nome) sai. Com o config do CI e o
+  `test/fixtures/runs-201/attempt-2.gates.txt`, a linha é byte a byte a de hoje.
