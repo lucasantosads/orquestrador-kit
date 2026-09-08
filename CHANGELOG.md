@@ -95,3 +95,9 @@ attempt registra como `ok`. Não derruba o run; faz a trilha mentir.
   "defina launchd.label no config; o CI usa com.conteudos.orquestrador". Não inventa label —
   label inventado não dá erro, dá um segundo job carregado ao lado do antigo. Chave nova
   documentada em `fixture/docs/fila/000-config.json` e `doutrina/templates/config.json`.
+- **1d** — CONSERTADO no motor: o guard de CLI do `gate-ticket.ts` compara os dois lados com
+  `realpathSync`. Antes, `resolve(argv[1])` não resolvia symlink e o `import.meta.url` vinha
+  fisicamente resolvido: chamado por caminho com symlink (macOS `/tmp` → `/private/tmp`), o
+  gate saía 0 com stdout VAZIO — indistinguível de gate que aprovou. Com o conserto, o
+  contorno do `scripts/kit/fixture.sh` (`pwd -P`) saiu, e o fixture voltou a nascer sob
+  caminho com symlink: é o que expõe qualquer regressão dessa família.

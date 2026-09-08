@@ -10,7 +10,15 @@
  * contra HEAD, rodar `guarda` contra HEAD, executar `recon[]`.
  */
 import { describe, it, expect } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import {
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -467,5 +475,70 @@ describe('a CLI é o contrato que `orq validar` repassa', () => {
     const r = cli(dir, '999');
     expect(r.rc).toBe(2);
     expect(r.err).toContain('não é ticket desta fila');
+  });
+});
+
+// ─── Peça 1d · o gate não pode emudecer por symlink no caminho ────────────
+//
+// O guard de CLI comparava `import.meta.url` com `pathToFileURL(resolve(argv[1]))`.
+// `resolve()` normaliza mas NÃO resolve symlink, e o `import.meta.url` que o node
+// entrega vem fisicamente resolvido: chamado por um caminho com symlink no meio
+// (no macOS, `/tmp` -> `/private/tmp`), o `if` dava falso, `main()` nunca rodava
+// e o processo saía 0 com stdout VAZIO.
+//
+// Gate que sai 0 sem imprimir nada é INDISTINGUÍVEL de gate que aprovou. Medido
+// na etapa 2: com o fixture em `/tmp/orq-fixture-*/repo`, `orq validar
+// --relatorio 001` saía rc 0 e mudo; com `/private/tmp/...`, imprimia. O
+// contorno foi passar o caminho físico (`pwd -P` no scripts/kit/fixture.sh); o
+// buraco continuava esperando qualquer repo instalado sob caminho com symlink.
+
+describe('peça 1d · chamado por caminho com symlink, o gate RODA', () => {
+  /** Um symlink para o gate real, num tmp — o caminho lógico de chamada. */
+  function gatePorSymlink(): string {
+    const dir = mkdtempSync(join(tmpdir(), 'orq-link-'));
+    const link = join(dir, 'gate-ticket.ts');
+    symlinkSync(GATE, link);
+    return link;
+  }
+
+  /** Ticket INVÁLIDO: sem `objetivo`, que é campo obrigatório de pendente. */
+  function filaComTicketInvalido(): string {
+    const dir = criarFila([]);
+    const t = pendenteBom({ id: '901' });
+    delete (t as Record<string, unknown>).objetivo;
+    escreverTicket(dir, t);
+    return dir;
+  }
+
+  it('o caminho de teste é mesmo um symlink (senão o caso não prova nada)', () => {
+    const link = gatePorSymlink();
+    expect(lstatSync(link).isSymbolicLink()).toBe(true);
+    expect(realpathSync(link)).toBe(realpathSync(GATE));
+    expect(link).not.toBe(realpathSync(link));
+  });
+
+  it('rc 1 e a linha de violação, chamado PELO symlink', () => {
+    const dir = filaComTicketInvalido();
+    const r = spawnSync('npx', ['tsx', gatePorSymlink(), '--fila', dir, '--pendentes'], {
+      encoding: 'utf8',
+      cwd: REPO_ROOT,
+    });
+    // O NEGATIVO que faltava: rc 0 com stdout vazio é o modo de falha desta peça.
+    expect(`${r.stdout ?? ''}`.trim(), 'o gate saiu MUDO').not.toBe('');
+    expect(r.status).toBe(1);
+    expect(r.stdout).toMatch(/objetivo/);
+  });
+
+  it('pelo symlink e pelo caminho real, a MESMA saída', () => {
+    const dir = filaComTicketInvalido();
+    const rodar = (caminho: string) =>
+      spawnSync('npx', ['tsx', caminho, '--fila', dir, '--pendentes'], {
+        encoding: 'utf8',
+        cwd: REPO_ROOT,
+      });
+    const porLink = rodar(gatePorSymlink());
+    const porReal = rodar(GATE);
+    expect(porLink.status).toBe(porReal.status);
+    expect(porLink.stdout).toBe(porReal.stdout);
   });
 });

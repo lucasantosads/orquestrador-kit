@@ -19,9 +19,9 @@
  *   - rc 1 se houve violação, 0 se não;
  *   - `--relatorio` imprime TUDO (inclusive o que passou) e sai 0.
  */
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync, realpathSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 
 // ─── Vocabulário do ticket ────────────────────────────────────────────────
 
@@ -546,6 +546,29 @@ function main(argv: string[]): number {
 
 // `import.meta.url` só bate com o argv quando o arquivo foi CHAMADO, não
 // importado: é o que deixa o teste importar as funções sem disparar a CLI.
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+//
+// `realpathSync` DOS DOIS LADOS (peça 1d). A comparação antiga era
+// `import.meta.url === pathToFileURL(resolve(argv[1])).href`, e `resolve()`
+// normaliza `..` e `.` mas NÃO resolve symlink — enquanto o `import.meta.url`
+// que o node entrega já vem fisicamente resolvido. Bastava um symlink no
+// caminho de chamada (no macOS, `/tmp` -> `/private/tmp`) para o `if` dar falso:
+// `main()` não rodava e o processo saía 0 com stdout VAZIO. Gate que sai 0 sem
+// imprimir nada é indistinguível de gate que aprovou — o pior modo de falha que
+// um gate tem. Medido na etapa 2 com o fixture em /tmp/orq-fixture-*/repo.
+//
+// try/catch porque `realpathSync` LANÇA quando o caminho não existe, e argv[1]
+// nem sempre é um arquivo (`node -e`, `node --eval`, alguns wrappers). Ali o
+// certo é não disparar a CLI, nunca derrubar o processo de quem importou.
+function chamadoComoCli(): boolean {
+  const argv1 = process.argv[1]
+  if (!argv1) return false
+  try {
+    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(resolve(argv1))
+  } catch {
+    return false
+  }
+}
+
+if (chamadoComoCli()) {
   process.exit(main(process.argv.slice(2)))
 }

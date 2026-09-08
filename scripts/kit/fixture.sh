@@ -66,12 +66,17 @@ done
 [ -d "$KIT/node_modules" ] || die "o kit não tem node_modules — rode 'npm install' antes (o fixture o compartilha por symlink)"
 
 # --- 1. tmp + árvore ----------------------------------------------------------
-# `pwd -P` NÃO é higiene: no macOS /tmp é symlink de /private/tmp, e o guard de
-# CLI do gate-ticket.ts compara `import.meta.url` (que o node resolve fisicamente)
-# com `resolve(process.argv[1])`. Passar o caminho lógico faz a comparação falhar
-# e `orq validar` sair 0 sem imprimir nada — gate silencioso, que é pior que gate
-# quebrado. Medido: com /tmp/... o relatório vinha vazio; com /private/tmp/..., não.
-TMP="$(cd "$(mktemp -d "${PREFIXO}XXXXXX")" && pwd -P)"
+# CAMINHO LÓGICO, de propósito. Até a peça 1d isto era `pwd -P`, e não por
+# higiene: o guard de CLI do gate-ticket.ts comparava `import.meta.url` (que o
+# node entrega fisicamente resolvido) com `resolve(process.argv[1])`, que não
+# resolve symlink — e no macOS /tmp É symlink de /private/tmp. Sob caminho
+# lógico, `orq validar` saía 0 com stdout vazio: gate MUDO.
+#
+# A peça 1d consertou o motor (realpath dos dois lados) e o teste
+# `peça 1d · chamado por caminho com symlink, o gate RODA` cobre exatamente
+# este caso. O contorno saiu — e o fixture voltou a nascer sob um caminho com
+# symlink no meio, que é o que expõe qualquer regressão dessa família.
+TMP="$(mktemp -d "${PREFIXO}XXXXXX")"
 FX="$TMP/repo"
 mkdir -p "$FX" "$TMP/_worktrees"
 log "tmp: $TMP"
