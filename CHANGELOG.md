@@ -116,3 +116,10 @@ attempt registra como `ok`. Não derruba o run; faz a trilha mentir.
   copiado à mão para a mensagem do commit `8525c49` e para `docs/PECAS.md`. É essa perda que
   a peça K7c existe para não repetir; a procedência está em
   `docs/e2e/2026-09-08-1154-001/PROCEDENCIA.md`.
+
+Passos humanos que faltam para o CI receber este motor (não são desta sessão):
+`launchd.label: com.conteudos.orquestrador` no `000-config.json` do CI; `orq pausar`;
+`--atualizar --dry-run`, `--atualizar`, `npx vitest run` no CI, `--verificar` idêntico; apagar
+lá o `scripts/orquestrador/com.conteudos.orquestrador.plist.template` (o `--atualizar` não
+apaga nada, então o template velho fica ao lado do novo); commit por pathspec; `orq retomar`;
+push. Ver `~/orq-sessoes/relatorio-kit-etapa3.md`.

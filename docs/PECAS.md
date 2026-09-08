@@ -101,51 +101,122 @@
   aceite do ticket verdes, `enforcement ok`, `gates.txt` com `ok typecheck` / `ok test` /
   `VEREDITO: APROVADO`.
 
+- **K5b · `--verificar` cobre `scripts/roadmap/`.** `instalar.sh` compara também
+  `scripts/roadmap/` — motor vendorizado, porque `orq mapa lint` roda
+  `python3 scripts/roadmap/lint-mapa.py` a partir do MAIN_CHECKOUT.
+  *Evidência:* `3a76edb`; `scripts/orq:226`, no disco. Antes disto um `lint-mapa.py`
+  desatualizado no repo passava por "idêntico ao kit".
+  *Teste:* caso (d) de `scripts/kit/test-instalar.sh` — cópia do fixture com um byte a mais
+  em `lint-mapa.py`: `diferente scripts/roadmap/lint-mapa.py`, rc 1, exatamente 1 diferença.
+  Antes do conserto: `idêntico ao kit 2.1.0-dev`, rc 0.
+
+- **K8a · `instalar.sh --atualizar <repo> [--dry-run] [--forcar]`.** Copia o motor do kit por
+  cima do de `<repo>` (`scripts/orquestrador/` sem plist instanciado, `scripts/orq`,
+  `scripts/roadmap/`, `doutrina/` → `docs/orquestrador/skill/`) e carimba o `VERSAO`. `cp`, e
+  nunca `rsync --delete`: o que só existe no repo sobrevive e reaparece como `só no repo` no
+  `--verificar` que ele imprime no fim, junto da linha de commit por pathspec. Não toca
+  `docs/fila/**`. Três recusas com rc 1 — loop não pausado, `STATUS.md` que não diz `ocioso`,
+  motor do repo com modificação não commitada —, e só a terceira cede a `--forcar`.
+  *Evidência:* `fb8de45`; o bloco de vendorização do `scripts/kit/fixture.sh`, que já era o
+  mapa origem→destino do `ORIGEM.md` executado.
+  *Teste:* casos (e) e (f) de `scripts/kit/test-instalar.sh`. Antes: `ainda não: peça K8`, rc 2.
+
+- **K6a · monorepo por detecção, não por nome.** `pacotes_do_checkout` (`executor.sh`) lista
+  todo diretório do checkout principal com `node_modules` próprio — a raiz incluída, os
+  aninhados de dependência fora — e é essa lista que `limpa_cache_vite` e o novo
+  `linkar_node_modules` percorrem, no lugar do `for d in "" apps/web services/*/`.
+  `LC_ALL=C sort` reproduz a ordem antiga item a item.
+  *Evidência:* `d613b07`. Contra `~/Projetos/conteudos-infinitos` (só leitura) as duas listas
+  saem linha a linha idênticas — os 9 pacotes, na mesma ordem.
+  *Teste:* `test/orquestrador-pacotes.test.ts`, 6 casos (6 vermelhos antes), com a árvore do
+  CI simulada e um `packages/ui` que a lista fixa não cobria.
+
+- **K6b · linha `GATE` honesta para qualquer nome de gate.** Cada gate do config tem um PAPEL
+  (`typecheck` | `testes` | `build` | `lint`), declarado por `"papel"` ou inferido do nome;
+  `papel_marca` combina todos os gates daquele papel. `nao-configurado` entra no vocabulário
+  (o repo não tem gate com esse papel) e `nao-rodou` volta a significar só "há gate
+  configurado e ele não rodou". `lint=` é campo condicional. `typecheck_marca` saiu.
+  *Evidência:* `b8c303d`; a trilha do e2e de 08/09 dizendo `typecheck=nao-rodou
+  testes=nao-rodou build=nao-rodou` sobre gates que o `gates.txt` do mesmo attempt registra
+  como `ok` (preservada em `docs/e2e/2026-09-08-1154-001/events.log.txt`).
+  *Teste:* `test/orquestrador-trilha-gate-papel.test.ts`, 9 casos — 5 vermelhos antes, e os 4
+  verdes são justamente os do config do CI. Com `_referencia-ci/000-config.ci.json` e
+  `test/fixtures/runs-201/attempt-2.gates.txt` a linha sai
+  `901 GATE typecheck=ok testes=falha enforcement=ok criterios=3/3 build=nao-rodou`, que é
+  caractere a caractere a de antes. Os testes de trilha que já existiam ficaram verdes sem
+  edição.
+
+- **K6c · plist e launchd sem nome de repo.** `com.conteudos.orquestrador.plist.template` →
+  `com.orquestrador.plist.template`, com `{{LABEL}}`, `{{CHECKOUT}}`, `{{NODE_DIR}}` e
+  `{{START_INTERVAL}}`. `instalar-launchd.sh` lê `launchd.label` e `launchd.start_interval` do
+  `000-config.json`, ganha `--dry-run`, e RECUSA (rc 1) sem `launchd.label`: "defina
+  launchd.label no config; o CI usa com.conteudos.orquestrador". Nunca inventa label — label
+  inventado não dá erro, dá um segundo job carregado ao lado do antigo.
+  *Evidência:* `45e62d5`. A chave `launchd` entrou em `fixture/docs/fila/000-config.json` e em
+  `doutrina/templates/config.json`, com o comentário `_launchd`.
+  *Teste:* `test/orquestrador-launchd-config.test.ts`, 11 casos (10 vermelhos antes).
+
+- **1d · gate mudo por symlink, CONSERTADO.** O guard de CLI do `gate-ticket.ts` compara os
+  dois lados com `realpathSync`, num `chamadoComoCli()` com try/catch. Antes, `resolve(argv[1])`
+  não resolvia symlink e o `import.meta.url` vinha fisicamente resolvido: sob caminho com
+  symlink o gate saía 0 com stdout VAZIO — indistinguível de gate que aprovou.
+  *Evidência:* `014f8a5`. Com o conserto, o contorno do `scripts/kit/fixture.sh` (`pwd -P`)
+  saiu: o fixture voltou a nascer em `/tmp/orq-fixture-*`, com symlink no meio, então o
+  cenário do defeito virou o cenário PADRÃO da suíte inteira.
+  *Teste:* três casos em `test/orquestrador-gate-ticket.test.ts` (dois vermelhos antes, o
+  primeiro deles dizendo `o gate saiu MUDO: expected '' not to be ''`). Medido depois:
+  `bash scripts/orq validar --relatorio 001` de `/tmp/orq-fixture-*/repo` imprime o relatório
+  e sai 0; na etapa 2 saía 0 e mudo.
+
+- **K7c · o e2e guarda a própria evidência.** `preservar_evidencia`
+  (`scripts/kit/fixture-e2e.sh`) copia `docs/fila/runs/<id>/attempt-*/` inteiro, `events.log`
+  e `custo.json` para `docs/e2e/<AAAA-MM-DD-HHMM>-<id>/` no kit, renomeando `*.log` para
+  `*.log.txt`, e imprime o caminho. Roda logo depois do watchdog, antes das seções de
+  relatório. O script ganhou modo `ORQ_E2E_SOURCED=1` e destino por `ORQ_E2E_DOCS`.
+  *Evidência:* `2f93db4`; a perda do run de 08/09 11:54, registrada em
+  `docs/e2e/2026-09-08-1154-001/PROCEDENCIA.md` — os `attempt-*/` daquele run não existem
+  mais e não voltam.
+  *Teste:* `test/kit-e2e-evidencia.test.ts`, 7 casos (7 vermelhos antes), sem gastar nada.
+  O e2e NÃO foi rodado nesta sessão.
+
+
 ## PENDENTES
 
-- **K5b · o `--verificar` não cobre `scripts/roadmap/`.** ACHADO da etapa 2: `orq mapa lint` roda
-  `python3 scripts/roadmap/lint-mapa.py` a partir do MAIN_CHECKOUT (`scripts/orq:226`), então
-  `scripts/roadmap/` É motor vendorizado — o `fixture.sh` já o copia. O escopo do `--verificar`,
-  como esta peça o descreve e como K5 o entregou, são só três caminhos: um `lint-mapa.py`
-  desatualizado no repo passa por "idêntico". Não foi ampliado em K5 por decisão (o escopo estava
-  escrito; alargá-lo em silêncio é pior que a lacuna).
-  *Evidência:* `scripts/orq:226`; `scripts/kit/fixture.sh`, bloco "o motor, vendorizado".
-  *Teste:* copiar o fixture, mexer num byte de `scripts/roadmap/lint-mapa.py` e exigir
-  `diferente scripts/roadmap/lint-mapa.py` com rc 1.
+- **K6d · `scripts/kit/pureza.sh`.** O grep que TRANCA a pureza: em CÓDIGO (não em
+  comentário) de `scripts/orquestrador/**` e `scripts/orq`, zero premissa de repo. As três
+  premissas que a etapa 3 nomeou saíram (K6a, K6b, K6c) — falta o script que impede a próxima
+  de entrar. Comentário de proveniência pode ficar.
+  *Evidência:* inventário §8 item 5. A premissa que ficou no disco, com comentário no lugar:
+  `executor.sh`, o loop de `.env.local` (`for d in "" apps/web`) — generalizá-lo para os
+  pacotes detectados passaria a linkar `.env.local` em pacote que hoje não recebe link,
+  mudança de comportamento que K6a não pediu. Nenhuma outra apareceu por grep até aqui, e é
+  justamente o script que transforma "não achei" em "não há".
+  *Teste:* pureza = 0 em código, com o caso NEGATIVO de que um `apps/web` reintroduzido em
+  código faz o script sair 1.
 
-- **K6 · pureza.** `scripts/kit/pureza.sh`: grep em CÓDIGO (não em comentário) de
-  `scripts/orquestrador/**` e `scripts/orq` por premissa de repo. As duas reais hoje:
-  (a) diretórios do monorepo fixos no `executor.sh` (`apps/web`, `services/*/`, linhas 219, 240 e
-  247) → viram `toolchain.pacotes` no config, ou leitura dos `workspaces` do `package.json`;
-  (b) nome e label do plist template (`scripts/orquestrador/com.conteudos.orquestrador.plist.template`)
-  → `com.orquestrador.plist.template` com `{{LABEL}}`, e `instalar-launchd.sh` deriva o label do
-  config;
-  (c) ACHADO da etapa 2, **medido no e2e**: `event_gate` (`executor.sh:428-442`) monta a linha
-  `GATE` da trilha procurando gates por NOME FIXO do monorepo do CI — `typecheck_marca` casa
-  `typecheck_root`/`typecheck_web` (`executor.sh:415-424`), e as outras duas marcas casam
-  `testes_por_pacote` e `build`. Num repo cujos gates se chamem `typecheck` e `test` (o fixture),
-  a drenagem de 2026-09-08 gravou na trilha
-  `001 GATE typecheck=nao-rodou testes=nao-rodou enforcement=ok criterios=4/4 build=nao-rodou`
-  enquanto o `gates.txt` do mesmo attempt dizia `ok typecheck` / `ok test` /
-  `VEREDITO: APROVADO`. **A trilha afirmou "não rodou" sobre gates que rodaram e aprovaram.**
-  Não derruba o run (o desfecho sai do `gates.txt`, não da linha de evento), mas a trilha é o
-  ground truth de "o que aconteceu" — e aqui ela mente por premissa de repo. Os nomes dos gates
-  têm de sair do config, como o resto.
-  *Teste desta parte:* um repo de fixture com gates de nome próprio, e a linha `GATE` da trilha
-  refletindo o `gates.txt` — nenhum `nao-rodou` para gate que consta como `ok`.
-  *Evidência:* inventário §8 item 5; as linhas citadas, no disco.
-  *Teste:* pureza = 0 em código; comentário de proveniência pode ficar.
-
-- **K8 · `instalar.sh --novo | --atualizar`, com `--dry-run` e relatório.** O `--novo` nasce do
-  bloco de vendorização do `scripts/kit/fixture.sh` (K7a), que já é o mapa origem→destino do
-  `ORIGEM.md` executado: `scripts/orquestrador/` (menos o plist instanciado), `scripts/orq`,
-  `scripts/roadmap/`, `doutrina/` → `docs/orquestrador/skill/`, mais o carimbo `VERSAO`. Migra
-  `liberacoes.json` (duas listas do Comarka → objetos, `em` → `liberado_em`, prefixo `humano:`),
-  pause file (`.orq-pause` → `PAUSAR`), config (mapa de chaves legadas → schema 2 limpo) e o bloco
-  JSON dos tickets pendentes (prosa intacta). Nunca reescreve objetivo de ticket.
+- **K8b · `instalar.sh --novo` e as migrações.** O `--novo` nasce do mesmo bloco de
+  vendorização do `scripts/kit/fixture.sh` que o `--atualizar` (K8a) já usa, mais os dois
+  artefatos que a doutrina manda vir do template (`doutrina/templates/TICKET.md` →
+  `docs/fila/_TEMPLATE.md`, `PLAYBOOK-seed.md` → `docs/orquestrador/PLAYBOOK.md`). E as
+  migrações, que o `--atualizar` deliberadamente NÃO faz: `liberacoes.json` (duas listas do
+  Comarka → objetos, `em` → `liberado_em`, prefixo `humano:`), pause file (`.orq-pause` →
+  `PAUSAR`), config (mapa de chaves legadas → schema 2 limpo) e o bloco JSON dos tickets
+  pendentes (prosa intacta). Nunca reescreve objetivo de ticket.
   *Evidência:* inventário §4 decisões 3 e 4, §6 itens 9 e 12, §8 item 4.
-  *Teste:* migração de cada artefato legado, com o caso NEGATIVO de que a prosa e o objetivo não
-  se movem.
+  *Teste:* migração de cada artefato legado, com o caso NEGATIVO de que a prosa e o objetivo
+  não se movem.
+
+- **K8c · a recusa 3 do `--atualizar` não olha `scripts/roadmap/`.** ACHADO da etapa 3: desde
+  K5b o `--atualizar` ESCREVE em `scripts/roadmap/`, mas a recusa por árvore suja
+  (`instalar.sh`, `atualizar()`) confere só `scripts/orquestrador/**`, `scripts/orq` e
+  `docs/orquestrador/skill/**` — os três caminhos que a peça K8a enumerava. Um `lint-mapa.py`
+  modificado e não commitado no repo é apagado em silêncio. Não foi ampliado junto com K8a por
+  decisão: o contrato das três recusas estava escrito, e alargá-lo em silêncio é pior que a
+  lacuna.
+  *Evidência:* `instalar.sh`, a linha `git -C "$repo" status --porcelain -- scripts/orquestrador
+  scripts/orq docs/orquestrador/skill`; `fb8de45`, seção ACHADO da mensagem.
+  *Teste:* repo com `scripts/roadmap/lint-mapa.py` modificado e não commitado → `--atualizar`
+  recusa com rc 1 nomeando o caminho; com `--forcar`, passa e avisa.
 
 - **K9 · contrato.** `CONTRATO.md`, `ticket.schema.json`, `liberacoes.schema.json` e o enum
   `motivo_categoria` (os 8 baldes do `orq-telemetria.py` do Comarka). `risco` é derivado (passo 6
@@ -183,20 +254,6 @@
   evento.
   *Evidência:* inventário §5 (linha do validador de ticket).
   *Teste:* um caso por check, mais o NEGATIVO do gate barrando antes do agente.
-
-- **1d · gate mudo por symlink no caminho.** O guard de CLI do `gate-ticket.ts` compara
-  `import.meta.url` com `argv[1]` sem `realpath`; chamado por caminho com symlink (macOS
-  `/tmp` → `/private/tmp`) sai 0 sem rodar nada: gate mudo. Conserto no MOTOR: `realpath`
-  dos dois lados.
-  *Evidência:* `scripts/orquestrador/gate-ticket.ts:549-551`
-  (`if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href)`);
-  `resolve()` normaliza mas NÃO resolve symlink, e o `import.meta.url` que o node entrega vem
-  fisicamente resolvido. Medido na etapa 2: com o fixture em `/tmp/orq-fixture-*/repo`,
-  `orq validar --relatorio 001` saía rc 0 com stdout VAZIO; com `/private/tmp/...`, imprimia o
-  relatório. Contornado no kit (o `scripts/kit/fixture.sh` imprime `pwd -P`), não consertado —
-  o buraco espera qualquer repo instalado sob caminho com symlink.
-  *Teste:* chamar o gate por um symlink e EXIGIR saída — o caso negativo é o que falta hoje:
-  gate que sai 0 sem imprimir nada é indistinguível de gate que aprovou.
 
 - **K12 · painel.** `orq-server.py` + `orq-painel.py` do Comarka entram como `painel/`, refatorados
   para ler só o contrato (STATUS, events, custo, liberacoes v2, PAUSAR, tickets); `LABELS` →
