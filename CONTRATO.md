@@ -378,6 +378,16 @@ termina com `>`), nunca quando apenas menciona um: a `descricao` do template diz
 "Placeholders <ASSIM> são decisões locais", e cobrar por substring reprovaria o
 próprio texto que explica a regra.
 
+Um gate de `tipo: "baseline"` é julgado pela CONTAGEM na saída, não pelo exit
+code (`gates.ts:avaliaGate`): `baseline: N` mais `direcao: "max"` (padrão — ok
+com contagem ≤ N, o caso dos erros de tipo herdados) ou `"min"` (ok com ≥ N).
+`contagem_regex` diz o que contar — sem grupo de captura, quantas LINHAS casam;
+com grupo, a SOMA dos números capturados; ausente, o `error TS\d+` de sempre.
+`preparo: [...]` são comandos rodados antes do `cmd`, com o rc IGNORADO (é
+higiene, não verificação). Em `direcao: "max"`, exit != 0 com contagem ZERO
+reprova assim mesmo: é o comando que falhou por outro motivo, não o baseline.
+Em `direcao: "min"` o exit code continua valendo.
+
 Todo gate do config precisa de um PAPEL que o executor consiga ver — declarado
 ou inferível do nome (§4.2) —, **exceto** os de `tipo: preparacao`, que não
 verificam nada (no CI é o `limpeza_artefatos`, um `rm -rf` do artefato de build

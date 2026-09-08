@@ -117,7 +117,7 @@ export const GATE_TIPOS: Array<{ de: string; para: string; porque: string }> = [
     de: 'tsc_baseline',
     para: 'baseline',
     porque:
-      'gates.ts:151 só honra `tipo === "baseline"` para comparar contra o baseline de erros herdados. O Comarka escreve `tsc_baseline` e declara `baseline: 3` — com o nome que o motor do kit não conhece, o gate cai no caminho de `exit_code` puro, os 3 erros herdados em `qualificacao*` reprovam TODO ticket, para sempre, e o motivo não aparece em lugar nenhum.',
+      'gates.ts:151 só honra `tipo === "baseline"` para comparar contra o baseline de erros herdados. O Comarka escreve `tsc_baseline` e declara `baseline: 3` — com o nome que o motor do kit não conhece, o gate cai no caminho de `exit_code` puro, os 3 erros herdados em `qualificacao*` reprovam TODO ticket, para sempre, e o motivo não aparece em lugar nenhum. A peça G acrescentou `direcao`, `contagem_regex` e `preparo` a esse tipo; nenhum dos três é renomeado a partir do Comarka, porque nenhum existe lá: `direcao` cai no padrão `max`, e o `preparo` (o `rm -rf .next tsconfig.tsbuildinfo` que o `sanear_tsc` de lá faz antes de todo tsc) é DECISÃO de quem migra — migração que inventa comando para rodar é migração que executa o que ninguém escreveu.',
   },
 ]
 
@@ -332,6 +332,12 @@ export const PROPRIAS_DE_REPO: PropriaDeRepo[] = [
     repo: 'comarka-operacional',
     porque:
       'é a fronteira intocável do Comarka, com a MESMA forma de `zona_proibida` (`no_write_tables`, `no_write_prefixes`, `os_owned_excecoes`) mais duas listas próprias (`dashboard_readonly`, `ghl_comercial`). A tabela NÃO a renomeia: o motor lê `zona_proibida` (enforcement-core.ts:211), e mover a fronteira do enforcement por semelhança de nome é a mudança mais cara que uma migração automática poderia fazer errado. Fica intacta, e o relatório grita que `zona_proibida` está AUSENTE — o enforcement do Comarka não tem fronteira até alguém decidir.',
+  },
+  {
+    chave: 'gates[].baseline_scope_regex',
+    repo: 'comarka-operacional',
+    porque:
+      'ACHADO da peça G: o `gate_tsc` do Comarka (executor.sh:119-125 de lá) não CONTA erro nenhum — ele filtra a saída por este regex e reprova se sobrar qualquer `error TS` FORA do escopo `qualificacao`. O `baseline: 3` de lá é documentação, não regra. O `tipo: baseline` do kit compara CONTAGEM, então o gate migrado passa a significar "no máximo 3 erros, em qualquer arquivo" — mais frouxo num eixo (aceita 3 erros em qualquer lugar) e mais rígido noutro (um 4º erro dentro de qualificacao passa a reprovar). É mudança de SIGNIFICADO, não de forma: fica registrada aqui para decisão humana na adoção do Comarka, e a tabela não a converte sozinha.',
   },
   {
     chave: 'gate_streak_limite',

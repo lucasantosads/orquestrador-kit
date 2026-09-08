@@ -24,7 +24,29 @@ export interface GateSpec {
   nome: string
   cmd: string
   tipo: string
+  /** `tipo: "baseline"` — o número contra o qual a contagem é comparada. */
   baseline?: number
+  /**
+   * `max` (padrão): ok quando a contagem é MENOR OU IGUAL ao baseline — é o
+   * caso dos erros de tipo herdados. `min`: ok quando é MAIOR OU IGUAL — é o
+   * caso de um placar de testes, e a mesma regra do `baseline_placar`, que
+   * NUNCA compara por igualdade (um ticket que adiciona teste sobe o placar).
+   */
+  direcao?: 'max' | 'min'
+  /**
+   * Como extrair o número da saída. Ausente: conta as LINHAS que casam
+   * `error TS\d+`, que é o que este motor sempre fez. Com grupo de captura:
+   * SOMA os números capturados (um placar por bloco, como o `parsePlacar` já
+   * soma). Sem grupo: conta as linhas que casam.
+   */
+  contagem_regex?: string
+  /**
+   * Comandos rodados ANTES do `cmd`, no mesmo executor. A lição do Comarka:
+   * baseline medido com cache MENTE — o `tsconfig` inclui `.next/types/**` e um
+   * `tsconfig.tsbuildinfo` de build anterior injeta erro-fantasma, e foi assim
+   * que o gate contou 3 e o critério contou 5 no MESMO worktree.
+   */
+  preparo?: string[]
   baseline_placar?: Placar
   cobertura_minima_services?: number
 }
@@ -135,11 +157,67 @@ export function avaliaPlacar(
   return { ok: true }
 }
 
-/** Conta erros de tipo fora do escopo do baseline. */
-export function avaliaBaselineTsc(saida: string, baseline: number): { ok: boolean; motivo?: string } {
-  const erros = saida.split('\n').filter((l) => /error TS\d+/.test(l)).length
-  if (erros > baseline) return { ok: false, motivo: `${erros} erro(s) de tipo, baseline ${baseline}` }
+/** O padrão de contagem quando o gate não declara `contagem_regex`. */
+export const CONTAGEM_PADRAO = 'error TS\\d+'
+
+/**
+ * O NÚMERO que a saída do gate carrega.
+ *
+ * Duas semânticas, e o que decide é o regex TER ou NÃO grupo de captura:
+ *   sem grupo  -> quantas LINHAS casam (o `error TS1234` de sempre; uma linha
+ *                 com dois erros continua contando 1, como sempre contou);
+ *   com grupo  -> a SOMA dos números capturados, para um placar espalhado em
+ *                 vários blocos (`Tests 711 passed` por pacote).
+ *
+ * O strip de ANSI é o mesmo do `parsePlacar`, e pela mesma razão: vitest 4.x
+ * mantém os escapes quando a saída não é TTY.
+ */
+export function contarNaSaida(saida: string, regex?: string): number {
+  const fonte = regex && regex.trim() ? regex : CONTAGEM_PADRAO
+  const limpa = saida.split('\n').map((l) => l.replace(/\x1B\[[0-9;]*m/g, ''))
+  const temGrupo = new RegExp(fonte + '|').exec('')!.length - 1 > 0
+  if (!temGrupo) {
+    const re = new RegExp(fonte)
+    return limpa.filter((l) => re.test(l)).length
+  }
+  const re = new RegExp(fonte, 'g')
+  let total = 0
+  for (const linha of limpa) {
+    for (const m of linha.matchAll(re)) {
+      const n = Number(m[1])
+      if (Number.isFinite(n)) total += n
+    }
+  }
+  return total
+}
+
+/**
+ * Compara a contagem com o baseline, na direção declarada.
+ * `max` é o padrão porque foi o único caso por meses (erros de tipo herdados);
+ * declarar `min` é o que torna a mesma máquina utilizável para um placar.
+ */
+export function avaliaBaseline(
+  saida: string,
+  baseline: number,
+  direcao: 'max' | 'min' = 'max',
+  contagemRegex?: string,
+): { ok: boolean; motivo?: string } {
+  const n = contarNaSaida(saida, contagemRegex)
+  if (direcao === 'min') {
+    if (n < baseline) return { ok: false, motivo: `contagem ${n} < baseline ${baseline} (direcao min)` }
+    return { ok: true }
+  }
+  if (n > baseline) return { ok: false, motivo: `${n} erro(s) de tipo, baseline ${baseline}` }
   return { ok: true }
+}
+
+/**
+ * Conta erros de tipo fora do escopo do baseline. Fachada de `avaliaBaseline`
+ * com a direção e o regex de sempre — a mensagem de motivo é a MESMA string de
+ * antes, byte a byte, porque ela aparece na trilha e no gates.txt do CI.
+ */
+export function avaliaBaselineTsc(saida: string, baseline: number): { ok: boolean; motivo?: string } {
+  return avaliaBaseline(saida, baseline, 'max')
 }
 
 /** Julga UM gate já executado. Pura: recebe a execução, não executa nada. */
@@ -149,7 +227,27 @@ export function avaliaGate(spec: GateSpec, exec: Execucao): GateResultado {
     return { ...base, ok: false, motivo: `interrompido (exit ${exec.exitCode})` }
   }
   if (spec.tipo === 'baseline' && spec.baseline !== undefined) {
-    const r = avaliaBaselineTsc(exec.saida, spec.baseline)
+    const direcao = spec.direcao ?? 'max'
+    const n = contarNaSaida(exec.saida, spec.contagem_regex)
+    const r = avaliaBaseline(exec.saida, spec.baseline, direcao, spec.contagem_regex)
+    if (direcao === 'max') {
+      // Em `max`, quem decide é a CONTAGEM, não o exit code — e é a única
+      // leitura que faz `baseline: 3` significar alguma coisa: um `tsc` com 3
+      // erros herdados SEMPRE sai != 0, então exigir exit 0 junto tornava todo
+      // baseline > 0 impossível de satisfazer, em silêncio. (O CI não viu isso
+      // porque os dois baselines dele são 0, onde as duas leituras coincidem.)
+      //
+      // GUARD do gate MUDO: saiu != 0 e não contou NADA significa que o comando
+      // falhou por outro motivo — binário ausente, tsconfig quebrado, morte no
+      // meio. Aprovar aí seria aprovar um gate que não rodou.
+      if (exec.exitCode !== 0 && n === 0) {
+        return { ...base, ok: false, motivo: `exit ${exec.exitCode} e nenhuma linha contada — o comando falhou por outro motivo que não os ${spec.baseline} erro(s) do baseline` }
+      }
+      return { ...base, ok: r.ok, ...(r.motivo ? { motivo: r.motivo } : {}) }
+    }
+    // Em `min` o exit code CONTINUA valendo: ali a contagem mede sucesso
+    // (quantos testes passaram), e um comando que saiu != 0 quebrou em algum
+    // lugar — o placar alto não desfaz o que falhou.
     return { ...base, ok: base.ok && r.ok, ...(r.motivo ? { motivo: r.motivo } : {}) }
   }
   if (spec.baseline_placar) {
@@ -179,6 +277,12 @@ export function rodarGates(config: GatesConfig, exec: (cmd: string) => Execucao)
   const gates: GateResultado[] = []
 
   for (const spec of specs) {
+    // PREPARO antes do comando, e o rc dele é IGNORADO de propósito: preparo é
+    // higiene (`rm -f tsconfig.tsbuildinfo`), e `rm` de arquivo que não existe
+    // sai != 0 em algumas conchas. Transformar isso em reprovação seria o gate
+    // culpando o ticket pela limpeza — o mesmo `|| true` que o Comarka já
+    // escreve no `sanear_tsc`.
+    for (const p of spec.preparo ?? []) if (p && p.trim()) exec(p)
     const r = avaliaGate(spec, exec(spec.cmd))
     gates.push(r)
     if (!r.ok) {

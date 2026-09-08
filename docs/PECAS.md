@@ -478,6 +478,32 @@
   própria — o que cobre esse buraco hoje é o `probe_modelos`, que o Actus não tem.
 
 
+- **G · gate `tipo: baseline` com direção, contagem e preparo.** `gates.ts` ganhou
+  `direcao: "max" | "min"` (padrão `max`), `contagem_regex` (sem grupo de captura conta
+  LINHAS; com grupo, SOMA os números — um placar por bloco) e `preparo: [...]`, rodado
+  antes do `cmd` com o rc IGNORADO (é higiene, não verificação: a lição do Comarka é que
+  baseline medido com cache mente).
+  *DEFEITO achado e consertado no caminho:* em `direcao: max` quem decide passou a ser a
+  CONTAGEM, não o exit code. Um `tsc` com 3 erros herdados SEMPRE sai != 0, então exigir
+  exit 0 junto tornava todo `baseline > 0` impossível de satisfazer — em silêncio. O CI
+  nunca viu porque os dois baselines dele são 0, onde as duas leituras coincidem. Com o
+  conserto veio o guard do gate MUDO: exit != 0 com contagem ZERO reprova, porque é o
+  comando que falhou por outro motivo. Em `direcao: min` o exit code continua valendo —
+  ali a contagem mede sucesso, e placar alto não desfaz o que quebrou.
+  *Evidência:* o gate real do Comarka (`{"nome":"tsc","tipo":"tsc_baseline","baseline":3}`),
+  lido no PASSO 0. E um ACHADO que virou item de `PROPRIAS_DE_REPO`: o `gate_tsc` de lá
+  (`executor.sh:119-125`) não conta nada — filtra por `baseline_scope_regex` e reprova se
+  sobrar erro FORA do escopo. O `baseline: 3` é documentação naquele repo, e traduzir para
+  contagem muda o SIGNIFICADO do gate. Fica registrado para decisão humana.
+  *Teste:* `test/orquestrador-gate-baseline.test.ts`, 21 casos, **10 vermelhos antes**. O
+  gate do Comarka em fixture passa com 3 erros e falha com 4.
+  *O que o CI faz diferente:* nada — nenhum gate dele declara `direcao`, `contagem_regex`
+  ou `preparo`; os dois `baseline: 0` seguem com a MESMA mensagem de motivo, byte a byte
+  (`1 erro(s) de tipo, baseline 0`); e `ACEITA placar MAIOR que o baseline` continua indo
+  pelo caminho do `baseline_placar`, que esta peça não toca. Os 29 casos de
+  `orquestrador-gates.test.ts` seguem verdes sem edição.
+
+
 ## PENDENTES
 
 - **K11a-4 · o resto do enforcement do Actus (E, F e a exceção de teste-SQL).** A K11a-1
