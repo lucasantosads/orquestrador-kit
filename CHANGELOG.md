@@ -144,6 +144,26 @@ attempt registra como `ok`. Não derruba o run; faz a trilha mentir.
   agora. *O que o CI faz diferente:* nada — o `scripts/roadmap/` do CI está limpo no git; a
   recusa só dispara para quem tem trabalho pendurado ali, e `--forcar` continua sendo a única
   saída, com aviso.
+- **K8d** — os testes de harness passam a viajar com o motor. `--verificar` e `--atualizar`
+  cobrem uma lista ENUMERADA (`scripts/kit/vendorizado.sh`, sourceada também pelo
+  `scripts/kit/fixture.sh`, para que instalar e instanciar vendorizem o mesmo conjunto):
+  `test/fixtures/orq-harness.ts`, 6 `test/*.test.ts` e 3 fixtures de dados. Nada de glob
+  sobre `test/`: teste do PRODUTO não é tocado nem listado. O `criarFixture` do harness
+  voltou a ler o config REAL do checkout quando ele existe (`configDeReferencia()`), com o
+  `FX_CHECKOUT` como fallback — sem isso o harness era intransportável: instalado num repo,
+  passaria a assegurar sobre o config do KIT em vez do config daquele repo.
+  *ACHADOS (medidos, não opinados):* dos 27 arquivos de teste candidatos, 17 diferem do CI
+  por terem sido re-apontados para fixtures do kit em K3/K7b; 2 são byte-idênticos ao CI e
+  ainda assim não viajam porque hardcodam valores do CI (`orq-cli.test.ts:205,237` cobra
+  `US$ 50`, o `usd_dia` do CI; `orquestrador-observabilidade.test.ts:216-217` cobra os gates
+  `typecheck_root`/`typecheck_web`, os nomes que a K6b tirou do motor); 3 dependem de
+  `scripts/kit/fixture.sh`, `_referencia-ci/` ou `test/fixtures/bin/`, que o repo instalado
+  não tem. Peça K8e registrada em `docs/PECAS.md` para destravá-los.
+  *O que o CI faz diferente:* o `--atualizar --dry-run` contra `~/Projetos/conteudos-infinitos`
+  passa a listar `diferente test/fixtures/orq-harness.ts` e `só no kit
+  test/orquestrador-pacotes.test.ts`. O harness do kit não REMOVE nada do harness do CI: o
+  bloco de 5 linhas que sai virou a função `configDeReferencia()`, que num repo com
+  `docs/fila` lê o mesmo arquivo de antes.
 
 Passos humanos que faltam para o CI receber este motor (não são desta sessão):
 `launchd.label: com.conteudos.orquestrador` no `000-config.json` do CI; `orq pausar`;

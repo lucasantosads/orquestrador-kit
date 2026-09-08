@@ -8,6 +8,8 @@
 #                                                    -> o resultado real, seja qual for
 #   (d) contra uma CÓPIA do fixture com um byte a mais em
 #       scripts/roadmap/lint-mapa.py                 -> `diferente ... lint-mapa.py`, rc 1
+#   (h) --verificar/--atualizar cobrem os testes do harness que o kit vendoriza,
+#       e NÃO tocam teste do produto (peça K8d)
 #   (g) --atualizar com scripts/roadmap/lint-mapa.py modificado e NÃO commitado
 #                                                    -> recusa nomeando o caminho, rc 1;
 #                                                       com --forcar, passa e avisa (K8c)
@@ -50,7 +52,8 @@ COPIA_ROADMAP="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
 COPIA_UPD="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
 COPIA_EXTRA="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
 COPIA_SUJA="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
-trap 'bash "$KIT/scripts/kit/fixture.sh" --limpar "$FX" >/dev/null 2>&1; rm -rf "$COPIA" "$COPIA_ROADMAP" "$COPIA_UPD" "$COPIA_EXTRA" "$COPIA_SUJA"' EXIT
+COPIA_TESTES="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
+trap 'bash "$KIT/scripts/kit/fixture.sh" --limpar "$FX" >/dev/null 2>&1; rm -rf "$COPIA" "$COPIA_ROADMAP" "$COPIA_UPD" "$COPIA_EXTRA" "$COPIA_SUJA" "$COPIA_TESTES"' EXIT
 
 # --- (a) ---------------------------------------------------------------------
 echo "== (a) fixture recém-instanciado =="
@@ -211,6 +214,60 @@ printf '%s' "$saida" | grep -q -- '--forcar: passando por cima' \
   && ok "avisa que passou por cima" || falha "não avisou o que apagou"
 cmp -s "$KIT/scripts/roadmap/lint-mapa.py" "$SUJO/scripts/roadmap/lint-mapa.py" \
   && ok "o lint-mapa.py do repo é o do kit" || falha "o --forcar não sobrescreveu o lint-mapa.py"
+
+# --- (h) · K8d · os testes do harness viajam com o motor ---------------------
+# Decisão da peça: teste de harness é do KIT. O repo instalado não escreve teste
+# de harness — se escrever, ele vira `diferente` no --verificar e o --atualizar
+# o substitui, como qualquer outro arquivo de motor. Teste do PRODUTO, que só
+# existe no repo, não é tocado nem listado.
+echo
+echo "== (h) --verificar/--atualizar cobrem os testes do harness =="
+mkdir -p "$COPIA_TESTES/repo"
+cp -R "$FX/." "$COPIA_TESTES/repo/"
+TST="$COPIA_TESTES/repo"
+ALVO=test/orquestrador-pacotes.test.ts
+mkdir -p "$TST/test"
+# O fixture já nasce com os testes do harness vendorizados (fixture.sh usa a
+# mesma lista do instalar.sh). Aqui um deles é ENVELHECIDO à mão, que é o estado
+# real de um repo instalado com um kit anterior.
+printf '// versao envelhecida, de um kit anterior\n' > "$TST/$ALVO"
+# Teste do PRODUTO: só existe no repo, e tem de sobreviver intacto.
+printf 'import { it, expect } from "vitest";\nit("produto", () => expect(1).toBe(1));\n' \
+  > "$TST/test/produto.test.ts"
+ANTES_PRODUTO="$(cksum < "$TST/test/produto.test.ts")"
+printf '2026-09-08 12:00 | atualizando o motor\n' > "$TST/docs/fila/PAUSAR"
+git -C "$TST" add -- test >/dev/null 2>&1
+git -C "$TST" commit -q -m 'repo: testes' >/dev/null 2>&1
+
+echo "-- (h1) --verificar acusa o teste envelhecido --"
+saida="$(bash "$KIT/instalar.sh" --verificar "$TST" 2>&1)"; rc=$?
+printf '%s\n' "$saida" | sed 's/^/  | /'
+[ "$rc" = 1 ] && ok "rc 1" || falha "rc $rc (esperava 1)"
+printf '%s' "$saida" | grep -qE "^diferente +$ALVO\$" \
+  && ok "lista 'diferente $ALVO'" || falha "não listou o $ALVO como diferente"
+printf '%s' "$saida" | grep -q 'produto.test.ts' \
+  && falha "o verificador citou o teste do PRODUTO (não é dele)" \
+  || ok "não cita test/produto.test.ts (teste do produto não é motor)"
+
+echo "-- (h2) --atualizar corrige, e o teste do produto sobrevive --"
+saida="$(bash "$KIT/instalar.sh" --atualizar "$TST" 2>&1)"; rc=$?
+printf '%s\n' "$saida" | sed 's/^/  | /'
+[ "$rc" = 0 ] && ok "rc 0" || falha "rc $rc (esperava 0)"
+cmp -s "$KIT/$ALVO" "$TST/$ALVO" \
+  && ok "$ALVO do repo é o do kit" || falha "$ALVO continua envelhecido"
+[ "$(cksum < "$TST/test/produto.test.ts")" = "$ANTES_PRODUTO" ] \
+  && ok "test/produto.test.ts intacto" || falha "o --atualizar mexeu no teste do produto"
+printf '%s' "$saida" | grep -q "idêntico ao kit $(cat "$KIT/VERSAO")" \
+  && ok "o --verificar do fim diz 'idêntico ao kit <VERSAO>'" || falha "não ficou idêntico"
+
+echo "-- (h3) a suíte do REPO passa com os testes que o kit instalou --"
+# O teste de portabilidade de verdade: os testes de harness vendorizados rodam
+# DENTRO do repo instalado, contra o config DELE (que não é o do kit nem o do
+# CI). Um teste que só passa no kit não é teste de harness — é teste do kit, e
+# não entra na lista de scripts/kit/vendorizado.sh.
+saida="$(cd "$TST" && npx vitest run --reporter=dot 2>&1)"; rc=$?
+printf '%s\n' "$saida" | tail -6 | sed 's/^/  | /'
+[ "$rc" = 0 ] && ok "npx vitest run no repo: rc 0" || falha "npx vitest run no repo: rc $rc"
 
 # --- (c) ---------------------------------------------------------------------
 echo

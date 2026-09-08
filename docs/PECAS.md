@@ -188,6 +188,23 @@
   por cima` e o arquivo vira o do kit. 5 vermelhos antes — o `--atualizar` saía 0 dizendo
   `idêntico ao kit`, com a modificação já apagada.
 
+- **K8d · os testes do harness viajam com o motor.** `instalar.sh` compara e copia uma lista
+  ENUMERADA, em `scripts/kit/vendorizado.sh` — sourceada também pelo `scripts/kit/fixture.sh`,
+  para que instalar num repo e instanciar o fixture vendorizem o MESMO conjunto:
+  `test/fixtures/orq-harness.ts`, 6 testes e 3 fixtures de dados. Sem glob sobre `test/`:
+  teste do produto não é tocado nem listado. `criarFixture` voltou a ler o config REAL do
+  checkout quando existe (`configDeReferencia()`), com `FX_CHECKOUT` como fallback.
+  *Evidência:* medição contra `~/Projetos/conteudos-infinitos` — 17 dos 27 candidatos foram
+  re-apontados para fixtures do kit em K3/K7b, 2 hardcodam valores do CI e falham em
+  qualquer outro repo (`orq-cli.test.ts:205,237` cobra `US$ 50`;
+  `orquestrador-observabilidade.test.ts:216-217` cobra `typecheck_root`/`typecheck_web`), 3
+  dependem de `scripts/kit/fixture.sh` / `_referencia-ci/` / `test/fixtures/bin/`.
+  *Teste:* caso (h) de `scripts/kit/test-instalar.sh` — (h1) teste envelhecido no repo →
+  `diferente test/...` e rc 1, sem citar `test/produto.test.ts`; (h2) `--atualizar` corrige e
+  o teste do produto continua byte a byte igual; (h3) `npx vitest run` DENTRO do repo
+  atualizado sai rc 0 (8 arquivos, 62 testes) — é essa a prova de portabilidade, contra um
+  config que não é o do kit nem o do CI. 3 vermelhos antes.
+
 - **1d · gate mudo por symlink, CONSERTADO.** O guard de CLI do `gate-ticket.ts` compara os
   dois lados com `realpathSync`, num `chamadoComoCli()` com try/catch. Antes, `resolve(argv[1])`
   não resolvia symlink e o `import.meta.url` vinha fisicamente resolvido: sob caminho com
@@ -237,6 +254,21 @@
   *Evidência:* inventário §4 decisões 3 e 4, §6 itens 9 e 12, §8 item 4.
   *Teste:* migração de cada artefato legado, com o caso NEGATIVO de que a prosa e o objetivo
   não se movem.
+
+- **K8e · os testes que ainda não viajam.** Três baldes, achados da K8d, cada um com uma
+  saída diferente. (i) Os 17 re-apontados para `FX_CHECKOUT`/`test/fixtures/checkout` nas
+  peças K3/K7b: a saída é a mesma da K8d — ler o config REAL do checkout quando existe, como
+  `configDeReferencia()` já faz —, arquivo a arquivo, e cada um entra na lista de
+  `scripts/kit/vendorizado.sh` quando passar dentro do fixture. (ii) `orq-cli.test.ts` e
+  `orquestrador-observabilidade.test.ts`: hardcodam `US$ 50` e `typecheck_root`/`typecheck_web`,
+  valores do config do CI; a saída é ler do config sob teste, e é a mesma cirurgia da K6b
+  (nome de gate do repo não é constante de motor). (iii) `orquestrador-launchd-config.test.ts`
+  + `test/fixtures/bin/` e `orquestrador-trilha-gate-papel.test.ts`: dependem de
+  `scripts/kit/fixture.sh`, `_referencia-ci/` e `fixture/` — são testes DO KIT e a decisão é
+  que fiquem, não que viajem.
+  *Evidência:* a medição da K8d, no CHANGELOG 2.1.0-dev, etapa 4.
+  *Teste:* o mesmo (h3) de `scripts/kit/test-instalar.sh` — `npx vitest run` dentro do repo
+  atualizado sai 0 com o arquivo na lista; e o NEGATIVO de que ele falhava lá antes.
 
 - **K9 · contrato.** `CONTRATO.md`, `ticket.schema.json`, `liberacoes.schema.json` e o enum
   `motivo_categoria` (os 8 baldes do `orq-telemetria.py` do Comarka). `risco` é derivado (passo 6

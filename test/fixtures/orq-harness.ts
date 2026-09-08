@@ -95,17 +95,32 @@ export interface Ticket {
   [k: string]: unknown;
 }
 
+/**
+ * O config que `criarFixture` semeia — e de ONDE ele sai (peça K8d).
+ *
+ * Config REAL do checkout quando existe: os testes têm que falhar quando o
+ * config do repo muda de forma incompatível, não passar contra uma cópia
+ * congelada. É como este arquivo nasceu no conteudos-infinitos, e é a
+ * propriedade que faz o teste valer alguma coisa lá.
+ *
+ * O kit não tem `docs/fila` — a fila é do repo INSTALADO —, e por isso a etapa
+ * 1 tinha trocado a leitura por `FX_CHECKOUT` de vez. A troca deixou o harness
+ * intransportável: instalado num repo, ele passaria a assegurar sobre o config
+ * do kit em vez do config daquele repo. Aqui o real GANHA e o fixture é
+ * fallback, então o mesmo arquivo serve aos dois: no kit resolve para
+ * `test/fixtures/checkout`, no repo instalado para a fila de verdade.
+ */
+export function configDeReferencia(): string {
+  const doRepo = join(REPO_ROOT, 'docs', 'fila', '000-config.json');
+  if (existsSync(doRepo)) return readFileSync(doRepo, 'utf8');
+  return readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8');
+}
+
 /** Cria o fixture: docs/fila/{000-config.json,runs/} + os tickets pedidos. */
 export function criarFixture(tickets: Ticket[] = []): string {
   const raiz = mkdtempSync(join(tmpdir(), 'orq-fx-'));
   mkdirSync(join(raiz, 'docs', 'fila', 'runs'), { recursive: true });
-  // Config do checkout de fixture (FX_CHECKOUT). No repo de origem esta linha
-  // lia docs/fila/000-config.json do próprio checkout; o kit não tem fila —
-  // ela é do repo instalado —, então a referência mora em test/fixtures/.
-  escrever(
-    join(raiz, 'docs', 'fila', '000-config.json'),
-    readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8'),
-  );
+  escrever(join(raiz, 'docs', 'fila', '000-config.json'), configDeReferencia());
   for (const t of tickets) escreverTicket(raiz, t);
   return raiz;
 }

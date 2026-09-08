@@ -26,6 +26,7 @@
 #   kit scripts/orq             <->   <repo>/scripts/orq
 #   kit scripts/roadmap/        <->   <repo>/scripts/roadmap/
 #   kit doutrina/               <->   <repo>/docs/orquestrador/skill/
+#   kit test/<enumerados>       <->   <repo>/test/<os mesmos>   (peça K8d)
 #
 # scripts/roadmap/ entrou na comparação em K5b, e não por simetria: `orq mapa
 # lint` roda `python3 scripts/roadmap/lint-mapa.py` a partir do MAIN_CHECKOUT
@@ -125,6 +126,14 @@ comparar_arquivo() {
   if ! cmp -s "$a" "$b"; then printf 'diferente   %s\n' "$rotulo"; DIFERENCAS=$((DIFERENCAS+1)); fi
 }
 
+# --- os testes do harness (peça K8d) ------------------------------------------
+# A lista mora em scripts/kit/vendorizado.sh, sourceada também pelo
+# scripts/kit/fixture.sh: quem instancia o fixture e quem instala num repo têm
+# de vendorizar exatamente o mesmo conjunto. O arquivo explica, com a medição,
+# por que a lista é curta.
+# shellcheck source=scripts/kit/vendorizado.sh
+source "$KIT/scripts/kit/vendorizado.sh"
+
 # comparar_tudo <repo> — as quatro comparações do mapa origem->destino. Existe
 # separada do verificar() porque o --atualizar --dry-run mostra EXATAMENTE esta
 # lista: duas listas que se pretendem iguais e são montadas em dois lugares
@@ -140,6 +149,10 @@ comparar_tudo() {
   comparar_dir 'docs/orquestrador/skill' \
     "$KIT/doutrina" "$repo/docs/orquestrador/skill" \
     -x VERSAO -x runs
+  local t
+  for t in $TESTES_HARNESS $FIXTURES_HARNESS; do
+    comparar_arquivo "$t" "$KIT/$t" "$repo/$t"
+  done
 }
 
 verificar() {
@@ -241,7 +254,8 @@ atualizar() {
   local sujo=''
   if git -C "$repo" rev-parse --git-dir >/dev/null 2>&1; then
     sujo="$(git -C "$repo" status --porcelain -- \
-      scripts/orquestrador scripts/orq scripts/roadmap docs/orquestrador/skill 2>/dev/null || true)"
+      scripts/orquestrador scripts/orq scripts/roadmap docs/orquestrador/skill \
+      $TESTES_HARNESS $FIXTURES_HARNESS 2>/dev/null || true)"
   fi
   if [ -n "$sujo" ] && [ "$forcar" = 0 ]; then
     printf '%s\n' "$sujo" >&2
@@ -271,8 +285,18 @@ atualizar() {
   cp -R "$KIT/scripts/roadmap/." "$repo/scripts/roadmap/"
   cp -R "$KIT/doutrina/." "$repo/docs/orquestrador/skill/"
   cp "$KIT/VERSAO" "$repo/docs/orquestrador/skill/VERSAO"
+  # Os testes do harness, um a um (peça K8d). `mkdir -p` do diretório de cada
+  # arquivo: um repo que ainda não tem `test/fixtures/trilha/` recebe a árvore.
+  local t
+  for t in $TESTES_HARNESS $FIXTURES_HARNESS; do
+    mkdir -p "$repo/$(dirname "$t")"
+    cp "$KIT/$t" "$repo/$t"
+  done
   rm -rf "$stage"
-  printf 'copiado: scripts/orquestrador/ · scripts/orq · scripts/roadmap/ · docs/orquestrador/skill/ (+ VERSAO %s)\n\n' "$VERSAO"
+  printf 'copiado: scripts/orquestrador/ · scripts/orq · scripts/roadmap/ · docs/orquestrador/skill/ (+ VERSAO %s)\n' "$VERSAO"
+  printf 'copiado: %s teste(s) de harness e %s fixture(s) de teste (peça K8d)\n\n' \
+    "$(printf '%s\n' $TESTES_HARNESS | wc -l | tr -d ' ')" \
+    "$(printf '%s\n' $FIXTURES_HARNESS | wc -l | tr -d ' ')"
 
   # --- o veredito é do verificador, não deste bloco --------------------------
   # Dizer "atualizado" sem reler o disco é como um instalador mente. O que sobrar
@@ -282,7 +306,8 @@ atualizar() {
 
   printf '\ncommit sugerido, no repo, com pathspec explícito:\n'
   printf '  cd %s\n' "$repo"
-  printf '  git add scripts/orquestrador scripts/orq scripts/roadmap docs/orquestrador/skill\n'
+  printf '  git add scripts/orquestrador scripts/orq scripts/roadmap docs/orquestrador/skill \\\n'
+  printf '    %s\n' "$(printf '%s ' $TESTES_HARNESS $FIXTURES_HARNESS)"
   printf "  git commit -m 'motor: kit %s'\n" "$VERSAO"
   return "$rc"
 }

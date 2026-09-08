@@ -115,6 +115,17 @@ cp "$KIT/VERSAO" "$FX/docs/orquestrador/skill/VERSAO"
 cp "$KIT/doutrina/templates/TICKET.md" "$FX/docs/fila/_TEMPLATE.md"
 cp "$KIT/doutrina/templates/PLAYBOOK-seed.md" "$FX/docs/orquestrador/PLAYBOOK.md"
 
+# Os testes do harness TAMBÉM são vendorizados (peça K8d), pela mesma lista que
+# o instalar.sh usa — o fixture É o repo instalado deste kit, e as duas
+# vendorizações não podem divergir. `fixture/test/soma.test.ts` (o teste do
+# PRODUTO do fixture) fica onde está: o kit não o toca.
+# shellcheck source=vendorizado.sh
+source "$KIT/scripts/kit/vendorizado.sh"
+for t in $TESTES_HARNESS $FIXTURES_HARNESS; do
+  mkdir -p "$FX/$(dirname "$t")"
+  cp "$KIT/$t" "$FX/$t"
+done
+
 # --- 4. runs/ (não versionado) ------------------------------------------------
 # Mesma convenção do checkout real: o próprio diretório se ignora. O
 # .gitignore da raiz já exclui docs/fila/runs/, então este arquivo fica no disco
