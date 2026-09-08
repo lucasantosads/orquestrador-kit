@@ -9,9 +9,13 @@
  * casos de A (allowlist) já eram cobertos por `orquestrador-enforcement.test.ts`
  * (regra 1) e entram aqui só como os helpers que o Actus testa à parte.
  *
+ * A K11a-4 acrescentou a regra E (`prefixos_sem_ddl`), a regra F
+ * (`enforcement.padroes_proibidos_no_diff`) e a exceção estreita de teste-SQL
+ * (`enforcement.testes_sql`) — os casos de cada uma carregam, do mesmo jeito, o
+ * nome original do `test(...)` do Actus.
+ *
  * O QUE NÃO ENTROU nesta peça, e é gap NOMEADO (não esquecimento):
  *   - a exceção estreita de `supabase/tests/*.test.sql` (14 casos "teste-sql");
- *   - a regra E, `no_write_prefixes` (3 casos);
  *   - a regra F, `padroes_proibidos_no_diff` (10 casos).
  * Enquanto elas não entrarem, o Actus PERDE proteção ao trocar de motor — ver
  * K11a-4 em `docs/PECAS.md` PENDENTES.
@@ -26,6 +30,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { enforce, parseFaixa } from '../scripts/orquestrador/enforcement-core.js';
 import { validarConfig } from '../scripts/orquestrador/config-cli.js';
+import { propor } from '../scripts/orquestrador/migrar-config.js';
+import { RENOMES } from '../scripts/orquestrador/config-tabela.js';
 import type { EnforceConfig, TipoViolacao } from '../scripts/orquestrador/enforcement-core.js';
 
 const RAIZ = join(import.meta.dirname, '..');
@@ -48,6 +54,7 @@ const cfgActus: EnforceConfig = {
     no_write_tables: ['public.leads', 'public.contratos', 'public.clientes_receita'],
     colunas_congeladas: ['etapa_canonica'],
     colunas_sombra: ['etapa_v2_*'],
+    prefixos_sem_ddl: ['vw_'],
   },
 };
 
@@ -282,6 +289,96 @@ describe('regra D — colunas congeladas e as sombras declaradas', () => {
   });
 });
 
+// ─── E · CREATE/ALTER/DROP por prefixo de objeto ─────────────────────────────
+
+describe('regra E — prefixos_sem_ddl (origem: no_write_prefixes do Actus)', () => {
+  it('E mau: create or replace view vw_x reprova', () => {
+    const r = checar('supabase/migrations/0250_x.sql', ['create or replace view vw_saude as select 1;'], ['supabase/migrations/**']);
+    expect(tem(r, 'prefixo_sem_ddl')).toBe(true);
+  });
+
+  it('E mau: drop view vw_x reprova', () => {
+    const r = checar('supabase/migrations/0250_x.sql', ['drop view vw_saude;'], ['supabase/migrations/**']);
+    expect(tem(r, 'prefixo_sem_ddl')).toBe(true);
+  });
+
+  it('E bom: create function normal passa', () => {
+    const r = checar('supabase/migrations/0250_x.sql', ['create or replace function fn_x() returns int as $$ select 1 $$ language sql;'], ['supabase/migrations/**']);
+    expect(r.ok).toBe(true);
+  });
+
+  it('E mau: ALTER de objeto com o prefixo reprova (a terceira do CREATE/ALTER/DROP)', () => {
+    const r = checar('supabase/migrations/0250_x.sql', ['alter view vw_saude rename to vw_saude_2;'], ['supabase/migrations/**']);
+    expect(tem(r, 'prefixo_sem_ddl')).toBe(true);
+  });
+
+  it('E: DML em objeto com o prefixo NÃO é desta regra — E é DDL', () => {
+    // A regra E existe para "quem CRIA/ALTERA/APAGA o objeto"; escrever DADO
+    // numa view é assunto das regras C/D, que julgam por tabela e por coluna.
+    // Sem esta separação, `prefixos_sem_ddl` viraria um segundo `no_write_tables`
+    // por nome parecido — e as duas regras têm donos e vocabulários diferentes.
+    const r = checar('supabase/migrations/0250_x.sql', ['insert into vw_saude (id) values (1);'], ['supabase/migrations/**']);
+    expect(tem(r, 'prefixo_sem_ddl')).toBe(false);
+    expect(r.ok).toBe(true);
+  });
+
+  it('E: a violação NOMEIA o prefixo que a disparou', () => {
+    const r = checar('supabase/migrations/0250_x.sql', ['drop view vw_saude;'], ['supabase/migrations/**']);
+    const v = r.violations.find((x) => x.tipo === 'prefixo_sem_ddl');
+    expect(v?.detalhe).toContain('vw_');
+    expect(v?.detalhe).toContain('supabase/migrations/0250_x.sql');
+  });
+
+  it('PROSA nunca reprova: um .md que documenta a proibição não é DDL', () => {
+    const r = checar('docs/regras.md', ['Nunca faça `create view vw_saude` — o prefixo vw_ é humano.'], ['docs/**']);
+    expect(r.ok).toBe(true);
+  });
+
+  it('DESLIGADA: sem `prefixos_sem_ddl`, E não acusa nada', () => {
+    const cfg = {
+      ...cfgActus,
+      zona_proibida: { no_write_paths: [], no_write_tables: [] },
+    };
+    const r = checar('supabase/migrations/0250_x.sql', ['create or replace view vw_saude as select 1;'], ['supabase/migrations/**'], cfg);
+    expect(r.ok).toBe(true);
+  });
+});
+
+// ─── E · o que a MIGRAÇÃO faz com `no_write_prefixes` ────────────────────────
+
+describe('regra E na tabela de config: no_write_prefixes → prefixos_sem_ddl', () => {
+  it('a tabela conhece o renome, e o destino é o nome que o motor lê', () => {
+    const r = RENOMES.find((x) => x.de === 'zona_proibida.no_write_prefixes');
+    expect(r?.para).toBe('zona_proibida.prefixos_sem_ddl');
+  });
+
+  it('o valor é COPIADO e o nome antigo FICA (regra 1 da tabela)', () => {
+    const { proposto } = propor({
+      $schema_versao: 1,
+      gates: [],
+      zona_proibida: { no_write_paths: [], no_write_tables: 'TODAS', no_write_prefixes: ['vw_'] },
+    });
+    const o = JSON.parse(proposto);
+    expect(o.zona_proibida.no_write_prefixes).toEqual(['vw_']);
+    expect(o.zona_proibida.prefixos_sem_ddl).toEqual(['vw_']);
+  });
+
+  it('CONSEQUÊNCIA no CI, dita alto: migrar o config de lá LIGA a regra E com supabase_/auth_', () => {
+    // O CI declara `no_write_prefixes: ["supabase_", "auth_"]` e o comentário do
+    // arquivo os chama de "redundante dado no_write_tables=TODAS; registrados
+    // para que um leitor que só olhe prefixos ainda acerte". A regra 3 (`TODAS`)
+    // NÃO cobre DDL, então a regra E não é redundante — ela passa a valer. Isto
+    // é mudança de veredito, e por isso está num caso de teste e na linha do
+    // relatório do `--dry-run`, e não escondida no diff da tabela.
+    const cru = JSON.parse(readFileSync(join(RAIZ, '_referencia-ci', '000-config.ci.json'), 'utf8'));
+    expect(cru.zona_proibida.prefixos_sem_ddl).toBeUndefined();
+    const { proposto, linhas } = propor(cru);
+    const o = JSON.parse(proposto);
+    expect(o.zona_proibida.prefixos_sem_ddl).toEqual(['supabase_', 'auth_']);
+    expect(linhas.some((l: string) => l.includes('zona_proibida.prefixos_sem_ddl'))).toBe(true);
+  });
+});
+
 // ─── caso limpo ponta a ponta ────────────────────────────────────────────────
 
 describe('caso limpo', () => {
@@ -307,6 +404,7 @@ describe('o que o CI faz diferente: nada (provado com o config do CI)', () => {
       expect(cru.zona_proibida.colunas_congeladas).toBeUndefined();
       expect(cru.zona_proibida.schemas_permitidos).toBeUndefined();
       expect(cru.zona_proibida.tabelas_permitidas).toBeUndefined();
+      expect(cru.zona_proibida.prefixos_sem_ddl).toBeUndefined();
       // `TODAS` continua sendo negação total, e não lista.
       expect(cru.zona_proibida.no_write_tables).toBe('TODAS');
     });
@@ -321,6 +419,18 @@ describe('o que o CI faz diferente: nada (provado com o config do CI)', () => {
         config: cru,
       });
       expect(r).toEqual({ ok: true, violations: [] });
+    });
+
+    it(`${nome}: DDL de objeto com o prefixo que o config JÁ declara segue passando (E desligada)`, () => {
+      const cru = JSON.parse(readFileSync(caminho, 'utf8')) as EnforceConfig;
+      const arq = 'src/lib/x.ts';
+      const r = enforce({
+        changedFiles: [arq],
+        allowlist: ['src/lib/**'],
+        diff: diffNovoArquivo(arq, ['await sql(`create table supabase_x (id int)`)']),
+        config: cru,
+      });
+      expect(r.violations.filter((v) => v.tipo === 'prefixo_sem_ddl')).toEqual([]);
     });
   }
 });

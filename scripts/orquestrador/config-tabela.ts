@@ -95,6 +95,13 @@ export const RENOMES: Renome[] = [
     porque:
       'enforcement-core.ts:426 (violacoesDeColuna). O nome novo diz o que a lista É (colunas congeladas) e abre espaço para a irmã `colunas_sombra`, que não existe em repo nenhum hoje e é a saída declarada da família (etapa_v2_*, ledger 0171 do Actus). O `no_write_columns` FICA.',
   },
+  // --- K11a-4: a chave da regra E ------------------------------------------
+  {
+    de: 'zona_proibida.no_write_prefixes',
+    para: 'zona_proibida.prefixos_sem_ddl',
+    porque:
+      'enforcement-core.ts:460 (violacoesDePrefixo). O nome novo diz o RECORTE da regra — prefixos que não recebem DDL —, e o recorte importa: escrever DADO num objeto de nome proibido continua sendo assunto de `no_write_tables`/`colunas_congeladas`, não desta lista. Diferente dos dois renomes acima, este NÃO é chave só do Actus: o CI declara `no_write_prefixes: ["supabase_", "auth_"]` e o template também traz `vw_`, então migrar o config DELES LIGA a regra E com os prefixos que eles próprios escreveram. Isso é mudança de veredito, e está dita aqui, na linha do relatório do `--dry-run` e num caso de teste (`orquestrador-enforcement-actus.test.ts`) em vez de escondida: a regra 3 (`no_write_tables: "TODAS"`) NÃO cobre CREATE/ALTER/DROP, então o `_no_write_prefixes` do CI ("redundante dado no_write_tables=TODAS") descreve uma redundância que não existe. Quem revisa o proposto tira a chave se não a quiser; o `no_write_prefixes` FICA de qualquer forma.',
+  },
 ]
 
 /**

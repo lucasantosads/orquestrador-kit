@@ -62,6 +62,8 @@ export interface EnforceConfig {
     colunas_congeladas?: string[] | undefined
     /** Regra D: as sombras declaradas (glob), que passam mesmo casando uma congelada. */
     colunas_sombra?: string[] | undefined
+    /** Regra E: prefixos de OBJETO que o loop nunca cria, altera nem apaga (`no_write_prefixes` no Actus). */
+    prefixos_sem_ddl?: string[] | undefined
   }
 }
 
@@ -88,6 +90,10 @@ export type TipoViolacao =
   | 'tabela_congelada'
   | 'tabela_nao_permitida'
   | 'coluna_congelada'
+  // --- K11a-4: a regra E do Actus. Tipo PRÓPRIO, e não `zona_proibida`: o que
+  // ela acusa é DDL de um objeto pelo NOME dele, e quem lê o enforcement.json
+  // precisa saber que a causa foi o prefixo — não um caminho de arquivo.
+  | 'prefixo_sem_ddl'
 
 export interface Violation {
   tipo: TipoViolacao
@@ -439,6 +445,35 @@ export function violacoesDeColuna(arquivo: string, texto: string, config: Enforc
   return v
 }
 
+/**
+ * Regra E · CREATE/ALTER/DROP de objeto cujo nome começa por um prefixo
+ * declarado. Porte do laço `no_write_prefixes` do actus-saas
+ * (`enforcement.mjs:270-275`), com a MESMA janela de 60 caracteres entre o verbo
+ * e o nome — é ela que faz `create or replace view vw_x` casar sem que a regra
+ * precise conhecer a gramática de `CREATE`, e o Comarka usa a mesma chave com
+ * outros donos (`trafego_`, `vw_`).
+ *
+ * E é DDL, e só. Escrever DADO num objeto de nome proibido é assunto das regras
+ * C e D, que julgam por tabela e por coluna: sem essa separação, `prefixos_sem_ddl`
+ * viraria um segundo `no_write_tables` por semelhança de nome.
+ */
+export function violacoesDePrefixo(arquivo: string, texto: string, config: EnforceConfig): Violation[] {
+  const prefixos = config.zona_proibida.prefixos_sem_ddl ?? []
+  if (prefixos.length === 0) return []
+  const v: Violation[] = []
+  for (const pref of prefixos) {
+    const p = pref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const re = new RegExp(`\\b(create|alter|drop)\\b[\\s\\S]{0,60}?\\b${p}\\w+`, 'i')
+    if (re.test(texto)) {
+      v.push({
+        tipo: 'prefixo_sem_ddl',
+        detalhe: `${arquivo}: CREATE/ALTER/DROP de objeto com prefixo proibido '${pref}'`,
+      })
+    }
+  }
+  return v
+}
+
 export function enforce(input: EnforceInput): EnforceResult {
   const v: Violation[] = []
   const zp = input.config.zona_proibida
@@ -460,7 +495,7 @@ export function enforce(input: EnforceInput): EnforceResult {
 
   const linhas = addedLines(input.diff)
 
-  // C+D) escrita por tabela e por coluna, POR ARQUIVO — o bloco de linhas
+  // C+D+E) escrita por tabela, por coluna e DDL por prefixo, POR ARQUIVO — o bloco de linhas
   // adicionadas daquele arquivo, não a linha solta (a cadeia
   // `.from('x')\n.insert({})` é a forma normal em TS).
   //
@@ -484,6 +519,7 @@ export function enforce(input: EnforceInput): EnforceResult {
     const texto = corpo.join('\n')
     v.push(...violacoesDeTabela(arquivo, texto, input.config))
     v.push(...violacoesDeColuna(arquivo, texto, input.config))
+    v.push(...violacoesDePrefixo(arquivo, texto, input.config))
   }
 
   for (let i = 0; i < linhas.length; i++) {
