@@ -57,3 +57,11 @@ Achado que o e2e mediu e que ficou com K6: `event_gate` monta a linha `GATE` da 
 procurando gates por nome fixo do monorepo do CI, então a trilha gravou
 `typecheck=nao-rodou testes=nao-rodou build=nao-rodou` para gates que o `gates.txt` do mesmo
 attempt registra como `ok`. Não derruba o run; faz a trilha mentir.
+
+### Etapa 3 — o motor muda pela primeira vez, e o CI recebe o kit
+
+- **K5b** — `instalar.sh --verificar` passa a cobrir `scripts/roadmap/`. Aquele diretório é
+  motor vendorizado (`orq mapa lint` roda `python3 scripts/roadmap/lint-mapa.py` a partir do
+  MAIN_CHECKOUT, `scripts/orq:226`) e o `fixture.sh` já o copiava; o verificador não o via, e
+  um `lint-mapa.py` desatualizado no repo passava por "idêntico". Caso (d) do
+  `scripts/kit/test-instalar.sh` prova o vermelho-antes.

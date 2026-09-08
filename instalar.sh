@@ -16,7 +16,14 @@
 #
 #   kit scripts/orquestrador/   <->   <repo>/scripts/orquestrador/
 #   kit scripts/orq             <->   <repo>/scripts/orq
+#   kit scripts/roadmap/        <->   <repo>/scripts/roadmap/
 #   kit doutrina/               <->   <repo>/docs/orquestrador/skill/
+#
+# scripts/roadmap/ entrou na comparação em K5b, e não por simetria: `orq mapa
+# lint` roda `python3 scripts/roadmap/lint-mapa.py` a partir do MAIN_CHECKOUT
+# (scripts/orq:226), então aquele diretório É motor vendorizado — o
+# scripts/kit/fixture.sh já o copiava. Sem esta linha, um lint-mapa.py
+# desatualizado no repo passava por "idêntico".
 #
 # O que NÃO entra na comparação, e por quê:
 #   *.plist que não termine em .plist.template — é o plist INSTANCIADO, gerado
@@ -124,6 +131,8 @@ verificar() {
     "$KIT/scripts/orquestrador" "$repo/scripts/orquestrador" \
     -x '*.plist' -x runs
   comparar_arquivo 'scripts/orq' "$KIT/scripts/orq" "$repo/scripts/orq"
+  comparar_dir 'scripts/roadmap' \
+    "$KIT/scripts/roadmap" "$repo/scripts/roadmap"
   comparar_dir 'docs/orquestrador/skill' \
     "$KIT/doutrina" "$repo/docs/orquestrador/skill" \
     -x VERSAO -x runs
