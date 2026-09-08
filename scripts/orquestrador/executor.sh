@@ -205,6 +205,34 @@ ${trecho:-(o CLI não escreveu NADA em stdout nem stderr — rc=$rc é tudo o qu
 }
 
 # --- 2 · WORKTREE -----------------------------------------------------------
+# pacotes_do_checkout — um caminho RELATIVO ao MAIN_CHECKOUT por linha (a raiz
+# sai como `.`): todo diretorio que tenha node_modules PROPRIO.
+#
+# Antes desta funcao (peca K6a) a lista era `for d in "" apps/web services/*/`:
+# a arvore do conteudos-infinitos escrita DENTRO do motor. Num monorepo com
+# outra forma — packages/, apps/api, libs/ — o motor deixava pacote sem
+# node_modules na worktree e o gate reprovava por AMBIENTE, nao por codigo.
+#
+# `-not -path '*/node_modules/*'` e obrigatorio: sem ele, toda dependencia que
+# traz o proprio node_modules viraria "pacote" e a lista teria centenas de
+# entradas. `-maxdepth 3` cobre raiz (1), apps/web (2) e services/x (3), que e
+# a profundidade real de monorepo npm/pnpm; mais fundo e node_modules aninhado.
+#
+# `LC_ALL=C sort` NAO e higiene: e o que reproduz, item a item, a ordem que a
+# lista fixa produzia para o CI — `.` (0x2E) antes de `apps/web` antes de
+# `services/*`, estes em ordem de glob. Ordem decide qual symlink e criado antes
+# de qual; "o CI nao faz nada diferente" e afirmacao sobre a saida inteira.
+pacotes_do_checkout() {
+  local nm rel
+  while IFS= read -r nm; do
+    [ -n "$nm" ] || continue
+    rel="$(dirname "$nm")"
+    rel="${rel#"$MAIN_CHECKOUT"}"; rel="${rel#/}"
+    printf '%s\n' "${rel:-.}"
+  done < <(find "$MAIN_CHECKOUT" -maxdepth 3 -type d -name node_modules \
+             -not -path '*/node_modules/*' 2>/dev/null) | LC_ALL=C sort
+}
+
 # node_modules e' SYMLINK compartilhado entre todas as worktrees (nao copia).
 # O cache de dep-optimization do Vite (node_modules/.vite) fica DENTRO dele: se
 # o ticket anterior mudou codigo em apps/web, o cache guarda o grafo de
@@ -216,9 +244,27 @@ ${trecho:-(o CLI não escreveu NADA em stdout nem stderr — rc=$rc é tudo o qu
 # que nao passa por setup_worktree e ficaria com o cache da tentativa anterior.
 limpa_cache_vite() {
   local d
-  for d in "" apps/web services/*/; do
-    rm -rf "$MAIN_CHECKOUT/${d:+$d/}node_modules/.vite" 2>/dev/null || true
-  done
+  while IFS= read -r d; do
+    [ -n "$d" ] || continue
+    rm -rf "$MAIN_CHECKOUT/$d/node_modules/.vite" 2>/dev/null || true
+  done < <(pacotes_do_checkout)
+  return 0
+}
+
+# linkar_node_modules <worktree> — um symlink por pacote detectado, apontando
+# para o node_modules do checkout PRINCIPAL (nunca copia: sao gigabytes).
+# Existe como funcao propria, e nao inline no setup_worktree, porque e ela o
+# efeito observavel da deteccao — e o teste precisa poder cobra-la sem montar
+# um repositorio git so para exercitar uma lista.
+linkar_node_modules() {
+  local wt="$1" d origem destino
+  while IFS= read -r d; do
+    [ -n "$d" ] || continue
+    origem="$MAIN_CHECKOUT/$d/node_modules"; destino="$wt/$d/node_modules"
+    [ -e "$origem" ] || continue
+    mkdir -p "$(dirname "$destino")"
+    ln -sfn "$origem" "$destino"
+  done < <(pacotes_do_checkout)
   return 0
 }
 
@@ -233,17 +279,16 @@ setup_worktree() {
   git -C "$ROOT" branch -D "$branch" >/dev/null 2>&1 || true
   git -C "$ROOT" worktree add -b "$branch" "$wt" "$CFG_BRANCH_ALVO" >/dev/null
   # node_modules e .env.local não são versionados e só existem no principal.
-  # ADAPTAÇÃO: o comarka-os é pacote ÚNICO e linka só a raiz. Aqui são 9 pacotes
-  # com node_modules próprio — linkar só a raiz deixa apps/web sem os tipos de
-  # react/next e o gate typecheck_web reprova com ~1700 erros que não são código.
-  local d
-  for d in "" apps/web services/*/; do
-    local origem="$MAIN_CHECKOUT/${d:+$d/}node_modules" destino="$wt/${d:+$d/}node_modules"
-    [ -e "$origem" ] || continue
-    mkdir -p "$(dirname "$destino")"
-    ln -sfn "$origem" "$destino"
-  done
+  # Linkar só a raiz deixa cada pacote aninhado sem os próprios tipos, e o gate
+  # de typecheck daquele pacote reprova com centenas de erros que não são código
+  # (medido no CI: ~1700 em apps/web). Quais pacotes existem é DETECTADO
+  # (pacotes_do_checkout), não adivinhado por nome de diretório.
+  linkar_node_modules "$wt"
   limpa_cache_vite
+  # ACHADO em aberto (peça K6/pureza): esta lista continua FIXA. Generalizá-la
+  # para os pacotes detectados passaria a linkar .env.local de pacote que hoje
+  # não recebe link — mudança de comportamento fora do escopo desta peça.
+  local d
   for d in "" apps/web; do
     [ -e "$MAIN_CHECKOUT/${d:+$d/}.env.local" ] && ln -sfn "$MAIN_CHECKOUT/${d:+$d/}.env.local" "$wt/${d:+$d/}.env.local"
   done

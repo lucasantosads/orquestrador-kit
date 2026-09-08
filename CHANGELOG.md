@@ -73,3 +73,10 @@ attempt registra como `ok`. Não derruba o run; faz a trilha mentir.
   `docs/fila/**` (migrações são K8b). Três recusas com rc 1: loop não pausado, `STATUS.md`
   que não diz `ocioso`, motor do repo com modificação não commitada — só a terceira cede a
   `--forcar`. Casos (e) e (f) do `test-instalar.sh`.
+- **K6a** — `executor.sh`: monorepo por DETECÇÃO, não por nome. `pacotes_do_checkout` lista
+  todo diretório do checkout principal com `node_modules` próprio (a raiz incluída,
+  aninhados de dependência excluídos) e é essa lista que `limpa_cache_vite` e o novo
+  `linkar_node_modules` percorrem — no lugar do `for d in "" apps/web services/*/`, que era a
+  árvore do conteudos-infinitos escrita dentro do motor. `LC_ALL=C sort` reproduz a ordem
+  antiga item a item. Contra o checkout real do CI as duas listas saem idênticas: o CI não
+  faz nada diferente.
