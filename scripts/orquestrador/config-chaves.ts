@@ -102,6 +102,9 @@ export const CHAVES_CONFIG: ChaveConfig[] = [
   { chave: 'zona_proibida.colunas_congeladas', onde: 'enforcement-core.ts:426', obrigatoria: false, nota: 'globs; no Actus é no_write_columns' },
   { chave: 'zona_proibida.colunas_sombra', onde: 'enforcement-core.ts:426', obrigatoria: false, nota: 'globs que VENCEM as congeladas — a saída declarada (etapa_v2_*)' },
 
+  // --- piso de tools (peça T17) ---------------------------------------------
+  { chave: 'proibicoes_absolutas.tools', onde: 'executor.sh:tools_proibidas, perfil.ts:190', obrigatoria: false, nota: 'o PISO de --disallowedTools; ausente = piso vazio e a flag não é passada. Nos três repos do disco `proibicoes_absolutas` ainda é um ARRAY de prosa, e ali o piso nasce vazio' },
+
   // --- agendamento (peça K6c) -----------------------------------------------
   { chave: 'launchd.label', onde: 'instalar-launchd.sh:47', obrigatoria: true, nota: 'NÃO tem default: o instalador RECUSA sem ele. Um label por repo — dois repos com o mesmo label são o MESMO job para o launchd' },
   { chave: 'launchd.start_interval', onde: 'instalar-launchd.sh:59', obrigatoria: false, nota: 'ausente vira 1800, o valor medido em 06/set/2026' },

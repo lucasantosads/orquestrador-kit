@@ -531,6 +531,39 @@
   arquivo vivo. Ela fecha um buraco latente antes de alguém cair nele.
 
 
+- **T17 · piso de blacklist de ferramentas.** A allowlist continua DERIVADA do ticket
+  (peça 0c) e ganha um PISO de negação vindo do config: `proibicoes_absolutas.tools`.
+  Ele é passado em `--disallowedTools` na chamada E tirado da allowlist derivada
+  (`perfil.ts:filtrarPeloPiso`) — duas trancas para a mesma proibição, de propósito:
+  depender só da precedência entre as duas flags é depender de uma regra do CLI que não
+  é deste repo. A semente tem as 9 entradas da `DISALLOWED_TOOLS` do Comarka mais
+  `Bash(pnpm install:*)`, `Bash(npm install:*)` e `Bash(npm ci:*)`.
+  *Motivo do pnpm, medido:* o `node_modules` da worktree é LINKADO para o store do
+  checkout principal (`executor.mjs` do Actus, `prepararWorktree`); um install lá dentro
+  faz o gerenciador ver "deps fora de sincronia" e PURGAR o store do repo de verdade —
+  o dano não é na worktree descartável. O Actus se defende com um `.npmrc` de worktree
+  (`verify-deps-before-run=false`, `confirm-modules-purge=false`); o piso é a tranca do
+  outro lado, na porta que CONCEDE o poder.
+  *Casamento:* prefixo de comando com BORDA. `Bash(npm install:*)` nega `npm install` e
+  `npm install --save-dev x`, e NÃO nega `npm installer` nem `npm i`. Tool que não é
+  Bash casa por nome exato (`WebFetch`).
+  *Evidência:* `~/Projetos/comarka-operacional/scripts/orquestrador/executor.sh:48` e o
+  comentário de pnpm do `executor.mjs` do Actus, lidos no PASSO 0 (só leitura).
+  *Teste:* `test/orquestrador-piso-tools.test.ts`, 23 casos, **21 vermelhos antes**,
+  incluindo o caso novo em que o piso nega mesmo com o critério do ticket PEDINDO
+  `npm install --save-dev vitest`.
+  *O que o CI faz diferente:* HOJE nada — o `proibicoes_absolutas` dele é um ARRAY de
+  prosa, o piso nasce vazio e a flag não é passada; a allowlist derivada sai byte a byte
+  igual (provado contra o config real). DECLARADO com a semente, ele passa a negar o que
+  já não usava: nenhuma tool da allowlist de hoje cai — também provado.
+  *A migração NOMEIA o caso em vez de resolver sozinha:* `porSeFaltar` passou a RECUSAR
+  escrever dentro de um segmento que não é objeto, e o relatório diz `NÃO APLICADA ...
+  Nada foi apagado`, com a instrução (mover a prosa para `.regras`, acrescentar
+  `.tools`). Sem isso a migração trocaria a lista de proibições absolutas por um objeto —
+  apagando a coisa mais importante do arquivo para acrescentar uma chave. O template e o
+  fixture do kit já nascem com as duas metades.
+
+
 ## PENDENTES
 
 - **K11a-4 · o resto do enforcement do Actus (E, F e a exceção de teste-SQL).** A K11a-1

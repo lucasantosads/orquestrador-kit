@@ -320,6 +320,15 @@ tools_do_ticket() {
   decisao tools "$cmds"
 }
 
+# tools_proibidas -> o PISO de `--disallowedTools` (T17), vindo do config.
+#
+# ALLOWLIST derivada do ticket MAIS um piso de negação: a allowlist sai de DADO
+# (o `cmd` de um critério, escrito por gerador), e dado não pode ser a última
+# palavra sobre o que o agente tem permissão de fazer. Vazio quando o repo não
+# declarou `proibicoes_absolutas.tools` — e aí a flag nem é passada, que é o
+# comportamento de sempre.
+tools_proibidas() { decisao disallowed; }
+
 build_prompt() {
   local file="$1" motivo="$2" tools="${3:-}" id objetivo allow criterios spec="" lista
   id="$(ticket_field "$file" '.id')"
@@ -763,6 +772,7 @@ run_attempt() {
   # duas listas, e o dia em que divergissem seria o dia em que o agente gastaria
   # turno contra a própria permissão de novo.
   tools="$(tools_do_ticket "$file")"
+  local piso; piso="$(tools_proibidas)"
   build_prompt "$file" "$motivo_anterior" "$tools" > "$prompt"
   base="${base_fixo:-$(git -C "$wt" rev-parse HEAD)}"
 
@@ -788,9 +798,11 @@ run_attempt() {
     # Saída em JSON: é a ÚNICA forma de ter usage real para o gate de orçamento
     # (regra 17). O diff continua vindo do git, não do stdout — o que o agente
     # diz que fez nunca foi entrada de nada aqui.
+    [ -n "$piso" ] && log "  piso de negação: $piso"
     claude_run "$wt" "$saida" "$(cfg '.claude_timeout_secs')" -- \
       -p "$(cat "$prompt")" --output-format json --model "$modelo" \
-      --max-turns "$turns" --allowedTools "$tools" || rc=$?
+      --max-turns "$turns" --allowedTools "$tools" \
+      ${piso:+--disallowedTools "$piso"} || rc=$?
     custo_registrar executor "$(ticket_field "$file" '.id')" "$attempt" "$saida"
   fi
   DUR=$(( $(date +%s) - t0 ))

@@ -384,6 +384,13 @@ termina com `>`), nunca quando apenas menciona um: a `descricao` do template diz
 "Placeholders <ASSIM> são decisões locais", e cobrar por substring reprovaria o
 próprio texto que explica a regra.
 
+`proibicoes_absolutas` tem duas metades desde a T17: `regras` (a prosa que vai
+no prompt) e `tools`, o **piso de `--disallowedTools`**. O piso é passado na
+chamada do agente E tirado da allowlist derivada do ticket
+(`perfil.ts:filtrarPeloPiso`) — o ticket pede, o config nega, o config ganha.
+Ausente, o piso é vazio e a flag não é passada: é o estado dos três repos do
+disco, onde `proibicoes_absolutas` ainda é um array de prosa.
+
 Um gate de `tipo: "baseline"` é julgado pela CONTAGEM na saída, não pelo exit
 code (`gates.ts:avaliaGate`): `baseline: N` mais `direcao: "max"` (padrão — ok
 com contagem ≤ N, o caso dos erros de tipo herdados) ou `"min"` (ok com ≥ N).

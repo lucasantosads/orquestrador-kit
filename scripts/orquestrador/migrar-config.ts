@@ -58,13 +58,25 @@ export function ler(obj: unknown, caminho: string): unknown {
   return no
 }
 
-/** Escreve `a.b.c`, criando os objetos do caminho. Não sobrescreve valor existente. */
-function porSeFaltar(obj: Obj, caminho: string, valor: unknown): boolean {
+/**
+ * Escreve `a.b.c`, criando os objetos do caminho. Não sobrescreve valor
+ * existente, e — regra 1 — não APAGA nada para abrir caminho: quando um
+ * segmento intermediário já carrega valor que não é objeto (uma lista, um
+ * número), a escrita é RECUSADA e o chamador reporta.
+ *
+ * O caso real que fez isto virar código: `proibicoes_absolutas` é, nos três
+ * repos do disco, um ARRAY de prosa. Escrever `proibicoes_absolutas.tools`
+ * dentro dele trocaria a lista de proibições por um objeto — a migração
+ * apagando a coisa mais importante do arquivo para acrescentar uma chave.
+ */
+function porSeFaltar(obj: Obj, caminho: string, valor: unknown): boolean | 'ocupado' {
   const partes = caminho.split('.')
   const folha = partes.pop()!
   let no: Obj = obj
   for (const p of partes) {
-    if (!no[p] || typeof no[p] !== 'object' || Array.isArray(no[p])) no[p] = {}
+    const atual = no[p]
+    if (atual === undefined || atual === null) no[p] = {}
+    else if (typeof atual !== 'object' || Array.isArray(atual)) return 'ocupado'
     no = no[p] as Obj
   }
   if (no[folha] !== undefined && no[folha] !== null) return false
@@ -131,13 +143,26 @@ export function propor(raiz: unknown): Proposta {
     if (n.procedencia === 'derivada') {
       if (n.chave === '_execucao_dos_gates.ordem_obrigatoria') {
         const ordem = gates.map((g) => g.nome).filter((x): x is string => typeof x === 'string')
-        if (porSeFaltar(cfg, n.chave, ordem)) {
+        if (porSeFaltar(cfg, n.chave, ordem) === true) {
           linhas.push(`nova ${n.chave} = ${JSON.stringify(ordem)} (derivada de gates[], na ordem do arquivo). ${n.porque}`)
         }
       }
       continue
     }
-    if (!porSeFaltar(cfg, n.chave, n.valor)) continue
+    const r = porSeFaltar(cfg, n.chave, n.valor)
+    if (r === 'ocupado') {
+      // NÃO aplicada, e alto: o dono precisa saber que a chave nova não entrou
+      // e por quê, no momento em que está lendo o proposto. Silêncio aqui seria
+      // a migração declarando pronto um config onde a regra nasce desligada.
+      const pai = n.chave.split('.').slice(0, -1).join('.')
+      linhas.push(
+        `NÃO APLICADA: ${n.chave} — '${pai}' neste repo é ${JSON.stringify(ler(cfg, pai))?.slice(0, 60)}…, ` +
+          `e não um objeto. Nada foi apagado. Para ligar: mova o conteúdo atual para '${pai}.regras' e ` +
+          `acrescente '${n.chave}' = ${JSON.stringify(n.valor)}. ${n.porque}`,
+      )
+      continue
+    }
+    if (!r) continue
     if (n.procedencia === 'local') {
       placeholders.push(n.chave)
       linhas.push(`nova ${n.chave}: PLACEHOLDER — decisão local, ninguém pode tomá-la por você. ${n.porque}`)

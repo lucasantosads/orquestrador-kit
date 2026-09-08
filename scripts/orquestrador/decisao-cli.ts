@@ -8,6 +8,7 @@
  *   desfecho                  -> stdin = SinalTentativa; imprime Veredito
  *   retry <tentativa> <modelo>-> stdin = Veredito; imprime PlanoRetry
  *   meta                      -> stdin = entrada; imprime RegistroMeta
+ *   disallowed                -> o piso de --disallowedTools do config (T17)
  */
 import { readFileSync } from 'node:fs'
 import {
@@ -20,7 +21,7 @@ import {
   modeloIndefinido,
   modeloRecusado,
 } from './decisao.js'
-import { defaultToolsFromGates, toolsDoTicket } from './perfil.js'
+import { defaultToolsFromGates, pisoDoConfig, toolsDoTicket } from './perfil.js'
 import type { DecisaoConfig, SinalTentativa, Veredito } from './decisao.js'
 
 const [raiz, sub, ...args] = process.argv.slice(2)
@@ -63,7 +64,14 @@ switch (sub) {
       }
     }
     const gateCmds = (config as unknown as { gates: { cmd: string }[] }).gates.map((g) => g.cmd)
-    process.stdout.write(toolsDoTicket(gateCmds, criterioCmds))
+    process.stdout.write(toolsDoTicket(gateCmds, criterioCmds, pisoDoConfig(config)))
+    break
+  }
+  case 'disallowed': {
+    // O PISO de `--disallowedTools` (T17), do config. Vazio quando o repo não
+    // declarou `proibicoes_absolutas.tools` — e aí o executor não passa a flag,
+    // que é o comportamento de sempre.
+    process.stdout.write(pisoDoConfig(config).join(','))
     break
   }
   case 'worktree': {

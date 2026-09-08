@@ -269,12 +269,29 @@
   },
   "_executor": "local-loop.sh:95 lê .executor.trailer_commit para o trailer do merge commit; o resto é o default de doutrina/templates/config.json.",
 
-  "proibicoes_absolutas": [
-    "nunca push na branch principal",
-    "nunca escrever na zona proibida",
-    "nunca tocar credenciais/segredos",
-    "nunca escrever em paths_harness pela fila",
-    "git add sempre por pathspec explícito"
-  ],
+  "proibicoes_absolutas": {
+    "regras": [
+      "nunca push na branch principal",
+      "nunca escrever na zona proibida",
+      "nunca tocar credenciais/segredos",
+      "nunca escrever em paths_harness pela fila",
+      "git add sempre por pathspec explícito"
+    ],
+    "tools": [
+      "Bash(git push:*)",
+      "Bash(git reset:*)",
+      "Bash(psql:*)",
+      "Bash(supabase:*)",
+      "Bash(npx supabase:*)",
+      "Bash(curl:*)",
+      "Bash(rm:*)",
+      "WebFetch",
+      "WebSearch",
+      "Bash(pnpm install:*)",
+      "Bash(npm install:*)",
+      "Bash(npm ci:*)"
+    ]
+  },
+  "_proibicoes_absolutas_tools": "T17 · o PISO de --disallowedTools. `regras` e a prosa de sempre; `tools` e a lista que o motor passa em --disallowedTools (executor.sh:tools_proibidas) e que tambem sai da allowlist derivada do ticket (perfil.ts:filtrarPeloPiso) — o ticket pede, o config nega, o config ganha. `pnpm install`/`npm install`/`npm ci` estao aqui porque o node_modules da worktree e LINKADO para o store do checkout principal: um install la purga o store do repo de verdade, nao o da worktree descartavel.",
   "_proibicoes_absolutas": "doutrina/templates/config.json, sem as duas linhas de DDL/banco: o fixture não tem banco."
 }

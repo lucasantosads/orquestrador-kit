@@ -164,6 +164,107 @@ export function padroesDeCmd(cmd: string): string[] {
   return prefixoSimples(p) ? [`Bash(${p})`, `Bash(${p}:*)`] : [`Bash(${p})`]
 }
 
+// ─── T17 · o PISO de --disallowedTools ──────────────────────────────────────
+
+/**
+ * A SEMENTE do piso: o que um repo ganha quando declara
+ * `proibicoes_absolutas.tools` no config sem saber o que pôr.
+ *
+ * As nove primeiras são a `DISALLOWED_TOOLS` do comarka-operacional
+ * (`scripts/orquestrador/executor.sh:48`, lida no PASSO 0 da etapa 6, só
+ * leitura) — "defesa em profundidade: nega explicitamente o que o loop nunca
+ * faz". As cinco últimas entram por incidente medido:
+ *
+ *  - `pnpm install` / `npm install` / `npm ci`: a worktree tem `node_modules`
+ *    LINKADO para o store real do checkout principal (`executor.sh` do Actus,
+ *    `depsReais`/`prepararWorktree`). Um install lá dentro faz o gerenciador
+ *    ver "deps fora de sincronia" e PURGAR o store do checkout principal — o
+ *    dano não é na worktree descartável, é no repo de verdade. O Actus se
+ *    defende disso com `verify-deps-before-run=false` e
+ *    `confirm-modules-purge=false` num `.npmrc` da worktree; negar a tool é a
+ *    tranca do outro lado, na porta que concede o poder.
+ *  - `git push` e `git reset`: publicar é humano, e `reset` apaga o trabalho da
+ *    tentativa antes de qualquer um ver o diff. Os dois já estão na
+ *    `COMANDO_PROIBIDO` (que impede virarem PERMISSÃO); aqui viram NEGAÇÃO
+ *    explícita, que é o que o CLI cobra quando a permissão vem de outro lugar.
+ */
+export const PISO_TOOLS_SEMENTE: readonly string[] = [
+  'Bash(git push:*)',
+  'Bash(git reset:*)',
+  'Bash(psql:*)',
+  'Bash(supabase:*)',
+  'Bash(npx supabase:*)',
+  'Bash(curl:*)',
+  'Bash(rm:*)',
+  'WebFetch',
+  'WebSearch',
+  'Bash(pnpm install:*)',
+  'Bash(npm install:*)',
+  'Bash(npm ci:*)',
+]
+
+/** `Bash(npm install:*)` -> `npm install`. Tool que não é Bash devolve null. */
+export function prefixoDaTool(tool: string): string | null {
+  const m = /^Bash\((.*)\)$/.exec(tool.trim())
+  if (!m) return null
+  return (m[1] ?? '').replace(/:\*$/, '').trim()
+}
+
+/**
+ * A entrada do piso que NEGA esta tool, ou null.
+ *
+ * Para tool que não é Bash, a comparação é por nome exato (`WebFetch`). Para
+ * Bash, o piso casa por PREFIXO DE COMANDO com borda: `Bash(npm install:*)`
+ * nega `Bash(npm install)` e `Bash(npm install --save)`, e NÃO nega
+ * `Bash(npm installx)` nem `Bash(npm i)`. Prefixo sem borda negaria
+ * `npm installer`, que é outro comando.
+ */
+export function pisoNega(tool: string, piso: readonly string[]): string | null {
+  const alvo = prefixoDaTool(tool)
+  for (const entrada of piso) {
+    const p = prefixoDaTool(entrada)
+    if (p === null) {
+      if (alvo === null && entrada.trim() === tool.trim()) return entrada
+      continue
+    }
+    if (alvo === null || !p) continue
+    if (alvo === p || alvo.startsWith(p + ' ') || alvo.startsWith(p + ':')) return entrada
+  }
+  return null
+}
+
+/**
+ * Tira da allowlist o que o piso nega.
+ *
+ * DUAS trancas para a mesma proibição, e é de propósito: a string do piso vai
+ * em `--disallowedTools` na chamada, e o que ela nega sai da `--allowedTools`
+ * aqui. Depender só da precedência entre as duas flags seria depender de uma
+ * regra do CLI que não é deste repo — e o dia em que ela mudasse, o piso
+ * silenciaria sem ninguém notar.
+ */
+export function filtrarPeloPiso(tools: readonly string[], piso: readonly string[]): string[] {
+  if (piso.length === 0) return [...tools]
+  return tools.filter((t) => pisoNega(t, piso) === null)
+}
+
+/**
+ * O piso declarado no config. AUSENTE = piso vazio, e a chamada sai sem
+ * `--disallowedTools`, exatamente como hoje.
+ *
+ * A leitura é defensiva porque `proibicoes_absolutas` é, nos três repos do
+ * disco, um ARRAY de prosa ("nunca push na branch principal"). Ali não existe
+ * `.tools`, e o piso nasce vazio — que é a resposta certa: o dono ainda não
+ * declarou nada. A migração de config NOMEIA esse caso em vez de trocar a
+ * forma da chave por conta própria.
+ */
+export function pisoDoConfig(config: unknown): string[] {
+  const pa = (config as { proibicoes_absolutas?: unknown } | null)?.proibicoes_absolutas
+  if (!pa || typeof pa !== 'object' || Array.isArray(pa)) return []
+  const tools = (pa as { tools?: unknown }).tools
+  if (!Array.isArray(tools)) return []
+  return tools.filter((t): t is string => typeof t === 'string' && t.trim() !== '')
+}
+
 /**
  * A allowlist de tools do TICKET (peça 0c).
  *
@@ -179,7 +280,11 @@ export function padroesDeCmd(cmd: string): string[] {
  * permissão com a ordem. A lei continua sendo o ENFORCEMENT sobre o diff: o que
  * o agente pode EXECUTAR não decide o que ele pode ESCREVER.
  */
-export function toolsDoTicket(gateCmds: readonly string[], criterioCmds: readonly string[] = []): string {
+export function toolsDoTicket(
+  gateCmds: readonly string[],
+  criterioCmds: readonly string[] = [],
+  piso: readonly string[] = [],
+): string {
   const out: string[] = [...BASE_TOOLS]
   const push = (t: string) => {
     if (!out.includes(t)) out.push(t)
@@ -194,7 +299,11 @@ export function toolsDoTicket(gateCmds: readonly string[], criterioCmds: readonl
   }
   // Critérios depois: o prefixo literal do que o ticket manda rodar.
   for (const cmd of criterioCmds) for (const t of padroesDeCmd(cmd)) push(t)
-  return out.join(',')
+  // O PISO por último, e ele VENCE (T17): o ticket pede, o config nega, o
+  // config ganha. Derivar permissão de DADO — e o `cmd` de um critério é dado
+  // que entra na fila por gerador — sem um piso é conceder o que ninguém
+  // reviu.
+  return filtrarPeloPiso(out, piso).join(',')
 }
 
 /**

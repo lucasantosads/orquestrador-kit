@@ -228,6 +228,26 @@ export const NOVAS: Nova[] = [
       'juiz.ts:67. São palavras de domínio, não do repo: nenhum projeto quer que uma mudança em autenticação seja julgada pelo modelo barato.',
   },
   {
+    chave: 'proibicoes_absolutas.tools',
+    procedencia: 'politica',
+    valor: [
+      'Bash(git push:*)',
+      'Bash(git reset:*)',
+      'Bash(psql:*)',
+      'Bash(supabase:*)',
+      'Bash(npx supabase:*)',
+      'Bash(curl:*)',
+      'Bash(rm:*)',
+      'WebFetch',
+      'WebSearch',
+      'Bash(pnpm install:*)',
+      'Bash(npm install:*)',
+      'Bash(npm ci:*)',
+    ],
+    porque:
+      'executor.sh:tools_proibidas e perfil.ts:190 (PISO_TOOLS_SEMENTE). É o PISO de `--disallowedTools` (T17): a allowlist é derivada dos `cmd` do ticket, que são DADO escrito por gerador, e dado não pode ser a última palavra sobre permissão. As nove primeiras são a DISALLOWED_TOOLS do comarka-operacional; `pnpm install`/`npm install`/`npm ci` entram porque o node_modules da worktree é LINKADO para o store do checkout principal — um install lá purga o store do repo de verdade. ATENÇÃO: nos três repos do disco `proibicoes_absolutas` é um ARRAY de prosa, e a migração RECUSA escrever dentro dele (nada é apagado); ligar o piso é passo humano — mover a prosa para `.regras` e acrescentar `.tools`.',
+  },
+  {
     chave: 'claude_max_turns',
     procedencia: 'politica',
     valor: 80,
