@@ -193,7 +193,8 @@ verificar() {
 #   3. modificação não commitada no motor do repo — copiar por cima apaga
 #      trabalho sem registro no git. É a ÚNICA que `--forcar` dispensa, porque
 #      às vezes a modificação é lixo conhecido, e aí a perda é decisão de quem
-#      olhou.
+#      olhou. Os caminhos conferidos são os MESMOS que o bloco de cópia escreve,
+#      `scripts/roadmap/` incluído desde a peça K8c.
 atualizar() {
   local repo="" dry=0 forcar=0 a
   for a in "$@"; do
@@ -229,10 +230,18 @@ atualizar() {
   fi
 
   # --- recusa 3 · o motor do repo não pode ter mudança fora do git -----------
+  # A lista de caminhos é a MESMA que o bloco de cópia escreve, e é por isso que
+  # ela inclui scripts/roadmap (peça K8c). Desde a K5b o --atualizar ESCREVE ali
+  # — scripts/roadmap/ é motor vendorizado: `orq mapa lint` roda
+  # `python3 scripts/roadmap/lint-mapa.py` a partir do MAIN_CHECKOUT
+  # (scripts/orq:226) —, mas a recusa continuava com os três caminhos que a peça
+  # K8a enumerava. Um lint-mapa.py modificado e não commitado era a única coisa
+  # que este script apagava sem nem avisar. Escrever e vigiar têm de ser a mesma
+  # lista: divergir as duas é exatamente como se apaga trabalho em silêncio.
   local sujo=''
   if git -C "$repo" rev-parse --git-dir >/dev/null 2>&1; then
     sujo="$(git -C "$repo" status --porcelain -- \
-      scripts/orquestrador scripts/orq docs/orquestrador/skill 2>/dev/null || true)"
+      scripts/orquestrador scripts/orq scripts/roadmap docs/orquestrador/skill 2>/dev/null || true)"
   fi
   if [ -n "$sujo" ] && [ "$forcar" = 0 ]; then
     printf '%s\n' "$sujo" >&2

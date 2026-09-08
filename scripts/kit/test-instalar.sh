@@ -8,6 +8,9 @@
 #                                                    -> o resultado real, seja qual for
 #   (d) contra uma CÓPIA do fixture com um byte a mais em
 #       scripts/roadmap/lint-mapa.py                 -> `diferente ... lint-mapa.py`, rc 1
+#   (g) --atualizar com scripts/roadmap/lint-mapa.py modificado e NÃO commitado
+#                                                    -> recusa nomeando o caminho, rc 1;
+#                                                       com --forcar, passa e avisa (K8c)
 #       (peça K5b: scripts/roadmap/ É motor vendorizado — `orq mapa lint` roda
 #        `python3 scripts/roadmap/lint-mapa.py` a partir do MAIN_CHECKOUT,
 #        scripts/orq:226 — e sem este caso um lint desatualizado passa por
@@ -46,7 +49,8 @@ COPIA="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
 COPIA_ROADMAP="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
 COPIA_UPD="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
 COPIA_EXTRA="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
-trap 'bash "$KIT/scripts/kit/fixture.sh" --limpar "$FX" >/dev/null 2>&1; rm -rf "$COPIA" "$COPIA_ROADMAP" "$COPIA_UPD" "$COPIA_EXTRA"' EXIT
+COPIA_SUJA="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
+trap 'bash "$KIT/scripts/kit/fixture.sh" --limpar "$FX" >/dev/null 2>&1; rm -rf "$COPIA" "$COPIA_ROADMAP" "$COPIA_UPD" "$COPIA_EXTRA" "$COPIA_SUJA"' EXIT
 
 # --- (a) ---------------------------------------------------------------------
 echo "== (a) fixture recém-instanciado =="
@@ -171,6 +175,42 @@ printf '%s\n' "$saida" | sed 's/^/  | /'
   && ok "so-do-repo.py SOBREVIVEU" || falha "o --atualizar APAGOU o que só existia no repo"
 printf '%s' "$saida" | grep -qE '^só no repo +scripts/orquestrador/so-do-repo\.py$' \
   && ok "listado como 'só no repo'" || falha "não apareceu como 'só no repo'"
+
+# --- (g) · K8c · a recusa 3 cobre scripts/roadmap/ ---------------------------
+# Desde K5b o --atualizar ESCREVE em scripts/roadmap/ (é motor vendorizado: `orq
+# mapa lint` roda python3 scripts/roadmap/lint-mapa.py a partir do MAIN_CHECKOUT,
+# scripts/orq:226). A recusa por árvore suja conferia só os três caminhos que a
+# K8a enumerava, então um lint-mapa.py modificado e não commitado era apagado em
+# silêncio — a única classe de arquivo que o instalador escrevia sem vigiar.
+echo
+echo "== (g) --atualizar recusa com scripts/roadmap/ sujo, e --forcar passa =="
+mkdir -p "$COPIA_SUJA/repo"
+cp -R "$FX/." "$COPIA_SUJA/repo/"
+SUJO="$COPIA_SUJA/repo"
+printf '2026-09-08 12:00 | atualizando o motor\n' > "$SUJO/docs/fila/PAUSAR"
+# Modificação NÃO commitada, e com conteúdo reconhecível: é ela que tem de
+# sobreviver à recusa e sumir com o --forcar.
+printf '\n# regra local que ninguem commitou\n' >> "$SUJO/scripts/roadmap/lint-mapa.py"
+ANTES_LINT="$(cksum < "$SUJO/scripts/roadmap/lint-mapa.py")"
+
+saida="$(bash "$KIT/instalar.sh" --atualizar "$SUJO" 2>&1)"; rc=$?
+printf '%s\n' "$saida" | sed 's/^/  | /'
+[ "$rc" = 1 ] && ok "rc 1" || falha "rc $rc (esperava 1)"
+printf '%s' "$saida" | grep -q 'não commitada' \
+  && ok "a recusa diz que há modificação não commitada" || falha "a recusa não citou o não commitado"
+printf '%s' "$saida" | grep -q 'scripts/roadmap/lint-mapa.py' \
+  && ok "a recusa NOMEIA scripts/roadmap/lint-mapa.py" || falha "a recusa não nomeou o lint-mapa.py"
+[ "$(cksum < "$SUJO/scripts/roadmap/lint-mapa.py")" = "$ANTES_LINT" ] \
+  && ok "o lint-mapa.py do repo continua intacto depois da recusa" || falha "a recusa ESCREVEU no repo"
+
+echo "-- (g2) com --forcar: passa, avisa, e o lint-mapa.py vira o do kit --"
+saida="$(bash "$KIT/instalar.sh" --atualizar "$SUJO" --forcar 2>&1)"; rc=$?
+printf '%s\n' "$saida" | sed 's/^/  | /'
+[ "$rc" = 0 ] && ok "rc 0" || falha "rc $rc (esperava 0)"
+printf '%s' "$saida" | grep -q -- '--forcar: passando por cima' \
+  && ok "avisa que passou por cima" || falha "não avisou o que apagou"
+cmp -s "$KIT/scripts/roadmap/lint-mapa.py" "$SUJO/scripts/roadmap/lint-mapa.py" \
+  && ok "o lint-mapa.py do repo é o do kit" || falha "o --forcar não sobrescreveu o lint-mapa.py"
 
 # --- (c) ---------------------------------------------------------------------
 echo

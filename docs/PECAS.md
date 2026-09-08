@@ -175,6 +175,19 @@
   para o HOME descartável, e que `launchctl print` REAL do label do fixture continua
   saindo != 0.
 
+- **K8c · a recusa por árvore suja cobre `scripts/roadmap/`.** A recusa 3 do `--atualizar`
+  (`instalar.sh`, `atualizar()`) confere os MESMOS caminhos que o bloco de cópia escreve:
+  `scripts/orquestrador`, `scripts/orq`, `scripts/roadmap` e `docs/orquestrador/skill`.
+  *Evidência:* `fb8de45` (seção ACHADO) e K5b — desde a K5b o `--atualizar` escreve em
+  `scripts/roadmap/`, e a recusa tinha ficado com os três caminhos da K8a. Um
+  `lint-mapa.py` modificado e não commitado era a única coisa que o instalador apagava sem
+  avisar.
+  *Teste:* caso (g) de `scripts/kit/test-instalar.sh` — fixture com PAUSAR e
+  `scripts/roadmap/lint-mapa.py` modificado fora do git: rc 1, a recusa NOMEIA o caminho e o
+  arquivo continua intacto (cksum). (g2): com `--forcar`, rc 0, o aviso `--forcar: passando
+  por cima` e o arquivo vira o do kit. 5 vermelhos antes — o `--atualizar` saía 0 dizendo
+  `idêntico ao kit`, com a modificação já apagada.
+
 - **1d · gate mudo por symlink, CONSERTADO.** O guard de CLI do `gate-ticket.ts` compara os
   dois lados com `realpathSync`, num `chamadoComoCli()` com try/catch. Antes, `resolve(argv[1])`
   não resolvia symlink e o `import.meta.url` vinha fisicamente resolvido: sob caminho com
@@ -224,18 +237,6 @@
   *Evidência:* inventário §4 decisões 3 e 4, §6 itens 9 e 12, §8 item 4.
   *Teste:* migração de cada artefato legado, com o caso NEGATIVO de que a prosa e o objetivo
   não se movem.
-
-- **K8c · a recusa 3 do `--atualizar` não olha `scripts/roadmap/`.** ACHADO da etapa 3: desde
-  K5b o `--atualizar` ESCREVE em `scripts/roadmap/`, mas a recusa por árvore suja
-  (`instalar.sh`, `atualizar()`) confere só `scripts/orquestrador/**`, `scripts/orq` e
-  `docs/orquestrador/skill/**` — os três caminhos que a peça K8a enumerava. Um `lint-mapa.py`
-  modificado e não commitado no repo é apagado em silêncio. Não foi ampliado junto com K8a por
-  decisão: o contrato das três recusas estava escrito, e alargá-lo em silêncio é pior que a
-  lacuna.
-  *Evidência:* `instalar.sh`, a linha `git -C "$repo" status --porcelain -- scripts/orquestrador
-  scripts/orq docs/orquestrador/skill`; `fb8de45`, seção ACHADO da mensagem.
-  *Teste:* repo com `scripts/roadmap/lint-mapa.py` modificado e não commitado → `--atualizar`
-  recusa com rc 1 nomeando o caminho; com `--forcar`, passa e avisa.
 
 - **K9 · contrato.** `CONTRATO.md`, `ticket.schema.json`, `liberacoes.schema.json` e o enum
   `motivo_categoria` (os 8 baldes do `orq-telemetria.py` do Comarka). `risco` é derivado (passo 6

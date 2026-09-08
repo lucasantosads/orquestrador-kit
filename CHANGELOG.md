@@ -137,6 +137,13 @@ attempt registra como `ok`. Não derruba o run; faz a trilha mentir.
   *O que o CI faz diferente:* nada. O instalador do CI só ganha uma recusa que o checkout
   dele nunca dispara (`~/Projetos/conteudos-infinitos` não está sob `/tmp` e o CI não roda
   com `ORQ_TESTE=1`).
+- **K8c** — a recusa 3 do `--atualizar` (modificação não commitada no motor) passa a conferir
+  também `scripts/roadmap/`. Desde a K5b o `--atualizar` ESCREVE ali, mas a recusa continuava
+  com os três caminhos que a K8a enumerava: um `lint-mapa.py` modificado e não commitado era
+  a única coisa que o instalador apagava sem avisar. Escrever e vigiar são a mesma lista
+  agora. *O que o CI faz diferente:* nada — o `scripts/roadmap/` do CI está limpo no git; a
+  recusa só dispara para quem tem trabalho pendurado ali, e `--forcar` continua sendo a única
+  saída, com aviso.
 
 Passos humanos que faltam para o CI receber este motor (não são desta sessão):
 `launchd.label: com.conteudos.orquestrador` no `000-config.json` do CI; `orq pausar`;
