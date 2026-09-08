@@ -14,7 +14,7 @@ por `toBeDefined` nem foi apagado.
 
 ## Saíram da quarentena
 
-Todas as 8 saíram com **K7b** (`4e0048a`), pela mesma porta: o
+Todas as 8 saíram com **K7b** (`67c485e`), pela mesma porta: o
 `test/fixtures/orq-harness.ts` ganhou `checkoutReal()`, que instancia o repo de
 fixture (`scripts/kit/fixture.sh`, peça K7a) uma vez por arquivo de teste e o
 remove no `afterAll`. Os casos passaram a apontar para o motor **vendorizado

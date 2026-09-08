@@ -48,15 +48,65 @@
   *Teste:* não tem teste próprio (é documento); o que ele afirma sobre o disco está verificado
   por `grep`/`cat` nas linhas citadas em cada peça.
 
+- **K7 · fixture de repo.** `fixture/` é o TEMPLATE (arquivos soltos, sem `.git`): toolchain,
+  `src/soma.ts` + teste verde, a fila (`000-config.json` schema 2 mínimo, `liberacoes.json`,
+  `decisoes-pendentes.md`, `rascunhos/`, o ticket 001) e o roadmap de um bloco/uma frente.
+  `scripts/kit/fixture.sh` INSTANCIA: `/tmp/orq-fixture-XXXXXX/repo`, motor vendorizado dentro,
+  `node_modules` por symlink, `git init -b main` + `staging-auto`, origin falso
+  (`git@example.invalid:fixture/orq-fixture.git`), e o caminho na última linha do stdout.
+  *Evidência:* `4500bb2` (K7a) e `67c485e` (K7b); inventário §8 item 2. O config é mínimo por
+  levantamento no disco, não por memória: `grep -ohE "cfg '[^']*'" scripts/orquestrador/*.sh` mais
+  os acessos diretos de `enforcement-core.ts:128,211`, `decisao.ts:71,113,277,363`, `juiz.ts:64-76`
+  e `gates.ts:176-178`. Dois valores são cobrados por teste do motor, não escolhidos:
+  `diff_cap_linhas = 600` e as 7 causas de `politica_adiamento` (`test-lib-config.sh:50,58,61`), e
+  `preflight_probe = true` (`test-retry-worktree.sh:216` exercita `probe_modelos` inteiro com
+  `claude_run` stubado; com `false`, `executor.sh:146` sai cedo e a seção 4 cai em 5 falhas).
+  `scripts/roadmap/` entra na vendorização porque `orq mapa lint` roda
+  `python3 scripts/roadmap/lint-mapa.py` a partir do MAIN_CHECKOUT (`scripts/orq:226`).
+  *Teste:* `npx vitest run` — 24 arquivos, **612 passam, 0 em quarentena**;
+  `bash scripts/kit/test-shell.sh` — rc 0 nos três; `bash $FX/scripts/orq` diz
+  `ESTADO ocioso` / `FILA 1 pendente`; `bash $FX/scripts/orq validar --pendentes` sai 0;
+  `python3 scripts/roadmap/lint-mapa.py` dentro do fixture: 10 passaram, 0 falharam, 0 aviso.
+  *Falta:* a travessia PAGA do loop (`scripts/kit/fixture-e2e.sh`) espera OK humano — ver K7-e2e
+  em PENDENTES.
+
+- **K5 · `instalar.sh --verificar`.** `diff -rq` entre `scripts/orquestrador/**`, `scripts/orq` e
+  `doutrina/` do kit e `scripts/orquestrador/**`, `scripts/orq` e `docs/orquestrador/skill/` de um
+  repo, ignorando o plist instanciado (`*.plist` que não seja `*.plist.template`), `runs` e
+  `VERSAO`; imprime `idêntico ao kit <VERSAO>` (rc 0) ou a lista `diferente` / `só no kit` /
+  `só no repo` (rc 1). `--novo` e `--atualizar` dizem "ainda não: peça K8" e saem 2.
+  *Evidência:* `0f023a6`; inventário §4 decisão 2 e §8 pronto-quando; o mapa origem→destino é o do
+  `ORIGEM.md`. `LC_ALL=C` no `diff` é obrigatório: sem ele, numa máquina em pt_BR o parser não casa
+  nada e o verificador diria "idêntico" para um repo divergente.
+  *Teste:* `scripts/kit/test-instalar.sh` — (a) fixture recém-instanciado: idêntico, rc 0; (b)
+  cópia com UM byte a mais em `lib.sh`: `diferente scripts/orquestrador/lib.sh`, rc 1, e o NEGATIVO
+  de que é exatamente 1 diferença; (c) `~/Projetos/conteudos-infinitos` (só leitura): `repo sem
+  VERSAO` + `idêntico ao kit 2.1.0-dev`, rc 0 — e `git log 711ab5e..HEAD -- scripts/orquestrador
+  scripts/orq docs/orquestrador/skill` sai vazio lá, ou seja, a etapa 5 do CI não tocou o motor.
+
 ## PENDENTES
 
-- **K5 · `instalar.sh --verificar`.** `diff -r` entre `scripts/orquestrador/**`, `scripts/orq` e
-  `doutrina/` do kit e `scripts/orquestrador/**`, `scripts/orq` e `docs/orquestrador/skill/` de um
-  repo, ignorando o plist instanciado e `runs/`; imprime `idêntico ao kit <VERSAO>` ou a lista de
-  diferenças; rc 0 ou 1.
-  *Evidência:* inventário §4 decisão 2 (vendorizado por cópia, hash conferido no pré-voo) e §8
-  pronto-quando. O mapa origem→destino já está em `ORIGEM.md`.
-  *Teste:* contra o checkout do CI em 711ab5e devolve idêntico.
+- **K7-e2e · o fixture atravessa o loop (PAGA, espera OK humano).**
+  `scripts/kit/fixture-e2e.sh` já existe e recusa rodar sem `ORQ_E2E_OK=1`: instancia o fixture,
+  roda UMA drenagem do `local-loop.sh` dele com watchdog de `claude_timeout_secs + 120`s (técnica
+  do `claude_run`, `lib.sh:964-986` — o macOS não tem `timeout`), e imprime `orq`, as 20 últimas
+  linhas da trilha, `git log --oneline staging-auto -3` e o `custo.json`. O fixture NÃO é removido:
+  se reprovar, o diff da tentativa e o veredito cru SÃO o resultado.
+  *Evidência:* inventário §8 item 2, pronto-quando ("um ticket-fixture trivial atravessa o loop
+  ponta a ponta e o merge aparece na staging", `doutrina/references/setup.md:55`).
+  *Teste:* ticket 001 em `done`, merge na `staging-auto` do fixture, evento `APROVADO` na trilha,
+  nenhum push (o origin é `example.invalid`; se o loop tentasse, falharia alto — e isso também
+  seria resultado).
+
+- **K5b · o `--verificar` não cobre `scripts/roadmap/`.** ACHADO da etapa 2: `orq mapa lint` roda
+  `python3 scripts/roadmap/lint-mapa.py` a partir do MAIN_CHECKOUT (`scripts/orq:226`), então
+  `scripts/roadmap/` É motor vendorizado — o `fixture.sh` já o copia. O escopo do `--verificar`,
+  como esta peça o descreve e como K5 o entregou, são só três caminhos: um `lint-mapa.py`
+  desatualizado no repo passa por "idêntico". Não foi ampliado em K5 por decisão (o escopo estava
+  escrito; alargá-lo em silêncio é pior que a lacuna).
+  *Evidência:* `scripts/orq:226`; `scripts/kit/fixture.sh`, bloco "o motor, vendorizado".
+  *Teste:* copiar o fixture, mexer num byte de `scripts/roadmap/lint-mapa.py` e exigir
+  `diferente scripts/roadmap/lint-mapa.py` com rc 1.
 
 - **K6 · pureza.** `scripts/kit/pureza.sh`: grep em CÓDIGO (não em comentário) de
   `scripts/orquestrador/**` e `scripts/orq` por premissa de repo. As duas reais hoje:
@@ -64,22 +114,19 @@
   247) → viram `toolchain.pacotes` no config, ou leitura dos `workspaces` do `package.json`;
   (b) nome e label do plist template (`scripts/orquestrador/com.conteudos.orquestrador.plist.template`)
   → `com.orquestrador.plist.template` com `{{LABEL}}`, e `instalar-launchd.sh` deriva o label do
-  config.
+  config;
+  (c) ACHADO da etapa 2: `typecheck_marca` (`executor.sh:415-424`) combina dois gates por NOME
+  fixo, `typecheck_root` e `typecheck_web` — nomes do monorepo do CI. Num repo cujo gate se chame
+  `typecheck` (o fixture, por exemplo) a função devolve `nao-rodou` para um gate que rodou e
+  passou. Não é fatal hoje (só alimenta a linha de evento), e por isso não virou mudança de motor
+  nesta etapa; os nomes dos gates têm de sair do config, como o resto.
   *Evidência:* inventário §8 item 5; as linhas citadas, no disco.
   *Teste:* pureza = 0 em código; comentário de proveniência pode ficar.
 
-- **K7 · fixture.** `fixture/`: repo mínimo (package.json + vitest + um ticket trivial +
-  `000-config.json` schema 2) que atravessa o loop ponta a ponta localmente, sem push. É onde
-  `--novo` é exercitado.
-  *Evidência:* inventário §8 item 2 e pronto-quando. **Destrava as 8 quarentenas de K3**
-  (`docs/QUARENTENA.md`) e os três shell tests, que hoje saem rc 2 pedindo um checkout com
-  `docs/fila`: `test-lib-config.sh` (espera o config dentro do `ORQ_EXEC_ROOT` que recebe),
-  `test-drenagem.sh:25,29` e `test-retry-worktree.sh:32,36` (copiam
-  `$CHECKOUT_REAL/docs/fila/000-config.json` e montam o próprio `ORQ_EXEC_ROOT`).
-  *Teste:* o fixture atravessa o loop até a sua `staging-auto`; os 8 `it.skip` voltam a `it` e
-  passam; os três shell tests devolvem rc 0.
-
-- **K8 · `instalar.sh --novo | --atualizar`, com `--dry-run` e relatório.** Migra
+- **K8 · `instalar.sh --novo | --atualizar`, com `--dry-run` e relatório.** O `--novo` nasce do
+  bloco de vendorização do `scripts/kit/fixture.sh` (K7a), que já é o mapa origem→destino do
+  `ORIGEM.md` executado: `scripts/orquestrador/` (menos o plist instanciado), `scripts/orq`,
+  `scripts/roadmap/`, `doutrina/` → `docs/orquestrador/skill/`, mais o carimbo `VERSAO`. Migra
   `liberacoes.json` (duas listas do Comarka → objetos, `em` → `liberado_em`, prefixo `humano:`),
   pause file (`.orq-pause` → `PAUSAR`), config (mapa de chaves legadas → schema 2 limpo) e o bloco
   JSON dos tickets pendentes (prosa intacta). Nunca reescreve objetivo de ticket.
