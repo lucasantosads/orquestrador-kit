@@ -478,6 +478,49 @@
   própria — o que cobre esse buraco hoje é o `probe_modelos`, que o Actus não tem.
 
 
+- **K11a-4 · o resto do enforcement do Actus: E, F e a exceção de teste-SQL.** Quatro
+  peças, quatro commits, e depois delas o Actus não perde regra NENHUMA de enforcement ao
+  trocar de motor.
+  · **K11a-4a** (`367c2ea`) regra E — `zona_proibida.prefixos_sem_ddl`: CREATE/ALTER/DROP
+    de objeto com o prefixo reprova, com tipo próprio de violação. DML no mesmo objeto NÃO
+    é desta regra (é C/D), e a separação está num caso. É a MESMA regra que o Comarka pede
+    (`trafego_`, `vw_`), então a linha "DDL/TRIGGER/VIEW" da K11b sai fechada junto.
+  · **K11a-4b** (`612adac`) regra F — `enforcement.padroes_proibidos_no_diff`, regexes com
+    flags inline `(?i)/(?is)`. Por ARQUIVO (não no diff inteiro como o Actus): a violação
+    diz onde casou, e um `;` do arquivo A não fecha a cláusula que a regex lia no B. Regex
+    que não compila tem tipo PRÓPRIO — config quebrada não pode virar "nenhum padrão casou".
+  · **K11a-4c** (`4c39821`) a exceção estreita — `enforcement.testes_sql.glob` diz quem
+    ENTRA, e as 4 condições do `checarTesteSql` decidem. O glob descreve o DIRETÓRIO e não
+    o sufixo: estreitá-lo a `*.test.sql` deixaria a condição 1 (o nome) inalcançável.
+    Arquivo que entra sai da regra B e responde pelas 4 condições no lugar.
+  · **K11a-4d** (`c484de1`) `migrations_dir → migrations.dir` com `so_quando` — o renome
+    que só vale para quem declarou `migrations_faixa_loop`. Fecha o achado do `--dry-run`
+    da etapa 6 sem desfazer a decisão que o motivou: quem pede a regra B é a FAIXA, o dir
+    só diz onde ela vale, e o CI segue com a regra desligada.
+  *Evidência:* `~/Projetos/actus-saas/scripts/orquestrador/enforcement.mjs:117-187` (a
+  exceção), `:270-287` (E e F) e os casos correspondentes do `enforcement.test.mjs`, todos
+  só leitura. `test/fixtures/config/actus-000-config.json` é o `000-config.json` vivo de lá
+  copiado byte a byte (`cmp` + cksum na PROCEDENCIA.md).
+  *Teste:* `test/orquestrador-enforcement-actus.test.ts`, de 41 para **103 casos**, cada
+  `it(...)` com o nome ORIGINAL do `test(...)` do Actus. **43 vermelhos antes**, somados as
+  quatro peças (7 + 13 + 18 + 5). Os 47 casos de `test/orquestrador-enforcement.test.ts`
+  continuam verdes SEM edição.
+  *O que o CI faz diferente:* nada, e o teste prova contra os três configs reais do disco —
+  nenhuma das chaves novas existe em nenhum deles, e um `.sql` de teste sem
+  `enforcement.testes_sql` cai na regra B como qualquer outro. **Com uma exceção NOMEADA:**
+  `zona_proibida.no_write_prefixes` EXISTE no config do CI e no template, então migrar
+  esses configs LIGA a regra E com os prefixos que eles próprios declaram. A regra 3
+  (`no_write_tables: "TODAS"`) não cobre DDL — o "redundante" do comentário do CI descreve
+  uma redundância que não existe. Está na tabela, na linha do `--dry-run` e num caso.
+  *Achado:* a `zona_proibida` REAL do Actus não tem `no_write_paths` (ela é fronteira de
+  BANCO), e o spread de `undefined` derrubava o `enforce` inteiro com TypeError antes de
+  qualquer regra rodar. A chave não é obrigatória em `config-chaves.ts`: o config estava
+  certo e o motor errado.
+  *Medido:* `instalar.sh --atualizar ~/Projetos/actus-saas --migrar --dry-run` (nada
+  escrito) — 7 renomes, e o `orq config` sobre o proposto saiu de 15 para 14 violações,
+  todas placeholders de decisão local.
+
+
 - **G · gate `tipo: baseline` com direção, contagem e preparo.** `gates.ts` ganhou
   `direcao: "max" | "min"` (padrão `max`), `contagem_regex` (sem grupo de captura conta
   LINHAS; com grupo, SOMA os números — um placar por bloco) e `preparo: [...]`, rodado
@@ -587,22 +630,6 @@
 
 ## PENDENTES
 
-- **K11a-4 · o resto do enforcement do Actus (E, F e a exceção de teste-SQL).** A K11a-1
-  trouxe B/C/D. Faltam três, e enquanto faltarem o Actus PERDE proteção ao trocar de
-  motor — está escrito no cabeçalho de `test/orquestrador-enforcement-actus.test.ts`:
-  (i) `no_write_prefixes` — CREATE/ALTER/DROP de objeto com prefixo (`vw_` no Actus);
-  (ii) `padroes_proibidos_no_diff` — regexes com flags inline `(?i)/(?is)` aplicadas ao
-  diff, três no Actus (reancoragem de `tenant_id` em tabela particionada,
-  `session_replication_role`, DELETE físico), e a mais cara de portar porque cada uma
-  carrega uma regressão medida junto (o `[^;]*` que atravessava SET→WHERE);
-  (iii) a exceção estreita de `supabase/tests/*.test.sql` — as 4 condições do
-  `checarTesteSql` (nome, bloco `DO $$` com tag que aceita dígito, `RAISE EXCEPTION`,
-  zero DDL/DML de topo fora do DO, com comentário `--` removido antes).
-  *Evidência:* `~/Projetos/actus-saas/scripts/orquestrador/enforcement.mjs:117-187` (a
-  exceção), `:270-287` (E e F), e os 27 casos correspondentes do `enforcement.test.mjs`.
-  *Teste:* os mesmos 27 casos, um a um, no arquivo da K11a-1 — e o NEGATIVO de que cada
-  regra nasce desligada sem a chave.
-
 - **K6d · `scripts/kit/pureza.sh`.** O grep que TRANCA a pureza: em CÓDIGO (não em
   comentário) de `scripts/orquestrador/**` e `scripts/orq`, zero premissa de repo. As três
   premissas que a etapa 3 nomeou saíram (K6a, K6b, K6c) — falta o script que impede a próxima
@@ -650,8 +677,8 @@
   do repo de origem, e toda uma traz data e origem.
 
 - **K11b · o que falta do COMARKA (refinada com o que o PASSO 0 da etapa 6 mostrou).** A K11
-  original juntava Actus e Comarka; o lado do Actus saiu nas peças K11a-1/2/3 desta etapa (o que
-  sobra dele está em K11a-4). O que resta é do Comarka, e o PASSO 0 mostrou que DUAS das quatro
+  original juntava Actus e Comarka; o lado do Actus saiu inteiro nas peças K11a-1/2/3 e K11a-4.
+  O que resta é do Comarka, e o PASSO 0 mostrou que DUAS das quatro
   linhas já estavam cobertas:
   · **C0 por tabela — JÁ COBERTO pela K11a-1.** O `c0_intocavel` do Comarka tem a mesma forma de
     `zona_proibida` (`no_write_tables`, `no_write_prefixes`, `os_owned_excecoes`) mais duas listas
@@ -662,9 +689,11 @@
   · **janela de comentário — JÁ COBERTA, e antes desta etapa.** `test/orquestrador-enforcement.test.ts:106`
     exercita a mutação na janela seguinte ao `.from()` (encadeamento em várias linhas), e a regra C
     nova trabalha sobre o BLOCO de linhas do arquivo, não sobre a linha solta.
-  · **DDL/TRIGGER/VIEW e `no_write_prefixes` — FALTA.** É a regra E do Actus e o `no_write_prefixes`
-    do Comarka (`trafego_`, `vw_`): a MESMA regra, com dois donos. Entra junto com a K11a-4, e é o
-    argumento para fazê-la antes da adoção do Comarka.
+  · **DDL/TRIGGER/VIEW e `no_write_prefixes` — FEITO na K11a-4a.** Era a regra E do Actus e o
+    `no_write_prefixes` do Comarka (`trafego_`, `vw_`): a MESMA regra, com dois donos. O motor lê
+    `zona_proibida.prefixos_sem_ddl` e a tabela COPIA o valor para lá. O que sobra do Comarka aqui
+    é a mesma decisão do C0: a tabela não move `c0_intocavel` para `zona_proibida` sozinha, então
+    os prefixos de LÁ (que moram dentro do `c0_intocavel`) continuam esperando essa decisão.
   · **`perfis_tools` como mapa opcional — FALTA.** `toolsForPerfil` (`perfil.ts:213`) já existe e já
     recebe o mapa por parâmetro; ninguém o chama. O que falta é o executor ler `perfis_tools` do
     config e o `perfil` do ticket. Com a T17, o piso passa a valer DEPOIS do perfil escolhido.

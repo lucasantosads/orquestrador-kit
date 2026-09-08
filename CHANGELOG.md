@@ -510,3 +510,46 @@ proteção ao trocar de motor?**
 
 Passos humanos para o CI receber esta etapa: ver o relatório em
 `~/orq-sessoes/relatorio-kit-etapa6.md`.
+
+### Etapa 6b — o resto do enforcement do Actus (E, F e a exceção de teste-SQL)
+
+Quatro peças, quatro commits, fechando a K11a-4. Depois delas a resposta à pergunta da
+etapa 6 — *o Actus perde alguma proteção ao trocar de motor?* — é **nenhuma**: A–F e a
+exceção de teste-SQL têm, cada uma, os casos do `enforcement.test.mjs` de lá.
+
+- **K11a-4a** `367c2ea` — regra E: `zona_proibida.prefixos_sem_ddl` (o `no_write_prefixes`
+  do Actus e do Comarka). CREATE/ALTER/DROP de objeto com o prefixo reprova, com tipo de
+  violação próprio; DML no mesmo objeto NÃO é desta regra (é C/D). A tabela de config
+  aprendeu o renome — e, diferente dos da K11a-1, esta chave EXISTE no config do CI
+  (`supabase_`, `auth_`) e no template (`vw_`): migrar o config deles LIGA a regra E. A
+  mudança de veredito está dita na tabela, na linha do `--dry-run` e num caso de teste,
+  porque a regra 3 (`no_write_tables: "TODAS"`) não cobre DDL — o "redundante" escrito no
+  comentário do CI descreve uma redundância que não existe. 14 casos, 7 vermelhos antes.
+- **K11a-4b** `612adac` — regra F: `enforcement.padroes_proibidos_no_diff`, regexes com
+  flags inline `(?i)/(?is)`, as três do Actus copiadas byte a byte. Duas diferenças
+  deliberadas: POR ARQUIVO (a violação diz onde casou, e um `;` do arquivo A não fecha a
+  cláusula que a regex lia no B) e tipo próprio para regex que não compila — config
+  quebrada não pode virar "nenhum padrão casou". O caso de regressão do `[^;]*` audita o
+  MESMO diff com a forma antiga e com a atual: a antiga acusa o soft delete (falso
+  positivo), a atual não, e as duas continuam pegando a reancoragem. 19 casos,
+  13 vermelhos antes.
+- **K11a-4c** `4c39821` — a exceção estreita de teste-SQL: `enforcement.testes_sql.glob`
+  diz quem ENTRA, e as 4 condições do `checarTesteSql` decidem. O glob descreve o
+  DIRETÓRIO, não o sufixo, e é decisão: estreitá-lo a `*.test.sql` deixaria a condição 1
+  inalcançável. Arquivo que entra sai da regra B e responde pelas 4 condições no lugar.
+  22 casos, 18 vermelhos antes.
+- **K11a-4d** `c484de1` — `migrations_dir → migrations.dir`, com `so_quando`: o renome que
+  só vale para quem declarou `migrations_faixa_loop`. Fecha o achado do `--dry-run` da
+  etapa 6 (faixa sem dir = proibição que não valia para arquivo nenhum) SEM desfazer a
+  decisão que o motivou — quem pede a regra é a faixa, o dir só diz onde ela vale, e o CI
+  segue com a regra B desligada. `test/fixtures/config/actus-000-config.json` é o config
+  vivo do Actus copiado byte a byte, e com ele "as três regexes viajaram byte a byte"
+  virou caso de teste. **ACHADO no caminho:** a `zona_proibida` real do Actus não tem
+  `no_write_paths` — ela é fronteira de BANCO —, e o spread de `undefined` derrubava o
+  `enforce` inteiro com TypeError antes de qualquer regra rodar. 6 casos, 5 vermelhos
+  antes.
+
+Medido no Actus (`instalar.sh --atualizar ~/Projetos/actus-saas --migrar --dry-run`, nada
+escrito): 7 renomes (eram 4), e o `orq config` sobre o proposto saiu de **15 para 14
+violações** — as 14 são placeholders de decisão local, e o aviso "faixa sem dir" sumiu.
+Relatório: `~/orq-sessoes/relatorio-kit-etapa6b.md`.
