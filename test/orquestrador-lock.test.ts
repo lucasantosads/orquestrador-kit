@@ -20,7 +20,7 @@ import {
 import { extractJsonBlock, readTickets, classificar } from '../scripts/orquestrador/fila-read.js';
 
 const RAIZ = join(import.meta.dirname, '..');
-const FILA_DIR = join(RAIZ, 'docs', 'fila');
+const FILA_DIR = join(RAIZ, 'test', 'fixtures', 'checkout', 'docs', 'fila');
 const CONFIG_PATH = join(FILA_DIR, '000-config.json');
 
 const config = JSON.parse(readFileSync(CONFIG_PATH, 'utf8')) as {

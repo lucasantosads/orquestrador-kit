@@ -13,7 +13,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { criarFixture, escrever, ler, REPO_ROOT } from './fixtures/orq-harness.js';
+import { FX_CHECKOUT, REPO_ROOT, criarFixture, escrever, ler } from './fixtures/orq-harness.js';
 import {
   classeDeRisco,
   modeloDoJuiz,
@@ -24,7 +24,7 @@ import {
 } from '../scripts/orquestrador/juiz.js';
 
 const CFG = JSON.parse(
-  readFileSync(join(REPO_ROOT, 'docs', 'fila', '000-config.json'), 'utf8'),
+  readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8'),
 ) as JuizCfg & { politica_adiamento: { causas_que_adiam: string[] } };
 
 const RISCO_BASE = { arquivos: ['apps/web/src/app/home/page.tsx'], objetivo: 'ajusta o texto do card', diffLines: 40, retryFinal: false };
@@ -81,7 +81,7 @@ describe('LIXO é adiado, nunca reprovado', () => {
   });
 
   it('o parse do CLI sai com rc 3 (o código que o executor lê como ADIADO)', () => {
-    const r = spawnSync('npx', ['tsx', join(REPO_ROOT, 'scripts', 'orquestrador', 'juiz.ts'), '--run-cli', REPO_ROOT, 'parse'], {
+    const r = spawnSync('npx', ['tsx', join(REPO_ROOT, 'scripts', 'orquestrador', 'juiz.ts'), '--run-cli', FX_CHECKOUT, 'parse'], {
       input: envelope('nada de json aqui'),
       encoding: 'utf8',
     });
@@ -89,7 +89,7 @@ describe('LIXO é adiado, nunca reprovado', () => {
   });
 
   it('a fronteira está no decisao.ts: juizIlegivel ADIA e NÃO conta retry', () => {
-    const r = spawnSync('npx', ['tsx', join(REPO_ROOT, 'scripts', 'orquestrador', 'decisao-cli.ts'), REPO_ROOT, 'desfecho'], {
+    const r = spawnSync('npx', ['tsx', join(REPO_ROOT, 'scripts', 'orquestrador', 'decisao-cli.ts'), FX_CHECKOUT, 'desfecho'], {
       input: JSON.stringify({ exitCode: 0, saida: '', diffLines: 10, juizIlegivel: true }),
       encoding: 'utf8',
     });
@@ -100,7 +100,7 @@ describe('LIXO é adiado, nunca reprovado', () => {
   });
 
   it('NEGATIVO: sem o campo, o mesmo sinal segue aprovando como antes', () => {
-    const r = spawnSync('npx', ['tsx', join(REPO_ROOT, 'scripts', 'orquestrador', 'decisao-cli.ts'), REPO_ROOT, 'desfecho'], {
+    const r = spawnSync('npx', ['tsx', join(REPO_ROOT, 'scripts', 'orquestrador', 'decisao-cli.ts'), FX_CHECKOUT, 'desfecho'], {
       input: JSON.stringify({ exitCode: 0, saida: '', diffLines: 10 }),
       encoding: 'utf8',
     });
@@ -150,7 +150,7 @@ describe('modelo por classe de risco (custo-e-contexto §7)', () => {
   });
 
   it('o CLI devolve classe + modelo juntos (é o que o shell consome)', () => {
-    const r = spawnSync('npx', ['tsx', join(REPO_ROOT, 'scripts', 'orquestrador', 'juiz.ts'), '--run-cli', REPO_ROOT, 'nivel'], {
+    const r = spawnSync('npx', ['tsx', join(REPO_ROOT, 'scripts', 'orquestrador', 'juiz.ts'), '--run-cli', FX_CHECKOUT, 'nivel'], {
       input: JSON.stringify({ ...RISCO_BASE, arquivos: ['supabase/migrations/x.sql'] }),
       encoding: 'utf8',
     });

@@ -1,0 +1,33 @@
+
+ RUN  v2.1.9 /Users/lucasantos/Projetos/_worktrees/ci-harness-b/services/persona-roteirizador
+
+ ❯ test/zz-captura-falha.test.ts (1 test | 1 failed) 3ms
+   × C2 · Estagio 4 — montarRoteiroFinalGuiado > sem compliance: grava roteiro, entrega direto, legenda sanitizada 2ms
+     → expected true to be false // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/zz-captura-falha.test.ts > C2 · Estagio 4 — montarRoteiroFinalGuiado > sem compliance: grava roteiro, entrega direto, legenda sanitizada
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/zz-captura-falha.test.ts:5:39
+      3|   it('sem compliance: grava roteiro, entrega direto, legenda sanitizad…
+      4|     const final = { compliance: { aplicado: true }, entregue: true }
+      5|     expect(final.compliance.aplicado).toBe(false)
+       |                                       ^
+      6|   })
+      7| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  14:28:24
+   Duration  134ms (transform 11ms, setup 0ms, collect 7ms, tests 3ms, environment 0ms, prepare 30ms)
+

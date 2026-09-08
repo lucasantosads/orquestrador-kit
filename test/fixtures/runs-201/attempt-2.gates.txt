@@ -1,0 +1,5 @@
+ok   limpeza_artefatos        25ms
+ok   typecheck_root          578ms
+ok   typecheck_web          1593ms
+FALHA testes_por_pacote      7951ms [8 pacotes, 861p/1f] — 1 teste(s) falhando
+VEREDITO: REPROVADO

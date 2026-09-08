@@ -18,11 +18,11 @@ import { describe, it, expect } from 'vitest';
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { criarFixture, bashNoFixture, ler, orq, REPO_ROOT } from './fixtures/orq-harness.js';
+import { FX_CHECKOUT, REPO_ROOT, bashNoFixture, criarFixture, ler, orq } from './fixtures/orq-harness.js';
 
 const LAUNCHD = join(REPO_ROOT, 'scripts', 'orquestrador', 'launchd-run.sh');
 const TIMEOUT = JSON.parse(
-  readFileSync(join(REPO_ROOT, 'docs', 'fila', '000-config.json'), 'utf8'),
+  readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8'),
 ).claude_timeout_secs as number;
 
 const agora = () => Math.floor(Date.now() / 1000);

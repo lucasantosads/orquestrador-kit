@@ -27,10 +27,11 @@ import {
   segmentarCmd,
   validarTicket,
 } from '../scripts/orquestrador/gate-ticket.js';
+import { FX_CHECKOUT } from './fixtures/orq-harness.js';
 
 const REPO_ROOT = join(import.meta.dirname, '..');
 const GATE = join(REPO_ROOT, 'scripts', 'orquestrador', 'gate-ticket.ts');
-const CFG_REAL = readFileSync(join(REPO_ROOT, 'docs', 'fila', '000-config.json'), 'utf8');
+const CFG_REAL = readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8');
 
 interface Ticket {
   id: string;
@@ -290,7 +291,7 @@ describe('check 6 · leitura do cmd: aspas, segmentos, redirecionamento', () => 
 });
 
 describe('check 6 · o veto, a isenção e o que a isenção NÃO alcança', () => {
-  const cfg = carregarCfg(join(REPO_ROOT, 'docs', 'fila'));
+  const cfg = carregarCfg(join(FX_CHECKOUT, 'docs', 'fila'));
 
   it('a chave lida é `proibido_no_cmd` (é o nome que está no disco)', () => {
     expect(cfg.proibido_no_cmd).toContain('$(');

@@ -17,11 +17,12 @@ import {
   prefixoSimples,
   toolsDoTicket,
 } from '../scripts/orquestrador/perfil.js';
+import { FX_CHECKOUT } from './fixtures/orq-harness.js';
 
 const REPO_ROOT = join(__dirname, '..');
 const EXECUTOR = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
 const CONFIG = JSON.parse(
-  readFileSync(join(REPO_ROOT, 'docs', 'fila', '000-config.json'), 'utf8'),
+  readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8'),
 ) as { gates: { nome: string; cmd: string }[]; claude_max_turns: number };
 const GATES = CONFIG.gates.map((g) => g.cmd);
 

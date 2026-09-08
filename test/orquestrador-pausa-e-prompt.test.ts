@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { criarFixture, escrever, ler, REPO_ROOT } from './fixtures/orq-harness.js';
+import { FX_CHECKOUT, REPO_ROOT, criarFixture, escrever, ler } from './fixtures/orq-harness.js';
 
 const LOOP = join(REPO_ROOT, 'scripts', 'orquestrador', 'local-loop.sh');
 const EXEC = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
@@ -111,7 +111,7 @@ describe('pausar_file presente encerra a drenagem em ocioso, sem erro', () => {
   });
 
   it('o caminho vem do config (pausar_file), não hardcoded', () => {
-    const cfg = JSON.parse(readFileSync(join(REPO_ROOT, 'docs', 'fila', '000-config.json'), 'utf8'));
+    const cfg = JSON.parse(readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8'));
     expect(cfg.pausar_file).toBe('docs/fila/PAUSAR');
     const lib = readFileSync(join(REPO_ROOT, 'scripts', 'orquestrador', 'lib.sh'), 'utf8');
     expect(lib).toMatch(/CFG_PAUSAR_FILE=.*cfg '\.pausar_file'/);
@@ -221,7 +221,7 @@ describe('o executor aponta para EXECUTOR.md, não para a SKILL.md', () => {
   });
 
   it('o EXECUTOR.md real existe e continua curto (≤ 60 linhas, cat. 8 do pré-voo)', () => {
-    const f = join(REPO_ROOT, 'docs', 'orquestrador', 'skill', 'EXECUTOR.md');
+    const f = join(REPO_ROOT, 'doutrina', 'EXECUTOR.md');
     expect(existsSync(f)).toBe(true);
     expect(readFileSync(f, 'utf8').trimEnd().split('\n').length).toBeLessThanOrEqual(60);
   });

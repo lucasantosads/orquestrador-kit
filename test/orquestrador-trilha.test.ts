@@ -14,9 +14,9 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { criarFixture, escrever, ler, orq, REPO_ROOT } from './fixtures/orq-harness.js';
+import { FX_CHECKOUT, REPO_ROOT, criarFixture, escrever, ler, orq } from './fixtures/orq-harness.js';
 
-const CFG = JSON.parse(readFileSync(join(REPO_ROOT, 'docs', 'fila', '000-config.json'), 'utf8'));
+const CFG = JSON.parse(readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8'));
 const TRAILER = CFG.executor.trailer_commit;
 const EXECUTOR = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
 const LOOP = join(REPO_ROOT, 'scripts', 'orquestrador', 'local-loop.sh');
@@ -115,7 +115,7 @@ describe('o prompt do executor cobra o trailer no commit do agente', () => {
   });
 
   it('EXECUTOR.md, o prefixo estável do prompt, já cobrava o mesmo trailer', () => {
-    const md = readFileSync(join(REPO_ROOT, 'docs', 'orquestrador', 'skill', 'EXECUTOR.md'), 'utf8');
+    const md = readFileSync(join(REPO_ROOT, 'doutrina', 'EXECUTOR.md'), 'utf8');
     expect(md).toContain(`${TRAILER}: <id>`);
   });
 });

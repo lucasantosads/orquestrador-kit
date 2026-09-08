@@ -19,7 +19,7 @@ import {
 } from '../scripts/orquestrador/decisao.js';
 import type { DecisaoConfig, SinalTentativa } from '../scripts/orquestrador/decisao.js';
 
-const CONFIG_PATH = join(import.meta.dirname, '..', 'docs', 'fila', '000-config.json');
+const CONFIG_PATH = join(import.meta.dirname, 'fixtures', 'checkout', 'docs', 'fila', '000-config.json');
 const cfg = JSON.parse(readFileSync(CONFIG_PATH, 'utf8')) as DecisaoConfig;
 
 const sinal = (s: Partial<SinalTentativa> = {}): SinalTentativa => ({

@@ -11,11 +11,11 @@ import { readFileSync, mkdtempSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { bashNoFixture, criarFixture, escrever, ler, REPO_ROOT } from './fixtures/orq-harness.js';
+import { FX_CHECKOUT, REPO_ROOT, bashNoFixture, criarFixture, escrever, ler } from './fixtures/orq-harness.js';
 
 const LIB = join(REPO_ROOT, 'scripts', 'orquestrador', 'lib.sh');
 const notif = (raiz: string) => join(raiz, 'docs', 'fila', 'runs', 'notificacoes.log');
-const CFG = JSON.parse(readFileSync(join(REPO_ROOT, 'docs', 'fila', '000-config.json'), 'utf8'));
+const CFG = JSON.parse(readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8'));
 
 /**
  * PATH de teste. Provar "osascript ausente" numa máquina macOS exige um PATH em

@@ -1,0 +1,130 @@
+2026-09-05T13:31:45-0300 234 PERMISSAO_NEGADA n=4 cmds=cd /Users/lucasantos/Projetos/_worktrees/ci-234
+F=supabase/migrations/0029_sugestoes_persona.sql
+awk -F"'" '/values\(slug/,0' /dev/null 2>/dev/null
+python3 - <<'PY'
+import re
+text = open('supabase/migrations/0029_sugestoes_persona.sql', encoding='utf-8').read()
+rows = re.findall(r"\('(\w+)', '(dor|palavra_chave)', '([^']+)'\)", text)
+print("total rows:", len(rows))
+from collections import Counter
+c = Counter(r[0] for r in rows)
+print(c)
+tipos = Counter((r[0], r[1]) for r in rows)
+bad = [k for k,v in tipos.items() if v != 5]
+print("mismatched counts:", bad)
+textos = [r[2] for r in rows]
+dupes = [t for t,n in Counter(textos).items() if n > 1]
+print("dupe texts:", dupes)
+banned = ['garant', 'sucesso', 'resultado', 'indeniza', 'r$', 'ganho de causa', 'capta']
+for t in textos:
+    for b in banned:
+        if b in t.lower():
+            print("BANNED:", b, t)
+PY
+ | cd /Users/lucasantos/Projetos/_worktrees/ci-234
+F=supabase/migrations/0029_sugestoes_persona.sql
+echo "exists:"; test -f "$F" && echo ok
+echo "create table:"; grep -ci 'create table public.sugestoes_persona' "$F"
+echo "dor/palavra/seed/uso >=4:"; grep -oE "'(dor|palavra_chave|seed|uso)'" "$F" | wc -l
+echo "dor/palavra_chave >=112:"; grep -oE "'(dor|palavra_chave)'" "$F" | wc -l
+echo "nichos >=11:"; grep -oE "'(trabalhista|previdenciario|familia|consumidor|civel|criminal|tributario|empresarial|imobiliario|bancario|saude)'" "$F" | wc -l
+echo "join nichos >=1:"; grep -oiE 'join public.nichos_juridicos' "$F" | wc -l
+echo "create policy ==4:"; grep -oiE 'create policy' "$F" | wc -l
+echo "user_org_ids >=4:"; grep -oiE 'private.user_org_ids' "$F" | wc -l
+echo "unique index ==2:"; grep -oiE 'create unique index' "$F" | wc -l
+echo "comment on >=4:"; grep -oi 'comment on' "$F" | wc -l
+echo "for all to authenticated ==0:"; grep -ciE 'for all to authenticated' "$F"
+echo "for delete to authenticated ==0:"; grep -ciE 'for delete to authenticated' "$F"
+echo "uuid literal ==0:"; grep -coE "'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'" "$F"
+ | python3 - <<'PY'
+import re
+text = open('supabase/migrations/0029_sugestoes_persona.sql', encoding='utf-8').read()
+rows = re.findall(r"\('(\w+)', '(dor|palavra_chave)', '([^']+)'\)", text)
+print("total rows:", len(rows))
+from collections import Counter
+c = Counter(r[0] for r in rows)
+print(c)
+tipos = Counter((r[0], r[1]) for r in rows)
+bad = [k for k,v in tipos.items() if v != 5]
+print("mismatched counts:", bad)
+textos = [r[2] for r in rows]
+dupes = [t for t,n in Counter(textos).items() if n > 1]
+print("dupe texts:", dupes)
+banned = ['garant', 'sucesso', 'resultado', 'indeniza', 'r$', 'ganho de causa', 'capta']
+for t in textos:
+    for b in banned:
+        if b in t.lower():
+            print("BANNED:", b, t)
+PY
+2026-09-05T13:32:27-0300 234 GATE typecheck=ok testes=ok enforcement=ok criterios=15/15 build=ok
+2026-09-05T13:33:01-0300 234 JUIZ veredito=aprovado classe=alto modelo=opus attempt=1
+2026-09-05T13:33:02-0300 234 APROVADO merge=aguardando dur=261s attempt=1
+2026-09-05T13:33:02-0300 234 MERGE alvo=staging-auto sha=6181198
+2026-09-05T13:33:14-0300 237 INICIO attempt=1 model=sonnet
+2026-09-05T13:39:11-0300 237 PERMISSAO_NEGADA n=1 cmds=cd /Users/lucasantos/Projetos/_worktrees/ci-237
+echo "--- criterio 1 ---"
+test -f services/persona-roteirizador/test/estagio-roteiro-recorte-formato.test.ts && cd services/persona-roteirizador && npx vitest run test/estagio-roteiro-re
+cd /Users/lucasantos/Projetos/_worktrees/ci-237
+echo "--- criterio 2 ---"
+test -f services/persona-roteirizador/test/estagio-roteiro-recorte-formato.test.ts && test $(grep -c 'it(' services/persona-roteirizador/test/estagio-roteiro-re
+echo "--- criterio 5 (gerarBlocos) ---"
+test $(grep -c 'gerarBlocos' services/persona-roteirizador/src/geracao-guiada/estagio-roteiro.ts) -ge 1 && echo ok
+echo "--- criterio 6 (angulo.formato) ---"
+test $(grep -cE 'angulo[.]formato' services/persona-roteirizador/src/geracao-guiada/estagio-roteiro.ts) -ge 1 && echo ok
+echo "--- criterio 7 (final.carrossel na web) ---"
+test $(grep -cE 'final[.]carrossel' apps/web/src/app/gerar/WizardGerar.tsx) -ge 1 && echo ok
+echo "--- criterio 8 (nao usa tipo_tecnico ===) ---"
+grep -cE 'tipo_tecnico ===|tipo_tecnico ==|tipo_tecnico!==' services/persona-roteirizador/src/geracao-guiada/estagio-roteiro.ts
+2026-09-05T13:39:50-0300 237 GATE typecheck=ok testes=ok enforcement=ok criterios=19/19 build=ok
+2026-09-05T13:40:47-0300 237 JUIZ veredito=aprovado classe=alto modelo=opus attempt=1
+2026-09-05T13:40:47-0300 237 APROVADO merge=aguardando dur=357s attempt=1
+2026-09-05T13:40:48-0300 237 MERGE alvo=staging-auto sha=f92b9e4
+2026-09-05T13:41:00-0300 238 INICIO attempt=1 model=sonnet
+2026-09-05T13:48:45-0300 238 PERMISSAO_NEGADA n=4 cmds=cd /Users/lucasantos/Projetos/_worktrees/ci-238
+echo "== engine story-post test =="
+(cd services/persona-roteirizador && npx vitest run test/estagio-roteiro-story-post.test.ts 2>&1 | grep -cE 'Tests +[0-9]+ passed')
+echo "== engine story-post it() count =="
+grep -c 'it(' services/persona-roteirizador/test/estagio-roteiro-story-post.test.ts
+echo "== web story-post test =="
+(cd apps/web && npx vitest run test/gerar-story-post.test.tsx 2>&1 | grep -cE 'Tests +[0-9]+ passed')
+echo "== web story-post it() count =="
+grep -c 'it(' apps/web/test/gerar-story-post.test.tsx
+echo "== tipos.ts story/post markers =="
+grep -oE 'story\?:|post\?:' services/persona-roteirizador/src/geracao-guiada/tipos.ts | wc -l
+echo "== estagio uses renderers =="
+grep -oE 'renderizarStory|renderizarPost' services/persona-roteirizador/src/geracao-guiada/estagio-roteiro.ts | wc -l
+echo "== WizardGerar uses final.story/post =="
+grep -oE 'final[.]story|final[.]post' apps/web/src/app/gerar/WizardGerar.tsx | wc -l
+echo "== carrossel type still there =="
+grep -cE 'carrossel\?: Slide' services/persona-roteirizador/src/geracao-guiada/tipos.ts
+echo "== no tipo_tecnico compare =="
+grep -cE 'tipo_tecnico ===|tipo_tecnico ==|tipo_tecnico!==' services/persona-roteirizador/src/geracao-guiada/estagio-roteiro.ts
+echo "== skip/only/todo =="
+(cd services/persona-roteirizador && grep -cE '[.](skip|only|todo)\(' test/estagio-roteiro-story-post.test.ts)
+ | cd /Users/lucasantos/Projetos/_worktrees/ci-238 && git diff --name-only main...HEAD | cd /Users/lucasantos/Projetos/_worktrees/ci-238 && git status --short |
+2026-09-05T13:49:24-0300 238 GATE typecheck=ok testes=ok enforcement=ok criterios=20/20 build=ok
+2026-09-05T13:50:22-0300 238 JUIZ veredito=aprovado classe=alto modelo=opus attempt=1
+2026-09-05T13:50:23-0300 238 APROVADO merge=aguardando dur=464s attempt=1
+2026-09-05T13:50:23-0300 238 MERGE alvo=staging-auto sha=454f7f0
+2026-09-05T13:50:32-0300 239 INICIO attempt=1 model=sonnet
+2026-09-05T13:52:17-0300 239 PERMISSAO_NEGADA n=1 cmds=cd /Users/lucasantos/Projetos/_worktrees/ci-239
+F=supabase/migrations/0030_fila_aprovacao.sql
+echo "1:"; test -f $F && echo ok
+echo "2:"; test $(grep -oE 'legenda jsonb|veredito_205 status_compliance|veredito_205_motivo text|veredito_205_em timestamptz' $F | wc -l) -eq 4 && echo ok
+echo "3:"; test $(grep -ci 'create table public.roteiro_aprovacoes' $F) -eq 1 && echo ok
+echo "4:"; test $(grep -ciE 'roteiro_id +uuid +not null +unique' $F) -ge 1 && echo ok
+echo "5:"; test $(grep -ciE 'length[(]token[)] *>= *43' $F) -ge 1 && echo ok
+echo "6:"; test $(grep -ciE "interval '30 days'" $F) -ge 1 && echo ok
+echo "7:"; test $(grep -oE "'(pendente|aprovado|ajuste_pedido)'" $F | wc -l) -ge 3 && echo ok
+echo "8:"; test $(grep -oiE 'create policy' $F | wc -l) -ge 4 && echo ok
+echo "9:"; test $(grep -oi 'private.user_org_ids' $F | wc -l) -ge 3 && echo ok
+echo "10:"; test $(grep -oi 'comment on' $F | wc -l) -ge 8 && echo ok
+echo "11 (expect 0):"; grep -ciE 'to anon|to +public *$|role anon' $F
+echo "12 (expect 0):"; grep -ciE 'security definer|create function|create or replace function' $F
+echo "13 (expect 0):"; grep -ciE 'for all to authenticated' $F
+echo "14 (expect 0):"; grep -ciE 'for delete to authenticated' $F
+echo "15 (expect 0):"; grep -ciE 'drop column|alter column|drop table|drop policy' $F
+2026-09-05T13:52:51-0300 239 GATE typecheck=ok testes=ok enforcement=ok criterios=17/17 build=ok
+2026-09-05T13:53:01-0300 239 JUIZ veredito=aprovado classe=alto modelo=opus attempt=1
+2026-09-05T13:53:02-0300 239 APROVADO merge=aguardando dur=105s attempt=1
+2026-09-05T13:53:02-0300 239 MERGE alvo=staging-auto sha=13856fa

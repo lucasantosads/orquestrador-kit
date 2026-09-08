@@ -1,0 +1,527 @@
+[
+  {
+    "ticket": "246",
+    "cmd": "test -f services/orquestrador/test/organico-web-degrada.test.ts && cd services/orquestrador && npx vitest run test/organico-web-degrada.test.ts 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
+    "espera": "1"
+  },
+  {
+    "ticket": "246",
+    "cmd": "test -f services/orquestrador/test/organico-web-degrada.test.ts && test $(grep -c 'it(' services/orquestrador/test/organico-web-degrada.test.ts) -ge 6 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "246",
+    "cmd": "test $(grep -cE 'export const WARN_(TRENDS|PERGUNTAS)_DEGRADADO' services/orquestrador/src/organico.ts) -eq 2 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "246",
+    "cmd": "test $(grep -c 'aoDegradar' services/orquestrador/src/organico.ts) -ge 5 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "246",
+    "cmd": "test $(grep -c 'catch' services/orquestrador/src/organico.ts) -ge 3 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "246",
+    "cmd": "test $(grep -oE 'Nenhum sinal ingerido|vai ingerir FIXTURE' services/orquestrador/src/organico.ts | wc -l) -eq 2 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "246",
+    "cmd": "grep -cE 'WARN_(TRENDS|PERGUNTAS)_DEGRADADO =.*DORMENTE' services/orquestrador/src/organico.ts",
+    "espera": "0"
+  },
+  {
+    "ticket": "246",
+    "cmd": "grep -cE 'console[.](warn|error|log)[(].*(erro|err)' services/orquestrador/src/organico.ts",
+    "espera": "0"
+  },
+  {
+    "ticket": "246",
+    "cmd": "grep -cE 'console[.](warn|error|log)[(].*[[:<:]]chaves?[[:>:]]' services/orquestrador/src/organico.ts",
+    "espera": "0"
+  },
+  {
+    "ticket": "246",
+    "cmd": "test $(grep -cE \"'real' [|] 'ausente'\" services/orquestrador/src/organico.ts) -eq 2 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "246",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- services/orquestrador/test/noop-dormente.test.ts | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "246",
+    "cmd": "test $(grep -c 'it(' services/orquestrador/test/noop-dormente.test.ts) -ge 5 && test $(grep -c 'expect(' services/orquestrador/test/noop-dormente.test.ts) -ge 11 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "246",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- services/orquestrador/test/organico-fonte-usada.test.ts | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "246",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- apps supabase src services/ingestao-demanda services/ingestao-perguntas services/ingestao-organico services/ingestao-trafego | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "246",
+    "cmd": "cd services/orquestrador && grep -cE '[.](skip|only|todo)[(]' test/organico-web-degrada.test.ts",
+    "espera": "0"
+  },
+  {
+    "ticket": "246",
+    "cmd": "cd services/orquestrador && npx vitest run 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
+    "espera": "1"
+  },
+  {
+    "ticket": "246",
+    "cmd": "npm run typecheck:root 2>&1 | grep -c 'error TS'",
+    "espera": "0"
+  },
+  {
+    "ticket": "246",
+    "cmd": "true",
+    "espera": "avaliador"
+  },
+  {
+    "ticket": "246",
+    "cmd": "true",
+    "espera": "avaliador"
+  },
+  {
+    "ticket": "246",
+    "cmd": "true",
+    "espera": "avaliador"
+  },
+  {
+    "ticket": "247",
+    "cmd": "test -f apps/web/test/angulos-termos.test.ts && cd apps/web && npx vitest run test/angulos-termos.test.ts 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
+    "espera": "1"
+  },
+  {
+    "ticket": "247",
+    "cmd": "test -f apps/web/test/angulos-termos.test.ts && test $(grep -c 'it(' apps/web/test/angulos-termos.test.ts) -ge 6 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "247",
+    "cmd": "test -f apps/web/src/server/angulos-termos.ts && test $(grep -cE 'export function termosDaPersona' apps/web/src/server/angulos-termos.ts) -eq 1 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "247",
+    "cmd": "test -f apps/web/src/server/angulos-termos.ts && test $(grep -c 'MAX_TERMOS_WEB' apps/web/src/server/angulos-termos.ts) -ge 2 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "247",
+    "cmd": "test $(grep -oE 'termosDemanda:|termosPerguntas:' apps/web/src/server/angulos-gerar-core.ts | wc -l) -eq 2 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "247",
+    "cmd": "test $(grep -c 'carregarPersona' apps/web/src/server/angulos-gerar-core.ts) -ge 1 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "247",
+    "cmd": "test $(grep -c 'it(' apps/web/test/angulos-gerar-core.test.ts) -ge 6 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "247",
+    "cmd": "grep -cE 'use server|server-only' apps/web/src/server/angulos-termos.ts",
+    "espera": "0"
+  },
+  {
+    "ticket": "247",
+    "cmd": "test $(grep -c 'export function temaParaPersona' apps/web/src/server/angulos-gerar-core.ts) -eq 1 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "247",
+    "cmd": "test $(grep -c 'expect(' apps/web/test/angulos-gerar-core.test.ts) -ge 13 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "247",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- apps/web/test/angulos-selo-fonte.test.tsx | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "247",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- apps/web/src/app apps/web/src/components | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "247",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- services | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "247",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- supabase | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "247",
+    "cmd": "cd apps/web && grep -cE '[.](skip|only|todo)[(]' test/angulos-termos.test.ts test/angulos-gerar-core.test.ts | grep -cv ':0'",
+    "espera": "0"
+  },
+  {
+    "ticket": "247",
+    "cmd": "cd apps/web && npx vitest run 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
+    "espera": "1"
+  },
+  {
+    "ticket": "247",
+    "cmd": "npm run typecheck:web 2>&1 | grep -c 'error TS'",
+    "espera": "0"
+  },
+  {
+    "ticket": "247",
+    "cmd": "true",
+    "espera": "avaliador"
+  },
+  {
+    "ticket": "247",
+    "cmd": "true",
+    "espera": "avaliador"
+  },
+  {
+    "ticket": "247",
+    "cmd": "true",
+    "espera": "avaliador"
+  },
+  {
+    "ticket": "248",
+    "cmd": "test -f apps/web/test/angulos-sinal-web.test.tsx && cd apps/web && npx vitest run test/angulos-sinal-web.test.tsx 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
+    "espera": "1"
+  },
+  {
+    "ticket": "248",
+    "cmd": "test -f apps/web/test/angulos-sinal-web.test.tsx && test $(grep -c 'it(' apps/web/test/angulos-sinal-web.test.tsx) -ge 6 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "248",
+    "cmd": "test -f apps/web/src/app/angulos/SinalWeb.tsx && test $(grep -cE 'export function SinalWeb' apps/web/src/app/angulos/SinalWeb.tsx) -eq 1 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "248",
+    "cmd": "test $(grep -oE 'fonteWebTrends|fonteWebPerguntas' apps/web/src/server/angulos-types.ts | wc -l) -eq 2 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "248",
+    "cmd": "test $(grep -oE 'fonteWebTrends:|fonteWebPerguntas:' apps/web/src/server/angulos-gerar-core.ts | wc -l) -ge 4 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "248",
+    "cmd": "test $(grep -c 'SinalWeb' apps/web/src/app/angulos/GerarAngulosButton.tsx) -ge 2 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "248",
+    "cmd": "test $(grep -oE 'Buscas em alta|Perguntas do publico|Perguntas do público' apps/web/src/app/angulos/SinalWeb.tsx | wc -l) -ge 2 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "248",
+    "cmd": "grep -ciE 'web_trends|web_perguntas|serpapi|SERPAPI_API_KEY|vault|fonte_tipo|payload|credencial' apps/web/src/app/angulos/SinalWeb.tsx",
+    "espera": "0"
+  },
+  {
+    "ticket": "248",
+    "cmd": "grep -cE 'use client|use server|server-only|useState|useEffect|useActionState' apps/web/src/app/angulos/SinalWeb.tsx",
+    "espera": "0"
+  },
+  {
+    "ticket": "248",
+    "cmd": "test $(grep -c 'SeloSimulacao' apps/web/src/app/angulos/GerarAngulosButton.tsx) -ge 2 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "248",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- apps/web/test/angulos-selo-fonte.test.tsx | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "248",
+    "cmd": "test $(grep -c 'it(' apps/web/test/angulos-selo-fonte.test.tsx) -ge 4 && test $(grep -c 'expect(' apps/web/test/angulos-selo-fonte.test.tsx) -ge 8 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "248",
+    "cmd": "test $(grep -c 'it(' apps/web/test/angulos-gerar-core.test.ts) -ge 6 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "248",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- apps/web/src/app/angulos/page.tsx apps/web/src/app/angulos/SeloSimulacao.tsx | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "248",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- services | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "248",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- supabase | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "248",
+    "cmd": "cd apps/web && grep -cE '[.](skip|only|todo)[(]' test/angulos-sinal-web.test.tsx",
+    "espera": "0"
+  },
+  {
+    "ticket": "248",
+    "cmd": "cd apps/web && npx vitest run 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
+    "espera": "1"
+  },
+  {
+    "ticket": "248",
+    "cmd": "npm run typecheck:web 2>&1 | grep -c 'error TS'",
+    "espera": "0"
+  },
+  {
+    "ticket": "248",
+    "cmd": "true",
+    "espera": "avaliador"
+  },
+  {
+    "ticket": "248",
+    "cmd": "true",
+    "espera": "avaliador"
+  },
+  {
+    "ticket": "248",
+    "cmd": "true",
+    "espera": "avaliador"
+  },
+  {
+    "ticket": "249",
+    "cmd": "test -f services/ingestao-demanda/test/f1-9-dedup-por-persona.test.ts && cd services/ingestao-demanda && npx vitest run test/f1-9-dedup-por-persona.test.ts 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
+    "espera": "1"
+  },
+  {
+    "ticket": "249",
+    "cmd": "test -f services/ingestao-perguntas/test/f1-9-dedup-por-persona.test.ts && cd services/ingestao-perguntas && npx vitest run test/f1-9-dedup-por-persona.test.ts 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
+    "espera": "1"
+  },
+  {
+    "ticket": "249",
+    "cmd": "test -f services/ingestao-demanda/test/f1-9-dedup-por-persona.test.ts && test -f services/ingestao-perguntas/test/f1-9-dedup-por-persona.test.ts && test $(grep -c 'it(' services/ingestao-demanda/test/f1-9-dedup-por-persona.test.ts) -ge 4 && test $(grep -c 'it(' services/ingestao-perguntas/test/f1-9-dedup-por-persona.test.ts) -ge 4 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "249",
+    "cmd": "test $(grep -c 'computeHashDedupe' services/ingestao-demanda/src/trends.ts) -ge 2 && test $(grep -c 'hash_dedupe:' services/ingestao-demanda/src/trends.ts) -eq 1 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "249",
+    "cmd": "test $(grep -c 'computeHashDedupe' services/ingestao-perguntas/src/perguntas.ts) -ge 2 && test $(grep -c 'hash_dedupe:' services/ingestao-perguntas/src/perguntas.ts) -eq 1 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "249",
+    "cmd": "test $(grep -c 'personaId' services/ingestao-demanda/src/trends.ts) -ge 3 && test $(grep -c 'personaId' services/ingestao-perguntas/src/perguntas.ts) -ge 3 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "249",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- services/ingestao-demanda/test/f1-6-connector.test.ts services/ingestao-perguntas/test/f1-6-connector.test.ts | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "249",
+    "cmd": "test $(grep -c 'it(' services/ingestao-demanda/test/f1-6-connector.test.ts) -ge 6 && test $(grep -c 'expect(' services/ingestao-demanda/test/f1-6-connector.test.ts) -ge 17 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "249",
+    "cmd": "test $(grep -c 'it(' services/ingestao-perguntas/test/f1-6-connector.test.ts) -ge 6 && test $(grep -c 'expect(' services/ingestao-perguntas/test/f1-6-connector.test.ts) -ge 19 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "249",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- services/ingestao-demanda/src/trends-map.ts services/ingestao-perguntas/src/perguntas-map.ts | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "249",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- services/ingestao-demanda/src/normalizer-demanda.ts services/ingestao-perguntas/src/normalizer-perguntas.ts services/ingestao-trafego | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "249",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- apps supabase src services/orquestrador services/ingestao-organico | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "249",
+    "cmd": "grep -cE '[.](skip|only|todo)[(]' services/ingestao-demanda/test/f1-9-dedup-por-persona.test.ts services/ingestao-perguntas/test/f1-9-dedup-por-persona.test.ts | grep -cv ':0'",
+    "espera": "0"
+  },
+  {
+    "ticket": "249",
+    "cmd": "cd services/ingestao-demanda && npx vitest run 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
+    "espera": "1"
+  },
+  {
+    "ticket": "249",
+    "cmd": "cd services/ingestao-perguntas && npx vitest run 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
+    "espera": "1"
+  },
+  {
+    "ticket": "249",
+    "cmd": "npm run typecheck:root 2>&1 | grep -c 'error TS'",
+    "espera": "0"
+  },
+  {
+    "ticket": "249",
+    "cmd": "true",
+    "espera": "avaliador"
+  },
+  {
+    "ticket": "249",
+    "cmd": "true",
+    "espera": "avaliador"
+  },
+  {
+    "ticket": "249",
+    "cmd": "true",
+    "espera": "avaliador"
+  },
+  {
+    "ticket": "250",
+    "cmd": "grep -ci 'fixture' apps/web/src/server/angulos-gerar-core.ts",
+    "espera": "0"
+  },
+  {
+    "ticket": "250",
+    "cmd": "test -f services/ingestao-organico/test/r3-10-tema-persona.test.ts && cd services/ingestao-organico && npx vitest run test/r3-10-tema-persona.test.ts 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
+    "espera": "1"
+  },
+  {
+    "ticket": "250",
+    "cmd": "test -f services/ingestao-organico/test/r3-11-dedup-por-persona.test.ts && cd services/ingestao-organico && npx vitest run test/r3-11-dedup-por-persona.test.ts 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
+    "espera": "1"
+  },
+  {
+    "ticket": "250",
+    "cmd": "test -f services/ingestao-organico/test/r3-10-tema-persona.test.ts && test -f services/ingestao-organico/test/r3-11-dedup-por-persona.test.ts && test $(grep -c 'it(' services/ingestao-organico/test/r3-10-tema-persona.test.ts) -ge 6 && test $(grep -c 'it(' services/ingestao-organico/test/r3-11-dedup-por-persona.test.ts) -ge 4 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "250",
+    "cmd": "test -f services/ingestao-organico/src/tema-persona.ts && test $(grep -cE 'export function temaDaPersona' services/ingestao-organico/src/tema-persona.ts) -eq 1 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "250",
+    "cmd": "test $(grep -c 'computeHashDedupe' services/ingestao-organico/src/perplexity.ts) -ge 2 && test $(grep -c 'hash_dedupe:' services/ingestao-organico/src/perplexity.ts) -eq 1 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "250",
+    "cmd": "test $(grep -c 'personaId' services/ingestao-organico/src/perplexity.ts) -ge 3 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "250",
+    "cmd": "test $(grep -oE 'carregarPersona|temaDaPersona' apps/web/src/server/angulos-gerar-core.ts | wc -l) -ge 2 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "250",
+    "cmd": "test $(grep -c 'export function temaParaPersona' apps/web/src/server/angulos-gerar-core.ts) -eq 1 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "250",
+    "cmd": "grep -cE 'use server|server-only|process[.]env|@supabase' services/ingestao-organico/src/tema-persona.ts",
+    "espera": "0"
+  },
+  {
+    "ticket": "250",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- services/ingestao-organico/test/r3-7-connector.test.ts | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "250",
+    "cmd": "test $(grep -c 'it(' services/ingestao-organico/test/r3-7-connector.test.ts) -ge 3 && test $(grep -c 'expect(' services/ingestao-organico/test/r3-7-connector.test.ts) -ge 11 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "250",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- services/ingestao-organico/src/perplexity-map.ts services/ingestao-organico/src/normalizer-organico.ts services/ingestao-trafego | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "250",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- services/ingestao-organico/src/cli services/orquestrador | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "250",
+    "cmd": "test $(grep -c 'it(' apps/web/test/angulos-gerar-core.test.ts) -ge 4 && test $(grep -c 'expect(' apps/web/test/angulos-gerar-core.test.ts) -ge 13 && echo ok",
+    "espera": "ok"
+  },
+  {
+    "ticket": "250",
+    "cmd": "grep -cE 'termosDemanda|termosPerguntas' apps/web/src/server/angulos-gerar-core.ts",
+    "espera": "0"
+  },
+  {
+    "ticket": "250",
+    "cmd": "git diff --name-only $BASE_REF...HEAD -- apps/web/src/app apps/web/src/components supabase src services/ingestao-demanda services/ingestao-perguntas services/persona-roteirizador | wc -l | tr -d ' '",
+    "espera": "0"
+  },
+  {
+    "ticket": "250",
+    "cmd": "grep -cE '[.](skip|only|todo)[(]' services/ingestao-organico/test/r3-10-tema-persona.test.ts services/ingestao-organico/test/r3-11-dedup-por-persona.test.ts | grep -cv ':0'",
+    "espera": "0"
+  },
+  {
+    "ticket": "250",
+    "cmd": "cd services/ingestao-organico && npx vitest run 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
+    "espera": "1"
+  },
+  {
+    "ticket": "250",
+    "cmd": "cd apps/web && npx vitest run 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
+    "espera": "1"
+  },
+  {
+    "ticket": "250",
+    "cmd": "npm run typecheck 2>&1 | grep -c 'error TS'",
+    "espera": "0"
+  },
+  {
+    "ticket": "250",
+    "cmd": "true",
+    "espera": "avaliador"
+  },
+  {
+    "ticket": "250",
+    "cmd": "true",
+    "espera": "avaliador"
+  },
+  {
+    "ticket": "250",
+    "cmd": "true",
+    "espera": "avaliador"
+  }
+]

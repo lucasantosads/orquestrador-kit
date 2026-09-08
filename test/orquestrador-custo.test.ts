@@ -10,11 +10,11 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { bashComLog, bashNoFixture, criarFixture, escrever, ler, REPO_ROOT } from './fixtures/orq-harness.js';
+import { FX_CHECKOUT, REPO_ROOT, bashComLog, bashNoFixture, criarFixture, escrever, ler } from './fixtures/orq-harness.js';
 
 const custoFile = (raiz: string) => join(raiz, 'docs', 'fila', 'runs', 'custo.json');
 const runs = (raiz: string, ...p: string[]) => join(raiz, 'docs', 'fila', 'runs', ...p);
-const CFG = JSON.parse(readFileSync(join(REPO_ROOT, 'docs', 'fila', '000-config.json'), 'utf8'));
+const CFG = JSON.parse(readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8'));
 const HOJE = new Date().toISOString().slice(0, 10);
 
 const FILA = [{ id: '901', slug: 'da-vez', status: 'pendente' }, { id: '902', slug: 'depois', status: 'pendente' }];

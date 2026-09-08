@@ -16,7 +16,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { criarFixture, escrever, ler, REPO_ROOT } from './fixtures/orq-harness.js';
+import { FX_CHECKOUT, REPO_ROOT, criarFixture, escrever, ler } from './fixtures/orq-harness.js';
 import { classificar } from '../scripts/orquestrador/fila-read.js';
 import {
   montarDiagnostico,
@@ -27,7 +27,7 @@ import {
 } from '../scripts/orquestrador/diagnostico.js';
 import { recorteDeFalha } from '../scripts/orquestrador/gates.js';
 
-const CFG = JSON.parse(readFileSync(join(REPO_ROOT, 'docs', 'fila', '000-config.json'), 'utf8'));
+const CFG = JSON.parse(readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8'));
 const FIXT = join(REPO_ROOT, 'test', 'fixtures', 'runs-201');
 const fx = (f: string) => readFileSync(join(FIXT, f), 'utf8');
 
@@ -42,7 +42,7 @@ const TESTE_QUEBRADO = 'test/zz-captura-falha.test.ts';
 
 const decisao = (sinal: unknown) =>
   JSON.parse(
-    spawnSync('npx', ['tsx', join(REPO_ROOT, 'scripts', 'orquestrador', 'decisao-cli.ts'), REPO_ROOT, 'desfecho'], {
+    spawnSync('npx', ['tsx', join(REPO_ROOT, 'scripts', 'orquestrador', 'decisao-cli.ts'), FX_CHECKOUT, 'desfecho'], {
       input: JSON.stringify(sinal),
       encoding: 'utf8',
     }).stdout,
@@ -77,7 +77,7 @@ describe('reprovação MECÂNICA vira refatiar, sem consumir retry', () => {
   it('refatiar NÃO gera retry (o plano diz deveTentar=false)', () => {
     const r = spawnSync(
       'npx',
-      ['tsx', join(REPO_ROOT, 'scripts', 'orquestrador', 'decisao-cli.ts'), REPO_ROOT, 'retry', '0', 'sonnet'],
+      ['tsx', join(REPO_ROOT, 'scripts', 'orquestrador', 'decisao-cli.ts'), FX_CHECKOUT, 'retry', '0', 'sonnet'],
       { input: JSON.stringify({ desfecho: 'refatiar', causa: 'enforcement', motivo: 'x', contaComoRetry: false }), encoding: 'utf8' },
     );
     const plano = JSON.parse(r.stdout);
@@ -92,7 +92,7 @@ describe('reprovação MECÂNICA vira refatiar, sem consumir retry', () => {
     expect(v.causa).toBe('criterio_qualidade');
     expect(v.contaComoRetry).toBe(true);
     const plano = JSON.parse(
-      spawnSync('npx', ['tsx', join(REPO_ROOT, 'scripts', 'orquestrador', 'decisao-cli.ts'), REPO_ROOT, 'retry', '0', 'sonnet'], {
+      spawnSync('npx', ['tsx', join(REPO_ROOT, 'scripts', 'orquestrador', 'decisao-cli.ts'), FX_CHECKOUT, 'retry', '0', 'sonnet'], {
         input: JSON.stringify(v),
         encoding: 'utf8',
       }).stdout,

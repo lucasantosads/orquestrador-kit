@@ -17,7 +17,7 @@ import {
 } from '../scripts/orquestrador/gates.js';
 import type { GatesConfig, Execucao, Placar } from '../scripts/orquestrador/gates.js';
 
-const CONFIG_PATH = join(import.meta.dirname, '..', 'docs', 'fila', '000-config.json');
+const CONFIG_PATH = join(import.meta.dirname, 'fixtures', 'checkout', 'docs', 'fila', '000-config.json');
 const cfg = JSON.parse(readFileSync(CONFIG_PATH, 'utf8')) as GatesConfig;
 
 const ok = (saida = ''): Execucao => ({ exitCode: 0, saida, ms: 1 });
@@ -257,6 +257,12 @@ function rodarCriterio(cmd: string, espera: string): { falhos: string; saida: st
     'tmp="$(mktemp -d)"',
     `trap 'rm -rf "$tmp"' EXIT`,
     'mkdir -p "$tmp/wt" "$tmp/run"',
+    // O executor lê docs/fila/000-config.json do CHECKOUT. O kit não tem fila
+    // (ela é do repo instalado), então o dir temporário é o checkout: mesmo
+    // padrão de fixtures/orq-harness.ts.
+    'mkdir -p "$tmp/docs/fila"',
+    `cp "${CONFIG_PATH}" "$tmp/docs/fila/000-config.json"`,
+    'export ORQ_EXEC_ROOT="$tmp"',
     `cat > "$tmp/ticket.md" <<'FIXTURE'`,
     '```json',
     JSON.stringify(
@@ -302,6 +308,12 @@ describe('critérios do executor — strip de ANSI', () => {
 
   it('REGRESSÃO: sem o strip a mesma saída NÃO casava — a cegueira era do harness', () => {
     const script = [
+      'set -euo pipefail',
+      'tmp="$(mktemp -d)"',
+      `trap 'rm -rf "$tmp"' EXIT`,
+      'mkdir -p "$tmp/docs/fila"',
+      `cp "${CONFIG_PATH}" "$tmp/docs/fila/000-config.json"`,
+      'export ORQ_EXEC_ROOT="$tmp"',
       'export EXECUTOR_SOURCED=1',
       `source "${REPO_ROOT}/scripts/orquestrador/executor.sh"`,
       `crua="$(${PLACAR_COLORIDO})"`,
@@ -331,7 +343,8 @@ describe('critérios do executor — BASE_REF', () => {
     expect(falhos).toBe('');
   });
 
-  it('nenhum ticket da fila usa mais "main...HEAD" em critério de escopo', () => {
+  // QUARENTENA (K7): grep em docs/fila/*.md — os tickets são do repo instalado, não do kit.
+  it.skip('nenhum ticket da fila usa mais "main...HEAD" em critério de escopo', () => {
     const cmds = execFileSync('bash', ['-c', `grep -h '"cmd"' docs/fila/*.md || true`], {
       encoding: 'utf8',
       cwd: REPO_ROOT,

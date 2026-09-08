@@ -16,6 +16,14 @@ import { join, dirname } from 'node:path';
 export const REPO_ROOT = join(import.meta.dirname, '..', '..');
 export const LIB = join(REPO_ROOT, 'scripts', 'orquestrador', 'lib.sh');
 
+/**
+ * Checkout MÍNIMO de fixture: o análogo, dentro do kit, do repo instalado que o
+ * motor espera encontrar (docs/fila/000-config.json, liberacoes.json). O kit não
+ * tem fila própria — ela é do repo alvo —, então tudo que o motor leria de
+ * `docs/fila` do checkout, os testes leem daqui.
+ */
+export const FX_CHECKOUT = join(import.meta.dirname, 'checkout');
+
 export interface Ticket {
   id: string;
   slug?: string;
@@ -30,11 +38,12 @@ export interface Ticket {
 export function criarFixture(tickets: Ticket[] = []): string {
   const raiz = mkdtempSync(join(tmpdir(), 'orq-fx-'));
   mkdirSync(join(raiz, 'docs', 'fila', 'runs'), { recursive: true });
-  // Config REAL: os testes têm que falhar quando o config muda de forma
-  // incompatível, não passar contra uma cópia congelada.
+  // Config do checkout de fixture (FX_CHECKOUT). No repo de origem esta linha
+  // lia docs/fila/000-config.json do próprio checkout; o kit não tem fila —
+  // ela é do repo instalado —, então a referência mora em test/fixtures/.
   escrever(
     join(raiz, 'docs', 'fila', '000-config.json'),
-    readFileSync(join(REPO_ROOT, 'docs', 'fila', '000-config.json'), 'utf8'),
+    readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8'),
   );
   for (const t of tickets) escreverTicket(raiz, t);
   return raiz;

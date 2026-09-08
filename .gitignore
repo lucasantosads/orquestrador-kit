@@ -1,5 +1,9 @@
 node_modules/
 docs/fila/runs/
 *.log
+# Exceção: `events-quebrado.log` é FIXTURE de teste (a trilha corrompida que o
+# reparar-trilha.sh conserta), não log de execução. Sem esta linha o `*.log`
+# acima o deixa de fora e o teste passa a depender de arquivo não versionado.
+!test/fixtures/**/*.log
 .DS_Store
 .claude/settings.local.json

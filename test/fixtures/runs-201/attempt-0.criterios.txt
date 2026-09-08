@@ -1,0 +1,70 @@
+### o teste novo do gate no Finalizar passa
+cmd: cd services/persona-roteirizador && npx vitest run test/estagio-roteiro-gate.test.ts 2>&1 | grep -E 'Tests +[0-9]+ passed'
+espera: passed
+saida:       Tests  3 passed (3)
+
+### o checkbox de compliance sumiu do wizard
+cmd: grep -c 'aplicarCompliance' apps/web/src/app/gerar/WizardGerar.tsx
+espera: 0
+saida: 1
+
+### roteirizar.ts nao deriva mais o gate do formulario
+cmd: grep -c "formData.get('compliance')" apps/web/src/server/roteirizar.ts
+espera: 0
+saida: 0
+
+### pos-aprovacao.ts intacto: exigirAprovado continua la
+cmd: test $(grep -c 'exigirAprovado' services/persona-roteirizador/src/geracao/pos-aprovacao.ts) -ge 1 && echo ok
+espera: ok
+saida: ok
+
+### a suite guiada que ja existia continua verde
+cmd: cd services/persona-roteirizador && npx vitest run test/geracao-guiada.test.ts 2>&1 | grep -E 'Tests +[0-9]+ passed'
+espera: passed
+saida: 
+
+### typecheck de apps/web nao regride (baseline 0)
+cmd: npm run typecheck:web 2>&1 | grep -c 'error TS'
+espera: 0
+saida: 0
+
+### build de apps/web continua verde
+cmd: npm run build:web 2>&1 | tail -5 | grep -ic error
+espera: 0
+saida: 0
+
+### o teste novo do gate no Finalizar passa
+cmd: cd services/persona-roteirizador && npx vitest run test/estagio-roteiro-gate.test.ts 2>&1 | grep -E 'Tests +[0-9]+ passed'
+espera: passed
+saida:       Tests  3 passed (3)
+
+### o checkbox de compliance sumiu do wizard
+cmd: grep -c 'aplicarCompliance' apps/web/src/app/gerar/WizardGerar.tsx
+espera: 0
+saida: 0
+
+### roteirizar.ts nao deriva mais o gate do formulario
+cmd: grep -c "formData.get('compliance')" apps/web/src/server/roteirizar.ts
+espera: 0
+saida: 0
+
+### pos-aprovacao.ts intacto: exigirAprovado continua la
+cmd: test $(grep -c 'exigirAprovado' services/persona-roteirizador/src/geracao/pos-aprovacao.ts) -ge 1 && echo ok
+espera: ok
+saida: ok
+
+### a suite guiada que ja existia continua verde
+cmd: cd services/persona-roteirizador && npx vitest run test/geracao-guiada.test.ts 2>&1 | grep -E 'Tests +[0-9]+ passed'
+espera: passed
+saida:       Tests  28 passed (28)
+
+### typecheck de apps/web nao regride (baseline 0)
+cmd: npm run typecheck:web 2>&1 | grep -c 'error TS'
+espera: 0
+saida: 0
+
+### build de apps/web continua verde
+cmd: npm run build:web 2>&1 | tail -5 | grep -ic error
+espera: 0
+saida: 0
+

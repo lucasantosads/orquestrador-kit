@@ -1,0 +1,9 @@
+{
+  "ok": false,
+  "violations": [
+    {
+      "tipo": "fora_do_pathspec",
+      "detalhe": "services/persona-roteirizador/test/geracao-guiada.test.ts"
+    }
+  ]
+}

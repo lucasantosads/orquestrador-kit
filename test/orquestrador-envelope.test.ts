@@ -24,12 +24,12 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { bashNoFixture, criarFixture, escrever, REPO_ROOT } from './fixtures/orq-harness.js';
+import { FX_CHECKOUT, REPO_ROOT, bashNoFixture, criarFixture, escrever } from './fixtures/orq-harness.js';
 import { decidirDesfecho, detectarCausaInfra } from '../scripts/orquestrador/decisao.js';
 import type { DecisaoConfig, SinalTentativa } from '../scripts/orquestrador/decisao.js';
 
 const cfg = JSON.parse(
-  readFileSync(join(REPO_ROOT, 'docs', 'fila', '000-config.json'), 'utf8'),
+  readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8'),
 ) as DecisaoConfig;
 
 const envelopeReal = (nome: string) =>
