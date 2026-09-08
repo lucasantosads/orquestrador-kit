@@ -118,6 +118,15 @@ export function propor(raiz: unknown): Proposta {
   for (const r of RENOMES) {
     const valor = ler(cfg, r.de)
     if (valor === undefined || valor === null) continue
+    // `so_quando`: o renome que só vale para quem declarou OUTRA chave. Sem
+    // isto, `migrations_dir → migrations.dir` ligaria a regra B em todo repo
+    // que tem migration — e ligar regra de enforcement de arrasto é o oposto do
+    // que uma migração pode fazer sozinha. Silencioso de propósito: o config
+    // que não satisfaz a condição não tem nada a relatar sobre ela.
+    if (r.so_quando) {
+      const gatilho = ler(cfg, r.so_quando)
+      if (gatilho === undefined || gatilho === null) continue
+    }
     const jaTinha = ler(cfg, r.para)
     if (jaTinha !== undefined && jaTinha !== null) {
       linhas.push(`renome ${r.de} → ${r.para}: NÃO aplicado, '${r.para}' já existe com valor próprio`)

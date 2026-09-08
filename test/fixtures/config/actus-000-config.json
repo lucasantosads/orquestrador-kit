@@ -1,0 +1,113 @@
+{
+  "$schema_versao": 1,
+  "descricao": "Config do Orquestrador Autônomo — Actus SaaS. Fonte única de: zona proibida, gates, branch alvo, política de retry/cooldown, identidade. Lida pelos scripts via jq. Decisões locais medidas por evidência no repo (PASSO 0, 2026-08-08). Nenhum placeholder por preencher pode restar.",
+
+  "branch_alvo": "staging-auto",
+  "max_retries": 2,
+  "cooldown_minutes": 60,
+  "_cooldown": "Adiamento por limite (rate limit/quota/timeout) grava runs/.cooldown-until = agora + cooldown_minutes. O loop encerra cedo enquanto valer. NÃO conta como retry; status volta a pendente.",
+
+  "migrations_dir": "supabase/migrations",
+  "migrations_faixa_loop": "0250-0299",
+  "_migrations_faixa_loop": "Única faixa numérica onde o loop pode CRIAR arquivo .sql (nunca aplicar — DDL é sempre humano via MCP). O enforcement FALHA o processo se o diff criar/tocar qualquer .sql fora do intervalo 0250..0299. Decisão do Lucas (2026-08-08): a faixa 0200–0249 é RESERVA DOCUMENTADA da Agência/E4 no CLAUDE.md e PREVALECE — livre no disco (0 arquivos) ≠ livre no ledger. O loop foi realocado para 0250–0299 (bloco 'módulos futuros').",
+  "worktrees_dir": "../_worktrees",
+  "runs_dir": "docs/fila/runs",
+  "liberacoes_file": "docs/fila/liberacoes.json",
+
+  "_modelos": "executor_model implementa (barato/rápido); avaliador_model julga o diff (forte); retry_final_model roda a ÚLTIMA tentativa com modelo forte antes de bloquear.",
+  "executor_model": "sonnet",
+  "avaliador_model": "opus",
+  "retry_final_model": "opus",
+
+  "_economia": "diff_cap_linhas: acima disso reprova mecanicamente ('fatiar o ticket') sem chamar o juiz. claude_timeout_secs: corte de cada claude -p; estouro = adiado, não reprova. preflight_env_keys: envs obrigatórias antes de qualquer chamada de modelo.",
+  "diff_cap_linhas": 2500,
+  "claude_timeout_secs": 1800,
+  "preflight_env_keys": ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"],
+
+  "_identidade": "Antes de qualquer gasto: origin do checkout DEVE conter repo_origin_deve_conter; ref do banco extraída de SUPABASE_URL no .env.local DEVE bater com ambiente_id. Divergência = aborta o run inteiro, zero tentativa. fqwhpcusmkmvtgyofuwh = Actus (produção do produto); ogfnojbbvumujzfklkhh = dashboard legado (PROIBIDO, ver CLAUDE.md).",
+  "repo_origin_deve_conter": "actus-saas",
+  "ambiente_id": "fqwhpcusmkmvtgyofuwh",
+
+  "zona_proibida": {
+    "descricao": "Tudo que o loop NUNCA escreve nem gera DDL. Revisada por humano (Lucas). Na dúvida, proíba — liberar depois é barato, vazar não.",
+
+    "no_write_tables": ["public.leads", "public.contratos", "public.clientes_receita"],
+    "_no_write_tables": "Tabelas de negócio CONGELADAS desde a reancoragem/backfill de 29/07 — só ETL autorizado por humano toca. O enforcement falha se o diff contiver escrita (INSERT/UPDATE/DELETE/UPSERT/COPY) ou DDL contra qualquer uma, em .sql ou em .rpc()/SQL cru no código.",
+
+    "no_write_columns": ["etapa_canonica"],
+    "_no_write_columns": "Colunas que o loop NUNCA escreve, mesmo em tabela permitida. etapa_canonica (e funnel_stage_id canônico) é headline promovido — o loop só escreve na sombra etapa_v2_* (ver ledger 0171). O enforcement falha se o diff atribuir/UPDATE/INSERT tocando o nome de coluna listado (SET etapa_canonica, INSERT ... (etapa_canonica), ou objeto .update({ etapa_canonica })).",
+
+    "no_write_prefixes": ["vw_"],
+    "_no_write_prefixes": "Prefixos de objeto que o loop nunca cria nem altera. vw_ = views materializadas/de leitura, propriedade de decisão humana (shadow→headline). CREATE/ALTER/DROP/REPLACE de objeto com esse prefixo falha o diff.",
+
+    "padroes_proibidos_no_diff": [
+      {
+        "nome": "update_tenant_id_messages_particionada",
+        "regex": "(?is)update\\s+comercial\\.messages\\b[^;]*?\\bset\\b(?:(?!\\bwhere\\b)[^;])*\\btenant_id\\s*=",
+        "motivo": "comercial.messages é particionada por RANGE em enviada_em; UPDATE de tenant_id pode cruzar partição e corromper a linha. Reancoragem é ETL humano, não loop."
+      },
+      {
+        "nome": "session_replication_role",
+        "regex": "(?i)session_replication_role",
+        "motivo": "Desliga triggers/RLS a nível de sessão — ferramenta de humano em ETL/manutenção, nunca do loop."
+      },
+      {
+        "nome": "delete_fisico",
+        "regex": "(?is)\\bdelete\\s+from\\b(?![^;]*\\bwhere\\b[^;]*\\bfalse\\b)",
+        "motivo": "DELETE físico proibido: exclusão de dado de negócio é soft delete (deleted_at). Vale para .sql e SQL cru no código. Expurgo LGPD é migration/rota humana explícita, fora do loop."
+      }
+    ],
+    "_padroes_proibidos_no_diff": "Regexes (sintaxe JS, flags no próprio grupo (?is)/(?i)) aplicadas ao DIFF CRU (linhas adicionadas). Qualquer match falha o processo. Cobrem risco que allowlist de path não pega: SQL destrutivo dentro de arquivo permitido.",
+
+    "readonly_ok": [
+      "comercial.contacts",
+      "comercial.conversations",
+      "comercial.messages",
+      "comercial.analyses",
+      "comercial.suggestions",
+      "comercial.briefing",
+      "public.tenants",
+      "public.tenant_users",
+      "public.tenant_features",
+      "public.tenant_configs",
+      "public.tenant_connectors"
+    ],
+    "_readonly_ok": "Tabelas que o loop pode SELECT/ler livremente mas NUNCA escrever. Lista informativa para o juiz e para tickets; a proibição de escrita nelas vem das regras acima + do padrão geral (só a allowlist do ticket autoriza escrita, e nunca em no_write_*).",
+
+    "excecoes_os_owned": []
+  },
+
+  "gates": [
+    {
+      "nome": "typecheck",
+      "cmd": "rm -rf .next && node_modules/.bin/tsc --noEmit",
+      "tipo": "baseline",
+      "baseline": 2,
+      "baseline_scope_regex": "(comercial/ajuda/conteudo\\.test\\.ts|produtos/entitlements\\.paridade\\.integration\\.test\\.ts)",
+      "descricao": "GATE REAL de tipos (= o que 'pnpm typecheck' roda: tsc --noEmit). Chamado pelo binário LOCAL, não por 'pnpm': o loop roda gates numa worktree com node_modules symlinkado e o pnpm 11.x faz deps-check pré-run que tenta reinstalar/purgar ali (aborta sem TTY); o binário direto não. Falha só se surgir 'error TS' fora do escopo do baseline. Baseline PASSO 0 (2026-08-08): 2 erros herdados (TS1501/TS2802, 'target' ausente no tsconfig), ambos em test files da regex; tsc puro os mostra, next build injeta target e não os vê."
+    },
+    {
+      "nome": "testes",
+      "cmd": "node_modules/.bin/vitest run",
+      "tipo": "exit_code",
+      "descricao": "Suite verde (= 'pnpm test' = vitest run), pelo binário LOCAL (ver typecheck p/ o porquê de não usar pnpm na worktree). INCLUI o teste do próprio enforcement (scripts/orquestrador/*.test.mjs no include do vitest.config)."
+    },
+    {
+      "nome": "build",
+      "cmd": "node_modules/.bin/next build",
+      "tipo": "exit_code",
+      "descricao": "next build (= 'pnpm build'), pelo binário LOCAL. NÃO é o gate de tipos de verdade — o next.config NÃO tem ignoreBuildErrors, mas o typecheck explícito (gate acima, contra baseline) é a fonte da verdade de tipos. Build valida bundling/rotas/RSC."
+    }
+  ],
+
+  "proibicoes_absolutas": [
+    "nunca push na branch principal",
+    "nunca aplicar DDL (só escrever arquivo de migration na faixa 0250-0299)",
+    "nunca escrever na zona proibida",
+    "nunca tocar credenciais/segredos",
+    "nunca gastar dinheiro",
+    "git add sempre por pathspec explícito",
+    "nunca tocar branches de feature vivas (o loop nasce de staging-auto e mergeia nela)",
+    "toda RPC nova no diff deve receber p_tenant_id obrigatório — critério de juiz herdado por todo ticket"
+  ]
+}

@@ -33,6 +33,15 @@ export interface Renome {
   para: string
   /** Por que são a mesma coisa — e a linha do motor que prova. */
   porque: string
+  /**
+   * Caminho de OUTRA chave que precisa existir no config para o renome valer.
+   * Existe por um caso só, e ele é a razão de ser do campo: `migrations_dir`
+   * está em TODO repo (é como o motor classifica `.sql` como artefato inerte),
+   * mas o destino `migrations.dir` LIGA a regra B. Copiar de arrasto ligaria a
+   * regra em quem nunca a pediu. Quem pede a regra é a FAIXA — e é ela a
+   * condição. Ausente = o renome vale sempre, que é o caso dos outros quatro.
+   */
+  so_quando?: string
 }
 
 /**
@@ -87,13 +96,21 @@ export const RENOMES: Renome[] = [
     de: 'migrations_faixa_loop',
     para: 'migrations.faixa',
     porque:
-      'enforcement-core.ts:273 (violacoesDeMigration) lê esta chave: é a faixa do loop no Actus ("0250-0299"). O motor aceita a string e a tupla [min,max] justamente para que este renome seja CÓPIA de valor, e não transformação — transformar valor numa migração é o começo de traduzir errado em silêncio. `migrations.dir` NÃO entra na tabela, e é decisão: renomear `migrations_dir` para dentro de `migrations` ligaria a regra B em TODO repo que tem migration (o CI inclusive, que nunca pediu faixa nenhuma). Quem cobra o `dir` é o `orq config`, que acusa "faixa sem dir" (config-cli.ts:152) — o dono declara, e a regra nasce ligada de propósito, nunca de arrasto.',
+      'enforcement-core.ts:273 (violacoesDeMigration) lê esta chave: é a faixa do loop no Actus ("0250-0299"). O motor aceita a string e a tupla [min,max] justamente para que este renome seja CÓPIA de valor, e não transformação — transformar valor numa migração é o começo de traduzir errado em silêncio. O par desta chave é `migrations.dir`, e ele vem do renome ABAIXO — que só dispara quando ESTA chave existe (`so_quando`). Até a K11a-4d o `dir` ficava de fora da tabela inteiramente, e o `orq config` cobrava "faixa sem dir" (config-cli.ts:152); o `--dry-run` sobre o Actus mostrou o que isso produzia na prática — faixa declarada valendo para arquivo nenhum. A decisão que motivava aquilo continua de pé, agora dentro da condição: renomear `migrations_dir` de arrasto ligaria a regra B em TODO repo que tem migration (o CI inclusive, que nunca pediu faixa nenhuma).',
   },
   {
     de: 'zona_proibida.no_write_columns',
     para: 'zona_proibida.colunas_congeladas',
     porque:
       'enforcement-core.ts:426 (violacoesDeColuna). O nome novo diz o que a lista É (colunas congeladas) e abre espaço para a irmã `colunas_sombra`, que não existe em repo nenhum hoje e é a saída declarada da família (etapa_v2_*, ledger 0171 do Actus). O `no_write_columns` FICA.',
+  },
+  // --- K11a-4d: o dir da regra B, e SÓ para quem declarou a faixa -----------
+  {
+    de: 'migrations_dir',
+    para: 'migrations.dir',
+    so_quando: 'migrations_faixa_loop',
+    porque:
+      'enforcement-core.ts:273 (violacoesDeMigration) só cobra faixa dos `.sql` sob `migrations.dir`. O `--dry-run` do `instalar.sh` sobre o actus-saas (etapa 6) mostrou o buraco: a faixa migrava sozinha, o dir ficava para trás, e a regra B não mordia arquivo nenhum — com o config DIZENDO que a faixa está protegida. A K11a-1 tinha deixado este renome de fora para não ligar a regra B em todo repo que tem migration, e a condição `so_quando: migrations_faixa_loop` guarda essa decisão inteira: quem pede a regra é a FAIXA, o dir só diz onde ela vale. O CI declara `migrations_dir` e NÃO declara faixa, então continua sem `migrations` e com a regra B desligada. ATENÇÃO ao aplicar: com a regra B ligada, `.sql` fora do dir reprova por `migration_fora_do_dir` — inclusive testes SQL, que no Actus moram em `supabase/tests/`. Declare `enforcement.testes_sql.glob` (`"supabase/tests/**"`) na MESMA revisão, ou o loop deixa de conseguir escrever teste de banco.',
   },
   // --- K11a-4: a chave da regra E ------------------------------------------
   {

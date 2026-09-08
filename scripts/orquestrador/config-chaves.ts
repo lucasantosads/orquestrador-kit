@@ -94,7 +94,7 @@ export const CHAVES_CONFIG: ChaveConfig[] = [
   // --- enforcement B/C/D (peça K11a-1) --------------------------------------
   // Todas OPCIONAIS, e é o desenho: ausente = regra desligada. O CI não tem
   // nenhuma delas e o enforcement dele sai byte a byte igual.
-  { chave: 'migrations.dir', onde: 'enforcement-core.ts:273', obrigatoria: false, nota: 'liga a regra B; sem ele nenhum .sql é cobrado por faixa. NÃO cai no migrations_dir de topo de propósito' },
+  { chave: 'migrations.dir', onde: 'enforcement-core.ts:273', obrigatoria: false, nota: 'liga a regra B; sem ele nenhum .sql é cobrado por faixa. O motor NÃO cai no migrations_dir de topo de propósito; quem copia o valor é a tabela, e só para quem declarou a faixa (K11a-4d)' },
   { chave: 'migrations.faixa', onde: 'enforcement-core.ts:273', obrigatoria: false, nota: '[min,max] ou "0250-0299"; no Actus é migrations_faixa_loop' },
   { chave: 'migrations.faixas_reservadas', onde: 'enforcement-core.ts:273', obrigatoria: false, nota: 'faixas de OUTRO dono (no Actus, 0200-0249 é da Agência)' },
   { chave: 'zona_proibida.schemas_permitidos', onde: 'enforcement-core.ts:392', obrigatoria: false, nota: 'ausente = sem restrição por schema; presente = tudo fora dele reprova' },

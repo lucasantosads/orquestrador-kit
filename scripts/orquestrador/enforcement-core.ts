@@ -85,7 +85,8 @@ export interface EnforceConfig {
   /** Regras F e da exceção de teste-SQL. Ausente = desligadas. */
   enforcement?: EnforcementRegras | undefined
   zona_proibida: {
-    no_write_paths: string[]
+    /** Ausente = lista vazia: a `zona_proibida` do Actus é só de banco, sem caminho. */
+    no_write_paths?: string[] | undefined
     /** `"TODAS"` = negação total (CI); LISTA de tabelas = regra C nomeada (Actus). */
     no_write_tables: string | string[]
     no_write_credenciais?: { padroes?: string[] }
@@ -642,7 +643,14 @@ export function enforce(input: EnforceInput): EnforceResult {
   const zp = input.config.zona_proibida
   const negacaoTotal = zp.no_write_tables === 'TODAS'
 
-  const proibidos = [...zp.no_write_paths, ...(zp.no_write_credenciais?.padroes ?? [])]
+  // ACHADO da K11a-4d, alimentando a barreira com o `000-config.json` REAL do
+  // actus-saas: a `zona_proibida` de lá não tem `no_write_paths` — ela é uma
+  // fronteira de BANCO (tabelas, colunas, prefixos, padrões), e caminho nunca
+  // entrou. O spread de `undefined` derrubava o `enforce` inteiro com um
+  // TypeError, antes de qualquer regra rodar. `no_write_paths` não é chave
+  // obrigatória em `config-chaves.ts`, então o config estava certo e o motor
+  // errado: lista ausente é lista VAZIA, e a regra 2 simplesmente não acusa.
+  const proibidos = [...(zp.no_write_paths ?? []), ...(zp.no_write_credenciais?.padroes ?? [])]
 
   for (const f of input.changedFiles) {
     if (!f) continue

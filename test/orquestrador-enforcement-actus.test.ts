@@ -876,6 +876,114 @@ describe('F + exceção de teste-SQL nos caminhos originais do Actus', () => {
   });
 });
 
+// ─── K11a-4d · o config REAL do Actus, e o `migrations.dir` ─────────────────
+
+describe('config real do actus-saas em fixture (K11a-4d)', () => {
+  const ACTUS = join(RAIZ, 'test', 'fixtures', 'config', 'actus-000-config.json');
+  const cru = () => JSON.parse(readFileSync(ACTUS, 'utf8'));
+
+  it('as três regexes deste arquivo de teste são as do config real, CARACTERE A CARACTERE', () => {
+    // Fecha a K11a-4b: "copiadas byte a byte" deixa de ser uma frase do commit
+    // e vira um caso. "Compila igual" não é o mesmo que "é igual" — uma regex
+    // reescrita na travessia é uma proibição reescrita.
+    const doDisco = cru().zona_proibida.padroes_proibidos_no_diff;
+    expect(doDisco).toEqual(PADROES_ACTUS);
+    for (let i = 0; i < PADROES_ACTUS.length; i++) {
+      expect(doDisco[i].regex).toBe(PADROES_ACTUS[i]!.regex);
+      expect(doDisco[i].nome).toBe(PADROES_ACTUS[i]!.nome);
+    }
+  });
+
+  it('a tabela conhece o renome migrations_dir → migrations.dir', () => {
+    const r = RENOMES.find((x) => x.de === 'migrations_dir' && x.para === 'migrations.dir');
+    expect(r).toBeTruthy();
+    expect(r?.so_quando).toBe('migrations_faixa_loop');
+  });
+
+  it('o proposto do Actus traz migrations.dir, e `orq config` não acusa mais faixa sem dir', () => {
+    // O achado do `--dry-run` da etapa 6: a faixa migrava sozinha e o dir ficava
+    // para trás, então a regra B não mordia arquivo nenhum — o pior estado, com
+    // o config DIZENDO que a faixa está protegida.
+    const { proposto } = propor(cru());
+    const o = JSON.parse(proposto);
+    expect(o.migrations.dir).toBe('supabase/migrations');
+    expect(o.migrations.faixa).toBe('0250-0299');
+    expect(o.migrations_dir).toBe('supabase/migrations'); // o nome antigo FICA
+    expect(validarConfig(o).filter((v) => v.chave === 'migrations.dir')).toEqual([]);
+  });
+
+  it('e a regra B do Actus passa a MORDER: .sql fora do dir e fora da faixa reprovam', () => {
+    const cfg = JSON.parse(propor(cru()).proposto) as EnforceConfig;
+    const fora = enforce({
+      changedFiles: ['src/lib/seed.sql'],
+      allowlist: ['src/lib/**'],
+      diff: diffNovoArquivo('src/lib/seed.sql', ['select 1;']),
+      config: cfg,
+    });
+    expect(fora.violations.some((v) => v.tipo === 'migration_fora_do_dir')).toBe(true);
+    const antiga = enforce({
+      changedFiles: ['supabase/migrations/0187_x.sql'],
+      allowlist: ['supabase/migrations/**'],
+      diff: diffNovoArquivo('supabase/migrations/0187_x.sql', ['select 1;']),
+      config: cfg,
+    });
+    expect(antiga.violations.some((v) => v.tipo === 'migration_fora_da_faixa')).toBe(true);
+  });
+
+  it('CONDICIONAL: repo sem `migrations_faixa_loop` NÃO ganha migrations.dir', () => {
+    // A decisão da K11a-1, preservada: renomear `migrations_dir` de arrasto
+    // ligaria a regra B em TODO repo que tem migration. Quem pede a regra é a
+    // FAIXA; o dir só diz onde ela vale. Sem a faixa declarada, o renome não
+    // acontece — e o config do CI é a prova viva.
+    const ci = JSON.parse(readFileSync(join(RAIZ, '_referencia-ci', '000-config.ci.json'), 'utf8'));
+    expect(ci.migrations_faixa_loop).toBeUndefined();
+    expect(ci.migrations_dir).toBe('supabase/migrations');
+    const o = JSON.parse(propor(ci).proposto);
+    expect(o.migrations).toBeUndefined();
+    expect(o.migrations_dir).toBe('supabase/migrations');
+  });
+
+  it('o CI migrado continua com a regra B DESLIGADA: .sql fora do dir passa', () => {
+    const ci = JSON.parse(readFileSync(join(RAIZ, '_referencia-ci', '000-config.ci.json'), 'utf8'));
+    const cfg = JSON.parse(propor(ci).proposto) as EnforceConfig;
+    const r = enforce({
+      changedFiles: ['src/lib/seed.sql'],
+      allowlist: ['src/lib/**'],
+      diff: diffNovoArquivo('src/lib/seed.sql', ['select 1;']),
+      config: cfg,
+    });
+    expect(r.violations.filter((v) => v.tipo.startsWith('migration_'))).toEqual([]);
+  });
+
+  it('ACHADO: `zona_proibida` sem `no_write_paths` não derruba a barreira', () => {
+    // A `zona_proibida` do Actus é uma fronteira de BANCO — tabelas, colunas,
+    // prefixos, padrões — e nunca teve lista de caminho. `no_write_paths` não é
+    // chave obrigatória em `config-chaves.ts`, então o config estava certo e o
+    // motor errado: o spread de `undefined` derrubava o `enforce` inteiro com um
+    // TypeError, antes de qualquer regra rodar. Lista ausente é lista VAZIA.
+    const cfg = JSON.parse(propor(cru()).proposto) as EnforceConfig;
+    expect(cfg.zona_proibida.no_write_paths).toBeUndefined();
+    const r = enforce({
+      changedFiles: ['src/lib/x.ts'],
+      allowlist: ['src/lib/**'],
+      diff: diffNovoArquivo('src/lib/x.ts', ['export const x = 1']),
+      config: cfg,
+    });
+    expect(r).toEqual({ ok: true, violations: [] });
+  });
+
+  it('a linha do relatório avisa sobre os testes .sql fora do dir', () => {
+    // A regra B ligada reprova `supabase/tests/*.test.sql` por
+    // `migration_fora_do_dir` enquanto ninguém declarar `enforcement.testes_sql`
+    // — e o Actus TEM esses testes. O aviso mora onde um humano vai ler antes de
+    // aplicar: a linha do renome, no relatório do `--dry-run`.
+    const { linhas } = propor(cru());
+    const l = linhas.find((x: string) => x.includes('migrations_dir → migrations.dir'));
+    expect(l).toBeTruthy();
+    expect(l).toMatch(/enforcement\.testes_sql/);
+  });
+});
+
 // ─── caso limpo ponta a ponta ────────────────────────────────────────────────
 
 describe('caso limpo', () => {
