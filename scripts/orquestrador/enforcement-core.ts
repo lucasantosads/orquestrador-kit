@@ -59,8 +59,20 @@ export interface PadraoProibido {
  * em `zona_proibida`: F julga o TEXTO do diff, e a exceção de teste-SQL julga a
  * forma de um arquivo. Ausente = as duas desligadas.
  */
+/**
+ * A exceção estreita de teste-SQL (K11a-4). `glob` descreve quem ENTRA nela —
+ * no Actus, o `tests_dir` inteiro (`enforcement.mjs:217`) —, e o sufixo
+ * `.test.sql` é a CONDIÇÃO 1, checada pela regra. Um glob já estreitado a
+ * `*.test.sql` deixaria a condição 1 inalcançável: o arquivo de nome errado nem
+ * entraria na exceção, e cairia na regra B com outro nome de violação.
+ */
+export interface TestesSqlRegra {
+  glob?: string | string[] | undefined
+}
+
 export interface EnforcementRegras {
   padroes_proibidos_no_diff?: PadraoProibido[] | undefined
+  testes_sql?: TestesSqlRegra | undefined
 }
 
 export interface EnforceConfig {
@@ -121,6 +133,7 @@ export type TipoViolacao =
   // Config quebrada NÃO é diff limpo: regex que não compila tem tipo próprio,
   // para não virar "nenhum padrão casou" em silêncio.
   | 'padrao_regex_invalida'
+  | 'teste_sql_invalido'
 
 export interface Violation {
   tipo: TipoViolacao
@@ -302,6 +315,78 @@ export function parseFaixa(faixa: Faixa): [number, number] {
   return [Number(m[1]), Number(m[2])]
 }
 
+// ─── K11a-4 · a exceção estreita de teste-SQL ───────────────────────────────
+
+/**
+ * Tag de dollar-quoting do Postgres: ou vazia (`$$`), ou um identificador que
+ * começa por letra/underscore e SEGUE com letras, DÍGITOS ou underscore
+ * (`$teste_0250$`). Porte de `enforcement.mjs:124`, com o defeito que o Actus
+ * mediu já corrigido: a classe antiga (`[a-zA-Z_]*`) não aceitava dígito, e como
+ * o ticket manda nomear os testes 0250/0251/0252 a tag natural leva número —
+ * todo arquivo era lido como "sem bloco DO".
+ */
+const TAG_DOLAR = '(?:[A-Za-z_][A-Za-z0-9_]*)?'
+
+/**
+ * Remove o CORPO dos blocos `$$ ... $$` / `$tag$ ... $tag$` — sobra só o SQL de
+ * nível de topo, que é o que a condição 4 julga. O que roda DENTRO do `DO` é o
+ * teste; o que roda FORA dele é schema de verdade.
+ */
+export function removerBlocosDolarCitados(sql: string): string {
+  return sql.replace(new RegExp(`\\$(${TAG_DOLAR})\\$[\\s\\S]*?\\$\\1\\$`, 'g'), ' ')
+}
+
+/**
+ * Remove comentários de linha `--` do que sobrou. A PALAVRA "UPDATE" num
+ * cabeçalho em prosa não é DML: sem isto, explicar o teste em português reprova
+ * o arquivo. Só `--`; comentário de bloco não (`enforcement.mjs:136`).
+ */
+export function removerComentariosDeLinha(sql: string): string {
+  return sql.replace(/--[^\n]*/g, ' ')
+}
+
+/**
+ * As 4 condições, verificadas no conteúdo ADICIONADO do próprio arquivo:
+ * 1) nome termina em `.test.sql`; 2) bloco `DO` com `$$` (tag com dígito vale);
+ * 3) `RAISE EXCEPTION`, o rollback proposital; 4) nenhum DDL (CREATE/ALTER/DROP
+ * de TABLE/FUNCTION/VIEW/POLICY/INDEX) nem DML (INSERT/UPDATE/DELETE) de TOPO,
+ * fora do bloco DO. Devolve o motivo da PRIMEIRA que falhar — a mensagem cita a
+ * condição, porque "teste sql inválido" sozinho manda quem leu abrir o arquivo
+ * e adivinhar qual das quatro foi.
+ */
+export function checarTesteSql(arquivo: string, conteudo: string): { ok: boolean; motivo: string } {
+  if (!arquivo.endsWith('.test.sql')) {
+    return { ok: false, motivo: 'nome não termina em .test.sql' }
+  }
+  if (!new RegExp(`\\bdo\\b\\s*(?:language\\s+\\w+\\s*)?\\$${TAG_DOLAR}\\$`, 'i').test(conteudo)) {
+    return { ok: false, motivo: 'sem bloco DO com $$ (rollback proposital não identificado)' }
+  }
+  if (!/\braise\s+exception\b/i.test(conteudo)) {
+    return { ok: false, motivo: 'sem RAISE EXCEPTION (o rollback proposital do teste)' }
+  }
+  const semBlocosDo = removerComentariosDeLinha(removerBlocosDolarCitados(conteudo))
+  // `unique`/`materialized` entram ENTRE create/or-replace e a palavra-tipo em
+  // sintaxe Postgres real (`CREATE UNIQUE INDEX`, `CREATE MATERIALIZED VIEW`) —
+  // sem essas duas peças opcionais o regex deixava passar DDL de topo de
+  // verdade sob um rótulo válido, furando a condição 4 fail-closed.
+  const ddlDeTopo = /\b(create|alter|drop)\s+(or\s+replace\s+)?(unique\s+)?(materialized\s+)?(table|function|view|policy|index)\b/i
+  const dmlDeTopo = /\binsert\s+into\b|\bupdate\b\s+\S|\bdelete\s+from\b/i
+  if (ddlDeTopo.test(semBlocosDo)) {
+    return { ok: false, motivo: 'DDL de topo fora do bloco DO (CREATE/ALTER/DROP de TABLE/FUNCTION/VIEW/POLICY/INDEX)' }
+  }
+  if (dmlDeTopo.test(semBlocosDo)) {
+    return { ok: false, motivo: 'DML de topo fora do bloco DO (INSERT/UPDATE/DELETE)' }
+  }
+  return { ok: true, motivo: '' }
+}
+
+/** O arquivo entra na exceção de teste-SQL? Vazio/ausente = a exceção não existe. */
+export function ehTesteSql(arquivo: string, config: EnforceConfig): boolean {
+  const g = config.enforcement?.testes_sql?.glob
+  const globs = g === undefined || g === null ? [] : Array.isArray(g) ? g : [g]
+  return globs.some((x) => globToRegExp(x).test(arquivo))
+}
+
 /** Regra B, arquivo a arquivo. Vazio quando `migrations.dir` não está no config. */
 export function violacoesDeMigration(arquivos: string[], config: EnforceConfig): Violation[] {
   const regra = config.migrations
@@ -318,6 +403,10 @@ export function violacoesDeMigration(arquivos: string[], config: EnforceConfig):
   for (const arq of arquivos) {
     if (!arq || !/\.sql$/i.test(arq)) continue
     if (ehArtefatoSql(arq, outrosDirs)) continue
+    // A exceção de teste-SQL TIRA o arquivo da faixa: ele não é migration, e
+    // cobrar numeração dele bloquearia o teste que o próprio ticket pediu. Em
+    // troca ele responde pelas 4 condições, abaixo.
+    if (ehTesteSql(arq, config)) continue
     if (!arq.startsWith(dir + '/')) {
       v.push({ tipo: 'migration_fora_do_dir', detalhe: `${arq}: .sql fora de ${dir}/` })
       continue
@@ -596,6 +685,20 @@ export function enforce(input: EnforceInput): EnforceResult {
     v.push(...violacoesDeColuna(arquivo, texto, input.config))
     v.push(...violacoesDePrefixo(arquivo, texto, input.config))
     v.push(...violacoesDePadrao(arquivo, texto, input.config))
+  }
+
+  // Exceção de teste-SQL (K11a-4c): o arquivo saiu da regra B lá em cima, e
+  // aqui responde pelas 4 condições, contra o conteúdo do PRÓPRIO arquivo — não
+  // contra o diff inteiro misturado, que é o que faria o DO de um arquivo valer
+  // como rollback de outro. Sem linhas adicionadas próprias (arquivo só
+  // renomeado, por exemplo), cai no conteúdo geral, como o Actus faz.
+  for (const arq of input.changedFiles) {
+    if (!arq || !/\.sql$/i.test(arq)) continue
+    if (!ehTesteSql(arq, input.config)) continue
+    const corpo = porArquivo.get(arq)
+    const conteudo = (corpo && corpo.length ? corpo : linhas.map((l) => l.linha)).join('\n')
+    const r = checarTesteSql(arq, conteudo)
+    if (!r.ok) v.push({ tipo: 'teste_sql_invalido', detalhe: `${arq}: ${r.motivo}` })
   }
 
   for (let i = 0; i < linhas.length; i++) {

@@ -14,10 +14,9 @@
  * (`enforcement.testes_sql`) — os casos de cada uma carregam, do mesmo jeito, o
  * nome original do `test(...)` do Actus.
  *
- * O QUE NÃO ENTROU nesta peça, e é gap NOMEADO (não esquecimento):
- *   - a exceção estreita de `supabase/tests/*.test.sql` (14 casos "teste-sql").
- * Enquanto ela não entrar, o Actus PERDE proteção ao trocar de motor — ver
- * K11a-4 em `docs/PECAS.md` PENDENTES.
+ * Com a K11a-4 fechada, o Actus não perde regra nenhuma de enforcement ao
+ * trocar de motor: A–F e a exceção de teste-SQL têm, cada uma, os casos do
+ * `enforcement.test.mjs` de lá.
  *
  * Toda regra aqui está DESLIGADA quando a chave do config não existe: o
  * `000-config.json` do CI (`_referencia-ci/`) e o do fixture não têm `migrations`
@@ -93,7 +92,14 @@ const cfgActus: EnforceConfig = {
     colunas_sombra: ['etapa_v2_*'],
     prefixos_sem_ddl: ['vw_'],
   },
-  enforcement: { padroes_proibidos_no_diff: PADROES_ACTUS },
+  enforcement: {
+    padroes_proibidos_no_diff: PADROES_ACTUS,
+    // O glob descreve quem ENTRA na exceção — no Actus, `tests_dir` inteiro
+    // (`enforcement.mjs:217`). O sufixo `.test.sql` é a CONDIÇÃO 1, checada
+    // pela regra: um glob já estreitado a `*.test.sql` deixaria a condição 1
+    // inalcançável, porque o arquivo de nome errado nem entraria.
+    testes_sql: { glob: 'supabase/tests/**' },
+  },
 };
 
 
@@ -591,6 +597,282 @@ describe('regra F na tabela de config: zona_proibida → enforcement', () => {
       config: cfg,
     });
     expect(r.violations.some((v) => v.tipo === 'padrao_proibido')).toBe(true);
+  });
+});
+
+// ─── exceção estreita · supabase/tests/*.test.sql ───────────────────────────
+// As 4 condições do `checarTesteSql` do Actus (`enforcement.mjs:147-173`):
+// nome `.test.sql`; bloco `DO` com `$$` (tag que aceita DÍGITO); `RAISE
+// EXCEPTION` (o rollback proposital); e ZERO DDL/DML de TOPO fora do DO, com o
+// comentário `--` removido antes. Qualquer uma que falhe reprova, e o detalhe
+// cita a condição.
+
+describe('exceção de teste-SQL — enforcement.testes_sql (as 4 condições)', () => {
+  it('teste-sql bom: DO $$ ... RAISE EXCEPTION, sem DDL/DML de topo, passa', () => {
+    const r = checar(
+      'supabase/tests/analises_rollback.test.sql',
+      [
+        'DO $$',
+        'BEGIN',
+        '  IF 1 <> 1 THEN',
+        "    RAISE EXCEPTION 'inalcançável';",
+        '  END IF;',
+        '  INSERT INTO comercial.analyses (id) VALUES (1);',
+        "  RAISE EXCEPTION 'rollback proposital: teste ok';",
+        'END $$;',
+      ],
+      ['supabase/tests/**'],
+    );
+    expect(r).toEqual({ ok: true, violations: [] });
+  });
+
+  it('teste-sql mau: sem RAISE EXCEPTION bloqueia', () => {
+    const r = checar('supabase/tests/sem_rollback.test.sql', ['DO $$', 'BEGIN', '  PERFORM 1;', 'END $$;'], ['supabase/tests/**']);
+    expect(r.ok).toBe(false);
+    expect(tem(r, 'teste_sql_invalido')).toBe(true);
+  });
+
+  it('teste-sql mau: CREATE TABLE no topo (fora do DO) bloqueia', () => {
+    const r = checar(
+      'supabase/tests/cria_tabela.test.sql',
+      ['CREATE TABLE public.foo (id int);', 'DO $$', 'BEGIN', "  RAISE EXCEPTION 'rollback proposital';", 'END $$;'],
+      ['supabase/tests/**'],
+    );
+    expect(tem(r, 'teste_sql_invalido')).toBe(true);
+  });
+
+  it('teste-sql mau: INSERT de topo (fora do DO) bloqueia', () => {
+    const r = checar(
+      'supabase/tests/insere_fora.test.sql',
+      ['INSERT INTO comercial.analyses (id) VALUES (1);', 'DO $$', 'BEGIN', "  RAISE EXCEPTION 'rollback proposital';", 'END $$;'],
+      ['supabase/tests/**'],
+    );
+    expect(tem(r, 'teste_sql_invalido')).toBe(true);
+  });
+
+  it('teste-sql mau: CREATE UNIQUE INDEX de topo (fora do DO) bloqueia', () => {
+    const r = checar(
+      'supabase/tests/indice_unico.test.sql',
+      ['CREATE UNIQUE INDEX idx_foo ON public.foo (bar);', 'DO $$', 'BEGIN', "  RAISE EXCEPTION 'rollback proposital';", 'END $$;'],
+      ['supabase/tests/**'],
+    );
+    expect(tem(r, 'teste_sql_invalido')).toBe(true);
+  });
+
+  it('teste-sql mau: CREATE MATERIALIZED VIEW de topo (fora do DO) bloqueia', () => {
+    const r = checar(
+      'supabase/tests/view_materializada.test.sql',
+      ['CREATE MATERIALIZED VIEW public.foo_mv AS SELECT 1;', 'DO $$', 'BEGIN', "  RAISE EXCEPTION 'rollback proposital';", 'END $$;'],
+      ['supabase/tests/**'],
+    );
+    expect(tem(r, 'teste_sql_invalido')).toBe(true);
+  });
+
+  it('teste-sql mau: nome sem sufixo .test.sql bloqueia', () => {
+    const r = checar(
+      'supabase/tests/qualquer.sql',
+      ['DO $$', 'BEGIN', "  RAISE EXCEPTION 'rollback proposital';", 'END $$;'],
+      ['supabase/tests/**'],
+    );
+    expect(tem(r, 'teste_sql_invalido')).toBe(true);
+  });
+
+  it('teste-sql mau: sem bloco DO $$ bloqueia (só RAISE não basta)', () => {
+    const r = checar(
+      'supabase/tests/sem_do.test.sql',
+      ['SELECT 1;', '-- RAISE EXCEPTION fora de qualquer bloco DO não conta'],
+      ['supabase/tests/**'],
+    );
+    expect(tem(r, 'teste_sql_invalido')).toBe(true);
+  });
+
+  it('teste-sql: .sql em outro diretório (fora de migrations e de tests) segue bloqueado', () => {
+    const r = checar(
+      'supabase/outro/x.test.sql',
+      ['DO $$', 'BEGIN', "  RAISE EXCEPTION 'rollback proposital';", 'END $$;'],
+      ['supabase/outro/**'],
+    );
+    expect(tem(r, 'migration_fora_do_dir')).toBe(true);
+  });
+
+  it('teste-sql: migration normal na faixa continua passando mesmo com a exceção presente', () => {
+    const r = checar('supabase/migrations/0250_x.sql', ['create table foo();'], ['supabase/migrations/**']);
+    expect(r.ok).toBe(true);
+  });
+
+  it('teste-sql bom: dollar-quote COM TAG contendo dígitos ($teste_0250$) passa', () => {
+    const r = checar(
+      'supabase/tests/0250_monitor_whatsapp_estado.test.sql',
+      ['do $teste_0250$', 'begin', "  raise exception 'RESULTADO >>> ok=1';", 'end', '$teste_0250$;'],
+      ['supabase/tests/**'],
+    );
+    expect(r).toEqual({ ok: true, violations: [] });
+  });
+
+  it('teste-sql bom: DDL/DML DENTRO do bloco DO com tag é permitido (corpo é removido)', () => {
+    const r = checar(
+      'supabase/tests/0251_painel_funcoes_mt.test.sql',
+      [
+        'do $teste_0251$',
+        'begin',
+        '  create table pg_temp.sintetico (id uuid);',
+        '  insert into pg_temp.sintetico (id) values (gen_random_uuid());',
+        "  raise exception 'RESULTADO >>> isolamento=ok';",
+        'end',
+        '$teste_0251$;',
+      ],
+      ['supabase/tests/**'],
+    );
+    expect(r).toEqual({ ok: true, violations: [] });
+  });
+
+  it('teste-sql bom: DDL/DML citado em comentário `--` não conta como topo', () => {
+    const r = checar(
+      'supabase/tests/0252_fn_resolver_contato.test.sql',
+      [
+        '-- (passo 4 "Enriquecimento": UPDATE só roda quando algo de fato muda, e',
+        '--      executa o UPDATE quando telefone/origem/nome de fato mudariam).',
+        '-- Nada aqui faz INSERT INTO nem CREATE TABLE de verdade.',
+        'do $teste_0252$',
+        'begin',
+        "  raise exception 'RESULTADO >>> nome_curado=sobreviveu';",
+        'end',
+        '$teste_0252$;',
+      ],
+      ['supabase/tests/**'],
+    );
+    expect(r).toEqual({ ok: true, violations: [] });
+  });
+
+  it('teste-sql mau: CREATE TABLE de topo REAL continua bloqueando (mesmo com tag)', () => {
+    const r = checar(
+      'supabase/tests/clandestina.test.sql',
+      ['create table public.clandestina (id int);', 'do $teste_x$', 'begin', "  raise exception 'rollback proposital';", 'end', '$teste_x$;'],
+      ['supabase/tests/**'],
+    );
+    const v = r.violations.find((x) => x.tipo === 'teste_sql_invalido');
+    expect(v).toBeTruthy();
+    expect(v?.detalhe).toMatch(/DDL de topo/i);
+  });
+
+  it('teste-sql mau: DML de topo REAL (fora de comentário) continua bloqueando', () => {
+    const r = checar(
+      'supabase/tests/dml_topo.test.sql',
+      [
+        '-- este comentário fala de INSERT INTO mas não executa nada',
+        'insert into comercial.contacts (id) values (gen_random_uuid());',
+        'do $teste_y$',
+        'begin',
+        "  raise exception 'rollback proposital';",
+        'end',
+        '$teste_y$;',
+      ],
+      ['supabase/tests/**'],
+    );
+    const v = r.violations.find((x) => x.tipo === 'teste_sql_invalido');
+    expect(v).toBeTruthy();
+    expect(v?.detalhe).toMatch(/DML de topo/i);
+  });
+
+  it('teste-sql mau: tag mal formada ($0250$, começa com dígito) NÃO é dollar-quote válida', () => {
+    const r = checar(
+      'supabase/tests/tag_invalida.test.sql',
+      ['do $0250$', 'begin', "  raise exception 'x';", 'end', '$0250$;'],
+      ['supabase/tests/**'],
+    );
+    const v = r.violations.find((x) => x.tipo === 'teste_sql_invalido');
+    expect(v).toBeTruthy();
+    expect(v?.detalhe).toMatch(/sem bloco DO/i);
+  });
+
+  it('a exceção TIRA o arquivo da regra B: um teste-SQL válido não vira migration_fora_do_dir', () => {
+    const r = checar(
+      'supabase/tests/0250_ok.test.sql',
+      ['do $teste_0250$', 'begin', "  raise exception 'ok';", 'end', '$teste_0250$;'],
+      ['supabase/tests/**'],
+    );
+    expect(r.violations.filter((v) => v.tipo.startsWith('migration_'))).toEqual([]);
+  });
+
+  it('DESLIGADA: sem `enforcement.testes_sql`, o .sql de teste cai na regra B como qualquer outro', () => {
+    const cfg = { ...cfgActus, enforcement: { padroes_proibidos_no_diff: PADROES_ACTUS } };
+    const r = checar(
+      'supabase/tests/0250_ok.test.sql',
+      ['do $teste_0250$', 'begin', "  raise exception 'ok';", 'end', '$teste_0250$;'],
+      ['supabase/tests/**'],
+      cfg,
+    );
+    expect(tem(r, 'migration_fora_do_dir')).toBe(true);
+    expect(tem(r, 'teste_sql_invalido')).toBe(false);
+  });
+});
+
+// ─── F + exceção juntas, nos caminhos ORIGINAIS do Actus ────────────────────
+// Os três casos "F bom" do `enforcement.test.mjs` moram em
+// `supabase/tests/*.test.sql`, e só passam quando as DUAS regras concordam: a
+// regex nova não casa o soft delete E o arquivo satisfaz as 4 condições. É o
+// caso de ponta a ponta do ticket 615.
+
+describe('F + exceção de teste-SQL nos caminhos originais do Actus', () => {
+  it('F bom: soft delete em comercial.messages com tenant_id só na WHERE passa', () => {
+    const r = checar(
+      'supabase/tests/soft_delete.test.sql',
+      [
+        'do $teste_0250$',
+        'begin',
+        '  update comercial.messages',
+        '     set deleted_at = now()',
+        '   where tenant_id = v_tenant',
+        '     and id = v_msg;',
+        "  raise exception 'RESULTADO >>> a4=ok';",
+        'end',
+        '$teste_0250$;',
+      ],
+      ['supabase/tests/**'],
+    );
+    expect(r).toEqual({ ok: true, violations: [] });
+  });
+
+  it('F bom: WHERE em caixa mista e comentário `--` entre SET e WHERE passam', () => {
+    const r = checar(
+      'supabase/tests/soft_delete2.test.sql',
+      [
+        'do $teste_0251$',
+        'begin',
+        '  update comercial.messages set deleted_at = now() -- não toca tenant_id',
+        '   WhErE tenant_id = $1;',
+        "  raise exception 'RESULTADO >>> ok';",
+        'end',
+        '$teste_0251$;',
+      ],
+      ['supabase/tests/**'],
+    );
+    expect(r).toEqual({ ok: true, violations: [] });
+  });
+
+  it('F bom: múltiplas colunas no SET, tenant_id só na WHERE, passa', () => {
+    const r = checar(
+      'supabase/tests/soft_delete3.test.sql',
+      [
+        'do $teste_0252$',
+        'begin',
+        '  update comercial.messages set deleted_at = now(), updated_at = now() where tenant_id = $1;',
+        "  raise exception 'RESULTADO >>> ok';",
+        'end',
+        '$teste_0252$;',
+      ],
+      ['supabase/tests/**'],
+    );
+    expect(r).toEqual({ ok: true, violations: [] });
+  });
+
+  it('F mau: UPDATE que ATRIBUI tenant_id reprova mesmo dentro de um teste-SQL válido', () => {
+    const r = checar(
+      'supabase/tests/reancora.test.sql',
+      ['do $teste_0250$', 'begin', "  update comercial.messages set tenant_id = 'x';", "  raise exception 'ok';", 'end', '$teste_0250$;'],
+      ['supabase/tests/**'],
+    );
+    expect(tem(r, 'padrao_proibido')).toBe(true);
   });
 });
 
