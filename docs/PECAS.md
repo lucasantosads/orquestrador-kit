@@ -373,6 +373,23 @@
   *O que o CI faz diferente:* nada — ele já tem `docs/fila` e receberia a recusa 2.
 
 
+- **K10 · doutrina v2.** Seis decisões mudaram, e `docs/DOUTRINA-v2.md` é a tabela delas com a
+  evidência de cada uma: motor único versionado (e editar o motor vendorizado é NO-GO no
+  pré-voo); ID sequencial global no lugar de faixa por bloco; canal padrão = arquivo; `risco`
+  derivado; "quem escreve o harness" apontando para o kit e para o incidente de 2026-09-08;
+  e `setup.md` instalando por `--novo` em vez de mandar gerar os scripts. O
+  `PLAYBOOK-seed.md` ganhou 15 lições triadas do PLAYBOOK do CI, com data, origem e o
+  critério de escolha escrito no arquivo.
+  *Evidência:* o PASSO 0 desta etapa (três formatos de `liberacoes.json`, dois schemas de
+  config) para a decisão 1; 2026-09-04 para a 2; 2026-09-07 para a 4; 2026-09-08 para a 5.
+  *Teste:* `test/doutrina-v2.test.ts`, 30 casos, **15 vermelhos antes**. Ele confronta cada
+  afirmação com a fonte que a torna verdadeira ou falsa — template de config, `CONTRATO.md`
+  e o disco —, em vez de julgar redação.
+  *Achado de quebra:* dois casos da K8b-5 afirmavam a constante 44 sobre a fila viva do
+  Comarka e quebraram dentro da sessão (o loop de lá drenou às 16:00). Passaram a derivar o
+  esperado da própria cópia.
+
+
 ## PENDENTES
 
 - **K6d · `scripts/kit/pureza.sh`.** O grep que TRANCA a pureza: em CÓDIGO (não em
@@ -413,12 +430,13 @@
   validador trocado, mais o NEGATIVO de que um campo novo no schema passa a reprovar sem
   edição de código.
 
-- **K10 · doutrina v2.** A regra "nunca copie scripts de outro repo" reescrita para "motor único
-  versionado sem premissa local; o que varia vive no config"; faixa de IDs por bloco → sequencial
-  global + campo `bloco`; canal padrão de notificação = arquivo; `PLAYBOOK-seed` triado (universal
-  aqui, local marcado `[local]` no repo).
-  *Evidência:* inventário §4 decisões 6 e 8, §8 item 6.
-  *Teste:* a doutrina não contradiz o config nem o CONTRATO (lint da doutrina).
+- **K10b · a triagem das outras 114 lições do PLAYBOOK do CI.** A K10 trouxe 15, pelo
+  critério escrito em `doutrina/templates/PLAYBOOK-seed.md` (mecanismo · paga · muda o que
+  alguém faria). As demais são locais, já estão na SKILL.md, ou são variações — e cada uma
+  precisa dessa classificação escrita, não presumida.
+  *Evidência:* `_referencia-ci/PLAYBOOK.ci.md`, 129 sub-lições entre 01 e 08/set/2026.
+  *Teste:* o mesmo `test/doutrina-v2.test.ts` — nenhuma lição triada carrega detalhe local
+  do repo de origem, e toda uma traz data e origem.
 
 - **K11 · absorções, uma sessão cada, teste junto.** Pré-voo do Actus (`pre-voo.mjs` → TS, chamado
   pelo preflight); enforcement como união por config (Comarka: C0 com DDL/TRIGGER/VIEW, janela de

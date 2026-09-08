@@ -424,5 +424,48 @@ o que o `jq` devolveu. Três achados mandaram no desenho:
   *O que o CI faz diferente:* nada — `--novo` não roda em repo instalado, e o CI já tem
   `docs/fila`. Ele receberia a recusa 2, que é a resposta certa.
 
+- **K10** — doutrina v2. Seis decisões mudaram, e `docs/DOUTRINA-v2.md` é a tabela delas
+  com a evidência de cada uma:
+  1. **"Nunca copie scripts de outro repo" → motor único versionado.** A regra v1 estava
+     certa sobre o sintoma e errada sobre o remédio: copiar carrega premissa local, mas
+     *reimplementar* carrega premissa NOVA a cada repo — e o custo apareceu neste PASSO 0,
+     em três `liberacoes.json` de formatos diferentes e dois schemas de config. Corolário
+     operacional: editar o motor vendorizado é **NO-GO no pré-voo**, e `instalar.sh
+     --verificar` é quem afirma isso.
+  2. **Faixa de IDs por bloco → ID sequencial global + campo `bloco`.** Medido em campo
+     (2026-09-04): os blocos progridem em paralelo e o loop drena em ordem de ID, então
+     faixa por bloco vira **prioridade por bloco**. Saiu de `mapa.json`, `MAPA.md`,
+     `TICKET.md`, `fase-0-arquitetar.md` e `autoalimentacao.md`, não só da SKILL.
+  3. **Canal de notificação padrão = arquivo.** O loop roda headless: canal que depende de
+     sessão gráfica falha exatamente quando ninguém está olhando.
+  4. **`risco` é derivado, não exigido.** Quem escreve deixa a chave vazia; o passo 6 do
+     gate preenche. Custo registrado (2026-09-07): a primeira versão do check 2 cobrava
+     VALOR e reprovou os 7 pendentes de uma vez — o gate reprovando ticket por não ter feito
+     o que o próprio gate ainda vai fazer.
+  5. **"Quem escreve o harness" aponta para o kit**, e cita o incidente de 2026-09-08 (job
+     de launchd carregado por 1h40 apontando para um fixture em `/private/tmp`, três
+     disparos em `rc 127`, detecção humana) como o exemplo de por que a fronteira precisa de
+     código e não de disciplina.
+  6. **`references/setup.md`: instalar = `--novo` + preencher + `orq config` + pré-voo.** O
+     passo "gere os scripts com Claude Code lendo a skill como spec" virou uma TABELA do que
+     já está instalado, e o pré-voo ganhou dois checks de um comando cada
+     (`instalar.sh --verificar` sai 0, `orq config` sai 0).
+  *`doutrina/templates/PLAYBOOK-seed.md` ganhou 15 lições triadas* do PLAYBOOK do
+  conteudos-infinitos (129 registradas entre 01 e 08/set, lido só para leitura), cada uma com
+  data e origem. O critério está escrito no próprio arquivo, em três filtros: é sobre o
+  MECANISMO (não sobre produto/stack/roadmap daquele repo), foi PAGA com incidente ou
+  medição, e muda o que alguém faria num repo novo. As outras 114 são a peça **K10b**.
+  *Teste:* `test/doutrina-v2.test.ts`, 30 casos, **15 vermelhos antes**. Ele não julga
+  redação: confronta cada afirmação da doutrina com a fonte que a torna verdadeira ou falsa
+  — o template de config (a `ordem_obrigatoria` lista os mesmos gates? as 7 causas de
+  adiamento estão lá? a política de retry não manda escalar por tamanho?), o `CONTRATO.md`
+  (`risco` basta existir) e o disco (todo script que o `setup.md` diz existir existe).
+  *Um defeito de TESTE caiu no caminho, e vale mais que a peça:* dois casos da K8b-5
+  afirmavam a constante **44** sobre a fila do Comarka. Eles quebraram DENTRO desta sessão —
+  o loop do comarka-operacional está VIVO e drenou às 16:00 (três tickets para `done`, um
+  para `em_execucao`). Teste que afirma um número sobre a fila viva de outro repo mede o dia,
+  não o código; os dois passaram a DERIVAR o esperado da própria cópia. (Conferido: o diff do
+  Comarka não tem uma linha de `recon` — nada daquele repo foi tocado por esta sessão.)
+
 Passos humanos para o CI receber esta etapa: ver o relatório em
 `~/orq-sessoes/relatorio-kit-etapa5.md`.

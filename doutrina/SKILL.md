@@ -5,7 +5,26 @@ description: Montar e operar um orquestrador autônomo de desenvolvimento num re
 
 # Orquestrador Autônomo v2: doutrina replicável
 
-Sistema provado em produção (Comarka OS, ago/2026): 19 tickets aprovados na primeira noite, ciclos 100% autônomos, cada regra abaixo paga por um incidente real. A v2 adiciona o que faltava para tirar o humano da operação: o loop passa a **escrever os próprios tickets** (planejador), **transformar bugs em tickets** (sentinela) e **nascer junto com o projeto** (Fase 0). Esta skill transfere a **lógica**. Cada repo gera a própria implementação com os gates dele. Nunca copie scripts de outro repo: eles carregam premissas locais que viram falso-verde.
+Sistema provado em produção (Comarka OS, ago/2026): 19 tickets aprovados na primeira noite, ciclos 100% autônomos, cada regra abaixo paga por um incidente real. A v2 adiciona o que faltava para tirar o humano da operação: o loop passa a **escrever os próprios tickets** (planejador), **transformar bugs em tickets** (sentinela) e **nascer junto com o projeto** (Fase 0).
+
+**MOTOR ÚNICO VERSIONADO.** Esta skill transfere a lógica; o `orquestrador-kit` transfere o
+CÓDIGO. Não existe "gerar a implementação em cada repo": existe UM motor, versionado, sem
+premissa de repo, instalado por `bash instalar.sh --novo <repo>` e atualizado por
+`--atualizar`. O que varia entre repos vive inteiro em `docs/fila/000-config.json` — gates,
+zona proibida, identidade, modelos, orçamento, branch de staging, prefixo de worktree.
+
+Isto substitui a regra v1 "nunca copie scripts de outro repo". A regra estava certa sobre o
+sintoma e errada sobre o remédio: copiar carrega premissa local, mas *reimplementar* carrega
+premissa nova a cada repo — e três implementações do mesmo loop divergem em silêncio, cada
+uma com os próprios bugs, nenhuma com os testes das outras. A premissa local se combate
+tirando-a do código, não multiplicando o código. Três premissas do repo de origem foram
+extraídas do motor em set/2026 e cada uma virou config ou detecção: nome de pacote do
+monorepo, nome de gate na linha `GATE`, e label do launchd.
+
+**Corolário operacional: editar o motor vendorizado dentro de um repo é NO-GO no pré-voo.**
+`bash instalar.sh --verificar <repo>` compara byte a byte; divergência é o repo tendo saído
+do kit. Mudança de motor é sessão no kit, com teste, e chega no repo por `--atualizar`. Um
+motor editado no lugar é um motor sem teste, sem revisão e sem caminho de volta.
 
 ## As 4 fases (o mapa inteiro)
 
@@ -106,6 +125,11 @@ Log verboso não é observabilidade. Quatro artefatos, sempre (contrato em `refe
 - **Trilha de eventos** (`runs/events.log`): 1 linha por transição, `ts id EVENTO chave=valor`. Eventos novos da v2: `CANDIDATO`, `DESCARTADO`, `REFATIAR`, `SINAL`, `QUARENTENA`, `DECISAO_PENDENTE`, `ORCAMENTO`, `REPOSICAO`.
 - **Um comando de consulta** (`orq`), read-only por construção. Subcomandos novos: `orq custo`, `orq decisoes`, `orq sinais`, `orq relatorio`.
 - **Notificação de fim de drenagem** com placar, custo e decisões pendentes. "Acabou?" não exige polling.
+  **O canal PADRÃO é `arquivo`** (`runs/notificacoes.log`), e não a notificação nativa do sistema. Motivo:
+  o loop roda headless, sob launchd/cron/CI, muitas vezes sem sessão gráfica e às vezes noutra máquina —
+  canal que depende de sessão falha exatamente quando o humano não está olhando, que é quando a notificação
+  serve para alguma coisa. Arquivo é `tail`-ável, sobrevive a reboot, entra no `git`-ignore e não tem
+  credencial para expirar. Qualquer outro canal é acréscimo, e todo acréscimo mantém o fallback em arquivo.
 
 ## Ciclo de vida do processo (matar o loop tem que matar o loop)
 
@@ -127,7 +151,7 @@ Ticket que **unifica, remove ou renomeia** uma regra quebra os testes dos ticket
 
 ## Como montar num repo (novo ou existente)
 
-**Regra zero: a skill vive DENTRO do repo (vendoring obrigatório).** O loop roda headless (`claude -p`, launchd/cron/CI): não existe acesso a skills de chat, uploads ou memória de sessão. O primeiro artefato de qualquer instalação é a cópia integral desta skill (SKILL.md + references/ + templates/) em `docs/orquestrador/skill/`, commitada. A partir daí:
+**Regra zero: a skill vive DENTRO do repo (vendoring obrigatório).** O loop roda headless (`claude -p`, launchd/cron/CI): não existe acesso a skills de chat, uploads ou memória de sessão. O primeiro artefato de qualquer instalação é a cópia integral desta skill (SKILL.md + references/ + templates/) em `docs/orquestrador/skill/`, commitada — e quem a copia é o `instalar.sh` do kit, junto com o motor e no mesmo carimbo de `VERSAO`. A partir daí:
 
 - O briefing do executor são **3 arquivos + 1 derivado**: `docs/orquestrador/skill/EXECUTOR.md` (extrato de ≤ 60 linhas da doutrina, só o que o executor precisa), `docs/fila/000-config.json` (decisões locais), o ticket da vez (escopo) e o context pack gerado mecanicamente a partir do ticket. A SKILL.md completa é para humanos, juiz de ticket, planejador e sessões de manutenção. Nenhuma instrução solta fora deles.
 - Evolução da doutrina = commit na cópia local + (se universal) retorno para a skill-mãe. Divergência silenciosa entre repo e skill-mãe é dívida: anote no PLAYBOOK qual regra é local e por quê.
@@ -149,22 +173,24 @@ Decisões que SÃO específicas de cada repo (a skill não decide por você):
 | Prefixos de comando permitidos em critérios | `npx vitest`, `npx tsc`, `npm run`, `node scripts/`, `curl http://localhost` |
 | Fontes da sentinela e credenciais read-only | suite + smoke + Vercel runtime errors + Supabase advisors |
 | Orçamento (tokens/dia, USD/dia, por ticket) | medido nas 2 primeiras semanas, depois fixado |
-| Canal de notificação | notificação nativa · webhook · e-mail com fallback em arquivo |
+| Canal de notificação | **`arquivo` é o padrão** (`runs/notificacoes.log`); nativa/webhook/e-mail são opção |
 
 ### Roadmap hierárquico (anti-perdição)
 
 ```
-BLOCO (épico)  → "por que existe": DoD + gates humanos. Contexto p/ humanos. Faixa de IDs.
+BLOCO (épico)  → "por que existe": DoD + gates humanos. Contexto p/ humanos.
   └─ FRENTE    → "o que entrega": allowlist comum + deps por ID + status. Unidade que o planejador decompõe.
        └─ TICKET → "como verificar": cmd + espera, cabe no diff cap. ÚNICO nível que entra na fila.
 ```
 
 - Fonte única: `docs/roadmap/MAPA.md` (humanos) + `docs/roadmap/mapa.json` (máquina), ambos no repo, com lint que os confere um contra o outro (`orq mapa lint`). Ferramentas externas (Notion, task-master) recebem espelho via writeback, nunca o contrário.
-- **DIVERGÊNCIA LOCAL (2026-09-04, conteudos-infinitos):** a skill-mãe dá a cada bloco uma **faixa de IDs**
-  (B1=100–199, B2=200–299…), para que o ID sozinho carregue o contexto. Aqui a faixa foi **abandonada**: os
-  blocos progridem em paralelo e o loop drena em ordem de ID, então faixa por bloco imporia prioridade por
-  bloco. ID é **ordem de fila**, sequencial global; `bloco` e `frente` no JSON do ticket são os campos de
-  pertença. Ver PLAYBOOK, linha 2026-09-04.
+- **ID é ORDEM DE FILA, sequencial global — não faixa por bloco.** A v1 dava a cada bloco uma faixa
+  (B1=100–199, B2=200–299…) para que o ID sozinho carregasse o contexto. O custo apareceu em campo
+  (conteudos-infinitos, 2026-09-04): os blocos progridem em PARALELO e o loop drena em ordem de ID, então
+  faixa por bloco vira **prioridade por bloco** — o B1 inteiro passa na frente do B2 porque começa com 1.
+  Prioridade é decisão de produto e tem de ser explícita, não um efeito colateral da numeração.
+  A pertença vive nos campos `bloco` e `frente` do JSON do ticket, que é onde uma máquina consegue lê-la;
+  o ID carregar contexto era conveniência para o olho humano, e custava caro.
 - Todo ticket declara `bloco`, `frente` e `origem`. Bloco e frente ficam FORA do prompt do executor: quanto menos contexto ele precisa, menos se perde.
 
 ## Armadilhas conhecidas (não replicar; corrigir na origem)
@@ -190,10 +216,34 @@ O throughput do loop é limitado pela qualidade do ticket. Valem para humano e p
 - **Allowlists sobrepostas entre pendentes exigem dependência explícita.**
 - Ao evoluir UI registrada em registry compartilhado, o critério de juiz cobra **integração** ("importado e montado"), não só existência.
 - **Pelo menos um critério `alvo` vermelho.** Ticket só de guardas não entra.
+- **`risco` é DERIVADO, não exigido de quem escreve.** Quem escreve o ticket declara a chave e a deixa
+  vazia (`"risco": ""`); quem a preenche é o passo 6 do gate, por script, com modelo barato só na dúvida.
+  Pedir a classificação ao autor troca uma medida por uma opinião — e o autor é justamente quem tem
+  interesse em que o ticket dele seja "baixo". Vale o mesmo para `dependencias: []`: chave presente e lista
+  vazia é o caso NORMAL (63 dos 74 tickets de um repo real), não campo por preencher. O gate cobra que a
+  CHAVE exista, nunca que ela tenha valor — cobrar valor seria o gate reprovando ticket por não ter feito o
+  que o próprio gate ainda vai fazer. (conteudos-infinitos, 2026-09-07: a primeira versão do check 2
+  reprovou os 7 pendentes por isso.)
 
 ## Quem escreve o harness (fronteira permanente)
 
-Instrumentação e correção do harness **não são ticket de fila**. O orquestrador julga o próprio trabalho pelos gates que o harness executa; se o harness se modifica sozinho, um bug dele esconde um bug dele. Mudança no executor/loop/enforcement/planejador/sentinela/gate de ticket é feita fora do loop, em sessão interativa, com diff cru revisado por humano. Quando o loop está quebrado, o conserto NUNCA vai pela fila.
+Instrumentação e correção do harness **não são ticket de fila**. O orquestrador julga o próprio trabalho pelos gates que o harness executa; se o harness se modifica sozinho, um bug dele esconde um bug dele. Quando o loop está quebrado, o conserto NUNCA vai pela fila.
+
+**E não é feito no repo instalado.** Desde a v2 o harness é o `orquestrador-kit`: mudança no
+executor/loop/enforcement/planejador/sentinela/gate de ticket é sessão **no kit**, com teste
+que prova a mudança na peça que a pede, e chega nos repos por `instalar.sh --atualizar`. O
+repo instalado recebe o motor; não o edita. `instalar.sh --verificar` é a asserção disso, e
+diverge alto quando alguém editou no lugar.
+
+**Por que a fronteira precisa de código e não de disciplina** (incidente real, 2026-09-08):
+o "vermelho antes" de uma peça do próprio kit rodou o instalador ANTIGO — que ignorava
+`--dry-run` — e CARREGOU um job de launchd de verdade, apontando para um fixture em
+`/private/tmp`, por 1h40, com três disparos morrendo em `rc 127`. Ninguém percebeu porque
+"job carregado" foi lido como "job saudável", e nada media o contrário; a detecção veio de um
+`launchctl print` humano. O conserto não foi cuidado: foi um stub de `launchctl` no PATH dos
+testes e uma RECUSA no instalador contra checkout sob `/tmp` ou com `ORQ_TESTE=1`.
+Disciplina não sobrevive à sexta-feira — a mesma frase que o repo de origem já tinha escrito
+sobre evidência falsa, aprendida de novo do outro lado.
 
 ## Critérios de maturidade (o que libera cada camada)
 

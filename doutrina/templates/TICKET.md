@@ -64,7 +64,7 @@ já feito: todo nome de tabela/rota/arquivo citado no JSON foi verificado no rep
 
 | Campo | Regras |
 |---|---|
-| `id` | Identidade estável; arquivo = `<id>-<slug>.md`; branch = `frente/<id>`. Deps referenciam ESTE campo, nunca o nome do arquivo. Número DENTRO da faixa do bloco (`mapa.json`). Atribuído por script quando a origem é máquina. |
+| `id` | Identidade estável; arquivo = `<id>-<slug>.md`; branch = `frente/<id>`. Deps referenciam ESTE campo, nunca o nome do arquivo. Número SEQUENCIAL GLOBAL — o próximo livre da fila, sem faixa por bloco (a pertença é o campo `bloco`). Atribuído por script quando a origem é máquina. |
 | `bloco` / `frente` | IDs de `mapa.json`. Usados no writeback e no planejador; NÃO entram no prompt do executor. |
 | `origem` | `humano` \| `planejador` \| `sentinela`. Decide se o juiz de ticket roda e para quem `refatiar` volta. |
 | `objetivo` | Corpo do prompt do executor. Frase imperativa. |

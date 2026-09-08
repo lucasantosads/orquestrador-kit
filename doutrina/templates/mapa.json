@@ -5,7 +5,7 @@
     {
       "id": "B1",
       "nome": "<nome do bloco>",
-      "faixa_ids": [100, 199],
+      "_sem_faixa_ids": "A v1 dava a cada bloco uma faixa de IDs; a v2 NÃO tem esse campo. ID de ticket é ordem de fila, sequencial global — faixa por bloco vira prioridade por bloco, porque o loop drena em ordem de ID. A pertença mora nos campos `bloco` e `frente` do JSON do ticket. Ver SKILL.md, Roadmap hierárquico.",
       "por_que": "<uma frase do PRD>",
       "dod": ["<verificação humana 1>", "<verificação humana 2>"],
       "gates_humanos": ["humano:<token>"],

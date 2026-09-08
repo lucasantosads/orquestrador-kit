@@ -44,7 +44,7 @@ Roda para todo `candidato`. Tickets `origem: humano` passam pelos passos 1 a 6 n
 
 | # | Passo | Verde quando | Falha ⇒ |
 |---|---|---|---|
-| 1 | Lint de schema | JSON válido; campos obrigatórios; **`id` NÃO é validado contra faixa de bloco — IDs são sequenciais globais** (regra local, 2026-09-04); `bloco` e `frente` existem em `mapa.json` **e a frente pertence ao bloco declarado**; deps por `id` existentes; ≥1 critério `tipo: alvo` | descartado `schema` |
+| 1 | Lint de schema | JSON válido; campos obrigatórios; **`id` NÃO é validado contra faixa de bloco — IDs são sequenciais globais** (regra da v2; era faixa por bloco na v1); `bloco` e `frente` existem em `mapa.json` **e a frente pertence ao bloco declarado**; deps por `id` existentes; ≥1 critério `tipo: alvo` | descartado `schema` |
 | 2 | Recon no disco | todo path da allowlist existe OU é `cria_novo`; todo arquivo/rota/tabela citado em `objetivo` existe (`git ls-files`, grep de rotas, lista de tabelas do recon); allowlist ∩ zona proibida = ∅; allowlist ∩ paths do harness = ∅ | descartado `recon` |
 | 3 | Teste vermelho | em worktree descartável na HEAD da staging, com timeout `gate_ticket.timeout_cmd_secs`: cada critério `alvo` roda e **não** atinge `espera`; critérios `guarda` podem atingir. Classificação do vermelho: rc 126/127, "command not found", erro de sintaxe do shell, timeout ⇒ `invalido`. Precisa: ≥1 alvo `vermelho_valido`, zero `invalido`, zero alvo `verde` | descartado `vermelho` |
 | 4 | Cap | `diff_estimado ≤ diff_cap_ticket` (600 default); allowlist ≤ `max_paths_allowlist`; allowlist com `*.test.*` ⇒ existe critério `avaliador` anti-afrouxamento | descartado `cap` |

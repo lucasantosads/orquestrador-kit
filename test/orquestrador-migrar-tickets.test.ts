@@ -3,12 +3,13 @@
  *
  * A afirmação central é NEGATIVA: **a prosa não se move um byte**. Um ticket é
  * um documento que um humano escreveu para outro humano, com um bloco de JSON
- * dentro que a máquina lê. Migração que reformata a prosa de 46 tickets produz
+ * dentro que a máquina lê. Migração que reformata a prosa de dezenas de tickets produz
  * um diff que ninguém revisa — e um diff que ninguém revisa é um diff que
  * aprova o que quiser.
  *
- * Roda contra a fila REAL do Comarka (46 pendentes, 44 com `recon_esperado`) e
- * do Actus, copiadas para `mkdtemp`. Os repos são SÓ LEITURA nesta sessão.
+ * Roda contra as filas REAIS dos três repos, copiadas para `mkdtemp`. Eles são
+ * SÓ LEITURA nesta sessão — e um caso afirma isso, byte a byte, depois de cada
+ * `--aplicar`.
  */
 import { describe, it, expect } from 'vitest';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -42,6 +43,33 @@ function copiaFila(origem: string): string {
     }
   }
   return fila;
+}
+
+/**
+ * Quantos tickets a migração DEVE mexer, contados na própria cópia.
+ *
+ * Antes isto era uma CONSTANTE, medida no PASSO 0 — e a constante quebrou DENTRO
+ * desta sessão: o loop do comarka-operacional está VIVO e drenou a fila às 16:00
+ * (três tickets para `done`, um para `em_execucao`), com o que o número de
+ * pendentes caiu. Teste que afirma um número sobre a fila viva de OUTRO repo
+ * mede o dia, não o código. O que é constante é a REGRA: mexe em todo pendente
+ * que tenha um dos nomes antigos, e em mais nenhum.
+ */
+function esperados(fila: string): number {
+  let n = 0;
+  for (const f of ticketsDe(fila)) {
+    const m = /```json\n([\s\S]*?)\n```/.exec(readFileSync(f, 'utf8'));
+    if (!m) continue;
+    let j: Record<string, unknown>;
+    try {
+      j = JSON.parse(m[1]!);
+    } catch {
+      continue;
+    }
+    if (j.status !== 'pendente') continue;
+    if (RENOMES_TICKET.some((r) => r.de in j && !(r.para in j))) n += 1;
+  }
+  return n;
 }
 
 /** Um ticket sintético, para os casos que a fila real não tem. */
@@ -120,13 +148,16 @@ describe('os dois renomes, na posição original da chave', () => {
     expect(r.notas.join('\n')).toMatch(/coexistem: NÃO renomeei/);
   });
 
-  it('a fila real do Comarka: 44 tickets, e a MUDANÇA é uma linha por ticket', () => {
+  it('a fila real do Comarka: UMA linha muda por ticket, e é sempre a mesma', () => {
     const caminho = FILAS.find((f) => f.nome === 'comarka-operacional')!.caminho;
     if (!existsSync(caminho)) return void console.warn('PULADO');
-    const r = migrarFila(copiaFila(caminho), 'dry-run');
-    expect(r.migrados).toBe(44);
+    const fila = copiaFila(caminho);
+    const n = esperados(fila);
+    expect(n, 'a fila real deixou de ter pendente com nome antigo — o caso perdeu o objeto').toBeGreaterThan(0);
+    const r = migrarFila(fila, 'dry-run');
+    expect(r.migrados).toBe(n);
     const adicionadas = r.linhas.join('\n').split('\n').filter((l) => l.startsWith('+') && !l.startsWith('+++'));
-    expect(adicionadas).toHaveLength(44);
+    expect(adicionadas).toHaveLength(n);
     expect(new Set(adicionadas)).toEqual(new Set(['+  "recon": [']));
   });
 });
@@ -247,9 +278,10 @@ describe('--dry-run e --aplicar', () => {
     const caminho = FILAS.find((f) => f.nome === 'comarka-operacional')!.caminho;
     if (!existsSync(caminho)) return void console.warn('PULADO');
     const fila = copiaFila(caminho);
+    const n = esperados(fila);
     const r = migrarFila(fila, 'aplicar');
-    expect(r.migrados).toBe(44);
-    expect(readdirSync(fila).filter((n) => n.endsWith('.bak'))).toEqual([]);
+    expect(r.migrados).toBe(n);
+    expect(readdirSync(fila).filter((x) => x.endsWith('.bak'))).toEqual([]);
     expect(r.linhas.join('\n')).toMatch(/Sem \.bak: o ticket é versionado/);
   });
 

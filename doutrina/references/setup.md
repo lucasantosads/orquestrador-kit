@@ -2,55 +2,100 @@
 
 Ordem de bootstrap. Cada passo tem um "pronto quando" — não avance sem ele.
 
+> **O que mudou na v2, e é o passo 1 inteiro:** instalar deixou de ser "gerar a
+> implementação lendo a skill como spec" e passou a ser `bash instalar.sh --novo <repo>`.
+> Existe UM motor, versionado no `orquestrador-kit`, sem premissa de repo. O que varia vive
+> em `docs/fila/000-config.json`. Ver SKILL.md, "Motor único versionado" — e o corolário:
+> editar o motor vendorizado dentro do repo é NO-GO no pré-voo.
+
 ## 0. Pré-requisitos
 - Repo git com remote; branch principal protegida de push do loop.
 - Claude Code instalado com assinatura local (`claude -p` funciona sem API key) **ou** `ANTHROPIC_API_KEY` para CI.
-- `jq`, e os comandos reais de typecheck/teste/build do projeto rodando verdes localmente.
+- `jq`, `python3`, `node`, e os comandos reais de typecheck/teste/build do projeto rodando verdes localmente.
+- O `orquestrador-kit` no disco.
 
-## 1. Vendorizar a skill no repo (5 min, primeiro commit)
-Copie esta skill inteira (SKILL.md, references/, templates/) para `docs/orquestrador/skill/` e commite. Motivo: o loop roda headless — `claude -p` via launchd/cron/CI não enxerga skills de chat nem uploads. A cópia local é a spec que o executor, o juiz e toda sessão de manutenção leem. Sem ela, o sistema opera de memória — que é exatamente o que esta doutrina proíbe.
+## 1. Instalar o motor (2 min, um comando)
 
-**Pronto quando:** `git log` mostra a skill commitada e `docs/orquestrador/skill/SKILL.md` abre no checkout.
+```bash
+bash instalar.sh --novo <caminho-do-repo>
+```
 
-## 2. Decisões locais (30 min, humano)
-Preencha `docs/fila/000-config.json` a partir de `templates/config.json`:
+Ele cria, de uma vez: o motor vendorizado (`scripts/orquestrador/`, `scripts/orq`,
+`scripts/roadmap/`, a skill em `docs/orquestrador/skill/` e o carimbo `VERSAO`), a fila
+(`000-config.json` a partir do template, `_TEMPLATE.md`, `liberacoes.json` v2 vazio,
+`decisoes-pendentes.md`, `rascunhos/`, `runs/`), o roadmap (`mapa.json`, `MAPA.md`), a
+memória (`PLAYBOOK.md`, `PECAS.md`) e as linhas de `.gitignore` que faltarem. Ele RECUSA se
+`docs/fila` já existir — aí o verbo é `--atualizar`.
+
+**Não escreva script de orquestrador neste repo.** A skill continua vendorizada porque o
+loop roda headless e precisa da spec no disco, mas ela é agora a spec de LEITURA (executor,
+juiz, sessão de manutenção), não a spec de implementação: quem implementa é o kit, uma vez,
+com os testes dele.
+
+**Pronto quando:** `bash instalar.sh --verificar <repo>` diz `idêntico ao kit <VERSAO>` e sai 0.
+
+## 2. Preencher o config (30 min, humano)
+O `000-config.json` que o `--novo` criou é um **formulário**: todo `<...>` é uma decisão
+local que ninguém pode tomar por você. `bash scripts/orq config` lista cada uma, com a linha
+do motor que a lê, e sai != 0 até a última ser preenchida.
 1. **Fronteira intocável** (`zona_proibida`): tabelas/paths que o loop NUNCA escreve. Se o banco é compartilhado com outro sistema, liste tudo dele aqui. Na dúvida, proíba — liberar depois é barato, vazar não.
 2. **Baseline de typecheck**: rode o typecheck hoje, conte os erros herdados, registre número + escopo (regex de arquivos). O gate compara contra o baseline, nunca contra zero.
 3. **Gates**: os 3 comandos reais (typecheck, testes, build) com tipo de veredicto (exit code ou baseline).
 4. **Identidade**: string que o `origin` deve conter + identificador do banco/ambiente extraível do `.env`. Divergência = abortar sem gastar.
 5. **Política**: branch de staging (ex. `staging-auto`), `max_retries` (2), `cooldown_minutes` (60), `diff_cap_linhas` (2500), `claude_timeout_secs` (1800), modelos por papel (executor barato, juiz forte, retry final forte).
 
-**Pronto quando:** config validada por `jq .` e revisada por humano.
+**Pronto quando:** `bash scripts/orq config` sai **0 violações**, e um humano releu o arquivo.
+`jq .` só prova que o JSON parseia; `orq config` prova que o motor consegue rodar com ele.
 
-## 3. Estrutura de arquivos
+## 3. Estrutura de arquivos (criada pelo passo 1; aqui só para conferência)
 ```
 docs/fila/
 ├── _TEMPLATE.md        # de templates/TICKET.md
 ├── 000-config.json
-├── liberacoes.json     # {"tokens": []} — deps humano:<token> resolvem aqui
+├── liberacoes.json     # v2: {"$schema_versao": 2, "tokens": []} — `orq liberar` escreve aqui
 ├── rascunhos/          # tickets não promovidos; o leitor da fila NÃO desce aqui
 └── runs/               # evidência por ticket/tentativa + log do loop
 docs/orquestrador/
 ├── skill/              # cópia vendorizada desta skill (passo 1) — a spec local
 └── PLAYBOOK.md         # de templates/PLAYBOOK-seed.md
-docs/roadmap/MAPA.md    # fonte única do roadmap: blocos → frentes → tickets + faixas de ID
-scripts/orquestrador/           # os scripts que o passo 3 vai gerar
+docs/roadmap/MAPA.md    # fonte única do roadmap: blocos → frentes → tickets (ID sequencial global)
+scripts/orquestrador/   # o motor VENDORIZADO pelo instalar.sh — não se edita aqui
+scripts/orq             # o comando de consulta
+scripts/roadmap/        # o lint do mapa (motor também: `orq mapa lint` o chama)
 ```
 
 ## 3.4 Observabilidade (junto com os scripts, não depois)
 Implemente o contrato de `references/observabilidade.md` — `runs/STATUS.md`, `runs/events.log`, comando de consulta e notificação de fim — **na mesma passada** em que os scripts nascem. Deixar para depois significa operar às cegas justamente na fase em que mais se erra. **Pronto quando:** alguém que não montou o sistema responde, olhando só o comando de consulta, em que ticket está, se o anterior passou e por que a fila parou.
 
 ## 3.5 Pré-voo (gate obrigatório)
-Rode `references/pre-voo.md` categorias 0–6. Qualquer NO-GO → remediação primeiro. **Pronto quando:** tabela GO/NO-GO registrada em `docs/fila/runs/pre-voo-<data>.md` com GO em 0–6.
+Rode `references/pre-voo.md` categorias 0–6, mais estes dois, que a v2 acrescenta e que são
+um comando cada:
 
-## 4. Gerar os scripts (com Claude Code, no próprio repo)
-Peça ao Claude Code para implementar, **lendo a cópia local `docs/orquestrador/skill/` (SKILL.md + templates) + config como spec**, nesta ordem — cada um com teste próprio antes do seguinte:
-1. `fila-read` — lê a fila, valida schema, resolve `dependencias` por `id` e `humano:<token>`, ignora `rascunhos/`. Teste: fixture com dep não resolvida, token liberado, rascunho invisível.
-2. `enforcement` — recebe um diff, falha se tocar arquivo fora da allowlist do ticket ou qualquer item da zona proibida (inclui SQL cru e chamadas `.rpc()` no diff). Teste com diffs bons e maus.
-3. `executor` — worktree nova a partir da staging na 1ª tentativa (o **retry reaproveita a worktree e o commit** quando o enforcement da tentativa anterior passou; worktree nova de novo quando ele reprovou) → preflight de identidade (fatal) → `claude -p` com prompt montado do ticket (objetivo + allowlist + critérios + proibições + `--allowedTools` restritos) → salva prompt/`diff.patch`/outputs em `runs/<id>/attempt-N/` (o patch é gravado antes de qualquer descarte) → roda pipeline fail-fast → estados aprovado/reprovado/adiado. **Parser do veredicto: extrai JSON do output cru com tolerância a lixo; falha de parse = adiado.** Branch de ticket bloqueado não é deletada.
-4. `avaliador` — prompt do juiz = diff cru + outputs dos gates + critérios; resposta JSON `{aprovado, motivo}`; aprovado → merge `--no-ff` na staging.
-5. `local-loop` — lock (pid + idade máxima + cleanup em TODO exit), drenagem da fila inteira, respeita `runs/.cooldown-until`, push da staging por aprovação, writeback/relatório com fallback em arquivo.
-6. Testes de sistema: simular adiado (rate limit não consome retry) e drenagem.
+- `bash instalar.sh --verificar <repo>` sai **0** — o motor deste repo é byte a byte o do
+  kit. Divergência é NO-GO: motor editado no lugar é motor sem teste e sem caminho de volta.
+- `bash scripts/orq config` sai **0** — nenhum placeholder, nenhuma chave obrigatória
+  ausente.
+
+**Pronto quando:** tabela GO/NO-GO registrada em `docs/fila/runs/pre-voo-<data>.md` com GO em 0–6 e nos dois acima.
+
+## 4. O motor que o passo 1 instalou (o que existe, para você saber o que ler)
+Nada a gerar. Os scripts abaixo já estão no repo desde o `--novo`, com os testes deles, e
+mudança em qualquer um é sessão **no kit** — nunca edição no lugar (SKILL.md, "Quem escreve
+o harness"):
+
+| No repo | O que faz |
+|---|---|
+| `scripts/orquestrador/fila-read.ts` | lê a fila, resolve `dependencias` por `id` e `humano:<token>`, ignora `rascunhos/` |
+| `scripts/orquestrador/enforcement.sh` + `enforcement-core.ts` | recebe o diff e FALHA o processo fora da allowlist ou na zona proibida |
+| `scripts/orquestrador/executor.sh` | worktree → preflight de identidade → `claude -p` → evidência em `runs/<id>/attempt-N/` → pipeline fail-fast |
+| `scripts/orquestrador/juiz.ts` + `decisao.ts` | juiz por classe de risco; aprovado/reprovado/**adiado**/refatiar |
+| `scripts/orquestrador/local-loop.sh` | lock (pid + idade + cleanup em todo exit), drenagem inteira, cooldown, orçamento |
+| `scripts/orquestrador/gate-ticket.ts` | o gate de ticket; `orq validar` é a porta dele |
+| `scripts/orq` | o comando de consulta, read-only exceto `pausar`/`retomar`/`liberar` |
+
+Se algum comportamento acima não bate com o que este repo precisa, a saída é **config** ou
+uma peça no kit — não um script local. Script local é a premissa de repo voltando pela
+janela, e ela volta sem teste.
 
 **Pronto quando:** um ticket-fixture trivial (ex.: criar um arquivo + teste) atravessa o loop ponta a ponta e o merge aparece na staging.
 
@@ -61,7 +106,7 @@ Pré-requisito: categoria 7 do pré-voo (fixture aprovado + teste de lock). laun
 Comece com 2–3 tickets pequenos e de leitura pura (uma rota GET + teste). Só depois de um ciclo 100% autônomo aprovado de primeira, aumente o lote. Revise os `runs/` dos primeiros — é onde os defeitos de spec aparecem.
 
 ## 7. Ritual humano (o único combustível)
-20 min, 2–3×/semana: revisar preview da staging → merge para a principal (humano, sempre) → aplicar `.sql` acumuladas → responder tokens de `liberacoes.json` → ler telemetria e o PLAYBOOK.
+20 min, 2–3×/semana: revisar preview da staging → merge para a principal (humano, sempre) → aplicar `.sql` acumuladas → responder tokens com `bash scripts/orq liberar humano:<tipo>-<id> "o que eu conferi"` (o verbo recusa token duplicado e token fora do padrão; editar o `liberacoes.json` à mão é como um repo real acabou com o mesmo token duas vezes) → ler telemetria e o PLAYBOOK.
 
 ---
 
@@ -69,7 +114,10 @@ Comece com 2–3 tickets pequenos e de leitura pura (uma rota GET + teste). Só 
 
 **Passo 0 (antes de tudo):** Fase 0 concluída com `orq dor` verde (`fase-0-arquitetar.md`) e Fase 1 com pré-voo GO em 0 a 8 (`fundacao.md`). Em brownfield com loop v1 já rodando, pule a Fase 0 completa e rode só `/arquitetar` para gerar MAPA.md + mapa.json a partir do roadmap existente.
 
-**Passo 1, vendoring:** além da skill, copiar `templates/EXECUTOR.md` para `docs/orquestrador/skill/EXECUTOR.md` (prefixo do prompt do executor; o pré-voo checa `test -s`); vendorizar em `docs/orquestrador/bmad/` só Analyst, PM e Architect; `templates/arquitetar.md` vai para `.claude/commands/arquitetar.md`; Superpowers instalado como plugin do Claude Code (sessão interativa, não headless).
+**Passo 1, vendoring:** o `instalar.sh --novo` já traz a skill inteira, `EXECUTOR.md`
+incluído. O que sobra para a mão: vendorizar em `docs/orquestrador/bmad/` só Analyst, PM e
+Architect; `templates/arquitetar.md` vai para `.claude/commands/arquitetar.md`; Superpowers
+instalado como plugin do Claude Code (sessão interativa, não headless).
 
 **Passo 2, decisões locais v2:** preencher também `modelos`, `juiz.paths_alto_risco`, `gate_ticket.cmd_prefixos_permitidos`, `paths_harness`, `sentinela.smoke_cmd`, `orcamento` (alto nas 2 primeiras semanas), `relatorio.canal`. Deixar `loops.sentinela.ativo:false` e `loops.planejador.ativo:false`.
 
@@ -85,7 +133,9 @@ docs/adr/                         # ADRs da Fase 0
 ```
 `docs/fila/PAUSAR` **não** existe por padrão; sua presença é o kill switch global.
 
-**Passo 4, scripts adicionais (mesma regra: cada um com teste próprio antes do seguinte, lendo a skill vendorizada como spec):**
+**Passo 4, o que AINDA não está no motor.** Os itens abaixo são peças do kit, não scripts a
+escrever neste repo. Onde uma delas ainda não existe, o comportamento correspondente não
+existe — e a saída é abrir peça no kit, com teste, nunca improvisar um script local:
 7. `context-pack` — monta o contexto do executor a partir do ticket (§2 de `custo-e-contexto.md`), com cap e ordem de truncamento. Teste: ticket com allowlist grande é truncado na ordem certa e nunca passa do cap.
 8. `mapa-repo` — gera `REPO-MAP.md` com cap. Teste: tamanho ≤ cap; símbolo exportado aparece com quem o importa.
 9. `custo` — grava usage por chamada em `custo.json`; `orq custo` agrega; gate de orçamento consultado pelo executor, planejador e sentinela. Teste: chamada simulada acima do teto vira `adiado` e evento `ORCAMENTO`.

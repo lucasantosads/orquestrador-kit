@@ -51,7 +51,7 @@ Saída `docs/arquitetura.md` + `docs/adr/NNNN-*.md` (um ADR por decisão de stac
 **Pronto quando:** `docs/fila/000-config.json` está preenchido sem placeholder e `jq .` passa.
 
 ### 2.4 Conversor MAPA
-Passo que o BMAD não tem. Épicos → blocos (neste repo **sem faixa de IDs** — ver divergência local na SKILL.md; ID de ticket é sequencial global); funcionalidades → frentes, cada frente com allowlist comum, deps por ID, DoD herdado do épico, status inicial `rascunho`. Saída: `docs/roadmap/MAPA.md` (humanos) e `docs/roadmap/mapa.json` (máquina). Templates em `templates/MAPA.md` e `templates/mapa.json`.
+Passo que o BMAD não tem. Épicos → blocos (**sem faixa de IDs**: ID de ticket é ordem de fila, sequencial global — ver SKILL.md, Roadmap hierárquico); funcionalidades → frentes, cada frente com allowlist comum, deps por ID, DoD herdado do épico, status inicial `rascunho`. Saída: `docs/roadmap/MAPA.md` (humanos) e `docs/roadmap/mapa.json` (máquina). Templates em `templates/MAPA.md` e `templates/mapa.json`.
 
 Opcional: `task-master parse-prd` gera a decomposição inicial com deps; o adaptador (`orq mapa importar`) converte tasks em **frentes**, nunca em tickets, e o `tasks.json` vira espelho descartável. Fonte é `mapa.json`.
 
@@ -66,7 +66,7 @@ O dono marca `pronta` só as frentes que o planejador pode decompor agora. Regra
 |---|---|
 | Artefatos | `docs/brief.md`, `docs/prd.md`, `docs/arquitetura.md`, ≥1 ADR, todos versionados (`git ls-files`) |
 | Config | `jq .` válido, zero `<placeholder>`, `gates[].cmd` rodam (rc 0 ou baseline medido), `paths_alto_risco` e `zona_proibida` não vazios ou marcados `revisado_humano: true` |
-| MAPA | `mapa.json` válido; `faixa_ids` é OPCIONAL e, quando existe, disjunta (neste repo só B0 a mantém, como histórico); todo bloco tem `dod` não vazio; toda frente tem `allowlist` não vazia, `bloco` existente, `deps` que existem, `status` em {rascunho, pronta, em_andamento, concluida, bloqueada_humano}; MAPA.md cita exatamente os mesmos IDs (lint cruzado) |
+| MAPA | `mapa.json` válido; `faixa_ids` NÃO existe na v2 (se um bloco legado ainda o traz, ele é histórico e o lint o ignora); todo bloco tem `dod` não vazio; toda frente tem `allowlist` não vazia, `bloco` existente, `deps` que existem, `status` em {rascunho, pronta, em_andamento, concluida, bloqueada_humano}; MAPA.md cita exatamente os mesmos IDs (lint cruzado) |
 | Recon (brownfield) | todo path das allowlists existe no disco ou a frente está marcada `cria_novo: true` |
 | Zona proibida × allowlists | interseção vazia |
 | Frentes `pronta` | deps satisfeitas; ≤2 por bloco |
