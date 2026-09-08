@@ -59,14 +59,16 @@ die() { printf 'instalar.sh: %s\n' "$*" >&2; exit 2; }
 uso() {
   cat <<'USO'
 uso: bash instalar.sh --verificar <repo>
-     bash instalar.sh --atualizar <repo> [--dry-run] [--forcar]
+     bash instalar.sh --atualizar <repo> [--dry-run] [--forcar] [--migrar]
 
   --verificar <repo>   compara o motor vendorizado em <repo> com o do kit
   --atualizar <repo>   copia o motor do kit por cima do de <repo>
-      --dry-run        só lista o que mudaria (idêntico ao --verificar) e sai 0
+      --dry-run        só lista o que mudaria (e o que o --atualizar recusaria); sai 0
       --forcar         segue mesmo com modificação não commitada no motor do repo
                        (NÃO passa por cima da pausa nem do STATUS)
-  --novo <repo>        (peça K8b)
+      --migrar         TAMBÉM migra docs/fila/** (pausa, liberações) — o único
+                       caso em que o instalador toca os dados do dono
+  --novo <repo>        (peça K8b-6)
 USO
 }
 
@@ -185,6 +187,111 @@ verificar() {
   return 1
 }
 
+# --- as migrações de docs/fila/** (peça K8b) ----------------------------------
+# O `--atualizar` sozinho NUNCA toca `docs/fila/**`: tickets, config e
+# liberações são dados do dono, não motor vendorizado, e um instalador que os
+# reescreve por padrão é um instalador que ninguém roda duas vezes. `--migrar`
+# é o pedido EXPLÍCITO de mexer neles, e mesmo assim:
+#
+#   --dry-run  imprime o diff de cada artefato e NÃO escreve nada;
+#   --aplicar  (o `--migrar` sem `--dry-run`) grava e deixa `.bak` no primeiro.
+#
+# A ORDEM importa: o motor é copiado ANTES da migração. Se alguém parar no meio,
+# o repo fica com o motor novo — que lê TODAS as formas vivas desde a K8b-1 —
+# sobre dados velhos, que funciona. O contrário (dados novos, motor velho) é o
+# repo travado.
+
+# migrar_pausa <repo> <dry|aplicar>
+# `.orq-pause` (legado) -> `PAUSAR`, PRESERVANDO o conteúdo como motivo.
+#
+# O motor reconhece os dois nomes (`pausa_ativa`/`pausa_motivo`, lib.sh), então
+# nada quebra hoje; o que a migração resolve é o repo ter DOIS kill switches com
+# nomes diferentes, um dos quais nenhum documento novo menciona. Renomear com
+# `git mv` não serve: o `.orq-pause` está no `.gitignore` dos três repos, ou
+# seja, não está no índice.
+#
+# NUNCA sobrescreve um `PAUSAR` existente: se os dois existem, o conteúdo é de
+# duas pausas diferentes e escolher uma delas é apagar a outra.
+migrar_pausa() {
+  local repo="$1" modo="$2"
+  local velho="$repo/docs/fila/.orq-pause" novo="$repo/docs/fila/PAUSAR"
+  printf -- '--- pausa: docs/fila/.orq-pause -> docs/fila/PAUSAR ---\n'
+  if [ ! -f "$velho" ]; then
+    printf 'nada a fazer: não existe docs/fila/.orq-pause\n'
+    return 0
+  fi
+  if [ -f "$novo" ]; then
+    printf 'AMBOS existem. NÃO migro: o conteúdo é de duas pausas diferentes e escolher uma apaga a outra.\n'
+    printf '  docs/fila/.orq-pause: %s\n' "$(head -1 "$velho")"
+    printf '  docs/fila/PAUSAR:     %s\n' "$(head -1 "$novo")"
+    printf '  Decida qual vale, apague o outro, e rode de novo.\n'
+    return 0
+  fi
+  printf 'motivo preservado: %s\n' "$(head -1 "$velho")"
+  if [ "$modo" = aplicar ]; then
+    mv "$velho" "$novo"
+    printf 'RENOMEADO.\n'
+  else
+    printf '(--dry-run: nada foi renomeado)\n'
+  fi
+}
+
+# relatar_gitignore <repo>
+# IMPRIME as linhas que faltam. NÃO edita o `.gitignore` de repo existente — ele
+# é do dono, tem ordem e comentários próprios, e um instalador que costura linha
+# nele produz conflito de merge em arquivo que ninguém esperava ver mudado. Só o
+# `--novo` escreve um `.gitignore`, e escreve o inicial.
+#
+# A pergunta é feita ao GIT (`check-ignore`), não a um `grep` por linha literal:
+# o CI não tem `docs/fila/runs/` no `.gitignore` da raiz e mesmo assim ignora
+# tudo lá, porque `docs/fila/runs/.gitignore` tem `*`. Um grep diria que falta
+# uma linha que não falta.
+relatar_gitignore() {
+  local repo="$1" faltando=0 alvo
+  printf -- '--- .gitignore: o que o repo deve ignorar ---\n'
+  if ! git -C "$repo" rev-parse --git-dir >/dev/null 2>&1; then
+    printf '(não é repo git: não dá para perguntar ao git o que ele ignora)\n'
+    return 0
+  fi
+  # PAUSAR: kill switch, estado local da máquina, nunca versionado.
+  if git -C "$repo" check-ignore -q docs/fila/PAUSAR 2>/dev/null; then
+    printf 'ok       docs/fila/PAUSAR já é ignorado\n'
+  else
+    printf 'FALTA    docs/fila/PAUSAR — acrescente ao .gitignore do repo:\n'
+    printf '           docs/fila/PAUSAR\n'
+    faltando=$((faltando + 1))
+  fi
+  # runs/: evidência efêmera. Se ela sujar a árvore, o preflight do run SEGUINTE
+  # morre — não é higiene, é pré-condição.
+  if git -C "$repo" check-ignore -q docs/fila/runs/exemplo-de-evidencia 2>/dev/null; then
+    printf 'ok       docs/fila/runs/ já é ignorado\n'
+  else
+    printf 'FALTA    docs/fila/runs/ — acrescente ao .gitignore do repo:\n'
+    printf '           docs/fila/runs/\n'
+    printf '         (ou um docs/fila/runs/.gitignore com `*`, que é como o CI faz)\n'
+    faltando=$((faltando + 1))
+  fi
+  [ "$faltando" = 0 ] || printf '\nO instalador NÃO edita o .gitignore de repo existente: ele é do dono.\n'
+}
+
+# migrar_tudo <repo> <dry|aplicar> — a sequência inteira, na ordem.
+migrar_tudo() {
+  local repo="$1" modo="$2"
+  printf '\n=== MIGRAR docs/fila/** (%s) ===\n\n' \
+    "$([ "$modo" = aplicar ] && echo 'GRAVANDO, com .bak' || echo '--dry-run: NADA é escrito')"
+  migrar_pausa "$repo" "$modo"
+  printf '\n'
+  local lib="$repo/docs/fila/liberacoes.json"
+  if [ -f "$lib" ]; then
+    ( cd "$KIT" && npx tsx scripts/orquestrador/migrar-liberacoes.ts "$lib" \
+        "$([ "$modo" = aplicar ] && echo --aplicar || echo --dry-run)" ) || true
+  else
+    printf 'MIGRAR-LIBERACOES  nada a fazer: %s não existe\n' "$lib"
+  fi
+  printf '\n'
+  relatar_gitignore "$repo"
+}
+
 # --- --atualizar (peça K8a) ---------------------------------------------------
 # O que ele COPIA (o mesmo mapa do ORIGEM.md e do scripts/kit/fixture.sh):
 #   kit scripts/orquestrador/  ->  repo scripts/orquestrador/   (sem plist instanciado)
@@ -208,12 +315,35 @@ verificar() {
 #      às vezes a modificação é lixo conhecido, e aí a perda é decisão de quem
 #      olhou. Os caminhos conferidos são os MESMOS que o bloco de cópia escreve,
 #      `scripts/roadmap/` incluído desde a peça K8c.
+# motivos_de_recusa <repo> — imprime UM motivo por linha (vazio = pode seguir).
+# Existe separada porque o `--dry-run` também precisa dela: um dry-run que diz
+# "tudo certo" e um `--atualizar` que RECUSA logo depois é um dry-run que
+# mentiu. As duas recusas aqui são as que `--forcar` NÃO dispensa; a terceira
+# (árvore suja) fica no atualizar(), porque só ela depende do `--forcar`.
+motivos_de_recusa() {
+  local repo="$1"
+  # 1. o loop tem de estar parado. Os dois arquivos, porque o motor reconhece os
+  #    dois (lib.sh, pausa_ativa): o `pausar_file` do config (docs/fila/PAUSAR
+  #    tanto no template quanto no config do CI) e o legado docs/fila/.orq-pause.
+  if [ ! -f "$repo/docs/fila/PAUSAR" ] && [ ! -f "$repo/docs/fila/.orq-pause" ]; then
+    printf "o loop de '%s' não está pausado: não existe nem docs/fila/PAUSAR nem docs/fila/.orq-pause. Rode 'bash scripts/orq pausar \"atualizando o motor\"' dentro do repo e tente de novo.\n" "$repo"
+  fi
+  # 2. o snapshot tem de dizer ocioso. Ausência de STATUS.md NÃO é recusa: é
+  #    repo que nunca drenou.
+  local status_md="$repo/docs/fila/runs/STATUS.md"
+  if [ -f "$status_md" ] && ! grep -qE '^ESTADO +ocioso *$' "$status_md"; then
+    printf "docs/fila/runs/STATUS.md de '%s' não diz 'ocioso': %s. Espere a drenagem em curso terminar.\n" \
+      "$repo" "$(grep -E '^ESTADO' "$status_md" | head -1 | sed 's/  */ /g')"
+  fi
+}
+
 atualizar() {
-  local repo="" dry=0 forcar=0 a
+  local repo="" dry=0 forcar=0 migrar=0 a
   for a in "$@"; do
     case "$a" in
       --dry-run) dry=1 ;;
       --forcar)  forcar=1 ;;
+      --migrar)  migrar=1 ;;
       -*)        die "--atualizar: opção desconhecida '$a'" ;;
       *)         [ -z "$repo" ] || die "--atualizar aceita UM repo (recebi '$repo' e '$a')"; repo="$a" ;;
     esac
@@ -225,22 +355,26 @@ atualizar() {
   if [ "$dry" = 1 ]; then
     printf 'ATUALIZAR  --dry-run: NADA é escrito; a lista abaixo é o que mudaria.\n\n'
     verificar "$repo" || true
+    # A PREVISÃO das recusas. O dry-run continua saindo 0 — ele não é o gate —,
+    # mas dizer aqui o que o `--atualizar` de verdade responderia é a diferença
+    # entre um ensaio e um ensaio útil.
+    local motivos
+    motivos="$(motivos_de_recusa "$repo")"
+    if [ -n "$motivos" ]; then
+      printf '\nO --atualizar de verdade RECUSARIA, por:\n'
+      printf '%s\n' "$motivos" | sed 's/^/  · /'
+      printf '  (a recusa não impede este dry-run de listar tudo)\n'
+    fi
+    [ "$migrar" = 1 ] && migrar_tudo "$repo" dry-run
     return 0
   fi
 
-  # --- recusa 1 · o loop tem de estar parado ---------------------------------
-  # Os dois arquivos, porque o motor reconhece os dois (lib.sh:615-619):
-  # CFG_PAUSAR_FILE (o `pausar_file` do config, `docs/fila/PAUSAR` tanto no
-  # template quanto no config do CI) e o legado `docs/fila/.orq-pause`.
-  if [ ! -f "$repo/docs/fila/PAUSAR" ] && [ ! -f "$repo/docs/fila/.orq-pause" ]; then
-    recusa "o loop de '$repo' não está pausado: não existe nem docs/fila/PAUSAR nem docs/fila/.orq-pause. Rode 'bash scripts/orq pausar \"atualizando o motor\"' dentro do repo e tente de novo."
-  fi
-
-  # --- recusa 2 · o snapshot tem de dizer ocioso -----------------------------
-  local status_md="$repo/docs/fila/runs/STATUS.md"
-  if [ -f "$status_md" ] && ! grep -qE '^ESTADO +ocioso *$' "$status_md"; then
-    recusa "docs/fila/runs/STATUS.md de '$repo' não diz 'ocioso': $(grep -E '^ESTADO' "$status_md" | head -1 | sed 's/  */ /g'). Espere a drenagem em curso terminar."
-  fi
+  # --- recusas 1 e 2 · nenhuma delas cede a --forcar -------------------------
+  # Copiar o motor por baixo de uma drenagem viva troca o lib.sh de um executor
+  # que já está rodando. Não existe pressa que justifique isso.
+  local motivos
+  motivos="$(motivos_de_recusa "$repo")"
+  [ -z "$motivos" ] || recusa "$(printf '%s' "$motivos" | head -1)"
 
   # --- recusa 3 · o motor do repo não pode ter mudança fora do git -----------
   # A lista de caminhos é a MESMA que o bloco de cópia escreve, e é por isso que
@@ -298,17 +432,31 @@ atualizar() {
     "$(printf '%s\n' $TESTES_HARNESS | wc -l | tr -d ' ')" \
     "$(printf '%s\n' $FIXTURES_HARNESS | wc -l | tr -d ' ')"
 
+  # --- as migrações de docs/fila/** (peça K8b), DEPOIS da cópia --------------
+  [ "$migrar" = 1 ] && migrar_tudo "$repo" aplicar
+
   # --- o veredito é do verificador, não deste bloco --------------------------
   # Dizer "atualizado" sem reler o disco é como um instalador mente. O que sobrar
   # de `só no repo` aqui é justamente o que NÃO foi apagado, e é para ser lido.
   local rc=0
   verificar "$repo" || rc=$?
 
+  # DOIS commits, não um. O motor é vendorizado e o diff dele é "o kit mudou";
+  # `docs/fila/**` são os dados do dono e o diff é "os meus dados mudaram de
+  # forma". Juntar os dois num commit só faz o `git log` do repo perder a única
+  # linha que alguém vai procurar quando uma liberação parar de resolver.
   printf '\ncommit sugerido, no repo, com pathspec explícito:\n'
   printf '  cd %s\n' "$repo"
   printf '  git add scripts/orquestrador scripts/orq scripts/roadmap docs/orquestrador/skill \\\n'
   printf '    %s\n' "$(printf '%s ' $TESTES_HARNESS $FIXTURES_HARNESS)"
   printf "  git commit -m 'motor: kit %s'\n" "$VERSAO"
+  if [ "$migrar" = 1 ]; then
+    printf '\ne um SEGUNDO commit, separado, para os dados migrados:\n'
+    printf '  git add docs/fila/liberacoes.json docs/fila/000-config.json docs/fila/*.md\n'
+    printf "  git commit -m 'fila: migrada para o formato do kit %s'\n" "$VERSAO"
+    printf '\nOs `.bak` NÃO entram em commit nenhum: são rede local, e o git já é o backup\n'
+    printf 'de tudo que estava versionado. Apague-os quando o diff estiver revisado.\n'
+  fi
   return "$rc"
 }
 

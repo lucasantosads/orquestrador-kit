@@ -309,6 +309,22 @@
   `orq liberar` o recusa até a migração rodar — e é isso que se quer.
 
 
+- **K8b-3 · pause file, `.gitignore` e o `--migrar`.** `instalar.sh --atualizar <repo>
+  --migrar` é o gancho das migrações de `docs/fila/**`, com os dois primeiros passos:
+  `.orq-pause` → `PAUSAR` preservando o motivo (e recusa com os dois presentes), e o
+  RELATO do que o repo deve ignorar. O instalador não edita o `.gitignore` de repo
+  existente. A pergunta é feita ao `git check-ignore`, não a um grep por linha literal.
+  De quebra, `--dry-run` passou a PREVER as recusas, e o instalador sugere dois commits
+  separados (motor × dados).
+  *Evidência:* `CONTRATO.md` §7; o PASSO 0 — os três repos têm `.orq-pause` no
+  `.gitignore` e nenhum tem `PAUSAR`; o CI ignora `runs/` por `runs/.gitignore` com `*`, e
+  o Actus versiona a evidência por ticket de propósito (divergência registrada).
+  *Teste:* caso (i) de `scripts/kit/test-instalar.sh`, 32 checks, **21 vermelhos antes**.
+  *O que o CI faz diferente:* o relato vai acusar `docs/fila/PAUSAR` faltando no
+  `.gitignore` dele — acusação correta, porque depois da migração o kill switch muda de
+  nome e apareceria no `git status` no meio de uma pausa.
+
+
 ## PENDENTES
 
 - **K6d · `scripts/kit/pureza.sh`.** O grep que TRANCA a pureza: em CÓDIGO (não em
@@ -322,12 +338,6 @@
   justamente o script que transforma "não achei" em "não há".
   *Teste:* pureza = 0 em código, com o caso NEGATIVO de que um `apps/web` reintroduzido em
   código faz o script sair 1.
-
-- **K8b-3 · pause file e `.gitignore`.** `.orq-pause` → `PAUSAR` preservando o motivo; o
-  instalador IMPRIME a linha de `.gitignore` que falta e não edita o arquivo de repo
-  existente.
-  *Evidência:* `CONTRATO.md` §7 (o motor reconhece os dois nomes).
-  *Teste:* fixture com `.orq-pause` presente.
 
 - **K8b-4 · config schema 1 → 2 por tabela explícita.** `migrar-config.ts`, com a tabela
   `de → para` escrita à mão a partir do PASSO 0. Chave sem correspondente FICA e aparece no

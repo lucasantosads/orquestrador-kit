@@ -278,3 +278,37 @@ o que o `jq` devolveu. Três achados mandaram no desenho:
   *O que o CI faz diferente:* nada no motor. O `liberacoes.json` do CI é v1 canônica, então
   `orq liberar` o RECUSA até a migração rodar — e é isso que se quer: a recusa é o que impede
   o arquivo de ficar em duas formas ao mesmo tempo.
+
+- **K8b-3** — pause file, `.gitignore` e o `--migrar` do instalador.
+  `instalar.sh --atualizar <repo> --migrar` ganhou o gancho onde as migrações de
+  `docs/fila/**` penduram, e as duas primeiras: `docs/fila/.orq-pause` →
+  `docs/fila/PAUSAR` PRESERVANDO o conteúdo como motivo, e o relato do que o repo
+  precisa ignorar. Com os DOIS pause files presentes ele **não** decide: o conteúdo é
+  de duas pausas diferentes, e escolher uma apaga a outra.
+  *O `.gitignore` não é editado, e é o negativo que dá nome à peça.* Um instalador que
+  costura linha no `.gitignore` de repo existente produz conflito de merge em arquivo que
+  ninguém esperava ver mudado. Ele imprime a linha que falta; só o `--novo` (K8b-6) escreve
+  um `.gitignore`, e escreve o inicial.
+  *A pergunta é feita ao GIT, não a um grep:* `git check-ignore`. O CI **não** tem
+  `docs/fila/runs/` no `.gitignore` da raiz e mesmo assim ignora tudo lá, porque
+  `docs/fila/runs/.gitignore` traz `*` — um grep por linha literal acusaria uma linha que
+  não falta. (Achado do PASSO 0: o Actus versiona a evidência por ticket de propósito, o
+  `runs/.gitignore` dele lista só os transitórios. Divergência do contrato §1.3 do kit,
+  registrada, não "corrigida".)
+  *Dois outros ganhos, ambos porque o dry-run tinha de ficar honesto:* (1) `--dry-run`
+  agora PREVÊ as recusas — continua saindo 0, mas diz `O --atualizar de verdade RECUSARIA,
+  por:` com o motivo; um ensaio que aprova e uma execução que recusa é um ensaio que
+  mentiu. As duas recusas que `--forcar` não dispensa saíram para `motivos_de_recusa`,
+  usada pelos dois caminhos. (2) Com `--migrar`, o instalador sugere DOIS commits: motor e
+  `docs/fila/**` separados, porque o `git log` do repo é onde alguém vai procurar quando
+  uma liberação parar de resolver.
+  *Ordem:* a migração roda DEPOIS da cópia do motor. Parar no meio deixa motor novo sobre
+  dados velhos, que funciona (K8b-1); o contrário é o repo travado.
+  *Teste:* caso (i) de `scripts/kit/test-instalar.sh`, 6 blocos e 32 checks, **21
+  vermelhos antes**. Inclui o negativo do `.gitignore` intacto, o `.bak` que não é
+  sobrescrito na segunda passada, e o caso do `runs/.gitignore` com `*` que só um
+  `check-ignore` acerta.
+  *O que o CI faz diferente:* o `.orq-pause` dele está no `.gitignore` e o `PAUSAR` não —
+  então o relato vai acusar `docs/fila/PAUSAR` faltando, e é acusação correta: depois da
+  migração o kill switch muda de nome, e sem a linha ele apareceria no `git status` como
+  arquivo novo bem no meio de uma pausa.

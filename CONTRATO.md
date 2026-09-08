@@ -343,7 +343,22 @@ encerra em `ocioso`. Matar o processo garante ticket órfão — por isso `orq
 pausar` escreve arquivo e nada mais.
 
 Conteúdo: `<AAAA-MM-DD HH:MM> | <motivo>`. `orq pausar [motivo]` cria, `orq
-retomar` remove. São os ÚNICOS dois subcomandos do `orq` que escrevem.
+retomar` remove.
+
+**Migração do nome legado (peça K8b-3).** `instalar.sh --atualizar <repo>
+--migrar` renomeia `docs/fila/.orq-pause` para `docs/fila/PAUSAR`, PRESERVANDO o
+conteúdo como motivo. `git mv` não serve: os três repos têm `.orq-pause` no
+`.gitignore`, ou seja, ele não está no índice. Se os DOIS existirem, a migração
+**não** decide: o conteúdo é de duas pausas diferentes, e escolher uma apaga a
+outra — ela imprime as duas primeiras linhas e pede a decisão.
+
+**O `.gitignore` do repo é do dono.** O instalador RELATA o que falta e não
+edita: um instalador que costura linha no `.gitignore` produz conflito de merge
+em arquivo que ninguém esperava ver mudado. Só o `--novo` escreve um
+`.gitignore`, e escreve o inicial. A pergunta é feita ao GIT
+(`git check-ignore`), não a um `grep` por linha literal — o CI não tem
+`docs/fila/runs/` no `.gitignore` da raiz e mesmo assim ignora tudo lá, porque
+`docs/fila/runs/.gitignore` traz `*`; um grep acusaria uma linha que não falta.
 
 ---
 
@@ -406,8 +421,13 @@ processo. Se `orq` puder alterar estado, alguém vai alterá-lo no meio de um ru
 | Invocação | Faz |
 |---|---|
 | `--verificar <repo>` | compara o motor de `<repo>` com o do kit; rc 0 se idêntico, 1 se não |
-| `--atualizar <repo> [--dry-run] [--forcar]` | copia o motor por cima e carimba o `VERSAO` |
-| `--novo <repo>` | **ainda não** (peça K8b): diz isso e sai 2 |
+| `--atualizar <repo> [--dry-run] [--forcar] [--migrar]` | copia o motor por cima e carimba o `VERSAO`; com `--migrar`, também migra `docs/fila/**` |
+| `--novo <repo>` | **ainda não** (peça K8b-6): diz isso e sai 2 |
+
+`--dry-run` **prevê as recusas** em vez de dizer que está tudo bem: ele continua
+saindo 0 (não é o gate), mas imprime `O --atualizar de verdade RECUSARIA, por:`
+com o motivo. Um ensaio que aprova e uma execução que recusa é um ensaio que
+mentiu. A recusa prevista **não** impede o dry-run de listar tudo.
 
 `--atualizar` é `cp`, nunca `rsync --delete`: o que só existe no repo sobrevive
 e reaparece como `só no repo` no `--verificar` que ele imprime no fim. Três
@@ -420,9 +440,20 @@ recusas, e só a terceira cede a `--forcar`:
 
 ### 9.3 As migrações (no kit, chamadas por `--atualizar --migrar`)
 
-| Script | Migra | Como aplica |
+| Passo | Migra | Como aplica |
 |---|---|---|
+| `migrar_pausa` (em `instalar.sh`) | `docs/fila/.orq-pause` → `docs/fila/PAUSAR`, motivo preservado (§7) | `mv`; recusa com os dois presentes |
 | `migrar-liberacoes.ts` | `liberacoes.json` de qualquer forma viva (§6.1) para v2 | `--aplicar` grava e deixa `.bak` |
+| `relatar_gitignore` (em `instalar.sh`) | nada — RELATA o que o repo deve ignorar (§7) | nunca escreve |
+
+Ele roda **depois** da cópia do motor. Se alguém parar no meio, o repo fica com
+motor novo sobre dados velhos — que funciona, porque desde a K8b-1 o motor lê
+todas as formas vivas. O contrário (dados novos, motor velho) é o repo travado.
+
+E o instalador sugere **dois commits**, não um: o motor é vendorizado e o diff
+dele é "o kit mudou"; `docs/fila/**` são os dados do dono e o diff é "os meus
+dados mudaram de forma". Juntar os dois faz o `git log` do repo perder a única
+linha que alguém vai procurar quando uma liberação parar de resolver.
 
 Regras que valem para TODAS (`migrar-comum.ts`):
 

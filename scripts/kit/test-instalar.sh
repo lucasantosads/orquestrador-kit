@@ -53,7 +53,8 @@ COPIA_UPD="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
 COPIA_EXTRA="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
 COPIA_SUJA="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
 COPIA_TESTES="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
-trap 'bash "$KIT/scripts/kit/fixture.sh" --limpar "$FX" >/dev/null 2>&1; rm -rf "$COPIA" "$COPIA_ROADMAP" "$COPIA_UPD" "$COPIA_EXTRA" "$COPIA_SUJA" "$COPIA_TESTES"' EXIT
+COPIA_MIGRAR="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
+trap 'bash "$KIT/scripts/kit/fixture.sh" --limpar "$FX" >/dev/null 2>&1; rm -rf "$COPIA" "$COPIA_ROADMAP" "$COPIA_UPD" "$COPIA_EXTRA" "$COPIA_SUJA" "$COPIA_TESTES" "$COPIA_MIGRAR"' EXIT
 
 # --- (a) ---------------------------------------------------------------------
 echo "== (a) fixture recém-instanciado =="
@@ -268,6 +269,114 @@ echo "-- (h3) a suíte do REPO passa com os testes que o kit instalou --"
 saida="$(cd "$TST" && npx vitest run --reporter=dot 2>&1)"; rc=$?
 printf '%s\n' "$saida" | tail -6 | sed 's/^/  | /'
 [ "$rc" = 0 ] && ok "npx vitest run no repo: rc 0" || falha "npx vitest run no repo: rc $rc"
+
+
+# --- (i) · K8b-3 · --migrar: pause file, liberações e o relato do .gitignore --
+# O cenário é o repo LEGADO de verdade: kill switch no nome antigo
+# (`docs/fila/.orq-pause`, que é o que os TRÊS repos têm no .gitignore hoje) e
+# liberacoes.json na forma do Actus (strings sem prefixo). O `--atualizar`
+# sozinho não encosta em nada disso; `--migrar` é o pedido explícito.
+echo
+echo "== (i) --atualizar --migrar: .orq-pause -> PAUSAR, liberações -> v2 =="
+mkdir -p "$COPIA_MIGRAR/repo"
+cp -R "$FX/." "$COPIA_MIGRAR/repo/"
+MIG="$COPIA_MIGRAR/repo"
+rm -f "$MIG/docs/fila/PAUSAR"
+MOTIVO='2026-09-05 09:12 | pausado para aplicar migration 0255'
+printf '%s\n' "$MOTIVO" > "$MIG/docs/fila/.orq-pause"
+cp "$KIT/test/fixtures/liberacoes/actus-tokens-sem-prefixo.json" "$MIG/docs/fila/liberacoes.json"
+ANTES_LIB_MIG="$(cksum < "$MIG/docs/fila/liberacoes.json")"
+ANTES_GI="$(cksum < "$MIG/.gitignore")"
+
+echo "-- (i1) --migrar --dry-run: mostra tudo e NÃO escreve --"
+saida="$(bash "$KIT/instalar.sh" --atualizar "$MIG" --migrar --dry-run 2>&1)"; rc=$?
+printf '%s\n' "$saida" | sed 's/^/  | /'
+[ "$rc" = 0 ] && ok "rc 0" || falha "rc $rc (esperava 0)"
+printf '%s' "$saida" | grep -q 'motivo preservado: 2026-09-05 09:12' \
+  && ok "o dry-run mostra o motivo que seria preservado" || falha "não mostrou o motivo"
+printf '%s' "$saida" | grep -q '^+      "token": "humano:migration-0255-aplicada"' \
+  && ok "o dry-run traz o DIFF das liberações, não um resumo" || falha "não imprimiu o diff das liberações"
+[ -f "$MIG/docs/fila/.orq-pause" ] && [ ! -f "$MIG/docs/fila/PAUSAR" ] \
+  && ok "o .orq-pause continua lá e nenhum PAUSAR foi criado" || falha "o --dry-run RENOMEOU o pause file"
+[ "$(cksum < "$MIG/docs/fila/liberacoes.json")" = "$ANTES_LIB_MIG" ] \
+  && ok "liberacoes.json intacto" || falha "o --dry-run ESCREVEU no liberacoes.json"
+[ -f "$MIG/docs/fila/liberacoes.json.bak" ] \
+  && falha "o --dry-run criou .bak" || ok "nenhum .bak foi criado"
+
+echo "-- (i2) --migrar aplica: renomeia preservando o motivo, e migra as liberações --"
+saida="$(bash "$KIT/instalar.sh" --atualizar "$MIG" --migrar 2>&1)"; rc=$?
+printf '%s\n' "$saida" | grep -vE '^[-+ ]' | sed 's/^/  | /'
+[ "$rc" = 0 ] && ok "rc 0" || falha "rc $rc (esperava 0)"
+[ ! -f "$MIG/docs/fila/.orq-pause" ] && [ -f "$MIG/docs/fila/PAUSAR" ] \
+  && ok ".orq-pause virou PAUSAR" || falha "o pause file não foi renomeado"
+[ "$(cat "$MIG/docs/fila/PAUSAR")" = "$MOTIVO" ] \
+  && ok "o MOTIVO foi preservado byte a byte" || falha "o motivo se perdeu no rename"
+[ "$(jq -r '."$schema_versao"' "$MIG/docs/fila/liberacoes.json")" = 2 ] \
+  && ok "liberacoes.json em v2" || falha "liberacoes.json não virou v2"
+[ "$(jq -r '.tokens[0].token' "$MIG/docs/fila/liberacoes.json")" = 'humano:migration-0255-aplicada' ] \
+  && ok "o token ganhou o prefixo humano:" || falha "o prefixo não foi acrescentado"
+[ "$(cksum < "$MIG/docs/fila/liberacoes.json.bak")" = "$ANTES_LIB_MIG" ] \
+  && ok ".bak tem o conteúdo ANTERIOR, byte a byte" || falha ".bak não bate com o original"
+# NEGATIVO que dá nome à peça: o instalador NÃO edita o .gitignore do repo.
+[ "$(cksum < "$MIG/.gitignore")" = "$ANTES_GI" ] \
+  && ok "o .gitignore do repo NÃO foi editado" || falha "o instalador editou o .gitignore do repo"
+printf '%s' "$saida" | grep -q 'git commit -m .fila: migrada' \
+  && ok "sugere um SEGUNDO commit, separado, para os dados migrados" || falha "não sugeriu o commit da fila"
+
+echo "-- (i3) rodar de novo é no-op, e o .bak NÃO é sobrescrito --"
+CK_BAK="$(cksum < "$MIG/docs/fila/liberacoes.json.bak")"
+saida="$(bash "$KIT/instalar.sh" --atualizar "$MIG" --migrar 2>&1)"; rc=$?
+[ "$rc" = 0 ] && ok "rc 0" || falha "rc $rc (esperava 0)"
+printf '%s' "$saida" | grep -q 'já está em v2' \
+  && ok "a migração diz que não há o que fazer" || falha "a segunda passada não é no-op"
+printf '%s' "$saida" | grep -q 'não existe docs/fila/.orq-pause' \
+  && ok "a pausa também é no-op" || falha "a pausa não é idempotente"
+[ "$(cksum < "$MIG/docs/fila/liberacoes.json.bak")" = "$CK_BAK" ] \
+  && ok ".bak preservado (é o estado ANTES da PRIMEIRA migração)" || falha ".bak foi sobrescrito"
+
+echo "-- (i4) .orq-pause E PAUSAR juntos: NÃO migra, e diz por quê --"
+printf 'outra pausa, de outro dia\n' > "$MIG/docs/fila/.orq-pause"
+saida="$(bash "$KIT/instalar.sh" --atualizar "$MIG" --migrar --dry-run 2>&1)"
+printf '%s' "$saida" | grep -q 'AMBOS existem' \
+  && ok "recusa migrar com os dois presentes" || falha "não avisou que os dois existem"
+[ "$(cat "$MIG/docs/fila/PAUSAR")" = "$MOTIVO" ] \
+  && ok "o PAUSAR existente não foi sobrescrito" || falha "sobrescreveu o PAUSAR"
+rm -f "$MIG/docs/fila/.orq-pause"
+
+echo "-- (i5) o relato de .gitignore pergunta ao GIT, e nomeia o que falta --"
+# Um repo sem NENHUMA das duas linhas: o relato tem de acusar as duas.
+SEM_GI="$(mktemp -d /tmp/orq-verificar-XXXXXX)"
+mkdir -p "$SEM_GI/docs/fila"
+git -C "$SEM_GI" init -q 2>/dev/null
+saida="$(cd "$KIT" && bash instalar.sh --atualizar "$SEM_GI" --migrar --dry-run 2>&1)"
+printf '%s' "$saida" | grep -q 'FALTA    docs/fila/PAUSAR' \
+  && ok "acusa docs/fila/PAUSAR faltando" || falha "não acusou o PAUSAR"
+printf '%s' "$saida" | grep -q 'FALTA    docs/fila/runs/' \
+  && ok "acusa docs/fila/runs/ faltando" || falha "não acusou o runs/"
+printf '%s' "$saida" | grep -q 'NÃO edita o .gitignore' \
+  && ok "diz que não edita o .gitignore do repo" || falha "não disse que não edita"
+# E o NEGATIVO que só um `git check-ignore` acerta: o CI não tem
+# `docs/fila/runs/` no .gitignore da raiz e mesmo assim ignora tudo lá, por
+# causa do docs/fila/runs/.gitignore com `*`. Um grep por linha literal diria
+# que falta uma linha que não falta.
+printf 'docs/fila/PAUSAR\n' > "$SEM_GI/.gitignore"
+mkdir -p "$SEM_GI/docs/fila/runs"
+printf '*\n!.gitignore\n' > "$SEM_GI/docs/fila/runs/.gitignore"
+saida="$(cd "$KIT" && bash instalar.sh --atualizar "$SEM_GI" --migrar --dry-run 2>&1)"
+printf '%s' "$saida" | grep -q 'ok       docs/fila/runs/ já é ignorado' \
+  && ok "runs/ ignorado por runs/.gitignore conta como ok (é como o CI faz)" \
+  || falha "não reconheceu o runs/.gitignore com '*'"
+rm -rf "$SEM_GI"
+
+echo "-- (i6) --dry-run PREVÊ a recusa em vez de dizer que está tudo bem --"
+rm -f "$MIG/docs/fila/PAUSAR"
+saida="$(bash "$KIT/instalar.sh" --atualizar "$MIG" --dry-run 2>&1)"; rc=$?
+[ "$rc" = 0 ] && ok "o dry-run continua saindo 0 (ele não é o gate)" || falha "rc $rc"
+printf '%s' "$saida" | grep -q 'RECUSARIA' \
+  && ok "o dry-run avisa que o --atualizar de verdade recusaria" || falha "o dry-run não previu a recusa"
+printf '%s' "$saida" | grep -qi 'não está pausado' \
+  && ok "e diz o motivo (sem pausa)" || falha "não disse o motivo"
+printf '%s\n' "$MOTIVO" > "$MIG/docs/fila/PAUSAR"
 
 # --- (c) ---------------------------------------------------------------------
 echo
