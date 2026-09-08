@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  TEMPLATE - nao e um plist utilizavel. Os quatro placeholders sao resolvidos
+  por scripts/orquestrador/instalar-launchd.sh, que gera o plist final e o
+  instala em ~/Library/LaunchAgents/.
+
+    {{LABEL}}           launchd.label do docs/fila/000-config.json do repo
+    {{CHECKOUT}}        raiz do checkout, resolvida a partir deste arquivo
+    {{NODE_DIR}}        dirname do `which node` DESTA maquina
+    {{START_INTERVAL}}  launchd.start_interval do config (segundos)
+
+  O plist FINAL nunca e versionado (carrega caminhos desta maquina); so este
+  template entra no git. Caminho absoluto versionado = divida de portabilidade.
+
+  POR QUE O LABEL VEM DO CONFIG, e nao daqui (peca K6c). Ate 2026-09-08 este
+  arquivo se chamava com.conteudos.orquestrador.plist.template e trazia aquele
+  Label FIXO no corpo. Para o launchd, dois repos com o mesmo label sao o MESMO
+  job: o segundo bootstrap derruba o primeiro, em silencio. Um label FIXO junta
+  repos que deviam ser separados; um label INVENTADO pelo instalador faz o
+  oposto e e pior, porque carrega um segundo job ao lado do antigo e os dois
+  disparam no mesmo checkout. Por isso o instalador recusa quando
+  `launchd.label` nao esta no config, em vez de escolher por conta propria.
+
+  DE ONDE SAI UM start_interval, se voce estiver definindo o seu. O do
+  conteudos-infinitos e 1800, e nao por copia: foi medido em
+  docs/fila/runs/*/meta.json (claude_dur_secs somado por ticket) em 06/set/2026 -
+    conteudos-infinitos: 58 tickets, mediana 294s, p90 2509s
+    comarka-operacional: 304 tickets, mediana 499s, p90 2838s
+  Metade dos tickets fecha em ~5min e ~10% passa de 42min. Com 1800s, o disparo
+  tipico pega a fila livre e o disparo que cai em cima de um run vivo encerra em
+  0 pelo lock do local-loop.sh - nao ha atropelo. Intervalo menor so
+  multiplicaria disparos que nao fazem nada; maior deixaria a fila parada de
+  proposito. Refaca a medicao acima antes de escolher outro numero.
+
+  STDOUT/STDERR em docs/fila/runs/launchd-agent.log, e NAO no launchd.log que o
+  launchd-run.sh escreve. Sao dois logs de proposito: launchd-run.sh so
+  redireciona para launchd.log DEPOIS de checar node e claude; se qualquer um
+  dos dois faltar, o `exit 127` sai por stderr do processo, ou seja, por ESTE
+  arquivo. Apontar os dois para o mesmo caminho embaralharia as duas fontes - e
+  o modo de falha mais comum (PATH sem node/claude) e justamente o que so
+  aparece aqui. docs/fila/runs/ e ignorada pelo git (runs/.gitignore: `*`),
+  entao o log nao suja a arvore nem mata o preflight do run seguinte.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>{{LABEL}}</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>{{CHECKOUT}}/scripts/orquestrador/launchd-run.sh</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>NODE_OPTIONS</key>
+    <string>--max-old-space-size=4096</string>
+    <key>NODE_DIR</key>
+    <string>{{NODE_DIR}}</string>
+  </dict>
+
+  <key>StartInterval</key>
+  <integer>{{START_INTERVAL}}</integer>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>{{CHECKOUT}}/docs/fila/runs/launchd-agent.log</string>
+  <key>StandardErrorPath</key>
+  <string>{{CHECKOUT}}/docs/fila/runs/launchd-agent.log</string>
+</dict>
+</plist>

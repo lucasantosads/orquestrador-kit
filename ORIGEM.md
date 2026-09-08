@@ -8,7 +8,7 @@ Harness importado do conteudos-infinitos em 2026-09-08 10:57.
 - script: scripts/kit/extrair-do-ci.sh (rodar de novo com --forcar para reimportar)
 
 ```
-scripts/orquestrador/com.conteudos.orquestrador.plist.template -> scripts/orquestrador/com.conteudos.orquestrador.plist.template
+scripts/orquestrador/com.conteudos.orquestrador.plist.template -> scripts/orquestrador/com.conteudos.orquestrador.plist.template  [RENOMEADO na peça K6c para scripts/orquestrador/com.orquestrador.plist.template]
 scripts/orquestrador/decisao-cli.ts -> scripts/orquestrador/decisao-cli.ts
 scripts/orquestrador/decisao.ts -> scripts/orquestrador/decisao.ts
 scripts/orquestrador/diagnostico.ts -> scripts/orquestrador/diagnostico.ts

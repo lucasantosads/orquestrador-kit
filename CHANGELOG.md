@@ -88,3 +88,10 @@ attempt registra como `ok`. Não derruba o run; faz a trilha mentir.
   para não mexer na linha de quem não tem lint. `typecheck_marca` (que casava
   `typecheck_root`/`typecheck_web` por nome) sai. Com o config do CI e o
   `test/fixtures/runs-201/attempt-2.gates.txt`, a linha é byte a byte a de hoje.
+- **K6c** — `com.conteudos.orquestrador.plist.template` vira `com.orquestrador.plist.template`,
+  com `{{LABEL}}`, `{{CHECKOUT}}`, `{{NODE_DIR}}` e `{{START_INTERVAL}}`;
+  `instalar-launchd.sh` lê `launchd.label` e `launchd.start_interval` do
+  `docs/fila/000-config.json` e ganha `--dry-run`. Sem `launchd.label`: rc 1 com
+  "defina launchd.label no config; o CI usa com.conteudos.orquestrador". Não inventa label —
+  label inventado não dá erro, dá um segundo job carregado ao lado do antigo. Chave nova
+  documentada em `fixture/docs/fila/000-config.json` e `doutrina/templates/config.json`.

@@ -210,6 +210,12 @@
     ]
   },
   "_gates_papel": "Chave OPCIONAL por gate (peça K6b): \"papel\": \"typecheck\" | \"testes\" | \"build\" | \"lint\". É ela que decide o que a linha GATE da trilha diz sobre cada gate. Quando ausente, o papel é INFERIDO do nome (executor.sh, papel_do_gate: *typecheck*/*tsc*/*types* → typecheck; *lint* → lint; *build*/*compil* → build; *test*/*spec* → testes). Declare-a quando o nome do gate não disser o papel — um gate chamado `verificacao` sai como nao-configurado sem ela. Papel que não existe em gate nenhum do config aparece na trilha como `nao-configurado`, nunca `nao-rodou`.",
+  "launchd": {
+    "label": "<ex: com.suaorg.orquestrador — OBRIGATÓRIO, um por repo>",
+    "start_interval": 1800
+  },
+  "_launchd": "Peça K6c. `label` é o Label do job do launchd e NÃO tem default: scripts/orquestrador/instalar-launchd.sh RECUSA sem ele, em vez de inventar um. Label inventado não dá erro visível — carrega um SEGUNDO job ao lado do antigo, os dois disparando no mesmo checkout. Um label por repo: para o launchd, dois repos com o mesmo label são o MESMO job. `start_interval` é o StartInterval em segundos; 1800 é o valor medido em 06/set/2026 (mediana 294s, p90 2509s por ticket), e a medição inteira está no comentário do com.orquestrador.plist.template — refaça-a antes de trocar o número.",
+
   "gates": [
     {
       "nome": "typecheck",

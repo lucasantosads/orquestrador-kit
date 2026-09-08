@@ -37,7 +37,8 @@
 #   *.plist que não termine em .plist.template — é o plist INSTANCIADO, gerado
 #     por instalar-launchd.sh com caminhos absolutos DESTA máquina. Artefato
 #     local, não motor. A regra é por sufixo e não por nome porque o nome muda
-#     por repo (e a peça K6 vai trocá-lo por com.orquestrador.plist.template).
+#     por repo: desde a peça K6c o nome do plist instanciado é o
+#     `launchd.label` do config, e o template é com.orquestrador.plist.template.
 #   runs — evidência de execução, efêmera por contrato.
 #   VERSAO — carimbo da vendorização, não conteúdo da doutrina: ele existe no
 #     destino e não na origem, então compará-lo acusaria diferença em toda

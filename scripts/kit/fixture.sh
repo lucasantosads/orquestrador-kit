@@ -99,8 +99,8 @@ chmod +x "$FX/scripts/orq"
 # Sem esta cópia o subcomando morre com "No such file or directory" no repo instalado.
 cp -R "$KIT/scripts/roadmap" "$FX/scripts/roadmap"
 # Plist INSTANCIADO não é motor: é artefato de uma máquina (caminhos absolutos).
-# Só o .template atravessa. Regra por sufixo, não por nome: o nome do plist muda
-# por repo, e um dia (peça K6) vira com.orquestrador.plist.template.
+# Só o .template atravessa. Regra por sufixo, não por nome: o nome do plist
+# instanciado é o `launchd.label` do config do repo (peça K6c), então varia.
 find "$FX/scripts/orquestrador" -name '*.plist' ! -name '*.plist.template' -exec rm -f {} +
 cp -R "$KIT/doutrina/." "$FX/docs/orquestrador/skill/"
 cp "$KIT/VERSAO" "$FX/docs/orquestrador/skill/VERSAO"
