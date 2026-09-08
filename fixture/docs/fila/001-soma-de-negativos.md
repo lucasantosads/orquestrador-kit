@@ -56,6 +56,12 @@ uma camada, um critério `alvo` que só fica verde depois da implementação.
       "espera": "1"
     },
     {
+      "tipo": "guarda",
+      "descricao": "escopo: o diff da worktree toca exatamente os dois arquivos da allowlist",
+      "cmd": "git diff --name-only $BASE_REF...HEAD -- src/soma.ts test/soma.test.ts | wc -l | tr -d ' '",
+      "espera": "2"
+    },
+    {
       "tipo": "avaliador",
       "descricao": "avaliador: a função nova é EXPORTADA e o teste novo a IMPORTA e a chama — arquivo que existe mas ninguém importa não conta; nenhuma asserção do teste existente foi removida, afrouxada ou marcada como skip; a função soma original continua byte-idêntica.",
       "cmd": "true",

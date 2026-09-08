@@ -8,6 +8,7 @@
  * nos casos de escrita, MEXER em) docs/fila do checkout principal — que é a
  * fonte única da fila real. O fixture é sempre um dir temporário puro.
  */
+import { afterAll } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -23,6 +24,66 @@ export const LIB = join(REPO_ROOT, 'scripts', 'orquestrador', 'lib.sh');
  * `docs/fila` do checkout, os testes leem daqui.
  */
 export const FX_CHECKOUT = join(import.meta.dirname, 'checkout');
+
+// ─── Checkout REAL de fixture (peça K7) ───────────────────────────────────
+// FX_CHECKOUT acima é o checkout de PAPEL: uma fila e um config, fora de git,
+// que basta para os testes que só leem `docs/fila`. O que segue é outra coisa:
+// um repo INSTANCIADO por `scripts/kit/fixture.sh` — git de verdade, branch
+// alvo, node_modules, e a cópia VENDORIZADA do motor dentro dele.
+//
+// Por que precisa existir: `lib.sh` resolve a fila pelo diretório onde o
+// PRÓPRIO lib.sh mora (`ROOT="${ORQ_EXEC_ROOT:-$(cd "$ORQ_LIB_DIR/../.." && pwd)}"`,
+// lib.sh:24, e `FILA_DIR="$MAIN_CHECKOUT/docs/fila"`, lib.sh:42). Rodar o motor
+// a partir de `<kit>/scripts/orquestrador/` faz o KIT ser o checkout — e o kit
+// não tem fila. Rodá-lo a partir de `<fixture>/scripts/orquestrador/` faz o
+// fixture ser o checkout, que é o cenário de verdade. Era essa a causa única
+// das 8 quarentenas da K3.
+//
+// Custo: uma instanciação por ARQUIVO de teste (o cache é de módulo, e o vitest
+// dá um registro de módulos por arquivo). Remoção no `afterAll` do arquivo.
+
+let checkoutRealCache: string | null = null;
+
+/**
+ * Instancia o repo de fixture e devolve o caminho. Uma vez por arquivo de
+ * teste; o `afterAll` de remoção é registrado na primeira chamada.
+ *
+ * Chame no TOPO do arquivo de teste (fora de `describe`/`it`): é lá que o
+ * `afterAll` da raiz da suíte está disponível, e é lá que a instanciação
+ * acontece uma vez só em vez de uma por caso.
+ */
+export function checkoutReal(): string {
+  if (checkoutRealCache) return checkoutRealCache;
+  const script = join(REPO_ROOT, 'scripts', 'kit', 'fixture.sh');
+  const r = spawnSync('bash', [script], { encoding: 'utf8' });
+  if (r.status !== 0) {
+    throw new Error(`fixture.sh saiu ${r.status}:\n${r.stdout ?? ''}${r.stderr ?? ''}`);
+  }
+  // CONTRATO: a última linha do stdout é o caminho, e nada mais. Todo o log do
+  // instanciador vai para stderr justamente para esta linha existir.
+  const linhas = (r.stdout ?? '').trim().split('\n');
+  const caminho = (linhas[linhas.length - 1] ?? '').trim();
+  if (!caminho || !existsSync(caminho)) {
+    throw new Error(`fixture.sh não imprimiu um caminho utilizável: '${caminho}'`);
+  }
+  checkoutRealCache = caminho;
+  afterAll(() => {
+    limparCheckoutReal();
+  });
+  return caminho;
+}
+
+/** Remove o fixture instanciado, se houver. Idempotente. */
+export function limparCheckoutReal(): void {
+  if (!checkoutRealCache) return;
+  const script = join(REPO_ROOT, 'scripts', 'kit', 'fixture.sh');
+  // A remoção é do PRÓPRIO instanciador: ele é quem sabe que as worktrees do
+  // motor moram no tmp pai, e quem tem a trava que recusa apagar caminho que
+  // não pareça um fixture nosso. `rm -rf` aqui seria a mesma decisão tomada
+  // duas vezes, e a segunda sem a trava.
+  spawnSync('bash', [script, '--limpar', checkoutRealCache], { encoding: 'utf8' });
+  checkoutRealCache = null;
+}
 
 export interface Ticket {
   id: string;

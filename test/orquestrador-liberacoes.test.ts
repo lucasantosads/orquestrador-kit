@@ -13,7 +13,11 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
-import { bashComLog, criarFixture, liberacoes, REPO_ROOT } from './fixtures/orq-harness.js';
+import { bashComLog, checkoutReal, criarFixture, liberacoes, REPO_ROOT } from './fixtures/orq-harness.js';
+
+// Instanciado no TOPO, não dentro do caso: é aqui que o `afterAll` de remoção
+// do harness tem a raiz da suíte para se registrar.
+const FX = checkoutReal();
 
 /** Ticket que só pode rodar se a liberação humana existir. */
 const TICKET = { id: '900', slug: 'dep-humana', dependencias: ['humano:migration-0025'] };
@@ -78,11 +82,15 @@ describe('lint do mapa confere que o HARNESS lê o formato canônico', () => {
     expect(corpo).toContain('.tokens');
   });
 
-  // QUARENTENA (K7): lint-mapa.py lê docs/roadmap/{mapa.json,MAPA.md} e docs/fila/* do repo instalado.
-  it.skip('lint-mapa.py passa sem WARN sobre liberações', () => {
+  // O lint abre docs/roadmap/{mapa.json,MAPA.md}, docs/fila/000-config.json,
+  // docs/fila/liberacoes.json e docs/fila/*.md do repo INSTALADO
+  // (scripts/roadmap/lint-mapa.py:2-4,97,117) — por isso roda contra o fixture
+  // instanciado, que é o único repo com todos eles. O check 10, o que interessa
+  // aqui, lê `liberacao_ok` do lib.sh VENDORIZADO nesse mesmo repo.
+  it('lint-mapa.py passa sem WARN sobre liberações', () => {
     const r = spawnSync('python3', ['scripts/roadmap/lint-mapa.py'], {
       encoding: 'utf8',
-      cwd: REPO_ROOT,
+      cwd: FX,
     });
     expect(r.status, r.stdout).toBe(0);
     expect(r.stdout).not.toMatch(/WARN.*liberac/i);

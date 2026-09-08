@@ -18,27 +18,33 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { criarFixture, bashNoFixture, ler, REPO_ROOT, LIB } from './fixtures/orq-harness.js';
+import { criarFixture, bashNoFixture, ler, REPO_ROOT, checkoutReal } from './fixtures/orq-harness.js';
 
 const ORQ_DIR = join(REPO_ROOT, 'scripts', 'orquestrador');
 const SCRIPTS = ['test-drenagem.sh', 'test-preflight.sh', 'test-retry-worktree.sh'];
 
-/** O checkout PRINCIPAL — o dono da trilha de produção — visto daqui. */
-function checkoutReal(): string {
-  const r = spawnSync('git', ['-C', REPO_ROOT, 'rev-parse', '--path-format=absolute', '--git-common-dir'], {
-    encoding: 'utf8',
-  });
-  const comum = (r.stdout ?? '').trim();
-  return comum ? comum.replace(/\/\.git\/*$/, '') : REPO_ROOT;
-}
-const TRILHA_REAL = join(checkoutReal(), 'docs', 'fila', 'runs', 'events.log');
-const STATUS_REAL = join(checkoutReal(), 'docs', 'fila', 'runs', 'STATUS.md');
+/**
+ * O checkout PRINCIPAL — o dono da trilha de "produção" deste teste — é o repo
+ * de fixture instanciado (peça K7). Não é maquiagem: o cenário do acidente é
+ * `source lib.sh` SEM `ORQ_EXEC_ROOT`, e para o lib.sh resolver a fila (e
+ * chegar vivo até a guarda) o checkout onde ele MORA precisa ter
+ * `docs/fila/000-config.json`. O kit não tem fila; o fixture tem.
+ *
+ * A trilha real do kit continua intocada por construção: nada aqui aponta para
+ * ela, e é justamente o que se afirma — a escrita é RECUSADA antes de escolher
+ * destino.
+ */
+const FX = checkoutReal();
+/** O lib.sh que mora DENTRO do fixture (a cópia vendorizada), não o do kit. */
+const LIB_FX = join(FX, 'scripts', 'orquestrador', 'lib.sh');
+const TRILHA_REAL = join(FX, 'docs', 'fila', 'runs', 'events.log');
+const STATUS_REAL = join(FX, 'docs', 'fila', 'runs', 'STATUS.md');
 
 /** Roda bash com lib.sh SEM ORQ_EXEC_ROOT — é o cenário do acidente. */
 function bashSemFixture(corpo: string): { rc: number; saida: string } {
-  const r = spawnSync('bash', ['-c', `source "${LIB}"\nset +e\n${corpo}`], {
+  const r = spawnSync('bash', ['-c', `source "${LIB_FX}"\nset +e\n${corpo}`], {
     encoding: 'utf8',
-    cwd: REPO_ROOT,
+    cwd: FX,
     env: { ...process.env, ORQ_TESTE: '1', ORQ_EXEC_ROOT: '' },
   });
   return { rc: r.status ?? 1, saida: `${r.stdout ?? ''}${r.stderr ?? ''}` };
@@ -47,8 +53,7 @@ function bashSemFixture(corpo: string): { rc: number; saida: string } {
 describe('ORQ_TESTE=1 recusa escrita fora do fixture', () => {
   const marca = `MARCA-0D-${process.pid}-${Date.now()}`;
 
-  // QUARENTENA (K7): `source lib.sh` sem ORQ_EXEC_ROOT exige que o checkout onde o lib.sh mora tenha docs/fila/000-config.json.
-  it.skip('event fora de ORQ_EXEC_ROOT não chega à trilha real, e diz por quê', () => {
+  it('event fora de ORQ_EXEC_ROOT não chega à trilha real, e diz por quê', () => {
     const antes = ler(TRILHA_REAL);
     const { saida } = bashSemFixture(`event 999 ${marca}`);
     expect(saida).toContain('escrita RECUSADA');
@@ -60,8 +65,7 @@ describe('ORQ_TESTE=1 recusa escrita fora do fixture', () => {
     expect(depois.startsWith(antes)).toBe(true);
   });
 
-  // QUARENTENA (K7): mesmo motivo — o lib.sh sem ORQ_EXEC_ROOT resolve a fila pelo próprio diretório.
-  it.skip('status_set fora do fixture não reescreve o STATUS real', () => {
+  it('status_set fora do fixture não reescreve o STATUS real', () => {
     const antes = ler(STATUS_REAL);
     const { saida } = bashSemFixture(`status_set "ultimo=${marca}"`);
     expect(saida).toContain('escrita RECUSADA');
@@ -69,8 +73,7 @@ describe('ORQ_TESTE=1 recusa escrita fora do fixture', () => {
     if (antes) expect(existsSync(STATUS_REAL)).toBe(true);
   });
 
-  // QUARENTENA (K7): mesmo motivo — o lib.sh sem ORQ_EXEC_ROOT resolve a fila pelo próprio diretório.
-  it.skip('custo_registrar fora do fixture não toca o ledger real', () => {
+  it('custo_registrar fora do fixture não toca o ledger real', () => {
     const { saida } = bashSemFixture(
       `printf '{"total_cost_usd":9.99}\\n' > /tmp/${marca}.json; custo_registrar executor 999 0 /tmp/${marca}.json; rm -f /tmp/${marca}.json`,
     );
@@ -126,10 +129,15 @@ describe('cada test-*.sh declara o isolamento ANTES de carregar o lib', () => {
 });
 
 describe('o test-*.sh rodando de verdade não deixa marca na trilha real', () => {
-  // QUARENTENA (K7): roda test-drenagem.sh de verdade, que precisa de um checkout com docs/fila.
-  it.skip('test-drenagem.sh: fixture recebe os eventos, produção não recebe nada', () => {
+  it('test-drenagem.sh: fixture recebe os eventos, produção não recebe nada', () => {
     const antes = ler(TRILHA_REAL);
-    const r = spawnSync('bash', [join(ORQ_DIR, 'test-drenagem.sh')], { encoding: 'utf8', cwd: REPO_ROOT });
+    // A cópia do FIXTURE, não a do kit: o script resolve `CHECKOUT_REAL` a
+    // partir do diretório dele (`$AQUI/../..`, test-drenagem.sh:22) e de lá
+    // copia `docs/fila/000-config.json`. Rodando a do kit, não há o que copiar.
+    const r = spawnSync('bash', [join(FX, 'scripts', 'orquestrador', 'test-drenagem.sh')], {
+      encoding: 'utf8',
+      cwd: FX,
+    });
     expect(r.status).toBe(0);
     const depois = ler(TRILHA_REAL);
     // Append-only preservado, e o delta (se o loop drenou em paralelo) não tem

@@ -11,9 +11,22 @@ import { readFileSync, existsSync, mkdtempSync, chmodSync, statSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { escrever, REPO_ROOT } from './fixtures/orq-harness.js';
+import { escrever, REPO_ROOT, checkoutReal } from './fixtures/orq-harness.js';
 
+/**
+ * Duas leituras diferentes do MESMO wrapper, de propósito:
+ *
+ *  - `WRAPPER` (a cópia do kit) é a FONTE: os casos que grepam o arquivo estão
+ *    afirmando coisas sobre o motor, e o motor mora aqui.
+ *  - `WRAPPER_FX` (a cópia dentro do repo de fixture instanciado) é o que
+ *    EXECUTA: o wrapper faz `source lib.sh`, e o lib.sh resolve a fila pelo
+ *    diretório onde ele mora (lib.sh:24,42). Rodando a cópia do kit, o source
+ *    morre em `jq` por falta de `docs/fila/000-config.json` e o rc do wrapper
+ *    nunca chega. Era essa a quarentena K7 deste arquivo.
+ */
 const WRAPPER = join(REPO_ROOT, 'scripts', 'orquestrador', 'launchd-run.sh');
+const FX = checkoutReal();
+const WRAPPER_FX = join(FX, 'scripts', 'orquestrador', 'launchd-run.sh');
 const DOC = join(REPO_ROOT, 'docs', 'launchd.md');
 const fonte = readFileSync(WRAPPER, 'utf8');
 /** Só o CÓDIGO: comentário citando o dono de um estado não é ler esse estado. */
@@ -38,17 +51,16 @@ function rodarWrapper(temClaude: boolean, temNode = true) {
   // HOME de mentira: o wrapper monta o PATH dele com $HOME/.local/bin, que é
   // justamente onde o `claude` desta máquina vive. Sem trocar o HOME, o teste de
   // "claude ausente" testaria a máquina, não o wrapper.
-  const r = spawnSync('/bin/bash', [WRAPPER], {
+  const r = spawnSync('/bin/bash', [WRAPPER_FX], {
     encoding: 'utf8',
-    cwd: REPO_ROOT,
+    cwd: FX,
     env: { ...process.env, HOME: lar, PATH: bin, NODE_DIR: temNode ? bin : '' },
   });
   return { rc: r.status ?? 1, saida: `${r.stdout ?? ''}${r.stderr ?? ''}` };
 }
 
 describe('o wrapper falha alto quando falta ferramenta', () => {
-  // QUARENTENA (K7): o wrapper faz `source lib.sh`, que resolve a fila pelo diretório onde o lib.sh MORA — exige um checkout com docs/fila/000-config.json; a fixture de repo é a peça K7.
-  it.skip('sem claude no PATH: rc 127 e mensagem com o PATH usado (não roda o loop)', () => {
+  it('sem claude no PATH: rc 127 e mensagem com o PATH usado (não roda o loop)', () => {
     const r = rodarWrapper(false);
     expect(r.rc).toBe(127);
     expect(r.saida).toMatch(/'claude' fora do PATH/);
@@ -102,10 +114,12 @@ describe('o wrapper NÃO duplica estado do loop', () => {
     expect(fonte).toMatch(/command -v caffeinate/); // ausência não pode quebrar
   });
 
-  // QUARENTENA (K7): assevera sobre docs/fila/runs/.gitignore do repo INSTALADO; o kit não tem fila própria.
-  it.skip('loga em docs/fila/runs/launchd.log, que o git ignora', () => {
+  // A primeira asserção é do MOTOR (o wrapper cita o caminho); a segunda é do
+  // REPO INSTALADO, e por isso lê o fixture: quem tem `docs/fila/runs/` é o repo
+  // que instalou o motor, não o kit.
+  it('loga em docs/fila/runs/launchd.log, que o git ignora', () => {
     expect(fonte).toContain('docs/fila/runs/launchd.log');
-    expect(readFileSync(join(REPO_ROOT, 'docs', 'fila', 'runs', '.gitignore'), 'utf8')).toContain('*');
+    expect(readFileSync(join(FX, 'docs', 'fila', 'runs', '.gitignore'), 'utf8')).toContain('*');
   });
 
   it('resolve o repo do próprio arquivo: zero caminho de usuário hardcoded', () => {

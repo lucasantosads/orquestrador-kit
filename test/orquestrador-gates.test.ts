@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { checkoutReal } from './fixtures/orq-harness.js';
 import {
   ordenarGates,
   parsePlacar,
@@ -16,6 +17,10 @@ import {
   ehInterrupcao,
 } from '../scripts/orquestrador/gates.js';
 import type { GatesConfig, Execucao, Placar } from '../scripts/orquestrador/gates.js';
+
+// Instanciado no TOPO, não dentro do caso: é aqui que o `afterAll` de remoção
+// do harness tem a raiz da suíte para se registrar.
+const FX = checkoutReal();
 
 const CONFIG_PATH = join(import.meta.dirname, 'fixtures', 'checkout', 'docs', 'fila', '000-config.json');
 const cfg = JSON.parse(readFileSync(CONFIG_PATH, 'utf8')) as GatesConfig;
@@ -343,11 +348,12 @@ describe('critérios do executor — BASE_REF', () => {
     expect(falhos).toBe('');
   });
 
-  // QUARENTENA (K7): grep em docs/fila/*.md — os tickets são do repo instalado, não do kit.
-  it.skip('nenhum ticket da fila usa mais "main...HEAD" em critério de escopo', () => {
+  // A fila é do repo INSTALADO, não do kit: o alvo é o fixture instanciado
+  // (peça K7), cujo ticket 001 traz um critério de escopo na forma canônica.
+  it('nenhum ticket da fila usa mais "main...HEAD" em critério de escopo', () => {
     const cmds = execFileSync('bash', ['-c', `grep -h '"cmd"' docs/fila/*.md || true`], {
       encoding: 'utf8',
-      cwd: REPO_ROOT,
+      cwd: FX,
     });
     expect(cmds).not.toMatch(/main\.\.\.HEAD/);
     expect(cmds).toMatch(/\$BASE_REF\.\.\.HEAD/);
