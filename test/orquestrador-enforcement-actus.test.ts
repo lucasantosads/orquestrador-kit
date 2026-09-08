@@ -15,9 +15,8 @@
  * nome original do `test(...)` do Actus.
  *
  * O QUE NÃO ENTROU nesta peça, e é gap NOMEADO (não esquecimento):
- *   - a exceção estreita de `supabase/tests/*.test.sql` (14 casos "teste-sql");
- *   - a regra F, `padroes_proibidos_no_diff` (10 casos).
- * Enquanto elas não entrarem, o Actus PERDE proteção ao trocar de motor — ver
+ *   - a exceção estreita de `supabase/tests/*.test.sql` (14 casos "teste-sql").
+ * Enquanto ela não entrar, o Actus PERDE proteção ao trocar de motor — ver
  * K11a-4 em `docs/PECAS.md` PENDENTES.
  *
  * Toda regra aqui está DESLIGADA quando a chave do config não existe: o
@@ -35,6 +34,44 @@ import { RENOMES } from '../scripts/orquestrador/config-tabela.js';
 import type { EnforceConfig, TipoViolacao } from '../scripts/orquestrador/enforcement-core.js';
 
 const RAIZ = join(import.meta.dirname, '..');
+
+/**
+ * As três entradas de `zona_proibida.padroes_proibidos_no_diff` do Actus,
+ * COPIADAS BYTE A BYTE de `~/Projetos/actus-saas/docs/fila/000-config.json`
+ * (só leitura, 2026-09-08). O texto escapado do JSON e o de uma string TS com
+ * aspas simples são os MESMOS caracteres, então a cópia é literal: nenhuma
+ * regex foi reescrita, reindentada nem "melhorada" na travessia — a peça
+ * K11a-4d prova isso comparando este array com o config real em fixture.
+ *
+ * A primeira carrega a correção medida no ticket 615 do Actus: o `[^;]*` entre
+ * `SET` e o alvo atravessava a fronteira da cláusula e casava `set deleted_at =
+ * now() where tenant_id = $1`, com `tenant_id` só na WHERE. O
+ * `(?:(?!\bwhere\b)[^;])*` é o conserto, e o caso de regressão abaixo falha
+ * com a forma antiga.
+ */
+const PADROES_ACTUS = [
+  {
+    nome: 'update_tenant_id_messages_particionada',
+    regex: '(?is)update\\s+comercial\\.messages\\b[^;]*?\\bset\\b(?:(?!\\bwhere\\b)[^;])*\\btenant_id\\s*=',
+    motivo:
+      'comercial.messages é particionada por RANGE em enviada_em; UPDATE de tenant_id pode cruzar partição e corromper a linha. Reancoragem é ETL humano, não loop.',
+  },
+  {
+    nome: 'session_replication_role',
+    regex: '(?i)session_replication_role',
+    motivo: 'Desliga triggers/RLS a nível de sessão — ferramenta de humano em ETL/manutenção, nunca do loop.',
+  },
+  {
+    nome: 'delete_fisico',
+    regex: '(?is)\\bdelete\\s+from\\b(?![^;]*\\bwhere\\b[^;]*\\bfalse\\b)',
+    motivo:
+      'DELETE físico proibido: exclusão de dado de negócio é soft delete (deleted_at). Vale para .sql e SQL cru no código. Expurgo LGPD é migration/rota humana explícita, fora do loop.',
+  },
+];
+
+/** A forma ANTIGA da primeira regex — o `[^;]*` que atravessava SET→WHERE. */
+const REGEX_ANTIGA_TENANT_ID =
+  '(?is)update\\s+comercial\\.messages\\b[^;]*?\\bset\\b[^;]*\\btenant_id\\s*=';
 
 /**
  * O config do Actus, na forma do kit. Os VALORES são os do disco
@@ -56,7 +93,9 @@ const cfgActus: EnforceConfig = {
     colunas_sombra: ['etapa_v2_*'],
     prefixos_sem_ddl: ['vw_'],
   },
+  enforcement: { padroes_proibidos_no_diff: PADROES_ACTUS },
 };
+
 
 /** Diff mínimo de "novo arquivo" — o `diffNovoArquivo` do Actus. */
 function diffNovoArquivo(path: string, linhas: string[]): string {
@@ -379,6 +418,182 @@ describe('regra E na tabela de config: no_write_prefixes → prefixos_sem_ddl', 
   });
 });
 
+// ─── F · padrões proibidos no diff ───────────────────────────────────────────
+
+describe('regra F — enforcement.padroes_proibidos_no_diff (as três regexes do Actus)', () => {
+  it('F mau: UPDATE tenant_id em comercial.messages reprova', () => {
+    const r = checar('supabase/migrations/0250_x.sql', ["update comercial.messages set tenant_id = 'x' where id = 1;"], ['supabase/migrations/**']);
+    expect(tem(r, 'padrao_proibido')).toBe(true);
+  });
+
+  it('F mau: session_replication_role reprova', () => {
+    const r = checar('supabase/migrations/0250_x.sql', ['set session_replication_role = replica;'], ['supabase/migrations/**']);
+    expect(tem(r, 'padrao_proibido')).toBe(true);
+  });
+
+  it('F mau: DELETE físico reprova', () => {
+    const r = checar('supabase/migrations/0250_x.sql', ['delete from comercial.suggestions where id = 1;'], ['supabase/migrations/**']);
+    expect(tem(r, 'padrao_proibido')).toBe(true);
+  });
+
+  it('F bom: soft delete (set deleted_at) passa', () => {
+    const r = checar('supabase/migrations/0250_x.sql', ['update comercial.suggestions set deleted_at = now() where id = 1;'], ['supabase/migrations/**']);
+    expect(r.ok).toBe(true);
+  });
+
+  it('F: a violação NOMEIA o padrão e carrega o motivo escrito no config', () => {
+    const r = checar('supabase/migrations/0250_x.sql', ['set session_replication_role = replica;'], ['supabase/migrations/**']);
+    const v = r.violations.find((x) => x.tipo === 'padrao_proibido');
+    expect(v?.detalhe).toContain('session_replication_role');
+    expect(v?.detalhe).toContain('Desliga triggers/RLS');
+  });
+
+  it('regex que não compila vira violação PRÓPRIA, e não silêncio', () => {
+    // Fail-closed pelo lado certo: uma regex quebrada não pode virar "nenhum
+    // padrão casou". O Actus faz o mesmo (`enforcement.mjs:283`), e o tipo
+    // separado é o que distingue "o diff violou" de "o config está quebrado".
+    const cfg = { ...cfgActus, enforcement: { padroes_proibidos_no_diff: [{ nome: 'quebrada', regex: '(?i)[a-' }] } };
+    const r = checar('supabase/migrations/0250_x.sql', ['select 1;'], ['supabase/migrations/**'], cfg);
+    expect(tem(r, 'padrao_regex_invalida')).toBe(true);
+  });
+
+  it('PROSA nunca reprova: um .md que cita session_replication_role não é execução', () => {
+    const r = checar('docs/regras.md', ['Nunca use `set session_replication_role = replica` — é ferramenta de humano.'], ['docs/**']);
+    expect(r.ok).toBe(true);
+  });
+
+  it('DESLIGADA: sem `enforcement.padroes_proibidos_no_diff`, F não acusa nada', () => {
+    const cfg = { ...cfgActus, enforcement: undefined };
+    const r = checar('supabase/migrations/0250_x.sql', ['delete from comercial.suggestions where id = 1;'], ['supabase/migrations/**'], cfg);
+    expect(r.ok).toBe(true);
+  });
+});
+
+// ─── F(regressão) · `[^;]*` atravessava SET→WHERE ────────────────────────────
+// O padrão existe para pegar REANCORAGEM (tenant_id ATRIBUÍDO no SET), mas o
+// `[^;]*` da forma antiga cruzava a fronteira da cláusula: `set deleted_at =
+// now() where tenant_id = $1` casava, com tenant_id só na WHERE. Achado pelo
+// ticket 615 do Actus, que exercitou o enforcement com SQL real.
+//
+// O Actus escreveu estes casos em `supabase/tests/*.test.sql`, porque foi de lá
+// que o SQL saiu. Aqui o arquivo é uma migration na faixa, para que o caso
+// julgue SÓ a regra F: a exceção de teste-SQL é a peça K11a-4c, e é lá que os
+// mesmos arquivos voltam ao caminho original.
+
+describe('regra F — a regressão do [^;]* entre SET e WHERE', () => {
+  it('F mau: UPDATE que ATRIBUI tenant_id continua reprovando (o alvo da regra)', () => {
+    const r = checar('supabase/migrations/0250_reancora.sql', ["update comercial.messages set tenant_id = 'x';"], ['supabase/migrations/**']);
+    expect(tem(r, 'padrao_proibido')).toBe(true);
+  });
+
+  it('F mau: SET tenant_id = x WHERE tenant_id = y continua reprovando', () => {
+    const r = checar('supabase/migrations/0250_reancora2.sql', ['update comercial.messages set tenant_id = $1 where tenant_id = $2;'], ['supabase/migrations/**']);
+    expect(tem(r, 'padrao_proibido')).toBe(true);
+  });
+
+  it('F mau: SET tenant_id com quebra de linha e caixa mista continua reprovando', () => {
+    const r = checar('supabase/migrations/0250_reancora3.sql', ['UPDATE comercial.messages', '  SET', '    tenant_id = $1', '  WHERE id = $2;'], ['supabase/migrations/**']);
+    expect(tem(r, 'padrao_proibido')).toBe(true);
+  });
+
+  it('F mau: alias (UPDATE ... AS m SET tenant_id) continua reprovando', () => {
+    const r = checar('supabase/migrations/0250_reancora4.sql', ['update comercial.messages as m set tenant_id = $1 where m.id = $2;'], ['supabase/migrations/**']);
+    expect(tem(r, 'padrao_proibido')).toBe(true);
+  });
+
+  it('F bom: soft delete em comercial.messages com tenant_id só na WHERE passa', () => {
+    const r = checar(
+      'supabase/migrations/0250_soft_delete.sql',
+      ['update comercial.messages', '   set deleted_at = now()', ' where tenant_id = v_tenant', '   and id = v_msg;'],
+      ['supabase/migrations/**'],
+    );
+    expect(r).toEqual({ ok: true, violations: [] });
+  });
+
+  it('F bom: WHERE em caixa mista e comentário `--` entre SET e WHERE passam', () => {
+    const r = checar(
+      'supabase/migrations/0250_soft_delete2.sql',
+      ['update comercial.messages set deleted_at = now() -- não toca tenant_id', ' WhErE tenant_id = $1;'],
+      ['supabase/migrations/**'],
+    );
+    expect(r).toEqual({ ok: true, violations: [] });
+  });
+
+  it('F bom: múltiplas colunas no SET, tenant_id só na WHERE, passa', () => {
+    const r = checar(
+      'supabase/migrations/0250_soft_delete3.sql',
+      ['update comercial.messages set deleted_at = now(), updated_at = now() where tenant_id = $1;'],
+      ['supabase/migrations/**'],
+    );
+    expect(r).toEqual({ ok: true, violations: [] });
+  });
+
+  it('o caso de regressão FALHA com a regex antiga — é isso que ele mede', () => {
+    // Sem esta metade, o caso acima passaria com QUALQUER regex que não casasse
+    // o soft delete, inclusive uma que não pegasse mais a reancoragem. Aqui o
+    // MESMO diff é auditado com a forma antiga e com a atual: a antiga acusa
+    // (falso positivo), a atual não, e as duas continuam pegando a reancoragem.
+    const linhas = ['update comercial.messages set deleted_at = now() where tenant_id = $1;'];
+    const antiga = {
+      ...cfgActus,
+      enforcement: { padroes_proibidos_no_diff: [{ nome: 'update_tenant_id_messages_particionada', regex: REGEX_ANTIGA_TENANT_ID }] },
+    };
+    const comAntiga = checar('supabase/migrations/0250_soft_delete.sql', linhas, ['supabase/migrations/**'], antiga);
+    expect(tem(comAntiga, 'padrao_proibido')).toBe(true);
+
+    const comAtual = checar('supabase/migrations/0250_soft_delete.sql', linhas, ['supabase/migrations/**']);
+    expect(tem(comAtual, 'padrao_proibido')).toBe(false);
+
+    const reancoragem = ["update comercial.messages set tenant_id = 'x';"];
+    expect(tem(checar('supabase/migrations/0250_r.sql', reancoragem, ['supabase/migrations/**'], antiga), 'padrao_proibido')).toBe(true);
+    expect(tem(checar('supabase/migrations/0250_r.sql', reancoragem, ['supabase/migrations/**']), 'padrao_proibido')).toBe(true);
+  });
+});
+
+// ─── F · o que a MIGRAÇÃO faz com `padroes_proibidos_no_diff` ───────────────
+
+describe('regra F na tabela de config: zona_proibida → enforcement', () => {
+  it('a tabela conhece o renome, e o destino é o nome que o motor lê', () => {
+    const r = RENOMES.find((x) => x.de === 'zona_proibida.padroes_proibidos_no_diff');
+    expect(r?.para).toBe('enforcement.padroes_proibidos_no_diff');
+  });
+
+  it('as três regexes do Actus viajam BYTE A BYTE, e o nome antigo FICA', () => {
+    // Reescrever uma regex numa migração é reescrever a proibição. O caso
+    // compara caractere a caractere, não "compila igual".
+    const { proposto } = propor({
+      $schema_versao: 1,
+      gates: [],
+      zona_proibida: { no_write_paths: [], no_write_tables: 'TODAS', padroes_proibidos_no_diff: PADROES_ACTUS },
+    });
+    const o = JSON.parse(proposto);
+    expect(o.zona_proibida.padroes_proibidos_no_diff).toEqual(PADROES_ACTUS);
+    expect(o.enforcement.padroes_proibidos_no_diff).toEqual(PADROES_ACTUS);
+    for (let i = 0; i < PADROES_ACTUS.length; i++) {
+      expect(o.enforcement.padroes_proibidos_no_diff[i].regex).toBe(PADROES_ACTUS[i]!.regex);
+    }
+  });
+
+  it('o config migrado do Actus REPROVA o que o motor de lá reprovava hoje', () => {
+    // O fecho da peça: o Actus deixa de perder a regra F ao trocar de motor.
+    const { proposto } = propor({
+      $schema_versao: 1,
+      gates: [],
+      migrations_dir: 'supabase/migrations',
+      zona_proibida: { no_write_paths: [], no_write_tables: [], padroes_proibidos_no_diff: PADROES_ACTUS },
+    });
+    const cfg = JSON.parse(proposto) as EnforceConfig;
+    const arq = 'supabase/migrations/0250_x.sql';
+    const r = enforce({
+      changedFiles: [arq],
+      allowlist: ['supabase/migrations/**'],
+      diff: diffNovoArquivo(arq, ['delete from comercial.suggestions where id = 1;']),
+      config: cfg,
+    });
+    expect(r.violations.some((v) => v.tipo === 'padrao_proibido')).toBe(true);
+  });
+});
+
 // ─── caso limpo ponta a ponta ────────────────────────────────────────────────
 
 describe('caso limpo', () => {
@@ -398,13 +613,18 @@ describe('o que o CI faz diferente: nada (provado com o config do CI)', () => {
   ];
 
   for (const [nome, caminho] of configs) {
-    it(`${nome}: nenhuma das chaves novas existe, então B/C/D nascem desligadas`, () => {
+    it(`${nome}: nenhuma das chaves novas existe, então B/C/D/E/F nascem desligadas`, () => {
       const cru = JSON.parse(readFileSync(caminho, 'utf8')) as EnforceConfig;
       expect(cru.migrations).toBeUndefined();
       expect(cru.zona_proibida.colunas_congeladas).toBeUndefined();
       expect(cru.zona_proibida.schemas_permitidos).toBeUndefined();
       expect(cru.zona_proibida.tabelas_permitidas).toBeUndefined();
       expect(cru.zona_proibida.prefixos_sem_ddl).toBeUndefined();
+      expect(cru.enforcement).toBeUndefined();
+      // O nome v1 do Actus não está no tipo (o motor não o lê) — a asserção é
+      // sobre o JSON cru, e é ela que prova que o CI também não o tem.
+      const zpCru = (JSON.parse(readFileSync(caminho, 'utf8')) as { zona_proibida: Record<string, unknown> }).zona_proibida;
+      expect(zpCru.padroes_proibidos_no_diff).toBeUndefined();
       // `TODAS` continua sendo negação total, e não lista.
       expect(cru.zona_proibida.no_write_tables).toBe('TODAS');
     });

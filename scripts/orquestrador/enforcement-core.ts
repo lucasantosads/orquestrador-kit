@@ -42,6 +42,27 @@ export interface MigrationsRegra {
   faixas_reservadas?: Faixa[]
 }
 
+/**
+ * Regra F (K11a-4): uma regex de texto proibida no diff, com NOME. O nome é o
+ * que aparece na violação — uma regex crua na mensagem manda quem lê o
+ * enforcement.json decifrar o padrão para descobrir o que ele proíbe.
+ */
+export interface PadraoProibido {
+  nome: string
+  /** Sintaxe JS, com flags inline `(?i)`/`(?is)` opcionais no começo. */
+  regex: string
+  motivo?: string
+}
+
+/**
+ * As regras de enforcement que não são fronteira de ESCRITA e por isso não moram
+ * em `zona_proibida`: F julga o TEXTO do diff, e a exceção de teste-SQL julga a
+ * forma de um arquivo. Ausente = as duas desligadas.
+ */
+export interface EnforcementRegras {
+  padroes_proibidos_no_diff?: PadraoProibido[] | undefined
+}
+
 export interface EnforceConfig {
   migrations_dir: string
   /** Segundo diretório de artefato .sql (ORQ-08). Opcional: config antiga sem o campo continua válida. */
@@ -49,6 +70,8 @@ export interface EnforceConfig {
   politica_schema: { comportamento_vigente: string }
   /** Regra B. Ausente = desligada (o CI e o fixture não têm a chave). */
   migrations?: MigrationsRegra | undefined
+  /** Regras F e da exceção de teste-SQL. Ausente = desligadas. */
+  enforcement?: EnforcementRegras | undefined
   zona_proibida: {
     no_write_paths: string[]
     /** `"TODAS"` = negação total (CI); LISTA de tabelas = regra C nomeada (Actus). */
@@ -94,6 +117,10 @@ export type TipoViolacao =
   // ela acusa é DDL de um objeto pelo NOME dele, e quem lê o enforcement.json
   // precisa saber que a causa foi o prefixo — não um caminho de arquivo.
   | 'prefixo_sem_ddl'
+  | 'padrao_proibido'
+  // Config quebrada NÃO é diff limpo: regex que não compila tem tipo próprio,
+  // para não virar "nenhum padrão casou" em silêncio.
+  | 'padrao_regex_invalida'
 
 export interface Violation {
   tipo: TipoViolacao
@@ -474,6 +501,53 @@ export function violacoesDePrefixo(arquivo: string, texto: string, config: Enfor
   return v
 }
 
+// ─── K11a-4 · regra F: padrões proibidos no texto do diff ───────────────────
+
+/**
+ * `new RegExp` que aceita o prefixo `(?flags)` — V8 não honra o `(?i)` cru, e as
+ * regexes do config do Actus vêm todas com ele. Porte de `compilarRegex`
+ * (`enforcement.mjs:178`). Flags desconhecidas são descartadas em vez de fazer o
+ * construtor lançar: o que importa preservar é a regex, não o dedo do digitador.
+ */
+export function compilarRegex(str: string): RegExp {
+  const m = /^\(\?([a-z]+)\)/.exec(str)
+  if (m) {
+    const flags = (m[1] ?? '').replace(/[^gimsuy]/g, '')
+    return new RegExp(str.slice(m[0].length), flags)
+  }
+  return new RegExp(str)
+}
+
+/**
+ * Regra F · as regexes de `enforcement.padroes_proibidos_no_diff`, aplicadas ao
+ * bloco de linhas ADICIONADAS de um arquivo. Porte de `enforcement.mjs:277-287`.
+ *
+ * Ela existe para o risco que allowlist de caminho não pega: SQL destrutivo
+ * DENTRO de um arquivo permitido. Por isso roda também no `artefato_sql`, pela
+ * mesma razão de C e D — alguém vai aplicar aquele arquivo — e nunca na prosa.
+ *
+ * Por ARQUIVO, e não no diff inteiro como o Actus faz: a violação passa a
+ * nomear onde o padrão casou, e um `;` do arquivo A deixa de fechar a cláusula
+ * que a regex estava lendo no arquivo B.
+ */
+export function violacoesDePadrao(arquivo: string, texto: string, config: EnforceConfig): Violation[] {
+  const padroes = config.enforcement?.padroes_proibidos_no_diff ?? []
+  const v: Violation[] = []
+  for (const pad of padroes) {
+    let re: RegExp
+    try {
+      re = compilarRegex(pad.regex)
+    } catch (e) {
+      v.push({ tipo: 'padrao_regex_invalida', detalhe: `${arquivo}: regex do padrão '${pad.nome}' não compila: ${(e as Error).message}` })
+      continue
+    }
+    if (re.test(texto)) {
+      v.push({ tipo: 'padrao_proibido', detalhe: `${arquivo}: ${pad.nome} — ${pad.motivo || 'padrão proibido no diff'}` })
+    }
+  }
+  return v
+}
+
 export function enforce(input: EnforceInput): EnforceResult {
   const v: Violation[] = []
   const zp = input.config.zona_proibida
@@ -495,7 +569,8 @@ export function enforce(input: EnforceInput): EnforceResult {
 
   const linhas = addedLines(input.diff)
 
-  // C+D+E) escrita por tabela, por coluna e DDL por prefixo, POR ARQUIVO — o bloco de linhas
+  // C+D+E+F) escrita por tabela, por coluna, DDL por prefixo e padrões proibidos,
+  // POR ARQUIVO — o bloco de linhas
   // adicionadas daquele arquivo, não a linha solta (a cadeia
   // `.from('x')\n.insert({})` é a forma normal em TS).
   //
@@ -520,6 +595,7 @@ export function enforce(input: EnforceInput): EnforceResult {
     v.push(...violacoesDeTabela(arquivo, texto, input.config))
     v.push(...violacoesDeColuna(arquivo, texto, input.config))
     v.push(...violacoesDePrefixo(arquivo, texto, input.config))
+    v.push(...violacoesDePadrao(arquivo, texto, input.config))
   }
 
   for (let i = 0; i < linhas.length; i++) {

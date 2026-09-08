@@ -106,6 +106,7 @@ export const CHAVES_CONFIG: ChaveConfig[] = [
   // Mesmo desenho das de cima: ausente = regra desligada, e nenhuma existe no
   // config do CI, do fixture ou do checkout.
   { chave: 'zona_proibida.prefixos_sem_ddl', onde: 'enforcement-core.ts:460', obrigatoria: false, nota: 'regra E: CREATE/ALTER/DROP de objeto com o prefixo. No Actus e no Comarka é no_write_prefixes' },
+  { chave: 'enforcement.padroes_proibidos_no_diff', onde: 'enforcement-core.ts:533', obrigatoria: false, nota: 'regra F: lista de {nome, regex, motivo}, flags inline (?i)/(?is). No Actus mora em zona_proibida' },
 
   // --- piso de tools (peça T17) ---------------------------------------------
   { chave: 'proibicoes_absolutas.tools', onde: 'executor.sh:tools_proibidas, perfil.ts:190', obrigatoria: false, nota: 'o PISO de --disallowedTools; ausente = piso vazio e a flag não é passada. Nos três repos do disco `proibicoes_absolutas` ainda é um ARRAY de prosa, e ali o piso nasce vazio' },
