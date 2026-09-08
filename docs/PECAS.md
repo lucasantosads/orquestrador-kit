@@ -222,6 +222,28 @@
   desejado difere do feito, a §10 "Divergências conhecidas" lista 9 itens, cada um com a
   peça que o fecha — nenhuma foi consertada na prosa.
 
+- **`orq versao` e `orq config`.** Dois verbos de leitura. `orq versao` imprime o carimbo
+  `docs/orquestrador/skill/VERSAO` do repo (`repo sem VERSAO` quando ausente) e, com
+  `--kit <dir>` ou `ORQ_KIT`, compara com o do kit — dizendo que carimbo igual NÃO é motor
+  idêntico, porque quem prova isso é o `instalar.sh --verificar`. `orq config` valida o
+  `000-config.json`: placeholder `<...>`, chave obrigatória ausente (a lista com o
+  arquivo:linha de onde o motor lê cada uma está em `scripts/orquestrador/config-chaves.ts`,
+  49 chaves, 40 obrigatórias), gate sem papel inferível e sem `papel` declarado, `gates` sem
+  `nome`. rc 1 com violação. Os dois são READ-ONLY.
+  *Evidência:* o levantamento do PASSO 0 — `grep -nE "cfg '[^']*'" scripts/orquestrador/*.sh
+  scripts/orq` mais os acessos diretos dos `.ts`. Dois DEFEITOS caíram no caminho: (1) o
+  `orq` inteiro saía rc 5 (`jq: parse error`) com um config ilegível, porque o `lib.sh` lê o
+  config no carregamento — a única ferramenta que responde "meu config está quebrado?" era
+  justamente a que não rodava quando ele estava; `orq config` passou a ser despachado ANTES
+  do `source lib.sh`; (2) o validador acusava o gate `limpeza_artefatos` do CI, que é
+  `tipo: preparacao` e não verifica nada — gate que não verifica não tem papel na linha
+  GATE, por desenho.
+  *Teste:* `test/orq-versao-config.test.ts`, 16 casos (14 vermelhos antes), incluindo o
+  NEGATIVO de que prosa mencionando `<ASSIM>` não é placeholder e o de que nenhum dos dois
+  verbos escreve no repo (nem cria `runs/`).
+  *Medido contra o CI (só leitura):* `orq config` sai **0 violações, rc 0** — nenhum achado;
+  `orq versao --kit` diz `REPO 2.1.0-dev · KIT 2.1.0-dev · igual`.
+
 - **1d · gate mudo por symlink, CONSERTADO.** O guard de CLI do `gate-ticket.ts` compara os
   dois lados com `realpathSync`, num `chamadoComoCli()` com try/catch. Antes, `resolve(argv[1])`
   não resolvia symlink e o `import.meta.url` vinha fisicamente resolvido: sob caminho com

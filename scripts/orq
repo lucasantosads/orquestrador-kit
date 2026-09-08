@@ -20,11 +20,38 @@
 #   orq mapa lint        lint MAPA.md × mapa.json
 #   orq mapa status      placar por frente
 #   orq validar [ids]    gate de ticket nos tickets dados (ou --pendentes)
+#   orq versao           VERSAO do motor instalado (e compara com --kit <dir>)
+#   orq config           acusa placeholder e chave faltando em docs/fila/000-config.json
 #   orq pausar [motivo]  cria o pausar_file (a drenagem para ENTRE tickets)
 #   orq retomar          remove o pausar_file
 
 set -euo pipefail
 ORQ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# --- `orq config` roda ANTES do lib.sh, e tem de rodar -------------------------
+# O `lib.sh` lê o config no carregamento (`cfg` nas linhas 52-58): com um
+# 000-config.json que não parseia, o `jq` morre e `set -e` derruba o `orq`
+# INTEIRO com rc 5, antes de qualquer subcomando existir. Ou seja: a única
+# ferramenta que responde "meu config está quebrado?" era justamente a que não
+# rodava quando ele estava. Medido: `orq config` saía 5 com um `jq: parse
+# error` no stderr e nada mais.
+#
+# Por isso este verbo é despachado aqui em cima, e resolve o caminho do config
+# SEM o lib.sh. A duplicação das quatro linhas abaixo é deliberada e é o preço:
+# elas repetem lib.sh:23-38 (ROOT, depois o pai do --git-common-dir, com
+# fallback em ROOT fora de git). O caminho do config NÃO vem do config — é
+# `<checkout>/docs/fila/000-config.json` por contrato (lib.sh:42-43) —, então
+# esta cópia não pode divergir por dado, só por refatoração do lib.sh; e o teste
+# `config ilegível: rc 1` falha alto se divergir.
+if [ "${1:-}" = config ]; then
+  [ "$#" = 1 ] || { printf '[orq ERRO] orq config não recebe argumento (recebi %s)\n' "$2" >&2; exit 1; }
+  _root="${ORQ_EXEC_ROOT:-$(cd "$ORQ_DIR/.." && pwd)}"
+  _gc="$(git -C "$_root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  if [ -n "$_gc" ] && [ -d "$_gc" ]; then _main="$(cd "$_gc/.." && pwd)"; else _main="$_root"; fi
+  ( cd "$ORQ_DIR/.." && npx tsx "$ORQ_DIR/orquestrador/config-cli.ts" "$_main/docs/fila/000-config.json" )
+  exit $?
+fi
+
 # shellcheck source=orquestrador/lib.sh
 source "$ORQ_DIR/orquestrador/lib.sh"
 
@@ -254,6 +281,50 @@ cmd_validar() {
   ( cd "$ORQ_DIR/.." && npx tsx "$ORQ_DIR/orquestrador/gate-ticket.ts" --fila "$FILA_DIR" "$@" )
 }
 
+# --- orq versao ---------------------------------------------------------------
+# Responde "que motor está instalado aqui?" sem abrir arquivo. O carimbo é
+# docs/orquestrador/skill/VERSAO, escrito pelo `instalar.sh --atualizar`.
+#
+# Ausência NÃO é erro: um repo vendorizado antes de o carimbo existir está sem
+# carimbo, não errado — é a mesma leitura que o `instalar.sh --verificar` faz.
+# Divergir do kit também não é erro: o `orq` é read-only e não instala nada. Ele
+# informa; quem decide atualizar roda o instalar.sh, e é lá que estão as três
+# recusas que protegem uma drenagem viva.
+cmd_versao() {
+  local kit=""
+  case "${1:-}" in
+    --kit) kit="${2:-}"; [ -n "$kit" ] || die "orq versao --kit exige um caminho" ;;
+    '')    kit="${ORQ_KIT:-}" ;;
+    *)     die "uso: orq versao [--kit <dir-do-kit>]  (ou ORQ_KIT no ambiente)" ;;
+  esac
+
+  local carimbo="$MAIN_CHECKOUT/docs/orquestrador/skill/VERSAO" v_repo
+  if [ -s "$carimbo" ]; then
+    v_repo="$(head -1 "$carimbo" | tr -d '[:space:]')"
+    printf 'REPO     %s  (%s)\n' "$v_repo" "$carimbo"
+  else
+    v_repo=""
+    printf 'REPO     repo sem VERSAO  (%s não existe)\n' "$carimbo"
+  fi
+
+  [ -n "$kit" ] || return 0
+  if [ ! -s "$kit/VERSAO" ]; then
+    aviso "'$kit' não parece um kit: não tem VERSAO na raiz. Nada comparado."
+    return 0
+  fi
+  local v_kit; v_kit="$(head -1 "$kit/VERSAO" | tr -d '[:space:]')"
+  printf 'KIT      %s  (%s)\n' "$v_kit" "$kit"
+  if [ -z "$v_repo" ]; then
+    printf 'difere:  o repo não tem carimbo; o kit é %s.\n' "$v_kit"
+  elif [ "$v_repo" = "$v_kit" ]; then
+    printf 'igual:   mesmo carimbo. (Carimbo igual NÃO é motor idêntico: quem prova\n'
+    printf '         isso é `bash instalar.sh --verificar %s`.)\n' "$MAIN_CHECKOUT"
+  else
+    printf 'difere:  repo %s, kit %s — o motor deste repo está desatualizado.\n' "$v_repo" "$v_kit"
+    printf '         Para atualizar: orq pausar; bash instalar.sh --atualizar %s\n' "$MAIN_CHECKOUT"
+  fi
+}
+
 # --- orq pausar / retomar (os ÚNICOS que escrevem) ----------------------------
 # Kill switch em ARQUIVO (regra 12). NÃO mata processo: a drenagem lê o arquivo
 # ENTRE tickets e encerra em ocioso. Matar o processo garante ticket órfão.
@@ -282,6 +353,8 @@ case "${1:-}" in
   decisoes)   cmd_decisoes ;;
   mapa)       shift; cmd_mapa "$@" ;;
   validar)    shift; cmd_validar "$@" ;;
+  versao)     shift; cmd_versao "$@" ;;
+  config)     : ;;   # despachado no topo, antes do lib.sh — veja o comentário lá
   pausar)     shift; cmd_pausar "$@" ;;
   retomar)    cmd_retomar ;;
   -h|--help|ajuda) awk '/^# Uso:/,/^$/ { sub(/^# ?/, ""); print }' "$0" ;;

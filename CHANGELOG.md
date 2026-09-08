@@ -175,6 +175,21 @@ attempt registra como `ok`. Não derruba o run; faz a trilha mentir.
   comarka-operacional (`orq-telemetria.py:78`), com a origem registrada dentro do arquivo —
   eles não existem em `_referencia-ci/`. `gate-ticket.ts` NÃO passa a validar pelo schema
   nesta etapa: é peça própria, registrada em PENDENTES.
+- **`orq versao` e `orq config`** — dois verbos de leitura no `scripts/orq`.
+  `orq versao [--kit <dir>]` imprime o carimbo do repo e, quando há kit, compara — avisando
+  que carimbo igual não é motor idêntico. `orq config` valida `docs/fila/000-config.json`:
+  placeholder `<...>` (o valor tem de SER um, não apenas mencionar um), chave obrigatória
+  ausente com o arquivo:linha de onde o motor a lê, gate sem papel inferível e sem `papel`
+  declarado (exceto `tipo: preparacao`, que não verifica nada), `gates` sem `nome`.
+  `scripts/orquestrador/config-chaves.ts` traz as 49 chaves levantadas por grep, 40 delas
+  obrigatórias; `scripts/orquestrador/config-cli.ts` é o validador.
+  *Dois defeitos consertados no caminho:* o `orq` INTEIRO saía rc 5 com config ilegível (o
+  `lib.sh` lê o config no carregamento e `set -e` derruba tudo) — `orq config` passou a ser
+  despachado antes do `source`, resolvendo o caminho do config sem ele; e o validador acusava
+  o gate `limpeza_artefatos` do CI, que é preparação e corretamente não tem papel.
+  *O que o CI faz diferente:* nada. `orq config` rodado contra
+  `~/Projetos/conteudos-infinitos` (só leitura) sai **0 violações, rc 0** — o `launchd.label`
+  que a K6c tornou obrigatório já está lá.
 
 Passos humanos que faltam para o CI receber este motor (não são desta sessão):
 `launchd.label: com.conteudos.orquestrador` no `000-config.json` do CI; `orq pausar`;

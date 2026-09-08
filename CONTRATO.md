@@ -312,7 +312,22 @@ diretos dos `.ts`, e `orq config` a usa para acusar chave obrigatória ausente.
 
 Placeholder `<...>` em qualquer valor é config NÃO preenchido: `orq config`
 recusa (rc 1). Um `000-config.json` recém-copiado do template não é config — é
-formulário em branco.
+formulário em branco. Um valor é placeholder quando ELE É um (começa com `<` e
+termina com `>`), nunca quando apenas menciona um: a `descricao` do template diz
+"Placeholders <ASSIM> são decisões locais", e cobrar por substring reprovaria o
+próprio texto que explica a regra.
+
+Todo gate do config precisa de um PAPEL que o executor consiga ver — declarado
+ou inferível do nome (§4.2) —, **exceto** os de `tipo: preparacao`, que não
+verificam nada (no CI é o `limpeza_artefatos`, um `rm -rf` do artefato de build
+que roda antes dos gates de verdade). Gate que não verifica não aparece na linha
+GATE, e é correto que não apareça.
+
+`orq config` roda ANTES do `lib.sh` (`scripts/orq`, topo) e resolve o caminho do
+config sem ele. O `lib.sh` lê o config no carregamento, então um
+`000-config.json` ilegível derrubava o `orq` inteiro com rc 5 — a ferramenta que
+responde "meu config está quebrado?" era justamente a que não rodava quando ele
+estava.
 
 ---
 
