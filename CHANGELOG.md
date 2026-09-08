@@ -43,6 +43,17 @@ checkout com `docs/fila`.
   `--atualizar` dizem "ainda não: peça K8" e saem 2. `scripts/kit/test-instalar.sh` roda os
   três casos. Contra `~/Projetos/conteudos-infinitos`: `repo sem VERSAO` + idêntico, rc 0.
 
-Ainda fora, esperando OK humano: a travessia PAGA do loop
-(`scripts/kit/fixture-e2e.sh`, peça K7-e2e no `docs/PECAS.md`). O script existe e recusa
-rodar sem `ORQ_E2E_OK=1`.
+- **K7-e2e** — o fixture ATRAVESSOU o loop, com OK humano, em 2026-09-08. A peça não muda
+  código: a evidência é a execução, registrada aqui e no `docs/PECAS.md`.
+  Uma drenagem de 52 s: ticket 001 `done`, merge em `staging-auto` (`5d7c32d`), evento
+  `APROVADO` na trilha, uma tentativa e zero retry. Custo real US$ 0,369 (probe 0,0855 +
+  executor 0,1967 + juiz 0,0871) contra `usd_ticket` 1. Nenhum push — o origin é
+  `example.invalid` e o loop nem tentou.
+- **1d** `e4a6874` — peça aberta (não é conserto): o guard de CLI do `gate-ticket.ts`
+  compara `import.meta.url` com `argv[1]` sem `realpath`, e chamado por caminho com symlink
+  sai rc 0 com stdout vazio — gate mudo. Contornado no kit, a consertar no motor.
+
+Achado que o e2e mediu e que ficou com K6: `event_gate` monta a linha `GATE` da trilha
+procurando gates por nome fixo do monorepo do CI, então a trilha gravou
+`typecheck=nao-rodou testes=nao-rodou build=nao-rodou` para gates que o `gates.txt` do mesmo
+attempt registra como `ok`. Não derruba o run; faz a trilha mentir.

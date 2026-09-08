@@ -84,19 +84,24 @@
   VERSAO` + `idêntico ao kit 2.1.0-dev`, rc 0 — e `git log 711ab5e..HEAD -- scripts/orquestrador
   scripts/orq docs/orquestrador/skill` sai vazio lá, ou seja, a etapa 5 do CI não tocou o motor.
 
-## PENDENTES
+- **K7-e2e · o fixture atravessou o loop.** `scripts/kit/fixture-e2e.sh` (recusa rodar sem
+  `ORQ_E2E_OK=1`) instanciou o fixture, rodou UMA drenagem do `local-loop.sh` dele e o ticket 001
+  saiu `done` com merge na `staging-auto` do fixture. Rodado com OK humano explícito em
+  2026-09-08.
+  *Evidência:* a própria execução (esta peça não muda código): drenagem de 52 s,
+  `local-loop rc=0`, 2026-09-08 11:54 -0300. Trilha:
+  `001 INICIO attempt=1 model=sonnet` → `GATE ... enforcement=ok criterios=4/4` →
+  `JUIZ veredito=aprovado classe=baixo modelo=sonnet attempt=1` → `001 APROVADO merge=aguardando
+  dur=32s attempt=1` → `001 MERGE alvo=staging-auto sha=5d7c32d` →
+  `DRENAGEM_FIM aprovados=1 bloqueados=0 adiados=0 refatiar=0`. Custo real: probe US$ 0,0855 +
+  executor US$ 0,1967 + juiz US$ 0,0871 = **US$ 0,369**, contra `usd_ticket` 1. Uma tentativa, zero
+  retry. Nenhum push: o origin é `git@example.invalid:...` e o loop nem tentou.
+  *Teste:* o pronto-quando do `doutrina/references/setup.md:55` ("um ticket-fixture trivial
+  atravessa o loop ponta a ponta e o merge aparece na staging"), cumprido — e os 4 critérios de
+  aceite do ticket verdes, `enforcement ok`, `gates.txt` com `ok typecheck` / `ok test` /
+  `VEREDITO: APROVADO`.
 
-- **K7-e2e · o fixture atravessa o loop (PAGA, espera OK humano).**
-  `scripts/kit/fixture-e2e.sh` já existe e recusa rodar sem `ORQ_E2E_OK=1`: instancia o fixture,
-  roda UMA drenagem do `local-loop.sh` dele com watchdog de `claude_timeout_secs + 120`s (técnica
-  do `claude_run`, `lib.sh:964-986` — o macOS não tem `timeout`), e imprime `orq`, as 20 últimas
-  linhas da trilha, `git log --oneline staging-auto -3` e o `custo.json`. O fixture NÃO é removido:
-  se reprovar, o diff da tentativa e o veredito cru SÃO o resultado.
-  *Evidência:* inventário §8 item 2, pronto-quando ("um ticket-fixture trivial atravessa o loop
-  ponta a ponta e o merge aparece na staging", `doutrina/references/setup.md:55`).
-  *Teste:* ticket 001 em `done`, merge na `staging-auto` do fixture, evento `APROVADO` na trilha,
-  nenhum push (o origin é `example.invalid`; se o loop tentasse, falharia alto — e isso também
-  seria resultado).
+## PENDENTES
 
 - **K5b · o `--verificar` não cobre `scripts/roadmap/`.** ACHADO da etapa 2: `orq mapa lint` roda
   `python3 scripts/roadmap/lint-mapa.py` a partir do MAIN_CHECKOUT (`scripts/orq:226`), então
@@ -115,11 +120,19 @@
   (b) nome e label do plist template (`scripts/orquestrador/com.conteudos.orquestrador.plist.template`)
   → `com.orquestrador.plist.template` com `{{LABEL}}`, e `instalar-launchd.sh` deriva o label do
   config;
-  (c) ACHADO da etapa 2: `typecheck_marca` (`executor.sh:415-424`) combina dois gates por NOME
-  fixo, `typecheck_root` e `typecheck_web` — nomes do monorepo do CI. Num repo cujo gate se chame
-  `typecheck` (o fixture, por exemplo) a função devolve `nao-rodou` para um gate que rodou e
-  passou. Não é fatal hoje (só alimenta a linha de evento), e por isso não virou mudança de motor
-  nesta etapa; os nomes dos gates têm de sair do config, como o resto.
+  (c) ACHADO da etapa 2, **medido no e2e**: `event_gate` (`executor.sh:428-442`) monta a linha
+  `GATE` da trilha procurando gates por NOME FIXO do monorepo do CI — `typecheck_marca` casa
+  `typecheck_root`/`typecheck_web` (`executor.sh:415-424`), e as outras duas marcas casam
+  `testes_por_pacote` e `build`. Num repo cujos gates se chamem `typecheck` e `test` (o fixture),
+  a drenagem de 2026-09-08 gravou na trilha
+  `001 GATE typecheck=nao-rodou testes=nao-rodou enforcement=ok criterios=4/4 build=nao-rodou`
+  enquanto o `gates.txt` do mesmo attempt dizia `ok typecheck` / `ok test` /
+  `VEREDITO: APROVADO`. **A trilha afirmou "não rodou" sobre gates que rodaram e aprovaram.**
+  Não derruba o run (o desfecho sai do `gates.txt`, não da linha de evento), mas a trilha é o
+  ground truth de "o que aconteceu" — e aqui ela mente por premissa de repo. Os nomes dos gates
+  têm de sair do config, como o resto.
+  *Teste desta parte:* um repo de fixture com gates de nome próprio, e a linha `GATE` da trilha
+  refletindo o `gates.txt` — nenhum `nao-rodou` para gate que consta como `ok`.
   *Evidência:* inventário §8 item 5; as linhas citadas, no disco.
   *Teste:* pureza = 0 em código; comentário de proveniência pode ficar.
 
