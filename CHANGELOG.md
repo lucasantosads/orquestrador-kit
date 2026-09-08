@@ -241,3 +241,40 @@ o que o `jq` devolveu. Três achados mandaram no desenho:
   *O que o CI faz diferente:* nada. Os 7 tokens reais do CI resolvem antes e depois, e
   nenhum grava aviso — a forma dele não é legada. Esse caso já estava VERDE no vermelho-antes,
   que é o que prova que a mudança não o alcançou.
+
+- **K8b-2** — `orq liberar` e a migração de liberações. `orq liberar
+  humano:<tipo>-<id> ["nota"]` é o **quarto verbo que escreve** e acrescenta UM objeto v2
+  (`token`, `liberado_em` = hoje, `por` = `$USER`, `nota`). Quatro recusas com rc 1: token
+  sem o prefixo `humano:`, token fora de `^humano:[a-z-]+-[0-9A-Za-z-]+$`, duplicata
+  (conferida contra as DUAS listas) e arquivo fora da v2 — este último com o comando da
+  migração na mensagem. Ele NÃO converte o arquivo de passagem: um `liberar` que migrasse
+  transformaria uma decisão humana de uma linha numa reescrita do arquivo inteiro, sem diff e
+  sem `.bak`.
+  `scripts/orquestrador/migrar-liberacoes.ts` leva qualquer forma viva para v2: `em` →
+  `liberado_em`, `por` e `nota` preservados, prefixo acrescentado onde falta, dedup por token
+  com a **ordem original** preservada — e a ordem de leitura das duas listas é a ordem das
+  CHAVES no arquivo, não uma ordem fixa do código. Token que aparece nas duas listas só
+  ENRIQUECE o registro (preenche campo ausente); dado presente nunca é sobrescrito.
+  `scripts/orquestrador/migrar-comum.ts` guarda as cinco regras que TODA migração do kit
+  obedece (`CONTRATO.md` §9.3): `--dry-run` por padrão, diff em vez de resumo, `.bak` no
+  primeiro `--aplicar` e nunca depois, nada é apagado, e rodar duas vezes é no-op.
+  *A migração não inventa:* os 5 tokens do Actus e os 17 do Comarka que só existiam como
+  string solta não têm data nem dono no disco, e saem com `liberado_em: "desconhecido"` mais
+  um campo `origem` (`v2` | `v1:tokens` | `v1:liberadas`). Ler `desconhecido` é informação;
+  ler a data em que a migração rodou seria mentira com cara de fato. O schema ganhou os dois.
+  *Um defeito caiu no caminho, achado pelo teste de idempotência:* a segunda passada
+  reinferia `origem` pela lista em que o registro estava AGORA, reescrevendo `v1:tokens` como
+  `v2` — o segundo `--aplicar` apagaria justamente o dado que explica o `desconhecido`.
+  Origem declarada passou a ganhar da inferida.
+  *Teste:* `test/orquestrador-liberar-migrar.test.ts`, 37 casos, contra os três arquivos
+  REAIS. Comarka: 61 entradas → 47 tokens únicos, nenhum some, a duplicata exata vira um
+  registro, a chave de raiz `descricao` é preservada e a preservação é relatada. Depois de
+  migrado, todo token resolve por `lib.sh:liberacao_ok` e **nenhum grava mais AVISO** — é
+  essa a prova de que as duas pontas (K8b-1 e K8b-2) fecham. Mais as asserções do schema,
+  lidas DO ARQUIVO em vez de recopiadas no teste.
+  *Vermelho antes:* 9 casos, com os módulos presentes e só a fiação ausente (o verbo fora do
+  `scripts/orq`, o `liberacoes.json` do fixture ainda em v1, o schema sem `origem`). Sem os
+  módulos, a suíte inteira não carrega — é peça nova.
+  *O que o CI faz diferente:* nada no motor. O `liberacoes.json` do CI é v1 canônica, então
+  `orq liberar` o RECUSA até a migração rodar — e é isso que se quer: a recusa é o que impede
+  o arquivo de ficar em duas formas ao mesmo tempo.

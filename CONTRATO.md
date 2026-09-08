@@ -395,7 +395,9 @@ estava.
 | `orq config` | acusa placeholder, chave obrigatória ausente, gate sem papel, `launchd.label` ausente |
 | `orq pausar [motivo]` | cria o `pausar_file` — **escreve** |
 | `orq retomar` | remove o `pausar_file` — **escreve** |
+| `orq liberar <humano:token> [nota]` | acrescenta um token v2 em `liberacoes_file` — **escreve** (§6.2) |
 
+Os TRÊS que escrevem escrevem UM arquivo do repo cada, nunca estado de execução.
 Nenhum subcomando toca ticket, staging, worktree, branch ou lock, e nenhum mata
 processo. Se `orq` puder alterar estado, alguém vai alterá-lo no meio de um run.
 
@@ -416,7 +418,27 @@ recusas, e só a terceira cede a `--forcar`:
 3. modificação não commitada no motor do repo — nos MESMOS caminhos que o bloco
    de cópia escreve, `scripts/roadmap/` e os testes de harness incluídos.
 
-### 9.3 `instalar-launchd.sh` (no repo instalado)
+### 9.3 As migrações (no kit, chamadas por `--atualizar --migrar`)
+
+| Script | Migra | Como aplica |
+|---|---|---|
+| `migrar-liberacoes.ts` | `liberacoes.json` de qualquer forma viva (§6.1) para v2 | `--aplicar` grava e deixa `.bak` |
+
+Regras que valem para TODAS (`migrar-comum.ts`):
+
+1. `--dry-run` é o **padrão**. Sem `--aplicar`, nada é escrito.
+2. `--dry-run` imprime o **diff**, não um resumo. "3 chaves migradas" não deixa
+   ninguém decidir nada.
+3. O **primeiro** `--aplicar` deixa um `.bak` ao lado; um `.bak` que já exista
+   NÃO é sobrescrito — ele vale como o estado antes da primeira migração.
+4. Migração **nunca apaga dado**: chave desconhecida fica onde está, token não
+   some, prosa não se move. O que a migração não entende, ela PRESERVA e RELATA.
+5. Migração é **idempotente**: rodar duas vezes é no-op. Inclusive a `origem` já
+   registrada é preservada em vez de reinferida — sem isso, o segundo `--aplicar`
+   reescreveria `v1:tokens` como `v2` e apagaria a procedência de um
+   `liberado_em: desconhecido`.
+
+### 9.4 `instalar-launchd.sh` (no repo instalado)
 
 Renderiza `com.orquestrador.plist.template` com `launchd.label` e
 `launchd.start_interval` do config, e carrega o job. RECUSA (rc 1) sem

@@ -2,8 +2,18 @@
 # orq — comando de consulta do Orquestrador Autônomo (contrato §3 de
 # skill/references/observabilidade.md).
 #
-# READ-ONLY POR CONSTRUÇÃO. Os ÚNICOS subcomandos que escrevem são `pausar` e
-# `retomar`, e escrevem exatamente um arquivo: o `pausar_file` do config.
+# READ-ONLY POR CONSTRUÇÃO. Os subcomandos que escrevem são TRÊS, e cada um
+# escreve UM arquivo do repo, nunca estado de execução:
+#
+#   pausar   cria o `pausar_file` do config
+#   retomar  remove o `pausar_file`
+#   liberar  acrescenta um token v2 em `liberacoes_file` (peça K8b-2)
+#
+# `liberar` entrou porque liberação era editada à mão, e foi assim que o Comarka
+# acabou com o mesmo token duplicado dentro de `liberadas[]` e com 13 tokens
+# repetidos entre as duas listas. Ele acrescenta uma entrada e recusa o resto;
+# não converte o arquivo — migrar é operação com diff e `.bak`.
+#
 # Nenhum subcomando toca ticket, staging, worktree, branch ou lock, e nenhum
 # mata processo — parar o loop é desagendar + esperar o disparo corrente
 # (Ciclo de vida, na SKILL). Se `orq` puder alterar estado, alguém vai
@@ -24,6 +34,7 @@
 #   orq config           acusa placeholder e chave faltando em docs/fila/000-config.json
 #   orq pausar [motivo]  cria o pausar_file (a drenagem para ENTRE tickets)
 #   orq retomar          remove o pausar_file
+#   orq liberar <humano:token> [nota]   registra a liberação humana (v2)
 
 set -euo pipefail
 ORQ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -325,7 +336,7 @@ cmd_versao() {
   fi
 }
 
-# --- orq pausar / retomar (os ÚNICOS que escrevem) ----------------------------
+# --- orq pausar / retomar (dois dos três que escrevem; o terceiro é liberar) --
 # Kill switch em ARQUIVO (regra 12). NÃO mata processo: a drenagem lê o arquivo
 # ENTRE tickets e encerra em ocioso. Matar o processo garante ticket órfão.
 cmd_pausar() {
@@ -343,6 +354,16 @@ cmd_retomar() {
   fi
 }
 
+# --- orq liberar (peça K8b-2) -------------------------------------------------
+# Grava UMA entrada v2 em liberacoes_file. Toda a decisão (prefixo, padrão do
+# token, arquivo em v2, duplicata) mora em orquestrador/liberar-cli.ts, que é
+# puro e testado sem disco; aqui só resolvemos o caminho e repassamos o rc.
+cmd_liberar() {
+  [ -n "${1:-}" ] || die "orq liberar exige o token: orq liberar humano:<tipo>-<id> [nota]"
+  local arq="$MAIN_CHECKOUT/$(cfg '.liberacoes_file')"
+  ( cd "$ORQ_DIR/.." && npx tsx "$ORQ_DIR/orquestrador/liberar-cli.ts" "$arq" "$@" )
+}
+
 case "${1:-}" in
   ''|status)  cmd_status ;;
   fila)       cmd_fila ;;
@@ -357,6 +378,7 @@ case "${1:-}" in
   config)     : ;;   # despachado no topo, antes do lib.sh — veja o comentário lá
   pausar)     shift; cmd_pausar "$@" ;;
   retomar)    cmd_retomar ;;
+  liberar)    shift; cmd_liberar "$@" ;;
   -h|--help|ajuda) awk '/^# Uso:/,/^$/ { sub(/^# ?/, ""); print }' "$0" ;;
   *) die "subcomando desconhecido: $1 (veja: orq --help)" ;;
 esac

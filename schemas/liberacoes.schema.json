@@ -27,11 +27,15 @@
           },
           "liberado_em": {
             "type": "string",
-            "pattern": "^\\d{4}-\\d{2}-\\d{2}([T ]\\d{2}:\\d{2}(:\\d{2})?([+-]\\d{4}|Z)?)?$",
-            "description": "AAAA-MM-DD, com hora opcional. Na v1 do Comarka o campo se chamava 'em'; o rename é da migração K8b."
+            "pattern": "^(\\d{4}-\\d{2}-\\d{2}([T ]\\d{2}:\\d{2}(:\\d{2})?([+-]\\d{4}|Z)?)?|desconhecido)$",
+            "description": "AAAA-MM-DD, com hora opcional. Na v1 do Comarka o campo se chamava 'em'; o rename é da migração K8b-2. O literal 'desconhecido' é a saída da migração para token que estava como STRING SOLTA — os 5 do Actus e os 17 do Comarka que só existiam em tokens[] não têm data no disco, e a migração NÃO inventa uma. Ler 'desconhecido' é uma informação; ler a data em que a migração rodou seria uma mentira com cara de fato."
           },
-          "por": { "type": "string", "minLength": 1, "description": "Quem liberou. Liberação sem dono não é liberação: é um arquivo que alguém editou." },
-          "nota": { "type": "string", "description": "Opcional. Por que foi liberado — o que o humano conferiu antes de destravar o ticket." }
+          "por": { "type": "string", "minLength": 1, "description": "Quem liberou. Liberação sem dono não é liberação: é um arquivo que alguém editou. Também aceita 'desconhecido', pelo mesmo motivo do campo acima — e é `origem` que diz se o desconhecimento é de procedência ou de descuido." },
+          "nota": { "type": "string", "description": "Opcional. Por que foi liberado — o que o humano conferiu antes de destravar o ticket." },
+          "origem": {
+            "enum": ["v2", "v1:tokens", "v1:liberadas"],
+            "description": "De qual forma viva este registro veio (CONTRATO.md §6.1). 'v2' é o que `orq liberar` escreve. É este campo que impede um `liberado_em: desconhecido` de ser lido como registro incompleto por descuido: ele diz que a informação nunca existiu no disco. A migração PRESERVA a origem já registrada em vez de reinferi-la — sem isso, rodar `--migrar` duas vezes reescreveria 'v1:tokens' como 'v2' e apagaria a procedência."
+          }
         }
       }
     },

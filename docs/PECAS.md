@@ -290,6 +290,25 @@
   aviso, e esse caso já estava VERDE no vermelho-antes.
 
 
+- **K8b-2 · `orq liberar` e a migração de liberações.** `orq liberar
+  humano:<tipo>-<id> ["nota"]` — o QUARTO verbo que escreve — acrescenta um objeto v2, com
+  quatro recusas: sem prefixo, fora do padrão do schema, duplicado (contra as duas listas) e
+  arquivo fora da v2. Não converte o arquivo de passagem.
+  `scripts/orquestrador/migrar-liberacoes.ts` leva qualquer forma viva para v2 (`em` →
+  `liberado_em`, prefixo acrescentado, dedup por token, ordem original — e a ordem de leitura
+  das listas é a ordem das CHAVES no arquivo). `migrar-comum.ts` guarda as cinco regras de
+  toda migração do kit (`CONTRATO.md` §9.3).
+  *Evidência:* o PASSO 0 da etapa 5. Comarka: 61 entradas, 47 únicos, 13 nas duas listas e
+  uma duplicata exata dentro de `liberadas[]` — o arquivo é editado à mão por humano com
+  pressa, que é o tipo de arquivo que merece um verbo. Um defeito de idempotência caiu no
+  caminho: a segunda passada reinferia `origem` e apagava a procedência do `desconhecido`.
+  *Teste:* `test/orquestrador-liberar-migrar.test.ts`, 37 casos, **9 vermelhos antes**,
+  contra os três arquivos reais. Depois de migrado, todo token resolve por `liberacao_ok` e
+  nenhum grava mais AVISO.
+  *O que o CI faz diferente:* nada no motor; o `liberacoes.json` dele é v1 canônica, então
+  `orq liberar` o recusa até a migração rodar — e é isso que se quer.
+
+
 ## PENDENTES
 
 - **K6d · `scripts/kit/pureza.sh`.** O grep que TRANCA a pureza: em CÓDIGO (não em
@@ -303,13 +322,6 @@
   justamente o script que transforma "não achei" em "não há".
   *Teste:* pureza = 0 em código, com o caso NEGATIVO de que um `apps/web` reintroduzido em
   código faz o script sair 1.
-
-- **K8b-2 · `orq liberar` e a migração de liberações.** `orq liberar humano:<t> [nota]`
-  grava um objeto v2; `scripts/orquestrador/migrar-liberacoes.ts` leva qualquer forma viva
-  para v2, deduplicando por token e preservando a ordem original.
-  *Evidência:* o PASSO 0 da etapa 5 — Comarka com 61 entradas e 47 tokens únicos, uma
-  duplicata exata dentro de `liberadas[]`.
-  *Teste:* os três formatos reais de `test/fixtures/liberacoes/`.
 
 - **K8b-3 · pause file e `.gitignore`.** `.orq-pause` → `PAUSAR` preservando o motivo; o
   instalador IMPRIME a linha de `.gitignore` que falta e não edita o arquivo de repo
