@@ -1,0 +1,248 @@
+{
+  "$schema_versao": 2,
+  "descricao": "Config do Orquestrador Autônomo v2. Fonte única de: zona proibida, gates, branch alvo, retry/cooldown, identidade, modelos por papel, orçamento, kill switches, gate de ticket, planejador, sentinela, contexto. Lida pelos scripts via jq a cada drenagem e entre tickets. Placeholders <ASSIM> são decisões locais: preencha todos antes do primeiro run. Campos v1 mantidos com o mesmo nome.",
+  "branch_alvo": "staging-auto",
+  "branch_principal": "main",
+  "max_retries": 2,
+  "cooldown_minutes": 60,
+  "_cooldown": "Adiamento por limite (rate limit/quota/timeout/orçamento) grava runs/.cooldown-until. NÃO conta como retry; status volta a pendente.",
+  "migrations_dir": "<ex: supabase/migrations | db/migrations>",
+  "worktrees_dir": "../_worktrees",
+  "runs_dir": "docs/fila/runs",
+  "liberacoes_file": "docs/fila/liberacoes.json",
+  "decisoes_file": "docs/fila/decisoes-pendentes.md",
+  "pausar_file": "docs/fila/PAUSAR",
+  "mapa_json": "docs/roadmap/mapa.json",
+  "mapa_md": "docs/roadmap/MAPA.md",
+  "repo_map": "docs/orquestrador/REPO-MAP.md",
+  "playbook": "docs/orquestrador/PLAYBOOK.md",
+  "_modo": "agendado = uma drenagem por disparo. continuo = drenagens em sequência no MESMO processo com sleep de intervalo_min, relendo config e kill switches a cada ciclo. dry_run = executor roda gates mas não mergeia; planejador só gera candidatos.",
+  "modo": "agendado",
+  "intervalo_min": 30,
+  "push_suprimido": false,
+  "loops": {
+    "_descricao": "Kill switches por loop. Nascem desligados exceto executor. Ligar na ordem: executor → sentinela → planejador (dry_run) → planejador (auto).",
+    "executor": {
+      "ativo": true
+    },
+    "sentinela": {
+      "ativo": false
+    },
+    "planejador": {
+      "ativo": false,
+      "modo": "dry_run"
+    }
+  },
+  "_modelos": "Escada: script decide o que dá; classificador barato; executor/planejador médio; juiz forte. Modelo forte em papel que não seja juiz_alto, juiz_ticket ou retry_final é bug de config (pré-voo cat. 8). Nomes v1 (executor_model, avaliador_model, retry_final_model) mantidos como alias e devem bater com modelos.*. Use o identificador aceito pela versão instalada do Claude Code (alias curto ou id completo do modelo).",
+  "modelos": {
+    "classificador": "haiku",
+    "executor": "sonnet",
+    "planejador": "sonnet",
+    "juiz_baixo": "sonnet",
+    "juiz_alto": "opus",
+    "juiz_ticket": "opus",
+    "retry_final": "opus"
+  },
+  "executor_model": "sonnet",
+  "avaliador_model": "opus",
+  "retry_final_model": "opus",
+  "_economia": "diff_cap_linhas: acima reprova mecanicamente (refatiar) sem juiz. diff_cap_ticket: cap DECLARADO no gate de ticket (menor que o mecânico de propósito: o estimado sempre erra para baixo). claude_timeout_secs: estouro = adiado.",
+  "diff_cap_linhas": 2500,
+  "diff_cap_ticket": 600,
+  "claude_timeout_secs": 1800,
+  "claude_max_turns": 40,
+  "preflight_env_keys": [
+    "<ENV_OBRIGATORIA_1>",
+    "<ENV_OBRIGATORIA_2>"
+  ],
+  "executor": {
+    "auto_verificacao_max": 2,
+    "modo_arquiteto_para_alto": false,
+    "saida_compactada": true,
+    "narracao_proibida": true,
+    "trailer_commit": "Orq-Ticket",
+    "_trailer_commit": "Todo merge commit do loop na staging carrega o trailer 'Orq-Ticket: <id>'. Quarentena da sentinela e relatório leem o git, não o log."
+  },
+  "contexto": {
+    "_descricao": "Context pack montado por script. Truncamento por prioridade: ticket > arquivos da allowlist > assinaturas via repo map > ADR > PLAYBOOK #executor.",
+    "cap_tokens_executor": 15000,
+    "cap_tokens_planejador": 12000,
+    "cap_tokens_repo_map": 4000,
+    "cap_linhas_arquivo": 400,
+    "playbook_max_linhas": 30
+  },
+  "juiz": {
+    "_descricao": "Nível por classe de risco. baixo: gates verdes E diff ≤ diff_max_baixo E nenhum path em paths_alto_risco. Qualquer outro caso: alto.",
+    "diff_max_baixo": 300,
+    "max_tokens_veredicto": 300,
+    "paths_alto_risco": [
+      "<ex: supabase/**>",
+      "<ex: src/auth/**>",
+      "<ex: src/billing/**>"
+    ],
+    "palavras_alto_risco": [
+      "auth",
+      "login",
+      "senha",
+      "token",
+      "pagamento",
+      "billing",
+      "migration",
+      "schema",
+      "rls",
+      "permiss"
+    ]
+  },
+  "gate_ticket": {
+    "_descricao": "7 passos para todo candidato de máquina. Tickets humanos: passos 1 a 6 no pré-voo cat. 8; juiz opcional.",
+    "juiz_para_humano": false,
+    "max_paths_allowlist": 8,
+    "timeout_cmd_secs": 120,
+    "cmd_prefixos_permitidos": [
+      "npx vitest run",
+      "npx jest",
+      "npx tsc",
+      "npm run test",
+      "npm run typecheck",
+      "npm run lint",
+      "npm run build",
+      "node scripts/",
+      "test -f",
+      "test -s",
+      "grep -",
+      "jq ",
+      "curl -s http://localhost",
+      "curl -sf http://localhost"
+    ],
+    "descartados_ttl_dias": 7,
+    "lotes_descartados_para_bloquear_frente": 2,
+    "filtros_permitidos": [
+      "grep",
+      "wc",
+      "head",
+      "tail",
+      "jq",
+      "cut",
+      "sort",
+      "uniq",
+      "tr"
+    ],
+    "proibido_no_cmd": [
+      "$(",
+      "`",
+      "sh -c",
+      "bash",
+      "eval",
+      "sudo",
+      "rm ",
+      "curl http",
+      "curl https",
+      "wget",
+      "> ",
+      ">>"
+    ],
+    "_proibido_no_cmd": "Checar por token de palavra e por regex, não por substring ('rm ' não pode casar 'form '). curl: qualquer host que não seja localhost/127.0.0.1 é proibido, em qualquer segmento. Único redirecionamento permitido: 2>&1. Path de paths_harness em qualquer segmento = invalido.",
+    "servidor_local_cmd": "<ex: npm run dev -- --port 3000 | vazio se não houver critério HTTP; sem ele, remova os prefixos curl>"
+  },
+  "planejador": {
+    "limiar_fila": 3,
+    "lote": 3,
+    "max_frentes_por_drenagem": 1,
+    "reserva_orcamento_pct": 20
+  },
+  "sentinela": {
+    "_descricao": "Todas as fontes read-only. Começar com suite_completa e smoke; runtime_errors e advisors só com credencial read-only no ambiente do agendador.",
+    "fontes": [
+      "suite_completa",
+      "smoke"
+    ],
+    "smoke_cmd": "<ex: curl -sf http://localhost:3000/api/health>",
+    "ocorrencias_min": 3,
+    "janela_min": 1440,
+    "quarentena_horas": 24,
+    "max_candidatos_drenagem": 3,
+    "max_candidatos_dia": 6,
+    "rodar_sem_merge": false,
+    "log_grep_padroes": []
+  },
+  "orcamento": {
+    "_descricao": "Gate, não relatório. Nasce alto por 2 semanas de medição, depois fixa com 30% de folga sobre a mediana. Estourou = adiado + notificação.",
+    "usd_dia": 50,
+    "tokens_dia": 5000000,
+    "usd_ticket": 5,
+    "custo_file": "docs/fila/runs/custo.json",
+    "campos_usage": {
+      "custo_usd": "<nome do campo de custo no JSON de claude -p --output-format json, confirmado no pré-voo cat. 8>",
+      "tokens_in": "<campo>",
+      "tokens_out": "<campo>",
+      "tokens_cache": "<campo>"
+    }
+  },
+  "relatorio": {
+    "dia_semana": "sex",
+    "canal": "<notificacao_nativa | webhook_url | email>",
+    "fallback_arquivo": true
+  },
+  "_identidade": "Antes de qualquer gasto: origin DEVE conter repo_origin_deve_conter; identificador do banco/ambiente do .env DEVE bater com ambiente_id. Divergência = aborta o run inteiro.",
+  "repo_origin_deve_conter": "<org/repo>",
+  "ambiente_id": "<ref do banco/projeto, ou vazio se não aplicável>",
+  "paths_harness": [
+    "scripts/orquestrador/**",
+    "docs/orquestrador/**",
+    "docs/fila/000-config.json",
+    ".claude/**"
+  ],
+  "zona_proibida": {
+    "descricao": "Tudo que o loop NUNCA escreve nem gera DDL. Revisado por humano (revisado_humano: true) antes do primeiro run.",
+    "revisado_humano": false,
+    "no_write_tables": [
+      "<tabela_compartilhada_1>"
+    ],
+    "no_write_prefixes": [
+      "<prefixo_proibido_>",
+      "vw_"
+    ],
+    "readonly_ok": [
+      "<tabelas que o loop pode SELECT mas nunca escrever>"
+    ],
+    "excecoes_os_owned": [
+      "<tabelas de nome parecido mas de propriedade deste repo>"
+    ]
+  },
+  "gates": [
+    {
+      "nome": "typecheck",
+      "cmd": "<ex: npx tsc --noEmit>",
+      "tipo": "baseline",
+      "baseline": 0,
+      "baseline_scope_regex": "<regex de arquivos com erros herdados tolerados, ou vazio>",
+      "descricao": "Falha só se surgir erro fora do escopo do baseline. Meça o baseline HOJE antes do 1º run."
+    },
+    {
+      "nome": "testes",
+      "cmd": "<ex: npx vitest run>",
+      "tipo": "exit_code",
+      "descricao": "Suite verde, incluindo o teste do próprio enforcement."
+    },
+    {
+      "nome": "build",
+      "cmd": "<ex: npm run build>",
+      "tipo": "exit_code",
+      "descricao": "Em muitos setups o build NÃO é typecheck real: confirme."
+    }
+  ],
+  "lint": {
+    "cmd": "<ex: npx eslint . --max-warnings=999999>",
+    "descricao": "Só regras já em erro. Warnings não são falha nem permissão."
+  },
+  "testes_quarentena": [],
+  "proibicoes_absolutas": [
+    "nunca push na branch principal",
+    "nunca aplicar DDL (só escrever arquivo de migration)",
+    "nunca escrever na zona proibida",
+    "nunca tocar credenciais/segredos",
+    "nunca gastar dinheiro",
+    "nunca escrever em paths_harness pela fila",
+    "git add sempre por pathspec explícito"
+  ]
+}

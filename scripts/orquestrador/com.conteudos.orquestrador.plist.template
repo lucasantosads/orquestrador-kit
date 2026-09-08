@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  TEMPLATE - nao e um plist utilizavel. Os placeholders __REPO_DIR__ e
+  __NODE_DIR__ sao resolvidos por scripts/orquestrador/instalar-launchd.sh,
+  que gera o plist final e o instala em ~/Library/LaunchAgents/.
+
+  O plist FINAL nunca e versionado (carrega caminhos desta maquina); so este
+  template entra no git. Caminho absoluto versionado = divida de portabilidade.
+
+  ADAPTADO do comarka-operacional (com.comarka.orquestrador.plist.template) a
+  partir da evidencia DESTE repo. As tres diferencas, com o porque de cada uma:
+
+  1. Label: com.conteudos.orquestrador. Um label por repo - dois repos com o
+     mesmo label sao o mesmo job para o launchd, e o segundo bootstrap derruba
+     o primeiro.
+
+  2. StartInterval 1800. NAO e copia cega do comarka: e o mesmo numero porque a
+     medicao deu a mesma ordem de grandeza. Medido em docs/fila/runs/*/meta.json
+     (claude_dur_secs somado por ticket) em 06/set/2026:
+       conteudos-infinitos: 58 tickets, mediana 294s, p90 2509s
+       comarka-operacional: 304 tickets, mediana 499s, p90 2838s
+     Metade dos tickets fecha em ~5min e ~10% passa de 42min. Com 1800s, o
+     disparo tipico pega a fila livre e o disparo que cai em cima de um run vivo
+     encerra em 0 pelo lock do local-loop.sh - nao ha atropelo. Intervalo menor
+     so multiplicaria disparos que nao fazem nada; maior deixaria a fila parada
+     de proposito. Trocar este numero pede refazer a medicao acima.
+
+  3. StandardOutPath/StandardErrorPath em docs/fila/runs/launchd-agent.log, e
+     NAO no launchd.log que o launchd-run.sh escreve. Sao dois logs de propósito:
+     launchd-run.sh so redireciona para launchd.log DEPOIS de checar node e
+     claude (linhas 30-46); se qualquer um dos dois faltar, o `exit 127` sai
+     por stderr do processo, ou seja, por ESTE arquivo. Apontar os dois para o
+     mesmo caminho embaralharia as duas fontes e o modo de falha mais comum
+     (PATH sem node/claude) e justamente o que so aparece aqui.
+     docs/fila/runs/ e ignorada pelo git neste repo (runs/.gitignore: `*`),
+     entao o log nao suja a arvore nem mata o preflight do run seguinte.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.conteudos.orquestrador</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__REPO_DIR__/scripts/orquestrador/launchd-run.sh</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>NODE_OPTIONS</key>
+    <string>--max-old-space-size=4096</string>
+    <key>NODE_DIR</key>
+    <string>__NODE_DIR__</string>
+  </dict>
+
+  <key>StartInterval</key>
+  <integer>1800</integer>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>__REPO_DIR__/docs/fila/runs/launchd-agent.log</string>
+  <key>StandardErrorPath</key>
+  <string>__REPO_DIR__/docs/fila/runs/launchd-agent.log</string>
+</dict>
+</plist>

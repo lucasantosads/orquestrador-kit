@@ -1,0 +1,39 @@
+{
+  "$schema_versao": 1,
+  "projeto": "<nome>",
+  "blocos": [
+    {
+      "id": "B1",
+      "nome": "<nome do bloco>",
+      "faixa_ids": [100, 199],
+      "por_que": "<uma frase do PRD>",
+      "dod": ["<verificação humana 1>", "<verificação humana 2>"],
+      "gates_humanos": ["humano:<token>"],
+      "status": "em_andamento",
+      "frentes": [
+        {
+          "id": "B1-F1",
+          "entrega": "<o que entrega, verificável>",
+          "allowlist": ["src/<mod>/**", "test/<mod>/**"],
+          "cria_novo": true,
+          "deps": [],
+          "adrs": ["0001"],
+          "status": "pronta",
+          "tickets_estimados": 4,
+          "lotes_descartados_consecutivos": 0
+        },
+        {
+          "id": "B1-F2",
+          "entrega": "<…>",
+          "allowlist": ["src/<mod2>/**"],
+          "cria_novo": false,
+          "deps": ["B1-F1"],
+          "adrs": [],
+          "status": "rascunho",
+          "tickets_estimados": 3,
+          "lotes_descartados_consecutivos": 0
+        }
+      ]
+    }
+  ]
+}

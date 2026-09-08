@@ -1,0 +1,53 @@
+# ===== Secrets / ambiente =====
+.env
+.env.*
+!.env.example
+!.env.local.example
+# garantia explícita (defesa em profundidade)
+.env.local
+.env.*.local
+
+# ===== Node =====
+# As DUAS formas, de propósito. `node_modules/` (com barra) só casa DIRETÓRIO;
+# nas worktrees de harness o node_modules é um SYMLINK para o do checkout
+# principal (o executor o linka em setup_worktree), e symlink não casava a
+# regra — aparecia como `?? node_modules` no porcelain, que é justamente o que
+# o preflight de árvore limpa checa.
+node_modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ===== Supabase =====
+.branches
+.temp
+supabase/.temp/
+
+# ===== Cache de hooks/skills (nunca versionar) =====
+**/.impeccable/
+**/.cache/
+**/*.hook.cache.json
+# Skill de tooling de terceiro (ui-ux-pro-max-cli `uipro init`) — local, regenerável, não versionar
+.claude/skills/
+
+# ===== OS / editor =====
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.metadata_never_index
+
+# orquestrador — sentinela de PAUSA da fila (docs/fila/.orq-pause). Estado local
+# da máquina, criado por orq-pause.sh e pelo painel; nunca versionar. Sem esta
+# linha, pausar a fila deixa arquivo untracked num repo com loop rodando — working
+# tree que se move sozinho já produziu commit sujo antes.
+docs/fila/.orq-pause
+
+# orquestrador — plist FINAL gerado por scripts/orquestrador/instalar-launchd.sh
+# a partir do .plist.template. Carrega caminhos absolutos DESTA maquina (repo e
+# node): versionar isso é a dívida de portabilidade que o template existe para
+# evitar. Só o template entra no git.
+scripts/orquestrador/com.conteudos.orquestrador.plist

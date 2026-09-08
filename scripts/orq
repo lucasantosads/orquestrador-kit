@@ -1,0 +1,289 @@
+#!/usr/bin/env bash
+# orq — comando de consulta do Orquestrador Autônomo (contrato §3 de
+# skill/references/observabilidade.md).
+#
+# READ-ONLY POR CONSTRUÇÃO. Os ÚNICOS subcomandos que escrevem são `pausar` e
+# `retomar`, e escrevem exatamente um arquivo: o `pausar_file` do config.
+# Nenhum subcomando toca ticket, staging, worktree, branch ou lock, e nenhum
+# mata processo — parar o loop é desagendar + esperar o disparo corrente
+# (Ciclo de vida, na SKILL). Se `orq` puder alterar estado, alguém vai
+# alterá-lo no meio de um run.
+#
+# Uso:
+#   orq                  snapshot (runs/STATUS.md)
+#   orq fila             placar por status, lido do JSON de cada ticket
+#   orq eventos [n]      últimas n linhas de runs/events.log (default 20)
+#   orq erro             último ticket reprovado: id, motivo e o recorte do gate
+#   orq ticket <id>      última tentativa, evidência e commits com o trailer
+#   orq custo [dia]      custo.json agregado por papel e por ticket, vs teto
+#   orq decisoes         decisões pendentes para humano
+#   orq mapa lint        lint MAPA.md × mapa.json
+#   orq mapa status      placar por frente
+#   orq validar [ids]    gate de ticket nos tickets dados (ou --pendentes)
+#   orq pausar [motivo]  cria o pausar_file (a drenagem para ENTRE tickets)
+#   orq retomar          remove o pausar_file
+
+set -euo pipefail
+ORQ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=orquestrador/lib.sh
+source "$ORQ_DIR/orquestrador/lib.sh"
+
+PAUSAR_FILE="$MAIN_CHECKOUT/$(cfg '.pausar_file')"
+CUSTO_FILE="$MAIN_CHECKOUT/$(cfg '.orcamento.custo_file')"
+DECISOES_FILE="$MAIN_CHECKOUT/$(cfg '.decisoes_file')"
+
+aviso() { printf '%s\n' "$*" >&2; }
+
+# --- orq (sem argumento) ------------------------------------------------------
+cmd_status() {
+  if [ -s "$STATUS_FILE" ]; then
+    # STATUS CONGELADO (peça 11): `executando` com DESDE além do
+    # `claude_timeout_secs` é processo que não existe mais. Mostrar `executando`
+    # aí é o snapshot mentindo com cara de verdade — foi o que deixou 22 h de
+    # disparos passarem sem ninguém desconfiar, em 06/09.
+    #
+    # A troca é NA LEITURA: o `orq` é read-only por construção, e quem reescreve
+    # o STATUS.md é o loop (ou o launchd-run, ao recuperar). Aqui só se lê melhor.
+    local congelado
+    congelado="$(status_congelado_secs)"
+    if [ -n "$congelado" ]; then
+      awk -v m="MORTO há $(dur_humana "$congelado") (DESDE passou do claude_timeout_secs — o processo não está mais vivo)" \
+        '/^ESTADO/ { print "ESTADO   " m; next } { print }' "$STATUS_FILE"
+    else
+      cat "$STATUS_FILE"
+    fi
+  else
+    aviso "sem snapshot ainda ($STATUS_FILE) — nenhuma drenagem rodou neste checkout."
+    cmd_fila
+  fi
+}
+
+# --- orq fila -----------------------------------------------------------------
+cmd_fila() {
+  printf 'FILA  %s\n\n' "$(placar_fila)"
+  local f
+  for f in $(ticket_files); do
+    ticket_json "$f"
+  done | jq -r '"  \(.status // "?")\t\(.id // "?")\t\(.frente // "—")\t\(.slug // "")"' \
+    | sort | awk -F'\t' '{ printf "  %-18s %-5s %-8s %s\n", $1, $2, $3, $4 }'
+}
+
+# --- orq eventos [n] ----------------------------------------------------------
+cmd_eventos() {
+  local n="${1:-20}"
+  case "$n" in ''|*[!0-9]*) die "orq eventos: n precisa ser número (recebi '$n')" ;; esac
+  [ -s "$EVENTS_FILE" ] || { aviso "trilha vazia ($EVENTS_FILE)"; return 0; }
+  tail -n "$n" "$EVENTS_FILE"
+}
+
+# --- orq erro -----------------------------------------------------------------
+# O de maior valor do contrato: já sai pronto para colar num chat. Recorte do
+# gate que falhou, nunca o log inteiro — garimpo em log truncado produz
+# diagnóstico errado.
+cmd_erro() {
+  [ -s "$EVENTS_FILE" ] || { aviso "trilha vazia — nada reprovado registrado"; return 0; }
+  local linha id motivo dir
+  linha="$(grep -E ' (REPROVADO|BLOQUEADO) ' "$EVENTS_FILE" | tail -1 || true)"
+  [ -n "$linha" ] || { echo "nenhum REPROVADO/BLOQUEADO na trilha"; return 0; }
+  id="$(printf '%s' "$linha" | awk '{print $2}')"
+  motivo="$(printf '%s' "$linha" | tr ' ' '\n' | grep '^motivo=' | head -1 | cut -d= -f2- || true)"
+  printf 'TICKET   %s\n' "$id"
+  printf 'MOTIVO   %s\n' "${motivo:-?}"
+  printf 'EVENTO   %s\n' "$linha"
+  dir="$(ultimo_attempt_dir "$id")"
+  [ -n "$dir" ] || { aviso "sem evidência em $RUNS_BASE/$id"; return 0; }
+  printf 'EVIDÊNCIA %s\n\n' "$dir"
+  local alvo rotulo
+  # Ordem = ordem do pipeline: quem reprovou primeiro é quem explica.
+  if [ -s "$dir/enforcement.json" ] && [ "$(jq -r '.ok' "$dir/enforcement.json" 2>/dev/null)" = false ]; then
+    alvo="$dir/enforcement.json"; rotulo=enforcement
+  elif [ -s "$dir/gates.txt" ] && grep -q '^FALHA' "$dir/gates.txt"; then
+    alvo="$dir/gates.txt"; rotulo=gates
+  elif [ -s "$dir/criterios.txt" ]; then
+    alvo="$dir/criterios.txt"; rotulo=critérios
+  else
+    alvo="$dir/claude.txt"; rotulo=agente
+  fi
+  [ -s "$alvo" ] || { aviso "sem recorte: $alvo vazio ou ausente"; return 0; }
+  printf -- '--- %s (últimas 30 linhas de %s) ---\n' "$rotulo" "$(basename "$alvo")"
+  tail -n 30 "$alvo"
+}
+
+# ultimo_attempt_dir <id> -> caminho do attempt mais recente, ou vazio.
+ultimo_attempt_dir() {
+  ls -d "$RUNS_BASE/$1"/attempt-* 2>/dev/null | sort -t- -k2 -n | tail -1 || true
+}
+
+# --- orq ticket <id> ----------------------------------------------------------
+cmd_ticket() {
+  local id="${1:-}" f meta dir
+  [ -n "$id" ] || die "uso: orq ticket <id>"
+  f="$(ticket_file_by_id "$id")"
+  if [ -n "$f" ]; then
+    ticket_json "$f" | jq -r '"TICKET   \(.id) \(.slug // "")
+STATUS   \(.status // "?")
+FRENTE   \(.frente // "—") · bloco \(.bloco // "—") · origem \(.origem // "—")
+NOTA     \(.notas_status // "—")"'
+  else
+    aviso "ticket $id não está na fila (pode ter sido removido); segue pela evidência."
+  fi
+  meta="$RUNS_BASE/$id/meta.json"
+  if [ -s "$meta" ]; then
+    printf 'TENTATIVAS %s\n' "$(jq 'length' "$meta")"
+    printf 'ÚLTIMA   '
+    # 1-BASED na leitura, com o diretório 0-based ao lado. A trilha e o STATUS
+    # contam a primeira tentativa como 1; `meta.json` e `runs/<id>/attempt-N/`
+    # continuam 0-based (renomear diretório invalidaria evidência já gravada).
+    # O mapeamento aparece AQUI, que é onde um humano lê os dois juntos.
+    jq -r '.[-1] | "tentativa=\((.attempt // 0) + 1) (attempt-\(.attempt // 0)/) modelo=\(.modelo // .model // "?") resultado=\(.resultado) diff=\(.diffLines // .diff_lines // 0) dur=\(.duracaoSecs // .claude_dur_secs // 0)s ts=\(.ts)"' "$meta"
+  else
+    aviso "sem meta.json — nenhuma tentativa registrada para $id"
+  fi
+  dir="$(ultimo_attempt_dir "$id")"
+  printf 'EVIDÊNCIA %s\n' "${dir:-<nenhuma>}"
+  cmd_ticket_git "$id"
+}
+
+# O que o GIT sabe sobre este ticket (regra 5: git é o ground truth; log não).
+# O trailer é a marca que o merge da drenagem e o commit do agente carregam, e
+# é por ele que a quarentena da sentinela e o relatório acham os arquivos que o
+# ticket tocou. `--all` de propósito: a branch frente/<id> é apagada no merge,
+# mas o merge commit fica na alvo — e antes do merge só existe a branch.
+cmd_ticket_git() {
+  local id="$1" trailer linhas
+  trailer="$(cfg '.executor.trailer_commit')"
+  linhas="$(git -C "$ROOT" log --oneline --all --extended-regexp \
+    --grep="^$trailer: $id\$" 2>/dev/null || true)"
+  if [ -z "$linhas" ]; then
+    aviso "nenhum commit com '$trailer: $id' — o ticket ainda não produziu commit (ou o agente não pôs o trailer)"
+    return 0
+  fi
+  printf 'COMMITS  (%s: %s)\n' "$trailer" "$id"
+  printf '%s\n' "$linhas" | sed 's/^/  /'
+}
+
+# --- orq custo [dia] ----------------------------------------------------------
+cmd_custo() {
+  local dia="${1:-$(date '+%Y-%m-%d')}"
+  local teto_usd teto_tok
+  teto_usd="$(cfg '.orcamento.usd_dia')"; teto_tok="$(cfg '.orcamento.tokens_dia')"
+  if [ ! -s "$CUSTO_FILE" ]; then
+    aviso "sem contabilidade ainda ($CUSTO_FILE) — nenhuma chamada registrada."
+    printf 'DIA      %s\nTETO     US$ %s · %s tokens\n' "$dia" "$teto_usd" "$teto_tok"
+    # A métrica sai da TRILHA, não do ledger: sem custo.json ela ainda vale, e
+    # esconder o placar por falta de contabilidade seria trocar uma medição por
+    # nenhuma (mesma lógica do fail-open do orçamento).
+    aprovacao_de_primeira "$dia"
+    return 0
+  fi
+  jq -r --arg d "$dia" --argjson tu "$teto_usd" --argjson tt "$teto_tok" '
+    (.dias[$d] // []) as $r
+    | ($r | map(.custo_usd // 0) | add // 0) as $usd
+    | ($r | map((.tokens_in // 0) + (.tokens_out // 0)) | add // 0) as $tok
+    | "DIA      \($d)",
+      "CHAMADAS \($r | length)",
+      "CUSTO    US$ \($usd * 100 | round / 100) / \($tu)  ·  \($tok) / \($tt) tokens",
+      "ESTOUROU \(if $usd >= $tu or $tok >= $tt then "SIM — a drenagem encerra em ocioso, MOTIVO orcamento" else "não" end)",
+      "",
+      "POR PAPEL",
+      ($r | group_by(.papel)[]? | "  \(.[0].papel // "?")\t\(length) chamada(s)\tUS$ \(map(.custo_usd // 0) | add * 100 | round / 100)\t\(map((.tokens_in // 0) + (.tokens_out // 0)) | add) tok\tcache \(map(.tokens_cache // 0) | add)"),
+      "",
+      "POR TICKET",
+      ($r | group_by(.ticket)[]? | "  \(.[0].ticket // "?")\t\(length) chamada(s)\tUS$ \(map(.custo_usd // 0) | add * 100 | round / 100)\t\(map((.tokens_in // 0) + (.tokens_out // 0)) | add) tok")
+  ' "$CUSTO_FILE" | awk -F'\t' '{ if (NF>1) { printf "%-10s %-14s %-10s %-14s %s\n", $1, $2, $3, $4, $5 } else print }'
+  aprovacao_de_primeira "$dia"
+}
+
+# APROVAÇÃO DE PRIMEIRA — a 2ª das três métricas que governam a semana
+# (custo-e-contexto §11). Sai da TRILHA, não do custo.json: a fonte da métrica é
+# `APROVADO com attempt=1`, e `attempt` na trilha é 1-based desde a peça 5 — foi
+# para esta conta existir sem ambiguidade que os dois formatos foram unificados.
+# Lê do events.log filtrado pelo DIA, para casar com o recorte do `orq custo`.
+aprovacao_de_primeira() {
+  local dia="$1" total primeira
+  [ -s "$EVENTS_FILE" ] || { printf '\nDE PRIMEIRA  —  (trilha vazia)\n'; return 0; }
+  total="$(grep -c "^$dia.* APROVADO " "$EVENTS_FILE" 2>/dev/null || true)"
+  primeira="$(grep "^$dia.* APROVADO " "$EVENTS_FILE" 2>/dev/null | grep -c 'attempt=1\( \|$\)' || true)"
+  total="${total:-0}"; primeira="${primeira:-0}"
+  if [ "$total" -eq 0 ]; then
+    printf '\nDE PRIMEIRA  —  (nenhum APROVADO em %s)\n' "$dia"
+    return 0
+  fi
+  printf '\nDE PRIMEIRA  %s/%s (%s%%) — APROVADO com attempt=1, meta >= 70%%\n' \
+    "$primeira" "$total" "$(( primeira * 100 / total ))"
+}
+
+# --- orq decisoes -------------------------------------------------------------
+cmd_decisoes() {
+  [ -s "$DECISOES_FILE" ] || { aviso "sem decisões pendentes ($DECISOES_FILE)"; return 0; }
+  cat "$DECISOES_FILE"
+}
+
+# --- orq mapa lint|status -----------------------------------------------------
+cmd_mapa() {
+  case "${1:-}" in
+    lint)
+      ( cd "$MAIN_CHECKOUT" && python3 scripts/roadmap/lint-mapa.py )
+      ;;
+    status)
+      local f
+      printf 'FRENTES (a partir do campo frente dos tickets)\n\n'
+      for f in $(ticket_files); do ticket_json "$f"; done \
+        | jq -r '"\(.frente // "sem-frente")\t\(.status // "?")"' \
+        | sort | awk -F'\t' '
+            { n[$1"\t"$2]++; tot[$1]++ }
+            END {
+              for (k in n) { split(k, p, "\t"); linha[p[1]] = linha[p[1]] sprintf("%d %s · ", n[k], p[2]) }
+              for (fr in linha) printf "  %-10s %-6s %s\n", fr, "(" tot[fr] ")", substr(linha[fr], 1, length(linha[fr]) - 3)
+            }' | sort
+      ;;
+    *) die "uso: orq mapa lint | orq mapa status" ;;
+  esac
+}
+
+# --- orq validar [ids | --pendentes] ------------------------------------------
+# Gate de ticket (peça 1). READ-ONLY como todo o resto do `orq`: o gate só LÊ os
+# .md da fila e o config. Repassa o rc do gate — 1 com violação, 0 sem —, porque
+# é isso que um gate serve para fazer; `--relatorio` sai 0 sempre e é o modo que
+# a migração dos outros repos usa para ver o tamanho do estrago antes de agir.
+cmd_validar() {
+  # cd na RAIZ DO PRÓPRIO SCRIPT, não no MAIN_CHECKOUT: o `npx` precisa achar o
+  # node_modules, e o checkout pode ser um fixture de teste sem node_modules
+  # nenhum — ali o `npx` tentaria BAIXAR o tsx. O gate não lê nada por caminho
+  # relativo: o .ts e o --fila vão absolutos.
+  ( cd "$ORQ_DIR/.." && npx tsx "$ORQ_DIR/orquestrador/gate-ticket.ts" --fila "$FILA_DIR" "$@" )
+}
+
+# --- orq pausar / retomar (os ÚNICOS que escrevem) ----------------------------
+# Kill switch em ARQUIVO (regra 12). NÃO mata processo: a drenagem lê o arquivo
+# ENTRE tickets e encerra em ocioso. Matar o processo garante ticket órfão.
+cmd_pausar() {
+  printf '%s | %s\n' "$(date '+%Y-%m-%d %H:%M')" "${1:-pausa manual}" > "$PAUSAR_FILE"
+  printf 'PAUSADO: %s\n' "$(cat "$PAUSAR_FILE")"
+  echo "não interrompe o ticket em curso: a drenagem para ENTRE tickets."
+}
+
+cmd_retomar() {
+  if [ -f "$PAUSAR_FILE" ]; then
+    rm -f "$PAUSAR_FILE"
+    echo "RETOMADO (pausar_file removido)"
+  else
+    echo "já estava ativo (nenhum pausar_file)"
+  fi
+}
+
+case "${1:-}" in
+  ''|status)  cmd_status ;;
+  fila)       cmd_fila ;;
+  eventos)    shift; cmd_eventos "$@" ;;
+  erro)       cmd_erro ;;
+  ticket)     shift; cmd_ticket "$@" ;;
+  custo)      shift; cmd_custo "$@" ;;
+  decisoes)   cmd_decisoes ;;
+  mapa)       shift; cmd_mapa "$@" ;;
+  validar)    shift; cmd_validar "$@" ;;
+  pausar)     shift; cmd_pausar "$@" ;;
+  retomar)    cmd_retomar ;;
+  -h|--help|ajuda) awk '/^# Uso:/,/^$/ { sub(/^# ?/, ""); print }' "$0" ;;
+  *) die "subcomando desconhecido: $1 (veja: orq --help)" ;;
+esac
