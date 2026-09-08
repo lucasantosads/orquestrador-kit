@@ -144,8 +144,17 @@ export interface SinalTentativa {
 
 const PADRAO_CAUSA: [RegExp, CausaInfra][] = [
   [/ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|EPIPE|socket hang up|network error|connection (reset|refused|closed)|fetch failed|went to sleep/i, 'conexao'],
-  [/session expired|sess[aã]o expirada|invalid session|session not found|token expired|reauthenticate|please (log ?in|sign ?in) again/i, 'sessao'],
-  [/rate[ _-]?limit|too many requests|\(429\)|overloaded/i, 'rate_limit'],
+  // K11a-3 · os padrões de AUTENTICAÇÃO do actus-saas (`SINAIS_AUTENTICACAO`,
+  // executor.mjs:189-196), copiados do texto REAL do incidente de 13/08/2026 —
+  // não de uma paráfrase. Eles são `sessao` porque é isso que são: a FERRAMENTA
+  // indisponível, nunca reprovação do trabalho. Ficar de fora custava um retry
+  // por tentativa até o ticket bloquear, sem ninguém ter julgado nada.
+  [/session expired|sess[aã]o expirada|invalid session|session not found|token expired|reauthenticate|please (log ?in|sign ?in) again|failed\s+to\s+authenticate|authentication_error|not\s+authenticated|please\s+run\s+\/login|invalid\s+api\s+key/i, 'sessao'],
+  // `service unavailable` e `503` vêm da mesma lista do Actus (executor.mjs:211-221),
+  // que trata limite e INDISPONIBILIDADE como a mesma família. O `503` entra com
+  // borda de PALAVRA, e não por substring como lá: `15039 tokens` numa saída
+  // qualquer viraria adiamento.
+  [/rate[ _-]?limit|too many requests|\(429\)|overloaded|service unavailable|\b503\b/i, 'rate_limit'],
   [/quota|usage limit|usage_cap_reached|credit balance/i, 'quota'],
 ]
 

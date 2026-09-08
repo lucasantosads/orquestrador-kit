@@ -453,6 +453,31 @@
   vendorizado, que é o primeiro passo da adoção.
 
 
+- **K11a-3 · adiamento: os padrões do Actus em `decisao.ts`.** `PADRAO_CAUSA` ganhou os
+  seis sinais de AUTENTICAÇÃO do `SINAIS_AUTENTICACAO` do Actus (`failed to
+  authenticate`, `authentication_error`, `not authenticated`, `please run /login`,
+  `invalid api key` — `oauth session expired` já casava) como causa `sessao`, e
+  `service unavailable` / `503` na família `rate_limit`. O `503` entra com borda de
+  PALAVRA, e não por substring como no Actus: `15039 tokens` numa saída qualquer
+  viraria adiamento.
+  *Evidência:* `~/Projetos/actus-saas/scripts/orquestrador/executor.mjs:189-228`, e o
+  texto REAL do incidente de 13/08/2026 copiado dos testes de lá, não parafraseado.
+  *Teste:* `test/orquestrador-adiamento-actus.test.ts`, 13 casos, **5 vermelhos antes**.
+  *O que o CI faz diferente:* nada nos casos que já cobria — `orquestrador-decisao`,
+  `orquestrador-trilha` e `orquestrador-envelope` seguem verdes sem edição (84 casos), e
+  `test-lib-config.sh` também. Nos casos NOVOS o motor passa a ADIAR onde reprovava, e é
+  intencional: adiado não consome retry, e uma sessão caída não é reprovação do trabalho.
+  *Duas divergências DELIBERADAS em relação ao Actus, escritas no teste:*
+  (1) o GATE DUPLO fica — texto só conta com `rc != 0`. O Actus adia com `code 0`; um
+  ticket que MENCIONE "rate limit" ou "invalid api key" no código que escreveu sai com
+  rc 0, e adiar por isso é a fila parando por causa do próprio trabalho. O incidente que
+  pagou a lição no Actus saiu com `code 1` (`executor.test.mjs:177`), então nada se perde.
+  (2) o "stdout vazio COM stderr cheio" do Actus não é exprimível aqui: o `claude_run`
+  do kit funde stdout e stderr num arquivo só, então a regra vale para a saída COMBINADA.
+  Separar os dois fluxos muda a evidência de `attempt-N/` (CONTRATO §5.3) e é peça
+  própria — o que cobre esse buraco hoje é o `probe_modelos`, que o Actus não tem.
+
+
 ## PENDENTES
 
 - **K11a-4 · o resto do enforcement do Actus (E, F e a exceção de teste-SQL).** A K11a-1
