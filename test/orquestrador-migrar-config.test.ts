@@ -20,7 +20,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { propor, ler as lerCaminho, migrarArquivo, NOME_PROPOSTO } from '../scripts/orquestrador/migrar-config.js';
 import { NOVAS, PROPRIAS_DE_REPO, RENOMES } from '../scripts/orquestrador/config-tabela.js';
-import { CHAVES_OBRIGATORIAS } from '../scripts/orquestrador/config-chaves.js';
+import { CHAVES_CONFIG, CHAVES_OBRIGATORIAS } from '../scripts/orquestrador/config-chaves.js';
 import { bashNoFixture, criarFixture, escrever, ler as lerArquivo, REPO_ROOT } from './fixtures/orq-harness.js';
 
 const CONFIG_CI = join(REPO_ROOT, '_referencia-ci', '000-config.ci.json');
@@ -50,17 +50,39 @@ function lerJson(p: string): unknown {
   return JSON.parse(readFileSync(p, 'utf8'));
 }
 
+/**
+ * `antes` sobreviveu em `depois`: mesmo valor, ou o MESMO objeto com chaves
+ * acrescentadas. Nada some, nada muda; o que é novo pode existir.
+ */
+function sobreviveu(antes: unknown, depois: unknown, onde: string): void {
+  if (antes && typeof antes === 'object' && !Array.isArray(antes)) {
+    expect(depois, `sumiu o objeto '${onde}'`).toBeTruthy();
+    for (const [k, v] of Object.entries(antes as Record<string, unknown>)) {
+      sobreviveu(v, (depois as Record<string, unknown>)[k], `${onde}.${k}`);
+    }
+    return;
+  }
+  expect(depois, `mudou o valor de '${onde}'`).toEqual(antes);
+}
+
 // ─── a tabela em si ─────────────────────────────────────────────────────────
 describe('config-tabela: a tabela é explícita e coerente com o motor', () => {
+  // K11a-1: a lista passou de CHAVES_OBRIGATORIAS para CHAVES_CONFIG. O que o
+  // caso afirma — e a mensagem sempre disse — é "o motor LÊ esta chave"; até
+  // aqui todo destino de renome era obrigatório, e obrigatoriedade virou, por
+  // acidente, a definição. `zona_proibida.colunas_congeladas` e
+  // `migrations.faixa` são lidas e OPCIONais por desenho (ausentes = regra
+  // desligada), e cobrar obrigatoriedade delas obrigaria todo repo a declarar
+  // uma fronteira que só o Actus tem.
   it('toda chave `para` de um renome é lida pelo motor (config-chaves.ts)', () => {
-    const lidas = new Set(CHAVES_OBRIGATORIAS.map((c) => c.chave));
+    const lidas = new Set(CHAVES_CONFIG.map((c) => c.chave));
     for (const r of RENOMES) {
       expect(lidas.has(r.para), `${r.para} não está em config-chaves.ts — renomear para chave que ninguém lê é mover dado para o vazio`).toBe(true);
     }
   });
 
   it('toda chave nova é lida pelo motor', () => {
-    const lidas = new Set(CHAVES_OBRIGATORIAS.map((c) => c.chave));
+    const lidas = new Set(CHAVES_CONFIG.map((c) => c.chave));
     for (const n of NOVAS) {
       expect(lidas.has(n.chave), `${n.chave} não está em config-chaves.ts`).toBe(true);
     }
@@ -142,12 +164,21 @@ describe('a migração não apaga nada', () => {
         expect(o, `sumiu a chave de raiz '${k}'`).toHaveProperty(k);
       }
       // E o valor, não só a chave: `$schema_versao` é a ÚNICA que muda.
+      //
+      // K11a-1: a comparação passou de igualdade para SUBCONJUNTO. O que a
+      // peça K8b-4 garante é que nada SOME e nada MUDA de valor; igualdade
+      // estrita afirmava um a mais — que nenhuma chave nova nasce DENTRO de um
+      // objeto existente. `zona_proibida.no_write_columns →
+      // zona_proibida.colunas_congeladas` é um renome de destino ANINHADO, e
+      // sob igualdade estrita ele apareceria como "mudou o valor de
+      // zona_proibida" — que é justamente o que a regra 1 permite (acrescentar)
+      // e o que ela proíbe (apagar) confundidos numa asserção só.
       for (const k of Object.keys(original)) {
         if (k === '$schema_versao') continue;
         // `gates` muda o `tipo` de um gate no Comarka — é o único valor que a
         // tabela reescreve, e o caso próprio abaixo o cobre.
         if (k === 'gates') continue;
-        expect(o[k], `mudou o valor de '${k}'`).toEqual(original[k]);
+        sobreviveu(original[k], o[k], k);
       }
     });
 

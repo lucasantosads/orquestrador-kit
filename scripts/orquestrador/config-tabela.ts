@@ -77,6 +77,24 @@ export const RENOMES: Renome[] = [
     porque:
       'juiz.ts:76 lê os DOIS níveis. A v1 não tinha nível baixo: julgava tudo com o mesmo modelo. Copiar o `avaliador_model` para os dois preserva o comportamento EXATO de hoje. Baratear o juiz de risco baixo é uma decisão de custo (o CI escolheu sonnet), e decisão não é efeito colateral de migração — migração que economiza dinheiro sozinha é migração que muda o veredito de alguém sem avisar.',
   },
+  // --- K11a-1: as chaves das regras B e D, com as DUAS origens ---------------
+  // O nome do kit foi ESCOLHIDO (não inventado): `migrations.dir`/`migrations.faixa`
+  // agrupam o que o Actus tem solto em `migrations_dir` + `migrations_faixa_loop`,
+  // e `colunas_congeladas` é o `no_write_columns` dele. Onde o nome já era o
+  // mesmo nos dois repos — `zona_proibida.no_write_tables`, que o Comarka tem
+  // sob `c0_intocavel` — não há renome nenhum: a regra C lê a chave existente.
+  {
+    de: 'migrations_faixa_loop',
+    para: 'migrations.faixa',
+    porque:
+      'enforcement-core.ts:273 (violacoesDeMigration) lê esta chave: é a faixa do loop no Actus ("0250-0299"). O motor aceita a string e a tupla [min,max] justamente para que este renome seja CÓPIA de valor, e não transformação — transformar valor numa migração é o começo de traduzir errado em silêncio. `migrations.dir` NÃO entra na tabela, e é decisão: renomear `migrations_dir` para dentro de `migrations` ligaria a regra B em TODO repo que tem migration (o CI inclusive, que nunca pediu faixa nenhuma). Quem cobra o `dir` é o `orq config`, que acusa "faixa sem dir" (config-cli.ts:152) — o dono declara, e a regra nasce ligada de propósito, nunca de arrasto.',
+  },
+  {
+    de: 'zona_proibida.no_write_columns',
+    para: 'zona_proibida.colunas_congeladas',
+    porque:
+      'enforcement-core.ts:426 (violacoesDeColuna). O nome novo diz o que a lista É (colunas congeladas) e abre espaço para a irmã `colunas_sombra`, que não existe em repo nenhum hoje e é a saída declarada da família (etapa_v2_*, ledger 0171 do Actus). O `no_write_columns` FICA.',
+  },
 ]
 
 /**

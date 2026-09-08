@@ -390,7 +390,57 @@
   esperado da própria cópia.
 
 
+- **K11a-1 · enforcement B/C/D do Actus como regras por config.** `enforcement-core.ts`
+  ganha três regras, TODAS desligadas quando a chave não existe no config: **B**
+  (`migrations.dir` + `.faixa` + `.faixas_reservadas` — `.sql` só no dir, com número
+  legível, na faixa e fora das reservadas; quatro tipos de violação NOMEIAM a regra),
+  **C** (`no_write_tables` como LISTA congela por nome; `schemas_permitidos` +
+  `tabelas_permitidas` reprovam o que estiver fora — leitura nunca reprova, porque o
+  detector só extrai tabela ESCRITA) e **D** (`colunas_congeladas` como globs, com
+  `colunas_sombra` VENCENDO — é a precedência que torna `["etapa_*"]` + `["etapa_v2_*"]`
+  exprimível). C e D auditam também o `artefato_sql`, e a regra 3 (`TODAS`) não: uma
+  proibição NOMEADA dentro de uma migration é o caso que o Actus quer pegar (alguém vai
+  aplicar aquele arquivo), enquanto a negação em bloco dentro do artefato foi o falso
+  positivo do ORQ-11. Prosa nunca entra, nas três.
+  *Evidência:* o PASSO 0 da etapa 6, lendo `~/Projetos/actus-saas/scripts/orquestrador/enforcement.mjs`
+  (regras A–F) e o `000-config.json` de lá (só leitura). `config-tabela.ts` ganhou dois
+  renomes com as duas origens (`migrations_faixa_loop → migrations.faixa`,
+  `zona_proibida.no_write_columns → zona_proibida.colunas_congeladas`) e `migrations.dir`
+  ficou DE FORA da tabela de propósito: renomeá-lo ligaria a regra B em todo repo que tem
+  migration, o CI inclusive. Quem cobra o dir é o `orq config` (`config-cli.ts:152`,
+  "faixa sem dir").
+  *Teste:* `test/orquestrador-enforcement-actus.test.ts`, 41 casos, **16 vermelhos antes**,
+  cada `it(...)` com o nome ORIGINAL do `test(...)` do Actus. Os 47 casos de
+  `test/orquestrador-enforcement.test.ts` (C0 do CI, janela de comentário, ORQ-11, ORQ-12)
+  continuam verdes SEM edição.
+  *O que o CI faz diferente:* nada, e o teste prova contra os três configs reais do disco
+  (`_referencia-ci/`, `fixture/`, `test/fixtures/checkout/`): nenhuma das chaves novas
+  existe em nenhum deles, `no_write_tables` é `"TODAS"` nos três, e um `.sql` de artefato
+  com DML segue passando com `{ok: true, violations: []}`.
+  *Dois guards de teste foram ALARGADOS, com o porquê no arquivo:* "toda chave `para` é
+  lida pelo motor" passou a olhar `CHAVES_CONFIG` em vez de só as obrigatórias (as chaves
+  novas são lidas e opcionais por desenho), e "TODA chave do config real sobrevive" passou
+  de igualdade estrita para SUBCONJUNTO (renome de destino ANINHADO acrescenta chave dentro
+  de um objeto existente, que é o que a regra 1 permite).
+
+
 ## PENDENTES
+
+- **K11a-4 · o resto do enforcement do Actus (E, F e a exceção de teste-SQL).** A K11a-1
+  trouxe B/C/D. Faltam três, e enquanto faltarem o Actus PERDE proteção ao trocar de
+  motor — está escrito no cabeçalho de `test/orquestrador-enforcement-actus.test.ts`:
+  (i) `no_write_prefixes` — CREATE/ALTER/DROP de objeto com prefixo (`vw_` no Actus);
+  (ii) `padroes_proibidos_no_diff` — regexes com flags inline `(?i)/(?is)` aplicadas ao
+  diff, três no Actus (reancoragem de `tenant_id` em tabela particionada,
+  `session_replication_role`, DELETE físico), e a mais cara de portar porque cada uma
+  carrega uma regressão medida junto (o `[^;]*` que atravessava SET→WHERE);
+  (iii) a exceção estreita de `supabase/tests/*.test.sql` — as 4 condições do
+  `checarTesteSql` (nome, bloco `DO $$` com tag que aceita dígito, `RAISE EXCEPTION`,
+  zero DDL/DML de topo fora do DO, com comentário `--` removido antes).
+  *Evidência:* `~/Projetos/actus-saas/scripts/orquestrador/enforcement.mjs:117-187` (a
+  exceção), `:270-287` (E e F), e os 27 casos correspondentes do `enforcement.test.mjs`.
+  *Teste:* os mesmos 27 casos, um a um, no arquivo da K11a-1 — e o NEGATIVO de que cada
+  regra nasce desligada sem a chave.
 
 - **K6d · `scripts/kit/pureza.sh`.** O grep que TRANCA a pureza: em CÓDIGO (não em
   comentário) de `scripts/orquestrador/**` e `scripts/orq`, zero premissa de repo. As três

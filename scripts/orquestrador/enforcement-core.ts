@@ -21,15 +21,47 @@
  */
 import { readFileSync } from 'node:fs'
 
+/**
+ * A faixa de numeração das migrations, nas DUAS formas vivas: `[min, max]` (a
+ * forma do kit) e `"0250-0299"` (a forma que o Actus tem no disco, em
+ * `migrations_faixa_loop`). Aceitar as duas é o que permite que a migração de
+ * config seja uma CÓPIA de valor, e não uma transformação — a regra 1 de
+ * `config-tabela.ts`.
+ */
+export type Faixa = string | [number, number]
+
+/**
+ * Regra B (K11a-1), vinda do actus-saas. DESLIGADA quando `migrations` não
+ * existe no config: é por isso que o `dir` mora aqui dentro e NÃO cai no
+ * `migrations_dir` de topo — `migrations_dir` é obrigatório em todo repo, e
+ * usá-lo como fallback ligaria a regra em quem nunca a pediu.
+ */
+export interface MigrationsRegra {
+  dir?: string
+  faixa?: Faixa
+  faixas_reservadas?: Faixa[]
+}
+
 export interface EnforceConfig {
   migrations_dir: string
   /** Segundo diretório de artefato .sql (ORQ-08). Opcional: config antiga sem o campo continua válida. */
   sql_pendente_dir?: string
   politica_schema: { comportamento_vigente: string }
+  /** Regra B. Ausente = desligada (o CI e o fixture não têm a chave). */
+  migrations?: MigrationsRegra | undefined
   zona_proibida: {
     no_write_paths: string[]
+    /** `"TODAS"` = negação total (CI); LISTA de tabelas = regra C nomeada (Actus). */
     no_write_tables: string | string[]
     no_write_credenciais?: { padroes?: string[] }
+    /** Regra C, lado permissivo: escrita fora destes schemas reprova. Ausente = sem restrição. */
+    schemas_permitidos?: string[] | undefined
+    /** Regra C: tabelas liberadas mesmo fora de `schemas_permitidos`. */
+    tabelas_permitidas?: string[] | undefined
+    /** Regra D: colunas que o loop nunca escreve (`no_write_columns` no Actus). */
+    colunas_congeladas?: string[] | undefined
+    /** Regra D: as sombras declaradas (glob), que passam mesmo casando uma congelada. */
+    colunas_sombra?: string[] | undefined
   }
 }
 
@@ -46,6 +78,16 @@ export type TipoViolacao =
   | 'escrita_em_banco'
   | 'aplica_migration'
   | 'credencial'
+  // --- K11a-1: as regras B/C/D do Actus. Cada uma NOMEIA a regra que violou,
+  // porque "escrita_em_banco" para seis causas diferentes manda quem lê o
+  // enforcement.json abrir o diff para descobrir qual delas foi.
+  | 'migration_fora_do_dir'
+  | 'migration_sem_numero'
+  | 'migration_fora_da_faixa'
+  | 'migration_faixa_reservada'
+  | 'tabela_congelada'
+  | 'tabela_nao_permitida'
+  | 'coluna_congelada'
 
 export interface Violation {
   tipo: TipoViolacao
@@ -206,6 +248,197 @@ export function pareceCredencial(linha: string): boolean {
   return /[A-Za-z]/.test(valor) && /[0-9]/.test(valor)
 }
 
+// ─── K11a-1 · regra B: migrations por faixa ─────────────────────────────────
+
+/**
+ * `[min, max]` a partir de `"0250-0299"` ou da própria tupla. Porte do
+ * `parseFaixa` do actus-saas (`enforcement.mjs:111`), com a forma numérica
+ * acrescentada. LANÇA em faixa ilegível: uma faixa que não parseia vira, em
+ * silêncio, "nenhuma restrição" — e é justamente a restrição que se pediu.
+ */
+export function parseFaixa(faixa: Faixa): [number, number] {
+  if (Array.isArray(faixa)) {
+    const [a, b] = faixa
+    if (typeof a !== 'number' || typeof b !== 'number' || !Number.isFinite(a) || !Number.isFinite(b)) {
+      throw new Error(`faixa de migration inválida: ${JSON.stringify(faixa)}`)
+    }
+    return [a, b]
+  }
+  const m = /^0*(\d+)\s*-\s*0*(\d+)$/.exec(String(faixa))
+  if (!m) throw new Error(`faixa de migration inválida: ${faixa}`)
+  return [Number(m[1]), Number(m[2])]
+}
+
+/** Regra B, arquivo a arquivo. Vazio quando `migrations.dir` não está no config. */
+export function violacoesDeMigration(arquivos: string[], config: EnforceConfig): Violation[] {
+  const regra = config.migrations
+  const dir = String(regra?.dir ?? '').replace(/\/+$/, '')
+  if (!dir) return []
+  const v: Violation[] = []
+  // Os OUTROS diretórios de artefato (hoje `sql_pendente_dir`) continuam sendo
+  // lugar legítimo de .sql — e .sql que não é migration não tem numeração a
+  // cobrar. Cobrar faixa deles reprovaria o artefato que o ticket pediu.
+  const outrosDirs = dirsDeArtefatoSql(config).filter((d) => d.replace(/\/+$/, '') !== dir)
+  const faixa = regra?.faixa ? parseFaixa(regra.faixa) : null
+  const reservadas = (regra?.faixas_reservadas ?? []).map(parseFaixa)
+
+  for (const arq of arquivos) {
+    if (!arq || !/\.sql$/i.test(arq)) continue
+    if (ehArtefatoSql(arq, outrosDirs)) continue
+    if (!arq.startsWith(dir + '/')) {
+      v.push({ tipo: 'migration_fora_do_dir', detalhe: `${arq}: .sql fora de ${dir}/` })
+      continue
+    }
+    const base = arq.slice(dir.length + 1)
+    const mm = /^(\d{3,})[_-]/.exec(base)
+    if (!mm) {
+      v.push({ tipo: 'migration_sem_numero', detalhe: `${arq}: .sql sem número legível — não dá para checar a faixa` })
+      continue
+    }
+    const n = Number(mm[1])
+    const reservada = reservadas.find(([a, b]) => n >= a && n <= b)
+    if (reservada) {
+      v.push({
+        tipo: 'migration_faixa_reservada',
+        detalhe: `${arq}: ${mm[1]} está na faixa RESERVADA ${reservada[0]}-${reservada[1]}`,
+      })
+      continue
+    }
+    if (faixa && (n < faixa[0] || n > faixa[1])) {
+      v.push({
+        tipo: 'migration_fora_da_faixa',
+        detalhe: `${arq}: ${mm[1]} fora da faixa ${faixa[0]}-${faixa[1]}`,
+      })
+    }
+  }
+  return v
+}
+
+// ─── K11a-1 · regras C e D: escrita por tabela e por coluna ─────────────────
+
+/** `public.leads` → casa `public.leads`, `leads`, `"leads"`, `outro.leads`. */
+function parteDeTabela(tabela: string): string {
+  const bare = tabela.replace(/^[a-z_]+\./i, '')
+  return `(?:[a-z_]+\\.)?"?${bare.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"?`
+}
+
+/**
+ * Toda tabela ESCRITA no texto: DML/DDL cru mais a cadeia `.from().insert()`.
+ * Leitura (`select`, `.select()`) não aparece aqui, e é isso que faz "leitura
+ * nunca reprova" ser uma propriedade do DETECTOR, e não um caso de teste.
+ *
+ * Recebe o BLOCO de linhas adicionadas de um arquivo, não uma linha: a cadeia
+ * `sb.from('contratos')\n  .insert({...})` é a forma normal em TS, e um detector
+ * por linha não a enxerga. É a mesma razão da janela de 6 linhas da regra 3.
+ */
+export function tabelasEscritas(texto: string): string[] {
+  const out: string[] = []
+  const sql =
+    /\b(?:insert\s+into|update|delete\s+from|truncate(?:\s+table)?|alter\s+table|drop\s+table|copy)\s+([A-Za-z0-9_."]+)/gi
+  let m: RegExpExecArray | null
+  while ((m = sql.exec(texto)) !== null) out.push((m[1] ?? '').replace(/"/g, ''))
+  const js = /\.from\(\s*['"`]([A-Za-z0-9_.]+)['"`]\s*\)[\s\S]{0,120}?\.(?:insert|update|upsert|delete)\s*\(/g
+  while ((m = js.exec(texto)) !== null) out.push(m[1] ?? '')
+  return [...new Set(out.filter(Boolean))]
+}
+
+/**
+ * Todo nome de coluna ESCRITO no texto — o alvo de um `SET`, a lista de colunas
+ * de um `INSERT INTO`, e as chaves do objeto passado a `.update/.insert/.upsert`.
+ * `where etapa_canonica = 'x'` não entra: WHERE é leitura.
+ */
+export function colunasEscritas(texto: string): string[] {
+  const out: string[] = []
+  const ident = /[A-Za-z_][A-Za-z0-9_]*/g
+  // SET a = 1, b = 2 — cada alvo de atribuição até o WHERE.
+  for (const m of texto.matchAll(/\bset\b([\s\S]*?)(?=\bwhere\b|;|$)/gi)) {
+    for (const atrib of (m[1] ?? '').split(',')) {
+      const alvo = /^\s*["']?([A-Za-z_][A-Za-z0-9_]*)["']?\s*=/.exec(atrib)
+      if (alvo?.[1]) out.push(alvo[1])
+    }
+  }
+  // INSERT INTO tabela (a, b, c)
+  for (const m of texto.matchAll(/\binsert\s+into\s+[A-Za-z0-9_."]+\s*\(([^)]*)\)/gi)) {
+    for (const c of (m[1] ?? '').split(',')) {
+      const n = /^\s*["']?([A-Za-z_][A-Za-z0-9_]*)["']?\s*$/.exec(c)
+      if (n?.[1]) out.push(n[1])
+    }
+  }
+  // .update({ a: 1, b: 2 }) — as chaves do objeto literal.
+  for (const m of texto.matchAll(/\.(?:update|insert|upsert)\s*\(\s*\{([^}]*)\}/g)) {
+    for (const par of (m[1] ?? '').split(',')) {
+      const n = /^\s*["'`]?([A-Za-z_][A-Za-z0-9_]*)["'`]?\s*:/.exec(par)
+      if (n?.[1]) out.push(n[1])
+      else {
+        // shorthand `{ etapa_canonica }`
+        const s = ident.exec(par.trim())
+        ident.lastIndex = 0
+        if (s && s[0] === par.trim()) out.push(s[0])
+      }
+    }
+  }
+  return [...new Set(out)]
+}
+
+/**
+ * Regra C · escrita por tabela. Duas metades independentes, e as duas saem do
+ * config:
+ *   - `no_write_tables` como LISTA: aquelas tabelas são congeladas por NOME;
+ *   - `schemas_permitidos` (+ `tabelas_permitidas`): tudo o que estiver fora
+ *     delas reprova.
+ * Sem nenhuma das duas, a regra não acusa nada — que é o estado do CI, onde
+ * `no_write_tables` é a string `"TODAS"` e quem age é a regra 3.
+ */
+export function violacoesDeTabela(arquivo: string, texto: string, config: EnforceConfig): Violation[] {
+  const zp = config.zona_proibida
+  const congeladas = Array.isArray(zp.no_write_tables) ? zp.no_write_tables : []
+  const schemas = zp.schemas_permitidos
+  const permitidas = zp.tabelas_permitidas ?? []
+  if (congeladas.length === 0 && !schemas) return []
+  const casa = (padrao: string, alvo: string) => new RegExp(`^${parteDeTabela(padrao)}$`, 'i').test(alvo)
+  const v: Violation[] = []
+  for (const alvo of tabelasEscritas(texto)) {
+    const congelada = congeladas.find((t) => casa(t, alvo))
+    if (congelada) {
+      v.push({ tipo: 'tabela_congelada', detalhe: `${arquivo}: escrita em '${alvo}' (tabela congelada '${congelada}')` })
+      continue
+    }
+    if (!schemas) continue
+    if (permitidas.some((t) => casa(t, alvo))) continue
+    const schema = alvo.includes('.') ? alvo.slice(0, alvo.indexOf('.')) : ''
+    if (!schemas.some((s) => s.toLowerCase() === schema.toLowerCase())) {
+      v.push({
+        tipo: 'tabela_nao_permitida',
+        detalhe: `${arquivo}: escrita em '${alvo}', fora de schemas_permitidos [${schemas.join(', ')}]`,
+      })
+    }
+  }
+  return v
+}
+
+/**
+ * Regra D · colunas-sombra. `colunas_congeladas` são GLOBS (um nome literal é o
+ * glob que casa só a si mesmo), e `colunas_sombra` vence: uma sombra declarada
+ * passa mesmo casando uma congelada. É essa ordem que torna o par
+ * `congeladas: ["etapa_*"] / sombra: ["etapa_v2_*"]` exprimível — sem ela, a
+ * lista de sombras não decidiria nada e o repo teria de enumerar cada coluna.
+ */
+export function violacoesDeColuna(arquivo: string, texto: string, config: EnforceConfig): Violation[] {
+  const zp = config.zona_proibida
+  const congeladas = zp.colunas_congeladas ?? []
+  if (congeladas.length === 0) return []
+  const sombras = zp.colunas_sombra ?? []
+  const v: Violation[] = []
+  for (const nome of colunasEscritas(texto)) {
+    if (sombras.some((g) => globToRegExp(g).test(nome))) continue
+    const congelada = congeladas.find((g) => globToRegExp(g).test(nome))
+    if (congelada) {
+      v.push({ tipo: 'coluna_congelada', detalhe: `${arquivo}: escrita na coluna '${nome}' (congelada por '${congelada}')` })
+    }
+  }
+  return v
+}
+
 export function enforce(input: EnforceInput): EnforceResult {
   const v: Violation[] = []
   const zp = input.config.zona_proibida
@@ -222,7 +455,37 @@ export function enforce(input: EnforceInput): EnforceResult {
     else if (!matchesAllowlist(f, input.allowlist)) v.push({ tipo: 'fora_do_pathspec', detalhe: f })
   }
 
+  // B) migrations por faixa — CAMINHO, nunca conteúdo. Desligada sem `migrations`.
+  v.push(...violacoesDeMigration(input.changedFiles, input.config))
+
   const linhas = addedLines(input.diff)
+
+  // C+D) escrita por tabela e por coluna, POR ARQUIVO — o bloco de linhas
+  // adicionadas daquele arquivo, não a linha solta (a cadeia
+  // `.from('x')\n.insert({})` é a forma normal em TS).
+  //
+  // A classe decide, e a decisão aqui é DIFERENTE da regra 3 de propósito:
+  //   `prosa`        fica de fora, como sempre (documentar a proibição não é violá-la);
+  //   `artefato_sql` ENTRA. A regra 3 (`TODAS`) o deixa de fora porque é uma
+  //                  negação em bloco, e foi ela que reprovou o DELETE de dentro
+  //                  do artefato que o próprio ticket pediu (ORQ-11). C e D são
+  //                  proibições NOMEADAS — três tabelas, uma coluna —, e um
+  //                  `insert into public.leads` dentro de uma migration é
+  //                  exatamente o que o Actus proíbe: alguém vai APLICAR aquele
+  //                  arquivo. Nomear é o que separa a regra do falso positivo.
+  const porArquivo = new Map<string, string[]>()
+  for (const { arquivo, linha } of linhas) {
+    if (classificaArquivo(arquivo, input.config) === 'prosa') continue
+    const atual = porArquivo.get(arquivo)
+    if (atual) atual.push(linha)
+    else porArquivo.set(arquivo, [linha])
+  }
+  for (const [arquivo, corpo] of porArquivo) {
+    const texto = corpo.join('\n')
+    v.push(...violacoesDeTabela(arquivo, texto, input.config))
+    v.push(...violacoesDeColuna(arquivo, texto, input.config))
+  }
+
   for (let i = 0; i < linhas.length; i++) {
     const { arquivo, linha } = linhas[i]!
 

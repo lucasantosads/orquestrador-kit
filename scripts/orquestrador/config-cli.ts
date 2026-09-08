@@ -149,6 +149,27 @@ export function validarConfig(cfg: unknown): Violacao[] {
     })
   }
 
+  // 4. regra B do enforcement (K11a-1): faixa SEM diretório. A faixa só é
+  //    cobrada dos `.sql` sob `migrations.dir`, então uma faixa declarada sem o
+  //    dir é uma proibição que não vale para arquivo nenhum — o pior estado
+  //    possível, porque o config DIZ que a faixa está protegida. E `dir` não
+  //    cai no `migrations_dir` de topo de propósito: esse é obrigatório em todo
+  //    repo, e o fallback ligaria a regra B em quem nunca a pediu.
+  const mig = c.migrations
+  if (mig && typeof mig === 'object' && !Array.isArray(mig)) {
+    const m = mig as Record<string, unknown>
+    const temFaixa = !ausente(m.faixa) || (Array.isArray(m.faixas_reservadas) && m.faixas_reservadas.length > 0)
+    if (temFaixa && ausente(m.dir)) {
+      v.push({
+        chave: 'migrations.dir',
+        mensagem:
+          'migrations.faixa (ou faixas_reservadas) declarada sem migrations.dir — a regra B do ' +
+          'enforcement só cobra .sql sob migrations.dir, então a faixa não vale para arquivo nenhum. ' +
+          'Declare o diretório (no Actus: "supabase/migrations") ou tire a faixa.',
+      })
+    }
+  }
+
   return v
 }
 

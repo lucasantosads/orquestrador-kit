@@ -91,6 +91,17 @@ export const CHAVES_CONFIG: ChaveConfig[] = [
   { chave: 'gate_ticket.cmd_prefixos_permitidos', onde: 'gate-ticket.ts:275', obrigatoria: true, nota: 'lista vazia reprova TODO critério com cmd' },
   { chave: 'gate_ticket.proibido_no_cmd', onde: 'gate-ticket.ts:281', obrigatoria: true },
 
+  // --- enforcement B/C/D (peça K11a-1) --------------------------------------
+  // Todas OPCIONAIS, e é o desenho: ausente = regra desligada. O CI não tem
+  // nenhuma delas e o enforcement dele sai byte a byte igual.
+  { chave: 'migrations.dir', onde: 'enforcement-core.ts:273', obrigatoria: false, nota: 'liga a regra B; sem ele nenhum .sql é cobrado por faixa. NÃO cai no migrations_dir de topo de propósito' },
+  { chave: 'migrations.faixa', onde: 'enforcement-core.ts:273', obrigatoria: false, nota: '[min,max] ou "0250-0299"; no Actus é migrations_faixa_loop' },
+  { chave: 'migrations.faixas_reservadas', onde: 'enforcement-core.ts:273', obrigatoria: false, nota: 'faixas de OUTRO dono (no Actus, 0200-0249 é da Agência)' },
+  { chave: 'zona_proibida.schemas_permitidos', onde: 'enforcement-core.ts:392', obrigatoria: false, nota: 'ausente = sem restrição por schema; presente = tudo fora dele reprova' },
+  { chave: 'zona_proibida.tabelas_permitidas', onde: 'enforcement-core.ts:392', obrigatoria: false, nota: 'exceções nomeadas a schemas_permitidos' },
+  { chave: 'zona_proibida.colunas_congeladas', onde: 'enforcement-core.ts:426', obrigatoria: false, nota: 'globs; no Actus é no_write_columns' },
+  { chave: 'zona_proibida.colunas_sombra', onde: 'enforcement-core.ts:426', obrigatoria: false, nota: 'globs que VENCEM as congeladas — a saída declarada (etapa_v2_*)' },
+
   // --- agendamento (peça K6c) -----------------------------------------------
   { chave: 'launchd.label', onde: 'instalar-launchd.sh:47', obrigatoria: true, nota: 'NÃO tem default: o instalador RECUSA sem ele. Um label por repo — dois repos com o mesmo label são o MESMO job para o launchd' },
   { chave: 'launchd.start_interval', onde: 'instalar-launchd.sh:59', obrigatoria: false, nota: 'ausente vira 1800, o valor medido em 06/set/2026' },
