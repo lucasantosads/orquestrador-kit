@@ -51,10 +51,19 @@ describe('liberacao_ok lê .tokens[] com o token INTEIRO', () => {
     expect(processavel({ tokens: [] }).processavel).toBe(false);
   });
 
-  it('REGRESSÃO: token SEM o prefixo em .tokens não resolve (é outro token)', () => {
-    // O formato canônico guarda o token inteiro. "migration-0025" solto não é
-    // "humano:migration-0025": aceitar os dois faria colisão entre namespaces.
-    expect(processavel({ tokens: ['migration-0025'] }).processavel).toBe(false);
+  // DECISÃO REVERTIDA na peça K8b-1, e de propósito. Até a etapa 4 este caso
+  // cobrava o CONTRÁRIO — "token sem prefixo em .tokens não resolve, é outro
+  // token" —, com o argumento de que aceitar as duas formas faria colisão entre
+  // namespaces. O argumento não sobreviveu ao disco: `liberacao_ok` só é
+  // chamada para dependência que JÁ começa com `humano:` (lib.sh,
+  // deps_resolvidas), então não há segundo namespace com que colidir; e o
+  // Actus guarda os 5 tokens dele SEM prefixo, de modo que a regra antiga
+  // deixava aquele repo inteiro sem resolver uma liberação sequer, em silêncio.
+  // O preço da mudança é o AVISO, que o caso seguinte cobra.
+  it('K8b-1: token SEM o prefixo em .tokens resolve, com aviso de forma legada', () => {
+    const r = processavel({ tokens: ['migration-0025'] });
+    expect(r.processavel).toBe(true);
+    expect(r.saida).toMatch(/AVISO.*LEGADA/);
   });
 });
 
@@ -64,10 +73,15 @@ describe('formato antigo (.liberadas[].token) aceito por UMA versão, com aviso'
     expect(r.processavel).toBe(true);
   });
 
-  it('grava AVISO nomeando o formato antigo e a migração', () => {
+  // O texto do aviso mudou na K8b-1 de "formato ANTIGO" para "forma LEGADA":
+  // agora ele cobre DUAS legadas — `.liberadas[]` e token sem prefixo em
+  // `.tokens[]` — e o jq da união não distingue qual das duas resolveu. Um
+  // guarda-chuva honesto vale mais que um nome preciso e às vezes errado.
+  it('grava AVISO nomeando a forma legada e a migração', () => {
     const r = processavel({ liberadas: [{ token: 'migration-0025' }] });
-    expect(r.saida).toMatch(/AVISO.*formato ANTIGO/);
+    expect(r.saida).toMatch(/AVISO.*forma LEGADA/);
     expect(r.saida).toMatch(/migre .*liberacoes\.json/);
+    expect(r.saida).toMatch(/--migrar/);
   });
 
   it('formato antigo com outro token não resolve', () => {

@@ -197,3 +197,47 @@ Passos humanos que faltam para o CI receber este motor (não são desta sessão)
 lá o `scripts/orquestrador/com.conteudos.orquestrador.plist.template` (o `--atualizar` não
 apaga nada, então o template velho fica ao lado do novo); commit por pathspec; `orq retomar`;
 push. Ver `~/orq-sessoes/relatorio-kit-etapa3.md`.
+
+### Etapa 5 — o kit instala em repo que não é o CI, e migra o que os outros repos têm
+
+O PASSO 0 desta etapa foi um levantamento por `jq` no disco dos três repos (só leitura). O
+que os briefs de 07 e 08/09 diziam sobre os formatos era hipótese; o que entrou no código é
+o que o `jq` devolveu. Três achados mandaram no desenho:
+
+1. `liberacoes.json` tem QUATRO formas vivas, e nenhuma delas é a do schema. O Actus guarda
+   os 5 tokens dele SEM o prefixo `humano:` — e, até esta etapa, **nenhum** deles resolvia
+   dependência nenhuma, em silêncio, que é o incidente de 2026-09-03 acontecendo de novo num
+   repo onde ninguém olhou.
+2. O Comarka tem as DUAS listas (`liberadas[]` com 31 entradas e `tokens[]` com 30), 47
+   tokens únicos, 13 nas duas e uma duplicata exata dentro de `liberadas[]`.
+3. Actus e Comarka estão em `$schema_versao: 1`, e os dois usam `gates` com a MESMA
+   estrutura do CI — a diferença é `tipo: "tsc_baseline"` (Comarka) contra `"baseline"`,
+   que `gates.ts:151` não reconhece: o baseline de 3 erros herdados seria ignorado e o gate
+   reprovaria para sempre.
+
+- **K8b-1** — o motor lê `liberacoes.json` em todas as formas vivas. `lib.sh:liberacao_ok`
+  passou a resolver, além do canônico: `tokens[]` de OBJETOS (v2, o destino da migração),
+  `tokens[]` de strings SEM prefixo (Actus) e a união com `liberadas[]` (Comarka). A
+  comparação **ignora o prefixo `humano:` dos dois lados** — `liberacao_ok` só é chamada para
+  dependência que já começa com `humano:` (`deps_resolvidas`), então não há segundo namespace
+  com que colidir —, um arquivo que misture formas resolve a UNIÃO, e entrada malformada é
+  ignorada em vez de casar com tudo. Duas passadas de `jq`, não uma: a canônica é MUDA (é o
+  que o CI tem, e avisar a cada dependência encheria a trilha de ruído) e a de compat GRAVA o
+  AVISO, nomeando a forma legada **e o comando que a migra**. `scripts/roadmap/lint-mapa.py`
+  monta `sat` pela mesma regra, entre marcadores `# <sat>`/`# </sat>` que o teste EXECUTA em
+  vez de reimplementar. Fecha a divergência 2 do `CONTRATO.md` §10.
+  *`gate-ticket.ts` não mudou, e isso é achado:* o check 7 nunca leu `liberacoes.json` — ele
+  só confere que a dependência é id de ticket da fila ou `humano:<token>` não vazio
+  (`gate-ticket.ts:429-441`). Não havia comparação de prefixo para consertar ali.
+  *Duas asserções antigas foram REVERTIDAS, de propósito e com o porquê no arquivo:*
+  `orquestrador-liberacoes.test.ts` cobrava que token sem prefixo NÃO resolvesse (o argumento
+  de colisão de namespaces não sobreviveu ao disco), e o texto do aviso passou de "formato
+  ANTIGO" para "forma LEGADA", porque agora ele cobre duas legadas e o `jq` da união não
+  distingue qual das duas resolveu.
+  *Teste:* `test/orquestrador-liberacoes-formatos.test.ts`, 28 casos — **16 vermelhos
+  antes** —, contra os arquivos REAIS dos três repos, copiados byte a byte para
+  `test/fixtures/liberacoes/` (com `PROCEDENCIA.md` e cksum de cada um). Os 5 do Actus, os 47
+  do Comarka e os 7 do CI resolvem, um a um.
+  *O que o CI faz diferente:* nada. Os 7 tokens reais do CI resolvem antes e depois, e
+  nenhum grava aviso — a forma dele não é legada. Esse caso já estava VERDE no vermelho-antes,
+  que é o que prova que a mudança não o alcançou.

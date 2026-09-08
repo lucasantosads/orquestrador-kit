@@ -1,0 +1,223 @@
+{
+  "descricao": "Tokens de liberação humana. Uma dependência 'humano:<token>' de um ticket é considerada RESOLVIDA quando um objeto com esse token aparece em 'liberadas'. Só um humano edita este arquivo.",
+  "liberadas": [
+    {
+      "token": "aplicar-migration-contratual",
+      "em": "2026-08-13",
+      "por": "lucas",
+      "nota": "arq_documentos revisada: RLS + policy service_role + revoke anon/authenticated"
+    },
+    {
+      "token": "sessao-serial-nav",
+      "em": "2026-08-14",
+      "por": "lucas",
+      "nota": "062 liberado; gate visual do 063 sera feito no preview antes do merge em main"
+    },
+    {
+      "token": "migration-227-clientes-teses-fk-aplicada",
+      "em": "2026-08-25",
+      "por": "lucas",
+      "nota": "migration 20260825000002_clientes_teses_fk_catalogo aplicada e verificada no banco: 5 colunas nullable (tese_id, nicho_id, cliente_id, ticket_medio numeric, ltv_meses integer), 3 FKs ON DELETE SET NULL para perf_teses/perf_nichos/clientes, 3 indices. clientes_teses tinha 0 linhas, zero risco de violacao. Destrava o ticket 230."
+    },
+    {
+      "token": "migration-220-wpp-grupo-aplicada",
+      "em": "2026-08-25",
+      "por": "lucas",
+      "nota": "20260825000000_wpp_grupo aplicada e verificada: 13 colunas, UNIQUE (cliente_id, group_jid), indice em cliente_id, RLS habilitada com 1 policy service_role e 0 grants para anon/authenticated. Destrava o ticket 222."
+    },
+    {
+      "token": "migration-224-papel-aplicada",
+      "em": "2026-08-25",
+      "por": "lucas",
+      "nota": "20260825000001_responsavel_padrao_papel aplicada e verificada: coluna nullable em ops_template_etapas + CHECK nomeada com os 5 papeis. Destrava o ticket 225."
+    },
+    {
+      "token": "migration-196-cs-wpp-mensagem-aplicada",
+      "em": "2026-08-26",
+      "por": "lucas",
+      "nota": "20260824000000_cs_wpp_mensagem aplicada e verificada: 14 colunas, 4 indices (PK + UNIQUE parcial em wpp_message_id + 2 compostos por enviada_em desc), CHECK de 7 valores em tipo_conteudo, RLS habilitada com 1 policy service_role e 0 grants para anon/authenticated, 0 linhas. Tabela OS-owned, zero FK/leitura C0. O create policy do arquivo nao era idempotente - aplicado dentro de DO/pg_policies; portar a correcao para o .sql do repo."
+    },
+    {
+      "token": "migration-215-temperatura-aplicada",
+      "em": "2026-08-26",
+      "por": "lucas",
+      "nota": "20260825000004_temperatura_comercial_mirror aplicada e verificada: 5 colunas nullable em clientes_notion_mirror (temperatura_comercial text, temperatura_justificativa text, temperatura_sinais_upsell jsonb, temperatura_riscos jsonb, temperatura_calculada_em timestamptz), sem constraint, sem indice. Tabela passou de 36 para 41 colunas. Nao e C0. Destrava 216 e em cascata 217."
+    },
+    {
+      "token": "migration-242-ia-leitura-comercial-aplicada",
+      "em": "2026-08-26",
+      "por": "lucas",
+      "nota": "20260825000005_ia_leitura_comercial aplicada e verificada: 11 colunas, 2 indices (PK + composto cliente_id/gerado_em desc), CHECK de 3 valores em temperatura, 1 FK para public.clientes(id) ON DELETE CASCADE, jsonb default '[]' em sinais_upsell e riscos, RLS habilitada com 1 policy service_role e 0 grants para anon/authenticated, 0 linhas. clientes tem 217 linhas e nao e C0. create policy aplicado dentro de DO/pg_policies para idempotencia (terceiro .sql com o mesmo defeito — padronizar no repo). Destrava o 243."
+    },
+    {
+      "token": "decisao-cron-alertas",
+      "em": "2026-08-28",
+      "por": "lucas",
+      "nota": "Motor de alertas deve rodar. Registrar alertas-avaliar no vercel.json com schedule diario. perf_alerta_regras tem 3 regras e perf_alerta_ocorrencias esta vazia."
+    },
+    {
+      "token": "decisao-D1",
+      "em": "2026-09-04",
+      "por": "lucas",
+      "nota": "Precedencia de qualificacao: cliente > tese > global. Mais especifico vence; global e ultimo recurso. Hoje ha 1 regra (tese/estagio_pipeline/MQL), zero conflito real. Destrava 307 e 311."
+    },
+    {
+      "token": "decisao-D31",
+      "em": "2026-09-04",
+      "por": "lucas",
+      "nota": "clientes e a entidade canonica do OS; o OS cria a linha faltante. Recon 04/09: 78 ativos em clientes_receita, so 36 resolvem uuid, 42 ausentes (35 com notion_id). Script 370 e dry-run por padrao, idempotente por nome normalizado + notion_id, NUNCA escreve em clientes_receita. Os 20 divergentes (ativo no OS sem receita ativa) so entram no relatorio, sem alteracao. O --apply contra o banco continua sendo gate humano. Destrava 370, 371, 373."
+    },
+    {
+      "token": "decisao-D29",
+      "em": "2026-09-04",
+      "por": "lucas",
+      "nota": "Higiene do kanban aprovada: soft-delete de 3 tarefas de teste ('teste' x2, 'tutut') e encerramento de cronometros em_andamento ha mais de 12h — inclui o de ~1.257h aberto desde 14/07. Script 365a e dry-run por padrao, imprime 'candidatos=<n> apply=<bool>', toca so tarefas_kanban (nao e C0), deleted_at em vez de DELETE. O --apply continua gate humano. Destrava 365a e 365b."
+    },
+    {
+      "token": "decisao-D4",
+      "em": "2026-09-04",
+      "por": "lucas",
+      "nota": "Taxonomia de nicho unica: rotulos livres de clientes_receita.nicho (MEDICO, SAUDE, TRANSITO, 'BANCARIO, PREVIDENCIARIO') sao MAPEADOS para os 11 de perf_nichos; nicho novo so se juntar >=3 clientes. Escrita vai para ops_cliente_nichos (PK cliente_id+nicho_id), NUNCA em clientes_receita.nicho. String com dois nichos vira duas linhas. Rotulo sem mapa entra no relatorio, nao inventa nicho. Benchmark por nicho mostra 'sem amostra suficiente' abaixo de n=3. Destrava 319 e, com D8, o 330."
+    },
+    {
+      "token": "decisao-D8",
+      "em": "2026-09-04",
+      "por": "lucas",
+      "nota": "Propriedade de nicho/tese: o CLIENTE e o dono; a conta de anuncio herda dele; a campanha sobrescreve pontualmente. Mesma logica de precedencia do D1 (mais especifico vence). Config funde Taxonomia + Classificacao numa aba 'Nichos e Teses'; abas antigas somem com redirect de ?view=. ticket_medio/ltv_meses de clientes_teses sao dinheiro DO CLIENTE — permitidos em tela, rotulados como 'do cliente' para nao colidir com a regra 19. Destrava 330 e, em cascata, 319/312/331."
+    },
+    {
+      "token": "decisao-D16",
+      "em": "2026-09-04",
+      "por": "lucas",
+      "nota": "Metas: eu defino, cadencia mensal, por assistente de 3 passos (mes -> metrica -> valor sugerido pelo realizado do mes anterior via perf_insights_daily), gravando em ops_metas_negocio. A grade de 30 celulas 'definir' nunca foi usada e vira visao de leitura com 'sem meta' explicito. 'Distribuir igualmente' sai. Meta por cliente nasce na ficha, fora deste escopo. Destrava 345 e, com contas-meta, o 318a/346."
+    },
+    {
+      "token": "decisao-C1",
+      "em": "2026-09-04",
+      "por": "lucas",
+      "nota": "EXCECAO EXPLICITA a regra 19: '% de receita perdida' fica na aba Churn de Saude, como RAZAO, sem cifra em R$. Razao nao expoe MRR nem mensalidade, entao o objetivo da regra 19 (nao mostrar dinheiro da agencia em tela) segue preservado. Esta e a unica excecao aberta ate agora — qualquer nova exige decisao propria, nao herda desta. Churn continua reportado em % de CLIENTES sobre a fonte do 037; benchmarks so com n>=3. Destrava 314 quando as 7 dependencias de ticket fecharem."
+    },
+    {
+      "token": "lote-identidade-370",
+      "em": "2026-09-05",
+      "por": "lucas",
+      "nota": "Script 370 aplicado contra o banco. Relatorio dry-run conferido: 78 ativos, 36 ja resolvidos, 42 criados em clientes, 20 divergentes (ativo no OS sem receita ativa) apenas listados, sem alteracao. ATENCAO: 7 dos criados ficaram com data_inicio = data do apply porque clientes_receita.mes_fechamento estava nulo e clientes.data_inicio e NOT NULL — sao rastreaveis por observacao='criado por identidade-370' AND data_inicio = a data do apply. Corrigir upstream (preencher mes_fechamento) antes do 314 usar tempo de casa. Destrava 308, 309a, 313, 315b1, 315b2, 316, 347, 351, 355, 371, 373."
+    },
+    {
+      "token": "ddl-372",
+      "em": "2026-09-06",
+      "por": "lucas",
+      "nota": "20260905000000_372_etapa_churn_default aplicada e verificada. Cruzamento read-only antes de aplicar: 95 ativos com etapa_churn='aviso_recebido', dos quais 0 com risco alto/critico, 0 com data_cancelamento, 0 com churn_validado, 0 com status_anterior. Unico com motivo_cancelamento e Poliana Bastos Advogada, cuja nota diz 'sinal + reembolso, nao virou cliente' — nao e churn. Pipeline real de churn intacto: 29 aviso + 2 juridico, todos status='cancelado', fora do WHERE da migration. Destrava o 315a."
+    },
+    {
+      "token": "migration-049-os-audit-log-aplicada",
+      "em": "2026-09-06",
+      "por": "lucas",
+      "nota": "20260817000000_os_audit_log aplicada e verificada. ACHADO: a tabela JA EXISTIA em producao com 9 linhas de ago/set (cliente_extra, cliente_crm_config) — o CREATE TABLE foi no-op. O que a migration realmente adicionou foi seguranca e indices: RLS habilitada, policy only_service_role, REVOKE ALL de anon/authenticated (antes a tabela de auditoria estava sem RLS), 2 indices (entidade+entidade_id+quando desc, quando desc). FK quem->employees ON DELETE SET NULL presente. CREATE POLICY envolvido em DO/pg_policies para idempotencia (correcao do token migration-196 portada). CONSEQUENCIA: as rotas do 049 (orcamento, forma-pagamento-trafego) nunca estiveram em 503 — ja gravavam; o que falta e UI que as chame. Nenhum evento de orcamento_trafego ou forma_pagamento_trafego no log ate hoje."
+    },
+    {
+      "token": "onboarding-tracking-nao-c0",
+      "em": "2026-09-06",
+      "por": "lucas",
+      "nota": "Confirmado: onboarding_tracking nao e zona C0. A lista C0 e clientes_receita, leads_crm, leads_crm_historico, trafego_*, ads_metadata, ads_performance, vw_*, fn_mql_sql_by_month — onboarding_tracking nao consta. O proprio 309a ja registrava 'A6 confirmou que onboarding_tracking nao e C0'; o token so nao tinha sido escrito aqui. Destrava 309a e, por consequencia, 309b e 316."
+    },
+    {
+      "token": "migration-196-aplicada",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "Alias de migration-196-cs-wpp-mensagem-aplicada (liberado 26/08). O ticket 360 declara a dependencia com o nome curto; o registro usa o nome longo. Mesma migration: 20260824000000_cs_wpp_mensagem, ja aplicada e verificada. Destrava 360."
+    },
+    {
+      "token": "migration-196-aplicada",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "Alias de migration-196-cs-wpp-mensagem-aplicada (liberado 26/08). O ticket 360 declara a dependencia com o nome curto; o registro usa o nome longo. Mesma migration: 20260824000000_cs_wpp_mensagem, ja aplicada e verificada. Destrava 360."
+    },
+    {
+      "token": "decisao-D30",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "Ja respondida no corpo do ticket 347: 'D30 respondida (ferramenta de tarefa do time)'. O token so nao tinha sido escrito aqui — mesmo caso do C1 e do onboarding-tracking-nao-c0. Destrava 347."
+    },
+    {
+      "token": "decisao-D33",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "D33 = FICA. /dashboard/super-admin permanece em ALLOWLIST_REGRA19 com rationale explicito: e tela de leitura executiva atras de bypass de super-admin (src/lib/rbac/resolver.ts:88) e fora da navegacao — nenhum link para ela em componente de menu. O guardrail 14 protege a operacao de ver receita da agencia; quem alcanca essa tela nao e operacao. Difere do C2 (financeiro e custos SAEM) porque aquelas duas estao no menu e sao alcancaveis por papel de operacao. NAO e excecao permanente: se algum dia a tela entrar no menu ou perder o gate de super-admin, a entrada da allowlist deve cair junto. O ticket 369 nao toca o Dashboard Comercial — so cria redirect saindo do OS para NEXT_PUBLIC_DASHBOARD_COMERCIAL_URL."
+    },
+    {
+      "token": "ddl-309a",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "Migration 20260906000000_309a_onboarding_cliente_id aplicada via MCP em 07/09 e verificada: onboarding_tracking.cliente_id uuid nullable + idx + FK para clientes(id). Aditiva, tabela nao-C0. Backfill e do script 309a-onboarding-match.ts (dry-run padrao): medido no banco, 127 de 289 casam por nome unico e 2 sao ambiguos, que vao para nao_casados. Destrava 309b e 316."
+    },
+    {
+      "token": "ddl-373",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "Migration 20260907000000_373_cliente_id_nps_reunioes aplicada via MCP em 07/09 e verificada: cliente_id uuid nullable + idx + FK em perf_nps_tokens, perf_nps_respostas e reunioes_cliente. Aditiva, tres tabelas do OS. ATENCAO ao alcance do backfill via clientes_notion_mirror: perf_nps_tokens 6 de 6 resolvem, perf_nps_respostas tem 0 linhas, e reunioes_cliente resolve 0 de 83 porque cliente_notion_id e nulo nas 83 (a fonte e tl;dv, nao o Notion) - quem resolve o cliente_id dessa tabela e o ticket 357, pelo convidado externo do Calendar. A coluna e pre-requisito do 357, nao alvo deste backfill. Destrava 335, 336, 337 e 357."
+    },
+    {
+      "token": "decisao-D7",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "Enunciado estava so em revisao-plano-v4-04set.md (agora em docs/planos/). D7 = o tile 'em saida' do 313. Resposta: os 31 do pipeline sao churn ja consumado na receita e NAO sao subconjunto dos 78 ativos, entao o tile vira 'saidas em andamento (fora dos 78)' com denominador proprio, nunca somado ao universo de ativos."
+    },
+    {
+      "token": "decisao-D34",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "D34 = canal do disparo de NPS (335). Verificado no n8n em 07/09: os 18 workflows existentes nao tem nenhum fluxo de NPS. Pelo default do proprio 335 ('n8n se o fluxo ja roda; senao fila de envio manual'), a resposta e FILA DE ENVIO MANUAL: o cron monta {cliente, telefone, link} e grava 'pendente de envio', exibido na pagina NPS. O webhook n8n fica atras de env e passa a valer quando o fluxo existir. credencial-evolution nao entra no caminho critico."
+    },
+    {
+      "token": "decisao-D35",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "D35 = casa do CRM na navegacao (341/343). Resposta: CRM fica sob o grupo Clientes, visivel SO para admin. Head e gestor nao veem. Excecao consciente a Regra 12 ('tela que so le e card'): o CRM le leads_crm (C0) e continua somente leitura, mas o volume de lead justifica tela propria em vez de card. Se algum dia head ou gestor precisar consultar lead, a decisao se reabre."
+    },
+    {
+      "token": "decisao-D32",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "D32 = onboarding canonico. Resposta: NOTION (onboarding_tracking, 289 linhas medidas em 07/09) contra ops_onboarding, que tem 1. O 367 vira 'briefing como item do motor + link publico na ficha', sem ops_onboarding_etapas."
+    },
+    {
+      "token": "decisao-D3",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "Enunciado recuperado de ~/fila-v41/LEIA-ME.md: D3 = universo unico = fonte 037 (78 ativos, clientes_receita.status='ativo'). Ja e a regra (8) embutida em todos os tickets da fila; nenhuma tela conta ativo por conta propria. Destrava 313 e 314."
+    }
+  ],
+  "tokens": [
+    "decisao-C1",
+    "decisao-D1",
+    "decisao-D10",
+    "decisao-D11",
+    "decisao-D12",
+    "decisao-D13",
+    "decisao-D16",
+    "decisao-D17",
+    "decisao-D2",
+    "decisao-D20",
+    "decisao-D21",
+    "decisao-D22",
+    "decisao-D23",
+    "decisao-D24",
+    "decisao-D25",
+    "decisao-D27",
+    "decisao-D28",
+    "decisao-D29",
+    "decisao-D3",
+    "decisao-D31",
+    "decisao-D32",
+    "decisao-D33",
+    "decisao-D34",
+    "decisao-D35",
+    "decisao-D4",
+    "decisao-D5",
+    "decisao-D6",
+    "decisao-D7",
+    "decisao-D8",
+    "decisao-D9"
+  ]
+}

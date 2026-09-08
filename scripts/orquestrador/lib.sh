@@ -412,23 +412,55 @@ motivo_token() {
 # --- Dependências ---------------------------------------------------------
 # liberacao_ok <token-INTEIRO>  (ex.: liberacao_ok "humano:migration-0025")
 #
-# Formato CANÔNICO de liberacoes.json — o que o arquivo, a doutrina e o lint do
-# mapa usam: {"tokens": ["humano:<token>", ...]}, com o token INTEIRO, prefixo
-# incluído. A v1 consultava `.liberadas[] | select(.token == $t)` com o token
-# SEM o prefixo: nenhum token liberado resolvia dependência nenhuma, e o ticket
-# ficava pendente para sempre em silêncio (PLAYBOOK 2026-09-03).
+# Formato de DESTINO (v2, schemas/liberacoes.schema.json):
+#   {"tokens": [{"token": "humano:<t>", "liberado_em": "...", "por": "..."}]}
 #
-# COMPAT por UMA versão: o formato antigo (.liberadas[].token, sem prefixo)
-# ainda resolve, mas grava AVISO no log. Sai na próxima mudança de schema.
+# Formas VIVAS que esta função TAMBÉM resolve. Todas foram levantadas por `jq`
+# no disco dos três repos em 2026-09-08 (peça K8b-1); as cópias byte a byte
+# estão em test/fixtures/liberacoes/, com a procedência de cada uma:
+#
+#   CI       {"tokens": ["humano:migration-0025", ...]}       strings COM prefixo
+#   Actus    {"tokens": ["migration-0255-aplicada", ...]}     strings SEM prefixo
+#   Comarka  {"liberadas": [{"token","em","por","nota"}],
+#             "tokens": ["decisao-D1", ...]}                  objetos + strings, sem prefixo
+#
+# Um arquivo que MISTURE as formas resolve a UNIÃO delas. Ler só uma das listas
+# quando o disco tem duas é exatamente como um token liberado deixa de destravar
+# um ticket: o Comarka tem 47 tokens únicos espalhados pelas duas, e 34 deles
+# moram em uma lista só.
+#
+# A comparação IGNORA o prefixo `humano:` dos dois lados. A v1 consultava
+# `.liberadas[] | select(.token == $t)` com o token SEM prefixo enquanto o
+# ticket declarava a dependência COM: nenhum token liberado resolvia dependência
+# nenhuma, e o ticket ficava pendente para sempre, em silêncio (PLAYBOOK
+# 2026-09-03). Normalizar os DOIS lados é o que fecha a família inteira desse
+# defeito, e não só a instância que apareceu.
+#
+# Duas passadas, e não uma, por causa do AVISO. A primeira aceita só a forma
+# canônica (`.tokens[]` com o token inteiro, string ou objeto v2) e é MUDA: é o
+# que o CI tem hoje, e avisar a cada dependência resolvida encheria a trilha de
+# ruído sobre um arquivo que não tem problema nenhum. A segunda é a compat, e
+# GRAVA o aviso — com o comando que resolve, não só com o diagnóstico.
 liberacao_ok() {
   local token="$1"
   [ -f "$CFG_LIBERACOES" ] || return 1
-  jq -e --arg t "$token" '(.tokens // []) | index($t) != null' \
-    "$CFG_LIBERACOES" >/dev/null 2>&1 && return 0
-  if jq -e --arg t "${token#humano:}" '(.liberadas // []) | any(.token == $t)' \
-       "$CFG_LIBERACOES" >/dev/null 2>&1; then
-    log "AVISO: '$token' liberado pelo formato ANTIGO (.liberadas[].token, sem prefixo)."
-    log "AVISO: migre $CFG_LIBERACOES para {\"tokens\": [\"$token\"]} — o formato antigo sai na próxima versão."
+
+  # 1. canônico: .tokens[] com o token INTEIRO — string (v1) ou objeto (v2).
+  jq -e --arg t "$token" '
+    [ (.tokens // [])[]
+      | if type == "string" then . elif type == "object" then (.token // empty) else empty end ]
+    | index($t) != null' "$CFG_LIBERACOES" >/dev/null 2>&1 && return 0
+
+  # 2. compat: a UNIÃO das duas listas, com o prefixo removido dos dois lados.
+  #    `token_de` devolve `empty` para o que não é string nem objeto com
+  #    `.token`: entrada malformada é IGNORADA, nunca casa com tudo.
+  if jq -e --arg t "${token#humano:}" '
+    def token_de:
+      if type == "string" then . elif type == "object" then (.token // empty) else empty end;
+    [ ((.tokens // [])[], (.liberadas // [])[]) | token_de | sub("^humano:"; "") ]
+    | index($t) != null' "$CFG_LIBERACOES" >/dev/null 2>&1; then
+    log "AVISO: '$token' resolveu por forma LEGADA de $CFG_LIBERACOES (token sem o prefixo 'humano:', ou lista .liberadas[])."
+    log "AVISO: migre $CFG_LIBERACOES — do kit: 'bash instalar.sh --atualizar $MAIN_CHECKOUT --migrar'. A forma legada sai na próxima versão."
     return 0
   fi
   return 1

@@ -268,6 +268,28 @@
   O e2e NÃO foi rodado nesta sessão.
 
 
+- **K8b-1 · o motor lê `liberacoes.json` em todas as formas vivas.** `lib.sh:liberacao_ok`
+  resolve as quatro formas que existem no disco (`CONTRATO.md` §6.1): `tokens[]` de objetos
+  (v2), `tokens[]` de strings com prefixo (CI), `tokens[]` de strings sem prefixo (Actus) e
+  a união com `liberadas[]` (Comarka). O prefixo `humano:` é ignorado dos DOIS lados;
+  arquivo que mistura formas resolve a UNIÃO; entrada malformada é ignorada. Duas passadas
+  de `jq`: a canônica é muda, a de compat grava o AVISO com o comando que migra.
+  `scripts/roadmap/lint-mapa.py` monta `sat` pela mesma regra, entre marcadores
+  `# <sat>`/`# </sat>` que o teste EXECUTA em vez de reimplementar.
+  *Evidência:* o PASSO 0 da etapa 5, `jq` no disco dos três repos (só leitura). Até aqui os
+  5 tokens do Actus não resolviam NADA, em silêncio — o incidente de 2026-09-03 outra vez,
+  num repo onde ninguém olhou. `gate-ticket.ts` não mudou, e é achado: o check 7 nunca leu
+  `liberacoes.json` (`gate-ticket.ts:429-441`), então não havia prefixo a normalizar ali.
+  Fecha a divergência 2 do `CONTRATO.md` §10. Duas asserções antigas foram REVERTIDAS com o
+  porquê escrito no arquivo (token sem prefixo passou a resolver; o aviso mudou de "formato
+  ANTIGO" para "forma LEGADA", que cobre as duas legadas).
+  *Teste:* `test/orquestrador-liberacoes-formatos.test.ts`, 28 casos, **16 vermelhos
+  antes**, contra os arquivos REAIS dos três repos em `test/fixtures/liberacoes/` (byte a
+  byte, com `PROCEDENCIA.md` e cksum).
+  *O que o CI faz diferente:* nada — os 7 tokens dele resolvem antes e depois e nenhum grava
+  aviso, e esse caso já estava VERDE no vermelho-antes.
+
+
 ## PENDENTES
 
 - **K6d · `scripts/kit/pureza.sh`.** O grep que TRANCA a pureza: em CÓDIGO (não em
@@ -282,17 +304,37 @@
   *Teste:* pureza = 0 em código, com o caso NEGATIVO de que um `apps/web` reintroduzido em
   código faz o script sair 1.
 
-- **K8b · `instalar.sh --novo` e as migrações.** O `--novo` nasce do mesmo bloco de
-  vendorização do `scripts/kit/fixture.sh` que o `--atualizar` (K8a) já usa, mais os dois
-  artefatos que a doutrina manda vir do template (`doutrina/templates/TICKET.md` →
-  `docs/fila/_TEMPLATE.md`, `PLAYBOOK-seed.md` → `docs/orquestrador/PLAYBOOK.md`). E as
-  migrações, que o `--atualizar` deliberadamente NÃO faz: `liberacoes.json` (duas listas do
-  Comarka → objetos, `em` → `liberado_em`, prefixo `humano:`), pause file (`.orq-pause` →
-  `PAUSAR`), config (mapa de chaves legadas → schema 2 limpo) e o bloco JSON dos tickets
-  pendentes (prosa intacta). Nunca reescreve objetivo de ticket.
-  *Evidência:* inventário §4 decisões 3 e 4, §6 itens 9 e 12, §8 item 4.
-  *Teste:* migração de cada artefato legado, com o caso NEGATIVO de que a prosa e o objetivo
-  não se movem.
+- **K8b-2 · `orq liberar` e a migração de liberações.** `orq liberar humano:<t> [nota]`
+  grava um objeto v2; `scripts/orquestrador/migrar-liberacoes.ts` leva qualquer forma viva
+  para v2, deduplicando por token e preservando a ordem original.
+  *Evidência:* o PASSO 0 da etapa 5 — Comarka com 61 entradas e 47 tokens únicos, uma
+  duplicata exata dentro de `liberadas[]`.
+  *Teste:* os três formatos reais de `test/fixtures/liberacoes/`.
+
+- **K8b-3 · pause file e `.gitignore`.** `.orq-pause` → `PAUSAR` preservando o motivo; o
+  instalador IMPRIME a linha de `.gitignore` que falta e não edita o arquivo de repo
+  existente.
+  *Evidência:* `CONTRATO.md` §7 (o motor reconhece os dois nomes).
+  *Teste:* fixture com `.orq-pause` presente.
+
+- **K8b-4 · config schema 1 → 2 por tabela explícita.** `migrar-config.ts`, com a tabela
+  `de → para` escrita à mão a partir do PASSO 0. Chave sem correspondente FICA e aparece no
+  relatório; nunca remove `_` de documentação; o oficial só é substituído por passo humano.
+  *Evidência:* Actus e Comarka em `$schema_versao: 1`; `tipo: "tsc_baseline"` do Comarka
+  contra o `"baseline"` que `gates.ts:151` reconhece.
+  *Teste:* os dois configs reais copiados para fixture.
+
+- **K8b-5 · bloco JSON dos tickets pendentes.** `migrar-tickets.ts`: só `pendente`, só o
+  bloco ```json, prosa intacta byte a byte. `tentativas_consumidas` → `tentativas`,
+  `recon_esperado` → `recon`. Não inventa `tipo`, `risco` nem `bloco`.
+  *Evidência:* o PASSO 0 — 250 `recon_esperado` e 39 `tentativas_consumidas` no disco.
+  *Teste:* o NEGATIVO de que a prosa não se move.
+
+- **K8b-6 · `instalar.sh --novo <repo>`.** Do mesmo bloco de vendorização do
+  `scripts/kit/fixture.sh`, mais os artefatos que a doutrina manda vir do template. Recusa
+  se `docs/fila` já existir. `--atualizar --migrar` encadeia K8b-2 a K8b-5.
+  *Evidência:* `CONTRATO.md` §10, divergência 1.
+  *Teste:* repo temporário vazio → `--novo` → `orq config` lista os placeholders.
 
 - **K8e · os testes que ainda não viajam.** Três baldes, achados da K8d, cada um com uma
   saída diferente. (i) Os 17 re-apontados para `FX_CHECKOUT`/`test/fixtures/checkout` nas
@@ -319,15 +361,6 @@
   *Teste:* os mesmos casos de `test/orquestrador-gate-ticket.test.ts` continuam verdes com o
   validador trocado, mais o NEGATIVO de que um campo novo no schema passa a reprovar sem
   edição de código.
-
-- **`liberacao_ok` lê o formato v2 (objetos).** `schemas/liberacoes.schema.json` descreve
-  `tokens` como lista de OBJETOS — o alvo da migração K8b —, e o motor lê lista de STRINGS
-  (`lib.sh:426`, `index($t)`). Um objeto ali não resolve dependência nenhuma, em SILÊNCIO,
-  que é exatamente o modo de falha da v1 (PLAYBOOK do CI, 2026-09-03). As duas pontas têm de
-  chegar juntas: ou a K8b não produz objetos, ou o motor aprende a lê-los ANTES da migração.
-  *Evidência:* `CONTRATO.md` §10, divergência 2.
-  *Teste:* dependência `humano:<t>` resolve com o token em objeto e em string; e o NEGATIVO
-  de que hoje ela NÃO resolve com objeto.
 
 - **K10 · doutrina v2.** A regra "nunca copie scripts de outro repo" reescrita para "motor único
   versionado sem premissa local; o que varia vive no config"; faixa de IDs por bloco → sequencial

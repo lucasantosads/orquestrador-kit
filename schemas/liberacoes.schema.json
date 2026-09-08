@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://orquestrador.kit/schemas/liberacoes.schema.json",
   "title": "docs/fila/liberacoes.json — as liberações humanas",
-  "description": "ATENÇÃO, LEIA ANTES DE USAR: este schema descreve o formato-ALVO (v2, tokens como OBJETOS), que é o destino da migração da peça K8b. O motor de HOJE lê 'tokens' como lista de STRINGS — lib.sh:426, `(.tokens // []) | index($t)` — e um objeto ali NÃO resolve dependência nenhuma, em silêncio. Está registrado em CONTRATO.md §10, divergência 2. Enquanto essa peça não fecha, o formato que o motor obedece é o de scripts/orquestrador/lib.sh:423 (liberacao_ok), e é ele que vale no disco. Este arquivo é documento e insumo, nunca gate.",
+  "description": "Este schema descreve o formato de DESTINO (v2, tokens como OBJETOS): o que `orq liberar` escreve e o que `scripts/orquestrador/migrar-liberacoes.ts` produz. Desde a peça K8b-1, `lib.sh:liberacao_ok` TAMBÉM resolve as outras formas vivas — tokens como strings com ou sem o prefixo `humano:`, e a lista legada `.liberadas[]` — normalizando o prefixo dos dois lados e resolvendo a UNIÃO quando o arquivo mistura formas. As quatro formas, com a origem de cada uma no disco, estão em CONTRATO.md §6.1, e os arquivos reais em test/fixtures/liberacoes/. Um arquivo em forma legada resolve com AVISO no log, e o aviso nomeia o comando que migra. Este arquivo é documento e insumo, nunca gate: quem resolve dependência humana é liberacao_ok.",
 
   "type": "object",
   "required": ["$schema_versao", "tokens"],

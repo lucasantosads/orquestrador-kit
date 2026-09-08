@@ -268,22 +268,67 @@ O juiz recebe diff cru + `gates.txt` + critérios. **Nunca** o prompt do executo
 
 ## 6. `docs/fila/liberacoes.json` — as liberações humanas
 
-Formato **canônico** (o que o motor lê primeiro, `liberacao_ok`, `lib.sh:423`):
+Formato de **DESTINO** (v2), o que `orq liberar` escreve e o que a migração
+produz. Schema em `schemas/liberacoes.schema.json`:
 
 ```json
-{ "tokens": ["humano:migration-0025", "humano:tk-201-arquetipos"] }
+{
+  "$schema_versao": 2,
+  "tokens": [
+    { "token": "humano:migration-0025", "liberado_em": "2026-09-08",
+      "por": "lucas", "nota": "aplicada e conferida no banco" }
+  ]
+}
 ```
 
-O token é o INTEIRO, com o prefixo `humano:`. Uma dependência
-`"humano:migration-0025"` num ticket resolve quando, e só quando, essa string
-aparece em `.tokens`.
+O token é o INTEIRO, com o prefixo `humano:`, porque é a forma que a dependência
+do ticket usa.
 
-**Compat por UMA versão:** o formato antigo (`.liberadas[].token`, SEM prefixo)
-ainda resolve, gravando AVISO no log. Ele existe porque a v1 consultava
-`.liberadas[]` com o token sem prefixo: nenhum token liberado resolvia
-dependência nenhuma, e o ticket ficava pendente para sempre, em silêncio
-(PLAYBOOK do CI, 2026-09-03). Schema em `schemas/liberacoes.schema.json` — leia
-a §10, a divergência é aqui.
+### 6.1 As formas que `liberacao_ok` resolve (peça K8b-1)
+
+Levantadas por `jq` no disco dos três repos em 2026-09-08; as cópias byte a byte
+estão em `test/fixtures/liberacoes/` com a procedência de cada uma.
+
+| Forma | Onde vive | Exemplo | Avisa? |
+|---|---|---|---|
+| `tokens[]` de objetos (v2) | destino da migração | `{"token":"humano:x-1","liberado_em":…}` | não |
+| `tokens[]` de strings COM prefixo | conteudos-infinitos (CI), 7 tokens | `"humano:migration-0025"` | não |
+| `tokens[]` de strings SEM prefixo | actus-saas, 5 tokens | `"migration-0255-aplicada"` | **sim** |
+| `liberadas[]` de objetos (campo `em`) | comarka-operacional, 31 entradas | `{"token":"decisao-C1","em":"2026-08-13",…}` | **sim** |
+
+Regras que valem para todas:
+
+- **A comparação ignora o prefixo `humano:` dos DOIS lados.** `liberacao_ok` só é
+  chamada para dependência que já começa com `humano:` (`deps_resolvidas`), então
+  não existe segundo namespace com que colidir.
+- **Um arquivo que mistura as formas resolve a UNIÃO.** O Comarka tem 47 tokens
+  únicos espalhados pelas duas listas, e 34 deles moram em uma lista só: ler uma
+  só é como um token liberado deixa de destravar um ticket.
+- Entrada malformada (nem string, nem objeto com `.token`) é **ignorada**, nunca
+  casa com tudo.
+- O AVISO nomeia a forma legada **e o comando que a migra**
+  (`instalar.sh --atualizar <repo> --migrar`). A forma canônica é MUDA de
+  propósito: avisar a cada dependência resolvida encheria a trilha de ruído
+  sobre um arquivo que não tem problema nenhum.
+
+A normalização de prefixo existe porque a v1 consultava `.liberadas[]` com o
+token sem prefixo enquanto o ticket declarava a dependência COM: nenhum token
+liberado resolvia dependência nenhuma, e o ticket ficava pendente para sempre,
+em silêncio (PLAYBOOK do CI, 2026-09-03). O Actus estava, até esta peça, no
+mesmo estado — cinco tokens liberados, zero dependências resolvidas, sem uma
+linha de log.
+
+`scripts/roadmap/lint-mapa.py` monta o conjunto de tokens satisfeitos pela MESMA
+regra, e o teste executa o bloco do lint em vez de reimplementá-lo (marcadores
+`# <sat>` … `# </sat>`).
+
+### 6.2 `orq liberar` — o quarto verbo que escreve
+
+`orq liberar humano:<tipo>-<id> ["nota"]` acrescenta um objeto v2. Recusa (rc 1)
+token sem o prefixo `humano:`, token fora de `^humano:[a-z-]+-[0-9A-Za-z-]+$`,
+token duplicado, e arquivo que ainda não está em v2 — neste último caso mandando
+rodar a migração. Nunca converte o arquivo por conta própria: migrar é operação
+com `--dry-run`, diff e `.bak`, não efeito colateral de um verbo de consulta.
 
 ---
 
@@ -389,7 +434,7 @@ O que este contrato **não** descreve como gostaria, e a peça que fecha cada um
 | # | Divergência | Peça |
 |---|---|---|
 | 1 | `--novo` não existe: o layout de §1 é criado hoje por `scripts/kit/fixture.sh` (para o fixture) e por `--atualizar` (para repo já instalado). O `--novo` sai 2. Os dois artefatos que a doutrina manda vir do template (`TICKET.md` → `docs/fila/_TEMPLATE.md`, `PLAYBOOK-seed.md` → `docs/orquestrador/PLAYBOOK.md`) só são copiados pelo `fixture.sh`. | **K8b** |
-| 2 | `schemas/liberacoes.schema.json` descreve `tokens` como lista de OBJETOS (`token`, `liberado_em`, `por`, `nota`), que é o formato-alvo da migração. O motor de hoje lê `tokens` como lista de STRINGS (`lib.sh:426`, `index($t)`) e um objeto ali NÃO resolve dependência nenhuma — silenciosamente. O schema é documento e insumo, não gate. | **K8b** (migração) e a peça que ensina `liberacao_ok` a ler objetos |
+| 2 | ~~`tokens` de OBJETOS não resolvia dependência nenhuma, em silêncio.~~ **FECHADA pela K8b-1:** `liberacao_ok` resolve as quatro formas vivas (§6.1), normalizando o prefixo dos dois lados, e `lint-mapa.py` monta `sat` pela mesma regra. O schema continua sendo documento e insumo, nunca gate. | ~~K8b-1~~ **feita** |
 | 3 | `gate-ticket.ts` NÃO valida contra `schemas/ticket.schema.json`: continua com os checks escritos à mão. O schema é documento e insumo do `orq config`. | **"gate valida pelo schema"** (em PENDENTES) |
 | 4 | `schemas/ticket.schema.json` fecha `status` no vocabulário do gate (6 valores). `doutrina/templates/TICKET.md` cita ainda `candidato` (ticket do planejador antes do gate) e `descartado` (só do gate) — dois status que o motor de hoje não conhece, porque planejador e sentinela nascem desligados. | **K10** (doutrina v2) |
 | 5 | `schemas/motivo_categoria.json` copia os 8 baldes do `orq-telemetria.py` do **comarka-operacional**, que não está no kit. Nada no motor deste kit os usa hoje: eles entram com o painel. | **K12** |

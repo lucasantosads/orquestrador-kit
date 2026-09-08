@@ -95,10 +95,25 @@ ok(f"9. IDs de MAPA.md == mapa.json ({len(ids_b)} blocos, {len(ids_f)} frentes)"
 # anterior tratava isso como vazamento — regra que a doutrina nao tem; ver PLAYBOOK).
 import glob as _glob
 lib=json.load(open('docs/fila/liberacoes.json'))
-# le os dois formatos: {"tokens":[...]} (arquivo de hoje) e {"liberadas":[{"token":...}]} (o que
-# scripts/orquestrador/lib.sh:liberacao_ok consulta via jq).
-sat=set(lib.get('tokens') or [])
-sat|={f"humano:{l.get('token')}" for l in (lib.get('liberadas') or []) if l.get('token')}
+# As MESMAS formas que scripts/orquestrador/lib.sh:liberacao_ok resolve (peca K8b-1), pela mesma
+# regra: uniao das duas listas, entrada string OU objeto com .token, prefixo 'humano:' normalizado
+# nos dois lados. Divergir daqui faria o lint dizer "satisfeito" sobre token que o loop nao resolve
+# — ou o contrario, que e pior: o lint verde escondendo a fila travada.
+#
+# Os marcadores abaixo NAO sao decoracao: test/orquestrador-liberacoes-formatos.test.ts extrai
+# exatamente este bloco e o EXECUTA contra os arquivos reais dos tres repos, para que o teste
+# rode a regra do lint em vez de reimplementa-la.
+# <sat>
+def _token_de(x):
+    if isinstance(x, str): return x
+    if isinstance(x, dict): return x.get('token') or ''
+    return ''
+def _humano(t):
+    t = str(t)
+    return t if t.startswith('humano:') else f'humano:{t}'
+sat={_humano(_token_de(x)) for x in ((lib.get('tokens') or []) + (lib.get('liberadas') or []))
+     if _token_de(x)}
+# </sat>
 # O WARN nao e mais sobre o ARQUIVO estar no formato novo (ele esta), e sim sobre o HARNESS ler
 # esse formato: quem resolve dependencia humana e lib.sh:liberacao_ok. Enquanto ela nao consultar
 # '.tokens', todo token de liberacoes.json e decorativo — foi exatamente o bug de 2026-09-03.
