@@ -155,7 +155,7 @@ Orçamento nasce **medido**: duas semanas com teto alto e `orq custo` diário; d
 | `loops.executor.ativo: false` | fila não é drenada; sentinela/planejador também não (dependem de merge/fila) |
 | `loops.sentinela.ativo: false` | sem coleta |
 | `loops.planejador.ativo: false` | sem reposição |
-| `push_suprimido: true` | merge local na staging sem push |
+| ~~`push_suprimido: true`~~ | **NÃO é kill switch** (D11): nenhum script lê a chave. O merge é local e sem push por construção; quem impede é `proibicoes_absolutas.tools` com `Bash(git push:*)` e a `branch_protegida`. Ver `CONTRATO.md` §8. |
 | `modo: dry_run` (global) | executor roda gates mas não mergeia; planejador só candida |
 
 Lidos no passo 0 de toda drenagem **e entre tickets**. `orq pausar` / `orq retomar` só criam/removem o arquivo; nunca matam processo.

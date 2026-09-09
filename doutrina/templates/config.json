@@ -23,6 +23,7 @@
   "_modo": "agendado = uma drenagem por disparo. continuo = drenagens em sequência no MESMO processo com sleep de intervalo_min, relendo config e kill switches a cada ciclo. dry_run = executor roda gates mas não mergeia; planejador só gera candidatos.",
   "modo": "agendado",
   "intervalo_min": 30,
+  "_push_suprimido": "INFORMATIVO, não é interruptor (peça D11). Nenhum script do motor lê esta chave: ela não está em config-chaves.ts e o valor não muda comportamento nenhum — o CI a tem em false e mesmo assim não pusha. Quem impede o push é (1) proibicoes_absolutas.tools com Bash(git push:*), que sai na flag --disallowedTools E é tirado da allowlist derivada do ticket, e (2) branch_protegida, que o local-loop recusa mergear e da qual o executor só CRIA branch. O snapshot diz 'push suprimido' sempre (lib.sh:staging_linha), por construção e não por config. Escreva-a como registro da decisão; não a trate como o que segura o push.",
   "push_suprimido": false,
   "loops": {
     "_descricao": "Kill switches por loop. Nascem desligados exceto executor. Ligar na ordem: executor → sentinela → planejador (dry_run) → planejador (auto).",

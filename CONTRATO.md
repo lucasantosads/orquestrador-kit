@@ -407,6 +407,25 @@ verificam nada (no CI é o `limpeza_artefatos`, um `rm -rf` do artefato de build
 que roda antes dos gates de verdade). Gate que não verifica não aparece na linha
 GATE, e é correto que não apareça.
 
+**`push_suprimido` é INFORMATIVA — não é interruptor** (peça D11). A chave não
+está em `config-chaves.ts` e nenhum script do motor a lê: o valor não muda
+comportamento nenhum, e o config do CI a tem em `false` sem que o loop de lá
+pushe. O motor não pusha **por construção** — `local-loop.sh` abre dizendo "Sem
+push: publicar é humano" e não há um único `git push` no motor. Quem *impede* o
+push são outras duas coisas, e são elas que se conferem quando a pergunta é
+"tem como isto publicar sozinho?":
+
+1. `proibicoes_absolutas.tools` com `Bash(git push:*)` — o piso vai na flag
+   `--disallowedTools` E é tirado da allowlist derivada do ticket
+   (`perfil.ts:filtrarPeloPiso`): o ticket pede, o config nega, o config ganha.
+2. `branch_protegida` — `local-loop.sh:merge_em_alvo` recusa mergear nela e
+   recusa mergear a partir de uma worktree que esteja nela.
+
+O snapshot diz `push suprimido (publicar é humano neste repo)` **sempre**
+(`lib.sh:staging_linha`), por construção e não por leitura do config. Escrever a
+chave como registro da decisão é legítimo; tratá-la como o que segura o push é
+confiar num interruptor que não está ligado a nada.
+
 **`000-config.proposto.json` é NOME RESERVADO do instalador.** É onde o
 `migrar-config.ts --propor` escreve e de onde o `--aplicar` lê. Desde a peça M1
 o `--propor` **RECUSA** (rc 1) se o arquivo já existir, e o `instalar.sh
