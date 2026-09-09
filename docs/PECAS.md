@@ -628,6 +628,71 @@
   `liberado_em`.
 
 
+- **T1 · `tsx` é dependência do MOTOR, e o motor para de sair para a rede.** A resolução
+  passa a ser UMA, no `lib.sh`: `$MAIN_CHECKOUT/node_modules/.bin/tsx` se existir e for
+  executável, senão `npx --no-install tsx` — a rede fica de fora por CONSTRUÇÃO, porque
+  `--no-install` falha rápido em vez de baixar. `ORQ_TSX` é array porque o fallback tem
+  três palavras, e `$(tsx_bin)` sem aspas quebraria no primeiro checkout com espaço no
+  caminho. As 14 chamadas usam `"${ORQ_TSX[@]}"`; a do `orq config` duplica a resolução em
+  uma linha, porque aquele verbo é despachado ANTES do `lib.sh` de propósito.
+  *Fallback e gate são coisas separadas:* o fallback mantém os verbos read-only do `orq`
+  respondendo; o gate impede DRENAR sem o binário do repo. Três bocas: `tsx_ou_sai` no
+  `local-loop.sh` antes do lock (o `lock_adquirir` já é TypeScript — `lock_stale` roda
+  `tsx -e` — e sem tsx ele responde "outro run vivo" em silêncio, sobre um lock que talvez
+  nem exista); a `cat.7` do pré-voo, PRIMEIRA porque é a única cujo NO-GO explica as
+  outras; e o `instalar.sh`, quarta recusa do `--atualizar` e recusa do `--novo`, com a
+  linha de instalação escolhida pelo lockfile do repo alvo e o range lido do
+  `package.json` do kit.
+  *Evidência:* `~/orq-sessoes/revisao-adocao-actus.md`, bloqueante **B-1** — as 15 linhas
+  casando `npx tsx` (14 chamadas + o comentário de `launchd-run.sh:45`, que fica), e
+  `~/Projetos/actus-saas/node_modules/.bin/` com `next`, `tsc` e `vitest` e sem `tsx`.
+  *Teste:* `test/orquestrador-toolchain-tsx.test.ts`, 30 casos, **24 vermelhos antes**,
+  mais o caso (k) de `scripts/kit/test-instalar.sh`. O stub
+  `test/fixtures/bin-sem-rede/npx` existe para provar a NEGATIVA: sem tsx o loop recusa
+  ANTES de tentar resolver a ferramenta, e o log de chamadas sai vazio — "recusou" e
+  "recusou sem tocar a rede" não são a mesma afirmação.
+  *O que o CI faz diferente:* NADA. `conteudos-infinitos` declara `"tsx": "^4.19.0"`
+  (package.json:29) e tem o binário executável (v4.22.4); o `--dry-run` contra ele segue
+  prevendo as MESMAS duas recusas de antes, nenhuma de tsx, com a árvore de lá em zero
+  linha de `git status --porcelain` antes e depois.
+
+- **M1 · o `--migrar` não sobrescreve um proposto existente.** `--propor` RECUSA (rc 1)
+  quando `000-config.proposto.json` já está no disco, e a mensagem diz o que fazer com ele
+  — apagar, se é a proposta velha; RENOMEAR, se é a sua revisão —, dando o nome da
+  convenção: `000-config.revisado.json`, que o migrador não conhece (não lê, não escreve,
+  não apaga). `--dry-run` continua não gravando e passa a AVISAR da recusa. A recusa é
+  classe própria (`Recusa`) mapeada para rc 1, distinta do rc 2 de erro de uso, e é essa
+  distinção que deixa o `instalar.sh` REPASSAR só ela — as outras migrações seguem com
+  `|| true`, onde rc != 0 é "esta etapa deu errado, siga".
+  *Evidência:* `~/orq-sessoes/revisao-adocao-actus.md`, bloqueante **B-2**;
+  `migrar-config.ts:251` (o `writeFileSync` sem guarda) e `:47` (`NOME_PROPOSTO`). O plano
+  de adoção mandava a Fase A gravar o revisado NESSE nome: o `--migrar` seguinte o apagava
+  e punha a proposta de máquina com os 14 placeholders intactos, em silêncio.
+  *Teste:* 11 casos em `test/orquestrador-migrar-config.test.ts`, **8 vermelhos antes**,
+  com o proposto pré-existente conferido byte a byte; mais a (i3a) do
+  `scripts/kit/test-instalar.sh`, que é a (i2) rodada duas vezes.
+  *O que o CI faz diferente:* NADA — nenhum dos três repos do disco tem
+  `docs/fila/000-config.proposto.json`, então em nenhum deles a guarda dispara.
+
+- **D11 · `push_suprimido` é informativa, não interruptor.** Zero motor, e é a peça: o
+  motor está certo. Ele não pusha por CONSTRUÇÃO (não há uma invocação de `git push` no
+  motor inteiro) e o snapshot diz "push suprimido" sempre, em `lib.sh:staging_linha`, sem
+  consultar config. Quem IMPEDE são `proibicoes_absolutas.tools` com `Bash(git push:*)` (na
+  flag `--disallowedTools` E fora da allowlist derivada do ticket) e a `branch_protegida`,
+  que o `merge_em_alvo` recusa como alvo E como HEAD da worktree de merge. Escrito em três
+  lugares: `CONTRATO.md` §8, o comentário `_push_suprimido` imediatamente antes da chave no
+  template, e a tabela de kill switches de `doutrina/references/autoalimentacao.md` — que
+  listava a chave como um, e era a única linha do kit dizendo o oposto do contrato.
+  *Evidência:* `~/orq-sessoes/revisao-adocao-actus.md`, achado **V-4**. A chave não está em
+  `config-chaves.ts` e o config do CI a tem em `false` sem que o loop de lá pushe.
+  *Teste:* `test/orquestrador-push-suprimido.test.ts`, 14 casos, **3 vermelhos antes** — os
+  outros 11 já eram verdes por construção, e é esse o ponto: eles TRANCAM a afirmação
+  contra o disco. O grep de `git push` traz o próprio negativo, e foi ele que pegou o
+  buraco da primeira versão do padrão (não via um `git push` indentado).
+  *O que o CI faz diferente:* NADA — nenhuma linha de motor mudou. O config do CI segue com
+  `false` e o `fixture/` do kit com `true`: dois repos, dois valores, um comportamento.
+
+
 ## PENDENTES
 
 - **K6d · `scripts/kit/pureza.sh`.** O grep que TRANCA a pureza: em CÓDIGO (não em

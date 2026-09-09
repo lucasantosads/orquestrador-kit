@@ -553,3 +553,48 @@ Medido no Actus (`instalar.sh --atualizar ~/Projetos/actus-saas --migrar --dry-r
 escrito): 7 renomes (eram 4), e o `orq config` sobre o proposto saiu de **15 para 14
 violações** — as 14 são placeholders de decisão local, e o aviso "faixa sem dir" sumiu.
 Relatório: `~/orq-sessoes/relatorio-kit-etapa6b.md`.
+
+### Etapa 6c — os dois bloqueantes da adoção do Actus, e uma chave que não era interruptor
+
+Três peças, três commits, saídas da revisão de adoção do Actus
+(`~/orq-sessoes/revisao-adocao-actus.md`, 2026-09-09, só leitura). As duas primeiras são os
+bloqueantes B-1 e B-2 — os dois que faziam a Fase A passar e o passo B3 quebrar, cada um
+por um motivo diferente e nenhum dos dois com sintoma legível. A terceira é o achado V-4: um
+valor de config que todo mundo lia como garantia e que ninguém consultava.
+
+- **T1** `9e9b67b` — `tsx` é dependência do MOTOR. Uma resolução só, no `lib.sh`
+  (`ORQ_TSX`/`tsx_bin`): o binário do checkout, ou `npx --no-install tsx` — a rede fica
+  fora por construção. As 14 chamadas de `npx tsx` passam a usar `"${ORQ_TSX[@]}"`; a do
+  `orq config` duplica a resolução em uma linha, porque aquele verbo roda antes do
+  `lib.sh` de propósito. A ausência do binário vira RECUSA em três bocas: `tsx_ou_sai` no
+  `local-loop.sh` **antes do lock** (o `lock_adquirir` já é TypeScript, e sem tsx ele
+  responde "outro run vivo" em silêncio), a `cat.7` do pré-voo, e o `instalar.sh`
+  (`--atualizar` e `--novo`, com a linha de instalação escolhida pelo lockfile do alvo).
+  Fallback e gate são separados de propósito: o fallback deixa CONSULTAR, o gate impede
+  DRENAR. 30 casos, 24 vermelhos antes, com um stub de `npx` que prova a negativa — o loop
+  recusa antes de tentar resolver a ferramenta, e o log de chamadas sai vazio.
+- **M1** `c496101` — `--propor` recusa sobrescrever um `000-config.proposto.json` que já
+  existe, e o `instalar.sh` repassa a recusa (rc 1) em vez de engoli-la. O nome é reservado
+  do instalador; revisão humana usa `000-config.revisado.json`, que o migrador não conhece.
+  O `--dry-run` continua não gravando e passa a avisar. 11 casos, 8 vermelhos antes, com o
+  proposto pré-existente conferido byte a byte. Dois casos do `test-instalar.sh` mudaram de
+  veredito e é a peça funcionando: a (i3) rodava `--migrar` uma segunda vez sobre o
+  proposto que a (i2) acabara de gravar.
+- **D11** `cff57a2` — `push_suprimido` é INFORMATIVA. Zero motor: o motor está certo, não
+  pusha por construção e o snapshot afirma a supressão sem ler config. Quem impede são
+  `proibicoes_absolutas.tools` com `Bash(git push:*)` e a `branch_protegida`. Escrito no
+  `CONTRATO.md` §8, no comentário do template e na tabela de kill switches da doutrina —
+  que listava a chave como um, e era a única linha do kit dizendo o oposto do contrato.
+  14 casos, 3 vermelhos antes; os outros 11 TRANCAM contra o disco uma afirmação que antes
+  se reverificava por grep.
+
+O que o CI faz diferente, nas três: **nada**, e cada uma prova o seu. T1: o
+`conteudos-infinitos` declara `"tsx": "^4.19.0"` e tem o binário executável (v4.22.4), e o
+`--dry-run` contra ele segue prevendo as MESMAS duas recusas de antes. M1: nenhum dos três
+repos do disco tem um `000-config.proposto.json`. D11: nenhuma linha de motor mudou.
+
+Medido no Actus de novo (mesmo comando, só leitura, árvore em 21 linhas de `git status
+--porcelain` antes e depois): 90 diferenças, 14 violações e 12 decisões — idênticos à etapa
+6b —, e **uma linha nova** na previsão de recusa, a do tsx, com `pnpm add -D tsx@^4.19.0`
+escolhido pelo `pnpm-lock.yaml` de lá. Relatório:
+`~/orq-sessoes/relatorio-kit-etapa6c.md`.
