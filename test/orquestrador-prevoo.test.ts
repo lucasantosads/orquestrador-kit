@@ -41,6 +41,7 @@ const CONFIG = {
 
 function depsVerdes(over: Partial<PreVooDeps> = {}): PreVooDeps {
   return {
+    tsxLocal: () => true,
     arquivoComConteudo: () => true,
     contarArquivosCommitados: () => 6,
     lerOrigin: () => 'git@github.com:exemplo/actus-saas.git',
@@ -205,13 +206,16 @@ describe('preVooRelampago: composição', () => {
   });
 
   it('preVooRelampago: para na primeira falha (cat.0 antes de cat.1/cat.6)', () => {
+    // A cat.7 (toolchain, peça T1) roda ANTES e está verde aqui: o que se mede
+    // é que a cat.0 aborta sem deixar cat.1 e cat.6 rodarem.
     const r = preVooRelampago({
       config: CONFIG,
       deps: depsVerdes({ arquivoComConteudo: () => false, lerOrigin: () => '', lerLiberacoes: () => 'x' }),
     });
     expect(r.ok).toBe(false);
     expect(r.token).toBe('cat.0');
-    expect(r.itens).toHaveLength(1);
+    expect(r.itens).toHaveLength(2);
+    expect(r.itens[0]?.token).toBe('cat.7');
   });
 
   it('preVooRelampago: dep que LANÇA vira aborto limpo nomeando o item ⚡', () => {
@@ -259,9 +263,10 @@ describe('preVooRelampago: composição', () => {
   it('render: um item por linha, e a última linha é o veredito', () => {
     const go = render(preVooRelampago({ config: CONFIG, deps: depsVerdes() }));
     const linhas = go.trimEnd().split('\n');
-    expect(linhas).toHaveLength(5); // cat.0, cat.1, cat.6, cat.3 e o veredito
+    expect(linhas).toHaveLength(6); // cat.7, cat.0, cat.1, cat.6, cat.3 e o veredito
     expect(linhas.at(-1)).toBe('GO');
-    expect(linhas[0]).toMatch(/^ok {4}cat\.0 /);
+    expect(linhas[0]).toMatch(/^ok {4}cat\.7 /);
+    expect(linhas[1]).toMatch(/^ok {4}cat\.0 /);
     expect(linhas.at(-2)).toMatch(/^info {2}cat\.3 /);
 
     const nogo = render(preVooRelampago({ config: CONFIG, deps: depsVerdes({ lerOrigin: () => 'outro' }) }));
@@ -333,10 +338,18 @@ describe('local-loop.sh chama o pré-voo ANTES do lock', () => {
   // propriedade que importa: em NO-GO nenhum TICKET é tocado, e o primeiro
   // passo que escreve em ticket é o `--reconcile`.
   it('a chamada vem depois do lock e da pausa, e ANTES do reconcile e de drenar', () => {
+    // A peça T1 pôs UMA checagem antes do lock — `tsx_ou_sai` —, e ela é de
+    // outra natureza: não é o pré-voo, é a condição para o lock existir (o
+    // `lock_stale` roda `tsx -e`). A ordem medida aqui não mudou.
+    const iTsx = loop.indexOf('\n  tsx_ou_sai\n');
     const iLock = loop.indexOf('lock_adquirir || exit 0');
+    expect(iTsx).toBeGreaterThan(0);
+    expect(iTsx).toBeLessThan(iLock);
     const iPausa = loop.indexOf('  if pausa_ativa; then\n    say "PAUSA ativa');
     const iPrevoo = loop.indexOf('\n  prevoo_ou_sai\n');
-    const iReconcile = loop.indexOf('--reconcile');
+    // A CHAMADA, não a flag solta: `--reconcile` aparece em comentário antes de
+    // aparecer em código, e uma âncora que um comentário move não mede ordem.
+    const iReconcile = loop.indexOf('bash "$ORQ_LIB_DIR/executor.sh" --reconcile');
     const iDrenar = loop.indexOf('\n  drenar\n');
     expect(iLock).toBeGreaterThan(0);
     expect(iLock).toBeLessThan(iPausa);
@@ -362,6 +375,7 @@ describe('local-loop.sh chama o pré-voo ANTES do lock', () => {
   });
 
   it('o pré-voo é substituível por stub, como run_executor_once', () => {
-    expect(loop).toMatch(/run_prevoo\(\) \{\n  npx tsx "\$ORQ_LIB_DIR\/prevoo\.ts"/);
+    // `"${ORQ_TSX[@]}"` desde a peça T1: a resolução do tsx é uma só, no lib.sh.
+    expect(loop).toMatch(/run_prevoo\(\) \{\n  "\$\{ORQ_TSX\[@\]\}" "\$ORQ_LIB_DIR\/prevoo\.ts"/);
   });
 });

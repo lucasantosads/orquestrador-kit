@@ -39,7 +39,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-decisao() { npx tsx "$ORQ_LIB_DIR/decisao-cli.ts" "$MAIN_CHECKOUT" "$@"; }
+decisao() { "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/decisao-cli.ts" "$MAIN_CHECKOUT" "$@"; }
 
 # fase <nome> — snapshot E variável lida pelo trap de saída. Duas escritas com um
 # nome só: uma fase que só existe no STATUS.md some quando o processo morre, e é
@@ -567,7 +567,7 @@ event_gate() {
 # (--allowedTools "" + instrução explícita no prompt) e --max-turns 1: o juiz
 # lê o que recebeu e responde, não investiga.
 JUIZ_ROU=0; JUIZ_APROVADO=""; JUIZ_MOTIVO=""; JUIZ_FALHOS=""; JUIZ_ILEGIVEL=0
-juiz() { npx tsx "$ORQ_LIB_DIR/juiz.ts" --run-cli "$MAIN_CHECKOUT" "$@"; }
+juiz() { "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/juiz.ts" --run-cli "$MAIN_CHECKOUT" "$@"; }
 
 run_juiz() {
   local file="$1" wt="$2" rundir="$3" base="$4" attempt="$5"
@@ -832,7 +832,7 @@ run_attempt() {
   # propaga a flag de exclusão e o E2E que escreve no Supabase voltaria ao gate.
   local gates_rc=0
   fase gates
-  npx tsx "$ORQ_LIB_DIR/gates.ts" --run-cli "$wt" > "$rundir/gates.txt" 2>&1 || gates_rc=$?
+  "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/gates.ts" --run-cli "$wt" > "$rundir/gates.txt" 2>&1 || gates_rc=$?
   log "  gates: $([ "$gates_rc" = 0 ] && echo APROVADO || echo "REPROVADO (rc=$gates_rc)")"
   grep -qi 'reexecutar' "$rundir/gates.txt" && log "  gates: interrompidos — conjunto não vale parcialmente"
 
@@ -926,7 +926,7 @@ diagnostico_retry() {
         --argjson cf "$(printf '%s' "$CRITERIOS_FALHOS" | jq -Rn '[inputs | select(length>0) | split("; ")[]]')" \
         --argjson pn "${PERMISSOES_NEGADAS:-[]}" \
         '{allowlist:$al, criteriosFalhos:$cf, permissoesNegadas:$pn}' \
-      | npx tsx "$ORQ_LIB_DIR/diagnostico.ts" --run-cli "$rundir" 2>/dev/null || true)"
+      | "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/diagnostico.ts" --run-cli "$rundir" 2>/dev/null || true)"
   if [ -z "$d" ]; then
     log "  diagnóstico: não consegui montar o JSON — retry segue com o motivo em texto"
     printf '%s' "$MOTIVO"

@@ -49,18 +49,27 @@ ORQ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # error` no stderr e nada mais.
 #
 # Por isso este verbo é despachado aqui em cima, e resolve o caminho do config
-# SEM o lib.sh. A duplicação das quatro linhas abaixo é deliberada e é o preço:
-# elas repetem lib.sh:23-38 (ROOT, depois o pai do --git-common-dir, com
-# fallback em ROOT fora de git). O caminho do config NÃO vem do config — é
-# `<checkout>/docs/fila/000-config.json` por contrato (lib.sh:42-43) —, então
-# esta cópia não pode divergir por dado, só por refatoração do lib.sh; e o teste
-# `config ilegível: rc 1` falha alto se divergir.
+# SEM o lib.sh. A duplicação das CINCO linhas abaixo é deliberada e é o preço:
+# quatro repetem lib.sh:23-38 (ROOT, depois o pai do --git-common-dir, com
+# fallback em ROOT fora de git) e a quinta repete a resolução do `tsx` (peça
+# T1). Nenhuma delas pode divergir por DADO — o caminho do config é
+# `<checkout>/docs/fila/000-config.json` e o do tsx é
+# `<checkout>/node_modules/.bin/tsx`, os dois por contrato —, só por refatoração
+# do lib.sh; e os testes `config ilegível: rc 1` e `orq config resolve o tsx
+# igual ao lib.sh` falham alto se divergirem.
 if [ "${1:-}" = config ]; then
   [ "$#" = 1 ] || { printf '[orq ERRO] orq config não recebe argumento (recebi %s)\n' "$2" >&2; exit 1; }
   _root="${ORQ_EXEC_ROOT:-$(cd "$ORQ_DIR/.." && pwd)}"
   _gc="$(git -C "$_root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
   if [ -n "$_gc" ] && [ -d "$_gc" ]; then _main="$(cd "$_gc/.." && pwd)"; else _main="$_root"; fi
-  ( cd "$ORQ_DIR/.." && npx tsx "$ORQ_DIR/orquestrador/config-cli.ts" "$_main/docs/fila/000-config.json" )
+  # O `tsx` pela MESMA regra do lib.sh (peça T1): binário local do checkout, ou
+  # `npx --no-install` — nunca `npx` cru, que baixa da rede o que não acha. Esta
+  # é a quinta linha duplicada deste bloco, pelo mesmo motivo das quatro acima:
+  # o lib.sh não pode ser carregado aqui. Ela também não pode divergir por dado
+  # (o caminho é `<checkout>/node_modules/.bin/tsx` por contrato), e o caso
+  # `orq config resolve o tsx igual ao lib.sh` falha alto se divergir.
+  if [ -x "$_main/node_modules/.bin/tsx" ]; then _tsx=( "$_main/node_modules/.bin/tsx" ); else _tsx=( npx --no-install tsx ); fi
+  ( cd "$ORQ_DIR/.." && "${_tsx[@]}" "$ORQ_DIR/orquestrador/config-cli.ts" "$_main/docs/fila/000-config.json" )
   exit $?
 fi
 
@@ -290,7 +299,7 @@ cmd_validar() {
   # node_modules, e o checkout pode ser um fixture de teste sem node_modules
   # nenhum — ali o `npx` tentaria BAIXAR o tsx. O gate não lê nada por caminho
   # relativo: o .ts e o --fila vão absolutos.
-  ( cd "$ORQ_DIR/.." && npx tsx "$ORQ_DIR/orquestrador/gate-ticket.ts" --fila "$FILA_DIR" "$@" )
+  ( cd "$ORQ_DIR/.." && "${ORQ_TSX[@]}" "$ORQ_DIR/orquestrador/gate-ticket.ts" --fila "$FILA_DIR" "$@" )
 }
 
 # --- orq versao ---------------------------------------------------------------
@@ -307,7 +316,7 @@ cmd_validar() {
 # não refeita (quem sonda é o `probe_modelos` do executor, ORQ-07).
 cmd_prevoo() {
   [ "$#" = 0 ] || die "orq prevoo não recebe argumento"
-  npx tsx "$ORQ_DIR/orquestrador/prevoo.ts" "$MAIN_CHECKOUT"
+  "${ORQ_TSX[@]}" "$ORQ_DIR/orquestrador/prevoo.ts" "$MAIN_CHECKOUT"
 }
 
 cmd_versao() {
@@ -370,7 +379,7 @@ cmd_retomar() {
 cmd_liberar() {
   [ -n "${1:-}" ] || die "orq liberar exige o token: orq liberar humano:<tipo>-<id> [nota]"
   local arq="$MAIN_CHECKOUT/$(cfg '.liberacoes_file')"
-  ( cd "$ORQ_DIR/.." && npx tsx "$ORQ_DIR/orquestrador/liberar-cli.ts" "$arq" "$@" )
+  ( cd "$ORQ_DIR/.." && "${ORQ_TSX[@]}" "$ORQ_DIR/orquestrador/liberar-cli.ts" "$arq" "$@" )
 }
 
 case "${1:-}" in

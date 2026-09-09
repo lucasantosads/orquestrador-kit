@@ -21,7 +21,7 @@
  * que é aborto LIMPO da drenagem em vez de crash no meio do disparo (que
  * deixava lock e ticket pendurados).
  */
-import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
+import { constants, accessSync, existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -63,6 +63,8 @@ export interface PreVooConfig {
 }
 
 export interface PreVooDeps {
+  /** `node_modules/.bin/tsx` do checkout existe e é executável (cat.7). */
+  tsxLocal: () => boolean
   arquivoComConteudo: (rel: string) => boolean
   contarArquivosCommitados: () => number
   lerOrigin: () => string
@@ -87,6 +89,33 @@ function exigirBooleano(v: unknown, oque: string): boolean {
     throw new Error(`${oque} devolveu Promise — as deps do pré-voo são SÍNCRONAS por contrato`)
   }
   throw new Error(`${oque} devolveu ${typeof v} (esperado boolean)`)
+}
+
+/**
+ * cat.7 · toolchain — o `tsx` DO REPO (peça T1).
+ *
+ * O motor é TypeScript: gates, juiz, decisão, lock, enforcement e este próprio
+ * pré-voo rodam por `tsx`. A pergunta não é "existe um tsx em algum lugar" e
+ * sim "este repo declara o seu": `lib.sh` resolve o binário local do checkout e
+ * só cai em `npx --no-install tsx` como fallback dos verbos read-only do `orq`
+ * — o loop exige o local, e é o local que esta cat. mede.
+ *
+ * Ela pode PARECER redundante (se não houvesse tsx, quem estaria rodando este
+ * arquivo?) e não é: o fallback do `npx` pode achar um tsx global, e aí o motor
+ * roda hoje por um binário que não é do repo, some numa máquina nova e leva
+ * junto toda a explicação. Medido no ~/Projetos/actus-saas em 2026-09-09:
+ * `node_modules/.bin/` com `next`, `tsc` e `vitest`, sem `tsx`.
+ */
+export function checarToolchain(deps: Pick<PreVooDeps, 'tsxLocal'>): Item {
+  if (!exigirBooleano(deps.tsxLocal(), 'tsxLocal()')) {
+    return {
+      ok: false,
+      token: 'cat.7',
+      item: 'pré-voo cat.7 (toolchain): node_modules/.bin/tsx',
+      motivo: 'ausente ou não executável — o motor é TypeScript; instale com `pnpm add -D tsx@^4.19.0` (ou `npm i -D tsx@^4.19.0`), com o loop pausado',
+    }
+  }
+  return { ok: true, token: 'cat.7', item: 'toolchain (tsx do repo)' }
 }
 
 /** cat.0 · spec vendorizada presente COM conteúdo e COMMITADA. */
@@ -215,14 +244,20 @@ export interface Veredito {
 }
 
 /**
- * Roda cat. 0, 1, 6 em ordem; a primeira falha aborta nomeando o item. A cat.3
- * é informativa e sempre roda por último — mesmo em NO-GO ela não muda nada, e
- * por isso não roda: um NO-GO já é aborto, e a linha de sondagem sobre um repo
- * que nem tem fila só polui.
+ * Roda cat. 7, 0, 1, 6 em ordem; a primeira falha aborta nomeando o item. A
+ * cat.3 é informativa e sempre roda por último — mesmo em NO-GO ela não muda
+ * nada, e por isso não roda: um NO-GO já é aborto, e a linha de sondagem sobre
+ * um repo que nem tem fila só polui.
+ *
+ * A cat.7 vem PRIMEIRO (peça T1) porque é a única cujo NO-GO explica os outros:
+ * sem o `tsx` do repo, nenhuma das outras checagens teria como rodar num
+ * próximo disparo. Uma spec vendorizada impecável não serve de nada se o motor
+ * que a lê não existe.
  */
 export function preVooRelampago(entrada: { config: PreVooConfig; deps: PreVooDeps }): Veredito {
   const { config, deps } = entrada
   const checagens: [string, () => Item][] = [
+    ['cat.7 (toolchain)', () => checarToolchain(deps)],
     ['cat.0 (spec vendorizada)', () => checarSpecVendorizada(deps)],
     ['cat.1 (identidade)', () => checarIdentidade({ config, ...deps })],
     ['cat.6 (estrutura da fila)', () => checarEstruturaFila(deps)],
@@ -328,6 +363,16 @@ export function preVooDepsReais(entrada: {
     ((...args: string[]) =>
       spawnSync('git', ['-C', entrada.repoRoot, ...args], { encoding: 'utf8', timeout: TIMEOUT_PRE_VOO_MS }))
   return {
+    // `test -x`, e nada além: o pré-voo não pode custar um `npx` — e um `npx`
+    // aqui responderia a pergunta errada, porque acharia um tsx global.
+    tsxLocal: () => {
+      try {
+        accessSync(join(entrada.repoRoot, 'node_modules', '.bin', 'tsx'), constants.X_OK)
+        return true
+      } catch {
+        return false
+      }
+    },
     arquivoComConteudo: (rel) => {
       try {
         return statSync(join(entrada.repoRoot, 'docs/orquestrador/skill', rel)).size > 0

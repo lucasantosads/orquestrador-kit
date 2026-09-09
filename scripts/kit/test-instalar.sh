@@ -454,8 +454,10 @@ NOVO="$(mktemp -d /tmp/orq-novo-XXXXXX)"
 trap 'bash "$KIT/scripts/kit/fixture.sh" --limpar "$FX" >/dev/null 2>&1; rm -rf "$COPIA" "$COPIA_ROADMAP" "$COPIA_UPD" "$COPIA_EXTRA" "$COPIA_SUJA" "$COPIA_TESTES" "$COPIA_MIGRAR" "$NOVO"' EXIT
 ( cd "$NOVO" && git init -q && printf 'node_modules/\n' > .gitignore \
   && git add -A && git -c user.email=t@example.invalid -c user.name=t commit -qm inicial ) >/dev/null 2>&1
-# node_modules por symlink: o `orq config` roda `npx tsx`, e sem isso o npx
-# tentaria BAIXAR o tsx da rede no meio de um teste.
+# node_modules por symlink: o motor é TypeScript, e desde a peça T1 o `--novo`
+# RECUSA repo sem `node_modules/.bin/tsx` (caso (k) abaixo). Antes da T1 este
+# link existia por outro motivo — sem ele o `npx` tentava BAIXAR o tsx da rede
+# no meio de um teste —, e é essa ida à rede que a peça tirou do caminho.
 ln -sfn "$KIT/node_modules" "$NOVO/node_modules"
 
 echo "-- (j1) o repo nasce inteiro --"
@@ -521,6 +523,51 @@ printf '%s' "$saida" | grep -q 'não é um repositório git' \
 [ -z "$(ls -A "$SEMGIT")" ] \
   && ok "não escreveu NADA no diretório recusado" || falha "escreveu antes de recusar"
 rm -rf "$SEMGIT"
+
+# --- (k) · T1 · repo sem tsx: recusa nomeada, e o --dry-run só avisa ----------
+# O bloqueante B-1 da revisão de adoção do Actus (2026-09-09), reduzido ao que o
+# instalador pode provar: o motor é TypeScript e o `lib.sh` resolve o binário em
+# `<checkout>/node_modules/.bin/tsx`. Instalar num repo sem essa dependência
+# entrega um orquestrador que só falha no primeiro disparo do launchd — onde
+# ninguém está olhando. A recusa é do instalador porque é o único momento com um
+# humano na frente.
+echo
+echo "== (k) T1 · sem node_modules/.bin/tsx =="
+SEM_TSX="$(mktemp -d /tmp/orq-sem-tsx-XXXXXX)"
+trap 'bash "$KIT/scripts/kit/fixture.sh" --limpar "$FX" >/dev/null 2>&1; rm -rf "$COPIA" "$COPIA_ROADMAP" "$COPIA_UPD" "$COPIA_EXTRA" "$COPIA_SUJA" "$COPIA_TESTES" "$COPIA_MIGRAR" "$NOVO" "$SEM_TSX"' EXIT
+cp -R "$FX/." "$SEM_TSX/"
+rm -f "$SEM_TSX/node_modules"            # no fixture ele é symlink para o do kit
+printf 'pausado para o teste\n' > "$SEM_TSX/docs/fila/PAUSAR"
+
+echo "-- (k1) --atualizar RECUSA, nomeando o caminho e o comando --"
+saida="$(bash "$KIT/instalar.sh" --atualizar "$SEM_TSX" 2>&1)"; rc=$?
+printf '%s\n' "$saida" | sed 's/^/  | /'
+[ "$rc" = 1 ] && ok "rc 1" || falha "rc $rc (esperava 1)"
+printf '%s' "$saida" | grep -q 'RECUSADO' && ok "diz RECUSADO" || falha "não diz RECUSADO"
+printf '%s' "$saida" | grep -q 'node_modules/.bin/tsx' \
+  && ok "nomeia node_modules/.bin/tsx" || falha "não nomeia o caminho"
+printf '%s' "$saida" | grep -qE 'tsx@\^[0-9]' && ok "dá a linha de instalação" || falha "não dá a linha"
+
+echo "-- (k2) --forcar NÃO dispensa (forçar copiaria um motor que não roda) --"
+bash "$KIT/instalar.sh" --atualizar "$SEM_TSX" --forcar >/dev/null 2>&1; rc=$?
+[ "$rc" = 1 ] && ok "rc 1 com --forcar" || falha "rc $rc com --forcar (esperava 1)"
+
+echo "-- (k3) --dry-run SÓ AVISA: sai 0, prevê a recusa e não escreve nada --"
+antes="$(git -C "$SEM_TSX" status --porcelain 2>/dev/null)"
+saida="$(bash "$KIT/instalar.sh" --atualizar "$SEM_TSX" --dry-run 2>&1)"; rc=$?
+[ "$rc" = 0 ] && ok "rc 0 (o dry-run não é o gate)" || falha "rc $rc (esperava 0)"
+printf '%s' "$saida" | grep -q 'RECUSARIA' && ok "prevê a recusa" || falha "não prevê a recusa"
+printf '%s' "$saida" | grep -q 'node_modules/.bin/tsx' \
+  && ok "e diz qual" || falha "não diz qual"
+[ "$antes" = "$(git -C "$SEM_TSX" status --porcelain 2>/dev/null)" ] \
+  && ok "árvore idêntica antes e depois" || falha "o dry-run escreveu"
+
+echo "-- (k4) com o tsx de volta, o --atualizar segue normalmente --"
+ln -sfn "$KIT/node_modules" "$SEM_TSX/node_modules"
+saida="$(bash "$KIT/instalar.sh" --atualizar "$SEM_TSX" 2>&1)"; rc=$?
+[ "$rc" = 0 ] && ok "rc 0" || falha "rc $rc (esperava 0)"
+printf '%s' "$saida" | grep -q 'node_modules/.bin/tsx' \
+  && falha "ainda reclama do tsx" || ok "nenhuma reclamação de tsx"
 
 # --- (c) ---------------------------------------------------------------------
 echo

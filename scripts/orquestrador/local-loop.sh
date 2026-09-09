@@ -37,7 +37,7 @@ say() { printf '[%s] %s\n' "$(ts)" "$*"; }
 # Formato: linha 1 = PID, linha 2 = epoch. A decisão de "stale?" é do TS testado.
 lock_stale() {
   [ -f "$LOCK" ] || return 1
-  npx tsx -e "
+  "${ORQ_TSX[@]}" -e "
     import {parseLockFile, isLockStale} from '$ORQ_LIB_DIR/lock.js';
     import {readFileSync} from 'node:fs';
     const l = parseLockFile(readFileSync('$LOCK','utf8'));
@@ -220,7 +220,7 @@ drenar() {
 
 cleanup_frente() {
   local id="$1" nome
-  nome="$(npx tsx "$ORQ_LIB_DIR/decisao-cli.ts" "$MAIN_CHECKOUT" worktree "$id")"
+  nome="$("${ORQ_TSX[@]}" "$ORQ_LIB_DIR/decisao-cli.ts" "$MAIN_CHECKOUT" worktree "$id")"
   git -C "$ROOT" worktree remove --force "$WORKTREES_BASE/$nome" >/dev/null 2>&1 || true
   git -C "$ROOT" branch -D "frente/$id" >/dev/null 2>&1 || true
   return 0
@@ -238,7 +238,37 @@ cleanup_frente() {
 #
 # Isolada para ser substituível por stub nos testes, como `run_executor_once`.
 run_prevoo() {
-  npx tsx "$ORQ_LIB_DIR/prevoo.ts" "$MAIN_CHECKOUT" 2>&1
+  "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/prevoo.ts" "$MAIN_CHECKOUT" 2>&1
+}
+
+# --- TOOLCHAIN (peça T1): a checagem que precede TODAS as outras -------------
+# O motor é TypeScript. Sem `tsx` no repo, a PRIMEIRA coisa que quebra não é uma
+# drenagem: é o `lock_stale`, logo abaixo, que roda `tsx -e` para decidir se o
+# lock é órfão. Com o `tsx` ausente ele falha, a falha é lida como "não é
+# órfão", e o loop encerra com "outro run vivo" — uma resposta ERRADA, dada em
+# silêncio, sobre um lock que talvez nem exista. Por isso esta checagem vem
+# ANTES do lock: ela é a única que não pode depender de nada.
+#
+# É `test -x`, não uma execução: nada roda, nada abre rede, e o `npx` sequer é
+# alcançado — `--no-install` já garantiria que ele não baixa, mas o caminho
+# curto é não chegar lá.
+#
+# O que ela escreve, e o que deliberadamente NÃO escreve: grava `PREVOO_NOGO
+# item=tsx` na trilha (append-only, e é exatamente o fato que alguém vai
+# procurar depois) e notifica pelo canal. NÃO chama `status_set`: estamos ANTES
+# do `lock_adquirir`, então pode haver outro run vivo, e o STATUS é dele. Nenhum
+# ticket é tocado, porque o primeiro passo que escreve em ticket é o
+# `--reconcile`, muito depois daqui.
+tsx_ou_sai() {
+  tsx_local_ok && return 0
+  say "toolchain NO-GO: não existe $TSX_LOCAL executável"
+  say "  o motor é TypeScript e nenhuma parte dele roda sem tsx."
+  say "  passo HUMANO, com o loop pausado: pnpm add -D tsx@^4.19.0 (ou npm i -D tsx@^4.19.0)"
+  event '---' PREVOO_NOGO "item=tsx"
+  notificar "Orquestrador: pré-voo NO-GO" \
+    "tsx ausente: $TSX_LOCAL — o motor é TypeScript e não roda sem ele (instale com o loop pausado)"
+  say "========== local-loop fim (toolchain NO-GO) =========="
+  exit 1
 }
 
 prevoo_ou_sai() {
@@ -265,6 +295,9 @@ main_local_loop() {
   exec >>"$LOG" 2>&1
   say "========== local-loop início (pid $$) =========="
   [ "$BRANCH_ALVO" != "$BRANCH_PROTEGIDA" ] || { say "ABORTA: branch_alvo=$BRANCH_PROTEGIDA é proibido"; exit 1; }
+  # TOOLCHAIN antes de tudo: o `lock_adquirir` logo abaixo já é TypeScript
+  # (`lock_stale` roda `tsx -e`), e sem tsx ele responde errado em silêncio.
+  tsx_ou_sai
   lock_adquirir || exit 0
   # KILL SWITCH, leitura 1 de 2: ANTES de qualquer escrita. O reconcile mexe em
   # status de ticket, então "pausado" precisa valer antes dele — pausar e mesmo

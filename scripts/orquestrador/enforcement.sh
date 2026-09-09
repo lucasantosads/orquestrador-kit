@@ -55,7 +55,7 @@ payload="$(jq -n \
   '{changedFiles:$changedFiles, allowlist:$allowlist, diff:$diff, config:$config}')"
 
 set +e
-result="$(printf '%s' "$payload" | ( cd "$ROOT" && npx tsx scripts/orquestrador/enforcement-core.ts --run-cli ))"
+result="$(printf '%s' "$payload" | ( cd "$ROOT" && "${ORQ_TSX[@]}" scripts/orquestrador/enforcement-core.ts --run-cli ))"
 rc=$?
 set -e
 

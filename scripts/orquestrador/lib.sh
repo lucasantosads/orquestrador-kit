@@ -42,6 +42,46 @@ fi
 FILA_DIR="$MAIN_CHECKOUT/docs/fila"
 CONFIG="$FILA_DIR/000-config.json"
 
+# --- Toolchain: o `tsx` (peça T1) --------------------------------------------
+# O motor é TypeScript e NADA dele roda sem `tsx` — gates, juiz, decisão, lock,
+# pré-voo, enforcement. Até esta peça as 14 chamadas eram `npx tsx` cru, e o
+# `npx` sem flag BAIXA da rede o pacote que não encontra: num repo instalado sem
+# `tsx` nas devDependencies isso é prompt interativo num TTY e erro fora dele —
+# sob o launchd, um tick que morre sem dizer por quê.
+# Medido em 2026-09-09 no ~/Projetos/actus-saas: `node_modules/.bin/` tem `next`,
+# `tsc` e `vitest`, e NÃO tem `tsx`.
+#
+# A resolução é UMA, aqui, e vale para todo mundo que carrega o lib.sh:
+#   1. `$MAIN_CHECKOUT/node_modules/.bin/tsx`, se existir e for executável. É o
+#      binário DO REPO, resolvido contra o checkout PRINCIPAL e não contra ROOT:
+#      a worktree tem `node_modules` symlinkado para o dele, então os dois dão o
+#      mesmo arquivo — e o principal dá por um caminho que não depende de
+#      symlink existir.
+#   2. `npx --no-install tsx`. A rede fica de fora POR CONSTRUÇÃO: `--no-install`
+#      falha rápido em vez de baixar. Não existe terceiro caminho.
+#
+# O fallback (2) é o que mantém os verbos READ-ONLY do `orq` funcionando num
+# checkout de layout diferente; ele NÃO é rota do loop, porque o `local-loop.sh`
+# e a `cat.7` do pré-voo exigem o binário local (1) antes de qualquer coisa. É a
+# separação deliberada: o fallback deixa consultar, o gate impede drenar.
+#
+# `ORQ_TSX` é ARRAY porque o fallback tem TRÊS palavras: `$(tsx_bin)` sem aspas
+# resolveria isso por word-splitting e quebraria no primeiro checkout com espaço
+# no caminho. Quem chama usa `"${ORQ_TSX[@]}"`; `tsx_bin` existe para MENSAGEM e
+# para teste — imprime o comando resolvido como uma linha legível.
+TSX_LOCAL="$MAIN_CHECKOUT/node_modules/.bin/tsx"
+if [ -x "$TSX_LOCAL" ]; then
+  ORQ_TSX=( "$TSX_LOCAL" )
+else
+  ORQ_TSX=( npx --no-install tsx )
+fi
+tsx_bin() { printf '%s\n' "${ORQ_TSX[*]}"; }
+
+# tsx_local_ok — 0 quando o `tsx` DO REPO existe e é executável. Não roda nada,
+# não abre rede, não custa processo: é `test -x`, e é a MESMA pergunta que o
+# `instalar.sh` faz antes de instalar e que a `cat.7` do pré-voo responde.
+tsx_local_ok() { [ -x "$TSX_LOCAL" ]; }
+
 # --- Logging --------------------------------------------------------------
 log()  { printf '[orq %s] %s\n' "$(date -u +%H:%M:%S 2>/dev/null || echo '--:--:--')" "$*" >&2; }
 die()  { printf '[orq ERRO] %s\n' "$*" >&2; exit 1; }

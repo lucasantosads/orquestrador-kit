@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# npx STUB — peça T1.
+#
+# Existe para provar uma NEGATIVA: que o motor, sem `tsx` no repo, RECUSA antes
+# de tentar resolver a ferramenta — e portanto sem nenhuma chance de tocar a
+# rede. `npx` sem flag BAIXA o pacote que não encontra; é esse o comportamento
+# que a peça T1 tira do caminho do loop, e um teste que só afirmasse "recusou"
+# não distinguiria "recusou antes" de "recusou depois de tentar baixar".
+#
+# Contrato deste stub:
+#   1. grava UMA linha por chamada (os argumentos, como vieram) em
+#      $ORQ_NPX_LOG — é a lista VAZIA que o teste assevera;
+#   2. sai 127 SEMPRE. Ele não busca nada e não finge sucesso: se algum caminho
+#      de código chegar aqui, o teste vê a linha no log E a falha.
+#
+# Ele nunca fala com a rede, nem quando chamado: é este arquivo inteiro.
+
+if [ -n "${ORQ_NPX_LOG:-}" ]; then
+  mkdir -p "$(dirname "$ORQ_NPX_LOG")" 2>/dev/null || true
+  printf '%s\n' "$*" >> "$ORQ_NPX_LOG" 2>/dev/null || true
+fi
+
+printf 'npx STUB: chamada NÃO esperada (%s)\n' "$*" >&2
+exit 127

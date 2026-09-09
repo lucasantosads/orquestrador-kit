@@ -10,7 +10,7 @@
  */
 import { afterAll } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 
@@ -116,11 +116,30 @@ export function configDeReferencia(): string {
   return readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8');
 }
 
-/** Cria o fixture: docs/fila/{000-config.json,runs/} + os tickets pedidos. */
+/**
+ * Cria o fixture: docs/fila/{000-config.json,runs/} + os tickets pedidos, com
+ * `node_modules/.bin/tsx` apontando para o do repo.
+ *
+ * O `tsx` entrou na peça T1 e não é conveniência: desde ela o motor RECUSA
+ * rodar sem `<checkout>/node_modules/.bin/tsx` — é a primeira coisa que o
+ * `local-loop.sh` confere, antes até do lock. Sem ele, todo caso que exercita o
+ * loop passaria a medir a ausência do tsx em vez do que quer medir. Antes da T1
+ * estes fixtures rodavam TypeScript por `npx tsx` sem dependência declarada em
+ * lugar nenhum, resolvendo na prática contra o cache do npx da máquina: era
+ * exatamente o buraco que a peça fechou.
+ *
+ * O link é do BINÁRIO, não do diretório: `node_modules` precisa ser diretório
+ * de verdade porque `pacotes_do_checkout` (executor.sh) detecta pacote por
+ * `find -type d -name node_modules`, e symlink não é `-type d`. É a diferença
+ * para o `scripts/kit/fixture.sh`, que linka o diretório inteiro — lá o
+ * fixture é um repo instalado, aqui é um checkout de papel.
+ */
 export function criarFixture(tickets: Ticket[] = []): string {
   const raiz = mkdtempSync(join(tmpdir(), 'orq-fx-'));
   mkdirSync(join(raiz, 'docs', 'fila', 'runs'), { recursive: true });
   escrever(join(raiz, 'docs', 'fila', '000-config.json'), configDeReferencia());
+  mkdirSync(join(raiz, 'node_modules', '.bin'), { recursive: true });
+  symlinkSync(join(REPO_ROOT, 'node_modules', '.bin', 'tsx'), join(raiz, 'node_modules', '.bin', 'tsx'));
   for (const t of tickets) escreverTicket(raiz, t);
   return raiz;
 }

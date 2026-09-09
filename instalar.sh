@@ -56,6 +56,44 @@ VERSAO="$(cat "$KIT/VERSAO")"
 
 die() { printf 'instalar.sh: %s\n' "$*" >&2; exit 2; }
 
+# --- tsx: dependência do MOTOR, não do produto (peça T1) ----------------------
+# O motor é TypeScript e o `lib.sh` resolve o binário em
+# `<checkout>/node_modules/.bin/tsx`. Um repo sem essa dependência recebe a
+# instalação inteira e só descobre o buraco no primeiro disparo do launchd —
+# onde o sintoma é um tick morto sem linha de log. Por isso a checagem é do
+# INSTALADOR: ele é o único momento em que há um humano olhando.
+#
+# O range NÃO é constante deste arquivo: sai do `package.json` do kit, que é o
+# mesmo do CI (`tsx: ^4.19.0`). Escrever o número à mão aqui criaria a segunda
+# fonte de verdade que diverge na primeira atualização do kit.
+TSX_RANGE="$(sed -n 's/.*"tsx": *"\([^"]*\)".*/\1/p' "$KIT/package.json" | head -1)"
+[ -n "$TSX_RANGE" ] || TSX_RANGE='^4.19.0'
+
+# tem_tsx <repo> — 0 quando `<repo>/node_modules/.bin/tsx` existe e é
+# executável. A MESMA pergunta do `lib.sh:tsx_local_ok` e da `cat.7` do pré-voo;
+# `test -x` e nada mais, sem rede e sem processo.
+tem_tsx() { [ -x "$1/node_modules/.bin/tsx" ]; }
+
+# linha_instala_tsx <repo> — o comando CERTO para aquele repo, escolhido pelo
+# lockfile no disco. Não é cosmético: mandar `npm i` num repo com
+# `pnpm-lock.yaml` cria um segundo lockfile e um `node_modules` que o pnpm não
+# reconhece — e o `pnpm install` seguinte purga o que o npm deixou.
+linha_instala_tsx() {
+  local repo="$1"
+  if [ -f "$repo/pnpm-lock.yaml" ]; then printf 'pnpm add -D tsx@%s' "$TSX_RANGE"
+  elif [ -f "$repo/package-lock.json" ]; then printf 'npm i -D tsx@%s' "$TSX_RANGE"
+  else printf 'npm i -D tsx@%s   (ou o equivalente do gerenciador deste repo)' "$TSX_RANGE"
+  fi
+}
+
+# recusa_tsx <repo> — a frase única da recusa, para as três bocas (--atualizar,
+# --dry-run e --novo) dizerem a MESMA coisa.
+recusa_tsx() {
+  local repo="$1"
+  printf "'%s' não tem node_modules/.bin/tsx: o motor do orquestrador é TypeScript e nenhuma parte dele roda sem tsx. Instale a dependência de DESENVOLVIMENTO no repo, com o loop pausado, e repita: %s\n" \
+    "$repo" "$(linha_instala_tsx "$repo")"
+}
+
 uso() {
   cat <<'USO'
 uso: bash instalar.sh --verificar <repo>
@@ -66,7 +104,7 @@ uso: bash instalar.sh --verificar <repo>
   --atualizar <repo>   copia o motor do kit por cima do de <repo>
       --dry-run        só lista o que mudaria (e o que o --atualizar recusaria); sai 0
       --forcar         segue mesmo com modificação não commitada no motor do repo
-                       (NÃO passa por cima da pausa nem do STATUS)
+                       (NÃO passa por cima da pausa, do STATUS nem do tsx ausente)
       --migrar         TAMBÉM migra docs/fila/** (pausa, liberações) — o único
                        caso em que o instalador toca os dados do dono
   --novo <repo>        instala num repo git que ainda NÃO tem docs/fila
@@ -347,14 +385,18 @@ migrar_tudo() {
 # O que ele NÃO toca: docs/fila/** (tickets, 000-config.json, liberacoes.json),
 # PLAYBOOK e PECAS do repo. Migração de artefato legado é K8b.
 #
-# As três recusas, e por que cada uma:
+# As quatro recusas, e por que cada uma:
 #   1. loop não pausado — copiar o motor por baixo de uma drenagem viva troca o
 #      lib.sh de um executor que já está rodando. `--forcar` NÃO passa por cima:
 #      não existe pressa que justifique isso.
 #   2. STATUS.md diz outra coisa que não `ocioso` — mesmo motivo, por outra
 #      testemunha: o snapshot é o que o próprio loop afirma sobre si. Ausência de
 #      STATUS.md não é recusa (repo que nunca drenou).
-#   3. modificação não commitada no motor do repo — copiar por cima apaga
+#   3. `node_modules/.bin/tsx` ausente no repo (peça T1) — o motor é TypeScript
+#      e nenhuma parte dele roda sem ele. Instalar assim entrega um orquestrador
+#      que só falha no primeiro disparo do launchd, onde ninguém está olhando.
+#      `--forcar` não dispensa: forçar copiaria um motor que não roda.
+#   4. modificação não commitada no motor do repo — copiar por cima apaga
 #      trabalho sem registro no git. É a ÚNICA que `--forcar` dispensa, porque
 #      às vezes a modificação é lixo conhecido, e aí a perda é decisão de quem
 #      olhou. Os caminhos conferidos são os MESMOS que o bloco de cópia escreve,
@@ -362,7 +404,7 @@ migrar_tudo() {
 # motivos_de_recusa <repo> — imprime UM motivo por linha (vazio = pode seguir).
 # Existe separada porque o `--dry-run` também precisa dela: um dry-run que diz
 # "tudo certo" e um `--atualizar` que RECUSA logo depois é um dry-run que
-# mentiu. As duas recusas aqui são as que `--forcar` NÃO dispensa; a terceira
+# mentiu. As TRÊS recusas aqui são as que `--forcar` NÃO dispensa; a quarta
 # (árvore suja) fica no atualizar(), porque só ela depende do `--forcar`.
 motivos_de_recusa() {
   local repo="$1"
@@ -378,6 +420,12 @@ motivos_de_recusa() {
   if [ -f "$status_md" ] && ! grep -qE '^ESTADO +ocioso *$' "$status_md"; then
     printf "docs/fila/runs/STATUS.md de '%s' não diz 'ocioso': %s. Espere a drenagem em curso terminar.\n" \
       "$repo" "$(grep -E '^ESTADO' "$status_md" | head -1 | sed 's/  */ /g')"
+  fi
+  # 3. tsx (peça T1). Vem por ÚLTIMO de propósito: as duas de cima são sobre não
+  #    atropelar um run vivo, e essa é a ordem em que se quer ouvi-las. Aqui
+  #    também não cede a `--forcar`: forçar copiaria um motor que não roda.
+  if ! tem_tsx "$repo"; then
+    recusa_tsx "$repo"
   fi
 }
 
@@ -413,14 +461,14 @@ atualizar() {
     return 0
   fi
 
-  # --- recusas 1 e 2 · nenhuma delas cede a --forcar -------------------------
+  # --- recusas 1, 2 e 3 · nenhuma delas cede a --forcar ----------------------
   # Copiar o motor por baixo de uma drenagem viva troca o lib.sh de um executor
   # que já está rodando. Não existe pressa que justifique isso.
   local motivos
   motivos="$(motivos_de_recusa "$repo")"
   [ -z "$motivos" ] || recusa "$(printf '%s' "$motivos" | head -1)"
 
-  # --- recusa 3 · o motor do repo não pode ter mudança fora do git -----------
+  # --- recusa 4 · o motor do repo não pode ter mudança fora do git -----------
   # A lista de caminhos é a MESMA que o bloco de cópia escreve, e é por isso que
   # ela inclui scripts/roadmap (peça K8c). Desde a K5b o --atualizar ESCREVE ali
   # — scripts/roadmap/ é motor vendorizado: `orq mapa lint` roda
@@ -573,6 +621,12 @@ novo() {
 
   [ ! -d "$repo/docs/fila" ] \
     || recusa "'$repo' já tem docs/fila — este é o verbo errado. Um --novo que sobrescreve fila é um --novo que apaga tickets. Use: bash instalar.sh --atualizar $repo"
+
+  # tsx (peça T1): antes de escrever o primeiro byte. Um `--novo` que instala o
+  # motor num repo sem tsx entrega um orquestrador que não dá o primeiro passo —
+  # e o `--novo` termina justamente listando os PRÓXIMOS PASSOS, todos deles a
+  # partir do passo 2 impossíveis sem ele.
+  tem_tsx "$repo" || recusa "$(recusa_tsx "$repo")"
 
   printf 'NOVO       kit %s (%s)\n' "$VERSAO" "$KIT"
   printf '           repo %s\n\n' "$repo"

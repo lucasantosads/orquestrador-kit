@@ -343,11 +343,11 @@ l_diff="$(grep -n '^  DIFF_LINES=' "$AQUI/executor.sh" | head -1 | cut -d: -f1)"
 echo
 echo "== 7 · o juiz é avisado de que o commit foi do harness =="
 nota_render="$(printf '%s' '{"id":"901","objetivo":"x","criterios":[],"allowlist":[],"diff":"d","gates":"g","nota":"COMMIT FOI DO HARNESS"}' \
-  | npx tsx "$AQUI/juiz.ts" --run-cli "$MAIN_CHECKOUT" prompt 2>/dev/null)"
+  | "${ORQ_TSX[@]}" "$AQUI/juiz.ts" --run-cli "$MAIN_CHECKOUT" prompt 2>/dev/null)"
 printf '%s' "$nota_render" | grep -q "NOTA DO HARNESS SOBRE ESTA TENTATIVA:" \
   && ok "a nota entra no prompt do juiz" || falha "a nota não chegou ao prompt"
 sem_nota="$(printf '%s' '{"id":"901","objetivo":"x","criterios":[],"allowlist":[],"diff":"d","gates":"g"}' \
-  | npx tsx "$AQUI/juiz.ts" --run-cli "$MAIN_CHECKOUT" prompt 2>/dev/null)"
+  | "${ORQ_TSX[@]}" "$AQUI/juiz.ts" --run-cli "$MAIN_CHECKOUT" prompt 2>/dev/null)"
 printf '%s' "$sem_nota" | grep -q "NOTA DO HARNESS" \
   && falha "prompt sem nota ganhou seção vazia" || ok "sem nota, o prompt sai como antes"
 
