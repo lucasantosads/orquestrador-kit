@@ -18,10 +18,18 @@ import { describe, it, expect } from 'vitest';
 import { copyFileSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { propor, ler as lerCaminho, migrarArquivo, NOME_PROPOSTO } from '../scripts/orquestrador/migrar-config.js';
+import { spawnSync } from 'node:child_process';
+import {
+  propor,
+  ler as lerCaminho,
+  migrarArquivo,
+  NOME_PROPOSTO,
+  NOME_REVISADO,
+  Recusa,
+} from '../scripts/orquestrador/migrar-config.js';
 import { NOVAS, PROPRIAS_DE_REPO, RENOMES } from '../scripts/orquestrador/config-tabela.js';
 import { CHAVES_CONFIG, CHAVES_OBRIGATORIAS } from '../scripts/orquestrador/config-chaves.js';
-import { bashNoFixture, criarFixture, escrever, ler as lerArquivo, REPO_ROOT } from './fixtures/orq-harness.js';
+import { bashNoFixture, checkoutReal, criarFixture, escrever, ler as lerArquivo, REPO_ROOT } from './fixtures/orq-harness.js';
 
 const CONFIG_CI = join(REPO_ROOT, '_referencia-ci', '000-config.ci.json');
 const EXECUTOR = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
@@ -387,6 +395,169 @@ describe('o proposto é um ARQUIVO AO LADO; o oficial nunca é sobrescrito', () 
     expect(saida).toMatch(/orq config sobre o PROPOSTO \(rc 1\)/);
     expect(saida).toMatch(/launchd\.label: placeholder não preenchido/);
     expect(saida).toMatch(/decisão\(ões\) local\(is\) esperando alguém/);
+  });
+});
+
+// ─── M1 · o nome do proposto é reservado, e o --migrar não passa por cima ────
+
+/**
+ * Peça M1 — bloqueante **B-2** da revisão de adoção do Actus (2026-09-09).
+ *
+ * `000-config.proposto.json` É o nome que o instalador usa. O plano de adoção
+ * mandava a Fase A gravar o config revisado nesse mesmo nome e só então rodar
+ * `instalar.sh --atualizar . --migrar`: o `--migrar` chamava `--propor`, que
+ * fazia `writeFileSync` sem guarda nenhuma, e a revisão inteira virava a
+ * proposta de máquina com os 14 placeholders `<...>` intactos — em silêncio. O
+ * `cp` seguinte instalava esse arquivo como oficial e o `orq config` saía rc 1
+ * com 14 violações, onde o plano esperava zero.
+ */
+describe('M1 · --propor RECUSA sobrescrever um proposto existente', () => {
+  function repoDeConfig(origem: string): { oficial: string; proposto: string } {
+    const dir = mkdtempSync(join(tmpdir(), 'orq-cfg-'));
+    const oficial = join(dir, '000-config.json');
+    copyFileSync(origem, oficial);
+    return { oficial, proposto: join(dir, NOME_PROPOSTO) };
+  }
+
+  /** O que uma revisão humana teria no arquivo: nada parecido com a proposta. */
+  const REVISADO = '{\n  "revisao": "humana, e custou caro"\n}\n';
+
+  it('recusa, e a mensagem manda apagar OU renomear — com o nome da convenção', () => {
+    const { oficial, proposto } = repoDeConfig(CONFIG_CI);
+    writeFileSync(proposto, REVISADO);
+    expect(() => migrarArquivo(oficial, 'propor')).toThrow(Recusa);
+    expect(() => migrarArquivo(oficial, 'propor')).toThrow(/JÁ EXISTE e não vou sobrescrevê-lo/);
+    expect(() => migrarArquivo(oficial, 'propor')).toThrow(/apague-o/);
+    expect(() => migrarArquivo(oficial, 'propor')).toThrow(new RegExp(NOME_REVISADO));
+  });
+
+  it('o proposto pré-existente sobrevive BYTE A BYTE', () => {
+    const { oficial, proposto } = repoDeConfig(CONFIG_CI);
+    writeFileSync(proposto, REVISADO);
+    const antes = readFileSync(proposto);
+    try {
+      migrarArquivo(oficial, 'propor');
+    } catch {
+      /* a recusa é o caso */
+    }
+    expect(readFileSync(proposto).equals(antes)).toBe(true);
+  });
+
+  it('e o oficial também não é tocado', () => {
+    const { oficial, proposto } = repoDeConfig(CONFIG_CI);
+    writeFileSync(proposto, REVISADO);
+    const antes = readFileSync(oficial, 'utf8');
+    expect(() => migrarArquivo(oficial, 'propor')).toThrow();
+    expect(readFileSync(oficial, 'utf8')).toBe(antes);
+  });
+
+  it('--dry-run continua não gravando: ele AVISA da recusa e segue relatando', () => {
+    const { oficial, proposto } = repoDeConfig(CONFIG_CI);
+    writeFileSync(proposto, REVISADO);
+    const antes = readFileSync(proposto);
+    const saida = migrarArquivo(oficial, 'dry-run').linhas.join('\n');
+    expect(saida).toMatch(/AVISO: .*já existe/);
+    expect(saida).toMatch(/RECUSARIA/);
+    expect(saida).toContain(NOME_REVISADO);
+    // O relatório de sempre continua inteiro: o aviso não substitui nada.
+    expect(saida).toMatch(/orq config sobre o PROPOSTO/);
+    expect(readFileSync(proposto).equals(antes)).toBe(true);
+  });
+
+  it('sem proposto no disco, o --propor grava como sempre (a guarda não é sempre-verdadeira)', () => {
+    const { oficial, proposto } = repoDeConfig(CONFIG_CI);
+    migrarArquivo(oficial, 'propor');
+    expect(JSON.parse(readFileSync(proposto, 'utf8')).$schema_versao).toBe(2);
+  });
+
+  it('o migrador NÃO conhece o nome da revisão: não lê, não escreve, não apaga', () => {
+    const { oficial } = repoDeConfig(CONFIG_CI);
+    const revisado = join(join(oficial, '..'), NOME_REVISADO);
+    writeFileSync(revisado, REVISADO);
+    const antes = readFileSync(revisado);
+    migrarArquivo(oficial, 'propor');
+    expect(readFileSync(revisado).equals(antes)).toBe(true);
+    // E o proposto saiu normalmente: um arquivo com outro nome ao lado é
+    // exatamente o que a convenção pede, e não atrapalha nada.
+    expect(existsSync(join(join(oficial, '..'), NOME_PROPOSTO))).toBe(true);
+  });
+
+  it('a CLI distingue RECUSA (rc 1) de erro de uso (rc 2)', () => {
+    const { oficial, proposto } = repoDeConfig(CONFIG_CI);
+    writeFileSync(proposto, REVISADO);
+    const cli = join(REPO_ROOT, 'scripts', 'orquestrador', 'migrar-config.ts');
+    const tsx = join(REPO_ROOT, 'node_modules', '.bin', 'tsx');
+
+    const recusa = spawnSync(tsx, [cli, oficial, '--propor'], { encoding: 'utf8' });
+    expect(recusa.status).toBe(1);
+    expect(`${recusa.stdout}${recusa.stderr}`).toMatch(/JÁ EXISTE/);
+
+    const erro = spawnSync(tsx, [cli, oficial, '--opcao-que-nao-existe'], { encoding: 'utf8' });
+    expect(erro.status).toBe(2);
+  });
+});
+
+describe('M1 · instalar.sh --atualizar --migrar repassa a recusa', () => {
+  /** Uma cópia do fixture instanciado: repo instalado de verdade, com git. */
+  function repoInstalado(): string {
+    const raiz = mkdtempSync(join(tmpdir(), 'orq-m1-'));
+    const dest = join(raiz, 'repo');
+    const fx = checkoutReal();
+    const r = spawnSync('cp', ['-R', `${fx}/.`, dest], { encoding: 'utf8' });
+    if (r.status !== 0) throw new Error(`cp -R falhou: ${r.stderr}`);
+    writeFileSync(join(dest, 'docs', 'fila', 'PAUSAR'), 'atualizando o motor\n');
+    return dest;
+  }
+
+  function atualizarMigrar(repo: string, ...extra: string[]) {
+    const r = spawnSync('bash', [join(REPO_ROOT, 'instalar.sh'), '--atualizar', repo, '--migrar', ...extra], {
+      encoding: 'utf8',
+      env: { ...process.env, ORQ_TESTE: '1' },
+    });
+    return { rc: r.status ?? 1, saida: `${r.stdout ?? ''}${r.stderr ?? ''}` };
+  }
+
+  it('com proposto pré-existente: rc 1, recusa dita, e o arquivo intacto byte a byte', () => {
+    const repo = repoInstalado();
+    const proposto = join(repo, 'docs', 'fila', NOME_PROPOSTO);
+    writeFileSync(proposto, '{\n  "revisao": "da Fase A, e não pode sumir"\n}\n');
+    const antes = readFileSync(proposto);
+
+    const r = atualizarMigrar(repo);
+    expect(r.rc).toBe(1);
+    expect(r.saida).toMatch(/RECUSADO pelo migrar-config/);
+    expect(r.saida).toMatch(/JÁ EXISTE/);
+    expect(readFileSync(proposto).equals(antes)).toBe(true);
+    // E o passo humano NÃO é impresso apontando para o arquivo de outra pessoa.
+    expect(r.saida).not.toMatch(/leia .*000-config\.proposto\.json/);
+  });
+
+  it('o resto da migração roda: a recusa é do config, não do --migrar inteiro', () => {
+    const repo = repoInstalado();
+    writeFileSync(join(repo, 'docs', 'fila', NOME_PROPOSTO), '{}\n');
+    const r = atualizarMigrar(repo);
+    expect(r.saida).toMatch(/MIGRAR-LIBERACOES|MIGRAR-TICKETS/);
+    // A cópia do motor aconteceu: o veredito do verificador continua saindo.
+    expect(r.saida).toMatch(/idêntico ao kit|diferença\(s\)/);
+  });
+
+  it('sem proposto pré-existente, o --migrar volta a sair 0 e a gravar', () => {
+    const repo = repoInstalado();
+    const r = atualizarMigrar(repo);
+    expect(r.rc).toBe(0);
+    expect(r.saida).not.toMatch(/RECUSADO pelo migrar-config/);
+    expect(existsSync(join(repo, 'docs', 'fila', NOME_PROPOSTO))).toBe(true);
+  });
+
+  it('--dry-run com proposto pré-existente: rc 0, avisa, e não escreve', () => {
+    const repo = repoInstalado();
+    const proposto = join(repo, 'docs', 'fila', NOME_PROPOSTO);
+    writeFileSync(proposto, '{\n  "revisao": "intocada"\n}\n');
+    const antes = readFileSync(proposto);
+    const r = atualizarMigrar(repo, '--dry-run');
+    expect(r.rc).toBe(0);
+    expect(r.saida).toMatch(/AVISO: .*já existe/);
+    expect(readFileSync(proposto).equals(antes)).toBe(true);
   });
 });
 

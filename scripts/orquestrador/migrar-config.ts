@@ -44,7 +44,42 @@ import { diffUnificado, json, lerJson } from './migrar-comum.js'
 const CHAVES = CHAVES_OBRIGATORIAS.map((c) => c.chave)
 
 const QUEM = 'migrar-config'
+
+/**
+ * `000-config.proposto.json` é NOME RESERVADO do instalador (peça M1).
+ *
+ * O migrador escreve aqui e o `--aplicar` lê daqui. Antes desta peça o
+ * `--propor` fazia `writeFileSync` sem guarda nenhuma: um segundo
+ * `instalar.sh --atualizar --migrar` reescrevia por cima do proposto que
+ * alguém já tinha revisado e preenchido, em silêncio, e o `--aplicar`
+ * seguinte instalava a versão de máquina com os placeholders `<...>`
+ * intactos. Foi o bloqueante B-2 da revisão de adoção do Actus
+ * (2026-09-09): o plano gravava o config revisado NESTE nome, e o
+ * `--migrar` do passo seguinte o apagava.
+ *
+ * Revisão humana usa OUTRO nome — `000-config.revisado.json` é o que o
+ * CONTRATO §8 registra —, e este fica sendo o que ele sempre foi: a
+ * proposta da máquina, descartável, regerável a qualquer momento.
+ */
 export const NOME_PROPOSTO = '000-config.proposto.json'
+
+/** Nome sugerido para a revisão HUMANA. O migrador nunca o lê nem o escreve. */
+export const NOME_REVISADO = '000-config.revisado.json'
+
+/**
+ * O migrador funcionando e dizendo NÃO — distinto de erro de uso.
+ *
+ * A CLI mapeia para rc 1; qualquer outra exceção continua rc 2. Sem essa
+ * distinção o `instalar.sh` não teria como repassar a recusa: ele engole a
+ * saída das migrações (`|| true`) justamente porque rc != 0 ali sempre foi
+ * "algo deu errado nesta etapa, siga", e uma recusa não é isso.
+ */
+export class Recusa extends Error {
+  constructor(mensagem: string) {
+    super(mensagem)
+    this.name = 'Recusa'
+  }
+}
 
 type Obj = Record<string, unknown>
 
@@ -247,7 +282,29 @@ export function migrarArquivo(caminho: string, modo: Modo): { linhas: string[]; 
   const d = diffUnificado(antes, p.proposto, `${caminho} (oficial, INTOCADO)`, `${propostoPath} (proposto)`)
   linhas.push('', d ? d.trimEnd() : 'nada a mudar: o config já está no schema 2 e completo.')
 
+  // Um dry-run que diz "tudo certo" e um `--propor` que RECUSA logo depois é um
+  // dry-run que mentiu. Ele avisa e NÃO escreve — que é o que ele sempre fez.
+  if (modo === 'dry-run' && existsSync(propostoPath)) {
+    linhas.push(
+      '',
+      `AVISO: ${propostoPath} já existe. O --propor de verdade RECUSARIA (peça M1): o nome é reservado do`,
+      `instalador e sobrescrevê-lo apagaria a revisão de alguém. Apague-o, ou renomeie a sua revisão para`,
+      `${NOME_REVISADO}, antes de rodar sem --dry-run.`,
+    )
+  }
+
   if (modo === 'propor') {
+    // A guarda da peça M1. Ela vem DEPOIS do diff acima de propósito: o
+    // relatório já foi montado e o `--dry-run` continua servindo para ver o que
+    // mudaria. O que se recusa é a ESCRITA, e só ela.
+    if (existsSync(propostoPath)) {
+      throw new Recusa(
+        `${QUEM}: ${propostoPath} JÁ EXISTE e não vou sobrescrevê-lo. ` +
+          `Este nome é reservado do instalador: é aqui que o --propor escreve e é daqui que o --aplicar lê. ` +
+          `Se o arquivo é a proposta anterior e não serve mais, apague-o; se é a sua revisão, RENOMEIE-A ` +
+          `(a convenção do kit é ${NOME_REVISADO}, nome que o instalador não conhece) e rode de novo.`,
+      )
+    }
     writeFileSync(propostoPath, p.proposto)
     linhas.push('', `PROPOSTO gravado em ${propostoPath}. O oficial NÃO foi tocado.`)
   }
@@ -311,6 +368,8 @@ if (chamadoComoCli()) {
     process.exit(0)
   } catch (e) {
     process.stderr.write(`${(e as Error).message}\n`)
-    process.exit(2)
+    // rc 1 = o migrador funcionando e dizendo não; rc 2 = erro de uso ou de
+    // leitura. O `instalar.sh` distingue os dois para repassar SÓ a recusa.
+    process.exit(e instanceof Recusa ? 1 : 2)
   }
 }

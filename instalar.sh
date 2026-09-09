@@ -313,6 +313,11 @@ relatar_gitignore() {
   [ "$faltando" = 0 ] || printf '\nO instalador NÃO edita o .gitignore de repo existente: ele é do dono.\n'
 }
 
+# 1 quando alguma migração RECUSOU (hoje só o config, peça M1). Não é erro: é o
+# instalador funcionando. Vira rc 1 do `--atualizar`, para que quem chamou por
+# script não leia "atualizado" onde houve um passo por fazer.
+MIGRAR_RECUSOU=0
+
 # migrar_tudo <repo> <dry|aplicar> — a sequência inteira, na ordem.
 migrar_tudo() {
   local repo="$1" modo="$2"
@@ -344,11 +349,21 @@ migrar_tudo() {
   fi
 
   printf '\n'
-  local cfg="$repo/docs/fila/000-config.json"
+  local cfg="$repo/docs/fila/000-config.json" cfg_rc=0
   if [ -f "$cfg" ]; then
     ( cd "$KIT" && npx tsx scripts/orquestrador/migrar-config.ts "$cfg" \
-        "$([ "$modo" = aplicar ] && echo --propor || echo --dry-run)" ) || true
-    if [ "$modo" = aplicar ]; then
+        "$([ "$modo" = aplicar ] && echo --propor || echo --dry-run)" ) || cfg_rc=$?
+    # rc 1 é RECUSA do migrador — ele funcionando e dizendo não —, e o
+    # instalador a repassa em vez de engoli-la (peça M1). As outras migrações
+    # continuam com `|| true`: lá rc != 0 é "esta etapa deu errado, siga", e um
+    # `--migrar` que para por causa de uma delas deixaria o repo pela metade.
+    # Aqui é o contrário: nada foi escrito, e continuar imprimindo "passo
+    # humano: leia o proposto" apontaria para o arquivo de OUTRA pessoa.
+    if [ "$cfg_rc" = 1 ]; then
+      MIGRAR_RECUSOU=1
+      printf '\nRECUSADO pelo migrar-config (acima): o config NÃO foi proposto e NADA foi escrito.\n'
+      printf 'O resto da migração já rodou; refaça só esta etapa depois de resolver o nome.\n'
+    elif [ "$modo" = aplicar ]; then
       printf '\nO config NÃO foi aplicado, e isso é a peça funcionando. Passo humano:\n'
       printf '  1. leia %s/docs/fila/000-config.proposto.json\n' "$repo"
       printf '  2. preencha os placeholders <...> (o relatório acima lista cada um e por quê)\n'
@@ -513,6 +528,10 @@ atualizar() {
   # de `só no repo` aqui é justamente o que NÃO foi apagado, e é para ser lido.
   local rc=0
   verificar "$repo" || rc=$?
+  # Uma migração RECUSADA é rc 1 mesmo com o motor idêntico ao kit: a cópia deu
+  # certo e um passo dos dados ficou por fazer, e essas duas coisas não podem
+  # sair pelo mesmo 0.
+  [ "$MIGRAR_RECUSOU" = 0 ] || rc=1
 
   # DOIS commits, não um. O motor é vendorizado e o diff dele é "o kit mudou";
   # `docs/fila/**` são os dados do dono e o diff é "os meus dados mudaram de

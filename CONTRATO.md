@@ -407,6 +407,23 @@ verificam nada (no CI é o `limpeza_artefatos`, um `rm -rf` do artefato de build
 que roda antes dos gates de verdade). Gate que não verifica não aparece na linha
 GATE, e é correto que não apareça.
 
+**`000-config.proposto.json` é NOME RESERVADO do instalador.** É onde o
+`migrar-config.ts --propor` escreve e de onde o `--aplicar` lê. Desde a peça M1
+o `--propor` **RECUSA** (rc 1) se o arquivo já existir, e o `instalar.sh
+--atualizar --migrar` repassa a recusa em vez de engoli-la — o `--dry-run`
+avisa e continua sem escrever. Antes disso o `writeFileSync` era incondicional:
+um segundo `--migrar` reescrevia por cima de um proposto já revisado e
+preenchido, em silêncio, e o `--aplicar` seguinte instalava a versão de máquina
+com os placeholders `<...>` intactos.
+
+Por isso **revisão humana usa outro nome**: a convenção do kit é
+`docs/fila/000-config.revisado.json`, que o instalador não conhece — não lê, não
+escreve, não apaga. Quem trabalhou o config em separado copia o revisado por
+cima do oficial (com o `.bak` sob sua responsabilidade) **depois** de rodar o
+`--migrar`; usar o nome do proposto para isso é entregar o arquivo ao
+instalador. O `--aplicar` continua sendo o caminho de quem preencheu o proposto
+no lugar dele: ele MOVE o que foi lido, sem recalcular.
+
 `orq config` roda ANTES do `lib.sh` (`scripts/orq`, topo) e resolve o caminho do
 config sem ele. O `lib.sh` lê o config no carregamento, então um
 `000-config.json` ilegível derrubava o `orq` inteiro com rc 5 — a ferramenta que
@@ -488,7 +505,7 @@ agendar um loop que não roda.
 |---|---|---|
 | `migrar_pausa` (em `instalar.sh`) | `docs/fila/.orq-pause` → `docs/fila/PAUSAR`, motivo preservado (§7) | `mv`; recusa com os dois presentes |
 | `migrar-liberacoes.ts` | `liberacoes.json` de qualquer forma viva (§6.1) para v2 | `--aplicar` grava e deixa `.bak` |
-| `migrar-config.ts` | `000-config.json` schema 1 → 2, pela tabela de `config-tabela.ts` | **`--propor` só**: grava `000-config.proposto.json` ao lado. O oficial nunca é tocado pelo instalador |
+| `migrar-config.ts` | `000-config.json` schema 1 → 2, pela tabela de `config-tabela.ts` | **`--propor` só**: grava `000-config.proposto.json` ao lado, e RECUSA (rc 1) se ele já existir (M1). O oficial nunca é tocado pelo instalador |
 | `migrar-tickets.ts` | o bloco ```json dos tickets `pendente`: `tentativas_consumidas` → `tentativas`, `recon_esperado` → `recon` | `--aplicar` grava **sem** `.bak` |
 | `relatar_gitignore` (em `instalar.sh`) | nada — RELATA o que o repo deve ignorar (§7) | nunca escreve |
 | `orq validar --pendentes` | nada — RELATA o que a migração deliberadamente não inventou | read-only |

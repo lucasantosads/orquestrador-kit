@@ -323,7 +323,25 @@ printf '%s\n' "$saida" | grep -vE '^[-+ ]' | sed 's/^/  | /'
 printf '%s' "$saida" | grep -q 'git commit -m .fila: migrada' \
   && ok "sugere um SEGUNDO commit, separado, para os dados migrados" || falha "não sugeriu o commit da fila"
 
+echo "-- (i3a) M1: a SEGUNDA passada recusa sobrescrever o proposto da primeira --"
+# `000-config.proposto.json` é nome reservado do instalador, e a (i2) acabou de
+# gravá-lo. Rodar `--migrar` de novo por cima dele apagaria, em silêncio, o
+# arquivo que alguém pode já ter revisado e preenchido — o bloqueante B-2 da
+# revisão de adoção do Actus. Desde a peça M1 é rc 1, com o arquivo intacto.
+CK_PROP="$(cksum < "$MIG/docs/fila/000-config.proposto.json")"
+saida="$(bash "$KIT/instalar.sh" --atualizar "$MIG" --migrar 2>&1)"; rc=$?
+[ "$rc" = 1 ] && ok "rc 1 (recusa, não erro)" || falha "rc $rc (esperava 1)"
+printf '%s' "$saida" | grep -q 'RECUSADO pelo migrar-config' \
+  && ok "o instalador REPASSA a recusa" || falha "o instalador engoliu a recusa"
+printf '%s' "$saida" | grep -q '000-config.revisado.json' \
+  && ok "a mensagem dá o nome que a revisão humana deve usar" || falha "não deu o nome alternativo"
+[ "$(cksum < "$MIG/docs/fila/000-config.proposto.json")" = "$CK_PROP" ] \
+  && ok "o proposto sobrevive byte a byte" || falha "o proposto foi sobrescrito"
+
 echo "-- (i3) rodar de novo é no-op, e o .bak NÃO é sobrescrito --"
+# Sem o proposto no caminho (é ele que a (i3a) acabou de proteger), a segunda
+# passada volta a ser o no-op que as outras migrações sempre foram.
+rm -f "$MIG/docs/fila/000-config.proposto.json"
 CK_BAK="$(cksum < "$MIG/docs/fila/liberacoes.json.bak")"
 saida="$(bash "$KIT/instalar.sh" --atualizar "$MIG" --migrar 2>&1)"; rc=$?
 [ "$rc" = 0 ] && ok "rc 0" || falha "rc $rc (esperava 0)"
@@ -375,6 +393,9 @@ CFG_ANTES="$(cksum < "$MIG/docs/fila/000-config.json")"
 COMARKA_CFG="$HOME/Projetos/comarka-operacional/docs/fila/000-config.json"
 if [ -f "$COMARKA_CFG" ]; then
   cp "$COMARKA_CFG" "$MIG/docs/fila/000-config.json"
+  # O proposto da passada anterior sai do caminho: desde a M1 ele é nome
+  # reservado e o `--propor` recusa gravar por cima (exercitado na (i3a)).
+  rm -f "$MIG/docs/fila/000-config.proposto.json"
   CK_V1="$(cksum < "$MIG/docs/fila/000-config.json")"
   saida="$(bash "$KIT/instalar.sh" --atualizar "$MIG" --migrar 2>&1)"
   printf '%s' "$saida" | grep -q 'supabase_project_id → ambiente_id' \
