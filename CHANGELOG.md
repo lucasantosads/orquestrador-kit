@@ -652,6 +652,8 @@ opus, o Actus gastou US$ 9,28 por ticket aprovado (US$ 3,06 no CI), todo adiamen
 - **7b-6** `470c237`: PECAS, este CHANGELOG e o CONTRATO.
 - **7b-8**: ticket devolvido por humano de bloqueado para pendente volta com tentativas,
   `.sem-progresso` e `.adiamentos` zerados (`RECUPERADO motivo=reaberto`).
+- **7b-9**: os `test-*.sh` vendorizados não dependem do kit (fixtures em heredoc, raiz pelo git,
+  sem `ORQ_KIT`), com trava no `test-instalar.sh`.
 
 O que o CI faz diferente, ao atualizar: um 503 ou um timeout deixam de parar a fila por uma
 hora; um gate cujo runner não roda adia em vez de gastar retry em opus; um critério vermelho

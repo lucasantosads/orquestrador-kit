@@ -30,7 +30,9 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
 fi
 
 FXE_AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FXE_NM="$(cd "$FXE_AQUI/../.." && pwd)/node_modules"
+# O node_modules do checkout que contém este molde, achado pelo GIT e não
+# subindo com `..` a partir daqui (peça 7b-9: o molde viaja para o repo instalado).
+FXE_NM="$(git -C "$FXE_AQUI" rev-parse --show-toplevel 2>/dev/null || true)/node_modules"
 
 # fxe_novo [filtro-jq] — um tmp novo com repo, claude falso e gates verdes. O
 # filtro opcional ajusta o config do caso (ex.: '.max_retries = 0').

@@ -594,6 +594,38 @@ saida="$(bash "$KIT/instalar.sh" --atualizar "$SEM_TSX" 2>&1)"; rc=$?
 printf '%s' "$saida" | grep -q 'node_modules/.bin/tsx' \
   && falha "ainda reclama do tsx" || ok "nenhuma reclamação de tsx"
 
+# --- (v) os testes vendorizados viajam (peça 7b-9) ---------------------------
+# Um scripts/orquestrador/test-*.sh vai para todo repo instalado. Lá não existe
+# `test/fixtures/` do kit, não existe ORQ_KIT, e o que fica acima de
+# scripts/orquestrador é o repo de OUTRA pessoa. Na instalação da 7b no CI, o
+# test-reprovado-sub.sh lia a trilha do 461 em test/fixtures/ e falhou 3 checks
+# por empacotamento, com o motor certo. A trava: fora de comentário, nenhum
+# test-*.sh vendorizado pode citar `test/fixtures`, `ORQ_KIT`, nem subir com `..`
+# a partir do próprio diretório (`$AQUI/..`, `$FXE_AQUI/..`, `/../..`). A raiz do
+# checkout, quando o teste precisa dela, vem do git (`rev-parse`), não do layout.
+echo
+echo "== (v) nenhum scripts/orquestrador/test-*.sh vendorizado depende do kit =="
+TRAVA_VIAJA='test/fixtures|ORQ_KIT|[A-Za-z_]*AQUI\}?"?/\.\.|/\.\./\.\.'
+n_viaja=0; achados_viaja=''
+for t in "$FX"/scripts/orquestrador/test-*.sh; do
+  [ -f "$t" ] || continue
+  n_viaja=$((n_viaja + 1))
+  a="$(grep -nE "$TRAVA_VIAJA" "$t" | grep -vE '^[0-9]+:[[:space:]]*#' || true)"
+  [ -z "$a" ] || achados_viaja="$achados_viaja$(printf '%s\n' "$a" | sed "s|^|  ${t##*/}:|")
+"
+done
+[ "$n_viaja" -gt 0 ] && ok "$n_viaja test-*.sh vendorizados no fixture varridos" || falha "nenhum test-*.sh vendorizado achado em $FX/scripts/orquestrador"
+if [ -z "$achados_viaja" ]; then
+  ok "nenhum cita test/fixtures, ORQ_KIT ou caminho que sobe para fora de scripts/orquestrador"
+else
+  falha "teste vendorizado que não viaja:"
+  printf '%s' "$achados_viaja"
+fi
+# O NEGATIVO da trava: ela reprova o padrão que quebrou no CI.
+printf 'FIXT="${ORQ_KIT:-$(cd "$AQUI/../.." && pwd)}/test/fixtures/trilha/x.log"\n' > "$COPIA_EXTRA/negativo-viaja.sh"
+grep -qE "$TRAVA_VIAJA" "$COPIA_EXTRA/negativo-viaja.sh" && ok "a trava reprova a linha que quebrou no CI" || falha "a trava deixou passar a linha do CI"
+rm -f "$COPIA_EXTRA/negativo-viaja.sh"
+
 # --- (c) ---------------------------------------------------------------------
 echo
 echo "== (c) ${CI_CHECKOUT:-ORQ_CI_CHECKOUT não setado} (SÓ LEITURA — o resultado é achado, não gate) =="

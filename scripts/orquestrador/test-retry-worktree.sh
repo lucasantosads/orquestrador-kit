@@ -26,9 +26,11 @@ AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # --git-common-dir`, de qualquer worktree — e um `event` disparado aqui grava na
 # trilha de produção. Foi assim que os `EXECUTOR_MORREU` espúrios de 2026-09-04
 # 20:45/20:47 entraram no `events.log` real.
-CHECKOUT_REAL="$(cd "$AQUI/../.." && pwd)"
-CHECKOUT_REAL="$(git -C "$CHECKOUT_REAL" rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's#/\.git/*$##' || true)"
-[ -n "$CHECKOUT_REAL" ] || CHECKOUT_REAL="$(cd "$AQUI/../.." && pwd)"
+# A raiz do checkout que contém este script vem do GIT, não do layout (peça
+# 7b-9): o script viaja, e subir com `..` a partir dele é depender de onde o kit
+# o põe. Worktree: o comum (o checkout principal); fora dele, o toplevel.
+CHECKOUT_REAL="$(git -C "$AQUI" rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's#/\.git/*$##' || true)"
+[ -n "$CHECKOUT_REAL" ] || CHECKOUT_REAL="$(git -C "$AQUI" rev-parse --show-toplevel 2>/dev/null || true)"
 CONFIG_REAL="$CHECKOUT_REAL/docs/fila/000-config.json"
 export ORQ_TESTE=1
 ORQ_EXEC_ROOT="$(mktemp -d)/checkout"; export ORQ_EXEC_ROOT

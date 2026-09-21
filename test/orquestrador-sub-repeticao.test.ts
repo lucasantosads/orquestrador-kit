@@ -100,3 +100,25 @@ describe('reabertoDeBloqueado: devolução humana (peça 7b-8)', () => {
     expect(reabertoDeBloqueado([])).toBe(false);
   });
 });
+
+describe('as cópias EMBUTIDAS nos testes que viajam são as fixtures do kit (peça 7b-9)', () => {
+  // Os test-*.sh vão para todo repo instalado, onde test/fixtures/ não existe:
+  // por isso carregam as fixtures em heredoc. A cópia no kit segue sendo a
+  // referência, e este caso impede as duas de divergirem em silêncio.
+  const heredoc = (script: string, marca: string): string => {
+    const txt = readFileSync(join(__dirname, '..', 'scripts', 'orquestrador', script), 'utf8');
+    const ini = txt.indexOf(`<<'${marca}'\n`);
+    expect(ini, `${script} sem o heredoc ${marca}`).toBeGreaterThan(-1);
+    const corpo = txt.slice(ini + `<<'${marca}'\n`.length);
+    return corpo.slice(0, corpo.indexOf(`\n${marca}\n`) + 1);
+  };
+  const fixture = (...p: string[]) => readFileSync(join(__dirname, 'fixtures', ...p), 'utf8');
+
+  it('test-reprovado-sub.sh: a trilha do 461', () => {
+    expect(heredoc('test-reprovado-sub.sh', 'TRILHA_461')).toBe(fixture('trilha', 'actus-461-reprovado.log'));
+  });
+  it('test-preflight.sh: os dois envelopes reais', () => {
+    expect(heredoc('test-preflight.sh', 'ENVELOPE_429')).toBe(fixture('claude-envelope', 'rate-limit-429.txt'));
+    expect(heredoc('test-preflight.sh', 'ENVELOPE_CONEXAO')).toBe(fixture('claude-envelope', 'conexao-recusada.txt'));
+  });
+});

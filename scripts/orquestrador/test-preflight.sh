@@ -35,9 +35,11 @@ AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # --git-common-dir`, de qualquer worktree — e um `event` disparado aqui grava na
 # trilha de produção. Foi assim que os `EXECUTOR_MORREU` espúrios de 2026-09-04
 # 20:45/20:47 entraram no `events.log` real.
-CHECKOUT_REAL="$(cd "$AQUI/../.." && pwd)"
-CHECKOUT_REAL="$(git -C "$CHECKOUT_REAL" rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's#/\.git/*$##' || true)"
-[ -n "$CHECKOUT_REAL" ] || CHECKOUT_REAL="$(cd "$AQUI/../.." && pwd)"
+# A raiz do checkout que contém este script vem do GIT, não do layout (peça
+# 7b-9): o script viaja, e subir com `..` a partir dele é depender de onde o kit
+# o põe. Worktree: o comum (o checkout principal); fora dele, o toplevel.
+CHECKOUT_REAL="$(git -C "$AQUI" rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's#/\.git/*$##' || true)"
+[ -n "$CHECKOUT_REAL" ] || CHECKOUT_REAL="$(git -C "$AQUI" rev-parse --show-toplevel 2>/dev/null || true)"
 CONFIG_REAL="$CHECKOUT_REAL/docs/fila/000-config.json"
 export ORQ_TESTE=1
 ORQ_EXEC_ROOT="$(mktemp -d)/checkout"; export ORQ_EXEC_ROOT
@@ -161,7 +163,20 @@ echo "== 4 · fronteira: sondagem limitada ADIA, não aborta =="
 # fina da fronteira mora em test/orquestrador-envelope.test.ts; aqui fica só o
 # smoke de que o lib.sh carregado por este script concorda com ela.
 tmp="$(mktemp)"
-FIXT="$(cd "$AQUI/../.." && pwd)/test/fixtures/claude-envelope"
+# Os dois envelopes vão EMBUTIDOS (peça 7b-9): este script viaja para todo repo
+# instalado, e lá não existe o test/fixtures/ do kit. Origem: capturados nesta
+# máquina em 2026-09-03 (CLI 2.1.259), versionados no kit em
+# test/fixtures/claude-envelope/ desde 2026-09-08 (617d6ba); o vitest
+# (orquestrador-sub-repeticao.test.ts) cobra que as cópias são iguais.
+FIXT="$(mktemp -d)"
+cat > "$FIXT/rate-limit-429.txt" <<'ENVELOPE_429'
+⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors
+{"duration_api_ms":0,"stop_reason":"stop_sequence","session_id":"ac00ba2d-2a06-4133-812c-61a975ecb773","total_cost_usd":0,"usage":{"output_tokens_details":{"thinking_tokens":0},"input_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":0,"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":0},"inference_geo":"","iterations":[],"speed":"standard"},"modelUsage":{},"permission_denials":[],"terminal_reason":"api_error","fast_mode_state":"off","fast_mode_disabled_reason":"sdk_opt_in_required","subagent_stats":{"spawned":0,"requested":{"background":0,"foreground":0,"unset":0},"started_in_background":0,"max_depth":0,"spawned_by_subagents":0,"completed":0,"failed":0,"killed":{"parent":0,"user":0,"system":0},"refused":{"depth_limit":0,"concurrency_limit":0,"budget":0},"by_type":{}},"is_error":true,"num_turns":1,"subtype":"success","api_error_status":429,"result":"API Error: Request rejected (429) · This request would exceed your organization rate limit. Please try again later.","type":"result","duration_ms":167,"uuid":"396d9fe5-84f8-4c2b-97db-aebeb7eecdb7","queued_turn_count":0}
+ENVELOPE_429
+cat > "$FIXT/conexao-recusada.txt" <<'ENVELOPE_CONEXAO'
+Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer.
+{"duration_api_ms":0,"stop_reason":"stop_sequence","session_id":"b67c7147-8be0-4135-ba2d-37dbc7358b7e","total_cost_usd":0,"usage":{"output_tokens_details":{"thinking_tokens":0},"input_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":0,"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":0},"inference_geo":"","iterations":[],"speed":"standard"},"modelUsage":{},"permission_denials":[],"terminal_reason":"api_error","fast_mode_state":"off","fast_mode_disabled_reason":"sdk_opt_in_required","subagent_stats":{"spawned":0,"requested":{"background":0,"foreground":0,"unset":0},"started_in_background":0,"max_depth":0,"spawned_by_subagents":0,"completed":0,"failed":0,"killed":{"parent":0,"user":0,"system":0},"refused":{"depth_limit":0,"concurrency_limit":0,"budget":0},"by_type":{}},"is_error":true,"num_turns":1,"subtype":"success","api_error_status":null,"result":"API Error: Connection refused — a firewall or proxy may be blocking it (ConnectionRefused)","type":"result","duration_ms":179842,"uuid":"42e55ee4-39af-412f-a0ee-6e9e0395f8ee","queued_turn_count":0}
+ENVELOPE_CONEXAO
 if [ -s "$FIXT/rate-limit-429.txt" ]; then
   is_adiavel "$FIXT/rate-limit-429.txt" 1 && ok "429 real => adiável" || falha "429 real não classificado como adiável"
   is_adiavel "$FIXT/conexao-recusada.txt" 1 && ok "conexão recusada real => adiável" || falha "conexão real não classificada como adiável"
@@ -172,7 +187,7 @@ fi
 is_adiavel "$tmp" 1 && ok "saída vazia com rc!=0 => adiável (CLI não falou)" || falha "saída vazia não classificada como adiável"
 printf '[claude-code:unrecognized_model] {}\n' > "$tmp"
 is_adiavel "$tmp" 1 && falha "modelo recusado tratado como adiável (deveria abortar)" || ok "modelo recusado NÃO é adiável"
-rm -f "$tmp"
+rm -f "$tmp"; rm -rf "$FIXT"
 
 echo
 echo "== 5 · JUIZ (passo 7): stub, evidência e ZERO gasto =="

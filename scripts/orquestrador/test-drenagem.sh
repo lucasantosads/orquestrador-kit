@@ -28,9 +28,11 @@ AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # tinha sido exercido fora de um fixture vendorizado. O checkout real continua
 # sendo usado para UMA coisa, só leitura: provar que a branch protegida dele
 # não se move (casos 2 e 3).
-CHECKOUT_REAL="$(cd "$AQUI/../.." && pwd)"
-CHECKOUT_REAL="$(git -C "$CHECKOUT_REAL" rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's#/\.git/*$##' || true)"
-[ -n "$CHECKOUT_REAL" ] || CHECKOUT_REAL="$(cd "$AQUI/../.." && pwd)"
+# A raiz do checkout que contém este script vem do GIT, não do layout (peça
+# 7b-9): o script viaja, e subir com `..` a partir dele é depender de onde o kit
+# o põe. Worktree: o comum (o checkout principal); fora dele, o toplevel.
+CHECKOUT_REAL="$(git -C "$AQUI" rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's#/\.git/*$##' || true)"
+[ -n "$CHECKOUT_REAL" ] || CHECKOUT_REAL="$(git -C "$AQUI" rev-parse --show-toplevel 2>/dev/null || true)"
 
 # escrever_config <raiz> — o 000-config.json MÍNIMO que o lib.sh e o
 # local-loop.sh leem no carregamento e na drenagem (config-chaves.ts). Nada de

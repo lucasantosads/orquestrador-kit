@@ -32,10 +32,19 @@ TMP_RAIZ="$(dirname "$ORQ_EXEC_ROOT")"
 # shellcheck source=test-fixture-executor.sh
 source "$AQUI/test-fixture-executor.sh"
 trap 'fxe_limpa; rm -rf "$TMP_RAIZ"' EXIT
-# O fixture mora no KIT (test/fixtures/). Rodado pelo test-shell.sh, este
-# script é a cópia vendorizada no repo de fixture, que não tem test/: o
-# test-shell.sh exporta ORQ_KIT com a raiz do kit.
-FIXTURE_461="${ORQ_KIT:-$(cd "$AQUI/../.." && pwd)}/test/fixtures/trilha/actus-461-reprovado.log"
+# A trilha do 461 vai EMBUTIDA (peça 7b-9): este script viaja para todo repo
+# instalado, e lá não existe o test/fixtures/ do kit. Origem: linhas 434 a 437
+# de ~/Projetos/actus-saas/docs/fila/runs/events.log (HEAD f438730), copiadas
+# byte a byte em 2026-09-21, só leitura; cksum 1004446157 411. A mesma cópia
+# está no kit em test/fixtures/trilha/actus-461-reprovado.log, e um caso do
+# vitest (orquestrador-sub-repeticao.test.ts) cobra que as duas são iguais.
+FIXTURE_461="$TMP_RAIZ/actus-461-reprovado.log"
+cat > "$FIXTURE_461" <<'TRILHA_461'
+2026-09-15T11:46:34-0300 461 INICIO attempt=1 model=sonnet
+2026-09-15T11:52:56-0300 461 PERMISSAO_NEGADA n=3 cmds=ls -la node_modules | ls -la node_modules 2>&1 | head -3 | ls -la node_modules 2>&1 | head -3; echo "---"; git status
+2026-09-15T11:53:34-0300 461 GATE typecheck=ok testes=ok enforcement=ok criterios=3/4 build=ok
+2026-09-15T11:53:34-0300 461 REPROVADO motivo=criterio_qualidade attempt=1 diff=717
+TRILHA_461
 
 FALHAS=0
 ok()    { printf '  ok    %s\n' "$*"; }

@@ -809,6 +809,16 @@
   executor real): docs/fila limpo em toda chamada ao agente; o ticket devolvido recomeça em
   attempt=1 e não zera duas vezes. **Antes, rodava a attempt=4 e bloqueava na hora.**
 
+- **7b-9 · teste que viaja não depende do kit**. Na instalação no CI o
+  `test-reprovado-sub.sh` falhou 3 checks: lia a trilha do 461 em `test/fixtures/` do kit, que
+  não existe no repo instalado. A trilha (e os dois envelopes do `test-preflight.sh`) vão em
+  heredoc dentro do teste, sem `ORQ_KIT`; a raiz do checkout, onde um teste precisa dela, vem
+  do git. Trava nova no `test-instalar.sh` (v): nenhum `scripts/orquestrador/test-*.sh`
+  vendorizado cita `test/fixtures`, `ORQ_KIT` ou sobe com `..` a partir do próprio diretório.
+  O vitest cobra que as cópias embutidas são as fixtures do kit, byte a byte.
+  *Teste:* o `test-reprovado-sub.sh` numa cópia de `scripts/orquestrador` fora do kit.
+  **Antes, 3 checks falhando e a trava reprovando 9 linhas em 5 arquivos.**
+
 
 ## PENDENTES
 
