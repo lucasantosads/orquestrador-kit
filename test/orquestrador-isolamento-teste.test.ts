@@ -37,6 +37,7 @@ const SCRIPTS = [
   'test-adiamentos-limite.sh',
   'test-reprovado-sub.sh',
   'test-notificacao-ambiente.sh',
+  'test-reabertura-humana.sh',
 ];
 
 /**

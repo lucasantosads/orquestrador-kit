@@ -798,7 +798,16 @@
   *Teste:* `test/orquestrador-runatload.test.ts`, com o launchctl stubado e HOME
   descartável. **Antes, `<false/>`.** `docs/launchd.md` ainda mostra `false` (7c).
 
-- **7b-6 · docs da etapa 7b**: esta seção, o CHANGELOG e o CONTRATO §4.1, §8 e §9.4.
+- **7b-6 · docs da etapa 7b** (`470c237`): esta seção, o CHANGELOG e o CONTRATO §4.1, §8 e §9.4.
+
+- **7b-8 · devolução humana zera os contadores**. Ticket bloqueado que um humano devolve
+  para pendente (o lote 14 com o 235) volta com `tentativas`, `.sem-progresso` e
+  `.adiamentos` zerados, commit pelo `ticket_commit` e `RECUPERADO motivo=reaberto
+  de=bloqueado`. A pergunta 1 da revisão pré-merge (a contagem é commitada?) já era sim:
+  `executor.sh` grava e commita antes de cada tentativa; o teste agora prova.
+  *Teste:* `test-reabertura-humana.sh`, com uma drenagem de verdade (`drenar()` chamando o
+  executor real): docs/fila limpo em toda chamada ao agente; o ticket devolvido recomeça em
+  attempt=1 e não zera duas vezes. **Antes, rodava a attempt=4 e bloqueava na hora.**
 
 
 ## PENDENTES

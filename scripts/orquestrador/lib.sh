@@ -200,6 +200,35 @@ ticket_tentativas() {
 ticket_set_tentativas()  { ticket_set "$1" '.tentativas = ($n | tonumber)' --arg n "$2"; }
 ticket_zera_tentativas() { ticket_set_tentativas "$1" 0; }
 
+# --- DEVOLUÇÃO HUMANA ZERA OS CONTADORES (peça 7b-8) --------------------------
+# reabertura_humana <arquivo> -> 0 quando zerou (o ticket estava bloqueado e um
+# humano o devolveu para pendente); 1 quando não havia nada a fazer.
+#
+# Um ticket bloqueado por max_retries e devolvido à mão (status editado e
+# commitado, como o lote 14 fez com o 235) voltava com `tentativas` no limite:
+# rodava UMA tentativa e bloqueava de novo. O mesmo com os contadores da
+# drenagem (.sem-progresso, .adiamentos). Aqui os três zeram, o zero de
+# `tentativas` passa pelo `ticket_commit` (a árvore fica limpa, como em toda
+# transição) e a trilha ganha `RECUPERADO motivo=reaberto de=bloqueado`, que é
+# também o que impede zerar duas vezes. A decisão (o último desfecho do ticket
+# na trilha é BLOQUEADO) é do decisao.ts; sem trilha legível, nada é zerado.
+reabertura_humana() {
+  local file="$1" id
+  [ "$(ticket_field "$file" '.status' 2>/dev/null || true)" = pendente ] || return 1
+  id="$(ticket_field "$file" '.id' 2>/dev/null || true)"
+  [ -n "$id" ] && [ -s "$EVENTS_FILE" ] || return 1
+  awk -v id="$id" '$2 == id' "$EVENTS_FILE" 2>/dev/null \
+    | "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/decisao-cli.ts" "$MAIN_CHECKOUT" reaberto >/dev/null 2>&1 || return 1
+  ticket_zera_tentativas "$file"
+  ticket_commit "$file" "fila: $id reaberto de bloqueado (contadores zerados)"
+  if escrita_de_teste_permitida "$RUNS_BASE/$id"; then
+    rm -f "$RUNS_BASE/$id/.sem-progresso" "$RUNS_BASE/$id/.adiamentos" 2>/dev/null || true
+  fi
+  event "$id" RECUPERADO "motivo=reaberto" "de=bloqueado"
+  log "  $id devolvido de bloqueado para pendente: tentativas, .sem-progresso e .adiamentos zerados"
+  return 0
+}
+
 # ticket_commit <arquivo> <mensagem>
 # Commita a mudança de status/nota do ticket no MAIN_CHECKOUT imediatamente
 # apos escreve-la. Sem isso a arvore fica suja entre disparos e o preflight

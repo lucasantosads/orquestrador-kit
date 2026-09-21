@@ -544,6 +544,26 @@ export function ehRepeticao(linhas: string[], sub: string, diff: number): boolea
   return false
 }
 
+/**
+ * Peça 7b-8 · o ticket foi DEVOLVIDO por um humano de `bloqueado` para
+ * `pendente`? `linhas` são as linhas da trilha deste ticket; quem chama já
+ * conferiu que o status atual é `pendente`. A resposta é sim quando o último
+ * evento de desfecho do ticket é BLOQUEADO: o loop nunca tira um ticket de
+ * bloqueado, então se ele está pendente depois de um BLOQUEADO, foi a mão de
+ * alguém (o lote 14 fez isso com o 235). RECUPERADO quer dizer que a devolução
+ * já foi processada, e qualquer outro desfecho (INICIO, ADIADO, REPROVADO,
+ * APROVADO, MERGE, REFATIAR) quer dizer que o ticket já voltou a rodar.
+ */
+export function reabertoDeBloqueado(linhas: string[]): boolean {
+  const desfechos = ['BLOQUEADO', 'RECUPERADO', 'INICIO', 'ADIADO', 'REPROVADO', 'RETRY', 'APROVADO', 'MERGE', 'REFATIAR']
+  for (let i = linhas.length - 1; i >= 0; i--) {
+    const ev = (linhas[i] ?? '').split(' ')[2] ?? ''
+    if (!desfechos.includes(ev)) continue
+    return ev === 'BLOQUEADO'
+  }
+  return false
+}
+
 // ─── 4 · registro do meta.json ─────────────────────────────────────────────
 
 export interface RegistroMeta {

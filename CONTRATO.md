@@ -181,7 +181,7 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `RETRY` | `executor.sh:drive_ticket` | `attempt=` `model=` `motivo=` `sub=` `worktree=` |
 | `REFATIAR` | `executor.sh:896` | `motivo=` `arquivos=` |
 | `MERGE` | `local-loop.sh:173` | `alvo=` `sha=` |
-| `RECUPERADO` | `executor.sh:1105`, `local-loop.sh:55`, `launchd-run.sh:102` | `motivo=ja-mergeado\|lock-orfao\|status-congelado` |
+| `RECUPERADO` | `executor.sh:reconcile_merged`, `local-loop.sh:55`, `launchd-run.sh:102`, `lib.sh:reabertura_humana` | `motivo=ja-mergeado\|lock-orfao\|status-congelado` · devolução humana: `motivo=reaberto` `de=bloqueado` (7b-8) |
 | `EXECUTOR_MORREU` | `executor.sh:1136` | `rc=` `fase=` [`sinal=`] |
 | `ORCAMENTO` | `lib.sh:954` | `escopo=` `adiado_ate=` `consumo=` |
 | `COMMIT_HARNESS` | `executor.sh:725` | `motivo=agente-saiu-sem-commitar` |
@@ -286,6 +286,19 @@ drenagem que termina em `AMBIENTE` desfaz o que somou.
 desfecho não é reprovação; a drenagem zera ao mergear. `max_retries` vale no
 TOTAL do ticket, não por drenagem, e o `attempt=` da trilha continua de onde
 parou.
+
+**Devolução humana zera os contadores** (peça 7b-8). Um ticket `bloqueado` que um
+humano devolve para `pendente` (status editado e commitado) volta a rodar com
+`tentativas`, `runs/<id>/.sem-progresso` e `runs/<id>/.adiamentos` zerados. A
+regra (`decisao.ts:reabertoDeBloqueado`): status `pendente` e o último desfecho
+do ticket na trilha é `BLOQUEADO`, porque o loop nunca tira um ticket de
+bloqueado. O zero de `tentativas` passa pelo `ticket_commit`, e a trilha ganha
+`RECUPERADO motivo=reaberto de=bloqueado`, que também impede zerar duas vezes.
+Roda na drenagem antes de chamar o executor (vale mesmo com o preflight
+recusando) e no executor antes de ler `tentativas`. Toda gravação de
+`tentativas` é commitada (`executor.sh:drive_ticket`, antes de cada tentativa e
+no commit de cada desfecho): a árvore de `docs/fila` fica limpa entre uma
+tentativa e outra. Devolução de `refatiar` não está coberta.
 
 **Notificação de AMBIENTE** (peça 7b-5): avisa quando a drenagem ENTRA em
 `AMBIENTE`, cala nas seguintes que terminam no mesmo estado, e a primeira que

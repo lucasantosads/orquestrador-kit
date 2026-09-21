@@ -28,6 +28,7 @@
 #   test-adiamentos-limite.sh       teto de adiamentos seguidos, com a causa real na nota (7b-3)
 #   test-reprovado-sub.sh           sub-motivo, escalada só com juiz, repetição, tentativas persistidas (7b-4)
 #   test-notificacao-ambiente.sh    o aviso de AMBIENTE só na entrada e na saída (7b-5)
+#   test-reabertura-humana.sh       tentativas commitadas; devolução humana zera os contadores (7b-8)
 #
 # Cada um monta o PRÓPRIO `ORQ_EXEC_ROOT` num `mktemp -d` (drenagem e retry) ou
 # trabalha direto no checkout (lib-config); nada aqui precisa exportar
@@ -46,7 +47,7 @@ KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # Os testes que leem fixture versionada do kit (test/fixtures/) a acham por aqui:
 # rodando da cópia vendorizada no repo de fixture, `$AQUI/../..` não é o kit.
 export ORQ_KIT="$KIT"
-SCRIPTS='test-lib-config.sh test-drenagem.sh test-retry-worktree.sh test-drenagem-sem-progresso.sh test-sem-progresso-limite.sh test-ocioso.sh test-rc-executor.sh test-ambiente.sh test-causa-adiamento.sh test-ambiente-adiado.sh test-adiamentos-limite.sh test-reprovado-sub.sh test-notificacao-ambiente.sh'
+SCRIPTS='test-lib-config.sh test-drenagem.sh test-retry-worktree.sh test-drenagem-sem-progresso.sh test-sem-progresso-limite.sh test-ocioso.sh test-rc-executor.sh test-ambiente.sh test-causa-adiamento.sh test-ambiente-adiado.sh test-adiamentos-limite.sh test-reprovado-sub.sh test-notificacao-ambiente.sh test-reabertura-humana.sh'
 
 FX="$(bash "$KIT/scripts/kit/fixture.sh")" || {
   printf 'ERRO: fixture.sh falhou — nada foi rodado\n' >&2; exit 2

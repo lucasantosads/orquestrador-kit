@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { decidirDesfecho, decidirRetry, ehRepeticao, subDaLinha, subDoSinal, type DecisaoConfig, type SinalTentativa } from '../scripts/orquestrador/decisao.js';
+import { decidirDesfecho, decidirRetry, ehRepeticao, reabertoDeBloqueado, subDaLinha, subDoSinal, type DecisaoConfig, type SinalTentativa } from '../scripts/orquestrador/decisao.js';
 
 const CONFIG = {
   executor_model: 'sonnet', avaliador_model: 'opus', retry_final_model: 'opus', max_retries: 2, diff_cap_linhas: 600,
@@ -79,5 +79,24 @@ describe('ehRepeticao: a 2ª reprovação igual corta', () => {
   it('sem reprovação anterior, nada repete', () => {
     expect(ehRepeticao([], 'criterio', 717)).toBe(false);
     expect(ehRepeticao(TRILHA_461.slice(0, 3), 'criterio', 717)).toBe(false);
+  });
+});
+
+describe('reabertoDeBloqueado: devolução humana (peça 7b-8)', () => {
+  const L = (ev: string) => `2026-09-21T10:00:00-0300 235 ${ev}`;
+  it('último desfecho BLOQUEADO (e o status agora é pendente, conferido por quem chama): reaberto', () => {
+    expect(reabertoDeBloqueado([L('INICIO attempt=3'), L('REPROVADO motivo=criterio_qualidade attempt=3 diff=4'), L('BLOQUEADO motivo=criterio_qualidade attempt=3')])).toBe(true);
+    expect(reabertoDeBloqueado([L('BLOQUEADO motivo=adiamentos n=4 limite=4')])).toBe(true);
+  });
+  it('eventos sem desfecho depois do BLOQUEADO não mudam a resposta', () => {
+    expect(reabertoDeBloqueado([L('BLOQUEADO motivo=sem_progresso n=3 limite=3'), L('DECISAO_PENDENTE origem=humano-executor')])).toBe(true);
+  });
+  it('RECUPERADO depois do BLOQUEADO: já processado, não zera de novo', () => {
+    expect(reabertoDeBloqueado([L('BLOQUEADO motivo=criterio_qualidade attempt=3'), L('RECUPERADO motivo=reaberto de=bloqueado')])).toBe(false);
+  });
+  it('o ticket já voltou a rodar (INICIO, ADIADO) ou nunca bloqueou: não é reabertura', () => {
+    expect(reabertoDeBloqueado([L('BLOQUEADO motivo=x'), L('RECUPERADO motivo=reaberto de=bloqueado'), L('INICIO attempt=1')])).toBe(false);
+    expect(reabertoDeBloqueado([L('INICIO attempt=1'), L('ADIADO motivo=servidor attempt=1 rc=1 dur=2s cooldown=nao')])).toBe(false);
+    expect(reabertoDeBloqueado([])).toBe(false);
   });
 });

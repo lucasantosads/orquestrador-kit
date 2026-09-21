@@ -1041,6 +1041,10 @@ drive_ticket() {
   # Actus acumulou 18 diretórios de tentativa assim. Agora ele sai do campo
   # `tentativas` do ticket; `attempt0` separa as duas numerações (o contador de
   # retry, persistido, e o diretório de evidência, pelo slot contínuo).
+  # Peça 7b-8: ticket devolvido por humano de bloqueado para pendente zera os
+  # contadores ANTES de ler `tentativas` (a drenagem já faz isto antes de chamar
+  # o executor; aqui cobre o executor chamado sozinho).
+  reabertura_humana "$file" || true
   attempt="$(ticket_tentativas "$file")"; attempt0="$attempt"
   log "ticket $id ($slug) · worktree $nome · modelo $modelo · evidência a partir de attempt-$slot · tentativas já consumidas: $attempt/$((CFG_MAX_RETRIES + 1))"
   [ "$slot" = 0 ] || log "  runs/$id já tem $slot tentativa(s) de rodada anterior — a numeração continua, nada é sobrescrito"

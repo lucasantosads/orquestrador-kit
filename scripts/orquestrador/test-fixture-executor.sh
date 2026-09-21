@@ -37,7 +37,11 @@ FXE_NM="$(cd "$FXE_AQUI/../.." && pwd)/node_modules"
 fxe_novo() {
   local filtro="${1:-.}" r
   FXE_ID="${FXE_ID:-901}"
-  FXE="$(mktemp -d)"
+  # Caminho FÍSICO: no macOS o mktemp devolve /var/... e o git devolve
+  # /private/var/... para o mesmo lugar, e o ensure_staging_worktree compara o
+  # dono do worktree de merge por texto (lib.sh:git_common_abs usa pwd, não
+  # pwd -P). Achado da 7b-8, registrado para a 7c.
+  FXE="$(cd "$(mktemp -d)" && pwd -P)"
   r="$FXE/repo"
   mkdir -p "$r/docs/fila/runs" "$r/src" "$FXE/bin" "$FXE/gates" "$FXE/_worktrees"
   printf 'exit 0\n' > "$FXE/gates/typecheck.sh"
@@ -118,6 +122,9 @@ TICKET
 case " \$* " in *" --max-turns 1 "*) cat "$FXE/juiz-saida" 2>/dev/null; exit 0 ;; esac
 modelo=\$(printf '%s\n' "\$@" | awk 'p { print; exit } \$0 == "--model" { p = 1 }')
 echo "agente model=\$modelo" >> "$FXE/chamadas"
+# O git status de docs/fila no checkout PRINCIPAL no momento da chamada: é a
+# prova de que o que o executor gravou antes (tentativas, status) já foi commitado.
+{ echo "== chamada \$(grep -c . "$FXE/chamadas")"; git -C "$FXE/repo" status --porcelain -- docs/fila; } >> "$FXE/status-chamadas"
 # Fila de modos: um por chamada, o último se repete. Sem fila, o modo fixo.
 if [ -s "$FXE/claude-fila" ]; then
   modo="\$(head -1 "$FXE/claude-fila")"

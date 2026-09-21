@@ -649,7 +649,9 @@ opus, o Actus gastou US$ 9,28 por ticket aprovado (US$ 3,06 no CI), todo adiamen
   repetição, tentativas persistidas no ticket (max_retries no total).
 - **7b-5** `052ac50`: aviso de AMBIENTE só na entrada e na saída.
 - **7b-7** `27177af`: `RunAtLoad` true no template do plist.
-- **7b-6**: PECAS, este CHANGELOG e o CONTRATO.
+- **7b-6** `470c237`: PECAS, este CHANGELOG e o CONTRATO.
+- **7b-8**: ticket devolvido por humano de bloqueado para pendente volta com tentativas,
+  `.sem-progresso` e `.adiamentos` zerados (`RECUPERADO motivo=reaberto`).
 
 O que o CI faz diferente, ao atualizar: um 503 ou um timeout deixam de parar a fila por uma
 hora; um gate cujo runner não roda adia em vez de gastar retry em opus; um critério vermelho

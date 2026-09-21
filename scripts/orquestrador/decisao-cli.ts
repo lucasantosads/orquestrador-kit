@@ -9,6 +9,7 @@
  *   retry <tentativa> <modelo>-> stdin = Veredito; imprime PlanoRetry
  *   meta                      -> stdin = entrada; imprime RegistroMeta
  *   repeticao <sub> <diff>    -> stdin = linhas da trilha do ticket; exit 0 = repete a anterior (7b-4)
+ *   reaberto                  -> stdin = linhas da trilha do ticket; exit 0 = último desfecho é BLOQUEADO (7b-8)
  *   disallowed                -> o piso de --disallowedTools do config (T17)
  */
 import { readFileSync } from 'node:fs'
@@ -18,6 +19,7 @@ import {
   decidirRetry,
   registroMeta,
   ehRepeticao,
+  reabertoDeBloqueado,
   nomeWorktree,
   prefixoDeWorktree,
   modeloIndefinido,
@@ -82,6 +84,13 @@ switch (sub) {
     // pelo id do ticket.
     const linhas = readFileSync(0, 'utf8').split('\n').filter((l) => l.trim() !== '')
     process.exit(ehRepeticao(linhas, args[0] ?? '', Number(args[1] ?? NaN)) ? 0 : 1)
+    break
+  }
+  case 'reaberto': {
+    // Peça 7b-8. exit 0 = o último desfecho do ticket na trilha é BLOQUEADO
+    // (e o status atual, conferido por quem chama, é pendente): devolução humana.
+    const linhas = readFileSync(0, 'utf8').split('\n').filter((l) => l.trim() !== '')
+    process.exit(reabertoDeBloqueado(linhas) ? 0 : 1)
     break
   }
   case 'worktree': {

@@ -440,6 +440,11 @@ drenar() {
 
     say "ticket $prox_id ($(pendentes_processaveis) processáveis)"
 
+    # Peça 7b-8: devolução humana (bloqueado -> pendente) zera tentativas,
+    # .sem-progresso e .adiamentos ANTES da chamada e antes da régua desta volta,
+    # para valer mesmo que o executor seja recusado no preflight.
+    reabertura_humana "$prox" || true
+
     # Antes da chamada: onde a trilha estava, onde a branch alvo estava e a
     # nota do ticket. É a régua do que ESTA volta produziu. A saída do executor
     # vai para o log como sempre (tee) e fica numa cópia para a causa.
