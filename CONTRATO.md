@@ -175,10 +175,10 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `GATE` | `executor.sh:539` | ver §4.2 |
 | `JUIZ` | `executor.sh:615,623` | `veredito=aprovado\|reprovado\|ilegivel` `classe=` `modelo=` `attempt=` |
 | `APROVADO` | `executor.sh:1048` | `merge=aguardando` `dur=` `attempt=` |
-| `REPROVADO` | `executor.sh:1057` | `motivo=` `attempt=` `diff=` |
-| `ADIADO` | `executor.sh:1039` | `motivo=` `attempt=` |
-| `BLOQUEADO` | `executor.sh:1064`, `local-loop.sh:drenar` | `motivo=` [`attempt=`] · da drenagem: `motivo=merge_falhou`, ou `motivo=sem_progresso` `n=` `limite=` |
-| `RETRY` | `executor.sh:1077` | `attempt=` `model=` `motivo=` |
+| `REPROVADO` | `executor.sh:drive_ticket` | `motivo=` `sub=` `attempt=` `diff=` (`sub=` desde a 7b-4) |
+| `ADIADO` | `executor.sh:drive_ticket`, `executor.sh:preflight_ou_adia` | `motivo=` `attempt=` `rc=` `dur=` `cooldown=sim\|nao` · recusa de preflight: `motivo=preflight` `causa=<uma linha>` (a causa vai até o fim da linha) |
+| `BLOQUEADO` | `executor.sh:drive_ticket`, `local-loop.sh:drenar` | `motivo=` [`attempt=`] · repetição: `motivo=repeticao` `sub=` `diff=` `attempt=` · da drenagem: `motivo=merge_falhou`, `motivo=sem_progresso` `n=` `limite=`, ou `motivo=adiamentos` `n=` `limite=` |
+| `RETRY` | `executor.sh:drive_ticket` | `attempt=` `model=` `motivo=` `sub=` `worktree=` |
 | `REFATIAR` | `executor.sh:896` | `motivo=` `arquivos=` |
 | `MERGE` | `local-loop.sh:173` | `alvo=` `sha=` |
 | `RECUPERADO` | `executor.sh:1105`, `local-loop.sh:55`, `launchd-run.sh:102` | `motivo=ja-mergeado\|lock-orfao\|status-congelado` |
@@ -228,6 +228,70 @@ ambiente quebrado. Um ticket isolado com causa própria segue a regra de cima.
 ```
 --- AMBIENTE tickets=901,902 causa=executor morreu (rc=<n>, fase=?): preflight: lock de git em uso por outro processo: <caminho> (pid <n>, vez do <id>, HEAD <sha>)
 ```
+
+**`ADIADO`: causa, medida e cooldown** (peça 7b-2). O `motivo=` do adiado é a
+causa de infra do `decisao.ts`: `conexao`, `sessao`, `rate_limit`, `quota`,
+`servidor` (5xx, overloaded; até a 7b-2 era `rate_limit`), `timeout`,
+`gate_interrompido` (morto por fora: rc 129/130, ou rc 124 bem abaixo do teto,
+peça 7b-3), `gate_crash` (o runner do gate não rodou: rc 126/127, command not
+found, ENOENT do binário, Missing script, saída vazia; no papel testes, também
+sem placar e sem teste falhando) e `juiz_ilegivel`. `rc=` e `dur=` são a
+MEDIDA da chamada do agente. `cooldown=sim` só para `rate_limit` e `quota`;
+todo o resto adia sem cooldown e o próximo disparo retoma sem espera.
+
+```
+901 ADIADO motivo=timeout attempt=1 rc=124 dur=1802s cooldown=nao
+901 ADIADO motivo=gate_crash attempt=1 rc=0 dur=40s cooldown=nao
+901 ADIADO motivo=preflight causa=preflight: árvore de execução suja em /x/repo — commite ou stashe antes:\n?? lixo.txt
+```
+
+`motivo=preflight` substitui o `EXECUTOR_MORREU rc=1 fase=?` de id `—` que a
+recusa de preflight gravava até a 7b-2: o evento sai no ticket da vez, o
+executor sai 0, e nenhum ticket é TOCADO (nem nota nem commit). A régua de
+AMBIENTE (7a-8) vale sobre todo ADIADO sem cooldown, `preflight` incluído: a
+mesma causa normalizada em dois tickets na mesma drenagem é `AMBIENTE`.
+
+**`REPROVADO sub=`** (peça 7b-4): qual mérito reprovou, na ordem em que o
+pipeline para: `gate_<papel>` (`typecheck`, `testes`, `build`, `lint`), `juiz`,
+`criterio`, `exit`. `motivo=` segue `criterio_qualidade` para todos. O RETRY
+repete o `sub=`, e só `sub=juiz` escala modelo (§8). Permissão negada com
+critério vermelho é `sub=criterio`: mérito, sem escalar.
+
+```
+461 REPROVADO motivo=criterio_qualidade sub=criterio attempt=1 diff=717
+461 RETRY attempt=2 model=sonnet motivo=criterio_qualidade sub=criterio worktree=reaproveitada
+```
+
+**`BLOQUEADO motivo=repeticao sub= diff=`** (peça 7b-4): a reprovação que
+repete a anterior do MESMO ticket (mesmo sub, mesmo `diff=`) bloqueia na hora,
+sem 3ª volta, com `notas_status` = `repetição: 2ª reprovação igual à anterior
+(sub=, diff=), sem 3ª volta. <motivo>`. A anterior é a última `REPROVADO` do
+ticket na trilha, de qualquer drenagem, desde que nada tenha encerrado a série
+(APROVADO, MERGE, BLOQUEADO, REFATIAR, RECUPERADO; ADIADO não encerra). Linha de
+antes da 7b-4, sem `sub=`, tem o sub derivado do `GATE`/`JUIZ` da mesma
+tentativa (`criterios=3/4` com os gates ok = `criterio`).
+
+**`BLOQUEADO motivo=adiamentos n=<N> limite=<L>`** (peça 7b-3): o ADIADO sem
+cooldown soma em `runs/<id>/.adiamentos`, que persiste entre disparos. No limite
+(`adiamentos_limite`, §8) o ticket vai para `bloqueado` no fim da drenagem, pelo
+`ticket_commit`, com `notas_status` = `adiado <N> vezes: <causa real>`. A causa
+real é a MEDIDA do último ADIADO: `<motivo> (rc=<rc>, <dur> de execução)`, ou
+`preflight: <causa>`; um rc 124 de 9 s nunca vira "timeout". Adiado COM
+cooldown não conta nem zera; sair de `pendente` ou a branch alvo avançar zera;
+drenagem que termina em `AMBIENTE` desfaz o que somou.
+
+**Tentativas no ticket** (peça 7b-4): o contador de retry é o campo
+`tentativas` do ticket, e não mais um `attempt=0` por chamada. O executor grava
+`tentativas+1` (com commit) antes de cada tentativa e devolve o valor quando o
+desfecho não é reprovação; a drenagem zera ao mergear. `max_retries` vale no
+TOTAL do ticket, não por drenagem, e o `attempt=` da trilha continua de onde
+parou.
+
+**Notificação de AMBIENTE** (peça 7b-5): avisa quando a drenagem ENTRA em
+`AMBIENTE`, cala nas seguintes que terminam no mesmo estado, e a primeira que
+sai manda UM aviso de saída, com o placar, no lugar do cartão de fim. A memória
+é `runs/.notificacao-ambiente`, como a da fila vazia; pausa não conta como
+saída.
 
 **`OCIOSO`** (peça 7a-4) sai UMA vez por drenagem, logo antes do
 `DRENAGEM_FIM`, quando ela termina sem nenhum pendente processável e há ao menos
@@ -494,6 +558,18 @@ e **não** na tabela de chaves novas do `--migrar` (`config-tabela.ts:NOVAS`): u
 repo instalado segue com o padrão do código sem que a migração mude o proposto
 dele.
 
+**`adiamentos_limite`** (peça 7b-3, opcional, padrão **4**): quantos
+adiamentos SEM cooldown seguidos um ticket pode ter antes de ir para
+`bloqueado` (§4.1, `BLOQUEADO motivo=adiamentos`). Lida a cada volta
+(`local-loop.sh:adiamentos_limite`); ausente, zero ou não numérica vale 4. Está
+em `config-chaves.ts` e no formulário v2, e, como o `sem_progresso_limite`, não
+em `config-tabela.ts:NOVAS`.
+
+**`politica_adiamento.causas_que_adiam`: os mesmos 7 rótulos ligam 9 causas**
+(peça 7b-2). `servidor` (5xx) é ligado pelo rótulo "rate limit" e `gate_crash`
+pelo "gate interrompido": pedir rótulo novo faria todo repo instalado deixar de
+adiar um 503 no dia da atualização. Tirar o rótulo desliga as duas causas dele.
+
 **`politica_retry.por_causa.<causa>.modelo = "ESCALAR"` vale só para
 `sub=juiz`** (peça 7b-4). O REPROVADO carrega o sub-motivo (`juiz`, `criterio`,
 `gate_<papel>`, `exit`; §4.1), e `decidirRetry` (`decisao.ts`) só troca para
@@ -667,6 +743,11 @@ Renderiza `com.orquestrador.plist.template` com `launchd.label` e
 job ao lado do antigo. RECUSA também instalar de um checkout sob `/tmp` ou com
 `ORQ_TESTE=1`, salvo `--permitir-tmp` (peça K6e; ver `docs/PLAYBOOK.md`).
 `--dry-run` renderiza sem instalar, em qualquer caso.
+
+O plist sai com `RunAtLoad` **true** (peça 7b-7, porte do `5791209` do Actus):
+o `bootstrap` de cada instalação dispara o primeiro tick na hora, em vez de só
+depois de um `StartInterval` inteiro. `docs/launchd.md` ainda mostra o exemplo
+antigo com `false`; é divergência conhecida até a 7c.
 
 ---
 

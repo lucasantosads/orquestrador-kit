@@ -630,3 +630,28 @@ O que o CI faz diferente: a primeira drenagem depois da instalação grava um `O
 os 4 pendentes (medido sobre uma cópia da fila, com o `git status` do CI em 0 linhas antes e
 depois), e um ticket que abortar antes do agente para de segurar a fila e, no terceiro
 disparo, vai para `bloqueado`. Relatório: `~/orq-sessoes/relatorio-kit-etapa7a.md`.
+
+### Etapa 7b · decisão e custo
+
+O que decide cada desfecho. Números de 22/08 a 21/09: 82 de 82 retries do kit escalaram para
+opus, o Actus gastou US$ 9,28 por ticket aprovado (US$ 3,06 no CI), todo adiamento armava
+60 min de cooldown e adiamento não tinha teto.
+
+- **7b-1** `a28fe81`: nenhum teste do kit lê arquivo vivo de outro repo. Configs, amostras de
+  fila e o ticket 306 viram fixtures datadas; a (c) do `test-instalar.sh` só com
+  `ORQ_CI_CHECKOUT`. As 3 falhas antigas saem.
+- **7b-2** `cfb5cf3`: cooldown só para limite remoto; `servidor` (5xx) e `gate_crash` adiam sem
+  cooldown e sem escalar; recusa de preflight vira `ADIADO motivo=preflight`; AMBIENTE vale
+  sobre o adiado sem cooldown.
+- **7b-3** `dd3ecd7`: teto de adiamentos (`adiamentos_limite`, padrão 4), com a causa real
+  (rc e duração) na nota; rc 124 curto não é timeout.
+- **7b-4** `ffab528`: `sub=` no REPROVADO e no RETRY, escalada só com `sub=juiz`, corte de
+  repetição, tentativas persistidas no ticket (max_retries no total).
+- **7b-5** `052ac50`: aviso de AMBIENTE só na entrada e na saída.
+- **7b-7** `27177af`: `RunAtLoad` true no template do plist.
+- **7b-6**: PECAS, este CHANGELOG e o CONTRATO.
+
+O que o CI faz diferente, ao atualizar: um 503 ou um timeout deixam de parar a fila por uma
+hora; um gate cujo runner não roda adia em vez de gastar retry em opus; um critério vermelho
+repete em sonnet; o 4º adiamento seguido do mesmo ticket o bloqueia com a causa; o job do
+launchd dispara no bootstrap. Relatório: `~/orq-sessoes/relatorio-kit-etapa7b.md`.

@@ -742,6 +742,64 @@
   de 231 pendente (sem liberação), mais sem-progresso, cooldown e os fins que não gravam.
   **Antes, só "sem ticket processável".**
 
+- **7b-1 · nenhum teste do kit lê arquivo vivo de outro repo** (`a28fe81`). Fecha a parte
+  "leitura viva" da K8e. Os configs do Actus (v1, `5b623d5^`) e do Comarka viraram fixtures
+  datadas em `test/fixtures/config/`; as três filas viraram amostras em
+  `test/fixtures/filas/<repo>/`, com PROCEDENCIA.md dizendo qual ticket cobre qual ramo do
+  `migrar-tickets.ts`, e os números afirmados passaram a ser os EXATOS da amostra; o ticket
+  306 do Comarka (versão `38fd7cb`) virou `test/fixtures/tickets/`. A (c) do
+  `test-instalar.sh` só roda com `ORQ_CI_CHECKOUT` setado. Fixture ausente é falha, não pulo.
+  *Evidência:* as 3 falhas antigas (o Actus migrou o config para o schema 2 em `5b623d5`; o
+  306 do Comarka foi para `done`).
+  *Teste:* vitest e `test-instalar.sh` rc 0 com `HOME` apontando para um diretório vazio.
+
+- **7b-2 · tabela de causas** (`cfb5cf3`). Cooldown só para `rate_limit` e `quota`. `servidor`
+  (5xx, overloaded; antes `rate_limit`), timeout, sessão, rede e `gate_crash` adiam sem
+  cooldown, sem tentativa e sem escalar. `gate_crash`: o runner do gate não rodou (rc 126/127,
+  command not found, ENOENT do binário, Missing script, saída vazia; em testes, também sem
+  placar e sem teste falhando); typecheck ou build que rodou e apontou erro segue mérito. A
+  recusa de preflight vira `ADIADO motivo=preflight causa=<uma linha>`, sem EXECUTOR_MORREU e
+  sem tocar o ticket, e a régua de AMBIENTE da 7a-8 vale sobre todo ADIADO sem cooldown.
+  *Evidência:* revisão §2 linhas E4 e F1, §3 item 3; `lib.sh:mark_adiado` armava 60 min em
+  todo adiamento.
+  *Teste:* `test-causa-adiamento.sh` (executor REAL num repo de fixture, com `claude` falso:
+  timeout sem cooldown, 429 com, 503 sem, gate de testes e tsc ausente viram `gate_crash`, tsc
+  com `error TS` é mérito, preflight vira ADIADO), `test-ambiente-adiado.sh`,
+  `test/orquestrador-causas-adiamento.test.ts`. **Antes, timeout armava cooldown, o gate
+  quebrado escalava para opus e o preflight saía como EXECUTOR_MORREU.**
+
+- **7b-3 · teto de adiamentos consecutivos** (`dd3ecd7`). `runs/<id>/.adiamentos` persiste;
+  no limite (`adiamentos_limite`, padrão 4) o ticket bloqueia com `notas_status` "adiado N
+  vezes: <causa real>", commit e `BLOQUEADO motivo=adiamentos`. A causa é a medida: rc 124
+  abaixo do teto é `gate_interrompido` (morto por fora), e o motivo traz rc e duração.
+  *Evidência:* Comarka 315a, 8 adiamentos seguidos, "timeout 1500s" numa execução de 9 s.
+  *Teste:* `test-adiamentos-limite.sh` (bloqueia no 4º, aprovação zera, cooldown neutro,
+  limite do config, AMBIENTE desfaz; rc 124 de 0 s no executor real não vira timeout).
+  **Antes, adiava para sempre.**
+
+- **7b-4 · sub-motivo, escalada e corte de repetição** (`ffab528`). REPROVADO e RETRY com
+  `sub=juiz|criterio|gate_<papel>|exit`; ESCALAR só com `sub=juiz`; a 2ª reprovação igual
+  (mesmo sub, mesmo diff) bloqueia com `motivo=repeticao`; permissão negada com critério
+  vermelho é mérito, sem escalar. E o ajuste pedido na sessão: o contador de tentativas
+  persiste no ticket (`tentativas`, porte do `f3aaa89` do Actus), e `max_retries` vale no
+  total, não por drenagem (`executor.sh:990` fazia `attempt=0` a cada chamada).
+  *Evidência:* 82 de 82 retries do kit em opus (revisão B2, B3, K4, L1); Actus 461 com
+  diff 717/717/717.
+  *Teste:* `test-reprovado-sub.sh` (executor real; trilha fixture do 461 em
+  `test/fixtures/trilha/`), `test/orquestrador-sub-repeticao.test.ts`. **Antes, RETRY
+  model=opus nos três casos, e cada drenagem recomeçava as tentativas.**
+
+- **7b-5 · aviso de AMBIENTE só na transição** (`052ac50`). Avisa ao entrar, cala no meio, e
+  a drenagem que sai manda um aviso de saída com o placar.
+  *Teste:* `test-notificacao-ambiente.sh`: 3 disparos em ambiente = 1 aviso; o 4º saudável =
+  1 aviso de saída. **Antes, 3 avisos.**
+
+- **7b-7 · RunAtLoad true no plist** (`27177af`). Porte do `5791209` do Actus.
+  *Teste:* `test/orquestrador-runatload.test.ts`, com o launchctl stubado e HOME
+  descartável. **Antes, `<false/>`.** `docs/launchd.md` ainda mostra `false` (7c).
+
+- **7b-6 · docs da etapa 7b**: esta seção, o CHANGELOG e o CONTRATO §4.1, §8 e §9.4.
+
 
 ## PENDENTES
 
