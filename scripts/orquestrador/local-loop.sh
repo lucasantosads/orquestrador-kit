@@ -337,7 +337,7 @@ drenar() {
   # Peça 7a-8: causas vistas nesta drenagem ("<id><TAB><normalizada>"), o
   # backup dos contadores somados, e os bloqueios que esperam o fim da drenagem
   # (só valem se ela não terminar em ambiente).
-  local causas_vistas='' sp_backup='' a_bloquear='' norm outro ambiente_causa=''
+  local causas_vistas='' sp_backup='' a_bloquear='' norm outro ambiente_causa='' adiado=0
   local bid bfile bsp blim bcausa
   stwt="$(ensure_staging_worktree)"
   t0="$(date +%s)"
@@ -449,44 +449,55 @@ drenar() {
         # houve progresso. Não entra na memória e o contador zera.
         say "  $BRANCH_ALVO avançou na vez de $prox_id (${sha_antes:0:8} -> ${sha_depois:0:8}) — conta como progresso; contador zerado"
         sem_progresso_zerar "$prox_id"
-      elif foi_adiado "$evs" "$nota_antes" "$nota_depois"; then
-        # Adiado sem cooldown: não é defeito do ticket e não conta. Entra na
-        # memória mesmo assim, senão a drenagem o reescolheria em seguida.
-        tentados="$tentados$prox_id "
-        adiados_sc="$adiados_sc$prox_id "
-        adiados=$((adiados + 1))
-        say "  ticket $prox_id adiado sem cooldown — não conta como sem progresso; segue para o próximo não tentado"
       else
+        adiado=0
+        foi_adiado "$evs" "$nota_antes" "$nota_depois" && adiado=1
         causa="$(sem_progresso_causa "$evs" "$exe_out" "$exe_rc" "$nota_antes" "$nota_depois")"
         # Peça 7a-8: a mesma causa normalizada já apareceu nesta drenagem para
         # OUTRO ticket? Então não é do ticket, é do ambiente: ninguém soma nesta
         # drenagem (desfaz o que já foi somado), nenhum bloqueio pendente vale,
         # a trilha ganha AMBIENTE e a drenagem para.
+        #
+        # Peça 7b-2: a régua vale também para o ADIADO sem cooldown. A recusa de
+        # preflight virou `ADIADO motivo=preflight causa=...`, e sessão caída,
+        # timeout, 5xx e gate que não rodou adiam sem cooldown: em todos, a
+        # mesma causa em dois tickets é o ambiente. A causa do adiado é o
+        # próprio evento (`ADIADO motivo=... causa=...` ou `... rc= dur=`).
         norm="$(causa_normalizada "$causa" "$prox_id")"
         outro="$(printf '%s\n' "$causas_vistas" | awk -F'\t' -v c="$norm" -v id="$prox_id" '$2 == c && $1 != id { print $1; exit }')"
         if [ -n "$outro" ]; then
           sem_progresso_desfazer "$sp_backup"
           sp_backup=''; a_bloquear=''; sem_progresso=0
           tentados="$tentados$prox_id "
+          [ "$adiado" = 0 ] || adiados=$((adiados + 1))
           event '---' AMBIENTE "tickets=$outro,$prox_id" "causa=$norm"
           say "  AMBIENTE: $outro e $prox_id pararam pela mesma causa ($norm) — nada soma nesta drenagem; encerrando"
           motivo_ocioso=ambiente; ambiente_causa="$norm"
           rm -f "$exe_out"; break
         fi
         causas_vistas="$causas_vistas$prox_id"$'\t'"$norm"$'\n'
-        sp_backup="$sp_backup$prox_id"$'\t'"$(head -1 "$(sem_progresso_arquivo "$prox_id")" 2>/dev/null || true)"$'\n'
-        sp="$(sem_progresso_incrementar "$prox_id")"
-        n="${sp%%|*}"; lim="$(sem_progresso_limite)"
-        if [ "$n" -ge "$lim" ]; then
-          # O bloqueio espera o FIM da drenagem: se um ticket seguinte parar pela
-          # mesma causa, era ambiente e este não pode ter sido bloqueado por ela.
+        if [ "$adiado" = 1 ]; then
+          # Adiado sem cooldown: não é defeito do ticket e não conta. Entra na
+          # memória mesmo assim, senão a drenagem o reescolheria em seguida.
           tentados="$tentados$prox_id "
-          a_bloquear="$a_bloquear$prox_id"$'\t'"$prox"$'\t'"$sp"$'\t'"$lim"$'\t'"$causa"$'\n'
-          say "  ticket $prox_id atingiu o limite de sem progresso ($n/$lim) — bloqueia no fim da drenagem, se ela não terminar em ambiente. Causa: $causa"
+          adiados_sc="$adiados_sc$prox_id "
+          adiados=$((adiados + 1))
+          say "  ticket $prox_id adiado sem cooldown — não conta como sem progresso; segue para o próximo não tentado. Causa: $causa"
         else
-          tentados="$tentados$prox_id "
-          sem_progresso=$((sem_progresso + 1))
-          say "  ticket $prox_id segue pendente sem cooldown (sem progresso $n/$lim) — marcado como tentado nesta drenagem; segue para o próximo não tentado. Causa: $causa"
+          sp_backup="$sp_backup$prox_id"$'\t'"$(head -1 "$(sem_progresso_arquivo "$prox_id")" 2>/dev/null || true)"$'\n'
+          sp="$(sem_progresso_incrementar "$prox_id")"
+          n="${sp%%|*}"; lim="$(sem_progresso_limite)"
+          if [ "$n" -ge "$lim" ]; then
+            # O bloqueio espera o FIM da drenagem: se um ticket seguinte parar pela
+            # mesma causa, era ambiente e este não pode ter sido bloqueado por ela.
+            tentados="$tentados$prox_id "
+            a_bloquear="$a_bloquear$prox_id"$'\t'"$prox"$'\t'"$sp"$'\t'"$lim"$'\t'"$causa"$'\n'
+            say "  ticket $prox_id atingiu o limite de sem progresso ($n/$lim) — bloqueia no fim da drenagem, se ela não terminar em ambiente. Causa: $causa"
+          else
+            tentados="$tentados$prox_id "
+            sem_progresso=$((sem_progresso + 1))
+            say "  ticket $prox_id segue pendente sem cooldown (sem progresso $n/$lim) — marcado como tentado nesta drenagem; segue para o próximo não tentado. Causa: $causa"
+          fi
         fi
       fi
     fi

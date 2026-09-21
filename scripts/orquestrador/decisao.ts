@@ -87,8 +87,10 @@ export type CausaInfra =
   | 'sessao'
   | 'rate_limit'
   | 'quota'
+  | 'servidor'
   | 'timeout'
   | 'gate_interrompido'
+  | 'gate_crash'
   | 'juiz_ilegivel'
 export type CausaMerito = 'diff_cap' | 'enforcement' | 'criterio_qualidade'
 export type Desfecho = 'aprovado' | 'adiado' | 'reprovado' | 'refatiar'
@@ -97,16 +99,37 @@ export type Desfecho = 'aprovado' | 'adiado' | 'reprovado' | 'refatiar'
  * Qual causa de infra cada rótulo do config representa. O config é a
  * AUTORIDADE: causa detectada cujo rótulo não esteja em causas_que_adiam não
  * adia. Tirar um rótulo de lá desliga aquele adiamento.
+ *
+ * Peça 7b-2: as duas causas novas NÃO pedem rótulo novo. `servidor` (5xx,
+ * overloaded) era detectado como `rate_limit` até aqui e continua ligado pelo
+ * mesmo rótulo "rate limit"; `gate_crash` (runner de gate que não rodou) é da
+ * família do gate interrompido e é ligado por "gate interrompido". Pedir rótulo
+ * novo faria todo repo instalado deixar de adiar um 503 no dia da atualização.
  */
 const ROTULO_PARA_CAUSA: [RegExp, CausaInfra][] = [
   [/conex/i, 'conexao'],
   [/sess/i, 'sessao'],
   [/rate\s*limit/i, 'rate_limit'],
+  [/rate\s*limit/i, 'servidor'],
   [/quota/i, 'quota'],
   [/timeout|rel[oó]gio/i, 'timeout'],
   [/gate\s+interrompido/i, 'gate_interrompido'],
+  [/gate\s+interrompido/i, 'gate_crash'],
   [/ju[ií]z|veredito/i, 'juiz_ilegivel'],
 ]
+
+/**
+ * Peça 7b-2 · COOLDOWN só para limite REMOTO. Esperar 60 min só ajuda quando
+ * quem recusou foi a API e a recusa tem prazo (limite da assinatura, cota).
+ * Timeout local, 5xx, sessão, rede e gate que não rodou adiam SEM cooldown: do
+ * lado da API nada mudou, e parar a fila uma hora por um blip é o incidente de
+ * 02/09 do Comarka (um pkill devolveu 124 e a fila ficou 1 h parada).
+ */
+const CAUSAS_COM_COOLDOWN: readonly CausaInfra[] = ['rate_limit', 'quota']
+
+export function armaCooldown(causa: CausaInfra | CausaMerito | undefined): boolean {
+  return CAUSAS_COM_COOLDOWN.includes(causa as CausaInfra)
+}
 
 export function causasDeAdiamentoDoConfig(config: DecisaoConfig): Set<CausaInfra> {
   const out = new Set<CausaInfra>()
@@ -133,6 +156,14 @@ export interface SinalTentativa {
   /** critérios de aceite / avaliador que reprovaram por conteúdo. */
   criteriosFalhos?: string[]
   /**
+   * Peça 7b-2 · o rc do motor de gates, o gates.txt que ele escreveu e o PAPEL
+   * (typecheck, testes, build, lint) do gate que reprovou. É com os três que
+   * `gateNaoRodou` separa "o runner não rodou" de "o código está errado".
+   */
+  gatesRc?: number
+  gatesSaida?: string
+  gatePapelFalho?: string
+  /**
    * true quando o juiz (passo 7) NÃO produziu veredito legível — resposta
    * ilegível, ou a chamada do juiz caiu em limite/timeout. Nos dois casos não
    * houve julgamento do TRABALHO, e reprovar por isso queimaria retry de um
@@ -150,13 +181,61 @@ const PADRAO_CAUSA: [RegExp, CausaInfra][] = [
   // indisponível, nunca reprovação do trabalho. Ficar de fora custava um retry
   // por tentativa até o ticket bloquear, sem ninguém ter julgado nada.
   [/session expired|sess[aã]o expirada|invalid session|session not found|token expired|reauthenticate|please (log ?in|sign ?in) again|failed\s+to\s+authenticate|authentication_error|not\s+authenticated|please\s+run\s+\/login|invalid\s+api\s+key/i, 'sessao'],
-  // `service unavailable` e `503` vêm da mesma lista do Actus (executor.mjs:211-221),
-  // que trata limite e INDISPONIBILIDADE como a mesma família. O `503` entra com
-  // borda de PALAVRA, e não por substring como lá: `15039 tokens` numa saída
-  // qualquer viraria adiamento.
-  [/rate[ _-]?limit|too many requests|\(429\)|overloaded|service unavailable|\b503\b/i, 'rate_limit'],
+  [/rate[ _-]?limit|too many requests|\(429\)|\b429\b/i, 'rate_limit'],
   [/quota|usage limit|usage_cap_reached|credit balance/i, 'quota'],
+  // Peça 7b-2 · INDISPONIBILIDADE não é limite. `service unavailable` e `503`
+  // vieram da lista do Actus (executor.mjs:211-221), que trata limite e
+  // indisponibilidade como a mesma família; aqui eles saem de `rate_limit` para
+  // não armar cooldown por um blip. Os números com borda de PALAVRA, e não por
+  // substring como lá: `15039 tokens` numa saída qualquer viraria adiamento.
+  // Depois de rate_limit e quota: uma saída com 429 E overloaded é limite.
+  [/overloaded|service unavailable|internal server error|bad gateway|\b(500|502|503|529)\b/i, 'servidor'],
 ]
+
+// ─── 2b · o runner do gate rodou? (peça 7b-2) ──────────────────────────────
+
+/** Sinais de que o PRÓPRIO runner não rodou: binário ausente, sem permissão, script inexistente. */
+const RUNNER_NAO_RODOU = /command not found|^\s*(ba|z)?sh: .*: (not found|Permission denied)\s*$|\bspawn\s+\S+\s+ENOENT\b|Missing script:/im
+/** Placar de testes (vitest, jest, mocha, o `[N pacotes, Xp/Yf]` do baseline). */
+const PLACAR_TESTES = /\bTests?:?\s+.*\b\d+\s+(passed|failed)\b|\b\d+\s+(passing|failing)\b|\[\d+ pacotes, \d+p\/\d+f\]/i
+/** Linha de teste que rodou e falhou: prova de que o runner rodou, mesmo sem o resumo. */
+const TESTE_FALHANDO = /^\s*(FAIL|✕|×)\s|AssertionError|\bexpected\b.*\bto\b/m
+
+/**
+ * O gate que reprovou NÃO RODOU (crash de runner), a partir do gates.txt?
+ *
+ * Em QUALQUER papel: rc 126/127 (`exit N` na linha FALHA), "command not
+ * found", ENOENT do binário, `Missing script`, ou recorte VAZIO com rc != 0.
+ * No papel `testes`, também: nenhum placar e nenhuma linha de teste falhando no
+ * recorte (o vitest que não achou o próprio módulo). Typecheck ou build que
+ * rodou e apontou erro de código continua sendo mérito.
+ *
+ * Existe porque, até aqui, gate quebrado virava `criterio_qualidade` e ESCALAVA
+ * o modelo: 82 de 82 retries do kit foram para opus, pagando capacidade para um
+ * problema de ambiente.
+ */
+export function gateNaoRodou(gatesSaida: string, papel: string): boolean {
+  const linhas = gatesSaida.split('\n')
+  const falha = linhas.find((l) => /^FALHA\s/.test(l))
+  if (!falha) return false
+  const nome = falha.split(/\s+/)[1] ?? ''
+  const rc = Number(/\bexit (\d+)\b/.exec(falha)?.[1] ?? NaN)
+  if (rc === 126 || rc === 127) return true
+  const marca = `--- recorte de ${nome} ---`
+  const i = gatesSaida.indexOf(marca)
+  const recorte = i >= 0 ? gatesSaida.slice(i + marca.length).trim() : ''
+  // Placar ou teste falhando é PROVA de que o runner rodou: vence qualquer
+  // texto de erro que um teste tenha imprimido no caminho.
+  if (PLACAR_TESTES.test(falha) || PLACAR_TESTES.test(recorte) || TESTE_FALHANDO.test(recorte)) return false
+  if (RUNNER_NAO_RODOU.test(recorte)) return true
+  if (recorte === '') return true
+  return papel === 'testes'
+}
+
+function houveGateCrash(sinal: SinalTentativa): boolean {
+  if (!sinal.gatesRc || !sinal.gatesSaida) return false
+  return gateNaoRodou(sinal.gatesSaida, sinal.gatePapelFalho ?? '')
+}
 
 /** Detecta causa de INFRA. null quando nada de infra aconteceu. */
 export function detectarCausaInfra(sinal: SinalTentativa): CausaInfra | null {
@@ -187,6 +266,8 @@ export interface Veredito {
   causa?: CausaInfra | CausaMerito
   motivo: string
   contaComoRetry: boolean
+  /** Peça 7b-2: o adiamento arma cooldown? Só para limite remoto (`armaCooldown`). */
+  cooldown?: boolean
 }
 
 /**
@@ -203,9 +284,10 @@ export interface Veredito {
  * ciclos pagos para chegar a uma conclusão que era do humano, não do agente.
  */
 export function decidirDesfecho(config: DecisaoConfig, sinal: SinalTentativa): Veredito {
+  const adia = causasDeAdiamentoDoConfig(config)
   const infra = detectarCausaInfra(sinal)
-  if (infra && causasDeAdiamentoDoConfig(config).has(infra)) {
-    return { desfecho: 'adiado', causa: infra, motivo: `infraestrutura: ${infra}`, contaComoRetry: false }
+  if (infra && adia.has(infra)) {
+    return { desfecho: 'adiado', causa: infra, motivo: `infraestrutura: ${infra}`, contaComoRetry: false, cooldown: armaCooldown(infra) }
   }
   if (sinal.diffLines > config.diff_cap_linhas) {
     return {
@@ -213,6 +295,7 @@ export function decidirDesfecho(config: DecisaoConfig, sinal: SinalTentativa): V
       causa: 'diff_cap',
       motivo: `diff de ${sinal.diffLines} linhas acima do cap de ${config.diff_cap_linhas}`,
       contaComoRetry: false,
+      cooldown: false,
     }
   }
   if (sinal.enforcementViolado) {
@@ -221,6 +304,20 @@ export function decidirDesfecho(config: DecisaoConfig, sinal: SinalTentativa): V
       causa: 'enforcement',
       motivo: 'barreira: violação de zona/escopo (ver enforcement.json)',
       contaComoRetry: false,
+      cooldown: false,
+    }
+  }
+  // Peça 7b-2 · DEPOIS de diff_cap e enforcement (fronteira e tamanho são
+  // certeza sobre o diff; o crash é o ambiente) e ANTES dos critérios: com o
+  // runner de gate quebrado, um critério vermelho pode ser o mesmo ambiente, e
+  // retry nenhum conserta ambiente.
+  if (houveGateCrash(sinal) && adia.has('gate_crash')) {
+    return {
+      desfecho: 'adiado',
+      causa: 'gate_crash',
+      motivo: `infraestrutura: gate_crash (o runner do gate de ${sinal.gatePapelFalho || 'papel desconhecido'} não rodou)`,
+      contaComoRetry: false,
+      cooldown: false,
     }
   }
   if (sinal.criteriosFalhos && sinal.criteriosFalhos.length > 0) {
@@ -229,12 +326,13 @@ export function decidirDesfecho(config: DecisaoConfig, sinal: SinalTentativa): V
       causa: 'criterio_qualidade',
       motivo: `critério(s) reprovado(s): ${sinal.criteriosFalhos.join('; ')}`,
       contaComoRetry: true,
+      cooldown: false,
     }
   }
   if (sinal.exitCode !== 0) {
-    return { desfecho: 'reprovado', causa: 'criterio_qualidade', motivo: `exit ${sinal.exitCode}`, contaComoRetry: true }
+    return { desfecho: 'reprovado', causa: 'criterio_qualidade', motivo: `exit ${sinal.exitCode}`, contaComoRetry: true, cooldown: false }
   }
-  return { desfecho: 'aprovado', motivo: 'gates e critérios verdes', contaComoRetry: false }
+  return { desfecho: 'aprovado', motivo: 'gates e critérios verdes', contaComoRetry: false, cooldown: false }
 }
 
 // ─── 3 · política de retry ─────────────────────────────────────────────────

@@ -31,6 +31,9 @@ const SCRIPTS = [
   'test-ocioso.sh',
   'test-rc-executor.sh',
   'test-ambiente.sh',
+  // etapa 7b: o executor de verdade num repo de fixture (test-fixture-executor.sh)
+  'test-causa-adiamento.sh',
+  'test-ambiente-adiado.sh',
 ];
 
 /**

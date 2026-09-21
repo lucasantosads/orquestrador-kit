@@ -79,9 +79,20 @@ describe('detectarAdiamento do Actus: limite e indisponibilidade da API', () => 
     expect(detectarCausaInfra(sinal({ exitCode: 0, saida: 'done' }))).toBeNull();
   });
 
-  it('`service unavailable` e `503` entram na mesma família (eram do Actus e faltavam)', () => {
-    expect(detectarCausaInfra(sinal({ exitCode: 1, saida: 'Error: Service Unavailable' }))).toBe('rate_limit');
-    expect(detectarCausaInfra(sinal({ exitCode: 1, saida: 'API error (503)' }))).toBe('rate_limit');
+  // Peça 7b-2: `service unavailable` e `503` continuam ADIANDO (eram do Actus e
+  // faltavam), mas saem de `rate_limit` para `servidor`: indisponibilidade não é
+  // limite e não arma cooldown. O 429 segue `rate_limit`, e é ele que arma.
+  it('`service unavailable` e `503` adiam como `servidor`, SEM cooldown; 429 segue `rate_limit` COM cooldown', () => {
+    for (const saida of ['Error: Service Unavailable', 'API error (503)']) {
+      expect(detectarCausaInfra(sinal({ exitCode: 1, saida })), saida).toBe('servidor');
+      const v = decidirDesfecho(CONFIG, sinal({ exitCode: 1, saida }));
+      expect(v.desfecho, saida).toBe('adiado');
+      expect(v.cooldown, saida).toBe(false);
+    }
+    expect(detectarCausaInfra(sinal({ exitCode: 1, saida: 'API Error: Request rejected (429)' }))).toBe('rate_limit');
+    const v429 = decidirDesfecho(CONFIG, sinal({ exitCode: 1, saida: 'API Error: Request rejected (429)' }));
+    expect(v429.desfecho).toBe('adiado');
+    expect(v429.cooldown).toBe(true);
   });
 
   it('503 dentro de um número maior NÃO é indisponibilidade', () => {

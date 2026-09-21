@@ -140,8 +140,10 @@ $sujo"
 # Fronteira do politica_adiamento aplicada aqui:
 #   config errada (papel pendente, id recusado) -> ABORTA (die). Não é
 #     transitório: repetir amanhã dá o mesmo resultado.
-#   claude mudo/limitado (rede, cota, sessão, timeout) -> ADIA, arma cooldown e
-#     sai 0, sem consumir tentativa.
+#   claude mudo/limitado (rede, cota, sessão, timeout, 5xx) -> ADIA sem
+#     consumir tentativa: sai 75 com uma linha `[orq ADIA]`, que o
+#     `preflight_ou_adia` transforma em ADIADO motivo=preflight. Cooldown SÓ
+#     quando a causa é limite remoto (peça 7b-2).
 probe_modelos() {
   [ "$(cfg '.preflight_probe')" != "false" ] || { log "probe: desligado no config"; return 0; }
 
@@ -172,10 +174,15 @@ sem chamar modelo e sem consumir tentativa. Desbloqueio: $(cfg '.restricao_execu
   claude_run "$ROOT" "$out" 60 -- -p "responda apenas: ok" --output-format json --model "$m" || rc=$?
   custo_registrar probe '---' 0 "$out"
 
-  # ADIA: rede/sessão/cota/relógio. Não é defeito de nada — o ambiente caiu.
+  # ADIA: rede/sessão/cota/relógio/5xx. Não é defeito de nada — o ambiente caiu.
   if is_adiavel "$out" "$rc"; then
-    log "probe: claude em limite/timeout na sondagem — adiando (cooldown armado, zero tentativa)"
-    cooldown_arm; rm -f "$out"; exit 0
+    if is_rate_limited "$out" "$rc"; then
+      cooldown_arm
+      printf '[orq ADIA] probe: limite remoto na sondagem (rc=%s), cooldown armado\n' "$rc" >&2
+    else
+      printf '[orq ADIA] probe: claude indisponível na sondagem (rc=%s), sem cooldown\n' "$rc" >&2
+    fi
+    rm -f "$out"; exit 75
   fi
   # ABORTA: o CLI respondeu, mas recusando o modelo. Config errada.
   if decisao modelo-recusado < "$out" >/dev/null 2>&1; then
@@ -761,7 +768,7 @@ grava_diff_patch() {
 # medir contra ele faria o diff, o enforcement e o juiz enxergarem só a correção
 # — nunca o trabalho inteiro que vai ser mergeado. Vazio = comportamento antigo
 # (HEAD atual), que é o certo quando a worktree acabou de nascer.
-RESULT=""; MOTIVO=""; DIFF_LINES=0; DUR=0; ENF_OK=1
+RESULT=""; MOTIVO=""; DIFF_LINES=0; DUR=0; ENF_OK=1; AGENTE_RC=0
 run_attempt() {
   local file="$1" wt="$2" rundir="$3" modelo="$4" motivo_anterior="$5" attempt="${6:-0}" base_fixo="${7:-}"
   local prompt saida rc=0 t0 base sinal veredito tools
@@ -806,6 +813,7 @@ run_attempt() {
     custo_registrar executor "$(ticket_field "$file" '.id')" "$attempt" "$saida"
   fi
   DUR=$(( $(date +%s) - t0 ))
+  AGENTE_RC="$rc"
   fase pos-agente
   permissoes_negadas "$saida" "$file"
   commit_do_agente "$file" "$wt"
@@ -830,11 +838,18 @@ run_attempt() {
 
   # 7 · gates pelo motor genérico (ORQ-04). NUNCA npm run test:web cru: o npm não
   # propaga a flag de exclusão e o E2E que escreve no Supabase voltaria ao gate.
-  local gates_rc=0
+  local gates_rc=0 gate_falho="" papel_falho=""
   fase gates
   "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/gates.ts" --run-cli "$wt" > "$rundir/gates.txt" 2>&1 || gates_rc=$?
   log "  gates: $([ "$gates_rc" = 0 ] && echo APROVADO || echo "REPROVADO (rc=$gates_rc)")"
   grep -qi 'reexecutar' "$rundir/gates.txt" && log "  gates: interrompidos — conjunto não vale parcialmente"
+  # Peça 7b-2: o PAPEL do gate que reprovou vai para o decisao.ts, que separa
+  # "o runner não rodou" (gate_crash, adia) de "o código está errado" (mérito).
+  if [ "$gates_rc" != 0 ]; then
+    gate_falho="$(grep -E '^FALHA ' "$rundir/gates.txt" 2>/dev/null | head -1 | awk '{print $2}' || true)"
+    [ -z "$gate_falho" ] || papel_falho="$(papel_do_gate "$gate_falho" \
+      "$(jq -r --arg n "$gate_falho" '.gates[]? | select(.nome == $n) | .papel // empty' "$CONFIG" 2>/dev/null || true)")"
+  fi
 
   fase critérios
   run_criterios "$file" "$wt" "$rundir"
@@ -859,7 +874,9 @@ run_attempt() {
     --argjson d "$DIFF_LINES" --argjson gi "$(grep -qi 'reexecutar' "$rundir/gates.txt" && echo true || echo false)" \
     --argjson enf "$([ "$ENF_OK" = 0 ] && echo true || echo false)" \
     --argjson cf "$(printf '%s' "$CRITERIOS_FALHOS" | jq -Rn '[inputs | select(length>0)]')" \
-    '{exitCode:$e, saida:$s, diffLines:$d, gateInterrompido:$gi, enforcementViolado:$enf, criteriosFalhos:$cf}')"
+    --argjson grc "$gates_rc" --arg gs "$(head -c 20000 "$rundir/gates.txt" 2>/dev/null || true)" --arg gp "$papel_falho" \
+    '{exitCode:$e, saida:$s, diffLines:$d, gateInterrompido:$gi, enforcementViolado:$enf, criteriosFalhos:$cf,
+      gatesRc:$grc, gatesSaida:$gs, gatePapelFalho:$gp}')"
   if [ "$gates_rc" != 0 ]; then
     sinal="$(printf '%s' "$sinal" | jq '.criteriosFalhos += ["gates reprovados"]')"
   fi
@@ -1048,9 +1065,14 @@ drive_ticket() {
     local tok; tok="$(motivo_token "$(cat "$rundir/veredito.json" 2>/dev/null || echo '{}')")"
 
     if [ "$RESULT" = "adiado" ]; then
-      event "$id" ADIADO "motivo=$tok" "attempt=$((attempt + 1))"
+      # Peça 7b-2: a trilha carrega a MEDIDA (rc do agente e duração real) e se
+      # o adiamento armou cooldown, que agora depende da causa (decisao.ts:
+      # armaCooldown). Sem `cooldown` no veredito, o comportamento antigo: arma.
+      local arma
+      arma="$(jq -r 'if .cooldown == false then "nao" else "sim" end' "$rundir/veredito.json" 2>/dev/null || echo sim)"
+      event "$id" ADIADO "motivo=$tok" "attempt=$((attempt + 1))" "rc=$AGENTE_RC" "dur=${DUR}s" "cooldown=$arma"
       status_set "estado=ocioso" "ultimo=$id ADIADO $(date '+%H:%M:%S') (${DUR}s)" "motivo=adiado: $tok"
-      DESFECHO_NOMEADO=1; mark_adiado "$file" "executor" "$MOTIVO"; cleanup_worktree "$id" "$wt"; return 0
+      DESFECHO_NOMEADO=1; mark_adiado "$file" "executor" "$MOTIVO" "$arma"; cleanup_worktree "$id" "$wt"; return 0
     fi
     if [ "$RESULT" = "aprovado" ]; then
       ticket_set_status "$file" "aguardando_merge"
@@ -1184,15 +1206,53 @@ armar_traps() {
   trap 'trap_sinal INT 2' INT
 }
 
+# --- 11 · RECUSA DE PREFLIGHT É ADIAMENTO (peça 7b-2) ------------------------
+# preflight_ou_adia [arquivo-ticket]
+#
+# Até a 7b-2 o `die` do preflight matava o executor, e o trap gravava
+# `EXECUTOR_MORREU rc=1 fase=?` com id "—": uma recusa de ambiente (árvore
+# suja, lock de git, identidade, sondagem sem resposta) contada como morte, sem
+# ticket e sem causa. Agora o preflight roda num subshell; recusou, o que sai é
+# UM evento `ADIADO motivo=preflight causa=<uma linha>` no ticket da vez, o
+# STATUS com a causa, e rc 0. Nenhum ticket é TOCADO (nem nota nem commit: com
+# o ambiente quebrado, commitar a cada disparo só suja o histórico) e nenhuma
+# tentativa é consumida. Cooldown, só se a sondagem achou limite remoto
+# (probe_modelos). A drenagem enxerga o ADIADO e aplica a régua de AMBIENTE da
+# 7a-8 sobre ele.
+#
+# A saída do preflight vai para o log depois que ele termina (o subshell escreve
+# num arquivo): a sondagem leva no máximo 60 s, e sem o arquivo não haveria de
+# onde tirar a causa.
+preflight_ou_adia() {
+  local file="${1:-}" err rc=0 causa id='—'
+  err="$(mktemp 2>/dev/null || echo "${TMPDIR:-/tmp}/orq-preflight.$$")"
+  ( preflight ) 2> "$err" || rc=$?
+  cat "$err" >&2 2>/dev/null || true
+  if [ "$rc" = 0 ]; then rm -f "$err"; return 0; fi
+  causa="$(awk '/^\[orq (ERRO|ADIA)\]/ { p = 1 } p' "$err" 2>/dev/null | sed -E 's/^\[orq (ERRO|ADIA)\] *//' || true)"
+  [ -n "$causa" ] || causa="preflight saiu rc=$rc: $(grep -v '^[[:space:]]*$' "$err" 2>/dev/null | tail -1 || true)"
+  rm -f "$err"
+  causa="$(uma_linha "$(printf '%s' "$causa" | tr -d '\r')" 300)"
+  [ -z "$file" ] || id="$(ticket_field "$file" '.id' 2>/dev/null || echo '—')"
+  [ -n "$id" ] && [ "$id" != null ] || id='—'
+  log "ADIADO (preflight, rc=$rc): $causa. Nenhum ticket tocado, nenhuma tentativa consumida."
+  event "$id" ADIADO "motivo=preflight" "causa=$causa"
+  status_set "estado=ocioso" "fase=—" "ticket=—" "motivo=adiado: preflight: $causa"
+  DESFECHO_NOMEADO=1
+  exit 0
+}
+
 main() {
   [ "$RECONCILE" = 1 ] && { reconcile_merged; exit 0; }
   pausa_ativa && { log "fila PAUSADA: $(pausa_motivo)"; exit 0; }
   cooldown_active && { log "cooldown ativo ($(cooldown_remaining_min) min) — encerrando"; exit 0; }
-  preflight
   local file=""
+  # O ticket da vez é conhecido ANTES do preflight quando vem por argumento (é
+  # assim que a drenagem chama): é nele que a recusa de preflight fica escrita.
   if [ -n "$TICKET" ]; then file="$TICKET"
-  elif [ -n "$TID" ]; then file="$(ticket_file_by_id "$TID")"
-  else file="$(proximo_pendente)"; fi
+  elif [ -n "$TID" ]; then file="$(ticket_file_by_id "$TID")"; fi
+  preflight_ou_adia "$file"
+  [ -n "$file" ] || file="$(proximo_pendente)"
   [ -n "$file" ] || { log "nenhum ticket pendente com dependências resolvidas"; exit 0; }
   drive_ticket "$file"
 }

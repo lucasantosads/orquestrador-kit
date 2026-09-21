@@ -215,10 +215,13 @@ describe('morte inesperada do executor deixa rastro (peça 0c, item 3)', () => {
   it('todo caminho de desfecho nomeado marca DESFECHO_NOMEADO', () => {
     // adiado, aprovado, refatiar, bloqueado, recusado e orçamento — seis. O
     // sétimo é o trap de sinal (peça 12), que marca para o trap de EXIT não
-    // registrar a mesma morte duas vezes: uma morte, um registro.
+    // registrar a mesma morte duas vezes: uma morte, um registro. O oitavo é a
+    // recusa de preflight (peça 7b-2), que virou ADIADO motivo=preflight em vez
+    // de EXECUTOR_MORREU.
     const n = (exec.match(/DESFECHO_NOMEADO=1/g) ?? []).length;
-    expect(n).toBe(7);
+    expect(n).toBe(8);
     expect(/trap_sinal\(\) \{[\s\S]*?\n\}/.exec(exec)![0]).toContain('DESFECHO_NOMEADO=1');
+    expect(/preflight_ou_adia\(\) \{[\s\S]*?\n\}/.exec(exec)![0]).toContain('DESFECHO_NOMEADO=1');
   });
 
   it('a fase é gravada em variável, não só no snapshot', () => {

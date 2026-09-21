@@ -666,10 +666,19 @@ ticket_mergeado_em_alvo() {
 # assinatura Max/Pro ou sobrecarga da API: tipos de erro `rate_limit_error`,
 # `overloaded_error`/529, `usage_cap_reached`; mensagens "usage limit reached",
 # "Request rejected (429)", "credit balance ... too low", "5-hour session limit".
-# ERE portável (sem \b — BSD grep do macOS): 429/529 casam com o formato
+# ERE portável (sem \b — BSD grep do macOS): 429 casa com o formato
 # "(429)"/"Request rejected"/"error 429", não um "429" solto qualquer.
 # Cobre as causas 'rate limit' e 'quota estourada' do politica_adiamento.
-RATE_LIMIT_REGEX='rate[ _-]?limit|rate_limit_error|limit reached|usage limit|usage_cap_reached|overloaded|too many requests|quota|capacity|credit balance|5-hour session limit|\(429\)|\(529\)|(error|status|rejected[^0-9]{0,20})[ (]?42[0-9]|529 '
+#
+# Peça 7b-2: `overloaded`, `capacity` e 529 SAÍRAM daqui para o
+# SERVIDOR_REGEX. Indisponibilidade não é limite: não tem prazo, e armar 60 min
+# de cooldown por um blip de API é o que o Comarka viu travar o 291 três vezes
+# em 03/09 (lib.sh:343 de lá).
+RATE_LIMIT_REGEX='rate[ _-]?limit|rate_limit_error|limit reached|usage limit|usage_cap_reached|too many requests|quota|credit balance|5-hour session limit|\(429\)|(error|status|rejected[^0-9]{0,20})[ (]?42[0-9]'
+
+# Erro TRANSITÓRIO de servidor (500/502/503/529, overloaded). Adia SEM cooldown.
+# Gêmeo do `servidor` do decisao.ts: os dois têm de concordar.
+SERVIDOR_REGEX='overloaded|service unavailable|internal server error|bad gateway|at capacity|API Error: 5[0-9][0-9]|\((500|502|503|529)\)|(error|status)[ (]?5(00|02|03|29)'
 
 # is_rate_limited <output_file> <rc> -> 0 se a chamada ao claude bateu num limite.
 # GATE DUPLO por design (distingue limite de erro real):
@@ -682,6 +691,15 @@ is_rate_limited() {
   [ "$rc" != 0 ] || return 1
   [ -f "$out" ] || return 1
   LC_ALL=C grep -qiE "$RATE_LIMIT_REGEX" "$out"
+}
+
+# is_servidor <output_file> <rc> -> 0 se a chamada caiu em 5xx/overloaded.
+# Mesmo GATE DUPLO do is_rate_limited.
+is_servidor() {
+  local out="$1" rc="${2:-1}"
+  [ "$rc" != 0 ] || return 1
+  [ -f "$out" ] || return 1
+  LC_ALL=C grep -qiE "$SERVIDOR_REGEX" "$out"
 }
 
 # --- Cooldown compartilhado ---------------------------------------------------
@@ -816,7 +834,9 @@ sem_envelope() {
 #   gate interrompido no meio      -> rc 129/130 (morto por fora) ou is_interrompido
 #   erro de conexão, sessão expirada -> is_interrompido
 #   rate limit, quota estourada      -> is_rate_limited
-# Nenhuma delas é defeito do código, então nenhuma queima retry.
+#   5xx, overloaded (peça 7b-2)      -> is_servidor
+# Nenhuma delas é defeito do código, então nenhuma queima retry. Qual delas ARMA
+# cooldown é outra pergunta: só o limite remoto (is_rate_limited).
 is_adiavel() {
   local out="$1" rc="${2:-1}"
   [ "$rc" = 124 ] && return 0    # claude_run cortou por timeout (normalizado p/ 124)
@@ -827,22 +847,33 @@ is_adiavel() {
   { [ "$rc" = 129 ] || [ "$rc" = 130 ]; } && return 0
   sem_envelope "$out" "$rc" && return 0   # o CLI não chegou a emitir envelope
   is_interrompido "$out" "$rc" && return 0
+  is_servidor "$out" "$rc" && return 0
   is_rate_limited "$out" "$rc"
 }
 
-# mark_adiado <arquivo_ticket> <origem> [detalhe]
+# mark_adiado <arquivo_ticket> <origem> [detalhe] [arma: sim|nao]
 # Desfecho ADIADO: status VOLTA a pendente (nunca bloqueado), nota com
-# timestamp, cooldown armado. NÃO mexe em retries — quem conta retry é o
-# drive_ticket, e o caminho de adiamento nunca passa por lá, então a tentativa
-# não é consumida.
+# timestamp. NÃO mexe em retries — quem conta retry é o drive_ticket, e o
+# caminho de adiamento nunca passa por lá, então a tentativa não é consumida.
+#
+# Peça 7b-2: o cooldown deixou de ser incondicional. `arma` vem do veredito
+# (`decisao.ts:armaCooldown`): `sim` só para limite REMOTO (rate_limit, quota);
+# timeout local, 5xx, sessão, rede e gate que não rodou passam `nao` e o próximo
+# disparo retoma sem espera. O padrão `sim` é o comportamento antigo, para quem
+# chamar sem o quarto argumento.
 mark_adiado() {
-  local file="$1" origem="${2:-executor}" detalhe="${3:-limite da sessão}" ts id
+  local file="$1" origem="${2:-executor}" detalhe="${3:-limite da sessão}" arma="${4:-sim}" ts id
   ts="$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo '?')"
   id="$(ticket_field "$file" '.id')"
   ticket_set_status "$file" "pendente"
   ticket_set_nota "$file" "adiado ($origem) por $detalhe em $ts — retomará no próximo disparo"
   ticket_commit "$file" "fila: $id adiado ($origem)"
-  cooldown_arm
+  if [ "$arma" = nao ]; then
+    log "  causa LOCAL ou transitória: cooldown NÃO armado, o próximo disparo retoma sem espera"
+  else
+    cooldown_arm
+    log "  causa REMOTA (limite da assinatura ou cota): cooldown armado"
+  fi
   log "  adiado: $detalhe — retomará no próximo disparo (origem: $origem, $ts)"
 }
 

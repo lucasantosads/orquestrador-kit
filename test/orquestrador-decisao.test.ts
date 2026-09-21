@@ -110,12 +110,15 @@ describe('restricao_execucao — papel pendente bloqueia, papel definido libera'
 // ─── 2 · fronteira adiar vs reprovar ───────────────────────────────────────
 
 describe('fronteira — infra ADIA, mérito REPROVA', () => {
-  // 7 desde a peça 1 da sessão B: 'veredito do juiz ilegível' entrou em
+  // 7 rótulos desde a peça 1 da sessão B: 'veredito do juiz ilegível' entrou em
   // causas_que_adiam para que o config siga sendo a AUTORIDADE — tirar o rótulo
   // de lá desliga o adiamento por juiz ilegível junto com os outros.
-  it('as 7 causas do config são reconhecidas', () => {
+  // Peça 7b-2: os mesmos 7 rótulos ligam 9 causas. `servidor` (5xx) vem do
+  // rótulo "rate limit" e `gate_crash` do "gate interrompido"; as 7 de antes
+  // continuam todas lá.
+  it('os 7 rótulos do config ligam as 9 causas', () => {
     expect([...causasDeAdiamentoDoConfig(cfg)].sort()).toEqual(
-      ['conexao', 'gate_interrompido', 'juiz_ilegivel', 'quota', 'rate_limit', 'sessao', 'timeout'].sort(),
+      ['conexao', 'gate_crash', 'gate_interrompido', 'juiz_ilegivel', 'quota', 'rate_limit', 'servidor', 'sessao', 'timeout'].sort(),
     );
   });
 

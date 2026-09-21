@@ -20,6 +20,12 @@
 #   test-rc-executor.sh             o rc do executor atravessa o tee da drenagem (7a-7)
 #   test-ambiente.sh                a mesma causa em dois tickets é ambiente e não bloqueia a fila (7a-8)
 #
+# E os da etapa 7b. Os que rodam o executor DE VERDADE montam um repo git num
+# mktemp -d com o motor vendorizado e um `claude` falso no PATH
+# (test-fixture-executor.sh); zero modelo, zero rede:
+#   test-causa-adiamento.sh         a tabela de causas: cooldown só para limite remoto (7b-2)
+#   test-ambiente-adiado.sh         a régua de AMBIENTE vale sobre o ADIADO sem cooldown (7b-2)
+#
 # Cada um monta o PRÓPRIO `ORQ_EXEC_ROOT` num `mktemp -d` (drenagem e retry) ou
 # trabalha direto no checkout (lib-config); nada aqui precisa exportar
 # `ORQ_EXEC_ROOT` por fora — fazer isso sobrescreveria o isolamento que cada
@@ -34,7 +40,7 @@
 set -uo pipefail
 
 KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPTS='test-lib-config.sh test-drenagem.sh test-retry-worktree.sh test-drenagem-sem-progresso.sh test-sem-progresso-limite.sh test-ocioso.sh test-rc-executor.sh test-ambiente.sh'
+SCRIPTS='test-lib-config.sh test-drenagem.sh test-retry-worktree.sh test-drenagem-sem-progresso.sh test-sem-progresso-limite.sh test-ocioso.sh test-rc-executor.sh test-ambiente.sh test-causa-adiamento.sh test-ambiente-adiado.sh'
 
 FX="$(bash "$KIT/scripts/kit/fixture.sh")" || {
   printf 'ERRO: fixture.sh falhou — nada foi rodado\n' >&2; exit 2
