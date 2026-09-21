@@ -36,15 +36,19 @@ const EXECUTOR = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
 const GATES_201 = join(REPO_ROOT, 'test', 'fixtures', 'runs-201', 'attempt-2.gates.txt');
 
 /**
- * Os configs REAIS, lidos do disco dos outros repos. SÓ LEITURA: nada aqui
- * escreve neles — cada caso copia para um `mkdtemp` antes de qualquer coisa.
+ * Os configs REAIS dos dois repos, como FIXTURES datadas (peça 7b-1): cópias
+ * byte a byte em `test/fixtures/config/`, com origem, sha e data no
+ * PROCEDENCIA.md de lá. Até a 7b-1 este teste lia o arquivo VIVO de
+ * `~/Projetos/<repo>`: passava nesta máquina, sumia em outra e mudou de
+ * veredito quando o Actus migrou o próprio config para o schema 2 (`5b623d5`).
+ * Cada caso ainda copia para um `mkdtemp` antes de qualquer coisa.
  *
- * Se um dos repos não estiver nesta máquina, o caso é PULADO com aviso, nunca
- * falso-verde: um teste que passa porque não achou o arquivo é pior que nenhum.
+ * Fixture ausente é FALHA, não pulo: ela é do kit, e um teste que passa porque
+ * não achou o arquivo é pior que nenhum.
  */
 const REPOS: Array<{ nome: string; caminho: string }> = [
-  { nome: 'actus-saas', caminho: join(process.env.HOME ?? '', 'Projetos', 'actus-saas', 'docs', 'fila', '000-config.json') },
-  { nome: 'comarka-operacional', caminho: join(process.env.HOME ?? '', 'Projetos', 'comarka-operacional', 'docs', 'fila', '000-config.json') },
+  { nome: 'actus-saas', caminho: join(REPO_ROOT, 'test', 'fixtures', 'config', 'actus-000-config.json') },
+  { nome: 'comarka-operacional', caminho: join(REPO_ROOT, 'test', 'fixtures', 'config', 'comarka-000-config.json') },
 ];
 
 function copiaReal(caminho: string): string {
@@ -164,7 +168,7 @@ describe('a migração não apaga nada', () => {
 
   for (const { nome, caminho } of REPOS) {
     it(`${nome}: TODA chave do config real sobrevive no proposto`, () => {
-      if (!existsSync(caminho)) return void console.warn(`PULADO: ${caminho} não existe nesta máquina`);
+      expect(existsSync(caminho), `fixture ausente: ${caminho}`).toBe(true);
       const original = lerJson(caminho) as Record<string, unknown>;
       const { proposto } = propor(original);
       const o = JSON.parse(proposto);
@@ -191,7 +195,7 @@ describe('a migração não apaga nada', () => {
     });
 
     it(`${nome}: o arquivo no disco do repo NÃO é tocado`, () => {
-      if (!existsSync(caminho)) return void console.warn(`PULADO: ${caminho}`);
+      expect(existsSync(caminho), `fixture ausente: ${caminho}`).toBe(true);
       const antes = readFileSync(caminho);
       const copia = copiaReal(caminho);
       migrarArquivo(copia, 'propor');
@@ -279,7 +283,7 @@ describe('gates: o vocabulário de `tipo`', () => {
     // *lint* → lint, *build*/*compil* → build, *test*/*spec* → testes. Os gates
     // reais são typecheck/testes/build (Actus) e tsc/vitest/build (Comarka).
     for (const { nome, caminho } of REPOS) {
-      if (!existsSync(caminho)) continue;
+      expect(existsSync(caminho), `fixture ausente: ${caminho}`).toBe(true);
       const cfg = lerJson(caminho) as { gates: Array<{ nome: string }> };
       for (const g of cfg.gates) {
         expect(/typecheck|tsc|types|lint|build|compil|test|spec/.test(g.nome), `${nome}: gate '${g.nome}' sem papel inferível`).toBe(true);
@@ -565,7 +569,7 @@ describe('M1 · instalar.sh --atualizar --migrar repassa a recusa', () => {
 describe('os dois configs reais: quanto o proposto melhora, e o que sobra', () => {
   for (const { nome, caminho } of REPOS) {
     it(`${nome}: o proposto tem MENOS violações que o original, e o resto é decisão local`, () => {
-      if (!existsSync(caminho)) return void console.warn(`PULADO: ${caminho}`);
+      expect(existsSync(caminho), `fixture ausente: ${caminho}`).toBe(true);
       const p = copiaReal(caminho);
       const r = migrarArquivo(p, 'dry-run');
       const saida = r.linhas.join('\n');

@@ -7,8 +7,12 @@
  * um diff que ninguém revisa — e um diff que ninguém revisa é um diff que
  * aprova o que quiser.
  *
- * Roda contra as filas REAIS dos três repos, copiadas para `mkdtemp`. Eles são
- * SÓ LEITURA nesta sessão — e um caso afirma isso, byte a byte, depois de cada
+ * Roda contra AMOSTRAS das filas reais dos três repos (peça 7b-1): cópias byte
+ * a byte em `test/fixtures/filas/<repo>/`, com a origem, o sha, a data e o
+ * ramo que cada ticket cobre no PROCEDENCIA.md de lá. Até a 7b-1 este teste
+ * lia as filas VIVAS de `~/Projetos/<repo>`, e o número que ele afirmava
+ * mudava a cada drenagem do loop de lá. Cada caso copia a amostra para
+ * `mkdtemp`, e um caso afirma, byte a byte, que a amostra não muda depois do
  * `--aplicar`.
  */
 import { describe, it, expect } from 'vitest';
@@ -23,10 +27,18 @@ import {
   ticketsDe,
 } from '../scripts/orquestrador/migrar-tickets.js';
 
-const FILAS: Array<{ nome: string; caminho: string }> = [
-  { nome: 'actus-saas', caminho: join(process.env.HOME ?? '', 'Projetos', 'actus-saas', 'docs', 'fila') },
-  { nome: 'comarka-operacional', caminho: join(process.env.HOME ?? '', 'Projetos', 'comarka-operacional', 'docs', 'fila') },
-  { nome: 'conteudos-infinitos', caminho: join(process.env.HOME ?? '', 'Projetos', 'conteudos-infinitos', 'docs', 'fila') },
+/**
+ * `arquivos` e `migrados` são os números da AMOSTRA, contados e escritos no
+ * PROCEDENCIA.md ao lado da contagem da fila viva de 2026-09-21 (100/0, 582/32,
+ * 82/0). Número exato, e não "maior que zero": a amostra é fixa, então o
+ * número é constante, e uma asserção frouxa deixaria passar um ticket que a
+ * migração deixou de ver.
+ */
+const AMOSTRAS = join(__dirname, 'fixtures', 'filas');
+const FILAS: Array<{ nome: string; caminho: string; arquivos: number; migrados: number }> = [
+  { nome: 'actus-saas', caminho: join(AMOSTRAS, 'actus-saas'), arquivos: 6, migrados: 0 },
+  { nome: 'comarka-operacional', caminho: join(AMOSTRAS, 'comarka-operacional'), arquivos: 7, migrados: 3 },
+  { nome: 'conteudos-infinitos', caminho: join(AMOSTRAS, 'conteudos-infinitos'), arquivos: 3, migrados: 0 },
 ];
 
 /** Cópia da fila num tmp. Só os `[0-9]*.md` e o `_TEMPLATE.md`. */
@@ -46,14 +58,13 @@ function copiaFila(origem: string): string {
 }
 
 /**
- * Quantos tickets a migração DEVE mexer, contados na própria cópia.
+ * Quantos tickets a migração DEVE mexer, contados na própria cópia pela REGRA
+ * (todo pendente que tenha um dos nomes antigos, e mais nenhum).
  *
- * Antes isto era uma CONSTANTE, medida no PASSO 0 — e a constante quebrou DENTRO
- * desta sessão: o loop do comarka-operacional está VIVO e drenou a fila às 16:00
- * (três tickets para `done`, um para `em_execucao`), com o que o número de
- * pendentes caiu. Teste que afirma um número sobre a fila viva de OUTRO repo
- * mede o dia, não o código. O que é constante é a REGRA: mexe em todo pendente
- * que tenha um dos nomes antigos, e em mais nenhum.
+ * Nasceu porque a constante medida no PASSO 0 da K8b-5 quebrou dentro da
+ * sessão: o loop do comarka-operacional drenou a fila viva e o número caiu. Com
+ * a amostra fixa (peça 7b-1) os casos afirmam as DUAS coisas: a regra, por
+ * esta função, e o número da amostra, por `FILAS[].migrados`.
  */
 function esperados(fila: string): number {
   let n = 0;
@@ -99,9 +110,9 @@ describe('a prosa não se move UM BYTE', () => {
     expect(Buffer.from(depois.split('```json')[0]!)).toEqual(Buffer.from(antes.split('```json')[0]!));
   });
 
-  for (const { nome, caminho } of FILAS) {
+  for (const { nome, caminho, arquivos, migrados: migradosAmostra } of FILAS) {
     it(`${nome}: em TODO ticket migrado, só o bloco muda`, () => {
-      if (!existsSync(caminho)) return void console.warn(`PULADO: ${caminho}`);
+      expect(existsSync(caminho), `amostra ausente: ${caminho}`).toBe(true);
       const fila = copiaFila(caminho);
       let migrados = 0;
       for (const f of ticketsDe(fila)) {
@@ -116,11 +127,13 @@ describe('a prosa não se move UM BYTE', () => {
         expect(ld.slice(b.fim), `${f}: prosa DEPOIS do bloco mudou`).toEqual(la.slice(b.fim));
       }
       console.info(`${nome}: ${migrados} ticket(s) migrados`);
+      expect(migrados, `${nome}: migrados na amostra`).toBe(migradosAmostra);
     });
 
     it(`${nome}: a fila no disco do repo NÃO é tocada`, () => {
-      if (!existsSync(caminho)) return void console.warn(`PULADO: ${caminho}`);
+      expect(existsSync(caminho), `amostra ausente: ${caminho}`).toBe(true);
       const antes = ticketsDe(caminho).map((f) => readFileSync(f).toString('base64'));
+      expect(antes, `${nome}: arquivos de ticket na amostra`).toHaveLength(arquivos);
       migrarFila(copiaFila(caminho), 'aplicar');
       const depois = ticketsDe(caminho).map((f) => readFileSync(f).toString('base64'));
       expect(depois).toEqual(antes);
@@ -150,10 +163,10 @@ describe('os dois renomes, na posição original da chave', () => {
 
   it('a fila real do Comarka: UMA linha muda por ticket, e é sempre a mesma', () => {
     const caminho = FILAS.find((f) => f.nome === 'comarka-operacional')!.caminho;
-    if (!existsSync(caminho)) return void console.warn('PULADO');
+    expect(existsSync(caminho), `amostra ausente: ${caminho}`).toBe(true);
     const fila = copiaFila(caminho);
     const n = esperados(fila);
-    expect(n, 'a fila real deixou de ter pendente com nome antigo — o caso perdeu o objeto').toBeGreaterThan(0);
+    expect(n, 'a amostra do Comarka tem 3 pendentes com recon_esperado (PROCEDENCIA.md)').toBe(3);
     const r = migrarFila(fila, 'dry-run');
     expect(r.migrados).toBe(n);
     const adicionadas = r.linhas.join('\n').split('\n').filter((l) => l.startsWith('+') && !l.startsWith('+++'));
@@ -264,7 +277,7 @@ describe('a seleção de arquivos é a MESMA regra do motor', () => {
     // `tentativas_consumidas: 0`. Migrá-lo mudaria o formulário que todo ticket
     // novo copia — o que não é errado, mas é decisão, e não desta peça.
     const caminho = join(FILAS[0]!.caminho, '_TEMPLATE.md');
-    if (!existsSync(caminho)) return void console.warn('PULADO');
+    expect(existsSync(caminho), `amostra ausente: ${caminho}`).toBe(true);
     const fila = copiaFila(FILAS[0]!.caminho);
     const antes = readFileSync(join(fila, '_TEMPLATE.md'), 'utf8');
     migrarFila(fila, 'aplicar');
@@ -276,7 +289,7 @@ describe('a seleção de arquivos é a MESMA regra do motor', () => {
 describe('--dry-run e --aplicar', () => {
   it('--dry-run não escreve', () => {
     const caminho = FILAS.find((f) => f.nome === 'comarka-operacional')!.caminho;
-    if (!existsSync(caminho)) return void console.warn('PULADO');
+    expect(existsSync(caminho), `amostra ausente: ${caminho}`).toBe(true);
     const fila = copiaFila(caminho);
     const antes = ticketsDe(fila).map((f) => readFileSync(f, 'utf8'));
     migrarFila(fila, 'dry-run');
@@ -285,9 +298,10 @@ describe('--dry-run e --aplicar', () => {
 
   it('--aplicar grava e NÃO deixa .bak (o ticket é versionado; o git é o backup)', () => {
     const caminho = FILAS.find((f) => f.nome === 'comarka-operacional')!.caminho;
-    if (!existsSync(caminho)) return void console.warn('PULADO');
+    expect(existsSync(caminho), `amostra ausente: ${caminho}`).toBe(true);
     const fila = copiaFila(caminho);
     const n = esperados(fila);
+    expect(n).toBe(3);
     const r = migrarFila(fila, 'aplicar');
     expect(r.migrados).toBe(n);
     expect(readdirSync(fila).filter((x) => x.endsWith('.bak'))).toEqual([]);
@@ -296,7 +310,7 @@ describe('--dry-run e --aplicar', () => {
 
   it('rodar de novo é no-op', () => {
     const caminho = FILAS.find((f) => f.nome === 'comarka-operacional')!.caminho;
-    if (!existsSync(caminho)) return void console.warn('PULADO');
+    expect(existsSync(caminho), `amostra ausente: ${caminho}`).toBe(true);
     const fila = copiaFila(caminho);
     migrarFila(fila, 'aplicar');
     const depoisDaPrimeira = ticketsDe(fila).map((f) => readFileSync(f, 'utf8'));
@@ -307,13 +321,16 @@ describe('--dry-run e --aplicar', () => {
 
   it('o migrado continua parseável pelo leitor do motor', () => {
     const caminho = FILAS.find((f) => f.nome === 'comarka-operacional')!.caminho;
-    if (!existsSync(caminho)) return void console.warn('PULADO');
+    expect(existsSync(caminho), `amostra ausente: ${caminho}`).toBe(true);
     const fila = copiaFila(caminho);
     migrarFila(fila, 'aplicar');
+    let parseados = 0;
     for (const f of ticketsDe(fila)) {
       const m = /```json\n([\s\S]*?)\n```/.exec(readFileSync(f, 'utf8'));
       if (!m) continue;
       expect(() => JSON.parse(m[1]!), f).not.toThrow();
+      parseados += 1;
     }
+    expect(parseados).toBe(7);
   });
 });

@@ -4,8 +4,8 @@
 #   (a) contra o repo de FIXTURE recém-instanciado  -> idêntico, rc 0
 #   (b) contra uma CÓPIA do fixture com um byte a mais em lib.sh
 #                                                    -> `diferente ... lib.sh`, rc 1
-#   (c) contra ~/Projetos/conteudos-infinitos (SÓ LEITURA)
-#                                                    -> o resultado real, seja qual for
+#   (c) contra o checkout do CI em $ORQ_CI_CHECKOUT (SÓ LEITURA, e SÓ quando a
+#       variável vier setada)                        -> o resultado real, seja qual for
 #   (d) contra uma CÓPIA do fixture com um byte a mais em
 #       scripts/roadmap/lint-mapa.py                 -> `diferente ... lint-mapa.py`, rc 1
 #   (h) --verificar/--atualizar cobrem os testes do harness que o kit vendoriza,
@@ -22,6 +22,13 @@
 # pessoa, e o kit não manda nele. Diferença ali é ACHADO — vira linha de
 # relatório e, se for o caso, peça —, nunca falha deste script. O que ele
 # imprime é a saída crua, para ser colada.
+#
+# Peça 7b-1: nenhum caso deste script lê arquivo de outro repo por padrão. O
+# config do Comarka da (i5b) e o ticket 306 da (i5c) são fixtures datadas do kit
+# (test/fixtures/config/comarka-000-config.json e
+# test/fixtures/tickets/306-perf-leads-ingest-ghl-completa.md, origem e data no
+# cabeçalho ou no PROCEDENCIA.md). A (c) só roda com ORQ_CI_CHECKOUT setado:
+#   ORQ_CI_CHECKOUT=~/Projetos/conteudos-infinitos bash scripts/kit/test-instalar.sh
 #
 # Uso: bash scripts/kit/test-instalar.sh
 
@@ -40,7 +47,7 @@ set -uo pipefail
 export ORQ_TESTE=1
 
 KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-CI_CHECKOUT="${ORQ_CI_CHECKOUT:-$HOME/Projetos/conteudos-infinitos}"
+CI_CHECKOUT="${ORQ_CI_CHECKOUT:-}"
 
 FALHAS=0
 ok()    { printf '  ok    %s\n' "$*"; }
@@ -388,9 +395,10 @@ rm -rf "$SEM_GI"
 
 echo "-- (i5b) K8b-4: o config é PROPOSTO, nunca aplicado pelo instalador --"
 # O fixture nasce em schema 2 e completo; para exercitar a proposta, o config
-# dele vira o do Comarka (schema 1, com c0_intocavel e tsc_baseline).
+# dele vira o do Comarka (schema 1, com c0_intocavel e tsc_baseline). Fixture
+# datada do kit (peça 7b-1), não o arquivo vivo do comarka-operacional.
 CFG_ANTES="$(cksum < "$MIG/docs/fila/000-config.json")"
-COMARKA_CFG="$HOME/Projetos/comarka-operacional/docs/fila/000-config.json"
+COMARKA_CFG="$KIT/test/fixtures/config/comarka-000-config.json"
 if [ -f "$COMARKA_CFG" ]; then
   cp "$COMARKA_CFG" "$MIG/docs/fila/000-config.json"
   # O proposto da passada anterior sai do caminho: desde a M1 ele é nome
@@ -418,42 +426,38 @@ if [ -f "$COMARKA_CFG" ]; then
     && ok "diz que não aplicou, e dá os 4 passos humanos" || falha "não explicou o passo humano"
   rm -f "$MIG/docs/fila/000-config.proposto.json"
 else
-  printf '  PULADO: %s não existe nesta máquina\n' "$COMARKA_CFG"
+  falha "fixture ausente: $COMARKA_CFG"
 fi
 
 echo "-- (i5c) K8b-5: bloco JSON dos pendentes, prosa intacta byte a byte --"
-COMARKA_FILA="$HOME/Projetos/comarka-operacional/docs/fila"
-if [ -d "$COMARKA_FILA" ]; then
-  # Um ticket REAL do Comarka, com recon_esperado e prosa de verdade, copiado
-  # para a fila do fixture. Nada é escrito no repo de origem.
-  TK_ORIG="$COMARKA_FILA/306-perf-leads-ingest-ghl-completa.md"
-  if [ -f "$TK_ORIG" ]; then
-    cp "$TK_ORIG" "$MIG/docs/fila/306-perf-leads-ingest-ghl-completa.md"
-    TK="$MIG/docs/fila/306-perf-leads-ingest-ghl-completa.md"
-    # A prosa é tudo antes do bloco ```json — é ela que não pode se mover.
-    PROSA_ANTES="$(awk '/^```json$/{exit} {print}' "$TK" | cksum)"
-    saida="$(bash "$KIT/instalar.sh" --atualizar "$MIG" --migrar 2>&1)"
-    grep -q '"recon":' "$TK" \
-      && ok "recon_esperado virou recon no ticket real" || falha "o renome não foi aplicado"
-    grep -q '"recon_esperado":' "$TK" \
-      && falha "o nome antigo continua lá" || ok "o nome antigo saiu do bloco"
-    [ "$(awk '/^```json$/{exit} {print}' "$TK" | cksum)" = "$PROSA_ANTES" ] \
-      && ok "a PROSA é byte a byte a mesma" || falha "a migração mexeu na prosa"
-    [ -f "$TK.bak" ] \
-      && falha "criou .bak de ticket (o git é o backup)" || ok "nenhum .bak de ticket"
-    printf '%s' "$saida" | grep -q 'orq validar --pendentes' \
-      && ok "o relatório roda o orq validar sobre a fila migrada" || falha "não rodou o orq validar"
-    # O NEGATIVO da peça: `orq validar` RELATA e não corrige.
-    CK_TK="$(cksum < "$TK")"
-    bash "$KIT/instalar.sh" --atualizar "$MIG" --migrar >/dev/null 2>&1
-    [ "$(cksum < "$TK")" = "$CK_TK" ] \
-      && ok "o orq validar não CORRIGIU o ticket (segunda passada é no-op)" || falha "algo reescreveu o ticket"
-    rm -f "$TK"
-  else
-    printf '  PULADO: %s não existe\n' "$TK_ORIG"
-  fi
+# Um ticket REAL do Comarka, com recon_esperado e prosa de verdade, como fixture
+# datada do kit (peça 7b-1): a versão de 38fd7cb, a última em que o 306 era
+# pendente. Lido do arquivo vivo, o caso quebrou quando o 306 foi para done.
+TK_ORIG="$KIT/test/fixtures/tickets/306-perf-leads-ingest-ghl-completa.md"
+if [ -f "$TK_ORIG" ]; then
+  cp "$TK_ORIG" "$MIG/docs/fila/306-perf-leads-ingest-ghl-completa.md"
+  TK="$MIG/docs/fila/306-perf-leads-ingest-ghl-completa.md"
+  # A prosa é tudo antes do bloco ```json — é ela que não pode se mover.
+  PROSA_ANTES="$(awk '/^```json$/{exit} {print}' "$TK" | cksum)"
+  saida="$(bash "$KIT/instalar.sh" --atualizar "$MIG" --migrar 2>&1)"
+  grep -q '"recon":' "$TK" \
+    && ok "recon_esperado virou recon no ticket real" || falha "o renome não foi aplicado"
+  grep -q '"recon_esperado":' "$TK" \
+    && falha "o nome antigo continua lá" || ok "o nome antigo saiu do bloco"
+  [ "$(awk '/^```json$/{exit} {print}' "$TK" | cksum)" = "$PROSA_ANTES" ] \
+    && ok "a PROSA é byte a byte a mesma" || falha "a migração mexeu na prosa"
+  [ -f "$TK.bak" ] \
+    && falha "criou .bak de ticket (o git é o backup)" || ok "nenhum .bak de ticket"
+  printf '%s' "$saida" | grep -q 'orq validar --pendentes' \
+    && ok "o relatório roda o orq validar sobre a fila migrada" || falha "não rodou o orq validar"
+  # O NEGATIVO da peça: `orq validar` RELATA e não corrige.
+  CK_TK="$(cksum < "$TK")"
+  bash "$KIT/instalar.sh" --atualizar "$MIG" --migrar >/dev/null 2>&1
+  [ "$(cksum < "$TK")" = "$CK_TK" ] \
+    && ok "o orq validar não CORRIGIU o ticket (segunda passada é no-op)" || falha "algo reescreveu o ticket"
+  rm -f "$TK"
 else
-  printf '  PULADO: %s não existe nesta máquina\n' "$COMARKA_FILA"
+  falha "fixture ausente: $TK_ORIG"
 fi
 
 echo "-- (i6) --dry-run PREVÊ a recusa em vez de dizer que está tudo bem --"
@@ -592,13 +596,13 @@ printf '%s' "$saida" | grep -q 'node_modules/.bin/tsx' \
 
 # --- (c) ---------------------------------------------------------------------
 echo
-echo "== (c) $CI_CHECKOUT (SÓ LEITURA — o resultado é achado, não gate) =="
-if [ -d "$CI_CHECKOUT" ]; then
+echo "== (c) ${CI_CHECKOUT:-ORQ_CI_CHECKOUT não setado} (SÓ LEITURA — o resultado é achado, não gate) =="
+if [ -n "$CI_CHECKOUT" ] && [ -d "$CI_CHECKOUT" ]; then
   saida="$(bash "$KIT/instalar.sh" --verificar "$CI_CHECKOUT" 2>&1)"; rc=$?
   printf '%s\n' "$saida" | sed 's/^/  | /'
   printf '  (rc %s — informativo)\n' "$rc"
 else
-  printf '  (pulado: %s não existe nesta máquina)\n' "$CI_CHECKOUT"
+  printf '  (pulado: ORQ_CI_CHECKOUT vazio ou inexistente%s; o teste não lê outro repo por padrão)\n' "${CI_CHECKOUT:+ ($CI_CHECKOUT)}"
 fi
 
 echo

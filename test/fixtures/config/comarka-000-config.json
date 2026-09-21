@@ -1,0 +1,120 @@
+{
+  "$schema_versao": 1,
+  "descricao": "Config do Orquestrador Autônomo (Bloco 0). Fonte única de: zona C0 intocável, gates padrão, branch alvo e política de retry. Lida por executor.sh / avaliador.sh / enforcement.sh (via jq) e por enforcement-core.ts.",
+  "branch_alvo": "staging-auto",
+  "max_retries": 2,
+  "cooldown_minutes": 60,
+  "_cooldown": "Ao adiar um ticket por limite da assinatura (rate limit/quota/sobrecarga), o executor grava runs/.cooldown-until = agora + cooldown_minutes. O local-loop.sh checa e encerra cedo enquanto valer, para o disparo seguinte não bater no mesmo limite. NÃO conta como retry; status volta a pendente.",
+  "migrations_dir": "supabase/migrations",
+  "worktrees_dir": "../_worktrees",
+  "_worktree_prefix": "Prefixo do worktree de ticket (<prefixo><id> em worktrees_dir). Este repo usa orq-comarka- desde 21/09: o actus-saas divide o mesmo ../_worktrees com orq-<id>, e o orq-440 vivo de la fez o executor daqui abortar 19x no git worktree add. Chave ausente => orq- (default no lib.sh). staging-auto e orq-runner nao usam o prefixo.",
+  "worktree_prefix": "orq-comarka-",
+  "runs_dir": "docs/fila/runs",
+  "liberacoes_file": "docs/fila/liberacoes.json",
+  "_writeback_notion": "Passo 4 do local-loop (ticket 285). true = empurra o placar da fila para a pagina do Notion a cada drenagem; false = pula e loga que pulou. Chave AUSENTE conta como true (repo com config antigo nao perde o passo). O writeback ja e nao-fatal quando falha; isto e sobre nao rodar de proposito, nao sobre tolerar erro.",
+  "writeback_notion": true,
+  "_modelos": "Modelos por papel. executor_model roda o ticket (implementação, mais barato/rápido); avaliador_model julga o diff (mais capaz). retry_final_model roda a ÚLTIMA tentativa (retry final) com um modelo mais forte antes de bloquear. Sempre passados como --model — nunca deixe o array de flags vazio (set -u + bash 3.2 => unbound variable).",
+  "executor_model": "sonnet",
+  "avaliador_model": "opus",
+  "retry_final_model": "opus",
+  "_economia": "Guardas de custo/tempo (HARDENING 005). diff_cap_linhas: acima disso o executor REPROVA mecanicamente ('diff grande: quebrar ticket') sem chamar o Opus. claude_timeout_secs: cada `claude -p` (executor e avaliador) é cortado nesse tempo; estouro => adiado (infra), não reprova. preflight_env_keys: chaves que precisam existir no processo ou em .env.local antes de qualquer chamada de modelo.",
+  "diff_cap_linhas": 900,
+  "claude_timeout_secs": 1500,
+  "_gate_streak": "Pausa cross-ticket (ticket 280): se o MESMO gate mecanico (tsc/vitest/build/criterio/enforcement) reprovar gate_streak_limite tickets CONSECUTIVOS e DIFERENTES, o executor pausa a fila inteira (grava docs/fila/.orq-pause) em vez de bloquear cada ticket individualmente — o suspeito e o gate, nao o codigo. Os tickets envolvidos voltam a 'pendente', nunca 'bloqueado'. Chave ausente => cai em 2 (default no codigo, para repos com config antigo).",
+  "gate_streak_limite": 2,
+  "_disjuntor_sem_progresso": "Disjuntor de retry sem progresso (21/09, incidente 440: 19 execucoes com attempt vazio). local-loop.sh conta em runs/<id>/.sem-progresso cada volta em que o ticket segue pendente sem cooldown e sem staging-auto avancar; adiamento (cooldown ou 529/500/503) nao conta. Zera quando o ticket muda de status ou staging-auto avanca na vez dele. Ao chegar ao limite o ticket vira bloqueado com a causa em notas_status e o log ganha uma linha DISJUNTOR. Chave ausente => 3.",
+  "disjuntor_sem_progresso_limite": 3,
+  "preflight_probe": true,
+  "preflight_env_keys": [
+    "SESSION_SECRET",
+    "SUPABASE_URL"
+  ],
+  "_identidade": "Trava de identidade do preflight (ADENDO 006): antes de qualquer tentativa/gasto, o executor confirma repo e banco certos. Repo: origin do checkout principal DEVE conter repo_origin_deve_conter. Banco: o ref extraído de NEXT_PUBLIC_SUPABASE_URL (.env.local resolvido) DEVE ser igual a supabase_project_id. Divergência em qualquer um => aborta o run inteiro, zero tentativa. Registrado em 1 linha no log de todo run.",
+  "repo_origin_deve_conter": "lucasantosads/comarka-os",
+  "supabase_project_id": "ogfnojbbvumujzfklkhh",
+  "c0_intocavel": {
+    "descricao": "Núcleo analítico da agência + tabelas comerciais compartilhadas. O OS NUNCA escreve nem aplica DDL aqui. Espelha test/c0-guard.test.ts (mais estrito: aqui clientes_receita/leads_crm são zero-escrita, não só zero-DELETE).",
+    "no_write_tables": [
+      "clientes_receita",
+      "leads_crm",
+      "leads_crm_historico",
+      "ads_metadata",
+      "ads_performance",
+      "fn_mql_sql_by_month"
+    ],
+    "no_write_prefixes": [
+      "trafego_",
+      "vw_"
+    ],
+    "ghl_comercial": [
+      "ghl_etapa_mapa",
+      "ghl_user_map",
+      "ghl_funnel_snapshot",
+      "ghl_sdr_alerts",
+      "ghl_unmapped_users",
+      "ghl_etapas_nao_mapeadas"
+    ],
+    "dashboard_readonly": [
+      "meta_form_leads",
+      "meta_lead_matching_status",
+      "creative_scores",
+      "ai_ad_creatives",
+      "ai_adset_targeting",
+      "ai_alerts",
+      "ai_performance_snapshots",
+      "ai_placement_analysis",
+      "ai_usage_log"
+    ],
+    "os_owned_excecoes": [
+      "perf_meta_connections",
+      "perf_meta_ad_map",
+      "perf_ghl_locations",
+      "perf_ia_analises",
+      "ia_prompts",
+      "meta_connections",
+      "meta_ad_accounts",
+      "meta_insights_cache",
+      "meta_lead_forms",
+      "meta_sync_logs",
+      "meta_agency_connection",
+      "client_meta_accounts"
+    ]
+  },
+  "gates": [
+    {
+      "nome": "tsc",
+      "cmd": "npx tsc --noEmit",
+      "tipo": "tsc_baseline",
+      "baseline": 3,
+      "baseline_scope_regex": "qualificacao",
+      "descricao": "Falha só se surgir erro TS fora de arquivos qualificacao* (baseline atual = 3, todos em qualificacao)."
+    },
+    {
+      "nome": "vitest",
+      "cmd": "npx vitest run",
+      "tipo": "exit_code",
+      "descricao": "Suite de testes verde, incluindo o teste de enforcement."
+    },
+    {
+      "nome": "build",
+      "cmd": "rm -rf .next && npm run build",
+      "tipo": "exit_code",
+      "descricao": "next build sem erro."
+    }
+  ],
+  "perfis_tools": {
+    "frontend": "Read,Edit,Write,Glob,Grep,Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git restore:*),Bash(npx tsc:*),Bash(npx vitest:*),Bash(npm run build:*),Bash(ls:*),Bash(cat:*),Bash(mkdir:*),Bash(sed:*),Bash(grep:*)",
+    "api": "Read,Edit,Write,Glob,Grep,Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git restore:*),Bash(npx tsc:*),Bash(npx vitest:*),Bash(npm run build:*),Bash(ls:*),Bash(cat:*),Bash(mkdir:*),Bash(sed:*),Bash(grep:*)",
+    "sql-proposta": "Read,Edit,Write,Glob,Grep,Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git restore:*),Bash(npx vitest:*),Bash(ls:*),Bash(cat:*),Bash(mkdir:*),Bash(sed:*),Bash(grep:*)",
+    "docs": "Read,Edit,Write,Glob,Grep,Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(ls:*),Bash(cat:*),Bash(grep:*)"
+  },
+  "proibicoes_absolutas": [
+    "nunca push em main",
+    "nunca aplicar DDL (só escrever .sql em supabase/migrations/)",
+    "nunca escrever em tabela C0",
+    "nunca tocar credenciais/segredos",
+    "nunca gastar dinheiro",
+    "git add sempre por pathspec explícito"
+  ],
+  "_diff_cap_medido": "Baixado de 2500 para 900 em 05/09 com base em telemetria de 308 runs: os 3 tickets mais caros (295=1150min/7tent/diff2725, 291=950min/9tent, 280=725min/5tent) somam 47h de 136h — um terco do custo em 1% dos tickets. A skill poe a regua em 600 linhas; 900 e o meio-termo ate a fila v4.1 drenar. O cap e gate de SAIDA (roda depois do claude -p, so economiza o Opus) — o gate de ENTRADA e a regua de granularidade na escrita do ticket."
+}

@@ -25,3 +25,18 @@ Por que uma cópia, e não ler o repo vizinho: teste que lê `~/Projetos/actus-s
 passa nesta máquina e some em qualquer outra — e passaria a MUDAR de veredito
 quando alguém editasse o config de lá, que é exatamente o arquivo que a migração
 existe para tocar. A mesma decisão de `test/fixtures/liberacoes/` (peça K8b-1).
+
+## Acréscimo da peça 7b-1 (2026-09-21)
+
+| Arquivo | Origem (só leitura) | Schema | cksum |
+|---|---|---|---|
+| `actus-000-config.json` | o mesmo arquivo de cima. Conferido em 2026-09-21: é byte a byte o blob de `~/Projetos/actus-saas` em `5b623d5^` (último commit que o tocou: `8bcbc00`, 2026-08-17), a versão v1 de antes da migração para o kit | v1 | `4252049310 7679` |
+| `comarka-000-config.json` | `~/Projetos/comarka-operacional/docs/fila/000-config.json`, HEAD `fc8eacb` (último commit que o tocou: `50c6b02`), copiado em 2026-09-21 | v1 | `3674671313 7835` |
+
+Os dois passam a ser lidos por `test/orquestrador-migrar-config.test.ts` ("os
+dois configs reais") e o do Comarka também pela (i5b) de
+`scripts/kit/test-instalar.sh`. Até a 7b-1 esses dois liam o arquivo VIVO: o
+config do Actus foi migrado para o schema 2 em `5b623d5` (2026-09-11) e o caso
+"o proposto tem MENOS violações que o original" perdeu o objeto (o relatório
+passou a dizer `0 violações`, sem o `N violação(ões)` que o caso procura). O
+teste é sobre a migração de um v1; o fixture é o v1.
