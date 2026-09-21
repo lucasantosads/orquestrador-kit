@@ -19,14 +19,47 @@ AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # --git-common-dir`, de qualquer worktree — e um `event` disparado aqui grava na
 # trilha de produção. Foi assim que os `EXECUTOR_MORREU` espúrios de 2026-09-04
 # 20:45/20:47 entraram no `events.log` real.
+#
+# FIXTURE PRÓPRIA (peça 7a-1): fila e config nascem AQUI, em heredoc, e nada é
+# copiado do checkout. Até a 7a-1 o config vinha de
+# `$CHECKOUT_REAL/docs/fila/000-config.json`, que o KIT não tem (a fila é do
+# repo instalado): rodado na raiz do kit o `cp` falhava, o `source` morria no
+# `jq` e o script saía rc 2 — e o assert "seguiu para o próximo ticket" nunca
+# tinha sido exercido fora de um fixture vendorizado. O checkout real continua
+# sendo usado para UMA coisa, só leitura: provar que a branch protegida dele
+# não se move (casos 2 e 3).
 CHECKOUT_REAL="$(cd "$AQUI/../.." && pwd)"
 CHECKOUT_REAL="$(git -C "$CHECKOUT_REAL" rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's#/\.git/*$##' || true)"
 [ -n "$CHECKOUT_REAL" ] || CHECKOUT_REAL="$(cd "$AQUI/../.." && pwd)"
-CONFIG_REAL="$CHECKOUT_REAL/docs/fila/000-config.json"
+
+# escrever_config <raiz> — o 000-config.json MÍNIMO que o lib.sh e o
+# local-loop.sh leem no carregamento e na drenagem (config-chaves.ts). Nada de
+# gate, juiz ou modelo: o executor aqui é sempre stub.
+escrever_config() {
+  mkdir -p "$1/docs/fila/runs"
+  cat > "$1/docs/fila/000-config.json" <<'JSON'
+{ "$schema_versao": 2,
+  "branch_alvo": "staging-auto", "branch_protegida": "main",
+  "max_retries": 2, "cooldown_minutes": 60, "diff_cap_linhas": 600,
+  "migrations_dir": "db/migrations", "worktrees_dir": "../_worktrees",
+  "worktrees_prefixo": "fx-", "runs_dir": "docs/fila/runs",
+  "liberacoes_file": "docs/fila/liberacoes.json",
+  "decisoes_file": "docs/fila/decisoes-pendentes.md",
+  "pausar_file": "docs/fila/PAUSAR",
+  "repo_origin_deve_conter": "example.invalid", "ambiente_id": "fixture",
+  "canal_notificacao": "arquivo",
+  "executor": { "trailer_commit": "Orq-Ticket" },
+  "orcamento": { "custo_file": "docs/fila/runs/custo.json",
+                 "usd_dia": 50, "tokens_dia": 5000000, "usd_ticket": 5,
+                 "campos_usage": { "custo_usd": "total_cost_usd", "tokens_in": "usage.input_tokens",
+                                   "tokens_out": "usage.output_tokens", "tokens_cache": "usage.cache_read_input_tokens" } } }
+JSON
+  echo '{"$schema_versao": 2, "tokens": []}' > "$1/docs/fila/liberacoes.json"
+}
+
 export ORQ_TESTE=1
 ORQ_EXEC_ROOT="$(mktemp -d)/checkout"; export ORQ_EXEC_ROOT
-mkdir -p "$ORQ_EXEC_ROOT/docs/fila/runs"
-cp "$CONFIG_REAL" "$ORQ_EXEC_ROOT/docs/fila/000-config.json"
+escrever_config "$ORQ_EXEC_ROOT"
 trap 'rm -rf "$(dirname "$ORQ_EXEC_ROOT")"' EXIT
 LOCAL_LOOP_SOURCED=1
 # shellcheck source=local-loop.sh
@@ -83,8 +116,7 @@ echo "== drenar TRATA o status refatiar (regra 19) =="
 # mergear um ticket assim, não o conta como aprovado nem como bloqueado, e
 # segue para o próximo em vez de parar por "sem progresso".
 fx="$(mktemp -d)"
-mkdir -p "$fx/docs/fila/runs"
-cp "$CONFIG_REAL" "$fx/docs/fila/000-config.json"
+escrever_config "$fx"
 for id in 901 902; do
   cat > "$fx/docs/fila/$id-t.md" <<TICKET
 # $id
@@ -105,6 +137,7 @@ saida="$(ORQ_EXEC_ROOT="$fx" LOCAL_LOOP_SOURCED=1 bash -c "
   merge_em_alvo() { echo 'MERGE TENTADO' >&2; return 0; }
   run_executor_once() {
     # o executor devolveria o ticket em refatiar; aqui só o status importa
+    echo \"CHAMADA \$(ticket_field \"\$2\" .id)\" >&2
     ticket_set_status \"\$2\" refatiar
     return 0
   }
@@ -115,8 +148,15 @@ printf '%s' "$saida" | grep -q "MERGE TENTADO" \
   && falha "tentou mergear um ticket em refatiar" || ok "refatiar NÃO vai para o merge"
 printf '%s' "$saida" | grep -q "voltou para REFATIAR" \
   && ok "a drenagem diz que o ticket voltou" || falha "refatiar passou em silêncio"
-printf '%s' "$saida" | grep -q "sem progresso" \
-  && falha "encerrou por 'sem progresso' em vez de seguir" || ok "seguiu para o próximo ticket"
+# "Seguiu" é afirmado pelo que ACONTECEU, não só pela ausência da frase: as
+# duas chamadas, na ordem da fila. Sem a primeira linha o assert passaria com
+# uma drenagem que nem começou.
+chamadas="$(printf '%s\n' "$saida" | sed -n 's/^CHAMADA //p' | tr '\n' ' ')"
+if [ "$chamadas" = "901 902 " ] && ! printf '%s' "$saida" | grep -q "sem progresso"; then
+  ok "seguiu para o próximo ticket (executor chamado para: $chamadas)"
+else
+  falha "não seguiu para o próximo: chamadas='$chamadas'"
+fi
 grep -q "DRENAGEM_FIM .*refatiar=2" "$fx/docs/fila/runs/events.log" 2>/dev/null \
   && ok "o placar da drenagem conta os 2 refatiados" \
   || falha "refatiar não apareceu no DRENAGEM_FIM: $(grep DRENAGEM_FIM "$fx/docs/fila/runs/events.log" 2>/dev/null | tail -1)"
