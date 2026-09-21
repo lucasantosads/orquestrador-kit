@@ -870,13 +870,19 @@ run_attempt() {
   # criteriosFalhos. Como critério, ele virava causa criterio_qualidade e ESCALAVA
   # o modelo — e violação de fronteira não é falha de capacidade. Gate reprovado
   # segue como critério: aí a falha é de qualidade mesmo.
+  # Peça 7b-3: o teto do relógio vai junto com a duração medida, para que o
+  # decisao.ts diga "timeout" só quando a chamada de fato chegou nele.
+  local tout; tout="$(cfg '.claude_timeout_secs')"
+  case "$tout" in ''|null|*[!0-9]*) tout=null ;; esac
   sinal="$(jq -n --argjson e "${rc:-0}" --arg s "$(tail -c 4000 "$saida" 2>/dev/null || true)" \
     --argjson d "$DIFF_LINES" --argjson gi "$(grep -qi 'reexecutar' "$rundir/gates.txt" && echo true || echo false)" \
     --argjson enf "$([ "$ENF_OK" = 0 ] && echo true || echo false)" \
     --argjson cf "$(printf '%s' "$CRITERIOS_FALHOS" | jq -Rn '[inputs | select(length>0)]')" \
     --argjson grc "$gates_rc" --arg gs "$(head -c 20000 "$rundir/gates.txt" 2>/dev/null || true)" --arg gp "$papel_falho" \
+    --argjson dur "$DUR" --argjson tout "$tout" \
     '{exitCode:$e, saida:$s, diffLines:$d, gateInterrompido:$gi, enforcementViolado:$enf, criteriosFalhos:$cf,
-      gatesRc:$grc, gatesSaida:$gs, gatePapelFalho:$gp}')"
+      gatesRc:$grc, gatesSaida:$gs, gatePapelFalho:$gp, duracaoSecs:$dur}
+     + (if $tout == null then {} else {timeoutSecs:$tout} end)')"
   if [ "$gates_rc" != 0 ]; then
     sinal="$(printf '%s' "$sinal" | jq '.criteriosFalhos += ["gates reprovados"]')"
   fi

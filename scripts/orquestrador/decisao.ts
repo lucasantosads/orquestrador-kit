@@ -164,6 +164,15 @@ export interface SinalTentativa {
   gatesSaida?: string
   gatePapelFalho?: string
   /**
+   * Peça 7b-3 · a MEDIDA: quanto a chamada do agente durou de verdade e qual é
+   * o teto (`claude_timeout_secs`). Um rc 124 bem abaixo do teto não é o
+   * watchdog cortando: é o processo morto por fora (pkill, sono, outro
+   * `timeout`). No Comarka, o 315a foi rotulado "timeout 1500s" numa execução
+   * de 9 s, oito vezes seguidas.
+   */
+  duracaoSecs?: number
+  timeoutSecs?: number
+  /**
    * true quando o juiz (passo 7) NÃO produziu veredito legível — resposta
    * ilegível, ou a chamada do juiz caiu em limite/timeout. Nos dois casos não
    * houve julgamento do TRABALHO, e reprovar por isso queimaria retry de um
@@ -237,13 +246,39 @@ function houveGateCrash(sinal: SinalTentativa): boolean {
   return gateNaoRodou(sinal.gatesSaida, sinal.gatePapelFalho ?? '')
 }
 
+/**
+ * rc 124 é timeout só quando a duração medida alcançou o teto. Sem a medida
+ * (chamador antigo, teste de unidade), vale o rc, como sempre valeu.
+ */
+function cortadoPeloRelogio(sinal: SinalTentativa): boolean {
+  const d = sinal.duracaoSecs
+  const t = sinal.timeoutSecs
+  if (typeof d !== 'number' || typeof t !== 'number' || !(t > 0)) return true
+  return d >= t
+}
+
+/**
+ * A causa em texto, com a MEDIDA ao lado do rótulo (peça 7b-3). É o que vai para
+ * `notas_status` via mark_adiado e, no teto de adiamentos, para a nota do
+ * bloqueio: "rc=124 em 9s" diz o que aconteceu; "timeout" sozinho só repetia o
+ * rótulo.
+ */
+function motivoInfra(infra: CausaInfra, sinal: SinalTentativa): string {
+  if (typeof sinal.duracaoSecs !== 'number') return `infraestrutura: ${infra}`
+  const medida = `rc=${sinal.exitCode} em ${sinal.duracaoSecs}s`
+  if (sinal.exitCode === 124 && infra === 'gate_interrompido') {
+    return `infraestrutura: ${infra} (${medida}, abaixo do limite de ${sinal.timeoutSecs}s: morto por fora)`
+  }
+  return `infraestrutura: ${infra} (${medida})`
+}
+
 /** Detecta causa de INFRA. null quando nada de infra aconteceu. */
 export function detectarCausaInfra(sinal: SinalTentativa): CausaInfra | null {
   // ANTES do curto-circuito de exitCode===0: o juiz roda DEPOIS de o agente
   // sair com rc=0, então a tentativa inteira é bem-sucedida e o único sinal de
   // que não houve veredito é este campo.
   if (sinal.juizIlegivel) return 'juiz_ilegivel'
-  if (sinal.exitCode === 124) return 'timeout'
+  if (sinal.exitCode === 124) return cortadoPeloRelogio(sinal) ? 'timeout' : 'gate_interrompido'
   if (sinal.exitCode === 129 || sinal.exitCode === 130) return 'gate_interrompido'
   if (sinal.gateInterrompido) return 'gate_interrompido'
   // Gate duplo: texto só conta quando a chamada de fato falhou. Um ticket que
@@ -287,7 +322,7 @@ export function decidirDesfecho(config: DecisaoConfig, sinal: SinalTentativa): V
   const adia = causasDeAdiamentoDoConfig(config)
   const infra = detectarCausaInfra(sinal)
   if (infra && adia.has(infra)) {
-    return { desfecho: 'adiado', causa: infra, motivo: `infraestrutura: ${infra}`, contaComoRetry: false, cooldown: armaCooldown(infra) }
+    return { desfecho: 'adiado', causa: infra, motivo: motivoInfra(infra, sinal), contaComoRetry: false, cooldown: armaCooldown(infra) }
   }
   if (sinal.diffLines > config.diff_cap_linhas) {
     return {

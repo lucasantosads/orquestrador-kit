@@ -193,3 +193,24 @@ describe('gate_crash no desfecho', () => {
     expect(decidirDesfecho(cfg, sinal({ exitCode: 1, saida: 'API Error: 503 Service Unavailable' })).desfecho).toBe('reprovado');
   });
 });
+
+describe('a causa é a medida, não o rótulo (peça 7b-3)', () => {
+  it('rc 124 em 9 s com teto de 1500 s não é timeout: é morto por fora, e o motivo traz a medida', () => {
+    const v = decidirDesfecho(CONFIG, sinal({ exitCode: 124, duracaoSecs: 9, timeoutSecs: 1500 }));
+    expect(v.desfecho).toBe('adiado');
+    expect(v.causa).toBe('gate_interrompido');
+    expect(v.motivo).toContain('rc=124 em 9s');
+    expect(v.motivo).not.toMatch(/timeout/);
+    expect(v.cooldown).toBe(false);
+  });
+
+  it('rc 124 que chegou no teto é timeout, com a medida', () => {
+    const v = decidirDesfecho(CONFIG, sinal({ exitCode: 124, duracaoSecs: 1502, timeoutSecs: 1500 }));
+    expect(v.causa).toBe('timeout');
+    expect(v.motivo).toContain('rc=124 em 1502s');
+  });
+
+  it('sem a medida (chamador antigo), rc 124 segue timeout', () => {
+    expect(decidirDesfecho(CONFIG, sinal({ exitCode: 124 })).causa).toBe('timeout');
+  });
+});

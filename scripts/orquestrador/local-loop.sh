@@ -137,9 +137,14 @@ sem_progresso_arquivo() { printf '%s/%s/.sem-progresso\n' "$RUNS_BASE" "$1"; }
 sem_progresso_zerar()   { rm -f "$(sem_progresso_arquivo "$1")" 2>/dev/null || true; }
 
 # sem_progresso_incrementar <id> -> imprime "N|primeira|ultima" já gravado.
-sem_progresso_incrementar() {
-  local f n=0 primeira agora linha
-  f="$(sem_progresso_arquivo "$1")"; agora="$(ts)"; primeira="$agora"
+sem_progresso_incrementar() { contador_incrementar "$(sem_progresso_arquivo "$1")"; }
+
+# contador_incrementar <arquivo> -> soma 1 no contador "N|primeira|ultima" do
+# arquivo e imprime a linha gravada. É o mesmo formato para os dois contadores
+# persistentes da drenagem: .sem-progresso (7a-3) e .adiamentos (7b-3).
+contador_incrementar() {
+  local f="$1" n=0 primeira agora linha
+  agora="$(ts)"; primeira="$agora"
   if [ -f "$f" ]; then
     linha="$(head -1 "$f" 2>/dev/null || true)"
     n="${linha%%|*}"; primeira="$(printf '%s' "$linha" | cut -d'|' -f2)"
@@ -226,6 +231,47 @@ sem_progresso_causa() {
   uma_linha "$(printf '%s' "$c" | tr -d '\r')" 300
 }
 
+# --- TETO DE ADIAMENTOS CONSECUTIVOS (peça 7b-3) -----------------------------
+# Adiamento não tinha teto. No Comarka o 315a foi adiado 8 vezes seguidas, cerca
+# de 3 h de modelo, e a nota dizia "timeout 1500s" numa execução de 9 s. Este
+# contador PERSISTE entre disparos em runs/<id>/.adiamentos ("N|primeira|
+# ultima") e, no limite, BLOQUEIA o ticket com a causa REAL: a medida do último
+# ADIADO (motivo, rc e duração, ou a causa do preflight), nunca só o rótulo.
+#
+# Conta: o ADIADO sem cooldown. NÃO conta nem zera: o adiado COM cooldown
+# (rate_limit, quota), que é o limite da conta e não do ticket; com cooldown a
+# drenagem para no primeiro, e o primeiro pendente em ordem acumularia sozinho.
+# Zera: o ticket sair de pendente (aprovado, bloqueado, refatiar) ou a branch
+# alvo avançar na vez dele. Limite: `adiamentos_limite` do config, 4 quando
+# ausente ou inválido. Como o sem-progresso, o bloqueio espera o fim da
+# drenagem e não vale se ela terminar em AMBIENTE (7a-8).
+adiamentos_arquivo() { printf '%s/%s/.adiamentos\n' "$RUNS_BASE" "$1"; }
+adiamentos_zerar()   { rm -f "$(adiamentos_arquivo "$1")" 2>/dev/null || true; }
+
+# adiamentos_limite -> inteiro >= 1; 4 quando a chave falta ou é inválida.
+adiamentos_limite() {
+  local l
+  l="$(cfg '.adiamentos_limite // empty' 2>/dev/null || true)"
+  case "$l" in ''|*[!0-9]*|0) l=4 ;; esac
+  printf '%s\n' "$l"
+}
+
+# causa_real_do_adiado <eventos> -> a medida do último ADIADO destes eventos:
+#   "preflight: <causa>"                      (recusa de preflight)
+#   "<motivo> (rc=<rc>, <dur> de execução)"   (qualquer outro)
+causa_real_do_adiado() {
+  local ult campos m rc dur c
+  ult="$(printf '%s\n' "$1" | awk '$3 == "ADIADO"' | tail -1)"
+  [ -n "$ult" ] || { printf 'adiado sem evento na trilha'; return 0; }
+  campos=" $(printf '%s' "$ult" | cut -d' ' -f4-) "
+  m="$(printf '%s' "$campos" | sed -n 's/.* motivo=\([^ ]*\) .*/\1/p')"
+  rc="$(printf '%s' "$campos" | sed -n 's/.* rc=\([^ ]*\) .*/\1/p')"
+  dur="$(printf '%s' "$campos" | sed -n 's/.* dur=\([^ ]*\) .*/\1/p')"
+  c="$(printf '%s' "$campos" | sed -n 's/.* causa=\(.*\) $/\1/p')"
+  if [ -n "$c" ]; then printf '%s: %s' "${m:-adiado}" "$c"
+  else printf '%s (rc=%s, %s de execução)' "${m:-adiado}" "${rc:-?}" "${dur:-?}"; fi
+}
+
 # --- AMBIENTE NÃO BLOQUEIA A FILA (peça 7a-8) --------------------------------
 # Uma recusa de preflight (árvore suja, lock de git, identidade) mata o executor
 # para TODO ticket, igual. Sem esta peça cada drenagem somava +1 em todos os
@@ -255,11 +301,15 @@ causa_normalizada() {
 # sem_progresso_desfazer <backup> -> devolve cada contador somado nesta
 # drenagem ao que era antes. Backup: uma linha "<id><TAB><linha anterior>" por
 # ticket, linha anterior vazia = o arquivo não existia.
-sem_progresso_desfazer() {
-  local bid blinha f
+sem_progresso_desfazer() { contador_desfazer "$1" .sem-progresso; }
+
+# contador_desfazer <backup> <nome-do-arquivo> -> o mesmo, para qualquer um dos
+# contadores em runs/<id>/<nome-do-arquivo>.
+contador_desfazer() {
+  local bid blinha f nome="$2"
   while IFS=$'\t' read -r bid blinha <&3; do
     [ -n "$bid" ] || continue
-    f="$(sem_progresso_arquivo "$bid")"
+    f="$RUNS_BASE/$bid/$nome"
     escrita_de_teste_permitida "$f" || continue
     if [ -z "$blinha" ]; then rm -f "$f" 2>/dev/null || true
     else printf '%s\n' "$blinha" > "$f" 2>/dev/null || true; fi
@@ -338,6 +388,9 @@ drenar() {
   # backup dos contadores somados, e os bloqueios que esperam o fim da drenagem
   # (só valem se ela não terminar em ambiente).
   local causas_vistas='' sp_backup='' a_bloquear='' norm outro ambiente_causa='' adiado=0
+  # Peça 7b-3: o mesmo par (backup, bloqueios que esperam o fim) para o
+  # contador de adiamentos.
+  local ad_backup='' a_bloquear_ad='' ad
   local bid bfile bsp blim bcausa
   stwt="$(ensure_staging_worktree)"
   t0="$(date +%s)"
@@ -440,6 +493,7 @@ drenar() {
     # no limite o ticket vai para bloqueado. Saiu de pendente: contador zera.
     if [ "$(ticket_field "$prox" '.status')" != "pendente" ]; then
       sem_progresso_zerar "$prox_id"
+      adiamentos_zerar "$prox_id"
     elif ! cooldown_active; then
       evs="$(eventos_do_ticket_desde "$ev_antes" "$prox_id")"
       nota_depois="$(ticket_field "$prox" '.notas_status // ""')"
@@ -449,6 +503,7 @@ drenar() {
         # houve progresso. Não entra na memória e o contador zera.
         say "  $BRANCH_ALVO avançou na vez de $prox_id (${sha_antes:0:8} -> ${sha_depois:0:8}) — conta como progresso; contador zerado"
         sem_progresso_zerar "$prox_id"
+        adiamentos_zerar "$prox_id"
       else
         adiado=0
         foi_adiado "$evs" "$nota_antes" "$nota_depois" && adiado=1
@@ -467,7 +522,8 @@ drenar() {
         outro="$(printf '%s\n' "$causas_vistas" | awk -F'\t' -v c="$norm" -v id="$prox_id" '$2 == c && $1 != id { print $1; exit }')"
         if [ -n "$outro" ]; then
           sem_progresso_desfazer "$sp_backup"
-          sp_backup=''; a_bloquear=''; sem_progresso=0
+          contador_desfazer "$ad_backup" .adiamentos
+          sp_backup=''; a_bloquear=''; sem_progresso=0; ad_backup=''; a_bloquear_ad=''
           tentados="$tentados$prox_id "
           [ "$adiado" = 0 ] || adiados=$((adiados + 1))
           event '---' AMBIENTE "tickets=$outro,$prox_id" "causa=$norm"
@@ -483,6 +539,16 @@ drenar() {
           adiados_sc="$adiados_sc$prox_id "
           adiados=$((adiados + 1))
           say "  ticket $prox_id adiado sem cooldown — não conta como sem progresso; segue para o próximo não tentado. Causa: $causa"
+          # Peça 7b-3: soma no contador de adiamentos; no limite, bloqueia no fim.
+          ad_backup="$ad_backup$prox_id"$'\t'"$(head -1 "$(adiamentos_arquivo "$prox_id")" 2>/dev/null || true)"$'\n'
+          ad="$(contador_incrementar "$(adiamentos_arquivo "$prox_id")")"
+          n="${ad%%|*}"; lim="$(adiamentos_limite)"
+          if [ "$n" -ge "$lim" ]; then
+            a_bloquear_ad="$a_bloquear_ad$prox_id"$'\t'"$prox"$'\t'"$ad"$'\t'"$lim"$'\t'"$(causa_real_do_adiado "$evs")"$'\n'
+            say "  ticket $prox_id atingiu o limite de adiamentos ($n/$lim) — bloqueia no fim da drenagem, se ela não terminar em ambiente"
+          else
+            say "  ticket $prox_id adiado $n/$lim vez(es) seguidas"
+          fi
         else
           sp_backup="$sp_backup$prox_id"$'\t'"$(head -1 "$(sem_progresso_arquivo "$prox_id")" 2>/dev/null || true)"$'\n'
           sp="$(sem_progresso_incrementar "$prox_id")"
@@ -518,6 +584,22 @@ drenar() {
     bloqueados=$((bloqueados + 1))
   done 3<<EOF
 $a_bloquear
+EOF
+  # Os bloqueios por adiamentos (7b-3), com a mesma regra: só se a drenagem não
+  # terminou em ambiente. A nota é a causa REAL, a medida do último ADIADO.
+  while IFS=$'\t' read -r bid bfile bsp blim bcausa <&3; do
+    [ -n "$bid" ] || continue
+    n="${bsp%%|*}"
+    ticket_set "$bfile" '.status = "bloqueado" | .notas_status = $n' --arg n "adiado $n vezes: $bcausa"
+    ticket_commit "$bfile" "fila: $bid bloqueado (adiamentos, $n disparos)"
+    event "$bid" BLOQUEADO "motivo=adiamentos" "n=$n" "limite=$blim"
+    status_set "ultimo=$bid BLOQUEADO $(date '+%H:%M:%S') (adiado $n vezes)"
+    adiamentos_zerar "$bid"
+    sem_progresso_zerar "$bid"
+    say "  ADIAMENTOS: $bid bloqueado após $n adiamentos seguidos; causa real: $bcausa"
+    bloqueados=$((bloqueados + 1))
+  done 3<<EOF
+$a_bloquear_ad
 EOF
   dur=$(( ($(date +%s) - t0 + 30) / 60 ))
   say "drenagem encerrada: $drenados aprovado(s) e mergeado(s)"

@@ -34,6 +34,7 @@ const SCRIPTS = [
   // etapa 7b: o executor de verdade num repo de fixture (test-fixture-executor.sh)
   'test-causa-adiamento.sh',
   'test-ambiente-adiado.sh',
+  'test-adiamentos-limite.sh',
 ];
 
 /**
