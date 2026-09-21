@@ -10,6 +10,8 @@
   "max_retries": 2,
   "cooldown_minutes": 60,
   "_cooldown": "Adiamento por limite (rate limit/quota/timeout/orçamento) grava runs/.cooldown-until. NÃO conta como retry; status volta a pendente.",
+  "sem_progresso_limite": 3,
+  "_sem_progresso_limite": "Peça 7a-3 (local-loop.sh:160). Disparos seguidos em que o ticket segue pendente sem cooldown e sem a branch alvo andar, contados em runs/<id>/.sem-progresso. No limite o ticket vai para bloqueado, commitado, com a última causa em notas_status, e a trilha ganha BLOQUEADO motivo=sem_progresso. Adiamento não conta; sair de pendente ou a branch alvo avançar zera. Ausente ou inválida = 3.",
   "migrations_dir": "<ex: supabase/migrations | db/migrations>",
   "worktrees_dir": "../_worktrees",
   "runs_dir": "docs/fila/runs",

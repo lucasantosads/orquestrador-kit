@@ -69,6 +69,7 @@ export const CHAVES_CONFIG: ChaveConfig[] = [
   { chave: 'politica_adiamento.causas_que_adiam', onde: 'decisao.ts:113', obrigatoria: true, nota: 'sem ela nada é adiável: falha de infra viraria reprovação' },
   { chave: 'politica_retry.por_causa', onde: 'decisao.ts:277', obrigatoria: true },
   { chave: 'cooldown_minutes', onde: 'lib.sh:572', obrigatoria: false, nota: 'default 60 no código' },
+  { chave: 'sem_progresso_limite', onde: 'local-loop.sh:160', obrigatoria: false, nota: 'peça 7a-3: disparos seguidos sem progresso até bloquear o ticket; ausente ou inválida = 3 no código' },
   { chave: 'worktrees_prefixo', onde: 'lib.sh:498, decisao.ts:363', obrigatoria: true, nota: 'prefixo diferente por repo é o que impede colisão de worktree' },
   { chave: 'restricao_execucao', onde: 'decisao.ts:71, executor.sh:156', obrigatoria: false, nota: 'inativa quando ausente' },
   { chave: 'sql_pendente_dir', onde: 'enforcement-core.ts:128, executor.sh:359', obrigatoria: false, nota: 'só importa em repo com banco' },

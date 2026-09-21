@@ -115,6 +115,117 @@ run_executor_once() {
   bash "$ORQ_LIB_DIR/executor.sh" "$@"
 }
 
+# --- SEM PROGRESSO PERSISTENTE (peça 7a-3) -----------------------------------
+# A memória da 7a-2 só vale dentro de UMA drenagem: no disparo seguinte o mesmo
+# ticket volta a ser escolhido, aborta de novo, e nada para a repetição. No
+# Comarka isso foi o 440: 19 execuções entre 18/09 e 21/09, todas com attempt
+# vazio. Este contador PERSISTE entre disparos em runs/<id>/.sem-progresso
+# ("N|primeira|ultima") e, no limite, BLOQUEIA o ticket.
+#
+# Conta SÓ a volta em que o ticket segue pendente sem cooldown. Não conta:
+# adiamento (com cooldown, ou com evento ADIADO/nota "adiado" sem cooldown), e
+# a volta em que a branch alvo avançou. Zera quando o ticket sai de pendente e
+# quando a branch alvo avança na vez dele. Limite: `sem_progresso_limite` do
+# config, 3 quando ausente ou inválida.
+#
+# Dois defeitos do disjuntor do Comarka que ficaram de fora de propósito: lá o
+# status muda SEM commit (a árvore fica suja e o preflight do próximo ticket
+# aborta), e a causa é só a última linha com ERRO|fatal|FAIL da saída. Aqui o
+# bloqueio passa pelo `ticket_commit`, e a causa vem do DESFECHO que o executor
+# gravou na trilha, com a saída como reserva.
+sem_progresso_arquivo() { printf '%s/%s/.sem-progresso\n' "$RUNS_BASE" "$1"; }
+sem_progresso_zerar()   { rm -f "$(sem_progresso_arquivo "$1")" 2>/dev/null || true; }
+
+# sem_progresso_incrementar <id> -> imprime "N|primeira|ultima" já gravado.
+sem_progresso_incrementar() {
+  local f n=0 primeira agora linha
+  f="$(sem_progresso_arquivo "$1")"; agora="$(ts)"; primeira="$agora"
+  if [ -f "$f" ]; then
+    linha="$(head -1 "$f" 2>/dev/null || true)"
+    n="${linha%%|*}"; primeira="$(printf '%s' "$linha" | cut -d'|' -f2)"
+    case "$n" in ''|*[!0-9]*) n=0; primeira="$agora" ;; esac
+    [ -n "$primeira" ] || primeira="$agora"
+  fi
+  n=$((n + 1))
+  if escrita_de_teste_permitida "$f"; then
+    mkdir -p "$(dirname "$f")" 2>/dev/null || true
+    printf '%s|%s|%s\n' "$n" "$primeira" "$agora" > "$f" 2>/dev/null || true
+  fi
+  printf '%s|%s|%s\n' "$n" "$primeira" "$agora"
+}
+
+# sem_progresso_limite -> inteiro >= 1; 3 quando a chave falta ou é inválida.
+sem_progresso_limite() {
+  local l
+  l="$(cfg '.sem_progresso_limite // empty' 2>/dev/null || true)"
+  case "$l" in ''|*[!0-9]*|0) l=3 ;; esac
+  printf '%s\n' "$l"
+}
+
+# staging_sha -> o commit da branch alvo agora (vazio se ela não existe). A ref
+# é a mesma em todo worktree do repo; lida no checkout principal.
+staging_sha() { git -C "$MAIN_CHECKOUT" rev-parse -q --verify "refs/heads/$BRANCH_ALVO" 2>/dev/null || true; }
+
+# trilha_linhas -> quantas linhas a trilha tem agora (0 se não existe).
+trilha_linhas() {
+  local n
+  n="$(wc -l < "$EVENTS_FILE" 2>/dev/null | tr -d ' ')" || n=0
+  case "$n" in ''|*[!0-9]*) n=0 ;; esac
+  printf '%s\n' "$n"
+}
+
+# eventos_do_ticket_desde <n> <id> -> as linhas da trilha depois da n-ésima que
+# são DESTE ticket, mais o EXECUTOR_MORREU sem ticket (o executor que morre no
+# preflight ainda não sabe de quem é a vez e grava id "—").
+eventos_do_ticket_desde() {
+  tail -n +"$(( $1 + 1 ))" "$EVENTS_FILE" 2>/dev/null \
+    | awk -v id="$2" '$2 == id || ($2 == "—" && $3 == "EXECUTOR_MORREU")' || true
+}
+
+# foi_adiado <eventos> <nota_antes> <nota_depois> -> 0 se a volta foi adiamento.
+# O sinal principal é o evento ADIADO que o executor grava; a nota nova que
+# começa com "adiado" é reserva, para o caminho que adia sem passar por ele.
+foi_adiado() {
+  printf '%s\n' "$1" | awk '$3 == "ADIADO" { achou = 1 } END { exit achou ? 0 : 1 }' && return 0
+  [ "$3" != "$2" ] || return 1
+  case "$3" in adiado*) return 0 ;; esac
+  return 1
+}
+
+# sem_progresso_causa <eventos> <saida-do-executor> <rc> <nota_antes> <nota_depois>
+# -> UMA linha dizendo por que a volta não progrediu, nesta ordem de preferência:
+#   1. o desfecho na trilha: EXECUTOR_MORREU vira "executor morreu (rc, fase)"
+#      mais a mensagem de erro do executor ([orq ERRO] ou fatal:) quando houver;
+#      qualquer outro evento do ticket entra como está;
+#   2. a nota que o executor escreveu nesta volta (ex.: "recusado: ...");
+#   3. a última linha [orq ERRO] ou fatal: da saída;
+#   4. a última linha com ERRO|fatal|FAIL (a régua do Comarka, só como reserva);
+#   5. "executor saiu rc=N sem desfecho registrado".
+sem_progresso_causa() {
+  local evs="$1" out="$2" rc="$3" nota_antes="$4" nota_depois="$5" ult ev campos erro c='' r f
+  ult="$(printf '%s\n' "$evs" | grep -v '^$' | tail -1 || true)"
+  erro="$(grep -E '^\[orq ERRO\]|^fatal:' "$out" 2>/dev/null | tail -1 | sed 's/^\[orq ERRO\] *//' || true)"
+  if [ -n "$ult" ]; then
+    ev="$(printf '%s' "$ult" | awk '{print $3}')"
+    campos="$(printf '%s' "$ult" | cut -d' ' -f4-)"
+    if [ "$ev" = EXECUTOR_MORREU ]; then
+      r="$(printf ' %s ' "$campos" | sed -n 's/.* rc=\([^ ]*\) .*/\1/p')"
+      f="$(printf ' %s ' "$campos" | sed -n 's/.* fase=\([^ ]*\) .*/\1/p')"
+      c="executor morreu (rc=${r:-?}, fase=${f:-?})${erro:+: $erro}"
+    else
+      c="$ev $campos"
+    fi
+  elif [ -n "$nota_depois" ] && [ "$nota_depois" != "$nota_antes" ]; then
+    c="$nota_depois"
+  elif [ -n "$erro" ]; then
+    c="$erro"
+  else
+    c="$(grep -E 'ERRO|fatal|FAIL' "$out" 2>/dev/null | tail -1 || true)"
+  fi
+  [ -n "$c" ] || c="executor saiu rc=$rc sem desfecho registrado"
+  uma_linha "$(printf '%s' "$c" | tr -d '\r')" 300
+}
+
 # --- DRENAGEM ----------------------------------------------------------------
 drenar() {
   local stwt drenados=0 bloqueados=0 adiados=0 refatiados=0 prox prox_id st t0 dur orc motivo_ocioso=''
@@ -122,6 +233,8 @@ drenar() {
   # MEMÓRIA DA DRENAGEM (peça 7a-2): ids tentados que não avançaram, separados
   # por espaço (bash 3.2: sem array associativo). Só vale dentro desta chamada.
   local tentados='' sem_progresso=0
+  # O que a drenagem lê do executor ALÉM do status (peça 7a-3).
+  local ev_antes sha_antes sha_depois nota_antes nota_depois exe_out exe_rc evs sp n lim causa primeira ultima
   stwt="$(ensure_staging_worktree)"
   t0="$(date +%s)"
   # EXECUTOR_MORREU conta como ticket PROCESSADO (peça 13), e a drenagem não tem
@@ -170,7 +283,14 @@ drenar() {
 
     say "ticket $prox_id ($(pendentes_processaveis) processáveis)"
 
-    run_executor_once --ticket "$prox" && say "  executor rc=0" || say "  executor rc!=0 (não fatal; reavalia a fila)"
+    # Antes da chamada: onde a trilha estava, onde a branch alvo estava e a
+    # nota do ticket. É a régua do que ESTA volta produziu. A saída do executor
+    # vai para o log como sempre (tee) e fica numa cópia para a causa.
+    ev_antes="$(trilha_linhas)"; sha_antes="$(staging_sha)"
+    nota_antes="$(ticket_field "$prox" '.notas_status // ""')"
+    exe_out="$(mktemp 2>/dev/null || echo "${TMPDIR:-/tmp}/orq-executor-saida.$$")"
+    run_executor_once --ticket "$prox" 2>&1 | tee "$exe_out" && exe_rc=0 || exe_rc="${PIPESTATUS[0]}"
+    if [ "$exe_rc" = 0 ]; then say "  executor rc=0"; else say "  executor rc=$exe_rc (não fatal; reavalia a fila)"; fi
 
     st="$(ticket_field "$prox" '.status')"
     if [ "$st" = "aguardando_merge" ]; then
@@ -211,11 +331,48 @@ drenar() {
     # NÃO tentado. Termina: cada volta sem progresso tira um id da seleção, então
     # são no máximo N voltas assim (N = processáveis). O `break` fica no topo do
     # laço, quando `proximo_pendente` não acha mais ninguém fora da memória.
-    if [ "$(ticket_field "$prox" '.status')" = "pendente" ] && ! cooldown_active; then
-      tentados="$tentados$prox_id "
-      sem_progresso=$((sem_progresso + 1))
-      say "  ticket $prox_id segue pendente sem cooldown (sem progresso) — marcado como tentado nesta drenagem; segue para o próximo não tentado"
+    #
+    # Peça 7a-3: a volta sem progresso também SOMA no contador persistente, e
+    # no limite o ticket vai para bloqueado. Saiu de pendente: contador zera.
+    if [ "$(ticket_field "$prox" '.status')" != "pendente" ]; then
+      sem_progresso_zerar "$prox_id"
+    elif ! cooldown_active; then
+      evs="$(eventos_do_ticket_desde "$ev_antes" "$prox_id")"
+      nota_depois="$(ticket_field "$prox" '.notas_status // ""')"
+      sha_depois="$(staging_sha)"
+      if [ -n "$sha_antes" ] && [ "$sha_antes" != "$sha_depois" ]; then
+        # A branch alvo andou na vez dele: algo foi aprovado e mergeado, então
+        # houve progresso. Não entra na memória e o contador zera.
+        say "  $BRANCH_ALVO avançou na vez de $prox_id (${sha_antes:0:8} -> ${sha_depois:0:8}) — conta como progresso; contador zerado"
+        sem_progresso_zerar "$prox_id"
+      elif foi_adiado "$evs" "$nota_antes" "$nota_depois"; then
+        # Adiado sem cooldown: não é defeito do ticket e não conta. Entra na
+        # memória mesmo assim, senão a drenagem o reescolheria em seguida.
+        tentados="$tentados$prox_id "
+        adiados=$((adiados + 1))
+        say "  ticket $prox_id adiado sem cooldown — não conta como sem progresso; segue para o próximo não tentado"
+      else
+        causa="$(sem_progresso_causa "$evs" "$exe_out" "$exe_rc" "$nota_antes" "$nota_depois")"
+        sp="$(sem_progresso_incrementar "$prox_id")"
+        n="${sp%%|*}"; lim="$(sem_progresso_limite)"
+        if [ "$n" -ge "$lim" ]; then
+          primeira="$(printf '%s' "$sp" | cut -d'|' -f2)"; ultima="${sp##*|}"
+          ticket_set "$prox" '.status = "bloqueado" | .notas_status = $n' \
+            --arg n "sem_progresso: $n disparos sem progresso entre $primeira e $ultima; última causa: $causa"
+          ticket_commit "$prox" "fila: $prox_id bloqueado (sem_progresso, $n disparos)"
+          event "$prox_id" BLOQUEADO "motivo=sem_progresso" "n=$n" "limite=$lim"
+          status_set "ultimo=$prox_id BLOQUEADO $(date '+%H:%M:%S') (sem progresso em $n disparos)"
+          sem_progresso_zerar "$prox_id"
+          say "  SEM PROGRESSO: $prox_id bloqueado após $n disparos ($primeira .. $ultima); última causa: $causa"
+          bloqueados=$((bloqueados + 1))
+        else
+          tentados="$tentados$prox_id "
+          sem_progresso=$((sem_progresso + 1))
+          say "  ticket $prox_id segue pendente sem cooldown (sem progresso $n/$lim) — marcado como tentado nesta drenagem; segue para o próximo não tentado. Causa: $causa"
+        fi
+      fi
     fi
+    rm -f "$exe_out"
   done
   dur=$(( ($(date +%s) - t0 + 30) / 60 ))
   say "drenagem encerrada: $drenados aprovado(s) e mergeado(s)"
