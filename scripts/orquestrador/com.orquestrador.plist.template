@@ -64,8 +64,11 @@
   <key>StartInterval</key>
   <integer>{{START_INTERVAL}}</integer>
 
+  <!-- RunAtLoad true (peca 7b-7, porte do 5791209 do Actus): com false, o
+       bootstrap de cada instalacao carrega o job e nao dispara nada, e o
+       primeiro tick so vem um StartInterval inteiro depois. -->
   <key>RunAtLoad</key>
-  <false/>
+  <true/>
 
   <key>StandardOutPath</key>
   <string>{{CHECKOUT}}/docs/fila/runs/launchd-agent.log</string>
