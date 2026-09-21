@@ -21,7 +21,15 @@ import { spawnSync } from 'node:child_process';
 import { criarFixture, bashNoFixture, ler, REPO_ROOT, checkoutReal } from './fixtures/orq-harness.js';
 
 const ORQ_DIR = join(REPO_ROOT, 'scripts', 'orquestrador');
-const SCRIPTS = ['test-drenagem.sh', 'test-preflight.sh', 'test-retry-worktree.sh'];
+const SCRIPTS = [
+  'test-drenagem.sh',
+  'test-preflight.sh',
+  'test-retry-worktree.sh',
+  // etapa 7a: os três montam fila e config num mktemp -d (test-fixture-drenagem.sh)
+  'test-drenagem-sem-progresso.sh',
+  'test-sem-progresso-limite.sh',
+  'test-ocioso.sh',
+];
 
 /**
  * O checkout PRINCIPAL — o dono da trilha de "produção" deste teste — é o repo

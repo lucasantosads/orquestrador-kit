@@ -12,6 +12,12 @@
 #   test-drenagem.sh      copia $CHECKOUT_REAL/docs/fila/000-config.json (linhas 25 e 29)
 #   test-retry-worktree.sh  idem (linhas 32 e 36)
 #
+# Mais os três da etapa 7a, que já nascem com fixture própria (fila e config em
+# heredoc num mktemp -d, via test-fixture-drenagem.sh) e não leem o checkout:
+#   test-drenagem-sem-progresso.sh  a drenagem pula o ticket que não avança (7a-2)
+#   test-sem-progresso-limite.sh    contador persistente que bloqueia no limite (7a-3)
+#   test-ocioso.sh                  o evento OCIOSO diz por que cada pendente não roda (7a-4)
+#
 # Cada um monta o PRÓPRIO `ORQ_EXEC_ROOT` num `mktemp -d` (drenagem e retry) ou
 # trabalha direto no checkout (lib-config); nada aqui precisa exportar
 # `ORQ_EXEC_ROOT` por fora — fazer isso sobrescreveria o isolamento que cada
@@ -26,7 +32,7 @@
 set -uo pipefail
 
 KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPTS='test-lib-config.sh test-drenagem.sh test-retry-worktree.sh'
+SCRIPTS='test-lib-config.sh test-drenagem.sh test-retry-worktree.sh test-drenagem-sem-progresso.sh test-sem-progresso-limite.sh test-ocioso.sh'
 
 FX="$(bash "$KIT/scripts/kit/fixture.sh")" || {
   printf 'ERRO: fixture.sh falhou — nada foi rodado\n' >&2; exit 2
