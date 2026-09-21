@@ -226,13 +226,70 @@ sem_progresso_causa() {
   uma_linha "$(printf '%s' "$c" | tr -d '\r')" 300
 }
 
+# --- OCIOSO QUE DIZ POR QUÊ (peça 7a-4) --------------------------------------
+# O CI ficou 12 dias parado com 4 pendentes presos atrás de dependências
+# bloqueadas, e a única coisa escrita, a cada disparo, era "sem ticket
+# processável". A pergunta que alguém faz nessa hora é "por que cada um não
+# roda?", e a resposta estava no disco o tempo todo. Agora ela vai para a
+# trilha (evento OCIOSO) e para o STATUS.
+#
+# ocioso_razoes <tentados> <adiados> -> "<id> <razao>" por pendente, uma linha
+# cada; rc 1 (saída descartável) se algum pendente for processável agora.
+# Razão, nesta ordem de precedência:
+#   a de `razao_nao_processavel` (dependência, liberação, adiado_ate) — é a
+#     razão ESTRUTURAL e vence as outras, que passam sozinhas;
+#   sem_progresso / adiado — pulado nesta drenagem (memória da 7a-2);
+#   cooldown:<HH:MM> — liberado, mas o cooldown global ainda vale.
+ocioso_razoes() {
+  local f id r tent=" ${1:-} " adi=" ${2:-} " ate=''
+  cooldown_active && ate="$(cooldown_ate)"
+  for f in $(ticket_files); do
+    [ "$(ticket_field "$f" '.status')" = pendente ] || continue
+    id="$(ticket_field "$f" '.id')"
+    r="$(razao_nao_processavel "$f" 2>/dev/null || true)"
+    if [ -z "$r" ]; then
+      case "$adi" in *" $id "*) r=adiado ;; esac
+    fi
+    if [ -z "$r" ]; then
+      case "$tent" in *" $id "*) r=sem_progresso ;; esac
+    fi
+    if [ -z "$r" ] && cooldown_active; then r="cooldown:${ate:-?}"; fi
+    [ -n "$r" ] || return 1
+    printf '%s %s\n' "$id" "$r"
+  done
+  return 0
+}
+
+# ocioso_legivel <linhas de ocioso_razoes> -> a mesma coisa para humano, numa
+# linha: "244 espera 241b (bloqueado) · 231 sem liberação humano:x". Corta em
+# 6 e diz quantos ficaram de fora: o STATUS é para ler de relance.
+ocioso_legivel() {
+  printf '%s\n' "$1" | awk '
+    NF < 2 { next }
+    {
+      id = $1; r = $2; t = ""
+      if (r ~ /^dependencia:/) {
+        sub(/^dependencia:/, "", r); n = split(r, p, ":")
+        t = id " espera " p[1] " (" p[n] ")"
+      } else if (r ~ /^liberacao:/)  { sub(/^liberacao:/, "", r);  t = id " sem liberação " r }
+      else if (r ~ /^adiado_ate:/)   { sub(/^adiado_ate:/, "", r); t = id " adiado até " r }
+      else if (r ~ /^cooldown:/)     { sub(/^cooldown:/, "", r);   t = id " em cooldown até " r }
+      else if (r == "sem_progresso") { t = id " sem progresso" }
+      else if (r == "adiado")        { t = id " adiado" }
+      else                           { t = id " " r }
+      n_ok++
+      if (n_ok <= 6) out = out (out == "" ? "" : " · ") t
+    }
+    END { if (n_ok > 6) out = out " · e mais " (n_ok - 6); printf "%s", out }'
+}
+
 # --- DRENAGEM ----------------------------------------------------------------
 drenar() {
   local stwt drenados=0 bloqueados=0 adiados=0 refatiados=0 prox prox_id st t0 dur orc motivo_ocioso=''
   local mortos_antes mortos processados
   # MEMÓRIA DA DRENAGEM (peça 7a-2): ids tentados que não avançaram, separados
   # por espaço (bash 3.2: sem array associativo). Só vale dentro desta chamada.
-  local tentados='' sem_progresso=0
+  local tentados='' sem_progresso=0 adiados_sc='' razoes motivo_status campos id r
   # O que a drenagem lê do executor ALÉM do status (peça 7a-3).
   local ev_antes sha_antes sha_depois nota_antes nota_depois exe_out exe_rc evs sp n lim causa primeira ultima
   stwt="$(ensure_staging_worktree)"
@@ -349,6 +406,7 @@ drenar() {
         # Adiado sem cooldown: não é defeito do ticket e não conta. Entra na
         # memória mesmo assim, senão a drenagem o reescolheria em seguida.
         tentados="$tentados$prox_id "
+        adiados_sc="$adiados_sc$prox_id "
         adiados=$((adiados + 1))
         say "  ticket $prox_id adiado sem cooldown — não conta como sem progresso; segue para o próximo não tentado"
       else
@@ -376,9 +434,25 @@ drenar() {
   done
   dur=$(( ($(date +%s) - t0 + 30) / 60 ))
   say "drenagem encerrada: $drenados aprovado(s) e mergeado(s)"
+  # OCIOSO (peça 7a-4): a drenagem acabou sem processável e há pendente. UM
+  # evento por drenagem, com a razão de cada pendente — uma linha, como toda a
+  # trilha. Pausa não entra: é a palavra do humano, e quem pausou já sabe.
+  motivo_status="${motivo_ocioso:-drenagem encerrada}"
+  if [ "$motivo_ocioso" != pausado ] && razoes="$(ocioso_razoes "$tentados" "$adiados_sc")" && [ -n "$razoes" ]; then
+    campos=''; n=0
+    while read -r id r; do
+      [ -n "$id" ] || continue
+      campos="$campos $id=$r"; n=$((n + 1))
+    done <<EOF
+$razoes
+EOF
+    event '---' OCIOSO "pendentes=$n" "${campos# }"
+    motivo_status="$motivo_status: $(ocioso_legivel "$razoes")"
+    say "ocioso: $(ocioso_legivel "$razoes")"
+  fi
   event '---' DRENAGEM_FIM "aprovados=$drenados" "bloqueados=$bloqueados" "adiados=$adiados" \
     "refatiar=$refatiados" "sem_progresso=$sem_progresso" "dur=${dur}min"
-  status_set "estado=ocioso" "fase=—" "ticket=—" "motivo=${motivo_ocioso:-drenagem encerrada}"
+  status_set "estado=ocioso" "fase=—" "ticket=—" "motivo=$motivo_status"
 
   # PEÇA 13: notifica só quando houve o que notificar. A decisão (e a memória do
   # "fila vazia já avisada") mora no lib.sh; aqui só se conta o que aconteceu.

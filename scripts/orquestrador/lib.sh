@@ -524,31 +524,55 @@ liberacao_ok() {
   return 1
 }
 
-# deps_resolvidas <arquivo> -> 0 se o ticket está LIBERADO para rodar agora:
-# dependências satisfeitas E nenhum adiamento com data ainda vigente.
-deps_resolvidas() {
+# razao_nao_processavel <arquivo> -> vazio se o ticket está LIBERADO para rodar
+# agora; senão UMA razão curta, sem espaço, grepável:
+#   adiado_ate:<AAAA-MM-DD>          adiamento por orçamento ainda vigente
+#   liberacao:<token-inteiro>        dependência humana sem liberação
+#   dependencia:<id>:<status>        dependência que não está done
+#   dependencia:<id>:inexistente     dependência que não existe na fila
+# É a MESMA régua do `deps_resolvidas` (que a usa), para que "por que não
+# roda?" (evento OCIOSO, peça 7a-4) e "roda ou não roda?" nunca divirjam. Para
+# na primeira razão, na ordem das `dependencias` do ticket.
+razao_nao_processavel() {
   local file="$1" dep tf st ate
   # adiado_ate no futuro (adiamento por orçamento) = não processável hoje. Fica
   # aqui, e não em proximo_pendente, porque quem seleciona ticket são DOIS
   # lugares (executor e drenagem) e os dois já passam por esta função.
   ate="$(ticket_field "$file" '.adiado_ate // empty' 2>/dev/null || true)"
   if [ -n "$ate" ] && [[ "$ate" > "$(hoje)" ]]; then
-    log "  adiado até $ate: $(ticket_field "$file" '.id')"
-    return 1
+    printf 'adiado_ate:%s\n' "$ate"; return 0
   fi
   while IFS= read -r dep; do
     [ -z "$dep" ] && continue
     if [[ "$dep" == humano:* ]]; then
       # Token INTEIRO, com prefixo: é a forma que liberacoes.json guarda.
-      liberacao_ok "$dep" || { log "  dep pendente: $dep (sem liberação humana)"; return 1; }
+      liberacao_ok "$dep" || { printf 'liberacao:%s\n' "$dep"; return 0; }
     else
       tf="$(ticket_file_by_id "$dep")"
-      [ -n "$tf" ] || { log "  dep inexistente: $dep"; return 1; }
+      [ -n "$tf" ] || { printf 'dependencia:%s:inexistente\n' "$dep"; return 0; }
       st="$(ticket_field "$tf" '.status')"
-      [ "$st" = "done" ] || { log "  dep não-done: $dep (status=$st)"; return 1; }
+      [ "$st" = "done" ] || { printf 'dependencia:%s:%s\n' "$dep" "$st"; return 0; }
     fi
   done < <(ticket_field "$file" '.dependencias[]?')
   return 0
+}
+
+# deps_resolvidas <arquivo> -> 0 se o ticket está LIBERADO para rodar agora:
+# dependências satisfeitas E nenhum adiamento com data ainda vigente. A decisão
+# é a de `razao_nao_processavel`; aqui só se loga a razão.
+deps_resolvidas() {
+  local file="$1" r dep
+  r="$(razao_nao_processavel "$file")"
+  [ -n "$r" ] || return 0
+  case "$r" in
+    adiado_ate:*) log "  adiado até ${r#adiado_ate:}: $(ticket_field "$file" '.id')" ;;
+    liberacao:*)  log "  dep pendente: ${r#liberacao:} (sem liberação humana)" ;;
+    dependencia:*:inexistente)
+      dep="${r#dependencia:}"; log "  dep inexistente: ${dep%:*}" ;;
+    dependencia:*)
+      dep="${r#dependencia:}"; log "  dep não-done: ${dep%:*} (status=${dep##*:})" ;;
+  esac
+  return 1
 }
 
 # proximo_pendente [ids] -> caminho do primeiro ticket pendente com deps
@@ -687,6 +711,15 @@ cooldown_active() {
   case "$until" in ''|*[!0-9]*) return 1 ;; esac
   now="$(date +%s 2>/dev/null || echo 0)"
   [ "$now" -lt "$until" ]
+}
+
+# cooldown_ate -> a hora (HH:MM, relógio local) em que o cooldown expira; vazio
+# se não há cooldown legível. `date -r` é o do macOS, `date -d @` o do GNU.
+cooldown_ate() {
+  local until
+  until="$(cat "$COOLDOWN_FILE" 2>/dev/null || true)"
+  case "$until" in ''|*[!0-9]*) return 0 ;; esac
+  date -r "$until" '+%H:%M' 2>/dev/null || date -d "@$until" '+%H:%M' 2>/dev/null || true
 }
 
 # cooldown_remaining_min -> minutos (arredondados p/ cima) até o cooldown expirar.

@@ -187,8 +187,29 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `DECISAO_PENDENTE` | `lib.sh:744` | `origem=` |
 | `ANOTACAO` | `lib.sh:274` | `nota=` |
 | `PREVOO_NOGO` | `local-loop.sh:prevoo_ou_sai` | `item=cat.0\|cat.1\|cat.6` |
+| `OCIOSO` | `local-loop.sh:drenar` (peça 7a-4) | `pendentes=` e um `<id>=<razão>` por pendente; ver abaixo |
 
 `motivo=` é sempre token curto e estável (grepável), nunca frase.
+
+**`OCIOSO`** (peça 7a-4) sai UMA vez por drenagem, logo antes do
+`DRENAGEM_FIM`, quando ela termina sem nenhum pendente processável e há ao menos
+um pendente. Não sai em pausa (quem pausou já sabe) nem com a fila sem
+pendente. Uma linha só, como todo evento; cada pendente vira um campo
+`<id>=<razão>`, e a razão é, nesta precedência:
+
+```
+--- OCIOSO pendentes=3 231=liberacao:humano:migration-0031 232=dependencia:231:pendente 244=dependencia:241b:bloqueado
+```
+
+- `dependencia:<id>:<status>` (ou `:inexistente`), `liberacao:<token>` e
+  `adiado_ate:<AAAA-MM-DD>` vêm de `razao_nao_processavel` (`lib.sh`), a mesma
+  régua do `deps_resolvidas`: "por que não roda" e "roda ou não roda" não
+  divergem. A razão estrutural vence as de baixo, que passam sozinhas;
+- `sem_progresso` / `adiado`: liberado, mas pulado nesta drenagem (peça 7a-2);
+- `cooldown:<HH:MM>`: liberado, mas o cooldown global vale até essa hora.
+
+O `MOTIVO` do STATUS repete a razão em texto (`244 espera 241b (bloqueado) ·
+231 sem liberação humano:migration-0031`), cortado em 6 com "e mais N".
 
 ### 4.2 A linha `GATE`
 
