@@ -17,6 +17,7 @@
 #   test-drenagem-sem-progresso.sh  a drenagem pula o ticket que não avança (7a-2)
 #   test-sem-progresso-limite.sh    contador persistente que bloqueia no limite (7a-3)
 #   test-ocioso.sh                  o evento OCIOSO diz por que cada pendente não roda (7a-4)
+#   test-rc-executor.sh             o rc do executor atravessa o tee da drenagem (7a-7)
 #
 # Cada um monta o PRÓPRIO `ORQ_EXEC_ROOT` num `mktemp -d` (drenagem e retry) ou
 # trabalha direto no checkout (lib-config); nada aqui precisa exportar
@@ -32,7 +33,7 @@
 set -uo pipefail
 
 KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPTS='test-lib-config.sh test-drenagem.sh test-retry-worktree.sh test-drenagem-sem-progresso.sh test-sem-progresso-limite.sh test-ocioso.sh'
+SCRIPTS='test-lib-config.sh test-drenagem.sh test-retry-worktree.sh test-drenagem-sem-progresso.sh test-sem-progresso-limite.sh test-ocioso.sh test-rc-executor.sh'
 
 FX="$(bash "$KIT/scripts/kit/fixture.sh")" || {
   printf 'ERRO: fixture.sh falhou — nada foi rodado\n' >&2; exit 2

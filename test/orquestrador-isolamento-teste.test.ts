@@ -29,6 +29,7 @@ const SCRIPTS = [
   'test-drenagem-sem-progresso.sh',
   'test-sem-progresso-limite.sh',
   'test-ocioso.sh',
+  'test-rc-executor.sh',
 ];
 
 /**
