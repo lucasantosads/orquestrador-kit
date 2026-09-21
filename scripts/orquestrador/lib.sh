@@ -551,11 +551,22 @@ deps_resolvidas() {
   return 0
 }
 
-# proximo_pendente -> caminho do primeiro ticket pendente com deps resolvidas.
+# proximo_pendente [ids] -> caminho do primeiro ticket pendente com deps
+# resolvidas, PULANDO os ids da lista (separados por espaço).
+#
+# A lista é a memória de UMA drenagem (peça 7a-2): o ticket que já foi tentado
+# nesta drenagem e não avançou fica de fora da seleção, para que a drenagem siga
+# para o próximo em vez de reescolhê-lo para sempre. String e não array: o
+# motor roda no bash 3.2 do macOS, sem array associativo. Sem argumento, o
+# comportamento é o de sempre — é assim que o executor a chama.
 proximo_pendente() {
-  local f
+  local f id pular=" ${1:-} "
   for f in $(ticket_files); do
     [ "$(ticket_field "$f" '.status')" = "pendente" ] || continue
+    if [ -n "${1:-}" ]; then
+      id="$(ticket_field "$f" '.id')"
+      case "$pular" in *" $id "*) continue ;; esac
+    fi
     if deps_resolvidas "$f"; then echo "$f"; return 0; fi
   done
   return 0

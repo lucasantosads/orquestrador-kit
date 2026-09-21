@@ -119,6 +119,9 @@ run_executor_once() {
 drenar() {
   local stwt drenados=0 bloqueados=0 adiados=0 refatiados=0 prox prox_id st t0 dur orc motivo_ocioso=''
   local mortos_antes mortos processados
+  # MEMÓRIA DA DRENAGEM (peça 7a-2): ids tentados que não avançaram, separados
+  # por espaço (bash 3.2: sem array associativo). Só vale dentro desta chamada.
+  local tentados='' sem_progresso=0
   stwt="$(ensure_staging_worktree)"
   t0="$(date +%s)"
   # EXECUTOR_MORREU conta como ticket PROCESSADO (peça 13), e a drenagem não tem
@@ -138,11 +141,17 @@ drenar() {
       motivo_ocioso="cooldown ~$(cooldown_remaining_min)min"; break
     fi
 
-    prox="$(proximo_pendente)"
-    [ -n "$prox" ] || {
-      say "fila sem ticket processável — encerrando (aprovados: $drenados)"
-      motivo_ocioso="$MOTIVO_FILA_VAZIA"; break
-    }
+    prox="$(proximo_pendente "$tentados")"
+    if [ -z "$prox" ]; then
+      if [ -n "$tentados" ]; then
+        say "nenhum processável não tentado — encerrando (aprovados: $drenados; sem progresso: ${tentados% })"
+        motivo_ocioso="sem progresso em ${tentados% }"
+      else
+        say "fila sem ticket processável — encerrando (aprovados: $drenados)"
+        motivo_ocioso="$MOTIVO_FILA_VAZIA"
+      fi
+      break
+    fi
     prox_id="$(ticket_field "$prox" '.id')"
 
     # GATE DE ORÇAMENTO (regra 17), antes de gastar processo com o executor.
@@ -194,23 +203,31 @@ drenar() {
       adiados=$((adiados + 1))
     fi
 
-    # Anti-loop: se o ticket segue pendente sem cooldown, nada progrediu.
+    # Anti-loop (peça 7a-2): o ticket que segue pendente sem cooldown não
+    # progrediu. Até a 7a-2 isso encerrava a drenagem INTEIRA — um ticket que
+    # aborta antes do agente travava a fila toda, a cada disparo, e os outros
+    # pendentes nunca eram tocados (no Comarka, o 315a deixou 32 parados a noite
+    # toda). Agora ele entra na memória da drenagem e ela segue para o próximo
+    # NÃO tentado. Termina: cada volta sem progresso tira um id da seleção, então
+    # são no máximo N voltas assim (N = processáveis). O `break` fica no topo do
+    # laço, quando `proximo_pendente` não acha mais ninguém fora da memória.
     if [ "$(ticket_field "$prox" '.status')" = "pendente" ] && ! cooldown_active; then
-      say "  ticket $prox_id segue pendente sem cooldown (sem progresso) — encerrando"
-      motivo_ocioso="sem progresso em $prox_id"; break
+      tentados="$tentados$prox_id "
+      sem_progresso=$((sem_progresso + 1))
+      say "  ticket $prox_id segue pendente sem cooldown (sem progresso) — marcado como tentado nesta drenagem; segue para o próximo não tentado"
     fi
   done
   dur=$(( ($(date +%s) - t0 + 30) / 60 ))
   say "drenagem encerrada: $drenados aprovado(s) e mergeado(s)"
   event '---' DRENAGEM_FIM "aprovados=$drenados" "bloqueados=$bloqueados" "adiados=$adiados" \
-    "refatiar=$refatiados" "dur=${dur}min"
+    "refatiar=$refatiados" "sem_progresso=$sem_progresso" "dur=${dur}min"
   status_set "estado=ocioso" "fase=—" "ticket=—" "motivo=${motivo_ocioso:-drenagem encerrada}"
 
   # PEÇA 13: notifica só quando houve o que notificar. A decisão (e a memória do
   # "fila vazia já avisada") mora no lib.sh; aqui só se conta o que aconteceu.
   mortos=$(( $(contar_eventos EXECUTOR_MORREU) - mortos_antes ))
   [ "$mortos" -ge 0 ] || mortos=0
-  processados=$(( drenados + bloqueados + adiados + refatiados + mortos ))
+  processados=$(( drenados + bloqueados + adiados + refatiados + sem_progresso + mortos ))
   if deve_notificar "$processados" "$motivo_ocioso"; then
     notificar_fim "$drenados" "$bloqueados" "$adiados" "$dur"
   else
