@@ -988,6 +988,39 @@ deve_notificar() {
   return 0
 }
 
+# --- PEÇA 7b-5: AMBIENTE avisa na transição, e só nela -----------------------
+# Desde a 7a-8 a drenagem que termina em AMBIENTE conta os adiados como
+# processados, e a regra 1 acima notificava toda drenagem assim: com o ambiente
+# quebrado, um cartão por disparo. A regra agora é a da fila vazia, com memória
+# em disco: avisa quando ENTRA, cala enquanto continua, avisa uma vez quando SAI.
+NOTIF_AMBIENTE_FILE="$RUNS_BASE/.notificacao-ambiente"
+
+# transicao_ambiente <motivo_ocioso> [causa] -> imprime o que a drenagem faz:
+#   entrou  terminou em ambiente e não estava: avisa (e grava a causa)
+#   calado  terminou em ambiente e já estava: silêncio
+#   saiu    não terminou em ambiente e estava: um aviso de saída (e apaga)
+#   (vazio) nada a ver com ambiente: segue a regra de sempre (deve_notificar)
+# Pausa não conta como saída: quem pausou já sabe, e o ambiente pode seguir
+# quebrado atrás da pausa.
+transicao_ambiente() {
+  local motivo="${1:-}" causa="${2:-}"
+  if [ "$motivo" = ambiente ]; then
+    if [ -e "$NOTIF_AMBIENTE_FILE" ]; then echo calado; return 0; fi
+    mkdir -p "$RUNS_BASE" 2>/dev/null || true
+    printf '%s\n' "$causa" > "$NOTIF_AMBIENTE_FILE" 2>/dev/null || true
+    echo entrou; return 0
+  fi
+  [ "$motivo" != pausado ] || return 0
+  if [ -e "$NOTIF_AMBIENTE_FILE" ]; then
+    rm -f "$NOTIF_AMBIENTE_FILE" 2>/dev/null || true
+    echo saiu
+  fi
+  return 0
+}
+
+# causa_ambiente_avisada -> a causa gravada na entrada (para o aviso de saída).
+causa_ambiente_avisada() { head -1 "$NOTIF_AMBIENTE_FILE" 2>/dev/null || true; }
+
 # notificar <titulo> <corpo> — a ENTREGA, sem nenhuma regra de quando notificar.
 #
 # Extraída do `notificar_fim` na peça K11a-2, sem mudar um byte do que ela faz:

@@ -630,11 +630,33 @@ EOF
   mortos=$(( $(contar_eventos EXECUTOR_MORREU) - mortos_antes ))
   [ "$mortos" -ge 0 ] || mortos=0
   processados=$(( drenados + bloqueados + adiados + refatiados + sem_progresso + mortos ))
-  if deve_notificar "$processados" "$motivo_ocioso"; then
-    notificar_fim "$drenados" "$bloqueados" "$adiados" "$dur"
-  else
-    say "notificação: nada a notificar (0 processados, motivo '${motivo_ocioso:-—}') — silêncio"
-  fi
+  # Peça 7b-5: AMBIENTE avisa na entrada e na saída, e cala no meio. A causa da
+  # entrada é lida ANTES da transição, que apaga a memória na saída.
+  local causa_avisada trans
+  causa_avisada="$(causa_ambiente_avisada)"
+  trans="$(transicao_ambiente "$motivo_ocioso" "$ambiente_causa")"
+  case "$trans" in
+    entrou)
+      notificar "Orquestrador: AMBIENTE, a fila parou" \
+        "a mesma causa em dois tickets não é do ticket: $ambiente_causa. Nada somou nem bloqueou; avisa de novo quando sair."
+      ;;
+    calado)
+      say "notificação: drenagem ainda em AMBIENTE, já avisado — silêncio" ;;
+    saiu)
+      # Um aviso só, e ele carrega o placar: a drenagem que tirou a fila do
+      # ambiente não manda também o cartão de fim. A memória da fila vazia é
+      # mantida pela mesma chamada de sempre, sem notificar por ela.
+      deve_notificar "$processados" "$motivo_ocioso" >/dev/null 2>&1 || true
+      notificar "Orquestrador: ambiente normalizado, $drenados aprovados, $bloqueados bloqueados" \
+        "saiu de AMBIENTE (${causa_avisada:-causa não registrada}) · duração ${dur}min · adiados $adiados"
+      ;;
+    *)
+      if deve_notificar "$processados" "$motivo_ocioso"; then
+        notificar_fim "$drenados" "$bloqueados" "$adiados" "$dur"
+      else
+        say "notificação: nada a notificar (0 processados, motivo '${motivo_ocioso:-—}') — silêncio"
+      fi ;;
+  esac
 }
 
 cleanup_frente() {
