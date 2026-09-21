@@ -217,12 +217,39 @@ describe('retry — cap e fronteira MANTÊM modelo, qualidade ESCALA', () => {
     expect(p.acao).toBe(cfg.politica_retry.por_causa.diff_cap?.acao);
   });
 
-  it('POSITIVO: reprovação por qualidade escala para retry_final_model', () => {
-    const v = decidirDesfecho(cfg, sinal({ criteriosFalhos: ['avaliador: X'] }));
+  // Peça 7b-4: o caso "reprovação por qualidade escala" virou três. ESCALAR em
+  // politica_retry vale só para sub=juiz; critério e gate vermelhos repetem com
+  // o mesmo modelo. A força é a mesma: modelo, escalou e estreitarEscopo
+  // afirmados nos três.
+  it('POSITIVO: juiz reprovando (sub=juiz) escala para retry_final_model', () => {
+    const v = decidirDesfecho(cfg, sinal({ criteriosFalhos: ['juiz: X'], juizReprovou: true }));
+    expect(v.sub).toBe('juiz');
     const p = decidirRetry(cfg, v, 0, MODELO);
     expect(p.deveTentar).toBe(true);
     expect(p.modelo).toBe(cfg.retry_final_model);
     expect(p.escalou).toBe(true);
+    expect(p.estreitarEscopo).toBe(false);
+  });
+
+  it('NEGATIVO: critério vermelho (sub=criterio) repete com o MESMO modelo', () => {
+    const v = decidirDesfecho(cfg, sinal({ criteriosFalhos: ['avaliador: X'] }));
+    expect(v.sub).toBe('criterio');
+    const p = decidirRetry(cfg, v, 0, MODELO);
+    expect(p.deveTentar).toBe(true);
+    expect(p.modelo).toBe(MODELO);
+    expect(p.escalou).toBe(false);
+    expect(p.estreitarEscopo).toBe(false);
+  });
+
+  it('NEGATIVO: gate vermelho (sub=gate_<papel>) repete com o MESMO modelo', () => {
+    const gates = 'ok   typecheck 10ms\nFALHA test 900ms — exit 1\nVEREDITO: REPROVADO\n\n--- recorte de test ---\n FAIL  a.test.ts\n Tests  1 failed | 2 passed (3)\n';
+    const v = decidirDesfecho(cfg, sinal({ criteriosFalhos: ['gates reprovados'], gatesRc: 1, gatesSaida: gates, gatePapelFalho: 'testes' }));
+    expect(v.desfecho).toBe('reprovado');
+    expect(v.sub).toBe('gate_testes');
+    const p = decidirRetry(cfg, v, 0, MODELO);
+    expect(p.deveTentar).toBe(true);
+    expect(p.modelo).toBe(MODELO);
+    expect(p.escalou).toBe(false);
     expect(p.estreitarEscopo).toBe(false);
   });
 

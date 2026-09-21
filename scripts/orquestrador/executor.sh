@@ -894,7 +894,7 @@ run_attempt() {
   elif [ "$JUIZ_ROU" = 1 ] && [ "$JUIZ_APROVADO" = false ]; then
     sinal="$(printf '%s' "$sinal" | jq --arg m "juiz: $JUIZ_MOTIVO" \
       --argjson jf "$(jq -c '.criterios_falhos // []' "$rundir/juiz.veredito.json" 2>/dev/null || echo '[]')" \
-      '.criteriosFalhos += ([$m] + $jf)')"
+      '.criteriosFalhos += ([$m] + $jf) | .juizReprovou = true')"
   fi
   veredito="$(printf '%s' "$sinal" | decisao desfecho)"
   RESULT="$(printf '%s' "$veredito" | jq -r '.desfecho')"
@@ -1016,7 +1016,7 @@ drive_ticket() {
   # sobrou de uma rodada anterior — attempt-N antigos, worktree órfã — não pode
   # virar ponto de partida nem destino de escrita. Reaproveitar worktree é
   # decisão TOMADA DENTRO deste laço, entre um retry e o seguinte, e só ali.
-  local reusar=0 base_ticket="" slot
+  local reusar=0 base_ticket="" slot attempt0 sub
   id="$(ticket_field "$file" '.id')"
   slug="$(ticket_field "$file" '.slug')"
 
@@ -1035,7 +1035,14 @@ drive_ticket() {
   modelo="$(cfg '.executor_model')"
   TICKET_EM_CURSO="$id"
   slot="$(slot_base_attempt "$id")"
-  log "ticket $id ($slug) · worktree $nome · modelo $modelo · evidência a partir de attempt-$slot"
+  # TENTATIVAS PERSISTIDAS (peça 7b-4, porte do f3aaa89 do Actus). O contador
+  # vinha de `attempt=0` a cada chamada, então max_retries valia POR DRENAGEM:
+  # reprovou, adiou, voltou no disparo seguinte = max_retries de novo. O 481 do
+  # Actus acumulou 18 diretórios de tentativa assim. Agora ele sai do campo
+  # `tentativas` do ticket; `attempt0` separa as duas numerações (o contador de
+  # retry, persistido, e o diretório de evidência, pelo slot contínuo).
+  attempt="$(ticket_tentativas "$file")"; attempt0="$attempt"
+  log "ticket $id ($slug) · worktree $nome · modelo $modelo · evidência a partir de attempt-$slot · tentativas já consumidas: $attempt/$((CFG_MAX_RETRIES + 1))"
   [ "$slot" = 0 ] || log "  runs/$id já tem $slot tentativa(s) de rodada anterior — a numeração continua, nada é sobrescrito"
 
   while :; do
@@ -1054,11 +1061,11 @@ drive_ticket() {
     # O diretório é nomeado pelo SLOT (contínuo por ticket), não pelo contador de
     # retry (que reinicia a cada drenagem). Sem isso o requeue sobrescreve a
     # evidência da rodada anterior — foi o que aconteceu com runs/227.
-    rundir="$RUNS_BASE/$id/attempt-$((slot + attempt))"
+    rundir="$RUNS_BASE/$id/attempt-$((slot + attempt - attempt0))"
     mkdir -p "$rundir"
     if [ "$reusar" = 1 ] && [ -e "$wt/.git" ]; then
-      log "  worktree REAPROVEITADA de attempt-$((attempt - 1)) (enforcement passou): commit anterior presente, base $(printf '%.8s' "$base_ticket")"
-      event "$id" WORKTREE "modo=reaproveitada" "de=attempt-$((attempt - 1))" "base=$(printf '%.8s' "$base_ticket")"
+      log "  worktree REAPROVEITADA de attempt-$((slot + attempt - attempt0 - 1)) (enforcement passou): commit anterior presente, base $(printf '%.8s' "$base_ticket")"
+      event "$id" WORKTREE "modo=reaproveitada" "de=attempt-$((slot + attempt - attempt0 - 1))" "base=$(printf '%.8s' "$base_ticket")"
       limpa_cache_vite
     else
       setup_worktree "$id" "$wt"
@@ -1066,8 +1073,15 @@ drive_ticket() {
     fi
     event "$id" INICIO "attempt=$((attempt + 1))" "model=$modelo"
     status_ticket_inicio "$id" "$slug" "$attempt" "$CFG_MAX_RETRIES"
+    # CONSOME a tentativa ANTES de rodar: se o processo morrer no meio, ela já
+    # está contada no ticket e o órfão não volta com o contador zerado.
+    ticket_set_tentativas "$file" "$((attempt + 1))"
+    ticket_commit "$file" "fila: $id tentativa $((attempt + 1))"
     run_attempt "$file" "$wt" "$rundir" "$modelo" "${MOTIVO_ANTERIOR:-}" "$attempt" "$base_ticket"
     grava_meta "$rundir" "$attempt" "$modelo"
+    # Só REPROVAÇÃO consome. Adiado, aprovado e refatiar devolvem o valor de
+    # antes; o commit de cada desfecho abaixo leva a devolução junto.
+    [ "$RESULT" = "reprovado" ] || ticket_set_tentativas "$file" "$attempt"
     local tok; tok="$(motivo_token "$(cat "$rundir/veredito.json" 2>/dev/null || echo '{}')")"
 
     if [ "$RESULT" = "adiado" ]; then
@@ -1094,7 +1108,22 @@ drive_ticket() {
       marca_refatiar "$file" "$rundir" "$tok"
       DESFECHO_NOMEADO=1; cleanup_worktree "$id" "$wt"; return 0
     fi
-    event "$id" REPROVADO "motivo=$tok" "attempt=$((attempt + 1))" "diff=$DIFF_LINES"
+    # SUB-MOTIVO (peça 7b-4): qual mérito reprovou. É ele que decide se o retry
+    # escala (só juiz) e é com ele que se reconhece a repetição.
+    sub="$(jq -r '.sub // "exit"' "$rundir/veredito.json" 2>/dev/null || echo exit)"
+    # CORTE DE REPETIÇÃO (peça 7b-4): a 2ª reprovação do ticket com o MESMO sub
+    # e o MESMO diff da anterior bloqueia na hora, sem 3ª volta. A anterior é
+    # lida da trilha, e pode ser de outra drenagem (o 461 do Actus: 717, 717, 717).
+    if awk -v id="$id" '$2 == id' "$EVENTS_FILE" 2>/dev/null | decisao repeticao "$sub" "$DIFF_LINES" >/dev/null 2>&1; then
+      event "$id" REPROVADO "motivo=$tok" "sub=$sub" "attempt=$((attempt + 1))" "diff=$DIFF_LINES"
+      ticket_set_status "$file" "bloqueado"
+      ticket_set_nota "$file" "repetição: 2ª reprovação igual à anterior (sub=$sub, diff=$DIFF_LINES), sem 3ª volta. $MOTIVO"
+      ticket_commit "$file" "fila: $id bloqueado (repeticao)"
+      event "$id" BLOQUEADO "motivo=repeticao" "sub=$sub" "diff=$DIFF_LINES" "attempt=$((attempt + 1))"
+      status_set "estado=ocioso" "ultimo=$id BLOQUEADO $(date '+%H:%M:%S') (${DUR}s)" "motivo=bloqueado: repeticao ($sub, diff $DIFF_LINES)"
+      DESFECHO_NOMEADO=1; log "BLOQUEADO por repetição: sub=$sub diff=$DIFF_LINES igual à reprovação anterior"; cleanup_worktree "$id" "$wt"; return 0
+    fi
+    event "$id" REPROVADO "motivo=$tok" "sub=$sub" "attempt=$((attempt + 1))" "diff=$DIFF_LINES"
 
     plano="$(printf '%s' "$(cat "$rundir/veredito.json")" | decisao retry "$attempt" "$modelo")"
     if [ "$(printf '%s' "$plano" | jq -r '.deveTentar')" != true ]; then
@@ -1114,7 +1143,7 @@ drive_ticket() {
     # e false, e o `set -e` mata o loop de retry sem log nenhum (attempt unico).
     MOTIVO_ANTERIOR="$(diagnostico_retry "$file" "$rundir")$( { [ "$(printf '%s' "$plano" | jq -r '.estreitarEscopo')" = true ] && printf '\n%s' "$(printf '%s' "$plano" | jq -r '.acao')"; } || true)"
     log "retry $((attempt + 1)): modelo=$modelo escalou=$(printf '%s' "$plano" | jq -r '.escalou')"
-    event "$id" RETRY "attempt=$((attempt + 2))" "model=$modelo" "motivo=$tok" \
+    event "$id" RETRY "attempt=$((attempt + 2))" "model=$modelo" "motivo=$tok" "sub=$sub" \
       "worktree=$([ "$ENF_OK" = 1 ] && echo reaproveitada || echo nova)"
     attempt=$((attempt + 1))
     # A worktree só sobrevive ao retry quando o enforcement aprovou o diff dela.

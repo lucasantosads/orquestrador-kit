@@ -182,6 +182,24 @@ ticket_set() {
 ticket_set_status() { ticket_set "$1" '.status = $s' --arg s "$2"; }
 ticket_set_nota()   { ticket_set "$1" '.notas_status = $v' --arg v "$2"; }
 
+# --- TENTATIVAS PERSISTIDAS (peça 7b-4, porte do f3aaa89 do Actus) ------------
+# `tentativas` no ticket é a FONTE DA VERDADE do contador de retry: quantas
+# tentativas este ticket já consumiu, somando todas as drenagens. O drive_ticket
+# lê no início, grava attempt+1 ANTES de rodar a tentativa (crash no meio conta)
+# e devolve o valor anterior quando o desfecho não é reprovação (adiado,
+# aprovado, refatiar não consomem). Zera na transição para done (local-loop.sh)
+# e quando um humano reabre o ticket. Ausente ou não numérico = 0 (ticket
+# antigo). É o nome do schema (`tentativas_consumidas` é o v1, e o
+# migrar-tickets renomeia).
+ticket_tentativas() {
+  local n
+  n="$(ticket_field "$1" '.tentativas // 0' 2>/dev/null || echo 0)"
+  case "$n" in ''|*[!0-9]*) n=0 ;; esac
+  echo "$n"
+}
+ticket_set_tentativas()  { ticket_set "$1" '.tentativas = ($n | tonumber)' --arg n "$2"; }
+ticket_zera_tentativas() { ticket_set_tentativas "$1" 0; }
+
 # ticket_commit <arquivo> <mensagem>
 # Commita a mudança de status/nota do ticket no MAIN_CHECKOUT imediatamente
 # apos escreve-la. Sem isso a arvore fica suja entre disparos e o preflight

@@ -217,9 +217,10 @@ describe('morte inesperada do executor deixa rastro (peça 0c, item 3)', () => {
     // sétimo é o trap de sinal (peça 12), que marca para o trap de EXIT não
     // registrar a mesma morte duas vezes: uma morte, um registro. O oitavo é a
     // recusa de preflight (peça 7b-2), que virou ADIADO motivo=preflight em vez
-    // de EXECUTOR_MORREU.
+    // de EXECUTOR_MORREU. O nono é o bloqueio por repetição (peça 7b-4).
     const n = (exec.match(/DESFECHO_NOMEADO=1/g) ?? []).length;
-    expect(n).toBe(8);
+    expect(n).toBe(9);
+    expect(exec).toMatch(/event "\$id" BLOQUEADO "motivo=repeticao"[\s\S]{0,300}DESFECHO_NOMEADO=1/);
     expect(/trap_sinal\(\) \{[\s\S]*?\n\}/.exec(exec)![0]).toContain('DESFECHO_NOMEADO=1');
     expect(/preflight_ou_adia\(\) \{[\s\S]*?\n\}/.exec(exec)![0]).toContain('DESFECHO_NOMEADO=1');
   });

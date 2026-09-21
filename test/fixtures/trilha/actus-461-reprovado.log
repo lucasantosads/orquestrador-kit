@@ -1,0 +1,4 @@
+2026-09-15T11:46:34-0300 461 INICIO attempt=1 model=sonnet
+2026-09-15T11:52:56-0300 461 PERMISSAO_NEGADA n=3 cmds=ls -la node_modules | ls -la node_modules 2>&1 | head -3 | ls -la node_modules 2>&1 | head -3; echo "---"; git status
+2026-09-15T11:53:34-0300 461 GATE typecheck=ok testes=ok enforcement=ok criterios=3/4 build=ok
+2026-09-15T11:53:34-0300 461 REPROVADO motivo=criterio_qualidade attempt=1 diff=717

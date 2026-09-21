@@ -35,6 +35,7 @@ const SCRIPTS = [
   'test-causa-adiamento.sh',
   'test-ambiente-adiado.sh',
   'test-adiamentos-limite.sh',
+  'test-reprovado-sub.sh',
 ];
 
 /**

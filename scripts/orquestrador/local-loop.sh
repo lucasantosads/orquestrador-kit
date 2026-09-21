@@ -454,6 +454,7 @@ drenar() {
       status_set "fase=merge"
       if merge_em_alvo "$prox_id" "$stwt"; then
         ticket_set_status "$prox" done
+        ticket_zera_tentativas "$prox"
         ticket_set_nota "$prox" "mergeado em $BRANCH_ALVO pela drenagem"
         ticket_commit "$prox" "fila: $prox_id done (mergeado em $BRANCH_ALVO)"
         event "$prox_id" MERGE "alvo=$BRANCH_ALVO" "sha=$(git -C "$stwt" rev-parse --short HEAD 2>/dev/null || echo '?')"

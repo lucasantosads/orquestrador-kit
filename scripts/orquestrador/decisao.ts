@@ -173,6 +173,13 @@ export interface SinalTentativa {
   duracaoSecs?: number
   timeoutSecs?: number
   /**
+   * Peça 7b-4 · o juiz rodou e REPROVOU. Campo próprio porque é o único
+   * sub-motivo que escala modelo: as linhas do juiz continuam entrando em
+   * `criteriosFalhos` (para o motivo e o diagnóstico), mas quem decide o sub é
+   * este campo, não o texto.
+   */
+  juizReprovou?: boolean
+  /**
    * true quando o juiz (passo 7) NÃO produziu veredito legível — resposta
    * ilegível, ou a chamada do juiz caiu em limite/timeout. Nos dois casos não
    * houve julgamento do TRABALHO, e reprovar por isso queimaria retry de um
@@ -303,6 +310,23 @@ export interface Veredito {
   contaComoRetry: boolean
   /** Peça 7b-2: o adiamento arma cooldown? Só para limite remoto (`armaCooldown`). */
   cooldown?: boolean
+  /**
+   * Peça 7b-4 · QUAL mérito reprovou: `juiz`, `criterio`, `gate_<papel>` ou
+   * `exit`. Só no reprovado. `criterio_qualidade` era o balde de tudo ("162 de
+   * 162" no Actus) e tudo escalava; o sub é o que separa capacidade de ambiente.
+   */
+  sub?: string
+}
+
+/**
+ * O sub-motivo de uma reprovação de mérito, na ordem em que o pipeline para:
+ * gate (fail-fast), juiz (só roda com o mecânico verde), critério, exit.
+ */
+export function subDoSinal(sinal: SinalTentativa): string {
+  if (sinal.gatesRc) return `gate_${sinal.gatePapelFalho || 'desconhecido'}`
+  if (sinal.juizReprovou) return 'juiz'
+  if (sinal.criteriosFalhos && sinal.criteriosFalhos.length > 0) return 'criterio'
+  return 'exit'
 }
 
 /**
@@ -362,10 +386,11 @@ export function decidirDesfecho(config: DecisaoConfig, sinal: SinalTentativa): V
       motivo: `critério(s) reprovado(s): ${sinal.criteriosFalhos.join('; ')}`,
       contaComoRetry: true,
       cooldown: false,
+      sub: subDoSinal(sinal),
     }
   }
   if (sinal.exitCode !== 0) {
-    return { desfecho: 'reprovado', causa: 'criterio_qualidade', motivo: `exit ${sinal.exitCode}`, contaComoRetry: true, cooldown: false }
+    return { desfecho: 'reprovado', causa: 'criterio_qualidade', motivo: `exit ${sinal.exitCode}`, contaComoRetry: true, cooldown: false, sub: subDoSinal(sinal) }
   }
   return { desfecho: 'aprovado', motivo: 'gates e critérios verdes', contaComoRetry: false, cooldown: false }
 }
@@ -428,6 +453,21 @@ export function decidirRetry(
       `config inválida: escalar modelo por ${causa} é proibido (falha de ${causa === 'diff_cap' ? 'tamanho' : 'fronteira'}, não de capacidade)`,
     )
   }
+  // Peça 7b-4 · ESCALAR vale só para sub=juiz: é o único mérito em que um
+  // modelo mais forte é hipótese (o juiz leu o diff e achou o trabalho fraco).
+  // Critério vermelho, gate vermelho e exit repetem com o MESMO modelo: o que
+  // costuma estar errado ali é critério mal escrito, gate quebrado ou ambiente,
+  // e opus paga o mesmo muro mais caro (82 de 82 retries do kit foram opus).
+  if (regra.modelo === 'ESCALAR' && veredito.sub !== 'juiz') {
+    return {
+      deveTentar: true,
+      modelo: modeloAtual,
+      escalou: false,
+      estreitarEscopo: false,
+      acao: 'repetir com o mesmo modelo e o diagnóstico da reprovação',
+      motivo: `${causa} sub=${veredito.sub ?? '?'}: mantém modelo (só o juiz escala)`,
+    }
+  }
   if (regra.modelo === 'ESCALAR') {
     return {
       deveTentar: true,
@@ -447,6 +487,61 @@ export function decidirRetry(
     acao: regra.acao,
     motivo: `${causa}: mantém modelo e estreita escopo`,
   }
+}
+
+// ─── 3b · corte de repetição (peça 7b-4) ───────────────────────────────────
+
+/**
+ * O sub de uma linha REPROVADO da trilha. Linha nova traz `sub=`; linha de antes
+ * da 7b-4 não traz, e o sub é DERIVADO das linhas da mesma tentativa que vieram
+ * antes dela (desde o INICIO): GATE com um papel `=falha` vira `gate_<papel>`,
+ * JUIZ reprovado vira `juiz`, critérios abaixo do total viram `criterio`, e o
+ * resto é `exit`. É o "sub normalizado": o mesmo nome, venha de onde vier.
+ */
+export function subDaLinha(linhas: string[], i: number): string {
+  const m = / sub=(\S+)/.exec(linhas[i] ?? '')
+  if (m) return m[1]!
+  let gate = ''
+  let juiz = false
+  let criterio = false
+  for (let j = i - 1; j >= 0; j--) {
+    const l = linhas[j]!
+    const ev = l.split(' ')[2]
+    if (ev === 'INICIO') break
+    if (ev === 'GATE') {
+      const f = /\b(typecheck|testes|build|lint)=falha\b/.exec(l)
+      if (f) gate = f[1]!
+      const c = /\bcriterios=(\d+)\/(\d+)\b/.exec(l)
+      if (c && Number(c[1]) < Number(c[2])) criterio = true
+    }
+    if (ev === 'JUIZ' && / veredito=reprovado\b/.test(l)) juiz = true
+  }
+  if (gate) return `gate_${gate}`
+  if (juiz) return 'juiz'
+  if (criterio) return 'criterio'
+  return 'exit'
+}
+
+/**
+ * A reprovação ATUAL (sub, diff) repete a anterior do mesmo ticket? `linhas` são
+ * as linhas da trilha DESTE ticket, antes de a atual ser escrita. A anterior é a
+ * última REPROVADO, desde que nada tenha encerrado a série entre as duas
+ * (APROVADO, MERGE, BLOQUEADO, REFATIAR, RECUPERADO: o ticket saiu de pendente,
+ * e reabrir é decisão de humano). ADIADO no meio não quebra a série.
+ *
+ * Mesmo sub e mesmo `diff=` = o agente entregou o mesmo trabalho e o mesmo
+ * juízo o reprovou: a 3ª volta é gasto sem hipótese. O 461 do Actus foi 717,
+ * 717, 717, duas delas em opus.
+ */
+export function ehRepeticao(linhas: string[], sub: string, diff: number): boolean {
+  for (let i = linhas.length - 1; i >= 0; i--) {
+    const ev = (linhas[i] ?? '').split(' ')[2]
+    if (ev === 'APROVADO' || ev === 'MERGE' || ev === 'BLOQUEADO' || ev === 'REFATIAR' || ev === 'RECUPERADO') return false
+    if (ev !== 'REPROVADO') continue
+    const d = / diff=(\d+)\b/.exec(linhas[i]!)
+    return !!d && Number(d[1]) === diff && subDaLinha(linhas, i) === sub
+  }
+  return false
 }
 
 // ─── 4 · registro do meta.json ─────────────────────────────────────────────

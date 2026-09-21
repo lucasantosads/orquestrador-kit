@@ -14,8 +14,10 @@
 #
 # Uso, de dentro de um teste:
 #   source "$AQUI/test-fixture-executor.sh"
-#   fxe_novo                      # monta $FXE/repo e imprime nada
-#   fxe_claude 429                # o que o `claude` falso faz na próxima chamada
+#   fxe_novo                      # monta $FXE/repo e imprime nada (ticket $FXE_ID, 901 por padrão)
+#   fxe_claude 429                # o que o `claude` falso faz em toda chamada do agente
+#   fxe_fila linhas:5 503 ...     # ou um modo por chamada, em ordem (o último se repete)
+#   fxe_criterio falhou           # o que o critério do ticket imprime (espera "ok")
 #   fxe_gate typecheck 'exit 0'   # corpo do script do gate
 #   fxe_roda                      # roda executor.sh --ticket 901; saída em $FXE/saida, rc em $FXE_RC
 #   fxe_status / fxe_nota / fxe_eventos / fxe_cooldown
@@ -34,6 +36,7 @@ FXE_NM="$(cd "$FXE_AQUI/../.." && pwd)/node_modules"
 # filtro opcional ajusta o config do caso (ex.: '.max_retries = 0').
 fxe_novo() {
   local filtro="${1:-.}" r
+  FXE_ID="${FXE_ID:-901}"
   FXE="$(mktemp -d)"
   r="$FXE/repo"
   mkdir -p "$r/docs/fila/runs" "$r/src" "$FXE/bin" "$FXE/gates" "$FXE/_worktrees"
@@ -83,16 +86,17 @@ JSON
     && mv "$r/docs/fila/000-config.json.tmp" "$r/docs/fila/000-config.json"
   echo '{"$schema_versao": 2, "tokens": []}' > "$r/docs/fila/liberacoes.json"
   printf '| data | origem | alvo | pergunta | visto |\n|---|---|---|---|---|\n' > "$r/docs/fila/decisoes-pendentes.md"
-  cat > "$r/docs/fila/901-t.md" <<'TICKET'
-# 901
+  echo ok > "$FXE/criterio"
+  cat > "$r/docs/fila/$FXE_ID-t.md" <<TICKET
+# $FXE_ID
 
-```json
-{"id": "901", "slug": "t-901", "status": "pendente", "origem": "humano",
+\`\`\`json
+{"id": "$FXE_ID", "slug": "t-$FXE_ID", "status": "pendente", "origem": "humano",
  "objetivo": "escrever src/a.ts", "pathspec_allowlist": ["src/a.ts"], "dependencias": [],
  "criterios_aceite": [
-   {"tipo": "alvo", "descricao": "o arquivo existe", "cmd": "test -f src/a.ts && echo ok", "espera": "ok"}],
+   {"tipo": "alvo", "descricao": "o arquivo existe", "cmd": "test -f src/a.ts && cat $FXE/criterio", "espera": "ok"}],
  "notas_status": ""}
-```
+\`\`\`
 TICKET
   printf 'export const base = 0\n' > "$r/src/base.ts"
   mkdir -p "$r/scripts/orquestrador"
@@ -114,14 +118,31 @@ TICKET
 case " \$* " in *" --max-turns 1 "*) cat "$FXE/juiz-saida" 2>/dev/null; exit 0 ;; esac
 modelo=\$(printf '%s\n' "\$@" | awk 'p { print; exit } \$0 == "--model" { p = 1 }')
 echo "agente model=\$modelo" >> "$FXE/chamadas"
-case "\$(cat "$FXE/claude-modo" 2>/dev/null || echo ok)" in
+# Fila de modos: um por chamada, o último se repete. Sem fila, o modo fixo.
+if [ -s "$FXE/claude-fila" ]; then
+  modo="\$(head -1 "$FXE/claude-fila")"
+  [ "\$(wc -l < "$FXE/claude-fila")" -gt 1 ] && { tail -n +2 "$FXE/claude-fila" > "$FXE/claude-fila.t"; mv "$FXE/claude-fila.t" "$FXE/claude-fila"; }
+else
+  modo="\$(cat "$FXE/claude-modo" 2>/dev/null || echo ok)"
+fi
+case "\$modo" in
   sleep) sleep 30 ;;
   429) echo '{"type":"result","is_error":true,"result":"API Error: Request rejected (429) · rate_limit_error"}'; exit 1 ;;
   503) echo '{"type":"result","is_error":true,"result":"API Error: 503 Service Unavailable · overloaded_error"}'; exit 1 ;;
   rc124) exit 124 ;;
   ok) printf 'export const a = 1\n' > src/a.ts
-      git add src/a.ts && git commit -qm "a" -m "Orq-Ticket: 901"
+      git add src/a.ts && git commit -qm "a" -m "Orq-Ticket: $FXE_ID"
       echo '{"type":"result","result":"feito","total_cost_usd":0}' ;;
+  linhas:*|negado:*)
+      # N linhas em src/a.ts (sobrescreve: com worktree reaproveitada, o diff
+      # contra a base é N). negado: o envelope traz permission_denials.
+      n="\${modo#*:}"; : > src/a.ts
+      i=0; while [ "\$i" -lt "\$n" ]; do echo "export const l\$i = \$i"; i=\$((i + 1)); done > src/a.ts
+      git add src/a.ts && git commit -qm "a" -m "Orq-Ticket: $FXE_ID"
+      case "\$modo" in
+        negado:*) echo '{"type":"result","result":"feito","total_cost_usd":0,"permission_denials":[{"tool_name":"Bash","tool_input":{"command":"ls -la node_modules"}}]}' ;;
+        *)        echo '{"type":"result","result":"feito","total_cost_usd":0}' ;;
+      esac ;;
 esac
 STUB
   chmod +x "$FXE/bin/claude"
@@ -129,7 +150,9 @@ STUB
   echo ok > "$FXE/claude-modo"
 }
 
-fxe_claude() { printf '%s\n' "$1" > "$FXE/claude-modo"; }
+fxe_claude() { printf '%s\n' "$1" > "$FXE/claude-modo"; rm -f "$FXE/claude-fila"; }
+fxe_fila()   { printf '%s\n' "$@" > "$FXE/claude-fila"; }
+fxe_criterio() { printf '%s\n' "$1" > "$FXE/criterio"; }
 fxe_gate()   { printf '%s\n' "$2" > "$FXE/gates/$1.sh"; }
 fxe_juiz()   { printf '%s\n' "$1" > "$FXE/juiz-saida"; }
 
@@ -139,14 +162,14 @@ fxe_juiz()   { printf '%s\n' "$1" > "$FXE/juiz-saida"; }
 fxe_roda() {
   FXE_RC=0
   ( cd "$FXE/repo" && ORQ_TESTE=1 ORQ_EXEC_ROOT="$FXE/repo" PATH="$FXE/bin:$PATH" \
-      bash "$FXE/repo/scripts/orquestrador/executor.sh" --ticket "$FXE/repo/docs/fila/901-t.md" ) > "$FXE/saida" 2>&1 || FXE_RC=$?
+      bash "$FXE/repo/scripts/orquestrador/executor.sh" --ticket "$FXE/repo/docs/fila/$FXE_ID-t.md" ) >> "$FXE/saida" 2>&1 || FXE_RC=$?
   return 0
 }
 
-fxe_campo()    { awk '/^```json$/{f=1;next} f&&/^```$/{exit} f' "$FXE/repo/docs/fila/901-t.md" | jq -r "$1"; }
+fxe_campo()    { awk '/^```json$/{f=1;next} f&&/^```$/{exit} f' "$FXE/repo/docs/fila/$FXE_ID-t.md" | jq -r "$1"; }
 fxe_status()   { fxe_campo '.status'; }
 fxe_nota()     { fxe_campo '.notas_status // ""'; }
 fxe_eventos()  { cat "$FXE/repo/docs/fila/runs/events.log" 2>/dev/null || true; }
 fxe_cooldown() { [ -f "$FXE/repo/docs/fila/runs/.cooldown-until" ]; }
-fxe_tentativas() { ls -d "$FXE/repo/docs/fila/runs/901"/attempt-* 2>/dev/null | wc -l | tr -d ' '; }
+fxe_tentativas() { ls -d "$FXE/repo/docs/fila/runs/$FXE_ID"/attempt-* 2>/dev/null | wc -l | tr -d ' '; }
 fxe_limpa()    { [ -n "${FXE:-}" ] && rm -rf "$FXE"; return 0; }

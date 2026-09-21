@@ -494,6 +494,15 @@ e **não** na tabela de chaves novas do `--migrar` (`config-tabela.ts:NOVAS`): u
 repo instalado segue com o padrão do código sem que a migração mude o proposto
 dele.
 
+**`politica_retry.por_causa.<causa>.modelo = "ESCALAR"` vale só para
+`sub=juiz`** (peça 7b-4). O REPROVADO carrega o sub-motivo (`juiz`, `criterio`,
+`gate_<papel>`, `exit`; §4.1), e `decidirRetry` (`decisao.ts`) só troca para
+`retry_final_model` quando quem reprovou foi o juiz. Critério vermelho, gate
+vermelho e exit repetem com o MESMO modelo, qualquer que seja o config: nos 30
+dias até 21/09, 82 de 82 retries do kit foram para opus porque tudo caía em
+`criterio_qualidade`. `MANTER` segue como sempre, e a proibição de escalar por
+`diff_cap` e `enforcement` segue rejeitando o config que mandar o contrário.
+
 **`000-config.proposto.json` é NOME RESERVADO do instalador.** É onde o
 `migrar-config.ts --propor` escreve e de onde o `--aplicar` lê. Desde a peça M1
 o `--propor` **RECUSA** (rc 1) se o arquivo já existir, e o `instalar.sh

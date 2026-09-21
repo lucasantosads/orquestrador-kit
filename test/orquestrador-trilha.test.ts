@@ -170,8 +170,12 @@ describe('trilha e STATUS contam a primeira tentativa como 1', () => {
   // attempt-0 e destruiu o prompt e a saída da tentativa que o juiz reprovou.
   // Agora o diretório é nomeado por um SLOT contínuo lido do disco, e é o campo
   // `dir` do meta.json que amarra contador a diretório.
+  // Peça 7b-4: o contador de retry passou a ser PERSISTIDO no ticket (começa em
+  // `attempt0`, não em 0), e o diretório desconta o ponto de partida para
+  // continuar nomeado só pelo slot contínuo desta rodada.
   it('o DIRETÓRIO é nomeado pelo slot contínuo, nunca pelo contador de retry', () => {
-    expect(exec).toContain('rundir="$RUNS_BASE/$id/attempt-$((slot + attempt))"');
+    expect(exec).toContain('rundir="$RUNS_BASE/$id/attempt-$((slot + attempt - attempt0))"');
+    expect(exec).toContain('attempt="$(ticket_tentativas "$file")"; attempt0="$attempt"');
     expect(exec).not.toContain('rundir="$RUNS_BASE/$id/attempt-$attempt"');
     expect(exec).toMatch(/slot_base_attempt\(\) \{/);
   });

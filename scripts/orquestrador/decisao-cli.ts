@@ -8,6 +8,7 @@
  *   desfecho                  -> stdin = SinalTentativa; imprime Veredito
  *   retry <tentativa> <modelo>-> stdin = Veredito; imprime PlanoRetry
  *   meta                      -> stdin = entrada; imprime RegistroMeta
+ *   repeticao <sub> <diff>    -> stdin = linhas da trilha do ticket; exit 0 = repete a anterior (7b-4)
  *   disallowed                -> o piso de --disallowedTools do config (T17)
  */
 import { readFileSync } from 'node:fs'
@@ -16,6 +17,7 @@ import {
   decidirDesfecho,
   decidirRetry,
   registroMeta,
+  ehRepeticao,
   nomeWorktree,
   prefixoDeWorktree,
   modeloIndefinido,
@@ -72,6 +74,14 @@ switch (sub) {
     // declarou `proibicoes_absolutas.tools` — e aí o executor não passa a flag,
     // que é o comportamento de sempre.
     process.stdout.write(pisoDoConfig(config).join(','))
+    break
+  }
+  case 'repeticao': {
+    // Peça 7b-4. exit 0 = a reprovação atual repete a anterior (mesmo sub, mesmo
+    // diff); 1 = não repete. As linhas chegam cruas por stdin, já filtradas
+    // pelo id do ticket.
+    const linhas = readFileSync(0, 'utf8').split('\n').filter((l) => l.trim() !== '')
+    process.exit(ehRepeticao(linhas, args[0] ?? '', Number(args[1] ?? NaN)) ? 0 : 1)
     break
   }
   case 'worktree': {
