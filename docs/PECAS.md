@@ -692,6 +692,56 @@
   *O que o CI faz diferente:* NADA — nenhuma linha de motor mudou. O config do CI segue com
   `false` e o `fixture/` do kit com `true`: dois repos, dois valores, um comportamento.
 
+- **7a-1 · `test-drenagem.sh` com fixture própria** (`f6cd542`). Fila e config nascem em
+  heredoc dentro de `mktemp -d`; nada é copiado de `docs/fila` do checkout. O checkout real
+  segue lido para uma coisa só, a prova de que a branch protegida não se move.
+  *Evidência:* `~/orq-sessoes/revisao-comarka-vs-kit.md` §3 item 1; rodado na raiz do kit (que
+  não tem `docs/fila`) o `cp` do config falhava e o script saía rc 2, então o assert "seguiu
+  para o próximo ticket" nunca tinha rodado fora de um fixture vendorizado.
+  *Teste:* o próprio script, rc 0 na raiz do kit; o assert passou a afirmar as duas chamadas
+  ao executor, na ordem da fila, em vez de só a ausência da frase "sem progresso".
+
+- **7a-2 · a drenagem pula o ticket que não avança** (`05b2898`). O ticket que segue
+  `pendente` sem cooldown entra na memória da drenagem (string separada por espaço, bash
+  3.2), `proximo_pendente "<ids>"` passa a pulá-lo, e o `break` só acontece quando não resta
+  processável fora da memória. `DRENAGEM_FIM` ganha `sem_progresso=`, que também entra em
+  `processados`; o motivo ocioso lista todos os pulados. O executor não reescolhe: recebe
+  `--ticket` (`executor.sh:1193`).
+  *Evidência:* revisão §2 linha G1 e §3 item 2; `local-loop.sh:197-201` encerrava a drenagem
+  INTEIRA no primeiro ticket sem progresso.
+  *Teste:* `scripts/orquestrador/test-drenagem-sem-progresso.sh` (porte do Comarka): 901 e
+  902 abortam antes do agente, 903 é saudável. 3 chamadas numa drenagem e o 903 vira `done`;
+  **antes, 1 chamada**.
+
+- **7a-3 · contador persistente de sem-progresso** (`6e458e1`). `runs/<id>/.sem-progresso`
+  soma entre disparos; no limite (`sem_progresso_limite`, padrão 3) o ticket vai para
+  `bloqueado` pelo `ticket_commit`, com `notas_status` citando a última causa, e a trilha
+  ganha `BLOQUEADO motivo=sem_progresso n= limite=`. Adiamento não conta; sair de `pendente`
+  ou a branch alvo avançar zera. A causa vem do desfecho do executor na trilha
+  (`EXECUTOR_MORREU` mais a linha `[orq ERRO]`/`fatal:`), e só como reserva da linha com
+  `ERRO|fatal|FAIL`: os dois defeitos do disjuntor do Comarka (status sem commit, causa pela
+  última linha) ficaram de fora. A chave está em `config-chaves.ts` e no formulário v2, e
+  não em `NOVAS`: o `--migrar` não muda o proposto de quem já está instalado.
+  *Evidência:* revisão §3 item 2 e §5 peça 2; Comarka 440 com 19 execuções vazias.
+  *Teste:* `scripts/orquestrador/test-sem-progresso-limite.sh`, casos 1 a 4 do
+  `test-disjuntor.sh` do Comarka portados ao `drenar()` do kit (bloqueia no 3º disparo e
+  COMMITA; adiamento com e sem cooldown não conta; staging que avança zera; limite do config,
+  inválido cai em 3). **Antes, nunca bloqueava.**
+
+- **7a-4 · ocioso que diz por quê** (`3a62c5e`). Quando a drenagem termina sem processável
+  e há pendente, UM evento `OCIOSO pendentes=N` com um `<id>=<razão>` por pendente
+  (`dependencia:<id>:<status>`, `liberacao:<token>`, `adiado_ate:<data>`, `sem_progresso`,
+  `adiado`, `cooldown:<HH:MM>`), e o `MOTIVO` do STATUS diz o mesmo em texto. A razão
+  estrutural sai de `razao_nao_processavel`, que o `deps_resolvidas` passou a usar: "por que
+  não roda" e "roda ou não roda" são a mesma régua. Pausa e fila sem pendente não gravam.
+  *Evidência:* `~/orq-sessoes/ci-processaveis-21-09.txt`, o CI 12 dias parado com 4
+  pendentes e só "sem ticket processável". Rodado sobre uma CÓPIA da fila do CI:
+  `232 espera 231 (bloqueado) · 236 espera 231 (bloqueado) · 243 espera 242 (bloqueado) ·
+  244 espera 242 (bloqueado)`.
+  *Teste:* `scripts/orquestrador/test-ocioso.sh`, com 244 atrás de 241b bloqueado e 232 atrás
+  de 231 pendente (sem liberação), mais sem-progresso, cooldown e os fins que não gravam.
+  **Antes, só "sem ticket processável".**
+
 
 ## PENDENTES
 

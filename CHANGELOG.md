@@ -598,3 +598,35 @@ Medido no Actus de novo (mesmo comando, só leitura, árvore em 21 linhas de `gi
 6b —, e **uma linha nova** na previsão de recusa, a do tsx, com `pnpm add -D tsx@^4.19.0`
 escolhido pelo `pnpm-lock.yaml` de lá. Relatório:
 `~/orq-sessoes/relatorio-kit-etapa6c.md`.
+
+### Etapa 7a · drenagem que não para e diz por quê
+
+Quatro peças de motor, quatro commits, saídas da revisão Comarka x kit
+(`~/orq-sessoes/revisao-comarka-vs-kit.md`, linha G1 e itens 1 e 2). O gatilho foi o CI: 12
+dias parado com 4 pendentes presos atrás de dependências bloqueadas, e a trilha dizendo só
+"sem ticket processável" a cada disparo.
+
+- **7a-1** `f6cd542`: `test-drenagem.sh` monta fila e config em heredoc num `mktemp -d`.
+  Na raiz do kit ele saía rc 2 no `cp` do config, e o assert "seguiu para o próximo" nunca
+  tinha rodado; agora sai rc 0 e afirma as duas chamadas ao executor.
+- **7a-2** `05b2898`: o ticket que não avança entra na memória da drenagem e ela segue para
+  o próximo não tentado, em vez de encerrar. `DRENAGEM_FIM` ganha `sem_progresso=`. Porte do
+  `test-drenagem-sem-progresso.sh` do Comarka: 3 chamadas numa drenagem (antes, 1).
+- **7a-3** `6e458e1`: `runs/<id>/.sem-progresso` persiste entre disparos e, no limite
+  (`sem_progresso_limite`, padrão 3), bloqueia o ticket COMMITADO, com a última causa
+  tirada do desfecho do executor e `BLOQUEADO motivo=sem_progresso` na trilha. Adiamento não
+  conta, staging que avança zera. Casos 1 a 4 do `test-disjuntor.sh` do Comarka portados
+  (antes, nunca bloqueava).
+- **7a-4** `3a62c5e`: evento `OCIOSO pendentes=N` com a razão de cada pendente, e a mesma
+  razão no `MOTIVO` do STATUS. `razao_nao_processavel` é a régua única, usada também pelo
+  `deps_resolvidas`.
+
+Os testes novos (`test-drenagem-sem-progresso.sh`, `test-sem-progresso-limite.sh`,
+`test-ocioso.sh`) e o molde `test-fixture-drenagem.sh` rodam no bash 3.2 do macOS. Eles
+ainda NÃO estão na lista do `scripts/kit/test-shell.sh`, que ficou fora do escopo desta
+etapa (7b).
+
+O que o CI faz diferente: a primeira drenagem depois da instalação grava um `OCIOSO` com
+os 4 pendentes (medido sobre uma cópia da fila, com o `git status` do CI em 0 linhas antes e
+depois), e um ticket que abortar antes do agente para de segurar a fila e, no terceiro
+disparo, vai para `bloqueado`. Relatório: `~/orq-sessoes/relatorio-kit-etapa7a.md`.

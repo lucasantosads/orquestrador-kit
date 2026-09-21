@@ -71,6 +71,7 @@ se ela sujar a árvore, o preflight do run SEGUINTE morre.
 | `custo.json` | ledger de custo (§5); caminho vem de `cfg .orcamento.custo_file` |
 | `<id>/meta.json` | array de tentativas daquele ticket (§5.2) |
 | `<id>/attempt-N/` | evidência de UMA tentativa (§5.3) |
+| `<id>/.sem-progresso` | contador persistente de disparos sem progresso, `N\|primeira\|ultima` (peça 7a-3, §4.1 `BLOQUEADO`) |
 | `.local-loop.lock` | lock da drenagem (pid + idade) |
 | `.cooldown-until` | adiamento por limite (`lib.sh:567`) |
 | `.notificacao-fila-vazia` | marca de notificação já emitida |
@@ -168,7 +169,7 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | Evento | Onde | Campos que carrega |
 |---|---|---|
 | `DRENAGEM_INICIO` | `local-loop.sh:129,241` | `alvo=` `processaveis=` · ou `motivo=pausado` |
-| `DRENAGEM_FIM` | `local-loop.sh:205,242` | `aprovados=` `bloqueados=` `adiados=` `dur=` [`motivo=`] |
+| `DRENAGEM_FIM` | `local-loop.sh:drenar,main_local_loop` | `aprovados=` `bloqueados=` `adiados=` `refatiar=` `sem_progresso=` `dur=` · ou, na pausa, `aprovados=` `bloqueados=` `adiados=` `dur=` `motivo=pausado` |
 | `INICIO` | `executor.sh:1032` | `attempt=` `model=` |
 | `WORKTREE` | `executor.sh:1026` | `modo=reaproveitada` `de=` `base=` |
 | `GATE` | `executor.sh:539` | ver §4.2 |
@@ -176,7 +177,7 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `APROVADO` | `executor.sh:1048` | `merge=aguardando` `dur=` `attempt=` |
 | `REPROVADO` | `executor.sh:1057` | `motivo=` `attempt=` `diff=` |
 | `ADIADO` | `executor.sh:1039` | `motivo=` `attempt=` |
-| `BLOQUEADO` | `executor.sh:1064`, `local-loop.sh:181` | `motivo=` [`attempt=`] |
+| `BLOQUEADO` | `executor.sh:1064`, `local-loop.sh:drenar` | `motivo=` [`attempt=`] · da drenagem: `motivo=merge_falhou`, ou `motivo=sem_progresso` `n=` `limite=` |
 | `RETRY` | `executor.sh:1077` | `attempt=` `model=` `motivo=` |
 | `REFATIAR` | `executor.sh:896` | `motivo=` `arquivos=` |
 | `MERGE` | `local-loop.sh:173` | `alvo=` `sha=` |
@@ -190,6 +191,25 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `OCIOSO` | `local-loop.sh:drenar` (peça 7a-4) | `pendentes=` e um `<id>=<razão>` por pendente; ver abaixo |
 
 `motivo=` é sempre token curto e estável (grepável), nunca frase.
+
+**`DRENAGEM_FIM sem_progresso=`** (peça 7a-2) conta as voltas em que o ticket
+seguiu `pendente` sem cooldown. Até a 7a-2 a primeira delas ENCERRAVA a
+drenagem; agora o id entra numa memória da drenagem (`proximo_pendente
+"<ids>"` o pula) e ela segue para o próximo não tentado, até não sobrar
+processável fora da memória. O `MOTIVO` do STATUS lista todos os pulados
+(`sem progresso em 901 902`).
+
+**`BLOQUEADO motivo=sem_progresso n=<N> limite=<L>`** (peça 7a-3): a mesma
+volta sem progresso soma em `runs/<id>/.sem-progresso`, que PERSISTE entre
+disparos. No limite (`sem_progresso_limite`, §8) o ticket vai para
+`bloqueado` pelo `ticket_set` + `ticket_commit` (commitado, nunca só no
+disco), com `notas_status` = `sem_progresso: <N> disparos sem progresso entre
+<primeira> e <ultima>; última causa: <causa>`. A causa é o DESFECHO do
+executor na trilha (`EXECUTOR_MORREU` vira `executor morreu (rc=, fase=)` mais
+a linha `[orq ERRO]`/`fatal:` da saída); sem desfecho, a nota nova, e só por
+último a linha com `ERRO|fatal|FAIL`. Não conta: adiamento (com cooldown, ou
+com `ADIADO`/nota `adiado` sem cooldown). Zera: o ticket sair de `pendente`, ou
+a branch alvo avançar na vez dele.
 
 **`OCIOSO`** (peça 7a-4) sai UMA vez por drenagem, logo antes do
 `DRENAGEM_FIM`, quando ela termina sem nenhum pendente processável e há ao menos
@@ -446,6 +466,15 @@ O snapshot diz `push suprimido (publicar é humano neste repo)` **sempre**
 (`lib.sh:staging_linha`), por construção e não por leitura do config. Escrever a
 chave como registro da decisão é legítimo; tratá-la como o que segura o push é
 confiar num interruptor que não está ligado a nada.
+
+**`sem_progresso_limite`** (peça 7a-3, opcional, padrão **3**): quantos
+disparos seguidos um ticket pode seguir `pendente` sem progresso antes de ir
+para `bloqueado` (§4.1, `BLOQUEADO motivo=sem_progresso`). Lida a cada volta
+(`local-loop.sh:sem_progresso_limite`); ausente, zero ou não numérica vale 3.
+Está em `config-chaves.ts` e no formulário v2 (`doutrina/templates/config.json`),
+e **não** na tabela de chaves novas do `--migrar` (`config-tabela.ts:NOVAS`): um
+repo instalado segue com o padrão do código sem que a migração mude o proposto
+dele.
 
 **`000-config.proposto.json` é NOME RESERVADO do instalador.** É onde o
 `migrar-config.ts --propor` escreve e de onde o `--aplicar` lê. Desde a peça M1
