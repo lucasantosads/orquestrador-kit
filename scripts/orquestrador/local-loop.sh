@@ -226,6 +226,48 @@ sem_progresso_causa() {
   uma_linha "$(printf '%s' "$c" | tr -d '\r')" 300
 }
 
+# --- AMBIENTE NÃO BLOQUEIA A FILA (peça 7a-8) --------------------------------
+# Uma recusa de preflight (árvore suja, lock de git, identidade) mata o executor
+# para TODO ticket, igual. Sem esta peça cada drenagem somava +1 em todos os
+# pendentes e, no 3º disparo, a fila inteira ia para bloqueado por um problema
+# que não é de ticket nenhum.
+#
+# causa_normalizada <causa> <id> -> a causa sem o que varia de ticket para
+# ticket: caminhos, o id do próprio ticket, shas e números. Número puro vira
+# <n> ANTES da regra de sha: um pid de 4 dígitos num ticket e de 9 no outro
+# têm de normalizar igual, e 7+ dígitos casariam como sha. Duas causas
+# normalizadas iguais em tickets DIFERENTES na mesma drenagem = ambiente.
+causa_normalizada() {
+  local id_re
+  id_re="$(printf '%s' "$2" | sed 's/[][\.*^$/+?(){}|]/\\&/g')"
+  printf '%s' "$1" | sed -E \
+    -e "s#(^|[[:space:]'\"(=])(~|\\.\\.?)?/[^[:space:]:;,()'\"]+#\\1<caminho>#g" \
+    -e "s/(^|[^[:alnum:]])${id_re}([^[:alnum:]]|\$)/\\1<id>\\2/g" \
+    -e "s/(^|[^[:alnum:]])${id_re}([^[:alnum:]]|\$)/\\1<id>\\2/g" \
+    -e 's/(^|[^[:alnum:]])[0-9]+([^[:alnum:]]|$)/\1<n>\2/g' \
+    -e 's/(^|[^[:alnum:]])[0-9]+([^[:alnum:]]|$)/\1<n>\2/g' \
+    -e 's/(^|[^[:alnum:]])[0-9a-f]{7,40}([^[:alnum:]]|$)/\1<sha>\2/g' \
+    -e 's/(^|[^[:alnum:]])[0-9a-f]{7,40}([^[:alnum:]]|$)/\1<sha>\2/g' \
+    -e 's/[0-9]+/<n>/g' \
+    -e 's/[[:space:]]+/ /g'
+}
+
+# sem_progresso_desfazer <backup> -> devolve cada contador somado nesta
+# drenagem ao que era antes. Backup: uma linha "<id><TAB><linha anterior>" por
+# ticket, linha anterior vazia = o arquivo não existia.
+sem_progresso_desfazer() {
+  local bid blinha f
+  while IFS=$'\t' read -r bid blinha <&3; do
+    [ -n "$bid" ] || continue
+    f="$(sem_progresso_arquivo "$bid")"
+    escrita_de_teste_permitida "$f" || continue
+    if [ -z "$blinha" ]; then rm -f "$f" 2>/dev/null || true
+    else printf '%s\n' "$blinha" > "$f" 2>/dev/null || true; fi
+  done 3<<EOF
+$1
+EOF
+}
+
 # --- OCIOSO QUE DIZ POR QUÊ (peça 7a-4) --------------------------------------
 # O CI ficou 12 dias parado com 4 pendentes presos atrás de dependências
 # bloqueadas, e a única coisa escrita, a cada disparo, era "sem ticket
@@ -292,6 +334,11 @@ drenar() {
   local tentados='' sem_progresso=0 adiados_sc='' razoes motivo_status campos id r
   # O que a drenagem lê do executor ALÉM do status (peça 7a-3).
   local ev_antes sha_antes sha_depois nota_antes nota_depois exe_out exe_rc evs sp n lim causa primeira ultima
+  # Peça 7a-8: causas vistas nesta drenagem ("<id><TAB><normalizada>"), o
+  # backup dos contadores somados, e os bloqueios que esperam o fim da drenagem
+  # (só valem se ela não terminar em ambiente).
+  local causas_vistas='' sp_backup='' a_bloquear='' norm outro ambiente_causa=''
+  local bid bfile bsp blim bcausa
   stwt="$(ensure_staging_worktree)"
   t0="$(date +%s)"
   # EXECUTOR_MORREU conta como ticket PROCESSADO (peça 13), e a drenagem não tem
@@ -411,18 +458,31 @@ drenar() {
         say "  ticket $prox_id adiado sem cooldown — não conta como sem progresso; segue para o próximo não tentado"
       else
         causa="$(sem_progresso_causa "$evs" "$exe_out" "$exe_rc" "$nota_antes" "$nota_depois")"
+        # Peça 7a-8: a mesma causa normalizada já apareceu nesta drenagem para
+        # OUTRO ticket? Então não é do ticket, é do ambiente: ninguém soma nesta
+        # drenagem (desfaz o que já foi somado), nenhum bloqueio pendente vale,
+        # a trilha ganha AMBIENTE e a drenagem para.
+        norm="$(causa_normalizada "$causa" "$prox_id")"
+        outro="$(printf '%s\n' "$causas_vistas" | awk -F'\t' -v c="$norm" -v id="$prox_id" '$2 == c && $1 != id { print $1; exit }')"
+        if [ -n "$outro" ]; then
+          sem_progresso_desfazer "$sp_backup"
+          sp_backup=''; a_bloquear=''; sem_progresso=0
+          tentados="$tentados$prox_id "
+          event '---' AMBIENTE "tickets=$outro,$prox_id" "causa=$norm"
+          say "  AMBIENTE: $outro e $prox_id pararam pela mesma causa ($norm) — nada soma nesta drenagem; encerrando"
+          motivo_ocioso=ambiente; ambiente_causa="$norm"
+          rm -f "$exe_out"; break
+        fi
+        causas_vistas="$causas_vistas$prox_id"$'\t'"$norm"$'\n'
+        sp_backup="$sp_backup$prox_id"$'\t'"$(head -1 "$(sem_progresso_arquivo "$prox_id")" 2>/dev/null || true)"$'\n'
         sp="$(sem_progresso_incrementar "$prox_id")"
         n="${sp%%|*}"; lim="$(sem_progresso_limite)"
         if [ "$n" -ge "$lim" ]; then
-          primeira="$(printf '%s' "$sp" | cut -d'|' -f2)"; ultima="${sp##*|}"
-          ticket_set "$prox" '.status = "bloqueado" | .notas_status = $n' \
-            --arg n "sem_progresso: $n disparos sem progresso entre $primeira e $ultima; última causa: $causa"
-          ticket_commit "$prox" "fila: $prox_id bloqueado (sem_progresso, $n disparos)"
-          event "$prox_id" BLOQUEADO "motivo=sem_progresso" "n=$n" "limite=$lim"
-          status_set "ultimo=$prox_id BLOQUEADO $(date '+%H:%M:%S') (sem progresso em $n disparos)"
-          sem_progresso_zerar "$prox_id"
-          say "  SEM PROGRESSO: $prox_id bloqueado após $n disparos ($primeira .. $ultima); última causa: $causa"
-          bloqueados=$((bloqueados + 1))
+          # O bloqueio espera o FIM da drenagem: se um ticket seguinte parar pela
+          # mesma causa, era ambiente e este não pode ter sido bloqueado por ela.
+          tentados="$tentados$prox_id "
+          a_bloquear="$a_bloquear$prox_id"$'\t'"$prox"$'\t'"$sp"$'\t'"$lim"$'\t'"$causa"$'\n'
+          say "  ticket $prox_id atingiu o limite de sem progresso ($n/$lim) — bloqueia no fim da drenagem, se ela não terminar em ambiente. Causa: $causa"
         else
           tentados="$tentados$prox_id "
           sem_progresso=$((sem_progresso + 1))
@@ -432,13 +492,30 @@ drenar() {
     fi
     rm -f "$exe_out"
   done
+  # Os bloqueios por sem-progresso que esperaram o fim da drenagem (7a-8). Se
+  # ela terminou em ambiente, a lista já foi esvaziada.
+  while IFS=$'\t' read -r bid bfile bsp blim bcausa <&3; do
+    [ -n "$bid" ] || continue
+    n="${bsp%%|*}"; primeira="$(printf '%s' "$bsp" | cut -d'|' -f2)"; ultima="${bsp##*|}"
+    ticket_set "$bfile" '.status = "bloqueado" | .notas_status = $n' \
+      --arg n "sem_progresso: $n disparos sem progresso entre $primeira e $ultima; última causa: $bcausa"
+    ticket_commit "$bfile" "fila: $bid bloqueado (sem_progresso, $n disparos)"
+    event "$bid" BLOQUEADO "motivo=sem_progresso" "n=$n" "limite=$blim"
+    status_set "ultimo=$bid BLOQUEADO $(date '+%H:%M:%S') (sem progresso em $n disparos)"
+    sem_progresso_zerar "$bid"
+    say "  SEM PROGRESSO: $bid bloqueado após $n disparos ($primeira .. $ultima); última causa: $bcausa"
+    bloqueados=$((bloqueados + 1))
+  done 3<<EOF
+$a_bloquear
+EOF
   dur=$(( ($(date +%s) - t0 + 30) / 60 ))
   say "drenagem encerrada: $drenados aprovado(s) e mergeado(s)"
   # OCIOSO (peça 7a-4): a drenagem acabou sem processável e há pendente. UM
   # evento por drenagem, com a razão de cada pendente — uma linha, como toda a
   # trilha. Pausa não entra: é a palavra do humano, e quem pausou já sabe.
   motivo_status="${motivo_ocioso:-drenagem encerrada}"
-  if [ "$motivo_ocioso" != pausado ] && razoes="$(ocioso_razoes "$tentados" "$adiados_sc")" && [ -n "$razoes" ]; then
+  [ "$motivo_ocioso" != ambiente ] || motivo_status="ambiente: $ambiente_causa"
+  if [ "$motivo_ocioso" != pausado ] && [ "$motivo_ocioso" != ambiente ] && razoes="$(ocioso_razoes "$tentados" "$adiados_sc")" && [ -n "$razoes" ]; then
     campos=''; n=0
     while read -r id r; do
       [ -n "$id" ] || continue

@@ -3,8 +3,8 @@
 # drenagem inteira (peça 7a-2). Porte do teste homônimo do comarka-operacional
 # para o `drenar()` do kit.
 #
-# Fila de 3: 901 e 902 abortam ANTES do agente (o executor sai rc 1 sem tocar no
-# status, como num preflight que morre) e 903 é saudável (vai a
+# Fila de 3: 901 e 902 abortam ANTES do agente, cada um por uma causa própria
+# (o executor sai rc 1 sem tocar no status) e 903 é saudável (vai a
 # aguardando_merge, a drenagem mergeia). Até a 7a-2 a drenagem encerrava no 901
 # ("sem progresso em 901") e o 903 nunca era tocado: uma chamada só. Agora são
 # três chamadas numa drenagem, o 903 vira done, e ela ainda TERMINA — no máximo
@@ -46,8 +46,13 @@ run_executor_once() {
   id="$(ticket_field "$2" '.id')"
   echo "$id" >> "$CALLS"
   case "$id" in
-    901|902)
-      echo "[orq ERRO] preflight: árvore de execução suja em $ORQ_EXEC_ROOT (ticket $id)" >&2
+    # Causas PRÓPRIAS e diferentes: desde a 7a-8, a mesma causa em dois
+    # tickets na mesma drenagem é ambiente e encerra a drenagem (test-ambiente.sh).
+    901)
+      echo "[orq ERRO] recusado: o ticket $id pede cmd fora do prefixo permitido" >&2
+      return 1 ;;
+    902)
+      echo "fatal: branch 'frente/$id' está em uso por outra worktree" >&2
       return 1 ;;
     *)
       ticket_set_status "$2" aguardando_merge

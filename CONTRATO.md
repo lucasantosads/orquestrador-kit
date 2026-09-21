@@ -189,6 +189,7 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `ANOTACAO` | `lib.sh:274` | `nota=` |
 | `PREVOO_NOGO` | `local-loop.sh:prevoo_ou_sai` | `item=cat.0\|cat.1\|cat.6` |
 | `OCIOSO` | `local-loop.sh:drenar` (peça 7a-4) | `pendentes=` e um `<id>=<razão>` por pendente; ver abaixo |
+| `AMBIENTE` | `local-loop.sh:drenar` (peça 7a-8) | `tickets=<id>,<id>` `causa=<normalizada>` (a causa vai até o fim da linha); ver abaixo |
 
 `motivo=` é sempre token curto e estável (grepável), nunca frase.
 
@@ -209,7 +210,24 @@ executor na trilha (`EXECUTOR_MORREU` vira `executor morreu (rc=, fase=)` mais
 a linha `[orq ERRO]`/`fatal:` da saída); sem desfecho, a nota nova, e só por
 último a linha com `ERRO|fatal|FAIL`. Não conta: adiamento (com cooldown, ou
 com `ADIADO`/nota `adiado` sem cooldown). Zera: o ticket sair de `pendente`, ou
-a branch alvo avançar na vez dele.
+a branch alvo avançar na vez dele. Desde a peça 7a-8 o bloqueio acontece no FIM
+da drenagem, e só se ela não terminar em `AMBIENTE`.
+
+**`AMBIENTE tickets=<id>,<id> causa=<normalizada>`** (peça 7a-8). Antes de somar,
+a causa da volta sem progresso é NORMALIZADA (`local-loop.sh:causa_normalizada`):
+caminhos viram `<caminho>`, o id do ticket vira `<id>`, shas viram `<sha>` e
+números viram `<n>`. Se a mesma causa normalizada já apareceu nesta drenagem
+para OUTRO ticket, o problema não é de ticket, é de ambiente (recusa de
+preflight, lock de git, identidade): nenhum contador soma nesta drenagem (o que
+já tinha somado volta ao valor anterior), nenhum bloqueio pendente vale, a
+trilha ganha UM `AMBIENTE` com os dois tickets que colidiram, a drenagem para
+com `motivo_ocioso=ambiente` e o `MOTIVO` do STATUS é `ambiente: <causa>`. Não
+sai `OCIOSO` nesse fim. No máximo 2 chamadas ao executor por disparo com o
+ambiente quebrado. Um ticket isolado com causa própria segue a regra de cima.
+
+```
+--- AMBIENTE tickets=901,902 causa=executor morreu (rc=<n>, fase=?): preflight: lock de git em uso por outro processo: <caminho> (pid <n>, vez do <id>, HEAD <sha>)
+```
 
 **`OCIOSO`** (peça 7a-4) sai UMA vez por drenagem, logo antes do
 `DRENAGEM_FIM`, quando ela termina sem nenhum pendente processável e há ao menos

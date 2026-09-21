@@ -30,6 +30,7 @@ const SCRIPTS = [
   'test-sem-progresso-limite.sh',
   'test-ocioso.sh',
   'test-rc-executor.sh',
+  'test-ambiente.sh',
 ];
 
 /**
