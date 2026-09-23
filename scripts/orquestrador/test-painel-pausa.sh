@@ -91,6 +91,23 @@ fp_post acao '{"acao":"retomar","repo":"rho"}' >/dev/null
 confere "retomar sem pausa: 409" 409 "$(fp_http)"
 
 echo
+echo "== 4b. quem pausou: painel e terminal gravam a mesma linha, e o painel diz quem foi (K12-F) =="
+fp_post acao '{"acao":"pausar","repo":"rho","motivo":"de novo"}' >/dev/null
+case "$(curl -s "$URL/api/estado" | jq -r '.repos[0].estado.detalhe')" in
+  *"pausado pelo painel"*) ok "pausa pelo painel: o cartão diz 'pausado pelo painel'" ;; *) falha "o cartão não diz quem pausou" ;; esac
+resp="$(fp_post acao '{"acao":"retomar","repo":"rho"}')"
+case "$resp" in *"estava pausado por painel"*"motivo: de novo"*) ok "retomar pelo painel diz quem pausou e por quê" ;; *) falha "retomar sem quem/por quê: $resp" ;; esac
+# a pausa do terminal é a mesma função do lib.sh que o `orq pausar` chama
+printf '%s | pelo terminal\n' "$(date '+%Y-%m-%d %H:%M')" > "$R/docs/fila/PAUSAR"
+(cd "$R" && ORQ_EXEC_ROOT="$R" bash -c 'source "$1/lib.sh" && pausa_registrar terminal "pelo terminal"' _ "$AQUI")
+case "$(curl -s "$URL/api/estado" | jq -r '.repos[0].estado.detalhe')" in
+  *"pausado pelo terminal"*) ok "pausa pelo terminal: o cartão diz 'pausado pelo terminal'" ;; *) falha "o painel não reconhece a pausa do terminal" ;; esac
+fp_post acao '{"acao":"retomar","repo":"rho"}' >/dev/null
+confere "PAUSA do terminal e do painel no mesmo formato" \
+  "PAUSA motivo=pelo-terminal por=terminal|RETOMADA por=painel dur=0min" \
+  "$(tail -2 "$R/docs/fila/runs/events.log" | cut -d' ' -f3- | paste -sd'|' -)"
+
+echo
 echo "== 5. legado .orq-pause: lido, nunca escrito nem apagado =="
 est="$(curl -s "$URL/api/estado")"
 confere "sigma aparece pausado" pausado "$(printf '%s' "$est" | jq -r '.repos[1].estado.tipo')"

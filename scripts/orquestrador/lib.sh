@@ -826,6 +826,80 @@ pausa_motivo() {
   echo "sem motivo registrado"
 }
 
+# --- PAUSA NA TRILHA (peças K12-C e K12-F) -----------------------------------
+# Pausar e retomar deixam UMA linha cada na trilha, venham do painel ou do
+# terminal, no mesmo formato:
+#   --- PAUSA motivo=<token> por=<painel|terminal>
+#   --- RETOMADA por=<painel|terminal> dur=<N>min
+# O texto livre do motivo fica no sentinela (§7); a trilha leva o token. As
+# funções moram aqui, e não em cada emissor, porque dois emissores com duas
+# réguas gravam duas trilhas diferentes para a mesma pausa.
+
+# pausa_token <texto> -> o motivo como token grepável: sem acento, minúsculas,
+# `-` no lugar do resto, até 40 caracteres; `manual` se nada sobrar. Byte a
+# byte (LC_ALL=C), para dar o mesmo resultado sob launchd e num terminal.
+pausa_token() {
+  local t
+  t="$(printf '%s' "${1:-}" | LC_ALL=C sed \
+    -e 's/á/a/g; s/à/a/g; s/â/a/g; s/ã/a/g; s/ä/a/g; s/ª/a/g' \
+    -e 's/Á/a/g; s/À/a/g; s/Â/a/g; s/Ã/a/g; s/Ä/a/g' \
+    -e 's/é/e/g; s/è/e/g; s/ê/e/g; s/ë/e/g; s/É/e/g; s/È/e/g; s/Ê/e/g' \
+    -e 's/í/i/g; s/ì/i/g; s/î/i/g; s/ï/i/g; s/Í/i/g; s/Î/i/g' \
+    -e 's/ó/o/g; s/ò/o/g; s/ô/o/g; s/õ/o/g; s/ö/o/g; s/º/o/g' \
+    -e 's/Ó/o/g; s/Ò/o/g; s/Ô/o/g; s/Õ/o/g; s/Ö/o/g' \
+    -e 's/ú/u/g; s/ù/u/g; s/û/u/g; s/ü/u/g; s/Ú/u/g; s/Ü/u/g' \
+    -e 's/ç/c/g; s/Ç/c/g; s/ñ/n/g; s/Ñ/n/g' \
+    | LC_ALL=C tr 'A-Z' 'a-z' \
+    | LC_ALL=C sed -E 's/[^a-z0-9]+/-/g; s/^-+//' | cut -c1-40 | LC_ALL=C sed -E 's/-+$//')"
+  printf '%s' "${t:-manual}"
+}
+
+# epoch_de <formato BSD> <texto> -> epoch, ou vazio. `date -j -f` no macOS,
+# `date -d` no GNU (que lê as duas formas usadas aqui sem formato).
+epoch_de() {
+  date -j -f "$1" "$2" +%s 2>/dev/null || date -d "$2" +%s 2>/dev/null || true
+}
+
+# pausa_registro -> "<epoch>|<por>|<iso>" da pausa DE PÉ, pela trilha: a
+# primeira PAUSA depois da última RETOMADA. Só vale se não for mais velha que o
+# minuto escrito no sentinela: uma PAUSA de uma pausa antiga, apagada à mão sem
+# RETOMADA, não pode assinar a pausa de agora. Vazio sem registro válido.
+pausa_registro() {
+  local l iso por ep cont ep_cont
+  [ -f "$EVENTS_FILE" ] || return 0
+  l="$(awk '$3 == "PAUSA" && l == "" { l = $0 } $3 == "RETOMADA" { l = "" } END { print l }' "$EVENTS_FILE" 2>/dev/null)"
+  [ -n "$l" ] || return 0
+  iso="${l%% *}"
+  por="$(printf '%s\n' "$l" | tr ' ' '\n' | sed -n 's/^por=//p' | head -1)"
+  ep="$(epoch_de '%Y-%m-%dT%H:%M:%S%z' "$iso")"
+  [ -n "$ep" ] || return 0
+  cont="$(pausa_motivo | head -1)"
+  ep_cont="$(epoch_de '%Y-%m-%d %H:%M' "${cont%% |*}")"
+  if [ -n "$ep_cont" ] && [ "$ep" -lt $((ep_cont - 60)) ]; then return 0; fi
+  printf '%s|%s|%s\n' "$ep" "${por:-?}" "$iso"
+}
+
+# pausa_inicio_epoch -> quando a pausa de pé começou: a PAUSA da trilha, ou,
+# sem ela, o minuto escrito no sentinela. Vazio se nenhum dos dois é legível.
+# Quem retoma chama ANTES de apagar o sentinela.
+pausa_inicio_epoch() {
+  local r cont
+  r="$(pausa_registro)"
+  if [ -n "$r" ]; then printf '%s\n' "${r%%|*}"; return 0; fi
+  cont="$(pausa_motivo | head -1)"
+  epoch_de '%Y-%m-%d %H:%M' "${cont%% |*}"
+}
+
+# pausa_registrar <por> <motivo livre> — a linha PAUSA.
+pausa_registrar() { event '---' PAUSA "motivo=$(pausa_token "${2:-}")" "por=$1"; }
+
+# retomada_registrar <por> <epoch do início> — a linha RETOMADA; `dur=?` sem início.
+retomada_registrar() {
+  local d='?'
+  case "${2:-}" in ''|*[!0-9]*) : ;; *) d="$(( ($(date +%s) - $2) / 60 ))min" ;; esac
+  event '---' RETOMADA "por=$1" "dur=$d"
+}
+
 # --- Interrupção de ambiente (ADAPTAÇÃO 2) -----------------------------------
 # Falha de AMBIENTE da máquina — sono, rede, sessão caindo — distinta de limite
 # de cota. Não arma cooldown: o próximo disparo pode rodar na hora.

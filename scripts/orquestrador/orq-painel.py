@@ -43,7 +43,6 @@ import subprocess
 import sys
 import threading
 import time
-import unicodedata
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -538,6 +537,7 @@ def coletar_repo(r, t):
         ult_ev = ultimo(eventos, lambda e: e["ev"] in ("PAUSA", "RETOMADA"))
         if ult_ev and ult_ev["ev"] == "PAUSA" and (pausa["ts"] is None or ult_ev["ts"] >= pausa["ts"] - 60):
             pausa["desde"] = ult_ev["ts"]
+            pausa["por"] = ult_ev["f"].get("por")
     rep["estado"] = estado_do_repo(st, pausa, eventos, raz, legivel, rep, t)
     rep["job"] = job_do_repo(cfg)
     rep["acoes"] = acoes_do_repo(rep, rep["job"], st)
@@ -567,13 +567,14 @@ def estado_do_repo(st, pausa, eventos, raz, legivel, rep, t):
         return {"tipo": tipo, "rotulo": rot, "titulo": titulo, "detalhe": detalhe}
 
     pausa_txt = ""
+    quem_pausou = f" · pausado pelo {pausa['por']}" if pausa.get("por") else ""
     if pausa["ativa"]:
         inicio = pausa.get("desde") or pausa["ts"]
         pausa_txt = ("pausado por você há " + dur(t - inicio)) if inicio \
             else "pausado por você (PAUSAR sem data legível)"
     if st is None:
         if pausa["ativa"]:
-            return saida("pausado", pausa_txt, f"motivo: {pausa['motivo']}")
+            return saida("pausado", pausa_txt, f"motivo: {pausa['motivo']}" + quem_pausou)
         return saida("sem_dado", "sem STATUS.md", "o repo ainda não publicou snapshot (§3)")
 
     ultimo_txt = st.get("ultimo") or "—"
@@ -587,11 +588,11 @@ def estado_do_repo(st, pausa, eventos, raz, legivel, rep, t):
         det = " · ".join(x for x in (tent, f"último: {ultimo_txt}") if x)
         if pausa["ativa"]:
             return saida("pausado", pausa_txt,
-                         f"o {tid} (há {idade}) termina antes de parar · motivo: {pausa['motivo']}")
+                         f"o {tid} (há {idade}) termina antes de parar · motivo: {pausa['motivo']}" + quem_pausou)
         return saida("rodando", f"rodando {tid} há {idade}", det)
 
     if pausa["ativa"]:
-        return saida("pausado", pausa_txt, f"motivo: {pausa['motivo']}")
+        return saida("pausado", pausa_txt, f"motivo: {pausa['motivo']}" + quem_pausou)
 
     c = rep["contagem"]
     if c["pendentes"] and not c["prontos"]:
@@ -920,21 +921,16 @@ def acoes_do_repo(rep, job, st):
     return {k: {"habilitado": v[0], "motivo": v[1]} for k, v in a.items()}
 
 
-def motivo_token(texto):
-    """`motivo=` é token curto e estável (CONTRATO §4.1), nunca frase: o texto
-    livre fica no PAUSAR; a trilha leva a forma grepável dele."""
-    t = unicodedata.normalize("NFKD", texto or "").encode("ascii", "ignore").decode().lower()
-    t = re.sub(r"[^a-z0-9]+", "-", t).strip("-")[:40].strip("-")
-    return t or "manual"
-
-
-def evento(caminho, ev, *kv):
-    """Uma linha na trilha pelo `event()` do lib.sh: o mesmo formato, a mesma
-    `uma_linha`, a mesma guarda de teste. O painel não escreve a trilha à mão."""
+def lib(caminho, corpo, *args):
+    """Roda `corpo` com o lib.sh do motor carregado e ORQ_EXEC_ROOT no repo. A
+    trilha da pausa (pausa_registrar, retomada_registrar) é a MESMA função que o
+    `orq pausar`/`orq retomar` usa: o painel não escreve a trilha à mão nem
+    tem régua própria para o token ou a duração."""
     env = dict(os.environ, ORQ_EXEC_ROOT=str(caminho))
-    subprocess.run(["bash", "-c", 'source "$1/lib.sh" && shift && event "$@"',
-                    "orq-painel", str(AQUI), "---", ev, *kv],
-                   cwd=str(caminho), env=env, capture_output=True, text=True, timeout=30)
+    r = subprocess.run(["bash", "-c", 'source "$1/lib.sh" && shift && ' + corpo,
+                        "orq-painel", str(AQUI), *args],
+                       cwd=str(caminho), env=env, capture_output=True, text=True, timeout=30)
+    return r.stdout.strip()
 
 
 def alvo_pausa(caminho, rel):
@@ -970,15 +966,17 @@ def executar_acao(corpo):
             motivo = motivo[0][:200] if motivo else "pausa pelo painel"
             alvo = alvo_pausa(caminho, pausa["arquivo"])
             alvo.write_text(f"{datetime.now():%Y-%m-%d %H:%M} | {motivo}\n", encoding="utf-8")
-            evento(caminho, "PAUSA", f"motivo={motivo_token(motivo)}", "por=painel")
+            lib(caminho, 'pausa_registrar painel "$1"', motivo)
             res = {"ok": True, "arquivo": str(alvo), "obs": EXPLICA_PAUSA}
         elif acao == "retomar":
             alvo = alvo_pausa(caminho, pausa["arquivo"])
-            inicio = pausa.get("desde") or pausa.get("ts")
+            inicio = lib(caminho, "pausa_inicio_epoch")   # antes de apagar: lê o sentinela
             alvo.unlink()
-            d = f"{int((time.time() - inicio) // 60)}min" if inicio else "?"
-            evento(caminho, "RETOMADA", "por=painel", f"dur={d}")
-            res = {"ok": True, "arquivo": str(alvo), "obs": "o próximo disparo drena"}
+            lib(caminho, 'retomada_registrar painel "$1"', inicio)
+            quem = pausa.get("por") or "(sem PAUSA na trilha)"
+            res = {"ok": True, "arquivo": str(alvo),
+                   "obs": f"estava pausado por {quem} desde {hhmm(pausa.get('desde') or pausa.get('ts'))} "
+                          f"(motivo: {pausa['motivo']}); o próximo disparo drena"}
         else:
             cmd = [LAUNCHCTL, "kickstart", f"gui/{os.getuid()}/{rep['job']['label']}"]
             r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)

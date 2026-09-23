@@ -855,6 +855,17 @@
   *Teste:* mutação: o teste A sem o stub reprova contra o painel de hoje (stub não chamado)
   e contra o do commit C (trava chamada 4 vezes).
 
+- **K12-F · `orq pausar` e `orq retomar` gravam na trilha.** `PAUSA motivo=<token>
+  por=terminal` e `RETOMADA por=terminal dur=<N>min`, pelas funções novas do `lib.sh`
+  (`pausa_token`, `pausa_registrar`, `pausa_registro`, `pausa_inicio_epoch`,
+  `retomada_registrar`), que o painel passou a usar no lugar da régua própria em Python. O
+  `retomar` imprime quem pausou, quando e o motivo antes de apagar, e o cartão do painel diz
+  "pausado pelo terminal" ou "pelo painel". CONTRATO §4.1, §7, §9.1 e §9.5.
+  *Teste:* `test/orq-pausa-trilha.test.ts` (7 de 8 vermelhos antes; o 8º, "retomar sem
+  pausa não grava", passa vazio por construção) e o bloco 4b do `test-painel-pausa.sh` (4
+  vermelhos contra o painel do `6ba83bc`). **Antes, pausar e retomar pelo terminal não
+  deixavam linha nenhuma.**
+
 - **K12a · alarme de job carregado e mudo**: feita dentro do bloco D da K12, com uma troca
   pedida no brief: a régua é o último `DRENAGEM_INICIO` (não o `DRENAGEM_FIM`) contra 2× o
   `launchd.start_interval`, com job carregado e sem PAUSAR; e o `last exit code` != 0 é

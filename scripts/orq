@@ -357,15 +357,34 @@ cmd_versao() {
 # --- orq pausar / retomar (dois dos três que escrevem; o terceiro é liberar) --
 # Kill switch em ARQUIVO (regra 12). NÃO mata processo: a drenagem lê o arquivo
 # ENTRE tickets e encerra em ocioso. Matar o processo garante ticket órfão.
+# Pausar e retomar também deixam UMA linha na trilha (peça K12-F), a mesma que
+# o painel grava: `PAUSA motivo=<token> por=terminal` e `RETOMADA por=terminal
+# dur=<N>min`. As funções são do lib.sh (pausa_registrar, retomada_registrar),
+# para que terminal e painel não tenham duas réguas.
 cmd_pausar() {
   printf '%s | %s\n' "$(date '+%Y-%m-%d %H:%M')" "${1:-pausa manual}" > "$PAUSAR_FILE"
+  pausa_registrar terminal "${1:-pausa manual}"
   printf 'PAUSADO: %s\n' "$(cat "$PAUSAR_FILE")"
   echo "não interrompe o ticket em curso: a drenagem para ENTRE tickets."
 }
 
+# retomar diz quem pausou, quando e por quê ANTES de apagar: depois de apagado,
+# o motivo livre não existe mais em lugar nenhum.
 cmd_retomar() {
+  local reg ini quem quando cont
   if [ -f "$PAUSAR_FILE" ]; then
+    cont="$(head -1 "$PAUSAR_FILE" 2>/dev/null || true)"
+    reg="$(pausa_registro)"
+    ini="$(pausa_inicio_epoch)"
+    if [ -n "$reg" ]; then
+      quem="${reg#*|}"; quem="${quem%%|*}"
+      quando="$(date -r "${reg%%|*}" '+%Y-%m-%d %H:%M' 2>/dev/null || date -d "@${reg%%|*}" '+%Y-%m-%d %H:%M' 2>/dev/null || echo '?')"
+    else
+      quem='(sem PAUSA na trilha)'; quando="${cont%% |*}"
+    fi
+    printf 'pausado por %s em %s · motivo: %s\n' "$quem" "${quando:-?}" "${cont#* | }"
     rm -f "$PAUSAR_FILE"
+    retomada_registrar terminal "$ini"
     echo "RETOMADO (pausar_file removido)"
   else
     echo "já estava ativo (nenhum pausar_file)"

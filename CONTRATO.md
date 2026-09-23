@@ -190,8 +190,8 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `PREVOO_NOGO` | `local-loop.sh:prevoo_ou_sai` | `item=cat.0\|cat.1\|cat.6` |
 | `OCIOSO` | `local-loop.sh:drenar` (peça 7a-4) | `pendentes=` e um `<id>=<razão>` por pendente; ver abaixo |
 | `AMBIENTE` | `local-loop.sh:drenar` (peça 7a-8) | `tickets=<id>,<id>` `causa=<normalizada>` (a causa vai até o fim da linha); ver abaixo |
-| `PAUSA` | `orq-painel.py:executar_acao` (peça K12) | `motivo=<token>` `por=painel` |
-| `RETOMADA` | `orq-painel.py:executar_acao` (peça K12) | `por=painel` `dur=<N>min` |
+| `PAUSA` | `lib.sh:pausa_registrar`, chamada por `orq pausar` e pelo painel (peças K12-C, K12-F) | `motivo=<token>` `por=terminal\|painel` |
+| `RETOMADA` | `lib.sh:retomada_registrar`, chamada por `orq retomar` e pelo painel (peças K12-C, K12-F) | `por=terminal\|painel` `dur=<N>min` |
 
 `motivo=` é sempre token curto e estável (grepável), nunca frase.
 
@@ -328,21 +328,25 @@ pendente. Uma linha só, como todo evento; cada pendente vira um campo
 O `MOTIVO` do STATUS repete a razão em texto (`244 espera 241b (bloqueado) ·
 231 sem liberação humano:migration-0031`), cortado em 6 com "e mais N".
 
-**`PAUSA` e `RETOMADA`: a pausa na trilha** (peça K12, "pausa na trilha" da
-etapa 7). O painel é o único emissor hoje: o botão "Pausar" cria o
-`pausar_file` (§7) com `<AAAA-MM-DD HH:MM> | <motivo livre>` e grava
-`PAUSA motivo=<token> por=painel`, onde o token é o motivo livre sem acento,
-em minúsculas, com `-` no lugar do resto, até 40 caracteres (`manual` se vazio);
-o texto inteiro fica no arquivo. "Retomar" apaga o arquivo e grava
-`RETOMADA por=painel dur=<N>min`, a duração contada da `PAUSA` (ou, sem ela, da
-data do conteúdo). As duas linhas passam pelo `event()` do `lib.sh`, com o id
-`---`. Pausa nunca interrompe o ticket em curso (§7), e o painel não oferece
-"pausar agora". `orq pausar`/`orq retomar` NÃO gravam na trilha: continuam
-escrevendo um arquivo só (§9.1).
+**`PAUSA` e `RETOMADA`: a pausa na trilha** (peças K12-C e K12-F, "pausa na
+trilha" da etapa 7). Dois emissores, uma régua: `orq pausar`/`orq retomar`
+(`por=terminal`) e os botões do painel (`por=painel`) chamam as MESMAS funções
+do `lib.sh`. Pausar cria o `pausar_file` (§7) com `<AAAA-MM-DD HH:MM> | <motivo
+livre>` e grava `PAUSA motivo=<token> por=<quem>` (`pausa_registrar`), onde o
+token é o motivo livre sem acento, em minúsculas, com `-` no lugar do resto, até
+40 caracteres (`manual` se vazio; `pausa_token`, byte a byte); o texto inteiro
+fica no arquivo. Retomar lê o início da pausa ANTES de apagar o arquivo
+(`pausa_inicio_epoch`), apaga, e grava `RETOMADA por=<quem> dur=<N>min`
+(`retomada_registrar`; `dur=?` sem início legível). O início é a primeira
+`PAUSA` depois da última `RETOMADA` (`pausa_registro`), desde que não seja mais
+velha que o minuto escrito no arquivo; senão, o minuto do arquivo. As duas
+linhas passam pelo `event()`, com o id `---`. Pausa nunca interrompe o ticket em
+curso (§7), e ninguém oferece "pausar agora". Uma pausa feita à mão (o arquivo
+criado sem `orq` nem painel) não tem `PAUSA`, e quem retoma diz isso.
 
 ```
 --- PAUSA motivo=leva-da-tarde por=painel
---- RETOMADA por=painel dur=21min
+--- RETOMADA por=terminal dur=21min
 ```
 
 ### 4.2 A linha `GATE`
@@ -505,7 +509,9 @@ encerra em `ocioso`. Matar o processo garante ticket órfão — por isso `orq
 pausar` escreve arquivo e nada mais.
 
 Conteúdo: `<AAAA-MM-DD HH:MM> | <motivo>`. `orq pausar [motivo]` cria, `orq
-retomar` remove.
+retomar` remove; os dois deixam uma linha na trilha (§4.1, `PAUSA` e
+`RETOMADA`), e o `retomar` imprime quem pausou, quando e por quê antes de
+apagar.
 
 **Migração do nome legado (peça K8b-3).** `instalar.sh --atualizar <repo>
 --migrar` renomeia `docs/fila/.orq-pause` para `docs/fila/PAUSAR`, PRESERVANDO o
@@ -653,11 +659,14 @@ estava.
 | `orq validar [ids\|--pendentes]` | gate de ticket; repassa o rc (1 com violação) |
 | `orq versao` | `docs/orquestrador/skill/VERSAO` do repo, e o do kit se `ORQ_KIT` apontar |
 | `orq config` | acusa placeholder, chave obrigatória ausente, gate sem papel, `launchd.label` ausente |
-| `orq pausar [motivo]` | cria o `pausar_file` — **escreve** |
-| `orq retomar` | remove o `pausar_file` — **escreve** |
+| `orq pausar [motivo]` | cria o `pausar_file` e grava `PAUSA motivo=<token> por=terminal` na trilha — **escreve** |
+| `orq retomar` | imprime quem pausou, quando e por quê; remove o `pausar_file` e grava `RETOMADA por=terminal dur=<N>min` — **escreve** |
 | `orq liberar <humano:token> [nota]` | acrescenta um token v2 em `liberacoes_file` — **escreve** (§6.2) |
 
-Os TRÊS que escrevem escrevem UM arquivo do repo cada, nunca estado de execução.
+Os TRÊS que escrevem escrevem UM arquivo do repo cada, nunca estado de execução;
+`pausar` e `retomar` acrescentam, além dele, UMA linha à trilha (peça K12-F), pelo
+`event()` do `lib.sh`, a mesma que o painel grava. A trilha é append-only e não é
+estado de execução: nenhuma decisão do motor lê `PAUSA` ou `RETOMADA`.
 Nenhum subcomando toca ticket, staging, worktree, branch ou lock, e nenhum mata
 processo. Se `orq` puder alterar estado, alguém vai alterá-lo no meio de um run.
 
@@ -805,7 +814,9 @@ do label. `liberacoes.json` e o cooldown entram pelo motor: o painel roda
 `pendentes_razoes` (`local-loop.sh`, a régua do `OCIOSO`) com `ORQ_EXEC_ROOT` no repo.
 
 **Escreve** no repo só o `pausar_file` (criar/apagar, guardado dentro de `docs/fila` e
-nunca o `.orq-pause`) e, junto, uma linha `PAUSA`/`RETOMADA` na trilha (§4.1). Dispara
+nunca o `.orq-pause`) e, junto, uma linha `PAUSA`/`RETOMADA` na trilha (§4.1),
+pelas mesmas funções do `lib.sh` que o `orq` usa; o `por=` da `PAUSA` de pé é
+como o cartão diz quem pausou. Dispara
 `launchctl kickstart gui/<uid>/<label>` (sem `-k`) só com STATUS `ocioso`, sem pausa e job
 carregado. Não edita ticket, não roda executor, não faz git.
 
