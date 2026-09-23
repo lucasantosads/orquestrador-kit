@@ -60,6 +60,8 @@ RUNS_PADRAO = "docs/fila/runs"
 PAUSAR_PADRAO = "docs/fila/PAUSAR"
 PAUSA_LEGADA = "docs/fila/.orq-pause"   # lida por compatibilidade, NUNCA escrita
 LAUNCHCTL = os.environ.get("ORQ_LAUNCHCTL") or "launchctl"
+MARGEM_TIMEOUT_SEG = 600    # gates + juiz depois do agente: além do claude_timeout_secs
+PAUSA_LONGA_SEG = 40 * 60
 ACOES = ("pausar", "retomar", "kickstart")   # e só: não existe "pausar agora"
 EXPLICA_PAUSA = ("Cria docs/fila/PAUSAR. A drenagem para ENTRE tickets: o ticket "
                  "em curso termina (aprovado, reprovado ou adiado) e nenhum outro "
@@ -93,7 +95,7 @@ def dur(seg):
         return "?"
     s = max(0, int(seg))
     if s < 60:
-        return f"{s} s"
+        return "menos de 1 min"
     if s < 3600:
         return f"{s // 60} min"
     if s < 86400:
@@ -539,6 +541,13 @@ def coletar_repo(r, t):
     rep["estado"] = estado_do_repo(st, pausa, eventos, raz, legivel, rep, t)
     rep["job"] = job_do_repo(cfg)
     rep["acoes"] = acoes_do_repo(rep, rep["job"], st)
+    rep["alarmes"], rep["alarmes_sem_dado"] = alarmes_do_repo(rep, cfg, rep["job"], st, eventos, t)
+    # "está andando ou parou": com o job mudo, morto por erro ou uma execução
+    # além do timeout, o cartão não diz "rodando" nem "ocioso".
+    trava = next((a for a in rep["alarmes"] if a["id"] in ("launchd_exit", "mudo", "execucao_longa")), None)
+    if trava and rep["estado"]["tipo"] in ("rodando", "ocioso"):
+        rep["estado"] = {"tipo": "travado", "rotulo": "travado",
+                         "titulo": trava["texto"].split(";")[0], "detalhe": rep["estado"]["titulo"]}
     rep["_interno"] = {"cfg": cfg, "eventos": eventos, "tickets": tickets, "raz": raz,
                        "por_id": por_id, "st": st}
     return rep
@@ -748,7 +757,7 @@ def coletar_tudo():
                           "contagem": {"prontos": 0, "pendentes": 0, "bloqueados": 0},
                           "dia": {"aprovados": 0, "reprovas": 0}, "proximos": [],
                           "proximos_resto": 0, "bloqueados": [], "precisa": [],
-                          "pausa": {"ativa": False}})
+                          "pausa": {"ativa": False}, "alarmes": [], "alarmes_sem_dado": []})
     precisa = sorted((p for r in saida for p in r.get("precisa", [])),
                      key=lambda p: (-p["destrava"], p["repo"], p["token"]))
     bloqueados = [b for r in saida for b in r.get("bloqueados", [])]
@@ -773,6 +782,83 @@ def estado_atual(forcar=False):
 _trava_cache = threading.Lock()
 
 
+# ---------------------------------------------------- alarmes (bloco D, K12a)
+
+def alarmes_do_repo(rep, cfg, job, st, eventos, t):
+    """([{id, texto}], [sem dado]). Cada alarme é uma frase: a tela nunca
+    alarma só com cor. O que o config não tem para decidir vira "sem dado"."""
+    al, sem = [], []
+    p = rep["pausa"]
+
+    # 1. o último disparo do job saiu com erro (08/09: três ticks em rc 127)
+    if job["carregado"] and job["last_exit"] not in (None, 0):
+        al.append({"id": "launchd_exit",
+                   "texto": f"o job {job['label']} saiu com rc {job['last_exit']} no último disparo "
+                            "(launchctl print: last exit code)"})
+
+    # 2. job carregado, sem PAUSAR, e a drenagem não começa há mais de 2x o intervalo
+    si = job["start_interval"]
+    if job["carregado"] and not p["ativa"]:
+        if si is None:
+            sem.append("mudo: sem launchd.start_interval no config")
+        else:
+            ini = ultimo(eventos, lambda e: e["ev"] == "DRENAGEM_INICIO")
+            if ini is None:
+                al.append({"id": "mudo", "texto": f"nenhum DRENAGEM_INICIO na trilha, com o job "
+                                                  f"{job['label']} carregado (dispara a cada {dur(si)})"})
+            elif t - ini["ts"] > 2 * si:
+                al.append({"id": "mudo", "texto": f"nenhuma drenagem começou há {dur(t - ini['ts'])}; "
+                                                  f"o job dispara a cada {dur(si)} (limite {dur(2 * si)})"})
+
+    # 3 e 4. o PAUSAR de pé: a drenagem seguiu depois dele? está esquecido?
+    if p["ativa"]:
+        p0 = p.get("desde") or p["ts"]
+        if p0 is None:
+            sem.append("pausa: o PAUSAR não tem data legível (<AAAA-MM-DD HH:MM> | motivo)")
+        else:
+            # o conteúdo tem só o minuto: sem a PAUSA exata na trilha, 60 s de folga
+            corte = p0 if p.get("desde") else p0 + 60
+            em_curso = None
+            for e in eventos:
+                if e["ts"] >= p0:
+                    break
+                if e["ev"] == "INICIO":
+                    em_curso = e["id"]
+                elif e["ev"] in DESFECHOS and e["id"] == em_curso:
+                    em_curso = None
+            for e in eventos:
+                if e["ts"] < corte:
+                    continue
+                furou = (e["ev"] == "DRENAGEM_INICIO" and e["f"].get("motivo") != "pausado") \
+                    or (e["ev"] == "INICIO" and e["id"] != em_curso)
+                if furou:
+                    o_que = "DRENAGEM_INICIO" if e["ev"] == "DRENAGEM_INICIO" else f"INICIO do {e['id']}"
+                    al.append({"id": "pausa_furada",
+                               "texto": f"a drenagem seguiu depois da pausa: {o_que} às {hhmm(e['ts'])}, "
+                                        f"com o PAUSAR de pé desde {hhmm(p0)}"})
+                    break
+            if t - p0 > PAUSA_LONGA_SEG:
+                al.append({"id": "pausa_longa",
+                           "texto": f"pausado há {dur(t - p0)}, mais de {dur(PAUSA_LONGA_SEG)}: "
+                                    f"motivo \"{p['motivo']}\""})
+
+    # 5. ticket em execução além do timeout do config mais a margem
+    tout = cfg_int(cfg.get("claude_timeout_secs"))
+    if tout is None:
+        sem.append("execução longa: sem claude_timeout_secs no config")
+    elif st and st.get("estado") == "executando":
+        tk = (st.get("ticket") or "").split()
+        tid = tk[0] if tk else "?"
+        ini = inicio_do_ticket(eventos, tid)
+        if ini is None:
+            sem.append(f"execução longa: sem INICIO do {tid} na trilha")
+        elif t - ini > tout + MARGEM_TIMEOUT_SEG:
+            al.append({"id": "execucao_longa",
+                       "texto": f"o {tid} está em execução há {dur(t - ini)}; o timeout é {dur(tout)} "
+                                f"(+{dur(MARGEM_TIMEOUT_SEG)} de margem para gates e juiz)"})
+    return al, sem
+
+
 # ------------------------------------------------------ ações (bloco C)
 
 def job_do_repo(cfg):
@@ -785,6 +871,10 @@ def job_do_repo(cfg):
     if not label or label.startswith("<"):
         job["label"] = None
         job["erro"] = "sem launchd.label no config"
+        return job
+    if os.environ.get("ORQ_TESTE") == "1" and not os.environ.get("ORQ_LAUNCHCTL"):
+        # a mesma guarda do lib.sh (peça 0d): teste nunca toca o launchd real
+        job["erro"] = "ORQ_TESTE=1 sem ORQ_LAUNCHCTL: o launchctl real não é chamado sob teste"
         return job
     try:
         r = subprocess.run([LAUNCHCTL, "print", f"gui/{os.getuid()}/{label}"],
@@ -973,7 +1063,7 @@ const memo = {};
 
 function esc(s){return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function dur(s){ if (s == null) return '?'; s = Math.max(0, Math.floor(s));
-  if (s < 60) return s + ' s'; if (s < 3600) return Math.floor(s/60) + ' min';
+  if (s < 60) return 'menos de 1 min'; if (s < 3600) return Math.floor(s/60) + ' min';
   if (s < 86400){const h = Math.floor(s/3600), m = Math.floor(s%3600/60); return m ? h + 'h' + String(m).padStart(2,'0') : h + 'h';}
   const d = Math.floor(s/86400), h = Math.floor(s%86400/3600); return h ? d + 'd' + h + 'h' : d + 'd'; }
 function pill(tipo, rotulo){ return `<span class="pill ${TOM[tipo]||''}"><span aria-hidden="true">${ICONE[tipo]||''}</span>${esc(rotulo)}</span>`; }
@@ -1004,6 +1094,12 @@ function htmlPrecisa(){
   return h + '</div>';
 }
 
+function htmlAlarmes(r){
+  const a = r.alarmes || [], sd = r.alarmes_sem_dado || [];
+  return a.map(x => `<div class="aviso" role="alert"><span aria-hidden="true">⚠</span> <b>alarme</b> · ${esc(x.texto)}</div>`).join('')
+    + (sd.length ? `<div class="sb">sem dado para alarmar: ${sd.map(esc).join(' · ')}</div>` : '');
+}
+
 function htmlCard(r){
   const e = r.estado, c = r.contagem, d = r.dia, tot = d.aprovados + d.reprovas;
   const pa = tot ? d.aprovados / tot * 100 : 0;
@@ -1012,6 +1108,7 @@ function htmlCard(r){
       <h2><a href="#repo/${encodeURIComponent(r.nome)}">${esc(r.nome)}</a></h2>${pill(e.tipo, e.rotulo)}</div>
     <div class="estado">${esc(e.titulo)}</div><div class="mut">${esc(e.detalhe)}</div>`;
   if (r.erro) h += `<div class="aviso">${esc(r.erro)}</div>`;
+  h += htmlAlarmes(r);
   if (r.acoes && r.acoes.retomar.habilitado) h += `<div style="margin-top:8px">${botao(r, 'retomar', 'Retomar')}</div><div id="msg-${esc(r.nome)}" class="sb" role="status"></div>`;
   h += `<div style="margin-top:10px"><span class="lbl">hoje</span> <span class="num">${d.aprovados} aprovados · ${d.reprovas} reprovas</span>
     <div class="barra" role="img" aria-label="${d.aprovados} aprovados contra ${d.reprovas} reprovas hoje">${tot ? `<div class="a" style="width:${pa}%"></div><div class="r" style="width:${100-pa}%"></div>` : ''}</div></div>
@@ -1089,7 +1186,7 @@ function detalhe(raiz, nome){
   const e = r.estado;
   secao(slot(raiz, 'd-cab'), `<header><div><a href="#">← visão geral</a> <h1 style="display:inline;margin-left:8px">${esc(r.nome)}</h1> ${pill(e.tipo, e.rotulo)}
     <div class="estado">${esc(e.titulo)}</div><div class="mut">${esc(e.detalhe)}</div></div><span class="mut num">${esc(EST.gerado_em)}</span></header>`
-    + (r.erro ? `<div class="aviso">${esc(r.erro)}</div>` : ''));
+    + (r.erro ? `<div class="aviso">${esc(r.erro)}</div>` : '') + htmlAlarmes(r));
   if (typeof htmlAcoes == 'function') secao(slot(raiz, 'd-acoes'), htmlAcoes(r));
   if (!r.detalhe) return;
   secao(slot(raiz, 'd-ind'), htmlIndicadores(r.detalhe));
@@ -1104,7 +1201,7 @@ function detalhe(raiz, nome){
 function botao(r, acao, rotulo, prim, antes){
   const a = r.acoes && r.acoes[acao]; if (!a) return '';
   return `<span class="acao">${antes || ''}<button data-acao="${acao}" data-repo="${esc(r.nome)}"${a.habilitado ? '' : ' disabled'}${prim ? ' class="prim"' : ''}>${rotulo}</button>`
-    + `<span class="${a.habilitado ? 'sb' : 'mut'}">${a.habilitado ? '' : 'indisponível: '}${esc(a.motivo)}</span></span>`;
+    + (a.habilitado && acao == 'pausar' ? '' : `<span class="${a.habilitado ? 'sb' : 'mut'}">${a.habilitado ? '' : 'indisponível: '}${esc(a.motivo)}</span>`) + '</span>';
 }
 function htmlAcoes(r){
   if (!r.acoes) return '';
@@ -1129,7 +1226,7 @@ async function agir(btn){
 }
 
 function visaoGeral(raiz){
-  secao(slot(raiz, 's-cab'), `<header><div><h1>Orquestradores</h1><span class="mut">${EST.repos.length} repositórios · atualiza sozinho a cada 15 s</span></div><span class="mut num">${esc(EST.gerado_em)}</span></header>`
+  secao(slot(raiz, 's-cab'), `<header><div><h1>Orquestradores</h1><span class="mut">${EST.repos.length} repositórios · atualiza sozinho a cada 15 s</span>${(n => n ? ` <span class="pill bad"><span aria-hidden="true">⚠</span>${n} ${n == 1 ? 'alarme' : 'alarmes'}</span>` : '')(EST.repos.reduce((s, r) => s + (r.alarmes || []).length, 0))}</div><span class="mut num">${esc(EST.gerado_em)}</span></header>`
     + (EST.repos_erro ? `<div class="aviso">${esc(EST.repos_erro)}</div>` : ''));
   secao(slot(raiz, 's-precisa'), htmlPrecisa());
   const g = slot(raiz, 's-cards'); g.className = 'grade';

@@ -30,6 +30,8 @@ confere() { # confere <descrição> <esperado> <obtido>
 }
 
 AGORA="$(fp_epoch_hoje 12:00:00)"; export ORQ_PAINEL_AGORA="$AGORA"
+# launchctl falso e job DESCARREGADO: os alarmes de launchd são do bloco D.
+fp_launchctl_stub "$TMP"; touch "$TMP/stub-descarregado"
 ONTEM=$((AGORA - 86400))
 
 # --- alfa: rodando ------------------------------------------------------------

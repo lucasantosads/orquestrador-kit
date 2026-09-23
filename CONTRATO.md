@@ -781,6 +781,47 @@ o `bootstrap` de cada instalação dispara o primeiro tick na hora, em vez de s�
 depois de um `StartInterval` inteiro. `docs/launchd.md` ainda mostra o exemplo
 antigo com `false`; é divergência conhecida até a 7c.
 
+### 9.5 `orq-painel.py` (peça K12): o painel, local
+
+`python3 scripts/orquestrador/orq-painel.py [--porta N]` serve em `127.0.0.1` (Host
+fixo) a página e `/api/estado`, que a página relê a cada 15 s e aplica só onde mudou.
+`--estado` e `--html` imprimem uma vez.
+
+**A lista de repos** é `~/.orq/repos.json` (ou `ORQ_REPOS`), o mesmo arquivo que o job
+único da K15 vai ler:
+
+```json
+{ "$schema_versao": 1, "repos": [ { "caminho": "/abs/repo", "nome": "opcional" } ] }
+```
+
+`nome` padrão é o nome do diretório. Nada no painel depende do nome: label, intervalo,
+timeout e caminhos saem do config de cada repo.
+
+**Lê** só: `STATUS.md` (§3), `events.log` (§4, incremental), `custo.json` (§5.1), o
+primeiro bloco json dos tickets (§2), o config (§8: `runs_dir`, `pausar_file`,
+`liberacoes_file`, `orcamento.custo_file`, `claude_timeout_secs`, `launchd.label`,
+`launchd.start_interval`), o `pausar_file` e o legado `.orq-pause` (§7), e `launchctl print`
+do label. `liberacoes.json` e o cooldown entram pelo motor: o painel roda
+`pendentes_razoes` (`local-loop.sh`, a régua do `OCIOSO`) com `ORQ_EXEC_ROOT` no repo.
+
+**Escreve** no repo só o `pausar_file` (criar/apagar, guardado dentro de `docs/fila` e
+nunca o `.orq-pause`) e, junto, uma linha `PAUSA`/`RETOMADA` na trilha (§4.1). Dispara
+`launchctl kickstart gui/<uid>/<label>` (sem `-k`) só com STATUS `ocioso`, sem pausa e job
+carregado. Não edita ticket, não roda executor, não faz git.
+
+**Categoria de bloqueio**, do último `BLOQUEADO` do ticket (e do `sub=` do `REPROVADO`
+anterior quando o bloqueio não o traz): `enforcement`; `tamanho` (`diff_cap`); `ambiente`
+(`sem_progresso`, `adiamentos`); `merge` (`merge_falhou`); pelo sub, `teste`
+(`gate_testes`), `gate` (outro `gate_*`), `spec` (`criterio`), `juiz`, `exit`; sem
+`BLOQUEADO` na trilha, ou com `RECUPERADO` depois dele, `decisão sua`.
+
+**Alarmes**, cada um uma frase: `launchd_exit` (job carregado com `last exit code` != 0);
+`mudo` (job carregado, sem PAUSAR, último `DRENAGEM_INICIO` além de 2× `start_interval`,
+ou nenhum); `pausa_furada` (PAUSAR de pé e, depois dele, `DRENAGEM_INICIO` sem
+`motivo=pausado` ou `INICIO` de ticket que não era o em curso); `pausa_longa` (PAUSAR há
+mais de 40 min); `execucao_longa` (STATUS `executando` e o `INICIO` do ticket além de
+`claude_timeout_secs` + 10 min). Chave ausente no config vira "sem dado", não alarme.
+
 ---
 
 ## 10. Divergências conhecidas
@@ -793,9 +834,9 @@ O que este contrato **não** descreve como gostaria, e a peça que fecha cada um
 | 2 | ~~`tokens` de OBJETOS não resolvia dependência nenhuma, em silêncio.~~ **FECHADA pela K8b-1:** `liberacao_ok` resolve as quatro formas vivas (§6.1), normalizando o prefixo dos dois lados, e `lint-mapa.py` monta `sat` pela mesma regra. O schema continua sendo documento e insumo, nunca gate. | ~~K8b-1~~ **feita** |
 | 3 | `gate-ticket.ts` NÃO valida contra `schemas/ticket.schema.json`: continua com os checks escritos à mão. O schema é documento e insumo do `orq config`. | **"gate valida pelo schema"** (em PENDENTES) |
 | 4 | `schemas/ticket.schema.json` fecha `status` no vocabulário do gate (6 valores). `doutrina/templates/TICKET.md` cita ainda `candidato` (ticket do planejador antes do gate) e `descartado` (só do gate) — dois status que o motor de hoje não conhece, porque planejador e sentinela nascem desligados. | **K10** (doutrina v2) |
-| 5 | `schemas/motivo_categoria.json` copia os 8 baldes do `orq-telemetria.py` do **comarka-operacional**, que não está no kit. Nada no motor deste kit os usa hoje: eles entram com o painel. | **K12** |
+| 5 | ~~`schemas/motivo_categoria.json` copia os 8 baldes do `orq-telemetria.py`; eles entrariam com o painel.~~ **FECHADA pela K12, por decisão:** o painel categoriza pelo `motivo=` e `sub=` da trilha (§9.5), nunca por padrão no texto da nota, que é o que aqueles baldes fazem. O schema fica como registro da taxonomia antiga; nada o lê. | ~~K12~~ **feita** |
 | 6 | `criterios_aceite[].cmd` é LIDO pelo gate (prefixo, proibições) mas não EXECUTADO: `alvo` que já passa e `guarda` que já falha não são detectados. | **1b** |
 | 7 | O `drenar` não roda o gate de ticket antes de gastar agente. | **1c** |
 | 8 | Dois testes de harness são byte-idênticos ao do CI e ainda assim não viajam com o motor, porque hardcodam valores do config do CI (`orq-cli.test.ts:205,237`; `orquestrador-observabilidade.test.ts:216-217`). | **K8e** |
-| 9 | Não há alarme para "job do launchd carregado e mudo". O incidente de 2026-09-08 passou 1h40 sem detecção automática. | **K12a** |
+| 9 | ~~Não há alarme para "job do launchd carregado e mudo".~~ **FECHADA pela K12 (bloco D):** `launchd_exit` e `mudo` no painel (§9.5). | ~~K12a~~ **feita** |
 | 10 | ~~**Qual bloco ```json vale, num ticket com mais de um.** Três leitores, três respostas.~~ **FECHADA pela D10:** o ticket é o **PRIMEIRO** bloco; qualquer outro é prosa. `lib.sh:ticket_json` deixou de concatenar e `ticket_set` de reescrever mais de um; `gate-ticket.ts` e `fila-read.ts` já liam o primeiro; §2 diz isso; `migrar-tickets.ts` deixou de pular e passou a NOTAR. | ~~D10~~ **feita** |

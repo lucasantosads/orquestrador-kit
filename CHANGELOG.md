@@ -659,3 +659,23 @@ O que o CI faz diferente, ao atualizar: um 503 ou um timeout deixam de parar a f
 hora; um gate cujo runner não roda adia em vez de gastar retry em opus; um critério vermelho
 repete em sonnet; o 4º adiamento seguido do mesmo ticket o bloqueia com a causa; o job do
 launchd dispara no bootstrap. Relatório: `~/orq-sessoes/relatorio-kit-etapa7b.md`.
+
+### Peça K12 · painel único dos orquestradores
+
+Por que: em 13/09 um repo ficou 11 h pausado de madrugada e o painel dizia só PAUSADA; em
+09/09 o CI ficou 12 dias com `processaveis=0` e o painel dizia "ocioso"; em 08/09 o job do
+launchd morreu três vezes em rc 127 e nada alarmou.
+
+- **K12-A** `7062e86`: `orq-painel.py` (Python stdlib), visão geral: precisa de você,
+  estado com tempo, barra do dia, próximos, bloqueados por categoria de `motivo=`/`sub=`.
+  `ocioso_razoes` passa a usar `pendentes_razoes`, que o painel chama.
+- **K12-B** `b32a6c2`: detalhe do repo, 6 indicadores (última promoção sem dado), prontos,
+  hora a hora, arquivos disputados.
+- **K12-C** `85e4796`: pausar e retomar pelo `pausar_file`, com `PAUSA`/`RETOMADA` na
+  trilha (CONTRATO §4.1); disparo só com STATUS ocioso.
+- **K12-D**: alarmes em frase (`launchd_exit`, `mudo`, `pausa_furada`, `pausa_longa`,
+  `execucao_longa`); CONTRATO §9.5; divergências 5 e 9 fechadas.
+
+O que um repo instalado ganha ao atualizar: `scripts/orquestrador/orq-painel.py` e os
+quatro `test-painel-*.sh`; nenhum comportamento do loop muda (o `OCIOSO` sai igual).
+Relatório: `~/orq-sessoes/relatorio-kit-k12.md`.

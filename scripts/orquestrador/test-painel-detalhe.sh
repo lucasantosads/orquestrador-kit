@@ -29,6 +29,8 @@ falha() { printf '  FALHA %s\n' "$*"; FALHAS=$((FALHAS + 1)); }
 confere() { if [ "$2" = "$3" ]; then ok "$1"; else falha "$1: esperado '$2', veio '$3'"; fi; }
 
 AGORA="$(fp_epoch_hoje 12:00:00)"; export ORQ_PAINEL_AGORA="$AGORA"
+# launchctl falso e job DESCARREGADO: os alarmes de launchd são do bloco D.
+fp_launchctl_stub "$TMP"; touch "$TMP/stub-descarregado"
 h() { fp_epoch_hoje "$1"; }
 
 D="$ORQ_EXEC_ROOT/delta"; fp_repo "$D"

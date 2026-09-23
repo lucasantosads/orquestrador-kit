@@ -820,6 +820,36 @@
   **Antes, 3 checks falhando e a trava reprovando 9 linhas em 5 arquivos.**
 
 
+- **K12 · painel único dos orquestradores** (`7062e86` A, `b32a6c2` B, `85e4796` C, e o
+  commit D). `scripts/orquestrador/orq-painel.py`, Python stdlib como o `orq-server.py` do
+  Comarka (que NÃO foi portado: foi a referência de stack, de guarda de Host e de allowlist de
+  ação). Lê só o contrato (STATUS, events, custo, liberações via motor, primeiro bloco json
+  dos tickets, config, PAUSAR); a lista de repos vem de `~/.orq/repos.json` (ou `ORQ_REPOS`),
+  sem ramo por nome. "Por que cada pendente não roda" sai de `pendentes_razoes`, que o
+  `ocioso_razoes` passou a usar: uma régua só. Categoria de bloqueio de `motivo=`/`sub=` da
+  trilha, nunca da prosa; bloqueado sem `BLOQUEADO` na trilha é "decisão sua".
+  (A) visão geral: "Precisa de você" com os tokens por quantos pendentes destravam (cadeia
+  de razões), estado em texto e cor com tempo, barra do dia, 3 próximos, tabela única de
+  bloqueados. (B) detalhe: 6 indicadores (última promoção "sem dado"), bloqueados, prontos,
+  hora a hora, arquivos disputados. (C) a única escrita no repo é o `pausar_file`, e cada
+  pausa/retomada pelo painel grava `PAUSA`/`RETOMADA` na trilha pelo `event()` (a peça
+  "pausa na trilha" da etapa 7); `.orq-pause` só lido; disparo só com STATUS ocioso; não
+  existe "pausar agora". (D) alarmes em frase: `launchd_exit`, `mudo`, `pausa_furada`,
+  `pausa_longa`, `execucao_longa`, e o que o config não tem vira "sem dado".
+  *Evidência:* 13/09 (11h pausado sem ninguém ver), 09/09 (12 dias com `processaveis=0` e
+  "ocioso"), 08/09 (três ticks em rc 127).
+  *Teste:* `test-painel-visao.sh`, `test-painel-detalhe.sh`, `test-painel-pausa.sh`,
+  `test-painel-alarmes.sh` (37, 25, 27 e 14 checks vermelhos antes), com N repos num
+  `mktemp -d` e launchctl falso; sob `ORQ_TESTE=1` sem `ORQ_LAUNCHCTL` o painel recusa o
+  launchctl real. **Antes, nenhum painel no kit.**
+  *Fica de fora:* notificação nativa (desligada por decisão da K12), "Avisos" configuráveis
+  do mockup, prioridade dos prontos e última promoção (sem campo no contrato).
+
+- **K12a · alarme de job carregado e mudo**: feita dentro do bloco D da K12, com uma troca
+  pedida no brief: a régua é o último `DRENAGEM_INICIO` (não o `DRENAGEM_FIM`) contra 2× o
+  `launchd.start_interval`, com job carregado e sem PAUSAR; e o `last exit code` != 0 é
+  alarme próprio. Os dois negativos da spec (janela ok; job descarregado) estão no teste.
+
 ## PENDENTES
 
 - **K6d · `scripts/kit/pureza.sh`.** O grep que TRANCA a pureza: em CÓDIGO (não em
@@ -910,31 +940,6 @@
   evento.
   *Evidência:* inventário §5 (linha do validador de ticket).
   *Teste:* um caso por check, mais o NEGATIVO do gate barrando antes do agente.
-
-- **K12 · painel.** `orq-server.py` + `orq-painel.py` do Comarka entram como `painel/`, refatorados
-  para ler só o contrato (STATUS, events, custo, liberacoes v2, PAUSAR, tickets); `LABELS` →
-  `~/.orq/repos.json`; ações via `orq`; notificação nativa desligada; zero `if repo`.
-  *Evidência:* inventário §4 decisão 18, §6 item 6 (1.935 linhas Python, dois scripts, mora dentro
-  do Comarka e ainda notifica o macOS).
-  *Teste:* o painel lê um repo de fixture sem nenhum ramo por nome de repo.
-
-- **K12a · alarme de job carregado e mudo** (peça K6e item (e); NÃO implementar antes de K12).
-  O painel alarma quando, para um repo do `~/.orq/repos.json`, o job do launchd está
-  CARREGADO e uma das duas condições vale: `last exit code` != 0 no `launchctl print`, ou a
-  última linha `DRENAGEM_FIM` de `runs/events.log` é mais velha que 2× o
-  `launchd.start_interval` do config daquele repo. As duas, porque medem coisas
-  diferentes: a primeira pega o tick que morre antes de escrever (`rc 127`), a segunda
-  pega o loop que roda e não conclui.
-  *Evidência:* o incidente de 2026-09-08 (`docs/PLAYBOOK.md`): 1h40 com o job carregado,
-  três ticks em rc 127, `launchd.log` nunca escrito, e a detecção veio de um `launchctl
-  print` humano. "Carregado" foi lido como "saudável" porque nada media o contrário.
-  *Teste:* dois fixtures de estado, sem launchd real (o `print` vem do stub da K6e,
-  `test/fixtures/bin/launchctl`, cuja saída plausível o teste sobrescreve por caso):
-  (a) `last exit code = 127` + trilha recente → alarma, e a mensagem diz `rc`;
-  (b) `last exit code = 0` + `DRENAGEM_FIM` de 3× `start_interval` atrás → alarma, e a
-  mensagem diz há quanto tempo; mais os dois NEGATIVOS — job carregado, rc 0 e drenagem
-  dentro da janela → silêncio; job NÃO carregado → silêncio (repo desagendado de
-  propósito não é incidente).
 
 - **K13 · python → TS.** `scripts/roadmap/lint-mapa.py` vira TS; triagem de `orq-telemetria.py`,
   `orq-granularidade.py`, `orq-contrato.py` e `gera_tickets.py` (Comarka) na fase do Comarka.
