@@ -129,5 +129,9 @@ pag="$(fp_painel --html 2>/dev/null)"
 case "$pag" in *"alarmes"*"texto"*) ok "a página mostra o texto do alarme" ;; *) falha "página não renderiza o texto dos alarmes" ;; esac
 
 echo
+echo "== launchctl: só o stub, nunca o do sistema (K12-E) =="
+fp_launchctl_confere
+
+echo
 [ "$FALHAS" = 0 ] && { echo "TODOS OS CHECKS PASSARAM"; exit 0; }
 echo "$FALHAS CHECK(S) FALHARAM"; exit 1

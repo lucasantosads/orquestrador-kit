@@ -124,5 +124,9 @@ for s in 'function detalhe' 'Hoje, hora a hora' 'Arquivos mais disputados' 'Pron
 done
 
 echo
+echo "== launchctl: só o stub, nunca o do sistema (K12-E) =="
+fp_launchctl_confere
+
+echo
 [ "$FALHAS" = 0 ] && { echo "TODOS OS CHECKS PASSARAM"; exit 0; }
 echo "$FALHAS CHECK(S) FALHARAM"; exit 1

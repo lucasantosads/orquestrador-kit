@@ -164,5 +164,9 @@ for s in 'Precisa de você' 'Bloqueados' '/api/estado' '15000'; do
 done
 
 echo
+echo "== launchctl: só o stub, nunca o do sistema (K12-E) =="
+fp_launchctl_confere
+
+echo
 [ "$FALHAS" = 0 ] && { echo "TODOS OS CHECKS PASSARAM"; exit 0; }
 echo "$FALHAS CHECK(S) FALHARAM"; exit 1

@@ -130,5 +130,9 @@ done
 case "$pag" in *"Pausar agora"*) falha "página oferece 'Pausar agora'" ;; *) ok "sem 'Pausar agora'" ;; esac
 
 echo
+echo "== launchctl: só o stub, nunca o do sistema (K12-E) =="
+fp_launchctl_confere
+
+echo
 [ "$FALHAS" = 0 ] && { echo "TODOS OS CHECKS PASSARAM"; exit 0; }
 echo "$FALHAS CHECK(S) FALHARAM"; exit 1

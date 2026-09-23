@@ -676,6 +676,9 @@ launchd morreu três vezes em rc 127 e nada alarmou.
 - **K12-D**: alarmes em frase (`launchd_exit`, `mudo`, `pausa_furada`, `pausa_longa`,
   `execucao_longa`); CONTRATO §9.5; divergências 5 e 9 fechadas.
 
+- **K12-E**: trava de launchctl no PATH dos testes do painel, e todo teste exige que o stub
+  tenha sido chamado.
+
 O que um repo instalado ganha ao atualizar: `scripts/orquestrador/orq-painel.py` e os
 quatro `test-painel-*.sh`; nenhum comportamento do loop muda (o `OCIOSO` sai igual).
 Relatório: `~/orq-sessoes/relatorio-kit-k12.md`.

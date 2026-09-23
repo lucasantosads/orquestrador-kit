@@ -845,6 +845,16 @@
   *Fica de fora:* notificação nativa (desligada por decisão da K12), "Avisos" configuráveis
   do mockup, prioridade dos prontos e última promoção (sem campo no contrato).
 
+- **K12-E · os testes do painel provam que não tocam o launchctl do sistema.** Carregar o
+  `test-fixture-painel.sh` põe no topo do PATH um `launchctl` trava (registra e sai 99), e
+  todo `test-painel-*.sh` fecha com `fp_launchctl_confere`: zero chamadas à trava e ao menos
+  uma ao stub de `ORQ_LAUNCHCTL`.
+  *Evidência:* os testes A e B rodados contra o painel do commit C (`85e4796`) saíam verdes
+  chamando `launchctl print` do PATH 4 e 2 vezes (nos commits A e B o painel ainda não
+  chamava launchctl nenhum). O commit D já tinha posto o stub neles; faltava a prova.
+  *Teste:* mutação: o teste A sem o stub reprova contra o painel de hoje (stub não chamado)
+  e contra o do commit C (trava chamada 4 vezes).
+
 - **K12a · alarme de job carregado e mudo**: feita dentro do bloco D da K12, com uma troca
   pedida no brief: a régua é o último `DRENAGEM_INICIO` (não o `DRENAGEM_FIM`) contra 2× o
   `launchd.start_interval`, com job carregado e sem PAUSAR; e o `last exit code` != 0 é

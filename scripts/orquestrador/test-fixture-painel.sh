@@ -18,6 +18,23 @@ fi
 # shellcheck source=test-fixture-drenagem.sh
 source "$AQUI/test-fixture-drenagem.sh"
 
+# TRAVA DO LAUNCHCTL DO SISTEMA (peça K12-E). Carregar este molde põe no TOPO do
+# PATH um `launchctl` que só registra a chamada e sai 99: qualquer caminho do
+# painel que resolva o binário pelo PATH (em vez do stub de ORQ_LAUNCHCTL) cai
+# aqui, e `fp_launchctl_confere` reprova o teste. Entre os blocos C e D da K12,
+# os testes A e B saíram verdes chamando `launchctl print` do sistema: verde não
+# provava nada. Agora o teste falha se a trava for tocada OU se o stub não for.
+FP_TRAVA_DIR="$(dirname "$ORQ_EXEC_ROOT")/trava-launchctl"
+mkdir -p "$FP_TRAVA_DIR"
+cat > "$FP_TRAVA_DIR/launchctl" <<TRAVA
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$FP_TRAVA_DIR/chamadas.log"
+exit 99
+TRAVA
+chmod +x "$FP_TRAVA_DIR/launchctl"
+export PATH="$FP_TRAVA_DIR:$PATH"
+FP_STUB_LOG=''
+
 # fp_epoch_hoje <HH:MM:SS> -> epoch de hoje nessa hora (relógio local).
 # O painel lê `ORQ_PAINEL_AGORA` no lugar do relógio: sem isso, um teste rodado
 # às 00:03 veria "hoje" sem nenhum dos eventos que acabou de escrever.
@@ -103,6 +120,23 @@ exit 0
 STUB
   chmod +x "$d/bin/launchctl"
   export ORQ_LAUNCHCTL="$d/bin/launchctl"
+  FP_STUB_LOG="$d/launchctl.log"
+}
+
+# fp_launchctl_confere — o fecho de todo test-painel-*.sh (usa ok/falha do
+# chamador): nenhuma chamada ao launchctl do PATH, e ao menos uma ao stub. A
+# segunda metade é a que pega o teste que esqueceu o stub: sem ela, o painel
+# recusando o launchctl sob ORQ_TESTE=1 passaria em silêncio por "job sem dado".
+fp_launchctl_confere() {
+  local n
+  if [ -s "$FP_TRAVA_DIR/chamadas.log" ]; then
+    falha "o launchctl do PATH foi chamado $(grep -c . "$FP_TRAVA_DIR/chamadas.log") vez(es): $(sort -u "$FP_TRAVA_DIR/chamadas.log" | tr '\n' ';')"
+  else
+    ok "nenhuma chamada ao launchctl do PATH"
+  fi
+  n="$(grep -c . "${FP_STUB_LOG:-/dev/null}" 2>/dev/null || true)"
+  if [ "${n:-0}" -gt 0 ]; then ok "o stub de launchctl respondeu $n chamada(s)"
+  else falha "o stub de launchctl não foi chamado (o teste não passou por ORQ_LAUNCHCTL)"; fi
 }
 
 # fp_servidor_sobe <dir> — sobe o painel numa porta livre (porta 0) e define URL.
