@@ -813,6 +813,16 @@ primeiro bloco json dos tickets (§2), o config (§8: `runs_dir`, `pausar_file`,
 do label. `liberacoes.json` e o cooldown entram pelo motor: o painel roda
 `pendentes_razoes` (`local-loop.sh`, a régua do `OCIOSO`) com `ORQ_EXEC_ROOT` no repo.
 
+**A apuração de razões roda fora da resposta** (peça K12-J): uma thread por repo, no
+máximo uma de cada vez, disparada quando a fila muda (tickets, liberações, cooldown, e o
+minuto) e o recuo de falha já passou. Timeout de 10 s por repo, matando o grupo de
+processos; recuo de 1, 2, 5 e 10 min depois de falha, teto de 10 min, zerado no sucesso.
+`/api/estado` espera no máximo 0,6 s somados, e só por apurações que acabaram de começar;
+depois responde com o cache, e cada repo traz `razoes.estado` (`ok`, `apurando`,
+`falhou`), a hora da última tentativa e em quanto tempo vem a próxima. Com resultado antigo
+e a fila mudada, a tela usa o antigo e diz de quando é. O cache é da memória do processo:
+não sobrevive a reinício. `--estado` na linha de comando espera todas as apurações.
+
 **Escreve** no repo só o `pausar_file` (criar/apagar, guardado dentro de `docs/fila` e
 nunca o `.orq-pause`) e, junto, uma linha `PAUSA`/`RETOMADA` na trilha (§4.1),
 pelas mesmas funções do `lib.sh` que o `orq` usa; o `por=` da `PAUSA` de pé é

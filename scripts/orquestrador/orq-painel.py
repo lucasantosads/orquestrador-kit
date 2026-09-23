@@ -320,9 +320,6 @@ printf '%s\n' '#legivel'
 ocioso_legivel "$(printf '%s\n' "$r" | awk '$2 != "pronto"')"
 '''
 
-_razoes = {}
-
-
 def assinatura_fila(caminho, cfg):
     """O que muda a resposta de pendentes_razoes: tickets, liberações, cooldown
     e o relógio (adiado_ate e cooldown vencem sozinhos) — por minuto."""
@@ -344,48 +341,127 @@ def assinatura_fila(caminho, cfg):
 
 
 def timeout_razoes():
-    """60 s, ou ORQ_PAINEL_RAZOES_TIMEOUT (existe para o teste do caso lento)."""
+    """10 s por repo, ou ORQ_PAINEL_RAZOES_TIMEOUT (o teste usa menos)."""
     try:
-        return float(os.environ.get("ORQ_PAINEL_RAZOES_TIMEOUT") or 60)
+        return float(os.environ.get("ORQ_PAINEL_RAZOES_TIMEOUT") or 10)
     except ValueError:
-        return 60.0
+        return 10.0
 
 
-def razoes_pendentes(caminho, cfg, n_pendentes=0):
-    """({id: razão}, legível, erro). `pronto` = roda agora. Com erro, NADA foi
-    apurado: quem chama não pode ler "nenhuma razão" como "nenhum pendente
-    preso"."""
-    chave = assinatura_fila(caminho, cfg)
-    c = _razoes.get(caminho)
-    if c and c[0] == chave:
-        return c[1]
+# Recuo depois de falha, em segundos: 1, 2, 5 e 10 min, e 10 min daí em diante.
+# Um repo quebrado ou lento não é reapurado a cada minuto.
+RECUO_SEG = (60, 120, 300, 600)
+# Quanto UMA resposta do /api/estado espera, somando todos os repos, por
+# apurações que ainda não voltaram. Depois disso responde com o cache.
+ORCAMENTO_RESPOSTA_SEG = 0.6
+
+_apuracoes = {}
+_trava_apuracao = threading.Lock()
+
+
+def roda_razoes(caminho, n_pendentes):
+    """(razões, legível, erro) de UMA chamada a pendentes_razoes. O bash roda em
+    grupo de processos próprio e, no timeout, o GRUPO morre: matar só o bash
+    deixava o resto (jq, sleep) vivo, uma apuração órfã a cada tentativa."""
     env = dict(os.environ, ORQ_EXEC_ROOT=str(caminho))
     try:
-        r = subprocess.run(["bash", "-c", SCRIPT_RAZOES, "orq-painel", str(AQUI)],
-                           cwd=str(caminho), env=env, capture_output=True,
-                           text=True, timeout=timeout_razoes())
-    except subprocess.TimeoutExpired:
-        res = ({}, "", f"pendentes_razoes passou de {timeout_razoes():g} s "
-                       f"({n_pendentes} pendentes): razões não apuradas")
-        _razoes[caminho] = (chave, res)
-        return res
+        pr = subprocess.Popen(["bash", "-c", SCRIPT_RAZOES, "orq-painel", str(AQUI)],
+                              cwd=str(caminho), env=env, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, text=True, start_new_session=True)
     except OSError as e:
-        res = ({}, "", f"pendentes_razoes não rodou: {e}")
-        _razoes[caminho] = (chave, res)
-        return res
-    if r.returncode != 0 or "#legivel" not in r.stdout:
-        ult = (r.stderr.strip().splitlines() or ["sem saída"])[-1]
-        res = ({}, "", f"pendentes_razoes rc {r.returncode}: {ult}")
-    else:
-        corpo, legivel = r.stdout.split("#legivel", 1)
-        raz = {}
-        for l in corpo.splitlines():
-            p = l.split(" ", 1)
-            if len(p) == 2:
-                raz[p[0]] = p[1].strip()
-        res = (raz, legivel.strip(), None)
-    _razoes[caminho] = (chave, res)
-    return res
+        return {}, "", f"pendentes_razoes não rodou: {e}"
+    try:
+        out, err = pr.communicate(timeout=timeout_razoes())
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(pr.pid, 9)
+        except OSError:
+            pass
+        pr.communicate()
+        return {}, "", (f"pendentes_razoes passou de {timeout_razoes():g} s "
+                        f"({n_pendentes} pendentes): razões não apuradas")
+    if pr.returncode != 0 or "#legivel" not in out:
+        ult = (err.strip().splitlines() or ["sem saída"])[-1]
+        return {}, "", f"pendentes_razoes rc {pr.returncode}: {ult}"
+    corpo, legivel = out.split("#legivel", 1)
+    raz = {}
+    for l in corpo.splitlines():
+        p = l.split(" ", 1)
+        if len(p) == 2:
+            raz[p[0]] = p[1].strip()
+    return raz, legivel.strip(), None
+
+
+def _apura(caminho, chave, n_pendentes):
+    """Corpo da thread de UM repo: roda, e guarda o resultado ou o recuo."""
+    t0 = time.time()
+    raz, legivel, erro = roda_razoes(caminho, n_pendentes)
+    with _trava_apuracao:
+        a = _apuracoes[caminho]
+        a.update(rodando=False, ultima_tentativa=t0, fim=time.time())
+        if erro is None:
+            a.update(res=(raz, legivel), chave=chave, ok_em=time.time(),
+                     falhas=0, proxima=0.0, erro=None)
+        else:
+            a["falhas"] += 1
+            a["erro"] = erro
+            a["proxima"] = time.time() + RECUO_SEG[min(a["falhas"], len(RECUO_SEG)) - 1]
+        a["evento"].set()
+
+
+def razoes_pendentes(caminho, cfg, n_pendentes=0, esperar=None):
+    """({id: razão}, legível, erro, situação) do CACHE deste repo.
+
+    A apuração roda FORA do caminho da resposta, numa thread por repo (no
+    máximo uma de cada vez), e só quando a fila mudou (`assinatura_fila`) e o
+    recuo de falha já passou. `esperar` é quanto esta chamada aguarda a thread:
+    None espera o fim (o `--estado` de linha de comando); o servidor passa o
+    que sobra do ORCAMENTO_RESPOSTA_SEG. Com resultado antigo e a fila mudada,
+    a resposta usa o antigo e diz que está reapurando.
+    """
+    chave = assinatura_fila(caminho, cfg)
+    agora_real = time.time()
+    with _trava_apuracao:
+        a = _apuracoes.setdefault(caminho, {
+            "res": None, "chave": None, "rodando": False, "falhas": 0, "proxima": 0.0,
+            "erro": None, "ultima_tentativa": None, "ok_em": None, "inicio": None,
+            "fim": None, "evento": threading.Event()})
+        if a["chave"] != chave and not a["rodando"] and agora_real >= a["proxima"]:
+            a.update(rodando=True, inicio=agora_real, evento=threading.Event())
+            threading.Thread(target=_apura, args=(caminho, chave, n_pendentes),
+                             daemon=True).start()
+        evento = a["evento"]
+    if a["rodando"]:
+        if esperar is None:
+            evento.wait()
+        else:
+            # só se espera quem ACABOU de começar: uma apuração que já passou do
+            # orçamento não vai caber nele, e esperá-la de novo a cada resposta
+            # faria o repo lento cobrar 0,6 s de toda tela
+            evento.wait(max(0.0, min(esperar, a["inicio"] + ORCAMENTO_RESPOSTA_SEG - time.time())))
+    with _trava_apuracao:
+        a = dict(_apuracoes[caminho])
+    hm = lambda t: datetime.fromtimestamp(t).strftime("%H:%M") if t else None
+    sit = {"estado": "ok", "ok_em": hm(a["ok_em"]), "ultima_tentativa": hm(a["ultima_tentativa"]),
+           "desde": hm(a["inicio"]) if a["rodando"] else None, "falhas": a["falhas"],
+           "proxima_em_seg": int(max(0, a["proxima"] - time.time())) if a["proxima"] else None}
+    if a["rodando"]:
+        sit["estado"] = "apurando"
+    elif a["erro"] and a["chave"] != chave:
+        sit["estado"] = "falhou"
+    if a["res"] is not None:
+        raz, legivel = a["res"]
+        if sit["estado"] != "ok":
+            sit["aviso"] = (f"razões de {sit['ok_em']}; " + ("reapurando" if a["rodando"] else
+                            f"a reapuração falhou às {sit['ultima_tentativa']}"))
+        return raz, legivel, None, sit
+    if a["rodando"]:
+        return {}, "", (f"apurando razões desde {sit['desde']} "
+                        f"(há {dur(time.time() - a['inicio'])})"), sit
+    min_ = int((time.time() - a["fim"]) // 60) if a["fim"] else 0
+    prox = datetime.fromtimestamp(a["proxima"]).strftime("%H:%M") if a["proxima"] else "?"
+    return {}, "", (f"não consegui apurar: {a['erro']} (última tentativa às "
+                    f"{sit['ultima_tentativa']}, há {min_} min; próxima às {prox})"), sit
 
 
 def cadeia(tid, raz):
@@ -508,7 +584,7 @@ def pausa_do_repo(caminho, cfg):
     return {"ativa": False, "arquivo": rel, "legado": False, "ts": None, "motivo": ""}
 
 
-def coletar_repo(r, t):
+def coletar_repo(r, t, prazo=None):
     caminho = r["caminho"]
     cfg, cfg_erro = ler_json(Path(caminho) / "docs" / "fila" / "000-config.json")
     cfg = cfg if isinstance(cfg, dict) else {}
@@ -517,7 +593,11 @@ def coletar_repo(r, t):
     eventos = ler_trilha(runs / "events.log")
     tickets = ler_tickets(Path(caminho) / "docs" / "fila")
     n_pend = sum(1 for x in tickets if x["status"] == "pendente")
-    raz, legivel, raz_erro = razoes_pendentes(caminho, cfg, n_pend) if not cfg_erro else ({}, "", None)
+    if cfg_erro:
+        raz, legivel, raz_erro, raz_sit = {}, "", None, {"estado": "falhou"}
+    else:
+        esperar = None if prazo is None else max(0.0, prazo - time.time())
+        raz, legivel, raz_erro, raz_sit = razoes_pendentes(caminho, cfg, n_pend, esperar)
     # razões apuradas? Sem elas, "pronto" e "preso por token" são DESCONHECIDOS:
     # zero prontos viraria "sem ticket para pegar" e a faixa diria "nenhum token".
     raz_ok = not cfg_erro and not raz_erro
@@ -534,6 +614,7 @@ def coletar_repo(r, t):
         "nome": r["nome"], "caminho": caminho,
         "erro": f"000-config.json {cfg_erro}" if cfg_erro else raz_erro,
         "razoes_ok": raz_ok,
+        "razoes": raz_sit,
         "status_md": st is not None,
         "pausa": pausa,
         "contagem": {"prontos": len(prontos) if raz_ok else None, "pendentes": len(pendentes),
@@ -636,7 +717,8 @@ def estado_do_repo(st, pausa, eventos, raz, legivel, rep, t):
 
     c = rep["contagem"]
     if not rep["razoes_ok"] and c["pendentes"]:
-        return saida("sem_dado", "não consegui apurar a fila",
+        apurando = (rep.get("razoes") or {}).get("estado") == "apurando"
+        return saida("sem_dado", "apurando a fila" if apurando else "não consegui apurar a fila",
                      (rep["erro"] or "razões não apuradas") + f" · último: {ultimo_txt}")
     if c["pendentes"] and not c["prontos"]:
         ult_tk = ultimo(eventos, lambda e: e["id"] not in ("---", "—"))
@@ -786,13 +868,18 @@ def detalhe_do_repo(rep, t):
             "prontos": prontos_l, "custo_dia_usd": custo_do_dia(rep["caminho"], cfg, t)}
 
 
-def coletar_tudo():
+def coletar_tudo(orcamento=None):
+    """`orcamento`: segundos que ESTA resposta pode esperar, somando todos os
+    repos, por apurações de razões em andamento (None: espera todas, o modo de
+    linha de comando). Um repo lento consome o orçamento uma vez só; os outros
+    vêm com o que já têm."""
     t = agora()
+    prazo = None if orcamento is None else time.time() + orcamento
     repos, erro = ler_repos()
     saida = []
     for r in repos:
         try:
-            rep = coletar_repo(r, t)
+            rep = coletar_repo(r, t, prazo)
             rep["detalhe"] = detalhe_do_repo(rep, t)
             saida.append(rep)
         except Exception as e:  # um repo quebrado não derruba a tela dos outros
@@ -828,7 +915,7 @@ _cache = {"t": 0.0, "v": None}
 def estado_atual(forcar=False):
     with _trava_cache:
         if forcar or _cache["v"] is None or time.time() - _cache["t"] > TTL_CACHE_SEG:
-            _cache["v"] = coletar_tudo()
+            _cache["v"] = coletar_tudo(ORCAMENTO_RESPOSTA_SEG)
             _cache["t"] = time.time()
         return _cache["v"]
 
@@ -1166,6 +1253,7 @@ function htmlCard(r){
     <div class="estado">${esc(e.titulo)}</div><div class="mut">${esc(e.detalhe)}</div>`;
   if (r.erro) h += `<div class="aviso">${esc(r.erro)}</div>`;
   h += htmlAlarmes(r);
+  if (r.razoes && r.razoes.aviso) h += `<div class="sb"><span aria-hidden="true">⟳</span> ${esc(r.razoes.aviso)}</div>`;
   if (r.acoes && r.acoes.retomar.habilitado) h += `<div style="margin-top:8px">${botao(r, 'retomar', 'Retomar')}</div><div id="msg-${esc(r.nome)}" class="sb" role="status"></div>`;
   h += `<div style="margin-top:10px"><span class="lbl">hoje</span> <span class="num">${d.aprovados} aprovados · ${d.reprovas} reprovas</span>
     <div class="barra" role="img" aria-label="${d.aprovados} aprovados contra ${d.reprovas} reprovas hoje">${tot ? `<div class="a" style="width:${pa}%"></div><div class="r" style="width:${100-pa}%"></div>` : ''}</div></div>
@@ -1401,6 +1489,8 @@ def main(argv):
         porta = int(argv[argv.index("--porta") + 1])
     srv = ThreadingHTTPServer((HOST, porta), Handler)
     print(f"orq-painel em http://{HOST}:{srv.server_address[1]}  (repos: {arquivo_repos()})", flush=True)
+    # dispara as apurações de razões já na subida: a primeira tela não espera
+    threading.Thread(target=estado_atual, daemon=True).start()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

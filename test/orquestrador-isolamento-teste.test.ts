@@ -43,6 +43,7 @@ const SCRIPTS = [
   'test-painel-detalhe.sh',
   'test-painel-pausa.sh',
   'test-painel-alarmes.sh',
+  'test-painel-lento.sh',
 ];
 
 /**

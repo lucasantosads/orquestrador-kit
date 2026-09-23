@@ -692,6 +692,9 @@ launchd morreu três vezes em rc 127 e nada alarmou.
 - **K12-I**: filtro por repo na tabela de bloqueados, junto com o de categoria, com a
   contagem de cada repo e o chip de quem não tem bloqueado desabilitado.
 
+- **K12-J**: apuração de razões em segundo plano por repo, com cache, timeout de 10 s e
+  recuo de 1, 2, 5 e 10 min; o `/api/estado` não espera um repo lento.
+
 O que um repo instalado ganha ao atualizar: `scripts/orquestrador/orq-painel.py` e os
 quatro `test-painel-*.sh`; nenhum comportamento do loop muda (o `OCIOSO` sai igual).
 Relatório: `~/orq-sessoes/relatorio-kit-k12.md`.

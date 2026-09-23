@@ -894,6 +894,20 @@
   com estado novo. 6 vermelhos antes (o harness quebrou na primeira tentativa, por extrair
   o script com `sed`; esse vermelho foi descartado e refeito).
 
+- **K12-J · um repo lento não segura o painel.** A apuração de razões roda numa thread por
+  repo, fora do caminho da resposta, com cache por repo; o `/api/estado` responde com o que
+  tem, e cada repo diz `apurando` ou `falhou` com a hora da última tentativa. Timeout de 10
+  s, com o grupo de processos morto (antes, o `subprocess.run` matava o bash e deixava os
+  filhos vivos); recuo de 1, 2, 5 e 10 min depois de falha. A subida do servidor já
+  dispara as apurações.
+  *Evidência:* com o comarka-operacional (92 pendentes), o `/api/estado` esperava até 60 s
+  pelo `pendentes_razoes` dele, e de novo a cada minuto.
+  *Teste:* `test-painel-lento.sh`, numa cópia do motor em que o repo `lento` dorme 30 s:
+  duas chamadas abaixo de 1 s, o rápido completo, o lento `apurando` e depois `falhou`
+  com a hora, o processo morto e uma tentativa só no recuo. 10 vermelhos antes (a 1ª
+  chamada levou 4,5 s, o timeout inteiro, e o `sleep` do lento sobreviveu ao timeout).
+  *Fica para a 7e:* o custo do `pendentes_razoes` em si.
+
 - **K12a · alarme de job carregado e mudo**: feita dentro do bloco D da K12, com uma troca
   pedida no brief: a régua é o último `DRENAGEM_INICIO` (não o `DRENAGEM_FIM`) contra 2× o
   `launchd.start_interval`, com job carregado e sem PAUSAR; e o `last exit code` != 0 é
