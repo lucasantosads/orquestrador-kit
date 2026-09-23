@@ -815,7 +815,11 @@ def coletar_tudo():
         r.pop("_interno", None)
     return {"gerado_em": datetime.fromtimestamp(t).strftime("%d/%m %H:%M:%S"),
             "agora": t, "repos_arquivo": str(arquivo_repos()), "repos_erro": erro,
-            "precisa": precisa, "precisa_fora": fora, "bloqueados": bloqueados, "repos": saida}
+            "precisa": precisa, "precisa_fora": fora, "bloqueados": bloqueados,
+            # um por repo do repos.json, COM os zeros: o chip de quem não tem
+            # bloqueado fica (desabilitado), para a contagem continuar legível
+            "bloqueados_por_repo": [{"repo": r["nome"], "n": len(r.get("bloqueados", []))} for r in saida],
+            "repos": saida}
 
 
 _cache = {"t": 0.0, "v": None}
@@ -1082,6 +1086,7 @@ details summary{cursor:pointer;color:var(--link)}
 .filtros{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
 .filtros button{padding:3px 12px}
 .filtros button[aria-pressed=true]{background:#fff;color:#0a0a0a}
+.filtros button:disabled{text-decoration:line-through}
 .aviso{border-left:3px solid var(--bad);padding:6px 10px;margin:6px 0;background:var(--bad-f)}
 .arq{font-size:11.5px;color:#8a8a8a;font-family:"JetBrains Mono",monospace}
 pre{white-space:pre-wrap;margin:6px 0 0;font-size:12px;color:#d4d4d4}
@@ -1105,7 +1110,7 @@ pre{white-space:pre-wrap;margin:6px 0 0;font-size:12px;color:#d4d4d4}
 JS = r"""
 const TOM = {rodando:'ok', pausado:'warn', travado:'bad', ocioso:'info', sem_dado:''};
 const ICONE = {rodando:'▶', pausado:'❚❚', travado:'■', ocioso:'○', sem_dado:'?'};
-let EST = null, FILTRO = 'todos', MOSTRA_UM = false;
+let EST = null, FILTRO = 'todos', FILTRO_REPO = 'todos', MOSTRA_UM = false;
 const memo = {};
 
 function esc(s){return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -1174,9 +1179,13 @@ function htmlCard(r){
 
 function htmlBloqueados(lista, comRepo){
   const cats = ['todos', ...new Set(lista.map(b => b.categoria))];
-  const vis = lista.filter(b => FILTRO == 'todos' || b.categoria == FILTRO);
+  // repo e categoria juntos; o filtro de repo só existe na tabela única da visão geral
+  const vis = lista.filter(b => (FILTRO == 'todos' || b.categoria == FILTRO)
+    && (!comRepo || FILTRO_REPO == 'todos' || b.repo == FILTRO_REPO));
+  const porRepo = comRepo ? (EST.bloqueados_por_repo || []) : [];
   let h = `<div class="card"><h2>Bloqueados <span class="mut">${lista.length}${comRepo ? ' nos ' + EST.repos.length + ' repos' : ''}</span></h2>
     <div class="filtros" role="group" aria-label="filtrar por categoria">${cats.map(c => `<button data-filtro="${esc(c)}" aria-pressed="${c == FILTRO}">${esc(c)}</button>`).join('')}</div>
+    ${porRepo.length ? `<div class="filtros" role="group" aria-label="filtrar por repo"><button data-repo-filtro="todos" aria-pressed="${FILTRO_REPO == 'todos'}">todos · ${lista.length}</button>${porRepo.map(x => `<button data-repo-filtro="${esc(x.repo)}" aria-pressed="${x.repo == FILTRO_REPO}"${x.n ? '' : ' disabled title="sem bloqueado"'}>${esc(x.repo)} · ${x.n}</button>`).join('')}</div>` : ''}
     <table><thead><tr><th>Ticket</th><th>Categoria</th><th>Motivo (primeira linha)</th>${comRepo ? '<th>Repo</th>' : '<th>Onde mexe</th><th>Parado há</th>'}<th class="num">Tent.</th></tr></thead><tbody>`;
   for (const b of vis){
     const k = `bl-${b.repo}-${b.id}`;
@@ -1187,7 +1196,7 @@ function htmlBloqueados(lista, comRepo){
     h += comRepo ? `<td>${esc(b.repo)}</td>` : `<td class="arq">${b.allow.map(esc).join('<br>')}</td><td class="num">${b.parado_seg == null ? '<span class="sb">sem dado</span>' : dur(b.parado_seg)}</td>`;
     h += `<td class="num">${b.tentativas == null ? '<span class="sb">sem dado</span>' : b.tentativas}</td></tr>`;
   }
-  if (!vis.length) h += `<tr><td colspan="6" class="mut">nenhum bloqueado${FILTRO != 'todos' ? ' nesta categoria' : ''}</td></tr>`;
+  if (!vis.length) h += `<tr><td colspan="6" class="mut">nenhum bloqueado${FILTRO != 'todos' || (comRepo && FILTRO_REPO != 'todos') ? ' com estes filtros' : ''}</td></tr>`;
   return h + '</tbody></table></div>';
 }
 
@@ -1303,6 +1312,8 @@ async function carregar(){
 }
 document.addEventListener('click', ev => {
   const b = ev.target.closest('button[data-acao]'); if (b && !b.disabled){ agir(b); return; }
+  const fr = ev.target.closest('[data-repo-filtro]');
+  if (fr && !fr.disabled){ FILTRO_REPO = fr.dataset.repoFiltro; for (const k in memo) if (k.endsWith('bloq')) delete memo[k]; render(); return; }
   const f = ev.target.closest('[data-filtro]'); if (f){ FILTRO = f.dataset.filtro; for (const k in memo) if (k.endsWith('bloq')) delete memo[k]; render(); }
 });
 window.addEventListener('hashchange', render);

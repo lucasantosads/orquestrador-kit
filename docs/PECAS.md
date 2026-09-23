@@ -885,6 +885,15 @@
   *Teste:* bloco 11 do `test-painel-visao.sh`, com o texto do 243 copiado e datado, e uma
   linha de 323 caracteres sem ponto; 5 vermelhos antes.
 
+- **K12-I · filtro por repo na tabela de bloqueados.** Segunda linha de chips: "todos" e um
+  por repo do `repos.json`, com a contagem (`bloqueados_por_repo`, com os zeros). Combina
+  com o de categoria; o chip de repo sem bloqueado fica desabilitado, não some; a escolha
+  sobrevive à atualização de 15 s.
+  *Teste:* bloco 12 do `test-painel-visao.sh`, que roda o JS REAL da página no node com um
+  DOM mínimo: o clique passa pelo handler da página, e a atualização é um segundo render
+  com estado novo. 6 vermelhos antes (o harness quebrou na primeira tentativa, por extrair
+  o script com `sed`; esse vermelho foi descartado e refeito).
+
 - **K12a · alarme de job carregado e mudo**: feita dentro do bloco D da K12, com uma troca
   pedida no brief: a régua é o último `DRENAGEM_INICIO` (não o `DRENAGEM_FIM`) contra 2× o
   `launchd.start_interval`, com job carregado e sem PAUSAR; e o `last exit code` != 0 é

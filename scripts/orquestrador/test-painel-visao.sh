@@ -212,6 +212,53 @@ confere "700 (motivo curto em duas linhas) segue igual" "repetição: 2ª reprov
 case "$pag" in *"motivo_inteiro"*) ok "a página abre o texto inteiro no clique" ;; *) falha "a página não usa motivo_inteiro" ;; esac
 
 echo
+echo "== 12. bloqueados: filtro por repo, junto com o de categoria (K12-I) =="
+confere "contagem por repo, na ordem do repos.json, com o zero" "alfa:3 beta:0 gama:1" \
+  "$(jq -r '[.bloqueados_por_repo[] | "\(.repo):\(.n)"] | join(" ")' "$EST" 2>/dev/null)"
+# O JS de VERDADE da página, rodado no node com um DOM mínimo: o clique passa
+# pelo handler real, e a atualização de 15 s é um segundo render com estado novo.
+fp_painel --html | python3 -c 'import sys, re; print(re.search(r"<script>(.*)</script>", sys.stdin.read(), re.S).group(1))' > "$TMP/pagina.js"
+# a atualização traz dois bloqueados novos de categoria teste: o 798 no alfa
+# (tem de aparecer: o render usou o estado novo) e o 799 no gama (tem de ficar de
+# fora: o filtro de repo sobreviveu)
+jq '.bloqueados += [(.bloqueados[0] | .id = "798"), (.bloqueados[0] | .id = "799" | .repo = "gama")] | .gerado_em = "depois"' "$EST" > "$TMP/estado2.json"
+cat > "$TMP/dom.js" <<'JS'
+const fs = require('fs'), vm = require('vm');
+const [pagina, e1, e2] = process.argv.slice(2).map(f => fs.readFileSync(f, 'utf8'));
+const reg = {}; let clique = null;
+class El { constructor(id){ this.id = id || ''; this.innerHTML = ''; this.children = []; this.dataset = {}; this.hidden = false; if (id) reg[id] = this; }
+  get childElementCount(){ return this.children.length; } appendChild(c){ this.children.push(c); if (c.id) reg[c.id] = c; return c; }
+  querySelectorAll(){ return []; } set textContent(v){ this.innerHTML = v; } }
+new El('app'); new El('falha');
+const ctx = { console, location: { hash: '' }, setInterval(){}, fetch: async () => { throw new Error('sem rede'); },
+  window: { addEventListener(){} },
+  document: { getElementById: id => reg[id] || null, createElement: () => new El(), addEventListener: (t, f) => { if (t == 'click') clique = f; } } };
+vm.createContext(ctx);
+vm.runInContext(pagina + '\n;globalThis.__t = { set: e => { EST = e; }, render, filtros: () => [FILTRO, typeof FILTRO_REPO == "undefined" ? null : FILTRO_REPO] };', ctx);
+const t = ctx.__t, ids = () => [...reg['s-bloq'].innerHTML.matchAll(/<tr><td><span class="mono">([^<]+)</g)].map(m => m[1]).join(' ');
+const clicar = (attr, v) => clique({ target: { closest: sel => sel.includes(attr) ? { dataset: { [attr == 'data-repo-filtro' ? 'repoFiltro' : 'filtro']: v }, disabled: false } : null } });
+t.set(JSON.parse(e1)); t.render();
+console.log('antes=' + ids());
+const chips = reg['s-bloq'].innerHTML;
+console.log('chip_beta_desabilitado=' + /data-repo-filtro="beta"[^>]*disabled/.test(chips));
+console.log('chip_beta_com_zero=' + /data-repo-filtro="beta"[^>]*>[^<]*beta[^<]*0/.test(chips));
+clicar('data-repo-filtro', 'gama'); console.log('gama=' + ids());
+clicar('data-repo-filtro', 'alfa'); console.log('alfa=' + ids());
+clicar('data-filtro', 'teste'); console.log('alfa+teste=' + ids());
+t.set(JSON.parse(e2)); t.render(); console.log('apos_atualizar=' + ids() + ' filtros=' + t.filtros().join(','));
+JS
+out="$(node "$TMP/dom.js" "$TMP/pagina.js" "$EST" "$TMP/estado2.json" 2>&1)"
+v() { printf '%s\n' "$out" | sed -n "s/^$1=//p"; }
+confere "sem filtro: todos os bloqueados" "700 701 702 243" "$(v antes)"
+confere "chip de repo sem bloqueado fica, desabilitado" true "$(v chip_beta_desabilitado)"
+confere "e mostra o 0" true "$(v chip_beta_com_zero)"
+confere "clique em gama: só o 243" 243 "$(v gama)"
+confere "clique em alfa: os 3 do alfa" "700 701 702" "$(v alfa)"
+confere "alfa + categoria teste: os dois filtros juntos" 700 "$(v alfa+teste)"
+confere "a atualização de 15 s mantém repo e categoria" "700 798 filtros=teste,alfa" "$(v apos_atualizar)"
+printf '%s\n' "$out" | grep -qiE 'error|exception' && printf '%s\n' "$out" | sed 's/^/  node: /' || true
+
+echo
 echo "== launchctl: só o stub, nunca o do sistema (K12-E) =="
 fp_launchctl_confere
 
