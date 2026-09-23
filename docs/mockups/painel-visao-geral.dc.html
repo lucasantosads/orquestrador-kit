@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Painel dos orquestradores (mockup 23/09)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:"Open Sans",system-ui,sans-serif;background:#0a0a0a;color:#ffffff}
+a{color:#0099ff;text-decoration:none}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+.card{background:#141414;border:1px solid #262626;border-radius:12px;padding:18px 20px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#a3a3a3;font-weight:700}
+.mut{color:#a3a3a3}
+.sb{color:#7a7a7a}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 10px;border-radius:999px;background:#1c1c1c;color:#d4d4d4;border:1px solid #333333}
+.ok{background:#0f2a1a;color:#4ade80;border-color:#1f5c38}
+.warn{background:#2b2110;color:#fbbf24;border-color:#5c4514}
+.bad{background:#2d1212;color:#f87171;border-color:#6b2020}
+.info{background:#0b2233;color:#5cc0ff;border-color:#134a70}
+.dot{width:10px;height:10px;border-radius:999px;flex-shrink:0}
+.linha{display:grid;grid-template-columns:58px 1fr auto;gap:12px;align-items:start;padding:10px 0;border-bottom:1px solid #1f1f1f;font-size:13.5px}
+.num{font-variant-numeric:tabular-nums}
+.barra{height:8px;border-radius:999px;background:#1f1f1f;overflow:hidden;display:flex}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1160px; box-sizing: border-box; padding: 24px 32px; display: flex; flex-direction: column; gap: 16px; background: #0a0a0a;">
+
+<div style="display: flex; justify-content: space-between; align-items: baseline;">
+<div style="display: flex; gap: 14px; align-items: baseline;"><span style="font-size: 20px; font-weight: 700;">Orquestradores</span><span class="mut" style="font-size: 12.5px;">3 repositórios · atualiza sozinho a cada 15s</span></div>
+<span class="mut mono" style="font-size: 12px;">23/09 12:41</span>
+</div>
+
+<div style="background: #2d1212; border: 1px solid #6b2020; border-radius: 12px; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<div style="display: flex; gap: 10px; align-items: center;"><span style="font-size: 16px; font-weight: 700; color: #f87171;">Precisa de você</span><span class="pill bad">4 itens</span></div>
+<span class="mut" style="font-size: 12px;">ordenado por quantos tickets cada item destrava</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 20px;">
+<div style="display: flex; gap: 10px; align-items: baseline; font-size: 13.5px;"><span class="pill bad">destrava 3</span><span><b>credencial da Evolution</b> <span class="mut">· resumo do grupo e WhatsApp</span></span></div>
+<div style="display: flex; gap: 10px; align-items: baseline; font-size: 13.5px;"><span class="pill bad">destrava 3</span><span><b>grupos de WhatsApp mapeados</b></span></div>
+<div style="display: flex; gap: 10px; align-items: baseline; font-size: 13.5px;"><span class="pill warn">destrava 2</span><span><b>calendário dos gestores</b> <span class="mut">· agenda do time</span></span></div>
+<div style="display: flex; gap: 10px; align-items: baseline; font-size: 13.5px;"><span class="pill warn">destrava 1</span><span><b>pacote ADV PREMIUM</b> <span class="mut">· etapas e consultorias</span></span></div>
+</div>
+<div class="mut" style="font-size: 12px; border-top: 1px solid #6b2020; padding-top: 10px;">Mais 6 itens de 1 ticket cada <a href="#">· mostrar</a></div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;">
+
+<div class="card" style="display: flex; flex-direction: column; gap: 12px; border-left: 3px solid #4ade80;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="font-size: 15px; font-weight: 700;">comarka-operacional</span>
+<span style="display: flex; gap: 6px; align-items: center;"><span class="dot" style="background: #4ade80;"></span><span class="mut" style="font-size: 12.5px;">rodando</span></span>
+</div>
+<div style="background: #1a1a1a; border-radius: 10px; padding: 10px 12px;">
+<div style="font-size: 13.5px;"><b>530</b> <span class="mut">campanhas sem duplicatas</span></div>
+<div class="mut" style="font-size: 12px;">tentativa 1 · há 6 min · último: 585 aprovado às 12:33</div>
+</div>
+<div>
+<div style="display: flex; justify-content: space-between; font-size: 12px;" class="mut"><span>hoje</span><span>24 feitos · 32 reprovas</span></div>
+<div class="barra" style="margin-top: 6px;"><i style="width: 43%; background: #4ade80;"></i><i style="width: 57%; background: #6b2020;"></i></div>
+</div>
+<div style="display: flex; gap: 14px; font-size: 13px;" class="num">
+<span><b>18</b> <span class="mut">prontos</span></span>
+<span><b>95</b> <span class="mut">pendentes</span></span>
+<span style="color: #f87171;"><b>4</b> <span class="mut" style="color: #f87171;">bloqueados</span></span>
+</div>
+<div style="border-top: 1px solid #262626; padding-top: 10px;">
+<div class="lbl" style="margin-bottom: 6px;">Próximos</div>
+<div style="font-size: 12.5px; display: flex; flex-direction: column; gap: 3px;">
+<span><span class="pill" style="font-size: 10px; padding: 1px 7px;">p10</span> 530b painel de Campanhas</span>
+<span><span class="pill" style="font-size: 10px; padding: 1px 7px;">p20</span> 596b Tarefas como cartão</span>
+<span><span class="pill" style="font-size: 10px; padding: 1px 7px;">p30</span> 525 lerCorpoJson clientes</span>
+<a href="#" class="mut">e mais 15</a>
+</div>
+</div>
+</div>
+
+<div class="card" style="display: flex; flex-direction: column; gap: 12px; border-left: 3px solid #fbbf24;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="font-size: 15px; font-weight: 700;">actus-saas</span>
+<span style="display: flex; gap: 6px; align-items: center;"><span class="dot" style="background: #fbbf24;"></span><span class="mut" style="font-size: 12.5px;">pausado</span></span>
+</div>
+<div style="background: #2b2110; border: 1px solid #5c4514; border-radius: 10px; padding: 10px 12px;">
+<div style="font-size: 13.5px; color: #fbbf24;"><b>Pausado por você há 21h</b></div>
+<div class="mut" style="font-size: 12px;">motivo: "22/09 tarde: leva de tickets"</div>
+<a href="#" style="font-size: 12.5px;">Retomar</a>
+</div>
+<div>
+<div style="display: flex; justify-content: space-between; font-size: 12px;" class="mut"><span>hoje</span><span>0 feitos · 0 reprovas</span></div>
+<div class="barra" style="margin-top: 6px;"><i style="width: 100%; background: #1f1f1f;"></i></div>
+</div>
+<div style="display: flex; gap: 14px; font-size: 13px;" class="num">
+<span><b>4</b> <span class="mut">prontos</span></span>
+<span><b>8</b> <span class="mut">pendentes</span></span>
+<span style="color: #f87171;"><b>8</b> <span class="mut" style="color: #f87171;">bloqueados</span></span>
+</div>
+<div style="border-top: 1px solid #262626; padding-top: 10px;">
+<div class="lbl" style="margin-bottom: 6px;">Próximos</div>
+<div style="font-size: 12.5px; display: flex; flex-direction: column; gap: 3px;">
+<span><span class="pill" style="font-size: 10px; padding: 1px 7px;">p20</span> 488b fila de mensagens</span>
+<span><span class="pill" style="font-size: 10px; padding: 1px 7px;">p30</span> 499 painel do analista</span>
+<a href="#" class="mut">e mais 2</a>
+</div>
+</div>
+</div>
+
+<div class="card" style="display: flex; flex-direction: column; gap: 12px; border-left: 3px solid #f87171;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="font-size: 15px; font-weight: 700;">conteudos-infinitos</span>
+<span style="display: flex; gap: 6px; align-items: center;"><span class="dot" style="background: #f87171;"></span><span class="mut" style="font-size: 12.5px;">travado</span></span>
+</div>
+<div style="background: #2d1212; border: 1px solid #6b2020; border-radius: 10px; padding: 10px 12px;">
+<div style="font-size: 13.5px; color: #f87171;"><b>Sem ticket para pegar há 19 min</b></div>
+<div class="mut" style="font-size: 12px;">o único pendente espera um bloqueado</div>
+<a href="#" style="font-size: 12.5px;">Ver os 3 bloqueados</a>
+</div>
+<div>
+<div style="display: flex; justify-content: space-between; font-size: 12px;" class="mut"><span>hoje</span><span>0 feitos · 0 reprovas</span></div>
+<div class="barra" style="margin-top: 6px;"><i style="width: 100%; background: #1f1f1f;"></i></div>
+</div>
+<div style="display: flex; gap: 14px; font-size: 13px;" class="num">
+<span style="color: #f87171;"><b>0</b> <span class="mut" style="color: #f87171;">prontos</span></span>
+<span><b>1</b> <span class="mut">pendente</span></span>
+<span style="color: #f87171;"><b>3</b> <span class="mut" style="color: #f87171;">bloqueados</span></span>
+</div>
+<div style="border-top: 1px solid #262626; padding-top: 10px;">
+<div class="lbl" style="margin-bottom: 6px;">Último resultado</div>
+<div class="mut" style="font-size: 12.5px;">243 reprovado em 21/09 20:07</div>
+</div>
+</div>
+
+</div>
+
+<div class="card" style="display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+<div style="display: flex; gap: 10px; align-items: center;"><span style="font-size: 16px; font-weight: 700;">Bloqueados</span><span class="pill bad">7 nos 3 repos</span></div>
+<div style="display: flex; gap: 6px;"><span class="pill" style="background: #ffffff; color: #0a0a0a; border-color: #ffffff;">Todos</span><span class="pill">Spec</span><span class="pill">Enforcement</span><span class="pill">Teste</span><span class="pill">Decisão sua</span></div>
+</div>
+<div class="linha"><span class="mono"><b>596b</b></span><div><span class="pill info" style="margin-right: 8px;">teste</span>suíte vermelha: o aceite 522 ancorava o título na classe de estilo <span class="mut">· corrigido, volta a pendente</span></div><span class="mut" style="font-size: 12px;">2 tent. · comarka</span></div>
+<div class="linha"><span class="mono"><b>530</b></span><div><span class="pill warn" style="margin-right: 8px;">enforcement</span>tocou test/painel-estado-explicito fora da allowlist <span class="mut">· corrigido, volta a pendente</span></div><span class="mut" style="font-size: 12px;">2 tent. · comarka</span></div>
+<div class="linha"><span class="mono"><b>306b</b></span><div><span class="pill bad" style="margin-right: 8px;">decisão sua</span>espera 475c e o token da migration <a href="#">· abrir motivo</a></div><span class="mut" style="font-size: 12px;">comarka</span></div>
+<div class="linha"><span class="mono"><b>243</b></span><div><span class="pill info" style="margin-right: 8px;">spec</span>2ª reprova igual à anterior: testes de ausência sem controle positivo <a href="#">· abrir motivo</a></div><span class="mut" style="font-size: 12px;">3 tent. · conteúdos</span></div>
+<div class="linha" style="border-bottom: 0;"><span class="mono"><b>269</b></span><div><span class="pill warn" style="margin-right: 8px;">ambiente</span>árvore suja: liberacoes.json modificado, commite ou stashe</div><span class="mut" style="font-size: 12px;">4 adiamentos · conteúdos</span></div>
+<div class="mut" style="font-size: 12px; border-top: 1px solid #262626; padding-top: 10px; margin-top: 4px;">Motivo longo fica recolhido. Só a primeira linha aparece; o resto abre no clique.</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1160}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

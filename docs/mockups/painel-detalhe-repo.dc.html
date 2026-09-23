@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Painel · detalhe do repositório (mockup 23/09)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:"Open Sans",system-ui,sans-serif;background:#0a0a0a;color:#ffffff}
+a{color:#0099ff;text-decoration:none}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+.card{background:#141414;border:1px solid #262626;border-radius:12px;padding:18px 20px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#a3a3a3;font-weight:700}
+.mut{color:#a3a3a3}
+.sb{color:#7a7a7a}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 10px;border-radius:999px;background:#1c1c1c;color:#d4d4d4;border:1px solid #333333}
+.ok{background:#0f2a1a;color:#4ade80;border-color:#1f5c38}
+.warn{background:#2b2110;color:#fbbf24;border-color:#5c4514}
+.bad{background:#2d1212;color:#f87171;border-color:#6b2020}
+.info{background:#0b2233;color:#5cc0ff;border-color:#134a70}
+.btn{font-family:"Open Sans",sans-serif;font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;border:1px solid #333333;background:#1c1c1c;color:#ffffff;cursor:pointer}
+.btnp{background:#ffffff;color:#0a0a0a;border-color:#ffffff}
+.dot{width:10px;height:10px;border-radius:999px;flex-shrink:0}
+.kpi{background:#1a1a1a;border:1px solid #262626;border-radius:10px;padding:12px 14px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:10.5px;color:#a3a3a3;font-weight:700;text-align:left;padding:8px 8px;border-bottom:1px solid #262626;text-transform:uppercase;letter-spacing:.05em}
+td{padding:10px 8px;border-bottom:1px solid #1f1f1f;vertical-align:top}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.arq{font-size:11.5px;color:#8a8a8a;font-family:"JetBrains Mono",monospace}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1560px; box-sizing: border-box; padding: 24px 32px; display: flex; flex-direction: column; gap: 14px; background: #0a0a0a;">
+
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<div style="display: flex; gap: 12px; align-items: center;"><a href="#" class="mut" style="font-size: 18px;">←</a><span style="font-size: 20px; font-weight: 700;">comarka-operacional</span><span style="display: flex; gap: 6px; align-items: center;"><span class="dot" style="background: #4ade80;"></span><span class="mut" style="font-size: 13px;">rodando</span></span></div>
+<div style="display: flex; gap: 8px; align-items: center;">
+<button class="btn">Pausar depois do ticket atual</button>
+<button class="btn">Pausar agora</button>
+<button class="btn btnp">Ativar agente</button>
+</div>
+</div>
+<div style="background: #2b2110; border: 1px solid #5c4514; border-radius: 10px; padding: 9px 14px; font-size: 12.5px; color: #fbbf24;">Ao clicar em "Pausar depois do ticket atual": o botão vira "Pausando · espera o 530 terminar (há 6 min)" e pode ser cancelado. "Pausar agora" só impede o próximo; nunca mata execução em curso.</div>
+
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px;">
+<div class="kpi"><div class="lbl">Tempo médio por ticket</div><div style="font-size: 20px; font-weight: 700; margin-top: 4px;">14 min</div><div class="mut" style="font-size: 11.5px;">mediana 11 · pior 38</div></div>
+<div class="kpi"><div class="lbl">Aprovação na 1ª</div><div style="font-size: 20px; font-weight: 700; margin-top: 4px;">58%</div><div class="mut" style="font-size: 11.5px;">24 feitos · 32 reprovas hoje</div></div>
+<div class="kpi"><div class="lbl">Custo por aprovação</div><div style="font-size: 20px; font-weight: 700; margin-top: 4px;">1,9 tent.</div><div class="mut" style="font-size: 11.5px;">tentativa média por ticket</div></div>
+<div class="kpi"><div class="lbl">Fila estimada</div><div style="font-size: 20px; font-weight: 700; margin-top: 4px;">4h10</div><div class="mut" style="font-size: 11.5px;">18 prontos no ritmo de hoje</div></div>
+<div class="kpi"><div class="lbl">Ociosidade hoje</div><div style="font-size: 20px; font-weight: 700; margin-top: 4px; color: #fbbf24;">11h04</div><div class="mut" style="font-size: 11.5px;">pausa esquecida de madrugada</div></div>
+<div class="kpi"><div class="lbl">Última promoção</div><div style="font-size: 20px; font-weight: 700; margin-top: 4px;">12:36</div><div class="mut" style="font-size: 11.5px;">c4b884e · 23 tickets</div></div>
+</div>
+
+<div class="card" style="display: flex; flex-direction: column; gap: 10px;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<div style="display: flex; gap: 10px; align-items: center;"><span style="font-size: 16px; font-weight: 700;">Bloqueados</span><span class="pill bad">4</span></div>
+<div style="display: flex; gap: 6px;"><span class="pill" style="background: #ffffff; color: #0a0a0a; border-color: #ffffff;">Todos</span><span class="pill">Spec</span><span class="pill">Enforcement</span><span class="pill">Teste</span><span class="pill">Decisão sua</span></div>
+</div>
+<table>
+<thead><tr><th style="width: 70px;">Ticket</th><th style="width: 110px;">Categoria</th><th>Motivo (primeira linha)</th><th style="width: 150px;">Onde mexe</th><th style="width: 90px;" class="num">Parado há</th><th style="width: 60px;" class="num">Tent.</th></tr></thead>
+<tbody>
+<tr><td class="mono"><b>596b</b><div class="mut" style="font-size: 11px;">Tarefas cartão</div></td><td><span class="pill info">teste</span></td><td>suíte vermelha: o aceite 522 ancorava o título na classe de estilo <a href="#">abrir</a><div class="mut" style="font-size: 11.5px;">já corrigido nesta sessão, volta a pendente</div></td><td class="arq">bloco-tarefas.tsx<br>visao-aceite-mockup</td><td class="num mut">1h12</td><td class="num">2</td></tr>
+<tr><td class="mono"><b>530</b><div class="mut" style="font-size: 11px;">Campanhas</div></td><td><span class="pill warn">enforcement</span></td><td>tocou test/painel-estado-explicito fora da allowlist <a href="#">abrir</a><div class="mut" style="font-size: 11.5px;">já corrigido nesta sessão, volta a pendente</div></td><td class="arq">geral-tab.tsx<br>painel-estado-explicito</td><td class="num mut">2h05</td><td class="num">2</td></tr>
+<tr><td class="mono"><b>306b</b><div class="mut" style="font-size: 11px;">fechamentos GHL</div></td><td><span class="pill bad">decisão sua</span></td><td>espera o 475c e o token da migration <a href="#">abrir</a></td><td class="arq">leads-ghl.ts<br>ingest/ghl</td><td class="num" style="color: #f87171;">4d</td><td class="num mut">2</td></tr>
+<tr><td class="mono"><b>346d</b><div class="mut" style="font-size: 11px;">carteira de tráfego</div></td><td><span class="pill bad">decisão sua</span></td><td>bloqueado à mão: remove a aba Comparativo que funciona hoje <a href="#">abrir</a></td><td class="arq">trafego/carteira</td><td class="num" style="color: #f87171;">8d</td><td class="num mut">1</td></tr>
+</tbody>
+</table>
+</div>
+
+<div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; align-items: start;">
+
+<div class="card" style="display: flex; flex-direction: column; gap: 10px;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<div style="display: flex; gap: 10px; align-items: center;"><span style="font-size: 16px; font-weight: 700;">Prontos</span><span class="pill ok">18</span></div>
+<span class="mut" style="font-size: 12px;">na ordem em que o loop vai pegar</span>
+</div>
+<table>
+<thead><tr><th style="width: 46px;">P</th><th style="width: 70px;">Ticket</th><th>O que muda no produto</th><th style="width: 160px;">Onde mexe</th><th style="width: 74px;" class="num">Destrava</th></tr></thead>
+<tbody>
+<tr><td><span class="pill">p10</span></td><td class="mono"><b>530b</b></td><td>Painel da aba Campanhas ganha pacing, metas e performance por tipo no layout do mockup</td><td class="arq">painel-campanhas.tsx<br>campanhas-tab.tsx</td><td class="num">3</td></tr>
+<tr><td><span class="pill">p20</span></td><td class="mono"><b>596b</b></td><td>Tarefas da Visão vira cartão com caixa de marcar e campo de nova tarefa</td><td class="arq">bloco-tarefas.tsx</td><td class="num">2</td></tr>
+<tr><td><span class="pill">p30</span></td><td class="mono"><b>525</b></td><td>20 rotas de clientes leem o corpo do pedido de forma padronizada, sem quebrar com envio inválido</td><td class="arq">api/clientes/** (20)</td><td class="num">1</td></tr>
+<tr><td><span class="pill">p41</span></td><td class="mono"><b>583</b></td><td>Rota de acompanhamento do onboarding passa a exigir login</td><td class="arq">api/onboarding/tracking</td><td class="num">0</td></tr>
+<tr><td><span class="pill">p44</span></td><td class="mono"><b>584</b></td><td>Erros dos indicadores da carteira param de vazar objeto técnico para a tela</td><td class="arq">api/clientes/kpis (5)</td><td class="num">0</td></tr>
+</tbody>
+</table>
+<a href="#" style="font-size: 12.5px;">ver os 13 restantes</a>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 14px;">
+<div class="card" style="display: flex; flex-direction: column; gap: 8px;">
+<span style="font-size: 16px; font-weight: 700;">Hoje, hora a hora</span>
+<div style="display: flex; gap: 3px; align-items: flex-end; height: 70px;">
+<span style="flex-grow: 1; height: 40%; background: #4ade80; border-radius: 3px;"></span>
+<span style="flex-grow: 1; height: 65%; background: #4ade80; border-radius: 3px;"></span>
+<span style="flex-grow: 1; height: 25%; background: #6b2020; border-radius: 3px;"></span>
+<span style="flex-grow: 1; height: 55%; background: #4ade80; border-radius: 3px;"></span>
+<span style="flex-grow: 1; height: 10%; background: #2b2b2b; border-radius: 3px;"></span>
+<span style="flex-grow: 1; height: 10%; background: #2b2b2b; border-radius: 3px;"></span>
+<span style="flex-grow: 1; height: 80%; background: #4ade80; border-radius: 3px;"></span>
+<span style="flex-grow: 1; height: 45%; background: #6b2020; border-radius: 3px;"></span>
+<span style="flex-grow: 1; height: 70%; background: #4ade80; border-radius: 3px;"></span>
+</div>
+<div class="mut" style="font-size: 11.5px;">verde aprovado · vermelho reprova · cinza parado. Cinza às 9h e 10h: pausa esquecida.</div>
+</div>
+
+<div class="card" style="display: flex; flex-direction: column; gap: 8px;">
+<span style="font-size: 16px; font-weight: 700;">Arquivos mais disputados</span>
+<div style="font-size: 12.5px; display: flex; flex-direction: column; gap: 6px;">
+<div style="display: flex; justify-content: space-between;"><span class="arq">geral-tab.tsx</span><span class="pill warn">9 tickets</span></div>
+<div style="display: flex; justify-content: space-between;"><span class="arq">page.tsx (ficha)</span><span class="pill warn">7 tickets</span></div>
+<div style="display: flex; justify-content: space-between;"><span class="arq">visao-aceite-mockup</span><span class="pill">4 tickets</span></div>
+</div>
+<div class="mut" style="font-size: 11.5px;">Quem mexe no mesmo arquivo roda em fila. É o que mais atrasa a leva.</div>
+</div>
+
+<div class="card" style="display: flex; flex-direction: column; gap: 8px;">
+<span style="font-size: 16px; font-weight: 700;">Avisos</span>
+<div style="font-size: 12.5px; display: flex; flex-direction: column; gap: 6px;">
+<div><span class="pill warn">ativo</span> avisar quando ficar sem ticket pronto</div>
+<div><span class="pill warn">ativo</span> avisar quando um ticket bloquear</div>
+<div><span class="pill">desligado</span> avisar quando a pausa passar de 40 min</div>
+</div>
+</div>
+</div>
+
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
