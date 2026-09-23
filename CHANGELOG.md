@@ -686,6 +686,9 @@ launchd morreu três vezes em rc 127 e nada alarmou.
 - **K12-G**: a faixa "Precisa de você" diz quais repos ficaram fora da conta quando as razões
   não se apuram; sem razões, o cartão não afirma "sem ticket para pegar".
 
+- **K12-H**: motivo do bloqueado cortado na primeira frase ou em 160 caracteres, com o texto
+  inteiro no clique.
+
 O que um repo instalado ganha ao atualizar: `scripts/orquestrador/orq-painel.py` e os
 quatro `test-painel-*.sh`; nenhum comportamento do loop muda (o `OCIOSO` sai igual).
 Relatório: `~/orq-sessoes/relatorio-kit-k12.md`.

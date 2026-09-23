@@ -424,6 +424,24 @@ def mapa_sub(sub):
     return {"criterio": "spec", "juiz": "juiz", "exit": "exit"}.get(sub or "", None)
 
 
+MOTIVO_MAX = 160
+
+
+def corte_motivo(texto):
+    """O motivo para a TABELA: a primeira frase da primeira linha, ou até
+    MOTIVO_MAX caracteres, o que vier antes, cortado entre palavras e com "…".
+    O texto inteiro vai no clique: um notas_status de 1354 caracteres (o 243 do
+    CI) ocupava 20 linhas da tabela."""
+    linha = (texto.strip().splitlines() or [""])[0].strip()
+    m = re.search(r"[.!?](?=\s|$)", linha)
+    frase = linha[:m.end()] if m else linha
+    if len(frase) <= MOTIVO_MAX:
+        return frase
+    corte = frase[:MOTIVO_MAX]
+    esp = corte.rfind(" ")
+    return (corte[:esp] if esp > MOTIVO_MAX // 2 else corte).rstrip(" ,;:") + "…"
+
+
 def categoria_bloqueio(tid, eventos):
     """(categoria, token, BLOQUEADO) de `motivo=` e `sub=` na trilha — nunca da
     prosa do notas_status. Bloqueado SEM `BLOQUEADO` na trilha (ou reaberto
@@ -531,14 +549,16 @@ def coletar_repo(r, t):
     bl = []
     for x in bloqueados_t:
         cat, token, ev = categoria_bloqueio(x["id"], eventos)
-        linhas = x["notas"].splitlines() or [""]
+        inteiro = x["notas"].strip()
+        curto = corte_motivo(inteiro)
         tent = x["tentativas"]
         if tent is None and ev and str(ev["f"].get("attempt", "")).isdigit():
             tent = int(ev["f"]["attempt"])
         bl.append({"repo": r["nome"], "id": x["id"], "titulo": x["slug"],
                    "categoria": cat, "motivo_token": token,
-                   "motivo": linhas[0].strip() or "sem notas_status no ticket",
-                   "motivo_resto": "\n".join(linhas[1:]).strip(),
+                   "motivo": curto or "sem notas_status no ticket",
+                   "motivo_resto": inteiro[len(curto.rstrip("…")):].strip(),
+                   "motivo_inteiro": inteiro,
                    "allow": x["allow"], "tentativas": tent,
                    "parado_desde": ev["ts"] if ev else None,
                    "parado_seg": int(t - ev["ts"]) if ev else None})
@@ -1161,7 +1181,7 @@ function htmlBloqueados(lista, comRepo){
   for (const b of vis){
     const k = `bl-${b.repo}-${b.id}`;
     const mot = b.motivo_resto
-      ? `<details data-k="${esc(k)}"><summary style="color:inherit">${esc(b.motivo)}</summary><pre>${esc(b.motivo_resto)}</pre><div class="sb mono">${esc(b.motivo_token)}</div></details>`
+      ? `<details data-k="${esc(k)}"><summary style="color:inherit">${esc(b.motivo)}</summary><pre>${esc(b.motivo_inteiro)}</pre><div class="sb mono">${esc(b.motivo_token)}</div></details>`
       : `${esc(b.motivo)}<div class="sb mono">${esc(b.motivo_token)}</div>`;
     h += `<tr><td><span class="mono">${esc(b.id)}</span><div class="sb">${esc(b.titulo)}</div></td><td><span class="pill">${esc(b.categoria)}</span></td><td>${mot}</td>`;
     h += comRepo ? `<td>${esc(b.repo)}</td>` : `<td class="arq">${b.allow.map(esc).join('<br>')}</td><td class="num">${b.parado_seg == null ? '<span class="sb">sem dado</span>' : dur(b.parado_seg)}</td>`;

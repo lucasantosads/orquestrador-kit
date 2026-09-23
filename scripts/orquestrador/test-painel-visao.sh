@@ -187,6 +187,31 @@ pag="$(fp_painel --html 2>/dev/null)"
 case "$pag" in *"Não consegui apurar"*) ok "a página tem a frase de quem ficou fora" ;; *) falha "a página só sabe dizer 'nenhum token'" ;; esac
 
 echo
+echo "== 11. motivo longo: primeira frase ou 160 caracteres, o resto no clique (K12-H) =="
+# PROCEDÊNCIA: notas_status do ticket 243 do conteudos-infinitos, copiado em
+# 23/09/2026, versão 2dd9674 (21/09). 1354 caracteres numa linha só; a tabela
+# o mostrava inteiro.
+H="$ORQ_EXEC_ROOT/eta"; fp_repo "$H"
+cat > "$TMP/notas-243.txt" <<'NOTAS'
+repetição: 2ª reprovação igual à anterior (sub=juiz, diff=255), sem 3ª volta. critério(s) reprovado(s): juiz: Dois testes de ausência em apps/web/test/aprovar-publico.test.tsx não têm controle positivo no mesmo render: 'não mostra persona, ângulo, score nem link' (~l.135) só usa not.toMatch, e 'o token só aparece no campo escondido' (~l.147) passaria mesmo sem nenhum campo escondido, porque nunca afirma que o input hidden com o TOKEN existe nem que o gancho aparece. Além disso, page.tsx:18 apenas esconde com CSS (`body > header { display: none }`) a barra do app que o layout raiz monta, então o menu e os links internos continuam no HTML entregue a quem tem o link, e o teste renderiza a página sem o layout, sem ver isso.; CRITÉRIO DE AUSÊNCIA EXIGE CONTROLE POSITIVO. Um teste que só afirma que algo NÃO aparece passa igual quando o componente não renderiza nada. Exija, no MESMO render/execução, ao menos uma asserção POSITIVA de que a coisa certa apareceu. Reprove ausência provada no vazio.; QUEM TEM O LINK VE UM ROTEIRO, E MAIS NADA. Abra apps/web/src/app/aprovar/[token]/page.tsx e confira que a tela mostra exatamente roteiro, legenda e resultado da checagem do Provimento 205. REPROVE qualquer nome de persona, angulo, score, nome do escritorio, contagem, lista de outros roteiros, menu, cabecalho do app ou link para qualquer outra tela
+NOTAS
+fp_ticket "$H" 243 bloqueado '[]' "$(jq -n --rawfile n "$TMP/notas-243.txt" '{notas_status: ($n | rtrimstr("\n"))}')"
+# sem frase curta: uma linha de 300 caracteres sem ponto
+fp_ticket "$H" 244 bloqueado '[]' "{\"notas_status\": \"$(printf 'palavra%.0s ' $(seq 1 40))fim\"}"
+fp_repos "$TMP/r-h.json" "$H"
+eh="$(ORQ_REPOS="$TMP/r-h.json" fp_painel --estado 2>/dev/null)"
+m243="$(printf '%s' "$eh" | jq -r '.bloqueados[] | select(.id == "243") | .motivo')"
+confere "243: a primeira frase" "repetição: 2ª reprovação igual à anterior (sub=juiz, diff=255), sem 3ª volta." "$m243"
+confere "243: o texto inteiro fica para o clique" "$(tr -d '\n' < "$TMP/notas-243.txt")" "$(printf '%s' "$eh" | jq -r '.bloqueados[] | select(.id == "243") | .motivo_inteiro')"
+m244="$(printf '%s' "$eh" | jq -r '.bloqueados[] | select(.id == "244") | .motivo')"
+n244="$(printf '%s' "$m244" | wc -m | tr -d ' ')"
+[ "$n244" -le 161 ] && ok "244 sem ponto: cortado em até 160 caracteres mais '…' ($n244)" || falha "244 com $n244 caracteres"
+case "$m244" in *"…") ok "o corte avisa com '…'" ;; *) falha "o corte não avisa: '$m244'" ;; esac
+case "$m244" in *"palavr…"|*" …") falha "cortou no meio da palavra: '$m244'" ;; *) ok "o corte cai entre palavras" ;; esac
+confere "700 (motivo curto em duas linhas) segue igual" "repetição: 2ª reprovação igual à anterior" "$(jq -r '.bloqueados[] | select(.id == "700") | .motivo' "$EST")"
+case "$pag" in *"motivo_inteiro"*) ok "a página abre o texto inteiro no clique" ;; *) falha "a página não usa motivo_inteiro" ;; esac
+
+echo
 echo "== launchctl: só o stub, nunca o do sistema (K12-E) =="
 fp_launchctl_confere
 

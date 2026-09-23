@@ -877,6 +877,14 @@
   *Teste:* bloco 10 do `test-painel-visao.sh`, 9 vermelhos antes.
   *Fica para a 7e (custo da seleção):* o tempo do `pendentes_razoes` em si.
 
+- **K12-H · motivo longo não ocupa a tabela.** O motivo do bloqueado sai cortado na
+  primeira frase ou em 160 caracteres, o que vier antes, entre palavras e com "…"; o texto
+  inteiro (`motivo_inteiro`) abre no clique, como no mockup.
+  *Evidência:* o `notas_status` do 243 do conteudos-infinitos (1354 caracteres numa linha só,
+  versão `2dd9674`) saía inteiro, em 20 linhas.
+  *Teste:* bloco 11 do `test-painel-visao.sh`, com o texto do 243 copiado e datado, e uma
+  linha de 323 caracteres sem ponto; 5 vermelhos antes.
+
 - **K12a · alarme de job carregado e mudo**: feita dentro do bloco D da K12, com uma troca
   pedida no brief: a régua é o último `DRENAGEM_INICIO` (não o `DRENAGEM_FIM`) contra 2× o
   `launchd.start_interval`, com job carregado e sem PAUSAR; e o `last exit code` != 0 é
