@@ -83,3 +83,46 @@ fp_repos() {
 
 # fp_painel [args] — o painel sob teste, com os repos e o relógio do fixture.
 fp_painel() { python3 "$AQUI/orq-painel.py" "$@"; }
+
+# fp_launchctl_stub <dir> — um launchctl FALSO em <dir>/bin, apontado por
+# ORQ_LAUNCHCTL (o painel nunca chama o de verdade sob teste). Registra cada
+# chamada em <dir>/launchctl.log. `print` responde como job CARREGADO, com o
+# `last exit code` lido de <dir>/stub-exit (padrão 0); com <dir>/stub-descarregado
+# presente, responde como o launchctl real para job ausente (rc 113).
+fp_launchctl_stub() {
+  local d="$1"
+  mkdir -p "$d/bin"
+  cat > "$d/bin/launchctl" <<STUB
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$d/launchctl.log"
+if [ "\${1:-}" = print ]; then
+  if [ -e "$d/stub-descarregado" ]; then echo "Could not find service \"\${2##*/}\" in domain" >&2; exit 113; fi
+  printf '%s = {\n\tstate = waiting\n\tlast exit code = %s\n}\n' "\${2:-}" "\$(cat "$d/stub-exit" 2>/dev/null || echo 0)"
+fi
+exit 0
+STUB
+  chmod +x "$d/bin/launchctl"
+  export ORQ_LAUNCHCTL="$d/bin/launchctl"
+}
+
+# fp_servidor_sobe <dir> — sobe o painel numa porta livre (porta 0) e define URL.
+fp_servidor_sobe() {
+  local d="$1" i
+  python3 "$AQUI/orq-painel.py" --porta 0 > "$d/srv.log" 2>&1 &
+  PID_SRV=$!
+  disown "$PID_SRV" 2>/dev/null || true
+  for i in $(seq 1 50); do
+    URL="$(sed -n 's|^orq-painel em \(http://[0-9.:]*\).*|\1|p' "$d/srv.log" | head -1)"
+    [ -n "$URL" ] && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
+# fp_post <rota> <json> -> corpo da resposta; o código HTTP fica para fp_http.
+fp_post() {
+  curl -s -o "$TMP/.resp" -w '%{http_code}' -H 'Content-Type: application/json' \
+    -d "$2" "$URL/api/$1" > "$TMP/.http"
+  cat "$TMP/.resp"
+}
+fp_http() { cat "$TMP/.http" 2>/dev/null; }

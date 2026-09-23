@@ -41,6 +41,7 @@ const SCRIPTS = [
   // K12: o painel contra N repos num mktemp -d (test-fixture-painel.sh)
   'test-painel-visao.sh',
   'test-painel-detalhe.sh',
+  'test-painel-pausa.sh',
 ];
 
 /**

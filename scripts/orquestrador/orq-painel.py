@@ -43,6 +43,7 @@ import subprocess
 import sys
 import threading
 import time
+import unicodedata
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -58,6 +59,11 @@ LIMITE_CORPO = 4096
 RUNS_PADRAO = "docs/fila/runs"
 PAUSAR_PADRAO = "docs/fila/PAUSAR"
 PAUSA_LEGADA = "docs/fila/.orq-pause"   # lida por compatibilidade, NUNCA escrita
+LAUNCHCTL = os.environ.get("ORQ_LAUNCHCTL") or "launchctl"
+ACOES = ("pausar", "retomar", "kickstart")   # e só: não existe "pausar agora"
+EXPLICA_PAUSA = ("Cria docs/fila/PAUSAR. A drenagem para ENTRE tickets: o ticket "
+                 "em curso termina (aprovado, reprovado ou adiado) e nenhum outro "
+                 "começa. Nada é interrompido: o motor não mata executor vivo.")
 
 # Desfechos de uma tentativa na trilha: o que fecha um INICIO.
 DESFECHOS = ("APROVADO", "REPROVADO", "ADIADO", "BLOQUEADO", "REFATIAR",
@@ -526,7 +532,13 @@ def coletar_repo(r, t):
     rep["precisa"] = [{"repo": r["nome"], "token": k, "destrava": len(v), "tickets": v}
                       for k, v in precisa.items()]
 
+    if pausa["ativa"]:
+        ult_ev = ultimo(eventos, lambda e: e["ev"] in ("PAUSA", "RETOMADA"))
+        if ult_ev and ult_ev["ev"] == "PAUSA" and (pausa["ts"] is None or ult_ev["ts"] >= pausa["ts"] - 60):
+            pausa["desde"] = ult_ev["ts"]
     rep["estado"] = estado_do_repo(st, pausa, eventos, raz, legivel, rep, t)
+    rep["job"] = job_do_repo(cfg)
+    rep["acoes"] = acoes_do_repo(rep, rep["job"], st)
     rep["_interno"] = {"cfg": cfg, "eventos": eventos, "tickets": tickets, "raz": raz,
                        "por_id": por_id, "st": st}
     return rep
@@ -547,7 +559,8 @@ def estado_do_repo(st, pausa, eventos, raz, legivel, rep, t):
 
     pausa_txt = ""
     if pausa["ativa"]:
-        pausa_txt = ("pausado por você há " + dur(t - pausa["ts"])) if pausa["ts"] \
+        inicio = pausa.get("desde") or pausa["ts"]
+        pausa_txt = ("pausado por você há " + dur(t - inicio)) if inicio \
             else "pausado por você (PAUSAR sem data legível)"
     if st is None:
         if pausa["ativa"]:
@@ -760,6 +773,136 @@ def estado_atual(forcar=False):
 _trava_cache = threading.Lock()
 
 
+# ------------------------------------------------------ ações (bloco C)
+
+def job_do_repo(cfg):
+    """O job do launchd deste repo (`launchd.label` do config), pelo `launchctl
+    print`: carregado ou não, e o `last exit code`. Sem label, nada se afirma."""
+    ld = cfg.get("launchd") if isinstance(cfg.get("launchd"), dict) else {}
+    label = cfg_str(ld, "label", "")
+    job = {"label": label or None, "carregado": None, "last_exit": None,
+           "start_interval": cfg_int(ld.get("start_interval")), "erro": None}
+    if not label or label.startswith("<"):
+        job["label"] = None
+        job["erro"] = "sem launchd.label no config"
+        return job
+    try:
+        r = subprocess.run([LAUNCHCTL, "print", f"gui/{os.getuid()}/{label}"],
+                           capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        job["erro"] = f"launchctl print não rodou: {e}"
+        return job
+    job["carregado"] = r.returncode == 0
+    m = re.search(r"last exit code = (-?\d+)", r.stdout)
+    job["last_exit"] = int(m.group(1)) if m else None
+    return job
+
+
+def acoes_do_repo(rep, job, st):
+    """O servidor decide cada botão: o mesmo cálculo desabilita na tela e
+    recusa o POST. O motivo vai escrito ao lado do botão desabilitado."""
+    p = rep["pausa"]
+    a = {}
+    if p["ativa"]:
+        a["pausar"] = (False, "já está pausado" + (" (pelo .orq-pause legado)" if p["legado"] else ""))
+    else:
+        a["pausar"] = (True, EXPLICA_PAUSA)
+    if not p["ativa"]:
+        a["retomar"] = (False, "não está pausado")
+    elif p["legado"]:
+        a["retomar"] = (False, "a pausa está no docs/fila/.orq-pause legado, que o painel só lê: "
+                               "use orq retomar ou apague o arquivo à mão")
+    else:
+        a["retomar"] = (True, "apaga o " + p["arquivo"] + "; o próximo disparo drena")
+    estado = (st or {}).get("estado")
+    if not job["label"]:
+        a["kickstart"] = (False, job["erro"] or "sem launchd.label no config")
+    elif job["carregado"] is not True:
+        a["kickstart"] = (False, f"o job {job['label']} não está carregado no launchd")
+    elif estado != "ocioso":
+        tk = (st or {}).get("ticket") or "?"
+        a["kickstart"] = (False, f"ticket em curso ({tk}): o disparo só é oferecido com STATUS ocioso"
+                          if estado == "executando" else f"STATUS {estado or 'ausente'}: o disparo só é oferecido com STATUS ocioso")
+    elif p["ativa"]:
+        a["kickstart"] = (False, "pausado: o disparo sairia sem pegar ticket; retome antes")
+    else:
+        a["kickstart"] = (True, "launchctl kickstart (sem -k): dispara a drenagem agora")
+    return {k: {"habilitado": v[0], "motivo": v[1]} for k, v in a.items()}
+
+
+def motivo_token(texto):
+    """`motivo=` é token curto e estável (CONTRATO §4.1), nunca frase: o texto
+    livre fica no PAUSAR; a trilha leva a forma grepável dele."""
+    t = unicodedata.normalize("NFKD", texto or "").encode("ascii", "ignore").decode().lower()
+    t = re.sub(r"[^a-z0-9]+", "-", t).strip("-")[:40].strip("-")
+    return t or "manual"
+
+
+def evento(caminho, ev, *kv):
+    """Uma linha na trilha pelo `event()` do lib.sh: o mesmo formato, a mesma
+    `uma_linha`, a mesma guarda de teste. O painel não escreve a trilha à mão."""
+    env = dict(os.environ, ORQ_EXEC_ROOT=str(caminho))
+    subprocess.run(["bash", "-c", 'source "$1/lib.sh" && shift && event "$@"',
+                    "orq-painel", str(AQUI), "---", ev, *kv],
+                   cwd=str(caminho), env=env, capture_output=True, text=True, timeout=30)
+
+
+def alvo_pausa(caminho, rel):
+    """O ÚNICO arquivo que o painel escreve no repo: o `pausar_file`, e só se
+    ele cair dentro de docs/fila e não for o legado."""
+    fila = (Path(caminho) / "docs" / "fila").resolve()
+    alvo = (Path(caminho) / rel).resolve()
+    if alvo.parent != fila or alvo.name == Path(PAUSA_LEGADA).name:
+        raise PermissionError(f"pausar_file fora do contrato: {rel}")
+    return alvo
+
+
+def executar_acao(corpo):
+    if not isinstance(corpo, dict):
+        return 400, {"ok": False, "erro": "corpo deve ser um objeto JSON"}
+    acao, nome = corpo.get("acao"), corpo.get("repo")
+    if acao not in ACOES:
+        return 403, {"ok": False, "erro": f"ação não permitida: {acao!r}",
+                     "permitidas": list(ACOES),
+                     "nota": "o painel não edita ticket, não roda executor, não faz git"}
+    est = estado_atual(forcar=True)
+    rep = next((r for r in est["repos"] if r["nome"] == nome), None)
+    if rep is None or "acoes" not in rep:
+        return 400, {"ok": False, "erro": f"repo desconhecido: {nome!r}",
+                     "conhecidos": [r["nome"] for r in est["repos"]]}
+    hab = rep["acoes"][acao]
+    if not hab["habilitado"]:
+        return 409, {"ok": False, "erro": hab["motivo"]}
+    caminho, pausa = rep["caminho"], rep["pausa"]
+    try:
+        if acao == "pausar":
+            motivo = str(corpo.get("motivo") or "").strip().splitlines()
+            motivo = motivo[0][:200] if motivo else "pausa pelo painel"
+            alvo = alvo_pausa(caminho, pausa["arquivo"])
+            alvo.write_text(f"{datetime.now():%Y-%m-%d %H:%M} | {motivo}\n", encoding="utf-8")
+            evento(caminho, "PAUSA", f"motivo={motivo_token(motivo)}", "por=painel")
+            res = {"ok": True, "arquivo": str(alvo), "obs": EXPLICA_PAUSA}
+        elif acao == "retomar":
+            alvo = alvo_pausa(caminho, pausa["arquivo"])
+            inicio = pausa.get("desde") or pausa.get("ts")
+            alvo.unlink()
+            d = f"{int((time.time() - inicio) // 60)}min" if inicio else "?"
+            evento(caminho, "RETOMADA", "por=painel", f"dur={d}")
+            res = {"ok": True, "arquivo": str(alvo), "obs": "o próximo disparo drena"}
+        else:
+            cmd = [LAUNCHCTL, "kickstart", f"gui/{os.getuid()}/{rep['job']['label']}"]
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            res = {"ok": r.returncode == 0, "comando": " ".join(cmd), "rc": r.returncode,
+                   "saida": (r.stdout + r.stderr).strip()}
+    except PermissionError as e:
+        return 403, {"ok": False, "erro": str(e)}
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return 409, {"ok": False, "erro": f"{type(e).__name__}: {e}"}
+    _cache["v"] = None
+    res.update({"acao": acao, "repo": nome})
+    return 200, res
+
+
 # ------------------------------------------------------------------- página
 
 CSS = r"""
@@ -805,6 +948,8 @@ details summary{cursor:pointer;color:var(--link)}
 .aviso{border-left:3px solid var(--bad);padding:6px 10px;margin:6px 0;background:var(--bad-f)}
 .arq{font-size:11.5px;color:#8a8a8a;font-family:"JetBrains Mono",monospace}
 pre{white-space:pre-wrap;margin:6px 0 0;font-size:12px;color:#d4d4d4}
+.acoes{display:flex;flex-direction:column;gap:10px;margin:10px 0}
+.acao{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin:14px 0}
 .kpi{background:var(--cartao2);border:1px solid var(--borda);border-radius:10px;padding:12px 14px}
 .kv{font-size:22px;font-weight:700;margin:4px 0}
@@ -867,6 +1012,7 @@ function htmlCard(r){
       <h2><a href="#repo/${encodeURIComponent(r.nome)}">${esc(r.nome)}</a></h2>${pill(e.tipo, e.rotulo)}</div>
     <div class="estado">${esc(e.titulo)}</div><div class="mut">${esc(e.detalhe)}</div>`;
   if (r.erro) h += `<div class="aviso">${esc(r.erro)}</div>`;
+  if (r.acoes && r.acoes.retomar.habilitado) h += `<div style="margin-top:8px">${botao(r, 'retomar', 'Retomar')}</div><div id="msg-${esc(r.nome)}" class="sb" role="status"></div>`;
   h += `<div style="margin-top:10px"><span class="lbl">hoje</span> <span class="num">${d.aprovados} aprovados · ${d.reprovas} reprovas</span>
     <div class="barra" role="img" aria-label="${d.aprovados} aprovados contra ${d.reprovas} reprovas hoje">${tot ? `<div class="a" style="width:${pa}%"></div><div class="r" style="width:${100-pa}%"></div>` : ''}</div></div>
     <div class="cont"><span><b class="num">${c.prontos}</b> prontos</span><span><b class="num">${c.pendentes}</b> pendentes</span><span><b class="num">${c.bloqueados}</b> bloqueados</span></div>`;
@@ -955,6 +1101,33 @@ function detalhe(raiz, nome){
   secao(slot(lado, 'd-disp'), htmlDisputados(r.detalhe));
 }
 
+function botao(r, acao, rotulo, prim, antes){
+  const a = r.acoes && r.acoes[acao]; if (!a) return '';
+  return `<span class="acao">${antes || ''}<button data-acao="${acao}" data-repo="${esc(r.nome)}"${a.habilitado ? '' : ' disabled'}${prim ? ' class="prim"' : ''}>${rotulo}</button>`
+    + `<span class="${a.habilitado ? 'sb' : 'mut'}">${a.habilitado ? '' : 'indisponível: '}${esc(a.motivo)}</span></span>`;
+}
+function htmlAcoes(r){
+  if (!r.acoes) return '';
+  const pa = r.acoes.pausar;
+  return `<div class="card"><h2>Ações</h2>
+    <div class="acoes">${botao(r, 'pausar', 'Pausar', true, pa.habilitado ? `<input data-k="motivo-${esc(r.nome)}" id="motivo-${esc(r.nome)}" placeholder="motivo da pausa (opcional)" aria-label="motivo da pausa">` : '')}
+    ${botao(r, 'retomar', 'Retomar')}${botao(r, 'kickstart', 'Disparar agora')}</div>
+    <div class="sb">Pausar para a drenagem ENTRE tickets: o ticket em curso termina e nenhum outro começa; nada é interrompido. Retomar apaga o PAUSAR. Pausa e retomada ficam na trilha (PAUSA e RETOMADA, por=painel).</div>
+    <div id="msg-${esc(r.nome)}" class="sb" role="status"></div></div>`;
+}
+async function agir(btn){
+  const repo = btn.dataset.repo, acao = btn.dataset.acao, m = document.getElementById('motivo-' + repo);
+  btn.disabled = true;
+  let txt;
+  try {
+    const r = await fetch('/api/acao', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({acao, repo, motivo: m ? m.value : ''})});
+    const j = await r.json(); txt = j.ok ? `${acao}: feito. ${j.obs || j.comando || ''}` : `${acao} recusado: ${j.erro}`;
+  } catch (e) { txt = `${acao} falhou: ${e}`; }
+  await carregar();
+  const alvo = document.getElementById('msg-' + repo); if (alvo) alvo.textContent = txt;
+}
+
 function visaoGeral(raiz){
   secao(slot(raiz, 's-cab'), `<header><div><h1>Orquestradores</h1><span class="mut">${EST.repos.length} repositórios · atualiza sozinho a cada 15 s</span></div><span class="mut num">${esc(EST.gerado_em)}</span></header>`
     + (EST.repos_erro ? `<div class="aviso">${esc(EST.repos_erro)}</div>` : ''));
@@ -980,6 +1153,7 @@ async function carregar(){
   document.getElementById('falha').hidden = true;
 }
 document.addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-acao]'); if (b && !b.disabled){ agir(b); return; }
   const f = ev.target.closest('[data-filtro]'); if (f){ FILTRO = f.dataset.filtro; for (const k in memo) if (k.endsWith('bloq')) delete memo[k]; render(); }
 });
 window.addEventListener('hashchange', render);
@@ -1035,6 +1209,24 @@ class Handler(BaseHTTPRequestHandler):
         if rota == "/api/estado":
             return self._json(200, estado_atual())
         self._json(404, {"erro": f"rota inexistente: {rota}"})
+
+    def do_POST(self):
+        if not self._host_ok():
+            return self._json(403, {"erro": "Host não permitido"})
+        if (self.path.split("?")[0].rstrip("/")) != "/api/acao":
+            return self._json(404, {"erro": "rota inexistente"})
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            n = 0
+        if n <= 0 or n > LIMITE_CORPO:
+            return self._json(400, {"ok": False, "erro": f"corpo ausente ou > {LIMITE_CORPO}B"})
+        try:
+            corpo = json.loads(self.rfile.read(n).decode("utf-8"))
+        except (ValueError, UnicodeDecodeError) as e:
+            return self._json(400, {"ok": False, "erro": f"JSON inválido: {e}"})
+        status, payload = executar_acao(corpo)
+        self._json(status, payload)
 
 
 def main(argv):

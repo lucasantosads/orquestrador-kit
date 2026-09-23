@@ -190,6 +190,8 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `PREVOO_NOGO` | `local-loop.sh:prevoo_ou_sai` | `item=cat.0\|cat.1\|cat.6` |
 | `OCIOSO` | `local-loop.sh:drenar` (peça 7a-4) | `pendentes=` e um `<id>=<razão>` por pendente; ver abaixo |
 | `AMBIENTE` | `local-loop.sh:drenar` (peça 7a-8) | `tickets=<id>,<id>` `causa=<normalizada>` (a causa vai até o fim da linha); ver abaixo |
+| `PAUSA` | `orq-painel.py:executar_acao` (peça K12) | `motivo=<token>` `por=painel` |
+| `RETOMADA` | `orq-painel.py:executar_acao` (peça K12) | `por=painel` `dur=<N>min` |
 
 `motivo=` é sempre token curto e estável (grepável), nunca frase.
 
@@ -325,6 +327,23 @@ pendente. Uma linha só, como todo evento; cada pendente vira um campo
 
 O `MOTIVO` do STATUS repete a razão em texto (`244 espera 241b (bloqueado) ·
 231 sem liberação humano:migration-0031`), cortado em 6 com "e mais N".
+
+**`PAUSA` e `RETOMADA`: a pausa na trilha** (peça K12, "pausa na trilha" da
+etapa 7). O painel é o único emissor hoje: o botão "Pausar" cria o
+`pausar_file` (§7) com `<AAAA-MM-DD HH:MM> | <motivo livre>` e grava
+`PAUSA motivo=<token> por=painel`, onde o token é o motivo livre sem acento,
+em minúsculas, com `-` no lugar do resto, até 40 caracteres (`manual` se vazio);
+o texto inteiro fica no arquivo. "Retomar" apaga o arquivo e grava
+`RETOMADA por=painel dur=<N>min`, a duração contada da `PAUSA` (ou, sem ela, da
+data do conteúdo). As duas linhas passam pelo `event()` do `lib.sh`, com o id
+`---`. Pausa nunca interrompe o ticket em curso (§7), e o painel não oferece
+"pausar agora". `orq pausar`/`orq retomar` NÃO gravam na trilha: continuam
+escrevendo um arquivo só (§9.1).
+
+```
+--- PAUSA motivo=leva-da-tarde por=painel
+--- RETOMADA por=painel dur=21min
+```
 
 ### 4.2 A linha `GATE`
 
