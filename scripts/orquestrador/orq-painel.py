@@ -38,6 +38,7 @@ Uso:
 import json
 import os
 import re
+import statistics
 import subprocess
 import sys
 import threading
@@ -586,13 +587,146 @@ def estado_do_repo(st, pausa, eventos, raz, legivel, rep, t):
                  f"último: {ultimo_txt}")
 
 
+# ------------------------------------------------------------ detalhe (bloco B)
+
+def sobrepoe(a, b, c, d):
+    return max(0.0, min(b, d) - max(a, c))
+
+
+def intervalos_execucao(eventos, st, t):
+    """(id, início, fim) de cada tentativa: um INICIO até o desfecho do mesmo
+    ticket (DESFECHOS). A tentativa em curso (STATUS executando) vai até agora."""
+    abertos, out = {}, []
+    for e in eventos:
+        if e["ev"] == "INICIO":
+            abertos[e["id"]] = e["ts"]
+        elif e["ev"] in DESFECHOS and e["id"] in abertos:
+            out.append((e["id"], abertos.pop(e["id"]), e["ts"]))
+    if st and st.get("estado") == "executando":
+        tk = (st.get("ticket") or "").split()
+        if tk and tk[0] in abertos:
+            out.append((tk[0], abertos[tk[0]], t))
+    return out
+
+
+def intervalos_pausa(eventos, pausa, t):
+    """PAUSA → RETOMADA na trilha (peça "pausa na trilha"), mais a pausa que
+    está de pé agora (o PAUSAR no disco, com a data do conteúdo)."""
+    out, ini = [], None
+    for e in eventos:
+        if e["ev"] == "PAUSA" and ini is None:
+            ini = e["ts"]
+        elif e["ev"] == "RETOMADA" and ini is not None:
+            out.append((ini, e["ts"]))
+            ini = None
+    if pausa["ativa"]:
+        inicio = ini if ini is not None else pausa["ts"]
+        if inicio:
+            out.append((inicio, t))
+    return out
+
+
+def primeira_frase(texto):
+    texto = " ".join(texto.split())
+    return re.split(r"(?<=[.!?])\s", texto, 1)[0] if texto else ""
+
+
+def custo_do_dia(caminho, cfg, t):
+    orc = cfg.get("orcamento") if isinstance(cfg.get("orcamento"), dict) else {}
+    rel = cfg_str(orc, "custo_file", RUNS_PADRAO + "/custo.json")
+    dados, erro = ler_json(Path(caminho) / rel)
+    if erro:
+        return None
+    dia = (dados.get("dias") or {}).get(datetime.fromtimestamp(t).strftime("%Y-%m-%d")) \
+        if isinstance(dados, dict) else None
+    if not isinstance(dia, list):
+        return 0.0
+    return round(sum(x.get("custo_usd") for x in dia
+                     if isinstance(x, dict) and isinstance(x.get("custo_usd"), (int, float))), 4)
+
+
+def detalhe_do_repo(rep, t):
+    i = rep["_interno"]
+    eventos, st, raz, cfg = i["eventos"], i["st"], i["raz"], i["cfg"]
+    hoje = meia_noite(t)
+    execs = intervalos_execucao(eventos, st, t)
+    exec_hoje = sum(sobrepoe(a, b, hoje, t) for _, a, b in execs)
+    aprov = [e for e in eventos if e["ts"] >= hoje and e["ev"] == "APROVADO"]
+    inicios = sum(1 for e in eventos if e["ts"] >= hoje and e["ev"] == "INICIO")
+    sem_aprov = "nenhuma aprovação hoje"
+    ind = {}
+
+    tempos = [sum(b - a for tid, a, b in execs if tid == e["id"] and hoje <= b <= e["ts"])
+              for e in aprov]
+    ind["tempo_ticket"] = ({"media_seg": int(round(statistics.mean(tempos))),
+                            "mediana_seg": int(round(statistics.median(tempos))),
+                            "pior_seg": int(max(tempos)), "n": len(tempos), "sem_dado": None}
+                           if tempos else {"sem_dado": sem_aprov})
+    n1 = sum(1 for e in aprov if e["f"].get("attempt") == "1")
+    ind["primeira"] = ({"n_primeira": n1, "n": len(aprov),
+                        "pct": int(round(100.0 * n1 / len(aprov))), "sem_dado": None}
+                       if aprov else {"sem_dado": sem_aprov})
+    ind["tentativas_por_aprovacao"] = ({"inicios": inicios, "aprovados": len(aprov),
+                                        "valor": round(inicios / len(aprov), 1), "sem_dado": None}
+                                       if aprov else {"sem_dado": sem_aprov})
+    prontos = rep["contagem"]["prontos"]
+    if aprov:
+        ritmo = int(round(exec_hoje / len(aprov)))
+        ind["fila_estimada"] = {"prontos": prontos, "ritmo_seg": ritmo,
+                                "seg": prontos * ritmo, "sem_dado": None}
+    else:
+        ind["fila_estimada"] = {"prontos": prontos, "sem_dado": sem_aprov + ", sem ritmo"}
+    pausas = intervalos_pausa(eventos, rep["pausa"], t)
+    ind["ociosidade"] = {"seg": int(round((t - hoje) - exec_hoje)),
+                         "pausado_seg": int(round(sum(sobrepoe(a, b, hoje, t) for a, b in pausas))),
+                         "sem_dado": None}
+    ind["ultima_promocao"] = {
+        "valor": None,
+        "sem_dado": "o contrato não registra a promoção de " + cfg_str(cfg, "branch_alvo", "?")
+                    + " para " + cfg_str(cfg, "branch_protegida", "?")
+                    + " (proposta: evento PROMOCAO sha= tickets=)"}
+
+    horas = []
+    for h in range(int((t - hoje) // 3600) + 1):
+        ini, fim = hoje + h * 3600, min(hoje + (h + 1) * 3600, t)
+        ex = int(round(sum(sobrepoe(a, b, ini, fim) for _, a, b in execs) / 60))
+        horas.append({
+            "hora": h,
+            "aprovados": sum(1 for e in aprov if ini <= e["ts"] < ini + 3600),
+            "reprovas": sum(1 for e in eventos if e["ev"] == "REPROVADO" and ini <= e["ts"] < ini + 3600),
+            "exec_min": ex, "parado_min": max(0, int(round((fim - ini) / 60)) - ex)})
+
+    pend = [x for x in i["tickets"] if x["status"] == "pendente"]
+    cont = {}
+    for x in pend:
+        for a in x["allow"]:
+            cont[a] = cont.get(a, 0) + 1
+    disputados = [{"arquivo": a, "n": n}
+                  for a, n in sorted(cont.items(), key=lambda kv: (-kv[1], kv[0]))[:3]]
+
+    destrava = {}
+    for x in pend:
+        ids, _ = cadeia(x["id"], raz)
+        for d in ids[1:]:
+            destrava[d] = destrava.get(d, 0) + 1
+    prontos_l = [{"ordem": n + 1, "id": x["id"], "titulo": x["slug"],
+                  "frase": primeira_frase(x["objetivo"]), "allow": x["allow"],
+                  "destrava": destrava.get(x["id"], 0)}
+                 for n, x in enumerate(y for y in pend if raz.get(y["id"]) == "pronto")]
+
+    return {"indicadores": ind, "horas": horas, "disputados": disputados,
+            "prontos": prontos_l, "custo_dia_usd": custo_do_dia(rep["caminho"], cfg, t)}
+
+
 def coletar_tudo():
     t = agora()
     repos, erro = ler_repos()
     saida = []
     for r in repos:
         try:
-            saida.append(coletar_repo(r, t))
+            rep = coletar_repo(r, t)
+            rep["detalhe"] = detalhe_do_repo(rep, t)
+            saida.append(rep)
         except Exception as e:  # um repo quebrado não derruba a tela dos outros
             saida.append({"nome": r["nome"], "caminho": r["caminho"],
                           "erro": f"{type(e).__name__}: {e}",
@@ -671,6 +805,18 @@ details summary{cursor:pointer;color:var(--link)}
 .aviso{border-left:3px solid var(--bad);padding:6px 10px;margin:6px 0;background:var(--bad-f)}
 .arq{font-size:11.5px;color:#8a8a8a;font-family:"JetBrains Mono",monospace}
 pre{white-space:pre-wrap;margin:6px 0 0;font-size:12px;color:#d4d4d4}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin:14px 0}
+.kpi{background:var(--cartao2);border:1px solid var(--borda);border-radius:10px;padding:12px 14px}
+.kv{font-size:22px;font-weight:700;margin:4px 0}
+.grade2{display:grid;grid-template-columns:3fr 2fr;gap:14px;margin:14px 0}
+.grade2 > div > .card + .card, #d-lado > div + div{margin-top:14px}
+.horas{display:flex;gap:4px;align-items:flex-end;margin:12px 0 6px}
+.hcol{flex:1;min-width:14px;text-align:center}
+.hmk{font-size:11px;min-height:30px;display:flex;flex-direction:column;justify-content:flex-end}
+.okt{color:var(--ok)} .badt{color:var(--bad)}
+.hbar{height:60px;background:var(--linha);border-radius:4px 4px 0 0;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;overflow:hidden}
+.hpar{background:var(--neutro)} .hexe{background:var(--info)}
+@media (max-width:900px){.grade2{grid-template-columns:1fr}}
 @media (max-width:640px){.grade{grid-template-columns:1fr} .linha{grid-template-columns:1fr}}
 """
 
@@ -748,6 +894,65 @@ function htmlBloqueados(lista, comRepo){
   }
   if (!vis.length) h += `<tr><td colspan="6" class="mut">nenhum bloqueado${FILTRO != 'todos' ? ' nesta categoria' : ''}</td></tr>`;
   return h + '</tbody></table></div>';
+}
+
+function kpi(rotulo, valor, sub, semDado){
+  return `<div class="kpi"><div class="lbl">${esc(rotulo)}</div>`
+    + (semDado ? `<div class="kv sb">sem dado</div><div class="sb">${esc(semDado)}</div>`
+               : `<div class="kv num">${valor}</div><div class="mut">${sub}</div>`) + '</div>';
+}
+function htmlIndicadores(dt){
+  const i = dt.indicadores, t = i.tempo_ticket, p = i.primeira, a = i.tentativas_por_aprovacao,
+        f = i.fila_estimada, o = i.ociosidade, u = i.ultima_promocao;
+  return `<div class="kpis">`
+    + kpi('Tempo por ticket', t.sem_dado ? '' : dur(t.media_seg), t.sem_dado ? '' : `mediana ${dur(t.mediana_seg)} · pior ${dur(t.pior_seg)} · ${t.n} hoje`, t.sem_dado)
+    + kpi('Aprovação na 1ª', p.sem_dado ? '' : p.pct + '%', p.sem_dado ? '' : `${p.n_primeira} de ${p.n} aprovados hoje`, p.sem_dado)
+    + kpi('Tentativas por aprovação', a.sem_dado ? '' : String(a.valor).replace('.', ','), a.sem_dado ? '' : `${a.inicios} tentativas para ${a.aprovados} aprovações`, a.sem_dado)
+    + kpi('Fila estimada', f.sem_dado ? '' : dur(f.seg), f.sem_dado ? '' : `${f.prontos} prontos no ritmo de hoje (1 a cada ${dur(f.ritmo_seg)} de execução)`, f.sem_dado)
+    + kpi('Ociosidade hoje', dur(o.seg), o.pausado_seg ? `fora de execução; ${dur(o.pausado_seg)} pausado` : 'fora de execução desde 00:00', null)
+    + kpi('Última promoção', '', '', u.sem_dado)
+    + `</div>` + (dt.custo_dia_usd == null ? '' : `<div class="sb" style="margin-top:6px">custo do dia (custo.json): US$ ${dt.custo_dia_usd.toFixed(2).replace('.', ',')}</div>`);
+}
+function htmlProntos(dt){
+  const l = dt.prontos, k = 'prontos-resto';
+  const tr = p => `<tr><td class="sb num">${p.ordem}º</td><td class="mono">${esc(p.id)}<div class="sb">${esc(p.titulo)}</div></td><td>${esc(p.frase)}</td><td class="arq">${p.allow.slice(0,2).map(esc).join('<br>')}${p.allow.length > 2 ? ` <span class="sb">(+${p.allow.length - 2})</span>` : ''}</td><td class="num">${p.destrava}</td></tr>`;
+  let h = `<div class="card"><h2>Prontos <span class="mut">${l.length}</span></h2><div class="sb">na ordem em que o loop vai pegar; prioridade: sem dado (o contrato não tem o campo)</div>
+    <table><thead><tr><th>#</th><th>Ticket</th><th>O que muda no produto</th><th>Onde mexe</th><th class="num">Destrava</th></tr></thead><tbody>${l.slice(0,5).map(tr).join('')}</tbody></table>`;
+  if (l.length > 5) h += `<details data-k="${k}"><summary>ver os ${l.length - 5} restantes</summary><table><tbody>${l.slice(5).map(tr).join('')}</tbody></table></details>`;
+  if (!l.length) h += `<p class="mut">nenhum pendente pronto para rodar</p>`;
+  return h + '</div>';
+}
+function htmlHoras(dt){
+  const H = dt.horas;
+  const col = x => { const t = `${x.hora}h: ${x.aprovados} aprovado(s), ${x.reprovas} reprova(s), ${x.parado_min} min parado`;
+    return `<div class="hcol" title="${t}" aria-label="${t}"><div class="hmk">${x.aprovados ? `<span class="okt">✓${x.aprovados}</span>` : ''}${x.reprovas ? `<span class="badt">✗${x.reprovas}</span>` : ''}</div>
+      <div class="hbar"><div class="hpar" style="height:${x.parado_min / 60 * 100}%"></div><div class="hexe" style="height:${x.exec_min / 60 * 100}%"></div></div><div class="sb num">${x.hora}</div></div>`; };
+  return `<div class="card"><h2>Hoje, hora a hora</h2><div class="horas" role="img" aria-label="aprovados, reprovas e minutos parados por hora">${H.map(col).join('')}</div>
+    <div class="sb">✓ aprovado · ✗ reprova · barra cinza clara: minutos parado · barra azul: minutos em execução</div>
+    <details data-k="horas-tabela"><summary>ver como tabela</summary><table><thead><tr><th>Hora</th><th class="num">Aprovados</th><th class="num">Reprovas</th><th class="num">Execução (min)</th><th class="num">Parado (min)</th></tr></thead><tbody>
+    ${H.map(x => `<tr><td>${x.hora}h</td><td class="num">${x.aprovados}</td><td class="num">${x.reprovas}</td><td class="num">${x.exec_min}</td><td class="num">${x.parado_min}</td></tr>`).join('')}</tbody></table></details></div>`;
+}
+function htmlDisputados(dt){
+  const l = dt.disputados;
+  return `<div class="card"><h2>Arquivos mais disputados</h2>${l.length ? l.map(d => `<div class="linha" style="grid-template-columns:1fr auto"><span class="arq">${esc(d.arquivo)}</span><span class="num">${d.n} ticket${d.n == 1 ? '' : 's'}</span></div>`).join('') : '<p class="mut">nenhum pendente com allowlist</p>'}
+    <div class="sb">Quem mexe no mesmo arquivo roda em fila.</div></div>`;
+}
+function detalhe(raiz, nome){
+  const r = EST.repos.find(x => x.nome == nome);
+  if (!r){ secao(slot(raiz, 'd-cab'), `<header><a href="#">← visão geral</a></header><div class="aviso">repo ${esc(nome)} não está em ${esc(EST.repos_arquivo)}</div>`); return; }
+  const e = r.estado;
+  secao(slot(raiz, 'd-cab'), `<header><div><a href="#">← visão geral</a> <h1 style="display:inline;margin-left:8px">${esc(r.nome)}</h1> ${pill(e.tipo, e.rotulo)}
+    <div class="estado">${esc(e.titulo)}</div><div class="mut">${esc(e.detalhe)}</div></div><span class="mut num">${esc(EST.gerado_em)}</span></header>`
+    + (r.erro ? `<div class="aviso">${esc(r.erro)}</div>` : ''));
+  if (typeof htmlAcoes == 'function') secao(slot(raiz, 'd-acoes'), htmlAcoes(r));
+  if (!r.detalhe) return;
+  secao(slot(raiz, 'd-ind'), htmlIndicadores(r.detalhe));
+  secao(slot(raiz, 'd-bloq'), htmlBloqueados(r.bloqueados, false));
+  const g = slot(raiz, 'd-grade'); g.className = 'grade2';
+  secao(slot(g, 'd-prontos'), htmlProntos(r.detalhe));
+  const lado = slot(g, 'd-lado');
+  secao(slot(lado, 'd-horas'), htmlHoras(r.detalhe));
+  secao(slot(lado, 'd-disp'), htmlDisputados(r.detalhe));
 }
 
 function visaoGeral(raiz){
