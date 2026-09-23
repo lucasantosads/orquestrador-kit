@@ -38,6 +38,8 @@ const SCRIPTS = [
   'test-reprovado-sub.sh',
   'test-notificacao-ambiente.sh',
   'test-reabertura-humana.sh',
+  // K12: o painel contra N repos num mktemp -d (test-fixture-painel.sh)
+  'test-painel-visao.sh',
 ];
 
 /**

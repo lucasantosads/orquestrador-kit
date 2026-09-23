@@ -333,6 +333,20 @@ EOF
 #   sem_progresso / adiado — pulado nesta drenagem (memória da 7a-2);
 #   cooldown:<HH:MM> — liberado, mas o cooldown global ainda vale.
 ocioso_razoes() {
+  local linhas
+  linhas="$(pendentes_razoes "${1:-}" "${2:-}")"
+  case "
+$linhas" in *" pronto"*) return 1 ;; esac
+  [ -z "$linhas" ] || printf '%s\n' "$linhas"
+  return 0
+}
+
+# pendentes_razoes <tentados> <adiados> -> "<id> <razao>" por pendente, com a
+# MESMA precedência do ocioso_razoes, e `pronto` para o que roda agora. É a
+# régua do OCIOSO sem o corte do primeiro processável: o painel (peça K12) a
+# chama para saber, de cada pendente, se roda e, se não, por quê — "o painel
+# diz" e "a trilha diz" não podem divergir.
+pendentes_razoes() {
   local f id r tent=" ${1:-} " adi=" ${2:-} " ate=''
   cooldown_active && ate="$(cooldown_ate)"
   for f in $(ticket_files); do
@@ -346,8 +360,7 @@ ocioso_razoes() {
       case "$tent" in *" $id "*) r=sem_progresso ;; esac
     fi
     if [ -z "$r" ] && cooldown_active; then r="cooldown:${ate:-?}"; fi
-    [ -n "$r" ] || return 1
-    printf '%s %s\n' "$id" "$r"
+    printf '%s %s\n' "$id" "${r:-pronto}"
   done
   return 0
 }
