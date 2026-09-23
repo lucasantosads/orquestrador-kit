@@ -866,6 +866,17 @@
   vermelhos contra o painel do `6ba83bc`). **Antes, pausar e retomar pelo terminal não
   deixavam linha nenhuma.**
 
+- **K12-G · "não consegui apurar" não é "nenhum token".** Quando `pendentes_razoes` falha
+  num repo (config ilegível, rc != 0, ou passa do tempo: 60 s, `ORQ_PAINEL_RAZOES_TIMEOUT`
+  no teste), a faixa "Precisa de você" diz quais repos ficaram fora da conta e por quê
+  (`precisa_fora`), e só diz "nenhum token" sem ninguém fora. No repo sem razões, `prontos`
+  vira desconhecido (não zero), e o cartão diz "não consegui apurar a fila" em vez de "sem
+  ticket para pegar"; "rodando" e "pausado" seguem, porque vêm do STATUS e do PAUSAR.
+  *Evidência:* o painel contra os repos reais: `pendentes_razoes` passou de 60 s no
+  comarka-operacional (92 pendentes), e a faixa dizia "nenhum token humano segura pendente".
+  *Teste:* bloco 10 do `test-painel-visao.sh`, 9 vermelhos antes.
+  *Fica para a 7e (custo da seleção):* o tempo do `pendentes_razoes` em si.
+
 - **K12a · alarme de job carregado e mudo**: feita dentro do bloco D da K12, com uma troca
   pedida no brief: a régua é o último `DRENAGEM_INICIO` (não o `DRENAGEM_FIM`) contra 2× o
   `launchd.start_interval`, com job carregado e sem PAUSAR; e o `last exit code` != 0 é

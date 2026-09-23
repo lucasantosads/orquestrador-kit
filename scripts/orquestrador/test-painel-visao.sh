@@ -164,6 +164,29 @@ for s in 'Precisa de você' 'Bloqueados' '/api/estado' '15000'; do
 done
 
 echo
+echo "== 10. razões que não se apuram: a faixa diz quem ficou fora da conta (K12-G) =="
+# gama2: config ilegível, o motor nem carrega; e todos, com o tempo das razões
+# curto demais (o comarka-operacional, 92 pendentes, passou dos 60 s)
+Q="$ORQ_EXEC_ROOT/quebrado"; fp_repo "$Q"; fp_ticket "$Q" 300 pendente
+echo '{ ilegível' > "$Q/docs/fila/000-config.json"
+fp_repos "$TMP/r-g.json" "$A" "$Q"
+eg="$(ORQ_REPOS="$TMP/r-g.json" fp_painel --estado 2>/dev/null)"
+confere "os tokens do alfa continuam na faixa" "humano:cred-evo" "$(printf '%s' "$eg" | jq -r '.precisa[0].token')"
+confere "a faixa diz qual repo ficou fora da conta" quebrado "$(printf '%s' "$eg" | jq -r '[.precisa_fora[].repo] | join(" ")')"
+case "$(printf '%s' "$eg" | jq -r '.precisa_fora[0].erro')" in *000-config.json*) ok "e por quê" ;; *) falha "precisa_fora sem o erro" ;; esac
+fp_repos "$TMP/r-g2.json" "$A" "$G"
+eg2="$(ORQ_REPOS="$TMP/r-g2.json" ORQ_PAINEL_RAZOES_TIMEOUT=0.01 fp_painel --estado 2>/dev/null)"
+confere "timeout: nenhum token apurado" 0 "$(printf '%s' "$eg2" | jq -r '.precisa | length')"
+confere "timeout: os dois repos fora da conta" "alfa gama" "$(printf '%s' "$eg2" | jq -r '[.precisa_fora[].repo] | join(" ")')"
+case "$(printf '%s' "$eg2" | jq -r '.precisa_fora[0].erro')" in *"passou de"*pendentes*) ok "o erro diz o tempo e quantos pendentes" ;; *) falha "erro do timeout: $(printf '%s' "$eg2" | jq -r '.precisa_fora[0].erro')" ;; esac
+confere "o cartão mostra o erro" true "$(printf '%s' "$eg2" | jq -r '.repos[0].erro | test("passou de")')"
+confere "sem razões, prontos é desconhecido, não zero" null "$(printf '%s' "$eg2" | jq -r '.repos[1].contagem.prontos')"
+confere "gama ocioso sem razões: o cartão não diz 'sem ticket para pegar'" sem_dado "$(printf '%s' "$eg2" | jq -r '.repos[1].estado.tipo')"
+confere "alfa segue rodando: isso vem do STATUS, não das razões" rodando "$(printf '%s' "$eg2" | jq -r '.repos[0].estado.tipo')"
+pag="$(fp_painel --html 2>/dev/null)"
+case "$pag" in *"Não consegui apurar"*) ok "a página tem a frase de quem ficou fora" ;; *) falha "a página só sabe dizer 'nenhum token'" ;; esac
+
+echo
 echo "== launchctl: só o stub, nunca o do sistema (K12-E) =="
 fp_launchctl_confere
 

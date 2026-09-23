@@ -343,8 +343,18 @@ def assinatura_fila(caminho, cfg):
     return tuple(base)
 
 
-def razoes_pendentes(caminho, cfg):
-    """({id: razão}, legível, erro). `pronto` = roda agora."""
+def timeout_razoes():
+    """60 s, ou ORQ_PAINEL_RAZOES_TIMEOUT (existe para o teste do caso lento)."""
+    try:
+        return float(os.environ.get("ORQ_PAINEL_RAZOES_TIMEOUT") or 60)
+    except ValueError:
+        return 60.0
+
+
+def razoes_pendentes(caminho, cfg, n_pendentes=0):
+    """({id: razão}, legível, erro). `pronto` = roda agora. Com erro, NADA foi
+    apurado: quem chama não pode ler "nenhuma razão" como "nenhum pendente
+    preso"."""
     chave = assinatura_fila(caminho, cfg)
     c = _razoes.get(caminho)
     if c and c[0] == chave:
@@ -353,8 +363,13 @@ def razoes_pendentes(caminho, cfg):
     try:
         r = subprocess.run(["bash", "-c", SCRIPT_RAZOES, "orq-painel", str(AQUI)],
                            cwd=str(caminho), env=env, capture_output=True,
-                           text=True, timeout=60)
-    except (OSError, subprocess.TimeoutExpired) as e:
+                           text=True, timeout=timeout_razoes())
+    except subprocess.TimeoutExpired:
+        res = ({}, "", f"pendentes_razoes passou de {timeout_razoes():g} s "
+                       f"({n_pendentes} pendentes): razões não apuradas")
+        _razoes[caminho] = (chave, res)
+        return res
+    except OSError as e:
         res = ({}, "", f"pendentes_razoes não rodou: {e}")
         _razoes[caminho] = (chave, res)
         return res
@@ -483,7 +498,11 @@ def coletar_repo(r, t):
     st = ler_status(runs / "STATUS.md")
     eventos = ler_trilha(runs / "events.log")
     tickets = ler_tickets(Path(caminho) / "docs" / "fila")
-    raz, legivel, raz_erro = razoes_pendentes(caminho, cfg) if not cfg_erro else ({}, "", None)
+    n_pend = sum(1 for x in tickets if x["status"] == "pendente")
+    raz, legivel, raz_erro = razoes_pendentes(caminho, cfg, n_pend) if not cfg_erro else ({}, "", None)
+    # razões apuradas? Sem elas, "pronto" e "preso por token" são DESCONHECIDOS:
+    # zero prontos viraria "sem ticket para pegar" e a faixa diria "nenhum token".
+    raz_ok = not cfg_erro and not raz_erro
     pausa = pausa_do_repo(caminho, cfg)
     hoje = meia_noite(t)
     ev_hoje = [e for e in eventos if e["ts"] >= hoje]
@@ -496,9 +515,10 @@ def coletar_repo(r, t):
     rep = {
         "nome": r["nome"], "caminho": caminho,
         "erro": f"000-config.json {cfg_erro}" if cfg_erro else raz_erro,
+        "razoes_ok": raz_ok,
         "status_md": st is not None,
         "pausa": pausa,
-        "contagem": {"prontos": len(prontos), "pendentes": len(pendentes),
+        "contagem": {"prontos": len(prontos) if raz_ok else None, "pendentes": len(pendentes),
                      "bloqueados": len(bloqueados_t)},
         "dia": {"aprovados": sum(1 for e in ev_hoje if e["ev"] == "APROVADO"),
                 "reprovas": sum(1 for e in ev_hoje if e["ev"] == "REPROVADO")},
@@ -595,6 +615,9 @@ def estado_do_repo(st, pausa, eventos, raz, legivel, rep, t):
         return saida("pausado", pausa_txt, f"motivo: {pausa['motivo']}" + quem_pausou)
 
     c = rep["contagem"]
+    if not rep["razoes_ok"] and c["pendentes"]:
+        return saida("sem_dado", "não consegui apurar a fila",
+                     (rep["erro"] or "razões não apuradas") + f" · último: {ultimo_txt}")
     if c["pendentes"] and not c["prontos"]:
         ult_tk = ultimo(eventos, lambda e: e["id"] not in ("---", "—"))
         desde = None
@@ -693,7 +716,9 @@ def detalhe_do_repo(rep, t):
                                         "valor": round(inicios / len(aprov), 1), "sem_dado": None}
                                        if aprov else {"sem_dado": sem_aprov})
     prontos = rep["contagem"]["prontos"]
-    if aprov:
+    if prontos is None:
+        ind["fila_estimada"] = {"prontos": None, "sem_dado": "razões não apuradas: prontos desconhecidos"}
+    elif aprov:
         ritmo = int(round(exec_hoje / len(aprov)))
         ind["fila_estimada"] = {"prontos": prontos, "ritmo_seg": ritmo,
                                 "seg": prontos * ritmo, "sem_dado": None}
@@ -758,15 +783,19 @@ def coletar_tudo():
                           "contagem": {"prontos": 0, "pendentes": 0, "bloqueados": 0},
                           "dia": {"aprovados": 0, "reprovas": 0}, "proximos": [],
                           "proximos_resto": 0, "bloqueados": [], "precisa": [],
-                          "pausa": {"ativa": False}, "alarmes": [], "alarmes_sem_dado": []})
+                          "pausa": {"ativa": False}, "alarmes": [], "alarmes_sem_dado": [],
+                          "razoes_ok": False})
     precisa = sorted((p for r in saida for p in r.get("precisa", [])),
                      key=lambda p: (-p["destrava"], p["repo"], p["token"]))
     bloqueados = [b for r in saida for b in r.get("bloqueados", [])]
+    # quem NÃO entrou na conta da faixa: "nenhum token" só vale sem ninguém aqui
+    fora = [{"repo": r["nome"], "erro": r.get("erro") or "razões não apuradas"}
+            for r in saida if not r.get("razoes_ok")]
     for r in saida:
         r.pop("_interno", None)
     return {"gerado_em": datetime.fromtimestamp(t).strftime("%d/%m %H:%M:%S"),
             "agora": t, "repos_arquivo": str(arquivo_repos()), "repos_erro": erro,
-            "precisa": precisa, "bloqueados": bloqueados, "repos": saida}
+            "precisa": precisa, "precisa_fora": fora, "bloqueados": bloqueados, "repos": saida}
 
 
 _cache = {"t": 0.0, "v": None}
@@ -1079,15 +1108,20 @@ function secao(el, html){
 }
 function slot(pai, id){ let el = document.getElementById(id); if (!el){ el = document.createElement('div'); el.id = id; pai.appendChild(el);} return el; }
 
+function htmlFora(){
+  const f = EST.precisa_fora || [];
+  return f.length ? `<div class="aviso"><span aria-hidden="true">⚠</span> Não consegui apurar os tokens de ${f.length == 1 ? 'um repo' : f.length + ' repos'}, que ficaram fora desta conta: ${f.map(x => `<b>${esc(x.repo)}</b> (${esc(x.erro)})`).join(' · ')}</div>` : '';
+}
 function htmlPrecisa(){
-  const it = EST.precisa;
-  if (!it.length) return `<div class="card"><h2>Precisa de você</h2><p class="mut">Nenhum token humano segura pendente.</p></div>`;
+  const it = EST.precisa, fora = EST.precisa_fora || [];
+  if (!it.length) return `<div class="card"><h2>Precisa de você</h2>${fora.length ? htmlFora() : '<p class="mut">Nenhum token humano segura pendente.</p>'}</div>`;
   const linha = p => `<div class="linha"><span class="pill warn">destrava ${p.destrava}</span>
     <div><span class="mono">${esc(p.token)}</span><div class="sb">${esc(p.repo)} · ${p.tickets.map(esc).join(', ')}</div></div>
     <span class="sb mono">orq liberar ${esc(p.token)}</span></div>`;
   const grandes = it.filter(p => p.destrava > 1), um = it.filter(p => p.destrava <= 1);
   let h = `<div class="card"><h2>Precisa de você <span class="mut">${it.length} ${it.length == 1 ? 'item' : 'itens'}</span></h2>
     <div class="sb">ordenado por quantos pendentes cada token destrava</div>${grandes.map(linha).join('')}`;
+  h += htmlFora();
   if (um.length) h += `<details data-k="precisa-um"${grandes.length ? '' : ' open'}><summary>Mais ${um.length} ${um.length == 1 ? 'item' : 'itens'} de 1 ticket cada · mostrar</summary>${um.map(linha).join('')}</details>`;
   return h + '</div>';
 }
@@ -1110,7 +1144,7 @@ function htmlCard(r){
   if (r.acoes && r.acoes.retomar.habilitado) h += `<div style="margin-top:8px">${botao(r, 'retomar', 'Retomar')}</div><div id="msg-${esc(r.nome)}" class="sb" role="status"></div>`;
   h += `<div style="margin-top:10px"><span class="lbl">hoje</span> <span class="num">${d.aprovados} aprovados · ${d.reprovas} reprovas</span>
     <div class="barra" role="img" aria-label="${d.aprovados} aprovados contra ${d.reprovas} reprovas hoje">${tot ? `<div class="a" style="width:${pa}%"></div><div class="r" style="width:${100-pa}%"></div>` : ''}</div></div>
-    <div class="cont"><span><b class="num">${c.prontos}</b> prontos</span><span><b class="num">${c.pendentes}</b> pendentes</span><span><b class="num">${c.bloqueados}</b> bloqueados</span></div>`;
+    <div class="cont"><span><b class="num">${c.prontos == null ? '?' : c.prontos}</b> prontos${c.prontos == null ? ' <span class="sb">(sem dado)</span>' : ''}</span><span><b class="num">${c.pendentes}</b> pendentes</span><span><b class="num">${c.bloqueados}</b> bloqueados</span></div>`;
   if (r.proximos.length){
     h += `<div class="lbl">Próximos</div>` + r.proximos.map(p => `<div class="linha" style="grid-template-columns:34px 56px 1fr"><span class="sb num">${p.ordem}º</span><span class="mono">${esc(p.id)}</span><span>${esc(p.titulo)}</span></div>`).join('');
     if (r.proximos_resto) h += `<div class="sb">e mais ${r.proximos_resto}</div>`;
