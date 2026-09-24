@@ -417,7 +417,7 @@ drenar() {
   while :; do
     if pausa_ativa; then
       say "PAUSA ativa: $(pausa_motivo) — encerrando entre tickets"
-      motivo_ocioso=pausado; break
+      motivo_ocioso="pausado ($(pausa_motivo))"; break
     fi
     if cooldown_active; then
       say "COOLDOWN ~$(cooldown_remaining_min)min — encerrando; próximo disparo retoma"
@@ -771,7 +771,8 @@ main_local_loop() {
     say "PAUSA ativa: $(pausa_motivo) — encerrando sem tocar ticket nenhum"
     event '---' DRENAGEM_INICIO "alvo=$BRANCH_ALVO" "motivo=pausado"
     event '---' DRENAGEM_FIM "aprovados=0" "bloqueados=0" "adiados=0" "dur=0min" "motivo=pausado"
-    status_set "estado=ocioso" "fase=—" "ticket=—" "motivo=pausado"
+    # Ticket 514: o MOTIVO nomeia a sentinela ativa e o conteúdo dela.
+    status_set "estado=ocioso" "fase=—" "ticket=—" "motivo=pausado ($(pausa_motivo))"
     say "========== local-loop fim (pausado) =========="
     exit 0
   fi
