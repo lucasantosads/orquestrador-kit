@@ -233,8 +233,11 @@ describe('a doutrina não contradiz o template de config', () => {
     );
   });
 
-  it('as 7 causas de adiamento do template são as que o motor espera', () => {
-    expect(TEMPLATE_CFG.politica_adiamento.causas_que_adiam).toHaveLength(7);
+  it('as 8 causas de adiamento do template são as que o motor espera', () => {
+    // A 8ª entrou no porte do Actus (43fccdd, 625; decisão de 24/09/2026): o
+    // harness não conseguiu EXECUTAR o comando de um critério (rc 126/127).
+    expect(TEMPLATE_CFG.politica_adiamento.causas_que_adiam).toHaveLength(8);
+    expect(TEMPLATE_CFG.politica_adiamento.causas_que_adiam).toContain('falha de ambiente da worktree');
   });
 
   it('a política de retry do template NÃO manda escalar por tamanho nem por fronteira', () => {

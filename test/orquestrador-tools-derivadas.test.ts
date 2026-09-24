@@ -219,8 +219,10 @@ describe('morte inesperada do executor deixa rastro (peça 0c, item 3)', () => {
     // recusa de preflight (peça 7b-2), que virou ADIADO motivo=preflight em vez
     // de EXECUTOR_MORREU. O nono é o bloqueio por repetição (peça 7b-4). O
     // décimo é o bloqueio pelo gate de ticket no pré-voo (porte do Actus, c404986).
+    // O décimo primeiro é o teto de adiamentos por 'ambiente' (porte, ae29dcd).
     const n = (exec.match(/DESFECHO_NOMEADO=1/g) ?? []).length;
-    expect(n).toBe(10);
+    expect(n).toBe(11);
+    expect(exec).toMatch(/event "\$id" BLOQUEADO "motivo=teto-adiamento-ambiente"[\s\S]{0,300}DESFECHO_NOMEADO=1/);
     expect(exec).toMatch(/event "\$id" BLOQUEADO "motivo=gate_ticket"[\s\S]{0,300}DESFECHO_NOMEADO=1/);
     expect(exec).toMatch(/event "\$id" BLOQUEADO "motivo=repeticao"[\s\S]{0,300}DESFECHO_NOMEADO=1/);
     expect(/trap_sinal\(\) \{[\s\S]*?\n\}/.exec(exec)![0]).toContain('DESFECHO_NOMEADO=1');

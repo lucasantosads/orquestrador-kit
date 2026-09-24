@@ -166,6 +166,114 @@ grep -q "DRENAGEM_FIM aprovados=0 bloqueados=0" "$fx/docs/fila/runs/events.log" 
   && ok "não conta como aprovado nem como bloqueado" || falha "refatiar contaminou outro contador"
 rm -rf "$fx"
 
+# --- COOLDOWN GLOBAL só com limite REAL de conta (porte do Actus, 9e109cb) ----
+# No Actus, em 21/09 13:52Z (471), 22/09 13:21Z (481) e 22/09 15:00Z (470c), os
+# três tickets foram ADIADOS por causa 'ambiente' e o mark_adiado armou o
+# cooldown de 60 min da drenagem INTEIRA, com 7 tickets prontos na fila. No kit
+# a regra já é da peça 7b-2 (armaCooldown: só rate_limit e quota); este bloco é
+# o teste do Actus, com a causa nova 'ambiente' na tabela. O `arma` sai do MESMO
+# armaCooldown que o executor usa, pelo tsx do checkout (resolvido pelo git).
+TSX_REAL="$CHECKOUT_REAL/node_modules/.bin/tsx"
+arma_da_causa() {
+  "$TSX_REAL" -e "import('$AQUI/decisao.ts').then((m) => console.log(m.armaCooldown('$1') ? 'sim' : 'nao'))" 2>/dev/null
+}
+fx_fila() {  # fx_fila <dir> <ids...> — ROOT sintético com tickets pendentes
+  local d="$1" id; shift
+  escrever_config "$d"
+  for id in "$@"; do
+    cat > "$d/docs/fila/$id-t.md" <<TICKET
+# $id
+
+\`\`\`json
+{"id": "$id", "slug": "t", "status": "pendente", "origem": "humano",
+ "objetivo": "x", "pathspec_allowlist": ["src/a.ts"], "dependencias": [],
+ "criterios_aceite": []}
+\`\`\`
+TICKET
+  done
+}
+# drena_com <dir> <corpo-do-run_executor_once> [extra] — roda `drenar` inteira
+# com o executor em stub. O stub recebe o ticket em $2 e anota EXECUTADO <id>.
+drena_com() {
+  ORQ_EXEC_ROOT="$1" LOCAL_LOOP_SOURCED=1 bash -c "
+    source '$AQUI/local-loop.sh'
+    set +e
+    ensure_staging_worktree() { echo /tmp; }
+    ticket_commit() { return 0; }
+    merge_em_alvo() { return 0; }
+    cleanup_frente() { return 0; }
+    ${3:-}
+    run_executor_once() {
+      local id; id=\"\$(ticket_field \"\$2\" '.id')\"
+      echo \"EXECUTADO \$id\" >&2
+      $2
+      return 0
+    }
+    drenar
+  " 2>&1
+}
+
+echo
+echo "== mark_adiado: cooldown global só para limite real de conta (Actus 9e109cb) =="
+[ -x "$TSX_REAL" ] && ok "tsx do checkout: $TSX_REAL" || falha "tsx ausente em $TSX_REAL"
+for caso in "ambiente:0" "juiz_ilegivel:0" "timeout:0" "rate_limit:1" "quota:1"; do
+  causa="${caso%%:*}"; espera="${caso##*:}"
+  arma="$(arma_da_causa "$causa")"
+  fx="$(mktemp -d)"; fx_fila "$fx" 911
+  ORQ_EXEC_ROOT="$fx" LOCAL_LOOP_SOURCED=1 bash -c "
+    source '$AQUI/local-loop.sh'; set +e
+    ticket_commit() { return 0; }
+    mark_adiado '$fx/docs/fila/911-t.md' executor 'infraestrutura: $causa' '$arma'
+  " >/dev/null 2>&1
+  tem=0; [ -f "$fx/docs/fila/runs/.cooldown-until" ] && tem=1
+  if [ "$tem" = "$espera" ]; then
+    ok "causa '$causa' (arma=$arma) => cooldown global $([ "$espera" = 1 ] && echo ARMADO || echo 'NÃO armado')"
+  else
+    falha "causa '$causa' (arma=$arma) => cooldown $([ "$tem" = 1 ] && echo armado || echo 'não armado') (esperado: $([ "$espera" = 1 ] && echo armado || echo 'não armado'))"
+  fi
+  rm -rf "$fx"
+done
+
+echo
+echo "== drenar: 1º ADIADO por 'ambiente' => o 2º roda na MESMA drenagem (Actus 9e109cb) =="
+fx="$(mktemp -d)"; fx_fila "$fx" 921 922
+saida="$(drena_com "$fx" "
+      if [ \"\$id\" = 921 ]; then
+        mark_adiado \"\$2\" executor 'infraestrutura: ambiente' $(arma_da_causa ambiente)
+      else
+        ticket_set_status \"\$2\" aguardando_merge
+      fi")"
+printf '%s' "$saida" | grep -q "EXECUTADO 922" \
+  && ok "o 2º ticket (922) foi executado" || falha "922 NÃO rodou: $(printf '%s' "$saida" | grep -E 'COOLDOWN|sem progresso|encerr' | head -2 | tr '\n' ' ')"
+[ -f "$fx/docs/fila/runs/.cooldown-until" ] \
+  && falha "adiamento de UM ticket armou cooldown GLOBAL" || ok "nenhum cooldown global armado"
+[ "$(printf '%s' "$saida" | grep -c 'EXECUTADO 921')" = 1 ] \
+  && ok "o adiado (921) roda UMA vez só nesta drenagem" || falha "921 rodou $(printf '%s' "$saida" | grep -c 'EXECUTADO 921')x"
+grep -q '"status": "done"' "$fx/docs/fila/922-t.md" \
+  && ok "922 terminou done" || falha "922 não chegou a done"
+rm -rf "$fx"
+
+echo
+echo "== drenar: 1º adiado por orcamento_ticket => o 2º roda na MESMA drenagem (Actus 9e109cb) =="
+fx="$(mktemp -d)"; fx_fila "$fx" 931 932
+saida="$(drena_com "$fx" 'ticket_set_status "$2" aguardando_merge' '
+    orcamento_veredito() { [ "$1" = 931 ] && echo ticket || echo ok; }')"
+printf '%s' "$saida" | grep -q "EXECUTADO 932" \
+  && ok "o 2º ticket (932) foi executado" || falha "932 NÃO rodou"
+printf '%s' "$saida" | grep -q "EXECUTADO 931" \
+  && falha "931 rodou apesar do teto por ticket" || ok "931 não foi ao executor"
+rm -rf "$fx"
+
+echo
+echo "== drenar: executor adia por orcamento_ticket POR DENTRO => o 2º roda (Actus 9e109cb) =="
+fx="$(mktemp -d)"; fx_fila "$fx" 941 942
+saida="$(drena_com "$fx" '
+      if [ "$id" = 941 ]; then mark_adiado_orcamento "$2" ticket
+      else ticket_set_status "$2" aguardando_merge; fi')"
+printf '%s' "$saida" | grep -q "EXECUTADO 942" \
+  && ok "o 2º ticket (942) foi executado" || falha "942 NÃO rodou: $(printf '%s' "$saida" | grep -E 'sem progresso|encerr' | head -1)"
+rm -rf "$fx"
+
 echo
 if [ "$FALHAS" = 0 ]; then echo "TODOS OS CHECKS PASSARAM"; exit 0; fi
 echo "$FALHAS CHECK(S) FALHARAM"; exit 1

@@ -116,9 +116,11 @@ describe('fronteira — infra ADIA, mérito REPROVA', () => {
   // Peça 7b-2: os mesmos 7 rótulos ligam 9 causas. `servidor` (5xx) vem do
   // rótulo "rate limit" e `gate_crash` do "gate interrompido"; as 7 de antes
   // continuam todas lá.
-  it('os 7 rótulos do config ligam as 9 causas', () => {
+  // O 8º rótulo ("falha de ambiente da worktree") e a 10ª causa ('ambiente')
+  // entraram no porte do Actus (43fccdd, 625; decisão de 24/09/2026).
+  it('os 8 rótulos do config ligam as 10 causas', () => {
     expect([...causasDeAdiamentoDoConfig(cfg)].sort()).toEqual(
-      ['conexao', 'gate_crash', 'gate_interrompido', 'juiz_ilegivel', 'quota', 'rate_limit', 'servidor', 'sessao', 'timeout'].sort(),
+      ['ambiente', 'conexao', 'gate_crash', 'gate_interrompido', 'juiz_ilegivel', 'quota', 'rate_limit', 'servidor', 'sessao', 'timeout'].sort(),
     );
   });
 

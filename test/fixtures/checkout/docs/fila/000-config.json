@@ -21,7 +21,8 @@
       "quota estourada",
       "timeout de claude_timeout_secs",
       "gate interrompido no meio",
-      "veredito do juiz ilegível"
+      "veredito do juiz ilegível",
+      "falha de ambiente da worktree"
     ],
     "efeito": {
       "status": "pendente",
