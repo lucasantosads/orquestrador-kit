@@ -65,7 +65,9 @@ fixture_repo() {
 ```json
 {
   "id": "901",
+  "bloco": "B6",
   "slug": "da-vez",
+  "risco": "",
   "status": "pendente",
   "origem": "humano",
   "objetivo": "escreve src/a.ts e o teste que o cobre",

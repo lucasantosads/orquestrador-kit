@@ -594,6 +594,9 @@ function main(argv: string[]): number {
   let filaDir = join(process.cwd(), 'docs', 'fila')
   let relatorio = false
   let pendentes = false
+  // --violacoes: imprime SÓ violação (sem aviso nem isenção). É a forma que o
+  // pré-voo do executor consome para escrever a nota do ticket bloqueado.
+  let soViolacoes = false
   const args: string[] = []
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!
@@ -603,6 +606,8 @@ function main(argv: string[]): number {
       relatorio = true
     } else if (a === '--pendentes') {
       pendentes = true
+    } else if (a === '--violacoes') {
+      soViolacoes = true
     } else {
       args.push(a)
     }
@@ -625,7 +630,7 @@ function main(argv: string[]): number {
       alvos.push(t)
     }
   } else {
-    process.stderr.write('uso: gate-ticket [--fila <dir>] [--relatorio] (--pendentes | <arquivo.md|id>...)\n')
+    process.stderr.write('uso: gate-ticket [--fila <dir>] [--relatorio | --violacoes] (--pendentes | <arquivo.md|id>...)\n')
     return 2
   }
 
@@ -647,7 +652,7 @@ function main(argv: string[]): number {
     return 0
   }
 
-  for (const a of achados) process.stdout.write(`${a.arquivo}:${a.campo} ${a.mensagem}\n`)
+  for (const a of soViolacoes ? violacoes : achados) process.stdout.write(`${a.arquivo}:${a.campo} ${a.mensagem}\n`)
   return violacoes.length > 0 ? 1 : 0
 }
 

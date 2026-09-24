@@ -119,7 +119,7 @@ describe('lib.sh · tsx_bin resolve o binário UMA vez', () => {
 
 // ─── nenhuma chamada `npx tsx` crua sobrou no motor ──────────────────────────
 
-describe('as 14 chamadas do motor passam pela resolução única', () => {
+describe('as 15 chamadas do motor passam pela resolução única', () => {
   const ARQUIVOS = [
     'scripts/orq',
     'scripts/orquestrador/executor.sh',
@@ -140,11 +140,12 @@ describe('as 14 chamadas do motor passam pela resolução única', () => {
     for (const rel of ARQUIVOS) expect(codigo(rel)).not.toMatch(/npx\s+tsx/);
   });
 
-  it('as 14 chamadas usam "${ORQ_TSX[@]}" — array, nunca `$(tsx_bin)` sem aspas', () => {
+  it('as 15 chamadas usam "${ORQ_TSX[@]}" — array, nunca `$(tsx_bin)` sem aspas', () => {
     const total = ARQUIVOS.map((rel) => (codigo(rel).match(/"\$\{ORQ_TSX\[@\]\}"/g) ?? []).length)
       .reduce((a, b) => a + b, 0);
-    // 13 aqui: a 14ª é o `orq config`, despachado ANTES do lib.sh (caso abaixo).
-    expect(total).toBe(13);
+    // 14 aqui: a 15ª é o `orq config`, despachado ANTES do lib.sh (caso abaixo).
+    // A 14ª entrou no porte do Actus (c404986): o `gate_ticket` do pré-voo.
+    expect(total).toBe(14);
     for (const rel of ARQUIVOS) expect(codigo(rel)).not.toMatch(/\$\(tsx_bin\)/);
   });
 

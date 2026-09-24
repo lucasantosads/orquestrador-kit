@@ -107,6 +107,8 @@
     "juiz_para_humano": false,
     "max_paths_allowlist": 8,
     "timeout_cmd_secs": 120,
+    "modo_pre_voo": "aviso",
+    "_modo_pre_voo": "Pré-voo do gate de ticket no drive_ticket (porte do Actus, c404986 e 624): 'aviso' registra as violações no log e na trilha (GATE_TICKET_AVISO) e deixa o ticket seguir; 'bloqueia' marca o ticket bloqueado antes da worktree, sem consumir tentativa. Ausente = 'aviso'. Gate que não roda é falha alta nos dois.",
     "cmd_prefixos_permitidos": [
       "npx vitest run",
       "npx jest",

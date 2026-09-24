@@ -38,6 +38,9 @@
 #   test-painel-alarmes.sh          alarmes em frase: launchd, mudo, pausa furada/longa, execução longa (D)
 #   test-painel-lento.sh            um repo lento não segura o /api/estado; recuo e processo morto no timeout (J)
 #
+# E os do porte do Actus (branch porte-actus, 24/09/2026):
+#   test-gate-prevoo.sh             o gate de ticket roda antes da worktree; modos 'bloqueia' e 'aviso' (c404986)
+#
 # Cada um monta o PRÓPRIO `ORQ_EXEC_ROOT` num `mktemp -d` (drenagem e retry) ou
 # trabalha direto no checkout (lib-config); nada aqui precisa exportar
 # `ORQ_EXEC_ROOT` por fora — fazer isso sobrescreveria o isolamento que cada
@@ -52,7 +55,7 @@
 set -uo pipefail
 
 KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPTS='test-lib-config.sh test-drenagem.sh test-retry-worktree.sh test-drenagem-sem-progresso.sh test-sem-progresso-limite.sh test-ocioso.sh test-rc-executor.sh test-ambiente.sh test-causa-adiamento.sh test-ambiente-adiado.sh test-adiamentos-limite.sh test-reprovado-sub.sh test-notificacao-ambiente.sh test-reabertura-humana.sh test-painel-visao.sh test-painel-detalhe.sh test-painel-pausa.sh test-painel-alarmes.sh test-painel-lento.sh'
+SCRIPTS='test-lib-config.sh test-drenagem.sh test-retry-worktree.sh test-drenagem-sem-progresso.sh test-sem-progresso-limite.sh test-ocioso.sh test-rc-executor.sh test-ambiente.sh test-causa-adiamento.sh test-ambiente-adiado.sh test-adiamentos-limite.sh test-reprovado-sub.sh test-notificacao-ambiente.sh test-reabertura-humana.sh test-painel-visao.sh test-painel-detalhe.sh test-painel-pausa.sh test-painel-alarmes.sh test-painel-lento.sh test-gate-prevoo.sh'
 
 FX="$(bash "$KIT/scripts/kit/fixture.sh")" || {
   printf 'ERRO: fixture.sh falhou — nada foi rodado\n' >&2; exit 2

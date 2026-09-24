@@ -226,6 +226,13 @@ export const NOVAS: Nova[] = [
       'decisao.ts:277, e `decisao.ts` REJEITA a config que mandar o contrário. Escalar modelo por falha de TAMANHO (diff_cap) ou de FRONTEIRA (enforcement) é gasto sem hipótese: um modelo mais forte escreve o mesmo excesso e cruza a mesma fronteira, só mais caro.',
   },
   {
+    chave: 'gate_ticket.modo_pre_voo',
+    procedencia: 'politica',
+    valor: 'aviso',
+    porque:
+      "executor.sh:1052, passo 5b do drive_ticket (porte do Actus, c404986 e 624). O pré-voo do gate de ticket entra em repo que já tem fila, e regra nova de critério (grep -q em pipe, vitest textual, exemplos_regex) reprovaria tickets escritos antes dela: 'aviso' põe as violações no log e na trilha sem bloquear. Quem quer o bloqueio troca para 'bloqueia' no próprio config.",
+  },
+  {
     chave: 'gate_ticket.cmd_prefixos_permitidos',
     procedencia: 'politica',
     valor: [
