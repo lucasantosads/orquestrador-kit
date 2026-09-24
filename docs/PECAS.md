@@ -913,6 +913,18 @@
   `launchd.start_interval`, com job carregado e sem PAUSAR; e o `last exit code` != 0 é
   alarme próprio. Os dois negativos da spec (janela ok; job descarregado) estão no teste.
 
+- **hotfix-awk · a causa de AMBIENTE entra no awk sem escapes** (`685de81`). Em
+  `local-loop.sh:541` a causa normalizada ia por `awk -v`, que interpreta escapes: a recusa
+  de preflight por árvore suja carrega `\n` literal, nunca casava consigo mesma em
+  `causas_vistas`, e a régua da 7a-8 não disparava. Agora vai por `ENVIRON`. Das 6
+  ocorrências de `awk -v` em `scripts/orquestrador`, era a única com texto livre (as outras
+  recebem id, caminho de mktemp ou número).
+  *Evidência:* 269 e 270 do conteudos-infinitos bloqueados por adiamentos em 22/09
+  (`~/orq-sessoes/levantamento-bloqueios.md`, Avisos); `executor.sh:66-67` e
+  `preflight_ou_adia` montam a causa com a quebra que o `uma_linha` vira `\n`.
+  *Teste:* caso 4 do `test-ambiente.sh`, com o texto real da recusa: 4 disparos, 1 AMBIENTE
+  em cada, 906 e 907 pendentes. **Antes, nenhum AMBIENTE e os dois bloqueados no 4º.**
+
 ## PENDENTES
 
 - **K6d · `scripts/kit/pureza.sh`.** O grep que TRANCA a pureza: em CÓDIGO (não em

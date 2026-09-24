@@ -698,3 +698,16 @@ launchd morreu três vezes em rc 127 e nada alarmou.
 O que um repo instalado ganha ao atualizar: `scripts/orquestrador/orq-painel.py` e os
 quatro `test-painel-*.sh`; nenhum comportamento do loop muda (o `OCIOSO` sai igual).
 Relatório: `~/orq-sessoes/relatorio-kit-k12.md`.
+
+### hotfix-awk · a causa de AMBIENTE com `\n` literal
+
+- **hotfix-awk** `685de81`: em `local-loop.sh:541` a causa normalizada entrava no awk por
+  `-v`, que interpreta escapes. A recusa de preflight por árvore suja traz `\n` literal (a
+  lista do `git status` passa pelo `uma_linha`), a causa nunca era igual a si mesma e a
+  régua de AMBIENTE da 7a-8 não disparava: cada ticket somava adiamento até bloquear. Agora
+  a causa vai por `ENVIRON`. Das 6 ocorrências de `awk -v` no motor, só essa recebia texto
+  livre. Caso 4 do `test-ambiente.sh`.
+
+O que um repo instalado ganha ao atualizar: com a árvore de execução suja, a drenagem para
+em AMBIENTE no segundo ticket e ninguém bloqueia. Foi o que bloqueou o 269 e o 270 do
+conteudos-infinitos em 22/09. Relatório: `~/orq-sessoes/relatorio-kit-hotfix-awk.md`.
