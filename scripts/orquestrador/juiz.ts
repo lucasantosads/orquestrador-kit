@@ -99,6 +99,14 @@ export interface EntradaPrompt {
    * prompt sai exatamente como antes.
    */
   nota?: string
+  /**
+   * Ticket 622 — `contexto_juiz` do ticket: arquivos de REFERÊNCIA que o
+   * critério manda comparar e que NÃO fazem parte do diff (caso do 501: "compare
+   * linha a linha contra a 0264", com a 0264 fora do diff). O conteúdo é o da
+   * BASE da tentativa, lido pelo executor.sh (`contexto_juiz_json`), já com o
+   * truncamento marcado. Ausente ou vazio: o prompt sai byte a byte como antes.
+   */
+  contexto?: { path: string; conteudo: string }[]
 }
 
 /** A allowlist inclui arquivo de teste? Só então o bloco anti-afrouxamento entra. */
@@ -151,6 +159,27 @@ criterios_falhos: use a DESCRIÇÃO do critério, copiada como está na lista ac
 Vazio quando aprovado. Na dúvida entre aprovar e reprovar, REPROVE e diga o que falta.`
 
 /**
+ * Bloco de referência (ticket 622). A frase sobre o papel da referência mora
+ * AQUI, e não no CABECALHO, de propósito: o CABECALHO é igual para todo
+ * ticket, e ticket sem `contexto_juiz` tem que produzir o prompt de antes byte
+ * a byte (item (a) do 622). Só quem declara referência recebe a frase.
+ */
+function blocoReferencia(contexto: { path: string; conteudo: string }[]): string[] {
+  return [
+    '',
+    'ARQUIVOS DE REFERÊNCIA (estado na base, NÃO fazem parte do diff):',
+    'O ticket declarou estes arquivos para você COMPARAR com o diff. Eles não são',
+    'trabalho do ticket e não provam nada sozinhos: o que você julga continua sendo o diff.',
+    ...contexto.flatMap((c) => [
+      '',
+      `--- ${c.path} (estado na base, NÃO faz parte do diff) ---`,
+      c.conteudo.replace(/\n+$/, ''),
+      `--- fim de ${c.path} ---`,
+    ]),
+  ]
+}
+
+/**
  * Ordem estável para cache de prefixo (custo-e-contexto §4): tudo que é fixo
  * primeiro, o material variável (diff, gates) por último.
  */
@@ -185,6 +214,7 @@ export function montarPromptJuiz(e: EntradaPrompt): string {
     criterios,
     '',
     ...(e.nota?.trim() ? ['', 'NOTA DO HARNESS SOBRE ESTA TENTATIVA:', e.nota.trim()] : []),
+    ...(e.contexto && e.contexto.length > 0 ? blocoReferencia(e.contexto) : []),
     '',
     'SAÍDA DOS GATES MECÂNICOS:',
     e.gates.trim() || '(vazia)',
