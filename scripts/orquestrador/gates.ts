@@ -337,10 +337,21 @@ export function execBash(raiz: string): (cmd: string) => Execucao {
   }
 }
 
-// --- CLI: `npx tsx gates.ts --run-cli [raiz]` --------------------------------
+// --- CLI: `npx tsx gates.ts --run-cli <raiz> --config <000-config.json>` ------
+// Ticket 626: EXECUTA na raiz (a worktree) e LÊ o config passado em --config —
+// o da main, a mesma fonte de papel_marca, decisao-cli.ts e juiz.ts. Não existe
+// mais fallback para <raiz>/docs/fila/000-config.json: ler o config da worktree
+// fazia gate declarado só na main sumir do gates.txt (499, 22/09). Sem --config,
+// falha alto.
 if (process.argv.includes('--run-cli')) {
   const raiz = process.argv[process.argv.indexOf('--run-cli') + 1] ?? process.cwd()
-  const config = JSON.parse(readFileSync(`${raiz}/docs/fila/000-config.json`, 'utf8')) as GatesConfig
+  const iCfg = process.argv.indexOf('--config')
+  const caminhoConfig = iCfg >= 0 ? process.argv[iCfg + 1] : undefined
+  if (!caminhoConfig) {
+    process.stderr.write('gates.ts: --config <caminho do 000-config.json da main> é obrigatório (ticket 626)\n')
+    process.exit(2)
+  }
+  const config = JSON.parse(readFileSync(caminhoConfig, 'utf8')) as GatesConfig
   const v = rodarGates(config, execBash(raiz))
   for (const g of v.gates) {
     const marca = g.ok ? 'ok  ' : 'FALHA'

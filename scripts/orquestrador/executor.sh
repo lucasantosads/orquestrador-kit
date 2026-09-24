@@ -531,23 +531,49 @@ gates_do_papel() {
 }
 
 # papel_marca <gates.txt> <papel> -> ok | falha | nao-rodou | nao-configurado
-# Combina TODOS os gates daquele papel (o CI tem dois de typecheck): falha de
-# qualquer um e falha do papel, e so e `ok` quando todos rodaram e passaram.
+# Combina TODOS os gates daquele papel (o CI tem dois de typecheck). Ticket 626:
+# gate AUSENTE do gates.txt não apaga o resultado dos que rodaram —
+#   falha     se algum rodou e falhou;
+#   ok        se ao menos um rodou e todos os que rodaram passaram;
+#   nao-rodou só se nenhum do papel rodou.
+# Os ausentes não somem: vão para gates_ausentes= (gates_ausentes, abaixo).
 papel_marca() {
-  local f="$1" papel="$2" nome n=0 falhou=0 naorodou=0
+  local f="$1" papel="$2" nome n=0 falhou=0 rodou=0
   while IFS= read -r nome; do
     [ -n "$nome" ] || continue
     n=$((n + 1))
     case "$(gate_marca "$f" "$nome")" in
-      falha)     falhou=1 ;;
-      nao-rodou) naorodou=1 ;;
+      falha) falhou=1; rodou=1 ;;
+      ok)    rodou=1 ;;
     esac
   done < <(gates_do_papel "$papel")
-  if   [ "$n" = 0 ];       then echo nao-configurado
-  elif [ "$falhou" = 1 ];  then echo falha
-  elif [ "$naorodou" = 1 ]; then echo nao-rodou
-  else echo ok
+  if   [ "$n" = 0 ];      then echo nao-configurado
+  elif [ "$falhou" = 1 ]; then echo falha
+  elif [ "$rodou" = 1 ];  then echo ok
+  else echo nao-rodou
   fi
+}
+
+# gates_ausentes <gates.txt> -> os nomes (separados por vírgula) dos gates do
+# CONFIG da main que não aparecem no gates.txt. Vazio quando todos rodaram.
+#
+# Porte (24/09/2026), o defeito de marcação que o PORTE-PENDENTE do Actus
+# registrou para o 626 (510c attempt-0: `build=nao-rodou gates_ausentes=build`):
+# o gates.ts para no primeiro gate que reprova, então o que vem DEPOIS de uma
+# FALHA (ou de uma interrupção, `reexecutar`) foi PULADO, não está ausente.
+# Ausente é só o gate que falta sem nenhuma falha antes dele na ordem do config:
+# esse é defeito de configuração, e é o que este campo existe para acusar.
+gates_ausentes() {
+  local f="$1" nome declarado out="" parou=0
+  grep -qi 'reexecutar' "$f" 2>/dev/null && parou=1
+  while IFS=$'\t' read -r nome declarado; do
+    [ -n "$nome" ] || continue
+    case "$(gate_marca "$f" "$nome")" in
+      falha) parou=1 ;;
+      nao-rodou) [ "$parou" = 1 ] || out="${out:+$out,}$nome" ;;
+    esac
+  done < <(cfg '.gates[]? | [.nome, (.papel // "")] | @tsv' 2>/dev/null || true)
+  printf '%s' "$out"
 }
 
 # event_gate <id> <rundir> <enf_ok>
@@ -559,7 +585,7 @@ papel_marca() {
 # nao mexer. Quem tem gate de lint ganha o campo; quem nao tem, ganha a mesma
 # linha de sempre.
 event_gate() {
-  local id="$1" rundir="$2" enf_ok="$3" gt="$2/gates.txt" fora="" n_falhos=0 lint
+  local id="$1" rundir="$2" enf_ok="$3" gt="$2/gates.txt" fora="" n_falhos=0 lint ausentes
   [ -z "$CRITERIOS_FALHOS" ] || n_falhos="$(printf '%s' "$CRITERIOS_FALHOS" | awk -F';' '{print NF}')"
   if [ "$enf_ok" = 0 ] && [ -s "$rundir/enforcement.json" ]; then
     fora="$(jq -r '[.violations[]? | select(.tipo == "fora_do_pathspec") | .detalhe] | join(",")' \
@@ -567,6 +593,11 @@ event_gate() {
   fi
   lint="$(papel_marca "$gt" lint)"
   [ "$lint" = nao-configurado ] && lint=''
+  # gates_ausentes= é CONDICIONAL como o lint= (ticket 626): linha sem ausente é
+  # byte a byte a de antes. O STATUS.md recebe o valor SEMPRE (vazio limpa a
+  # linha de um attempt anterior).
+  ausentes="$(gates_ausentes "$gt")"
+  status_set "gates_ausentes=$ausentes"
   event "$id" GATE \
     "typecheck=$(papel_marca "$gt" typecheck)" \
     "testes=$(papel_marca "$gt" testes)" \
@@ -574,6 +605,7 @@ event_gate() {
     "criterios=$(( CRITERIOS_TOTAL - n_falhos ))/$CRITERIOS_TOTAL" \
     "build=$(papel_marca "$gt" build)" \
     ${lint:+"lint=$lint"} \
+    ${ausentes:+"gates_ausentes=$ausentes"} \
     ${fora:+"fora_do_pathspec=$fora"}
 }
 
@@ -830,8 +862,22 @@ grava_diff_patch() {
 # — nunca o trabalho inteiro que vai ser mergeado. Vazio = comportamento antigo
 # (HEAD atual), que é o certo quando a worktree acabou de nascer.
 RESULT=""; MOTIVO=""; DIFF_LINES=0; DUR=0; ENF_OK=1; AGENTE_RC=0
+# RETRY SEM MUDANÇA (ticket 623): `$8` (rundir_anterior) é o diretório de
+# evidência da tentativa ANTERIOR do mesmo ciclo de retry — vazio na primeira
+# tentativa, que não muda. Se o diff.patch novo tem o MESMO sha256 do anterior,
+# o agente não produziu hipótese nova: julgar de novo é pagar o juiz pelo mesmo
+# veredito (488b e 499, 22/09: três tentativas com md5 idêntico). O run_attempt
+# sai cedo com RETRY_SEM_MUDANCA=1 e o drive_ticket bloqueia com o motivo
+# retry_sem_mudanca, sem passar pelo decisao.ts (fora do escopo do 623).
+RETRY_SEM_MUDANCA=0; HASH_DIFF_ANTERIOR=""; HASH_DIFF_NOVO=""
+# sha256_arquivo <arquivo> -> o hex do sha256. `shasum` (macOS) ou `sha256sum`
+# (Linux): o motor roda nos dois.
+sha256_arquivo() {
+  if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | cut -d' ' -f1
+  else sha256sum "$1" | cut -d' ' -f1; fi
+}
 run_attempt() {
-  local file="$1" wt="$2" rundir="$3" modelo="$4" motivo_anterior="$5" attempt="${6:-0}" base_fixo="${7:-}"
+  local file="$1" wt="$2" rundir="$3" modelo="$4" motivo_anterior="$5" attempt="${6:-0}" base_fixo="${7:-}" rundir_anterior="${8:-}"
   local prompt saida rc=0 t0 base sinal veredito tools
   mkdir -p "$rundir"
   prompt="$rundir/prompt.txt"; saida="$rundir/claude.txt"
@@ -884,6 +930,33 @@ run_attempt() {
   # que só existe quando o desfecho é bom não serve para diagnosticar o ruim.
   grava_diff_patch "$wt" "$base" "$rundir"
 
+  # 5b · retry sem mudança (ticket 623): da segunda tentativa em diante, diff
+  # idêntico ao da anterior encerra a tentativa AQUI — sem enforcement, gates,
+  # critérios nem juiz. O hash é do diff.patch inteiro.
+  RETRY_SEM_MUDANCA=0; HASH_DIFF_ANTERIOR=""; HASH_DIFF_NOVO=""
+  #
+  # SÓ com o agente saído rc 0 (porte, 24/09/2026): diff idêntico depois de uma
+  # falha de infra (503, rede, sessão, timeout) não é "sem hipótese nova", é
+  # tentativa que não aconteceu, e quem decide é o decisao.ts (adia). Sem esta
+  # condição, o caso E do test-reprovado-sub.sh (retry que pega um 503) virava
+  # BLOQUEADO retry_sem_mudanca em vez de ADIADO servidor. O Actus tem o mesmo
+  # defeito (0aa3c83).
+  if [ "${AGENTE_RC:-0}" = 0 ] && [ -n "$rundir_anterior" ] && [ -f "$rundir_anterior/diff.patch" ]; then
+    HASH_DIFF_ANTERIOR="$(sha256_arquivo "$rundir_anterior/diff.patch")"
+    HASH_DIFF_NOVO="$(sha256_arquivo "$rundir/diff.patch")"
+    if [ -n "$HASH_DIFF_NOVO" ] && [ "$HASH_DIFF_NOVO" = "$HASH_DIFF_ANTERIOR" ]; then
+      RETRY_SEM_MUDANCA=1; ENF_OK=1
+      RESULT="reprovado"
+      MOTIVO="retry_sem_mudanca: diff.patch idêntico ao da tentativa anterior (sha256 $HASH_DIFF_NOVO); juiz não chamado"
+      jq -n --arg m "$MOTIVO" --arg ha "$HASH_DIFF_ANTERIOR" --arg hn "$HASH_DIFF_NOVO" \
+        --arg da "$rundir_anterior/diff.patch" --arg dn "$rundir/diff.patch" \
+        '{desfecho:"reprovado", causa:"retry_sem_mudanca", motivo:$m, contaComoRetry:true,
+          hashAnterior:$ha, hashNovo:$hn, diffAnterior:$da, diffNovo:$dn}' > "$rundir/veredito.json"
+      log "  retry sem mudança: diff.patch idêntico ao de $(basename "$rundir_anterior") (sha256 $(printf '%.12s' "$HASH_DIFF_NOVO")) — juiz NÃO chamado"
+      return 0
+    fi
+  fi
+
   # 6 · enforcement sobre o diff (ORQ-03)
   # ENF_OK é GLOBAL (não `local`): é ele que o drive_ticket lê para decidir se a
   # próxima tentativa reaproveita esta worktree ou nasce limpa.
@@ -901,7 +974,9 @@ run_attempt() {
   # propaga a flag de exclusão e o E2E que escreve no Supabase voltaria ao gate.
   local gates_rc=0 gate_falho="" papel_falho=""
   fase gates
-  "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/gates.ts" --run-cli "$wt" > "$rundir/gates.txt" 2>&1 || gates_rc=$?
+  # Ticket 626: executa NA worktree, lê o config da MAIN (fonte única, a mesma
+  # de papel_marca, decisao-cli.ts e juiz.ts).
+  "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/gates.ts" --run-cli "$wt" --config "$MAIN_CHECKOUT/docs/fila/000-config.json" > "$rundir/gates.txt" 2>&1 || gates_rc=$?
   log "  gates: $([ "$gates_rc" = 0 ] && echo APROVADO || echo "REPROVADO (rc=$gates_rc)")"
   grep -qi 'reexecutar' "$rundir/gates.txt" && log "  gates: interrompidos — conjunto não vale parcialmente"
   # Peça 7b-2: o PAPEL do gate que reprovou vai para o decisao.ts, que separa
@@ -1008,11 +1083,24 @@ marca_refatiar() {
 # o `motivo` do retry (custo-e-contexto §6). Falha do diagnóstico não pode custar
 # o retry: sem JSON, cai no texto livre de antes.
 diagnostico_retry() {
-  local file="$1" rundir="$2" d
+  local file="$1" rundir="$2" d jcf='[]' jm=""
+  # JUIZ QUE REPROVOU (ticket 623): até aqui só os critérios MECÂNICOS
+  # ($CRITERIOS_FALHOS) chegavam ao diagnóstico — com o juiz reprovando e o
+  # mecânico verde, o retry recebia `criterios_falhos: []` (488b e 499, 22/09).
+  # Agora o motivo do juiz vai LITERAL (campo próprio, sem corte) e, junto dos
+  # criterios_falhos do juiz.veredito.json, na FRENTE da lista: é a porta que o
+  # diagnostico.ts já documenta para o gate 'juiz'.
+  if [ "${JUIZ_ROU:-0}" = 1 ] && [ "${JUIZ_APROVADO:-}" = false ]; then
+    jm="$JUIZ_MOTIVO"
+    jcf="$(jq -c --arg m "juiz: $JUIZ_MOTIVO" '[$m] + (.criterios_falhos // [])' "$rundir/juiz.veredito.json" 2>/dev/null \
+           || jq -cn --arg m "juiz: $JUIZ_MOTIVO" '[$m]')"
+  fi
   d="$(jq -n --argjson al "$(ticket_json "$file" | jq '.pathspec_allowlist // []')" \
         --argjson cf "$(printf '%s' "$CRITERIOS_FALHOS" | jq -Rn '[inputs | select(length>0) | split("; ")[]]')" \
+        --argjson jcf "$jcf" --arg jm "$jm" \
         --argjson pn "${PERMISSOES_NEGADAS:-[]}" \
-        '{allowlist:$al, criteriosFalhos:$cf, permissoesNegadas:$pn}' \
+        '{allowlist:$al, criteriosFalhos:($jcf + $cf), permissoesNegadas:$pn}
+         + (if $jm != "" then {juiz:{motivo:$jm, criteriosFalhos:($jcf[1:])}} else {} end)' \
       | "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/diagnostico.ts" --run-cli "$rundir" 2>/dev/null || true)"
   if [ -z "$d" ]; then
     log "  diagnóstico: não consegui montar o JSON — retry segue com o motivo em texto"
@@ -1200,7 +1288,12 @@ drive_ticket() {
     # está contada no ticket e o órfão não volta com o contador zerado.
     ticket_set_tentativas "$file" "$((attempt + 1))"
     ticket_commit "$file" "fila: $id tentativa $((attempt + 1))"
-    run_attempt "$file" "$wt" "$rundir" "$modelo" "${MOTIVO_ANTERIOR:-}" "$attempt" "$base_ticket"
+    # Ticket 623: a evidência da tentativa ANTERIOR deste ciclo de retry, para o
+    # run_attempt comparar os diff.patch. Vazio na primeira tentativa da
+    # drenagem — ela nunca é barrada por retry_sem_mudanca.
+    local rundir_anterior=""
+    [ "$attempt" -gt "$attempt0" ] && rundir_anterior="$RUNS_BASE/$id/attempt-$((slot + attempt - attempt0 - 1))"
+    run_attempt "$file" "$wt" "$rundir" "$modelo" "${MOTIVO_ANTERIOR:-}" "$attempt" "$base_ticket" "$rundir_anterior"
     grava_meta "$rundir" "$attempt" "$modelo"
     # Só REPROVAÇÃO consome. Adiado, aprovado e refatiar devolvem o valor de
     # antes; o commit de cada desfecho abaixo leva a devolução junto.
@@ -1208,6 +1301,20 @@ drive_ticket() {
     # Reprovação quebra a sequência de adiamentos por ambiente (lib.sh, teto).
     [ "$RESULT" = "reprovado" ] && ticket_zera_adiamentos_ambiente "$file"
     local tok; tok="$(motivo_token "$(cat "$rundir/veredito.json" 2>/dev/null || echo '{}')")"
+
+    # Ticket 623: retry sem mudança bloqueia direto, sem juiz e sem nova
+    # tentativa — repetir o mesmo diff não é hipótese nova.
+    if [ "${RETRY_SEM_MUDANCA:-0}" = 1 ]; then
+      local rel_ant rel_novo
+      rel_ant="runs/$id/$(basename "$rundir_anterior")/diff.patch"
+      rel_novo="runs/$id/$(basename "$rundir")/diff.patch"
+      ticket_set_status "$file" "bloqueado"
+      ticket_set_nota "$file" "bloqueado: retry_sem_mudanca — o diff.patch da tentativa $((attempt + 1)) é idêntico ao da tentativa anterior (sha256 anterior $HASH_DIFF_ANTERIOR; sha256 novo $HASH_DIFF_NOVO); o juiz não foi chamado. Evidência: $rel_ant e $rel_novo. O agente não produziu hipótese nova: revise o ticket (objetivo, critérios, allowlist) antes de reabrir."
+      ticket_commit "$file" "fila: $id bloqueado (retry_sem_mudanca)"
+      event "$id" BLOQUEADO "motivo=retry_sem_mudanca" "attempt=$((attempt + 1))" "sha256=$(printf '%.12s' "$HASH_DIFF_NOVO")"
+      status_set "estado=ocioso" "ultimo=$id BLOQUEADO $(date '+%H:%M:%S') (${DUR}s)" "motivo=bloqueado: retry_sem_mudanca"
+      DESFECHO_NOMEADO=1; log "BLOQUEADO: retry_sem_mudanca ($rel_novo idêntico a $rel_ant)"; cleanup_worktree "$id" "$wt"; return 0
+    fi
 
     if [ "$RESULT" = "adiado" ]; then
       # Peça 7b-2: a trilha carrega a MEDIDA (rc do agente e duração real) e se

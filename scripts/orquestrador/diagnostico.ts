@@ -35,6 +35,13 @@ export interface Diagnostico {
    * `npm run typecheck`, 22 turnos, saiu sem commitar).
    */
   permissoes_negadas: string[]
+  /**
+   * O que o JUIZ disse, LITERAL (ticket 623). Só existe quando o juiz reprovou.
+   * `criterios_falhos` acima corta cada item em 200 caracteres para caber no
+   * orçamento do diagnóstico; aqui não há corte nem paráfrase — é a única
+   * hipótese nova que o retry recebe quando o mecânico passou e o juiz não.
+   */
+  juiz?: { motivo: string; criterios_falhos: string[] }
   instrucao: string
 }
 
@@ -51,6 +58,8 @@ export interface EntradaDiagnostico {
   allowlist?: string[]
   /** comandos negados por permissão, lidos do envelope do agente */
   permissoesNegadas?: string[]
+  /** veredito do juiz que reprovou (motivo e criterios_falhos do juiz.veredito.json) */
+  juiz?: { motivo: string; criteriosFalhos?: string[] }
 }
 
 export const INSTRUCAO =
@@ -140,6 +149,9 @@ export function montarDiagnostico(e: EntradaDiagnostico): Diagnostico {
     criterios_falhos: criteriosFalhos,
     fora_da_allowlist: [],
     permissoes_negadas: negadas,
+    ...(e.juiz && e.juiz.motivo
+      ? { juiz: { motivo: e.juiz.motivo, criterios_falhos: e.juiz.criteriosFalhos ?? [] } }
+      : {}),
     instrucao: negadas.length > 0 ? `${INSTRUCAO}; ${INSTRUCAO_PERMISSAO}` : INSTRUCAO,
   }
 
@@ -237,6 +249,7 @@ if (process.argv.includes('--run-cli') && /diagnostico\.(ts|js)$/.test(process.a
     allowlist?: string[]
     criteriosFalhos?: string[]
     permissoesNegadas?: string[]
+    juiz?: { motivo: string; criteriosFalhos?: string[] }
   }
   process.stdout.write(
     JSON.stringify(
@@ -247,6 +260,7 @@ if (process.argv.includes('--run-cli') && /diagnostico\.(ts|js)$/.test(process.a
         allowlist: entrada.allowlist ?? [],
         criteriosFalhos: entrada.criteriosFalhos ?? [],
         permissoesNegadas: entrada.permissoesNegadas ?? [],
+        ...(entrada.juiz ? { juiz: entrada.juiz } : {}),
       }),
       null,
       2,
