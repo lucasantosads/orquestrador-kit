@@ -16,6 +16,10 @@
 #      contadores zerados, 3 eventos AMBIENTE, no máximo 2 chamadas por disparo.
 #   2. causas diferentes em tickets diferentes NÃO são ambiente: cada um soma.
 #   3. um ticket sozinho travado continua bloqueando no 3º disparo (7a-3).
+#   4. árvore suja: a causa do preflight carrega `\n` LITERAL (o `$sujo` do
+#      executor.sh passa por `uma_linha`). A comparação de causas não pode
+#      interpretar esse escape: 4 disparos, 1 AMBIENTE em cada, 0 bloqueados.
+#      Foi assim que o 269 e o 270 do conteudos-infinitos bloquearam em 22/09.
 #
 # Uso: bash scripts/orquestrador/test-ambiente.sh
 
@@ -42,7 +46,7 @@ falha() { printf '  FALHA %s\n' "$*"; FALHAS=$((FALHAS + 1)); }
 
 FILA="$ORQ_EXEC_ROOT/docs/fila"
 TRILHA="$FILA/runs/events.log"
-MODO="$TMP/modo"     # preflight | proprio
+MODO="$TMP/modo"     # preflight | proprio | suja
 CALLS="$TMP/calls"
 
 ensure_staging_worktree() { echo "$ORQ_EXEC_ROOT"; }
@@ -72,6 +76,16 @@ run_executor_once() {
       esac
       event "$id" EXECUTOR_MORREU "rc=128" "fase=worktree"
       return 128 ;;
+    suja)
+      # O texto REAL da recusa (executor.sh, preflight), pelo mesmo caminho do
+      # `preflight_ou_adia`: a quebra de linha antes do `$sujo` vira `\n`
+      # literal no `uma_linha`, e é assim que ela chega à trilha.
+      local causa
+      causa="$(uma_linha "preflight: árvore de execução suja em $ORQ_EXEC_ROOT — commite ou stashe antes:
+ M src/a.ts
+?? tmp-$id.log" 300)"
+      event "$id" ADIADO "motivo=preflight" "causa=$causa"
+      return 0 ;;
   esac
 }
 contador() { cut -d'|' -f1 "$RUNS_BASE/$1/.sem-progresso" 2>/dev/null || true; }
@@ -128,6 +142,24 @@ disparo 5; disparo 6
 grep -Eq ' 904 BLOQUEADO motivo=sem_progresso( |$)' "$TRILHA" && ok "trilha: 904 BLOQUEADO motivo=sem_progresso" || falha "sem BLOQUEADO do 904"
 [ -z "$(git -C "$ORQ_EXEC_ROOT" status --porcelain -- docs/fila/904-t.md)" ] && ok "bloqueio commitado" || falha "bloqueio sem commit"
 [ "$(n_amb)" = "$antes" ] && ok "nenhum AMBIENTE no caso isolado" || falha "caso isolado virou AMBIENTE"
+
+echo
+echo "== 4. árvore suja: causa com \\n literal, 4 disparos (o teto de adiamentos) =="
+ticket_set_status "$FILA/904-t.md" done; ticket_commit "$FILA/904-t.md" "fixture: 904 fora"
+for id in 906 907; do fx_ticket "$ORQ_EXEC_ROOT" "$id"; git -C "$ORQ_EXEC_ROOT" add -- "docs/fila/$id-t.md"; done
+git -C "$ORQ_EXEC_ROOT" commit -q -m "fixture: 906 907"
+echo suja > "$MODO"
+um_por_disparo=1
+for d in 7 8 9 10; do
+  antes="$(n_amb)"; disparo "$d"
+  [ "$(n_amb)" = $((antes + 1)) ] || um_por_disparo=0
+done
+[ "$um_por_disparo" = 1 ] && ok "1 AMBIENTE em cada um dos 4 disparos" || falha "AMBIENTE não disparou uma vez por drenagem ($(n_amb) no total)"
+amb="$(grep ' AMBIENTE ' "$TRILHA" | tail -1)"
+echo "  trilha: $amb"
+case "$amb" in *" --- AMBIENTE tickets=906,907 causa="*'antes:\n M '*) ok "evento com 906,907 e o \\n literal na causa" ;; *) falha "evento fora do formato" ;; esac
+[ "$(st 906)" != bloqueado ] && [ "$(st 907)" != bloqueado ] && ok "906 e 907 não bloqueados" \
+  || falha "bloqueado por ambiente: 906=$(st 906) 907=$(st 907)"
 
 echo
 if [ "$FALHAS" = 0 ]; then echo "TODOS OS CHECKS PASSARAM"; exit 0; fi

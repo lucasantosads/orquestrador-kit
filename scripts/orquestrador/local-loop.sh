@@ -537,8 +537,13 @@ drenar() {
         # timeout, 5xx e gate que não rodou adiam sem cooldown: em todos, a
         # mesma causa em dois tickets é o ambiente. A causa do adiado é o
         # próprio evento (`ADIADO motivo=... causa=...` ou `... rc= dur=`).
+        #
+        # A causa entra no awk por ENVIRON, nunca por `-v`: o `-v` interpreta
+        # escapes, e a causa carrega `\n` literal (o `uma_linha` da recusa de
+        # árvore suja). Com `-v` ela nunca era igual a si mesma, e o AMBIENTE
+        # não disparava (269 e 270 do conteudos-infinitos, 22/09).
         norm="$(causa_normalizada "$causa" "$prox_id")"
-        outro="$(printf '%s\n' "$causas_vistas" | awk -F'\t' -v c="$norm" -v id="$prox_id" '$2 == c && $1 != id { print $1; exit }')"
+        outro="$(printf '%s\n' "$causas_vistas" | ORQ_CAUSA_NORM="$norm" awk -F'\t' -v id="$prox_id" '$2 == ENVIRON["ORQ_CAUSA_NORM"] && $1 != id { print $1; exit }')"
         if [ -n "$outro" ]; then
           sem_progresso_desfazer "$sp_backup"
           contador_desfazer "$ad_backup" .adiamentos
