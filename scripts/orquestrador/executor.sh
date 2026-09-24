@@ -396,6 +396,12 @@ Qualquer outra coisa é NEGADA pela permissão — e permissão negada não é
 obstáculo que se contorna tentando de novo: o muro não se move sozinho. Se o que
 você precisa rodar não está na lista, siga sem ele e diga isso no fim.
 
+EVIDÊNCIA É O QUE O TRABALHO FEZ, NUNCA O QUE O CRITÉRIO QUER LER
+- Nunca escreva conteúdo cuja única função é fazer um critério passar: citação, token, comentário, arquivo, teste ou saída que não descreve o trabalho real. Vale mesmo que o próprio texto admita que é artificial.
+- Critério que parece errado (regex que não casa com nada legítimo, comando que não tem como passar, espera que contradiz o objetivo) NÃO se contorna. Commite o trabalho real e termine com: CRITÉRIO SUSPEITO: <descricao>, o que rodou, o que saiu e por que acha que está errado.
+- Critério vermelho com relato honesto é desfecho aceitável. Critério verde com evidência fabricada é reprovação.
+- Arquivo temporário, rascunho ou saída de diagnóstico vai só para /tmp; nada fora da allowlist fica na worktree.
+
 ENTREGA:
 1. Implemente o objetivo respeitando a allowlist.
 2. Os gates deste repo, nesta ordem: $(cfg '._execucao_dos_gates.ordem_obrigatoria | join(" -> ")').
@@ -701,6 +707,18 @@ run_juiz() {
   local ctx
   ctx="$(contexto_juiz_json "$file" "$wt" "$base")" \
     || die "juiz: contexto_juiz do ticket $id não pôde ser lido da base $(printf '%.8s' "$base") (ver log acima)"
+  # Ticket 628: definição de toda função/fixture que os testes ADICIONADOS
+  # chamam e que está fora do diff, lida da BASE (juiz.ts, `definicoes`). Lista
+  # vazia = prompt byte a byte como antes. Falha de leitura derruba o juiz.
+  # Em --dry sem --stub-juiz o juiz é PULADO logo abaixo e nenhum veredito é
+  # inventado: as definições não têm para quem ir, e a worktree de um dry-run
+  # nem precisa ser git (orquestrador-juiz.test.ts, NEGATIVO --dry). Em todo
+  # outro caso a leitura é obrigatória e a falha é alta.
+  local defs='[]'
+  if [ "$DRY" != 1 ] || [ -n "$STUB_JUIZ" ]; then
+    defs="$(git -C "$wt" diff "$base"...HEAD | juiz definicoes "$wt" "$base")" \
+      || die "juiz: definições chamadas pelos testes novos não puderam ser lidas da base $(printf '%.8s' "$base")"
+  fi
   jq -n --arg id "$id" --arg o "$(ticket_field "$file" '.objetivo')" \
       --argjson c "$(ticket_json "$file" | jq '[.criterios_aceite[]? | {tipo, descricao, cmd, espera: (.espera|tostring)}]')" \
       --argjson al "$(ticket_json "$file" | jq '.pathspec_allowlist // []')" \
@@ -708,8 +726,8 @@ run_juiz() {
       --arg gates "$(cat "$rundir/gates.txt" 2>/dev/null || true)" \
       --arg nota "$([ "${COMMIT_DO_HARNESS:-0}" = 1 ] && printf '%s' \
         'O agente saiu sem commitar e o COMMIT DESTE DIFF FOI DADO PELO HARNESS (wip). O trabalho pode estar num ponto intermediário e a mensagem de commit não é do agente — julgue o diff, não o commit.')" \
-      --argjson ctx "$ctx" \
-      '{id:$id, objetivo:$o, criterios:$c, allowlist:$al, diff:$diff, gates:$gates, nota:$nota, contexto:$ctx}' \
+      --argjson ctx "$ctx" --argjson defs "$defs" \
+      '{id:$id, objetivo:$o, criterios:$c, allowlist:$al, diff:$diff, gates:$gates, nota:$nota, contexto:$ctx, definicoes:$defs}' \
     | juiz prompt > "$prompt"
 
   fase juiz

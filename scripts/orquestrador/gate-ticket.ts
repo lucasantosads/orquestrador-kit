@@ -83,6 +83,11 @@ export interface GateCfg {
    * Ausente = o check 9 reprova quem declarar contexto, em vez de adivinhar.
    */
   branch_alvo?: string
+  /**
+   * `gate_ticket.timeout_cmd_secs` do config: teto de cada execução de grep/awk
+   * do check 10 (exemplos_regex, ticket 624). Ausente = 10 s.
+   */
+  timeout_cmd_secs?: number
 }
 
 /** O ticket como ele chega do disco: sem promessa nenhuma sobre os campos. */
@@ -414,6 +419,289 @@ function vazio(v: unknown): boolean {
 }
 
 /** Todo `NNN[a]-*.md` do diretório da fila, lido uma vez. */
+// ─── Check 10: regex do critério contra exemplos declarados (ticket 624) ──
+//
+// Causa (auditoria de 22/09/2026): o regex "cita arquivo:linha" do 503 tinha
+// `\[\]` dentro da classe. No grep BSD o `]` fecha a classe e o padrão passa a
+// exigir o literal `-]`: nenhuma citação real casava (15 no documento, 0 no
+// grep), e o agente fabricou `src/A-]:1` para passar. O shell interativo usa
+// ugrep, que aceita o padrão; por isso a prova é sempre com /usr/bin/grep.
+
+export interface PadraoDoCmd {
+  ferramenta: 'grep' | 'awk'
+  regex: string
+}
+
+export interface ExemploRegex {
+  regex: string
+  positivo: string
+  negativo: string
+  /** opções de grep que mudam o casamento; padrão '-E' (ex.: '-iE'). */
+  flags?: string
+  /** 'grep' (padrão) ou 'awk'. */
+  ferramenta?: 'grep' | 'awk'
+}
+
+export interface ExecRegex {
+  grep: string
+  awk: string
+  timeoutMs: number
+}
+
+/**
+ * Binários da prova. O padrão é o do sistema (/usr/bin), nunca o do PATH: o
+ * PATH interativo pode ter ugrep. As variáveis de ambiente existem só para o
+ * teste provar a falha alta com o binário ausente.
+ */
+export function execRegexPadrao(cfg: GateCfg): ExecRegex {
+  return {
+    grep: process.env.GATE_TICKET_GREP || '/usr/bin/grep',
+    awk: process.env.GATE_TICKET_AWK || '/usr/bin/awk',
+    timeoutMs: (cfg.timeout_cmd_secs ?? 10) * 1000,
+  }
+}
+
+/** Erro que o gate não converte em violação: o check não rodou (rc 2 no CLI). */
+export class GateNaoRodou extends Error {}
+
+/**
+ * Palavras de um segmento de shell, com as aspas resolvidas como o shell
+ * resolve: dentro de aspas simples nada escapa; dentro de duplas, `\` só
+ * escapa `$`, `` ` ``, `"`, `\` e quebra de linha; fora de aspas escapa tudo.
+ */
+export function palavrasShell(seg: string): string[] {
+  const out: string[] = []
+  let atual = ''
+  let tem = false
+  let aspas: string | null = null
+  for (let i = 0; i < seg.length; i++) {
+    const c = seg[i]!
+    if (aspas === "'") {
+      if (c === "'") aspas = null
+      else atual += c
+      continue
+    }
+    if (aspas === '"') {
+      if (c === '"') aspas = null
+      else if (c === '\\' && i + 1 < seg.length && '$`"\\\n'.includes(seg[i + 1]!)) atual += seg[++i]!
+      else atual += c
+      continue
+    }
+    if (c === "'" || c === '"') {
+      aspas = c
+      tem = true
+      continue
+    }
+    if (c === '\\' && i + 1 < seg.length) {
+      atual += seg[++i]!
+      tem = true
+      continue
+    }
+    if (/\s/.test(c)) {
+      if (tem) out.push(atual)
+      atual = ''
+      tem = false
+      continue
+    }
+    atual += c
+    tem = true
+  }
+  if (tem) out.push(atual)
+  return out
+}
+
+const OPCOES_GREP_COM_ARG = new Set(['m', 'A', 'B', 'C', 'd', 'D', 'e', 'f'])
+
+/** Padrões ERE passados a grep (com -E, ou egrep) e literais /.../ de programas awk. */
+export function padroesDoCmd(cmd: string): PadraoDoCmd[] {
+  const out: PadraoDoCmd[] = []
+  for (const seg of segmentarCmd(cmd)) {
+    const ws = palavrasShell(seg)
+    for (let i = 0; i < ws.length; i++) {
+      const nome = basename(ws[i]!)
+      if (nome === 'grep' || nome === 'egrep') {
+        let flags = nome === 'egrep' ? 'E' : ''
+        const pads: string[] = []
+        let arquivoDePadrao = false
+        let j = i + 1
+        for (; j < ws.length; j++) {
+          const w = ws[j]!
+          if (w === '--') {
+            j++
+            break
+          }
+          if (w.startsWith('--')) {
+            if (w === '--extended-regexp') flags += 'E'
+            else if (w === '--fixed-strings') flags += 'F'
+            else if (w.startsWith('--regexp=')) pads.push(w.slice(9))
+            else if (w.startsWith('--file=')) arquivoDePadrao = true
+            continue
+          }
+          if (w.startsWith('-') && w.length > 1) {
+            for (let k = 1; k < w.length; k++) {
+              const o = w[k]!
+              if (OPCOES_GREP_COM_ARG.has(o)) {
+                const resto = w.slice(k + 1)
+                const arg = resto !== '' ? resto : ws[++j]
+                if (o === 'e' && arg !== undefined) pads.push(arg)
+                if (o === 'f') arquivoDePadrao = true
+                break
+              }
+              flags += o
+            }
+            continue
+          }
+          break
+        }
+        if (pads.length === 0 && !arquivoDePadrao && j < ws.length) pads.push(ws[j]!)
+        if (!flags.includes('F') && flags.includes('E')) {
+          for (const p of pads) out.push({ ferramenta: 'grep', regex: p })
+        }
+      } else if (nome === 'awk') {
+        let j = i + 1
+        for (; j < ws.length; j++) {
+          const w = ws[j]!
+          if (w === '-F' || w === '-v' || w === '-f') {
+            j++
+            continue
+          }
+          if (/^-[Fv]./.test(w)) continue
+          break
+        }
+        const prog = ws[j]
+        if (prog !== undefined) for (const r of literaisRegexAwk(prog)) out.push({ ferramenta: 'awk', regex: r })
+      }
+    }
+  }
+  return out
+}
+
+/** Literais `/.../` de um programa awk, onde uma expressão regular pode começar. */
+export function literaisRegexAwk(prog: string): string[] {
+  const out: string[] = []
+  let str = false
+  let anterior = ''
+  for (let i = 0; i < prog.length; i++) {
+    const c = prog[i]!
+    if (str) {
+      if (c === '\\') i++
+      else if (c === '"') str = false
+      continue
+    }
+    if (c === '"') {
+      str = true
+      anterior = c
+      continue
+    }
+    // Depois de `}` começa uma nova regra padrão-ação: `/a/{x} /b/{y}`.
+    if (c === '/' && (anterior === '' || '(,{}!~&|;\n'.includes(anterior))) {
+      let fim = i + 1
+      while (fim < prog.length && prog[fim] !== '/') fim += prog[fim] === '\\' ? 2 : 1
+      out.push(prog.slice(i + 1, fim))
+      i = fim
+      anterior = '/'
+      continue
+    }
+    if (!/\s/.test(c)) anterior = c
+  }
+  return out
+}
+
+/** Classe de caracteres `[...]` com `\[` ou `\]` dentro (regra 5). */
+export function classeComColcheteEscapado(regex: string): boolean {
+  for (let i = 0; i < regex.length; i++) {
+    const c = regex[i]!
+    if (c === '\\') {
+      i++
+      continue
+    }
+    if (c !== '[') continue
+    let k = i + 1
+    if (regex[k] === '^') k++
+    if (regex[k] === ']') k++
+    for (; k < regex.length && regex[k] !== ']'; k++) {
+      if (regex[k] === '[' && regex[k + 1] === ':') {
+        const fimPosix = regex.indexOf(':]', k + 2)
+        if (fimPosix > 0) {
+          k = fimPosix + 1
+          continue
+        }
+      }
+      if (regex[k] === '\\' && (regex[k + 1] === '[' || regex[k + 1] === ']')) return true
+    }
+    i = k
+  }
+  return false
+}
+
+/**
+ * O exemplo casa? grep: `printf '%s\n' <texto> | <grep> <flags> -- <regex>`;
+ * awk: `<awk> '/<regex>/ { f = 1 } END { exit f ? 0 : 1 }'`. Por argv, nunca
+ * por shell. rc 0 casa, 1 não casa, 2 = padrão que a ferramenta recusa (vira
+ * violação do ticket). Binário ausente ou timeout: GateNaoRodou.
+ */
+export function casaExemplo(ex: ExemploRegex, texto: string, exec: ExecRegex): { casa: boolean; erro?: string } {
+  const ferramenta = ex.ferramenta ?? 'grep'
+  const bin = ferramenta === 'awk' ? exec.awk : exec.grep
+  if (!existsSync(bin)) throw new GateNaoRodou(`${bin} ausente: o check de exemplos_regex não roda sem ele`)
+  const args =
+    ferramenta === 'awk'
+      ? [`/${ex.regex}/ { f = 1 } END { exit f ? 0 : 1 }`]
+      : [...(ex.flags ?? '-E').split(/\s+/).filter(Boolean), '--', ex.regex]
+  const r = spawnSync(bin, args, { input: `${texto}\n`, encoding: 'utf8', timeout: exec.timeoutMs })
+  if (r.error) throw new GateNaoRodou(`${bin} não rodou: ${r.error.message}`)
+  if (r.status === 0) return { casa: true }
+  if (r.status === 1) return { casa: false }
+  return { casa: false, erro: `${bin} rc=${r.status}: ${(r.stderr ?? '').trim()}` }
+}
+
+/** Regras 1–5 do ticket 624 para UM critério. Devolve as mensagens de violação. */
+export function checarExemplosRegex(cmd: string, exemplosCru: unknown, exec: ExecRegex): string[] {
+  const msgs: string[] = []
+  const padroes = padroesDoCmd(cmd)
+  for (const p of padroes) {
+    if (classeComColcheteEscapado(p.regex)) {
+      msgs.push(`regex '${p.regex}' tem \\[ ou \\] dentro de classe [...]: no /usr/bin/grep o ] fecha a classe (caso do 503)`)
+    }
+  }
+  if (padroes.length === 0 && exemplosCru === undefined) return msgs
+  if (!ehArray(exemplosCru) || exemplosCru.length === 0) {
+    if (padroes.length > 0) {
+      msgs.push(`critério passa regex a ${padroes[0]!.ferramenta} e não declara exemplos_regex (lista de {regex, positivo, negativo})`)
+    }
+    return msgs
+  }
+  const exemplos: ExemploRegex[] = []
+  exemplosCru.forEach((e, i) => {
+    const x = (e ?? {}) as Cru
+    const ok =
+      typeof x.regex === 'string' && x.regex !== '' && typeof x.positivo === 'string' && typeof x.negativo === 'string'
+    const ferr = x.ferramenta === undefined || x.ferramenta === 'grep' || x.ferramenta === 'awk'
+    if (!ok || !ferr || (x.flags !== undefined && typeof x.flags !== 'string')) {
+      msgs.push(`exemplos_regex[${i}] malformado: precisa de regex, positivo, negativo (strings), flags? string, ferramenta? 'grep'|'awk'`)
+      return
+    }
+    exemplos.push(x as unknown as ExemploRegex)
+  })
+  for (const p of padroes) {
+    if (!exemplos.some((e) => e.regex === p.regex)) {
+      msgs.push(`padrão '${p.regex}' do cmd (${p.ferramenta}) sem exemplo correspondente em exemplos_regex`)
+    }
+  }
+  for (const e of exemplos) {
+    if (!cmd.includes(e.regex)) msgs.push(`regex de exemplo '${e.regex}' não aparece literal no cmd`)
+    if (classeComColcheteEscapado(e.regex)) {
+      msgs.push(`regex de exemplo '${e.regex}' tem \\[ ou \\] dentro de classe [...]`)
+    }
+    const pos = casaExemplo(e, e.positivo, exec)
+    if (pos.erro) msgs.push(`regex '${e.regex}' recusada: ${pos.erro}`)
+    else if (!pos.casa) msgs.push(`positivo '${e.positivo}' NÃO casa '${e.regex}' (${e.ferramenta ?? 'grep'} ${e.flags ?? '-E'})`)
+    const neg = casaExemplo(e, e.negativo, exec)
+    if (!neg.erro && neg.casa) msgs.push(`negativo '${e.negativo}' CASA '${e.regex}' (${e.ferramenta ?? 'grep'} ${e.flags ?? '-E'})`)
+  }
+  return msgs
+}
+
 export function lerFila(filaDir: string): TicketLido[] {
   if (!existsSync(filaDir)) return []
   return readdirSync(filaDir)
@@ -440,6 +728,7 @@ export function carregarCfg(filaDir: string): GateCfg {
     cmd_prefixos_permitidos: Array.isArray(g.cmd_prefixos_permitidos)
       ? g.cmd_prefixos_permitidos.map(String)
       : [],
+    ...(typeof g.timeout_cmd_secs === 'number' && g.timeout_cmd_secs > 0 ? { timeout_cmd_secs: g.timeout_cmd_secs } : {}),
   }
 }
 
@@ -522,6 +811,10 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
       if (typeof cr.cmd === 'string' && cr.cmd.trim() !== '') {
         for (const a of checarCmd(cr.cmd, cfg)) {
           v.push(a.isencao ? { arquivo: arq, campo, mensagem: a.mensagem, isencao: true } : { arquivo: arq, campo, mensagem: a.mensagem })
+        }
+        // 10. regex do critério contra os exemplos declarados (ticket 624).
+        for (const m of checarExemplosRegex(cr.cmd, cr.exemplos_regex, execRegexPadrao(cfg))) {
+          erro(`${campo}.exemplos_regex`, m)
         }
       }
     })
@@ -700,7 +993,18 @@ function main(argv: string[]): number {
     return 2
   }
 
-  const achados = validar(alvos, fila, cfg)
+  let achados: Violacao[]
+  try {
+    achados = validar(alvos, fila, cfg)
+  } catch (e) {
+    // Check que não rodou (binário ausente, timeout) é falha ALTA, nunca
+    // "passou por não rodar". rc 2 = o executor trata como gate que não rodou.
+    if (e instanceof GateNaoRodou) {
+      process.stderr.write(`gate-ticket: ${e.message}\n`)
+      return 2
+    }
+    throw e
+  }
   const violacoes = achados.filter((a) => !a.isencao && !a.aviso)
 
   if (relatorio) {
