@@ -90,6 +90,7 @@ export const CHAVES_CONFIG: ChaveConfig[] = [
   { chave: 'modelos.juiz_baixo', onde: 'juiz.ts:76', obrigatoria: true },
 
   // --- gate de ticket -------------------------------------------------------
+  { chave: 'gate_ticket.modo_pre_voo', onde: 'executor.sh:1052', obrigatoria: false, nota: "ausente = 'aviso'; valor fora de aviso|bloqueia é falha alta (porte do Actus, c404986/624)" },
   { chave: 'gate_ticket.cmd_prefixos_permitidos', onde: 'gate-ticket.ts:275', obrigatoria: true, nota: 'lista vazia reprova TODO critério com cmd' },
   { chave: 'gate_ticket.proibido_no_cmd', onde: 'gate-ticket.ts:281', obrigatoria: true },
 

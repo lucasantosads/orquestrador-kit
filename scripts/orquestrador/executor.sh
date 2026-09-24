@@ -40,6 +40,9 @@ while [ $# -gt 0 ]; do
 done
 
 decisao() { "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/decisao-cli.ts" "$MAIN_CHECKOUT" "$@"; }
+# gate de ticket (gate-ticket.ts) sobre a fila do checkout principal; função
+# própria, como decisao/juiz, para o teste poder simular um gate que não roda.
+gate_ticket() { "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/gate-ticket.ts" --fila "$FILA_DIR" "$@"; }
 
 # fase <nome> — snapshot E variável lida pelo trap de saída. Duas escritas com um
 # nome só: uma fase que só existe no STATUS.md some quando o processo morre, e é
@@ -1029,6 +1032,61 @@ drive_ticket() {
     ticket_commit "$file" "fila: $id recusado"
     DESFECHO_NOMEADO=1; exit "$rc"
   fi
+
+  # 5b · GATE DE TICKET (pré-voo, 21/09/2026), ANTES de worktree, de contador e
+  # de qualquer gasto. O gate-ticket.ts existia só para quem ESCREVE ticket; o
+  # loop nunca o chamava, e critério com `| grep -q` (431, 472) rodava, gastava
+  # tentativas e reprovava pelo motivo errado. VIOLAÇÃO = bloqueado, nota com as
+  # violações, NENHUMA tentativa consumida (sai antes do contador) e rc 0: a
+  # drenagem conta o bloqueio e segue para o próximo. AVISO não bloqueia. Gate
+  # que não roda (rc fora de 0/1) é falha ALTA: o executor morre, a drenagem
+  # encerra por "sem progresso" — nunca "passou por não ter rodado".
+  #
+  # MODO (porte do Actus, decisão de 24/09/2026): `gate_ticket.modo_pre_voo` do
+  # config. "bloqueia" = o comportamento acima. "aviso" = as violações vão para o
+  # log e para a trilha (GATE_TICKET_AVISO) e o ticket SEGUE: é o padrão do
+  # template e do --migrar, para que um repo que recebe o motor não veja a fila
+  # inteira bloquear por regra nova de critério. Ausente = "aviso", dito no log.
+  # Valor desconhecido é falha alta. Gate que não roda segue fatal nos dois.
+  local gate_out gate_rc=0 n_viol=0 modo_pv
+  modo_pv="$(cfg '.gate_ticket.modo_pre_voo // empty' 2>/dev/null || true)"
+  if [ -z "$modo_pv" ]; then
+    modo_pv=aviso
+    log "  gate de ticket: gate_ticket.modo_pre_voo ausente no config — vale 'aviso' (padrão)"
+  fi
+  case "$modo_pv" in
+    aviso|bloqueia) : ;;
+    *) log "ERRO: gate_ticket.modo_pre_voo='$modo_pv' não é 'aviso' nem 'bloqueia' — o ticket NÃO segue"; exit 1 ;;
+  esac
+  gate_out="$(gate_ticket --violacoes "$file" 2>&1)" || gate_rc=$?
+  # rc 1 SÓ é violação se vier ao menos uma linha `<arquivo>:<campo> ...` deste
+  # ticket: um tsx que quebra (import, sintaxe) também sai 1, e ler isso como
+  # "violação vazia" bloquearia ticket bom em silêncio.
+  n_viol="$(printf '%s\n' "$gate_out" | grep -cF "$(basename "$file"):" || true)"
+  [ "$gate_rc" = 1 ] && [ "$n_viol" = 0 ] && gate_rc=99
+  if [ "$gate_rc" = 1 ] && [ "$modo_pv" = aviso ]; then
+    log "AVISO do gate de ticket ($n_viol violação(ões)) — modo 'aviso': o ticket segue"
+    printf '%s\n' "$gate_out" | sed 's/^/  /' | while IFS= read -r l; do log "$l"; done
+    event "$id" GATE_TICKET_AVISO "violacoes=$n_viol"
+    gate_rc=0
+  fi
+  case "$gate_rc" in
+    0) : ;;
+    1)
+      log "BLOQUEADO pelo gate de ticket ($n_viol violação(ões)) — sem worktree, sem tentativa"
+      printf '%s\n' "$gate_out" | sed 's/^/  /' | while IFS= read -r l; do log "$l"; done
+      ticket_set_status "$file" "bloqueado"
+      ticket_set_nota "$file" "gate de ticket (pré-voo): $n_viol violação(ões): $(printf '%s' "$gate_out" | tr '\n' ';' | sed 's/;$//; s/;/; /g')"
+      ticket_commit "$file" "fila: $id bloqueado (gate de ticket)"
+      event "$id" BLOQUEADO "motivo=gate_ticket" "violacoes=$n_viol"
+      status_set "estado=ocioso" "ultimo=$id BLOQUEADO $(date '+%H:%M:%S') (gate de ticket)" "motivo=bloqueado: gate_ticket"
+      DESFECHO_NOMEADO=1; return 0
+      ;;
+    *)
+      log "ERRO: gate-ticket rc=$gate_rc no ticket $id — o gate não rodou, o ticket NÃO segue: $gate_out"
+      exit 1
+      ;;
+  esac
 
   nome="$(decisao worktree "$id")"
   wt="$WORKTREES_BASE/$nome"
