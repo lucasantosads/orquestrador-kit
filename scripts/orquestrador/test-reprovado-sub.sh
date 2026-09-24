@@ -31,6 +31,23 @@ ORQ_EXEC_ROOT="$(mktemp -d)/checkout"; export ORQ_EXEC_ROOT
 TMP_RAIZ="$(dirname "$ORQ_EXEC_ROOT")"
 # shellcheck source=test-fixture-executor.sh
 source "$AQUI/test-fixture-executor.sh"
+
+# TIMEOUT DO AGENTE FALSO, proporcional à carga (porte, item j; padrão do 629
+# do Actus: o tempo do caso é explícito e dito, nenhuma asserção muda). Com o
+# claude_timeout_secs de 2 s do molde, este script falhava de forma
+# intermitente na suíte inteira com a máquina carregada (load 5–7, 24/09/2026):
+# o agente falso, que só escreve linhas, levava rc 124 e a tentativa virava
+# ADIADO timeout em vez do desfecho que o caso mede. Base de 10 s por chamada
+# do agente vezes o fator de carga (load de 1 min / núcleos, arredondado para
+# cima, mínimo 1), calculado UMA vez aqui e impresso.
+TIMEOUT_AGENTE_BASE_SECS=10
+_nucleos="$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 1)"
+_load1="$(sysctl -n vm.loadavg 2>/dev/null | awk '{print $2}' | tr ',' '.' || true)"
+[ -n "$_load1" ] || _load1="$(awk '{print $1}' /proc/loadavg 2>/dev/null || echo 0)"
+_fator="$(awk -v l="$_load1" -v n="$_nucleos" 'BEGIN { f = l / (n > 0 ? n : 1); c = int(f); if (c < f) c++; if (c < 1) c = 1; print c }')"
+FXE_CLAUDE_TIMEOUT=$((TIMEOUT_AGENTE_BASE_SECS * _fator)); export FXE_CLAUDE_TIMEOUT
+printf '  (timeout do agente falso: %s s = %s s x fator de carga %s; load1=%s, núcleos=%s)\n' \
+  "$FXE_CLAUDE_TIMEOUT" "$TIMEOUT_AGENTE_BASE_SECS" "$_fator" "$_load1" "$_nucleos"
 trap 'fxe_limpa; rm -rf "$TMP_RAIZ"' EXIT
 # A trilha do 461 vai EMBUTIDA (peça 7b-9): este script viaja para todo repo
 # instalado, e lá não existe o test/fixtures/ do kit. Origem: linhas 434 a 437
