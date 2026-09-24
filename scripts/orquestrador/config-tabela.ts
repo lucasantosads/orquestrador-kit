@@ -201,9 +201,10 @@ export const NOVAS: Nova[] = [
       'timeout de claude_timeout_secs',
       'gate interrompido no meio',
       'veredito do juiz ilegível',
+      'falha de ambiente da worktree',
     ],
     porque:
-      'decisao.ts:113. As SETE causas são cobradas por teste do motor (test-lib-config.sh:50,58,61): não são preferência, são a lista que o motor espera. Sem ela nada é adiável e falha de infra vira reprovação, que consome retry e no limite bloqueia um ticket que nunca foi julgado pelo mérito.',
+      'decisao.ts:113. As OITO causas (a 8ª, falha de ambiente da worktree, veio do porte do Actus: o harness não conseguiu executar o comando de um critério, rc 126/127). As SETE primeiras são cobradas por teste do motor (test-lib-config.sh:50,58,61): não são preferência, são a lista que o motor espera. Sem ela nada é adiável e falha de infra vira reprovação, que consome retry e no limite bloqueia um ticket que nunca foi julgado pelo mérito.',
   },
   {
     chave: 'politica_retry.por_causa',
@@ -221,9 +222,20 @@ export const NOVAS: Nova[] = [
         modelo: 'ESCALAR',
         acao: 'subir para retry_final_model e repetir com o mesmo escopo',
       },
+      arquivo_solto: {
+        modelo: 'MANTER',
+        acao: 'remover o arquivo solto da worktree',
+      },
     },
     porque:
       'decisao.ts:277, e `decisao.ts` REJEITA a config que mandar o contrário. Escalar modelo por falha de TAMANHO (diff_cap) ou de FRONTEIRA (enforcement) é gasto sem hipótese: um modelo mais forte escreve o mesmo excesso e cruza a mesma fronteira, só mais caro.',
+  },
+  {
+    chave: 'politica_retry.por_causa.arquivo_solto',
+    procedencia: 'politica',
+    valor: { modelo: 'MANTER', acao: 'remover o arquivo solto da worktree' },
+    porque:
+      'decisao.ts:558. A causa arquivo_solto (porte do Actus, 631) é reprovação com retry, e o decidirRetry BLOQUEIA a causa sem regra ("sem regra de retry para a causa"). Repo que já tem politica_retry.por_causa não recebe a tabela inteira de cima (porSeFaltar só preenche o que falta), então a regra precisa de linha própria. MANTER: apagar um rascunho não pede modelo maior (arquivo_solto está em NUNCA_ESCALA).',
   },
   {
     chave: 'gate_ticket.modo_pre_voo',
@@ -380,6 +392,25 @@ export const NOVAS: Nova[] = [
     valor: '<ex: com.suaorg.orquestrador — OBRIGATÓRIO, um por repo>',
     porque:
       'instalar-launchd.sh:47, que RECUSA sem ele em vez de inventar um. Label inventado não dá erro visível: carrega um SEGUNDO job ao lado do antigo, os dois disparando no mesmo checkout.',
+  },
+]
+
+// ─── 2b. itens novos em LISTAS que o repo já tem ─────────────────────────────
+// `NOVAS` só preenche chave AUSENTE (porSeFaltar): uma lista que o repo já
+// declara nunca recebe item novo por ela. Quando o motor passa a entender um
+// item novo de uma lista de política, ele entra aqui, e o --migrar o acrescenta
+// no fim da lista do repo se ainda não estiver lá. Nunca remove nem reordena.
+export interface ItemNovo {
+  chave: string
+  item: string
+  porque: string
+}
+export const ITENS_NOVOS: ItemNovo[] = [
+  {
+    chave: 'politica_adiamento.causas_que_adiam',
+    item: 'falha de ambiente da worktree',
+    porque:
+      "decisao.ts:113 (ROTULO_PARA_CAUSA, 'ambiente'). Porte do Actus (43fccdd, 625; decisão de 24/09/2026): o harness não conseguiu EXECUTAR o comando de um critério (rc 126/127) — a única falha é do ambiente, e o ticket adia em vez de reprovar. Sem o rótulo na lista do repo, o motor não adia essa causa e ela vira reprovação.",
   },
 ]
 

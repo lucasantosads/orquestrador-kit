@@ -679,7 +679,12 @@ function main(argv: string[]): number {
 
   let alvos: TicketLido[]
   if (pendentes) {
-    alvos = fila.filter((f) => f.json?.status === 'pendente')
+    // Ticket 630: ticket SEM json parseável entra em qualquer status. Antes o
+    // filtro era só `f.json?.status === 'pendente'`, e o `json: null` do ticket
+    // quebrado caía fora em silêncio (rc 0 com 510/523/526 corrompidos, 23/09).
+    // O validarTicket já reporta o motivo do blocoJson; os pendentes válidos
+    // continuam validados na mesma execução.
+    alvos = fila.filter((f) => f.json === null || f.json.status === 'pendente')
   } else if (args.length > 0) {
     alvos = []
     for (const a of args) {

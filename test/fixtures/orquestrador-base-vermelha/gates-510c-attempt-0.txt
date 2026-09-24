@@ -1,0 +1,21 @@
+ok   typecheck              2240ms
+ok   typecheck_scripts       979ms
+FALHA testes                37971ms — exit 1
+VEREDITO: REPROVADO
+
+--- recorte de testes ---
+ ❯ test/ingestao-descarte-0283.integration.test.ts (5 tests | 5 skipped) 10050ms
+ FAIL  test/ingestao-descarte-0283.integration.test.ts > 0283 fn_ingestao_descarte_por_hora
+Error: Hook timed out in 10000ms.
+ ❯ test/ingestao-descarte-0283.integration.test.ts:77:3
+{"level":"warn","msg":"entitlement motor: tenant sem analista_comercial — trabalho pulado","ts":"2026-09-24T01:10:29.170Z","tenant_id":"t-1"}
+stderr | src/lib/comercial/analise/entitlement.test.ts > tenantTemAnalistaComercial (consulta única, fail-closed) > false, null e retorno não-booleano negam
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+     75|   }
+     76|
+     77|   beforeAll(async () => {
+       |   ^
+     78|     db = new PGlite();
+     79|     await db.exec(SCAFFOLD);
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯

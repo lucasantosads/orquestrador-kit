@@ -206,6 +206,21 @@ describe('a migração não apaga nada', () => {
 
 // ─── 2. nada é inventado ────────────────────────────────────────────────────
 describe('a migração não inventa decisão local', () => {
+  it('lista de causas que o repo JÁ tem ganha a 8ª causa no fim, sem perder nem reordenar as dele (porte do Actus)', () => {
+    const sete = [
+      'erro de conexão', 'sessão expirada', 'rate limit', 'quota estourada',
+      'timeout de claude_timeout_secs', 'gate interrompido no meio', 'veredito do juiz ilegível',
+    ];
+    const r = propor({ $schema_versao: 1, gates: [], politica_adiamento: { causas_que_adiam: sete } });
+    const o = JSON.parse(r.proposto);
+    expect(o.politica_adiamento.causas_que_adiam).toEqual([...sete, 'falha de ambiente da worktree']);
+    expect(r.linhas.some((l: string) => l.startsWith('novo item em politica_adiamento.causas_que_adiam'))).toBe(true);
+    // já presente: nada muda, nenhuma linha
+    const r2 = propor({ $schema_versao: 1, gates: [], politica_adiamento: { causas_que_adiam: [...sete, 'falha de ambiente da worktree'] } });
+    expect(JSON.parse(r2.proposto).politica_adiamento.causas_que_adiam).toHaveLength(8);
+    expect(r2.linhas.some((l: string) => l.startsWith('novo item em'))).toBe(false);
+  });
+
   it('decisão local vira PLACEHOLDER, e `orq config` a recusa', () => {
     const r = propor({ $schema_versao: 1, gates: [] });
     expect(r.placeholders).toContain('launchd.label');
@@ -219,7 +234,8 @@ describe('a migração não inventa decisão local', () => {
 
   it('política do motor vem PREENCHIDA — não é decisão do repo', () => {
     const o = JSON.parse(propor({ $schema_versao: 1, gates: [] }).proposto);
-    expect(o.politica_adiamento.causas_que_adiam).toHaveLength(7);
+    // 8: a 8ª causa ("falha de ambiente da worktree") entrou no porte do Actus.
+    expect(o.politica_adiamento.causas_que_adiam).toHaveLength(8);
     expect(o._execucao_dos_gates.interrupcao).toBe('NAO_VALE_PARCIALMENTE');
     expect(o.executor.trailer_commit).toBe('Orq-Ticket');
   });

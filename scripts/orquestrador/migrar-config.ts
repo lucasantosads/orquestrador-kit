@@ -33,7 +33,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CHAVES_OBRIGATORIAS } from './config-chaves.js'
-import { GATE_TIPOS, NOVAS, PROPRIAS_DE_REPO, RENOMES } from './config-tabela.js'
+import { GATE_TIPOS, ITENS_NOVOS, NOVAS, PROPRIAS_DE_REPO, RENOMES } from './config-tabela.js'
 import { diffUnificado, json, lerJson } from './migrar-comum.js'
 
 /**
@@ -216,6 +216,15 @@ export function propor(raiz: unknown): Proposta {
   }
 
   // --- 4. o que fica, e por quê ---------------------------------------------
+  // --- 3b. itens novos em listas que o repo já tem -------------------------
+  for (const it of ITENS_NOVOS) {
+    const lista = ler(cfg, it.chave)
+    if (!Array.isArray(lista)) continue
+    if (lista.includes(it.item)) continue
+    lista.push(it.item)
+    linhas.push(`novo item em ${it.chave}: ${JSON.stringify(it.item)} (acrescentado no fim; nada removido). ${it.porque}`)
+  }
+
   for (const p of PROPRIAS_DE_REPO) {
     if (ler(cfg, p.chave) === undefined) continue
     linhas.push(`MANTIDA (própria do ${p.repo}, para a K11 decidir): ${p.chave} — ${p.porque}`)
