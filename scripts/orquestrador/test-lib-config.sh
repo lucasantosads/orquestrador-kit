@@ -55,7 +55,12 @@ echo "== causas de adiamento declaradas no config =="
 CAUSAS="$(jq -r '.politica_adiamento.causas_que_adiam[]' "$CONFIG")"
 printf '%s\n' "$CAUSAS" | sed 's/^/  - /'
 n_causas="$(printf '%s\n' "$CAUSAS" | grep -c .)"
-[ "$n_causas" = 7 ] && ok "7 causas declaradas" || falha "esperava 7 causas, achei $n_causas"
+# 8: a 8ª ("falha de ambiente da worktree") veio do porte do Actus (§11 do
+# CONTRATO) e, como a do juiz, NÃO é de texto: vem de criteriosNaoExecutados.
+[ "$n_causas" = 8 ] && ok "8 causas declaradas" || falha "esperava 8 causas, achei $n_causas"
+printf '%s\n' "$CAUSAS" | grep -qx 'falha de ambiente da worktree' \
+  && ok "a causa de ambiente da worktree está declarada" \
+  || falha "sumiu a causa 'falha de ambiente da worktree' de causas_que_adiam"
 # A 7ª é nomeada, não só contada: se alguém trocar o rótulo, o teste tem que
 # apontar QUAL causa sumiu — contagem sozinha não diz nada a quem for consertar.
 printf '%s\n' "$CAUSAS" | grep -qi 'juiz' \

@@ -39,7 +39,16 @@
 #      instalado não tem), `orquestrador-trilha-gate-papel.test.ts` (lê
 #      `_referencia-ci/` e `fixture/`) e `kit-e2e-evidencia.test.ts`.
 #
-# Sobram os 6 abaixo. O critério não é opinião: cada um roda VERDE dentro do
+# PORTE DO ACTUS (branch porte-actus, 24/09/2026; lista aprovada pelo Lucas):
+# mais 13, os testes do que o Actus pagou com incidente (§11 do CONTRATO). Eles
+# leem o config do REPO (configDeReferencia prefere o do repo), que é o valor
+# deles: falham quando O config do repo não tem o que o motor espera. Três deles
+# (criterio-merito, ambiente-merito, teto-adiamento-ambiente) exigem a 8ª causa
+# de adiamento, e o arquivo-solto a regra arquivo_solto: as duas chegam ao repo
+# pelo --migrar (ITENS_NOVOS e NOVAS da config-tabela.ts). O fixture do kit
+# (fixture/docs/fila/000-config.json) já as traz, como um repo migrado.
+#
+# Sobram os 6 abaixo, mais os 13 do porte. O critério não é opinião: cada um roda VERDE dentro do
 # repo de fixture instanciado, que é um repo instalado de verdade, com config
 # próprio e diferente do CI. É esse o teste de portabilidade, e o caso (h) de
 # `scripts/kit/test-instalar.sh` o repete a cada execução.
@@ -51,6 +60,19 @@ test/orquestrador-prefixo-aspas.test.ts
 test/orquestrador-prompt-como-rodar.test.ts
 test/orquestrador-reparo-trilha.test.ts
 test/orquestrador-trilha-uma-linha.test.ts
+test/orquestrador-gate-grep-q.test.ts
+test/orquestrador-gate-vitest-aviso.test.ts
+test/orquestrador-contexto-juiz.test.ts
+test/orquestrador-retry-feedback-juiz.test.ts
+test/orquestrador-gates-fonte-unica.test.ts
+test/orquestrador-base-vermelha.test.ts
+test/orquestrador-fila-json-quebrado.test.ts
+test/orquestrador-arquivo-solto.test.ts
+test/orquestrador-contexto-juiz-fixtures.test.ts
+test/orquestrador-gate-regex-exemplos.test.ts
+test/orquestrador-criterio-merito.test.ts
+test/orquestrador-ambiente-merito.test.ts
+test/orquestrador-teto-adiamento-ambiente.test.ts
 '
 
 # As fixtures de DADOS que esses testes leem, uma a uma. Não `test/fixtures/**`:
@@ -61,4 +83,8 @@ FIXTURES_HARNESS='
 test/fixtures/criterios/lote8-246-250.json
 test/fixtures/trilha/events-quebrado.log
 test/fixtures/trilha/permissao-negada-234.cmd
+test/fixtures/gate-ticket-grep-q/901-fixture-grep-q-em-pipe.md
+test/fixtures/gate-ticket-grep-q/902-fixture-grep-c-controle.md
+test/fixtures/gate-ticket-grep-q/903-fixture-488-antigo.md
+test/fixtures/orquestrador-base-vermelha/gates-510c-attempt-0.txt
 '
