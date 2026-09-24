@@ -711,3 +711,42 @@ Relatório: `~/orq-sessoes/relatorio-kit-k12.md`.
 O que um repo instalado ganha ao atualizar: com a árvore de execução suja, a drenagem para
 em AMBIENTE no segundo ticket e ninguém bloqueia. Foi o que bloqueou o 269 e o 270 do
 conteudos-infinitos em 22/09. Relatório: `~/orq-sessoes/relatorio-kit-hotfix-awk.md`.
+
+### Porte do Actus · branch `porte-actus` (24/09/2026)
+
+O que o motor do Actus pagou com incidente entre 12 e 24/09/2026 e o kit não tinha,
+portado commit a commit por `git merge-file` (base comum: kit `3c7ef69` = o motor que o
+Actus vendorizou em `0bc0bf2`). Onde o kit já tinha peça própria, ficou a do kit e o teste
+do Actus passou a valer sobre ela. Decisões do Lucas de 24/09/2026. O contrato está no
+CONTRATO §11. Uma peça por commit, suíte inteira verde em cada um.
+
+- **a** `d5efe1a`: gate de ticket reprova `| grep -q` em pipe e leitura textual do vitest;
+  AVISO de caminho fora da allowlist (aab3f4e, a15daca, c7e81bc).
+- **b** `9eebef1`: o gate vira pré-voo do `drive_ticket` (c404986), com a chave nova
+  `gate_ticket.modo_pre_voo` = `aviso` (template e `--migrar`) ou `bloqueia`.
+- **c** `2652000`: `contexto_juiz` (622).
+- **d** `69e1e9b`: causa de infra `ambiente` (8ª causa, "falha de ambiente da worktree")
+  só quando o harness não executou o comando do critério; teto de 3 adiamentos por
+  `ambiente`; cooldown e tentativas persistidas ficam os da 7b-2 e 7b-4, com os testes do
+  Actus (08afb3e, 43fccdd, 9ecd02b, 625, ae29dcd, 629, 9e109cb, f3aaa89).
+- **e** `7aa291d`: motivo do juiz no retry e `retry_sem_mudanca` (623, só com o agente
+  saído rc 0 — o Actus tem o defeito); gates de fonte única (626), com a correção de
+  marcação: gate pulado depois de falha não é ausente.
+- **f** `4cd219b`: JSON quebrado falha alto (630), `base_vermelha` (632), `arquivo_solto`
+  (631, regra no template, na fixture, na config-tabela e no `--migrar`); a 8ª causa também
+  no `--migrar` (`ITENS_NOVOS`: item novo no fim de uma lista que o repo já tem). A entrada
+  do caso C do `test-reprovado-sub.sh` passou a ter o teste vermelho na allowlist do ticket.
+- **j** `411b88f`: timeout do agente falso proporcional à carga no `test-reprovado-sub.sh`
+  e no `test-reabertura-humana.sh` (a falha intermitente da linha de base desta rodada).
+- **g** `fbbd6dd`: `orq-pause.sh` trata as duas sentinelas e grava na trilha; STATUS nomeia
+  a sentinela ativa (514). `pausa_conteudo` separa a data da pausa do texto do STATUS.
+- **h** `ac10faa`: regra contra evidência fabricada no prompt (627), definições dos
+  helpers para o juiz (628), `exemplos_regex` no gate (624).
+- **i** (este commit): CONTRATO §11, dicionário do ticket (`contexto_juiz`,
+  `exemplos_regex`), e `TESTES_HARNESS` com os 13 testes do porte (lista aprovada pelo
+  Lucas); o `fixture/` passa a ter a 8ª causa e a regra `arquivo_solto`, como um repo
+  migrado.
+
+Testes do kit ajustados, sem afrouxar asserção: arames de contagem (chamadas `ORQ_TSX`,
+desfechos nomeados 9 → 13, causas e rótulos 7 → 8), o formato do TOTAL do `--relatorio`,
+um `cmd` de exemplo que lia a saída do vitest, e a entrada do caso C citada acima.

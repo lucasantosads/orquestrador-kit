@@ -177,20 +177,21 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `APROVADO` | `executor.sh:1048` | `merge=aguardando` `dur=` `attempt=` |
 | `REPROVADO` | `executor.sh:drive_ticket` | `motivo=` `sub=` `attempt=` `diff=` (`sub=` desde a 7b-4) |
 | `ADIADO` | `executor.sh:drive_ticket`, `executor.sh:preflight_ou_adia` | `motivo=` `attempt=` `rc=` `dur=` `cooldown=sim\|nao` · recusa de preflight: `motivo=preflight` `causa=<uma linha>` (a causa vai até o fim da linha) |
-| `BLOQUEADO` | `executor.sh:drive_ticket`, `local-loop.sh:drenar` | `motivo=` [`attempt=`] · repetição: `motivo=repeticao` `sub=` `diff=` `attempt=` · da drenagem: `motivo=merge_falhou`, `motivo=sem_progresso` `n=` `limite=`, ou `motivo=adiamentos` `n=` `limite=` |
+| `BLOQUEADO` | `executor.sh:drive_ticket`, `local-loop.sh:drenar` | `motivo=` [`attempt=`] · repetição: `motivo=repeticao` `sub=` `diff=` `attempt=` · da drenagem: `motivo=merge_falhou`, `motivo=sem_progresso` `n=` `limite=`, ou `motivo=adiamentos` `n=` `limite=` · porte do Actus (§11): `motivo=gate_ticket` `violacoes=`, `motivo=retry_sem_mudanca` `attempt=` `sha256=`, `motivo=base_vermelha` `arquivos=` `attempt=`, `motivo=teto-adiamento-ambiente` `adiamentos=` `attempt=` |
 | `RETRY` | `executor.sh:drive_ticket` | `attempt=` `model=` `motivo=` `sub=` `worktree=` |
 | `REFATIAR` | `executor.sh:896` | `motivo=` `arquivos=` |
 | `MERGE` | `local-loop.sh:173` | `alvo=` `sha=` |
 | `RECUPERADO` | `executor.sh:reconcile_merged`, `local-loop.sh:55`, `launchd-run.sh:102`, `lib.sh:reabertura_humana` | `motivo=ja-mergeado\|lock-orfao\|status-congelado` · devolução humana: `motivo=reaberto` `de=bloqueado` (7b-8) |
 | `EXECUTOR_MORREU` | `executor.sh:1136` | `rc=` `fase=` [`sinal=`] |
 | `ORCAMENTO` | `lib.sh:954` | `escopo=` `adiado_ate=` `consumo=` |
-| `COMMIT_HARNESS` | `executor.sh:725` | `motivo=agente-saiu-sem-commitar` |
+| `COMMIT_HARNESS` | `executor.sh:commit_do_agente` | `motivo=agente-saiu-sem-commitar` · ou `motivo=agente-commitou-e-deixou-N-arquivo(s)-solto(s)` / `motivo=agente-commitou-e-deixou-mudança-não-commitada` (631, §11) |
 | `DECISAO_PENDENTE` | `lib.sh:744` | `origem=` |
 | `ANOTACAO` | `lib.sh:274` | `nota=` |
+| `GATE_TICKET_AVISO` | `executor.sh:drive_ticket` (porte do Actus, §11) | `violacoes=<N>` — o pré-voo achou violação e `gate_ticket.modo_pre_voo` é `aviso`: o ticket SEGUE |
 | `PREVOO_NOGO` | `local-loop.sh:prevoo_ou_sai` | `item=cat.0\|cat.1\|cat.6` |
 | `OCIOSO` | `local-loop.sh:drenar` (peça 7a-4) | `pendentes=` e um `<id>=<razão>` por pendente; ver abaixo |
 | `AMBIENTE` | `local-loop.sh:drenar` (peça 7a-8) | `tickets=<id>,<id>` `causa=<normalizada>` (a causa vai até o fim da linha); ver abaixo |
-| `PAUSA` | `lib.sh:pausa_registrar`, chamada por `orq pausar` e pelo painel (peças K12-C, K12-F) | `motivo=<token>` `por=terminal\|painel` |
+| `PAUSA` | `lib.sh:pausa_registrar`, chamada por `orq pausar`, pelo `orq-pause.sh` (514, §11) e pelo painel (peças K12-C, K12-F) | `motivo=<token>` `por=terminal\|painel` |
 | `RETOMADA` | `lib.sh:retomada_registrar`, chamada por `orq retomar` e pelo painel (peças K12-C, K12-F) | `por=terminal\|painel` `dur=<N>min` |
 
 `motivo=` é sempre token curto e estável (grepável), nunca frase.
@@ -842,6 +843,96 @@ ou nenhum); `pausa_furada` (PAUSAR de pé e, depois dele, `DRENAGEM_INICIO` sem
 `motivo=pausado` ou `INICIO` de ticket que não era o em curso); `pausa_longa` (PAUSAR há
 mais de 40 min); `execucao_longa` (STATUS `executando` e o `INICIO` do ticket além de
 `claude_timeout_secs` + 10 min). Chave ausente no config vira "sem dado", não alarme.
+
+---
+
+## 11. Porte do Actus (branch `porte-actus`, 24/09/2026)
+
+O que o motor do Actus pagou com incidente entre 12 e 24/09/2026 e o kit não
+tinha, portado commit a commit (base comum: kit `3c7ef69` = motor vendorizado
+no Actus em `0bc0bf2`). Onde o kit já tinha peça própria, ficou a do kit e o
+teste do Actus passou a valer sobre ela (decisões do Lucas, 24/09/2026).
+
+### 11.1 Ticket (§2)
+
+- `contexto_juiz` (opcional, 622): lista de caminhos de REFERÊNCIA que o
+  critério manda comparar e que não fazem parte do diff. O harness lê da BASE
+  da tentativa (`git show <base>:<path>`), 400 linhas por arquivo e 1200 no
+  total, truncamento marcado; caminho ausente na base = erro alto. Gate, check
+  9: lista de strings, existe na branch alvo, não é arquivo da própria
+  allowlist.
+- `criterios_aceite[].exemplos_regex` (624): obrigatório quando o `cmd` passa
+  padrão ERE a `grep` ou literal `/.../` a `awk`; ver o dicionário em
+  `doutrina/templates/TICKET.md`. Gate, check 10.
+- `adiamentos_ambiente` (escrito só pela automação, ae29dcd): adiamentos
+  CONSECUTIVOS por causa `ambiente`; no 3º o ticket bloqueia. Some quando o
+  status sai de `pendente` e na devolução humana (7b-8).
+
+### 11.2 Gate de ticket e pré-voo
+
+- Regras novas no `cmd` (aab3f4e, a15daca): `| grep -q` em pipe reprova
+  (SIGPIPE + pipefail esvaziam a saída); ler a saída TEXTUAL do vitest
+  reprova (use o rc). AVISO, que não muda o rc: caminho citado no objetivo
+  fora da allowlist (texto depois de "PROIBIDO" não conta).
+- `--pendentes` também pega ticket SEM JSON parseável em qualquer status
+  (630).
+- O `drive_ticket` roda o gate no ticket selecionado ANTES da worktree e do
+  contador (c404986). `gate_ticket.modo_pre_voo`: `bloqueia` (ticket
+  bloqueado, `BLOQUEADO motivo=gate_ticket`, nenhuma tentativa consumida) ou
+  `aviso` (`GATE_TICKET_AVISO`, o ticket segue). Ausente = `aviso`. Gate que
+  não roda (rc fora de 0/1, rc 1 sem violação deste ticket, ou rc 2 do check
+  10 por binário ausente/timeout) é falha alta nos dois modos.
+
+### 11.3 Desfechos e causas
+
+- Causa de infra `ambiente` (rótulo "falha de ambiente da worktree", 8ª causa
+  do template e do `--migrar`): SÓ quando a única falha é de critério e o
+  harness não conseguiu EXECUTAR o comando dele (rc 126/127,
+  `criteriosNaoExecutados`). Critério que rodou e reprovou é sempre mérito;
+  permissão negada ao agente não pesa em desfecho. Sem cooldown.
+- `retry_sem_mudanca` (623): da 2ª tentativa em diante, com o agente saído rc
+  0, `diff.patch` com o mesmo sha256 da tentativa anterior bloqueia sem juiz.
+  Diff idêntico depois de falha de infra é adiamento, não bloqueio.
+- `base_vermelha` (632): gate(s) reprovado(s) todos de papel `testes`,
+  enforcement ok, critérios verdes, e TODO arquivo das linhas ` FAIL  <arquivo>`
+  fora do diff e da allowlist = bloqueado sem juiz, sem retry, sem consumir
+  tentativa; lista vazia ou arquivo do ticket = caminho de sempre.
+- `arquivo_solto` (631): toda violação do enforcement é `fora_do_pathspec` de
+  arquivo que estava NÃO rastreado antes do `add -A` do harness = reprovado com
+  retry (`MANTER`, em `NUNCA_ESCALA`), o nome no diagnóstico ("remova da
+  worktree"), e a worktree é reaproveitada. Precisa da regra
+  `politica_retry.por_causa.arquivo_solto`; sem ela o `decidirRetry` bloqueia.
+- O diagnóstico de retry leva o motivo LITERAL do juiz e os criterios_falhos
+  dele na frente (623). O juiz recebe, lido da base, o corpo das
+  funções/fixtures chamadas pelos testes adicionados (628).
+
+### 11.4 `runs/` e STATUS
+
+- `runs/<id>/attempt-N/arquivos-soltos.txt` (631): os `??` antes do `add -A`
+  (vazio quando não há). `veredito.json` ganha `causa: base_vermelha` com
+  `arquivos` e `evidencia`.
+- STATUS.md: linha `CORROMPIDA fila corrompida: <arquivo>` por ticket com JSON
+  quebrado, e o placar conta `corrompido` sem zerar os válidos (630). `MOTIVO
+  pausado (<sentinela>: <conteúdo>)` (514).
+- Linha GATE: `gates_ausentes=` só para gate que falta SEM falha antes dele na
+  ordem do config; gate pulado depois de uma FALHA (ou de interrupção) não é
+  ausente (626, com a correção de marcação).
+
+### 11.5 Pausa (§7)
+
+`scripts/orquestrador/orq-pause.sh` trata as DUAS sentinelas (`pausar_file`
+e o legado `.orq-pause`): `--off` remove as duas e diz quais, `--status`
+lista cada uma, e pausar/retomar por ele gravam `PAUSA`/`RETOMADA`
+`por=terminal`. O `orq retomar` continua escrevendo só o `pausar_file` (§9.1):
+o legado vira `PAUSAR` pelo `--migrar`.
+
+### 11.6 Config (§8)
+
+| Chave | Valor no template / `--migrar` | Lida em |
+|---|---|---|
+| `gate_ticket.modo_pre_voo` | `aviso` | `executor.sh`, passo 5b do `drive_ticket` |
+| `politica_retry.por_causa.arquivo_solto` | `{modelo: MANTER, acao: "remover o arquivo solto da worktree"}` | `decisao.ts:decidirRetry` |
+| `politica_adiamento.causas_que_adiam` | + `"falha de ambiente da worktree"` (o `--migrar` acrescenta no fim de uma lista que já exista: `ITENS_NOVOS` da `config-tabela.ts`) | `decisao.ts:ROTULO_PARA_CAUSA` |
 
 ---
 

@@ -22,7 +22,8 @@
       "quota estourada",
       "timeout de claude_timeout_secs",
       "gate interrompido no meio",
-      "veredito do juiz ilegível"
+      "veredito do juiz ilegível",
+      "falha de ambiente da worktree"
     ],
     "efeito": {
       "status": "pendente",
@@ -45,6 +46,10 @@
       "criterio_qualidade": {
         "modelo": "ESCALAR",
         "acao": "subir para retry_final_model e repetir com o mesmo escopo"
+      },
+      "arquivo_solto": {
+        "modelo": "MANTER",
+        "acao": "remover o arquivo solto da worktree"
       }
     },
     "proibicao": "NUNCA escalar modelo por falha de tamanho (diff_cap) nem por violação de fronteira (enforcement)."
