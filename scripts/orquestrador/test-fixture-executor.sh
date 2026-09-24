@@ -94,6 +94,15 @@ JSON
   jq --arg tc "bash $FXE/gates/typecheck.sh" --arg ts "bash $FXE/gates/test.sh" \
     '.gates[0].cmd = $tc | .gates[1].cmd = $ts' "$r/docs/fila/000-config.json" > "$r/docs/fila/000-config.json.tmp" \
     && mv "$r/docs/fila/000-config.json.tmp" "$r/docs/fila/000-config.json"
+  # FXE_CLAUDE_TIMEOUT (segundos, opcional): troca o claude_timeout_secs de 2 do
+  # molde. Existe para o script cujo agente falso NÃO deve estourar o relógio
+  # e que roda na suíte inteira sob carga (porte, item j): 2 s é o que o caso
+  # 'sleep' precisa para cair em timeout depressa, e é pouco para um agente
+  # falso que só escreve linhas numa máquina com load 7.
+  if [ -n "${FXE_CLAUDE_TIMEOUT:-}" ]; then
+    jq --argjson t "$FXE_CLAUDE_TIMEOUT" '.claude_timeout_secs = $t' "$r/docs/fila/000-config.json" > "$r/docs/fila/000-config.json.tmp" \
+      && mv "$r/docs/fila/000-config.json.tmp" "$r/docs/fila/000-config.json"
+  fi
   echo '{"$schema_versao": 2, "tokens": []}' > "$r/docs/fila/liberacoes.json"
   printf '| data | origem | alvo | pergunta | visto |\n|---|---|---|---|---|\n' > "$r/docs/fila/decisoes-pendentes.md"
   echo ok > "$FXE/criterio"
