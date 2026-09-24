@@ -428,10 +428,10 @@ EOF
 # byte. Tres regras: CSI (\e[...m, a cor do vitest), OSC (titulo de terminal,
 # \e]0;...\a) e escape simples de um caractere. Texto UTF-8 passa intacto.
 strip_ansi() { LC_ALL=C sed -E $'s/\x1b\\[[0-9;:?]*[\x20-\x2f]*[\x40-\x7e]//g; s/\x1b\\][^\x07]*\x07//g; s/\x1b[\x20-\x2f]*[\x30-\x7e]//g'; }
-CRITERIOS_FALHOS=""; CRITERIOS_TOTAL=0
+CRITERIOS_FALHOS=""; CRITERIOS_TOTAL=0; CRITERIOS_NAO_EXECUTADOS='[]'
 run_criterios() {
-  local file="$1" wt="$2" rundir="$3" n=0 desc cmd esp out
-  CRITERIOS_FALHOS=""; CRITERIOS_TOTAL=0
+  local file="$1" wt="$2" rundir="$3" n=0 desc cmd esp out rc_cmd tmp_out
+  CRITERIOS_FALHOS=""; CRITERIOS_TOTAL=0; CRITERIOS_NAO_EXECUTADOS='[]'
   while IFS=$'\x1f' read -r desc cmd esp; do
     [ -z "${desc:-}" ] && continue
     [ "$esp" = "avaliador" ] && continue
@@ -442,13 +442,25 @@ run_criterios() {
     # "$BASE_REF...HEAD" e NUNCA "main...HEAD": o merge-base com a protegida é o
     # ponto onde a branch alvo divergiu, então "main...HEAD" inclui TODO ticket já
     # mergeado na alvo e o gate fica inalcançável — pior a cada ticket aprovado.
-    out="$( ( cd "$wt" && export BASE_REF="$CFG_BRANCH_ALVO" NO_COLOR=1 && eval "$cmd" ) 2>&1 | strip_ansi || true )"
+    # Ticket 625: o rc do COMANDO do critério agora é guardado (antes o pipe com
+    # strip_ansi e o `|| true` o descartavam). A saída comparada é a mesma.
+    tmp_out="$(mktemp)"; rc_cmd=0
+    ( cd "$wt" && export BASE_REF="$CFG_BRANCH_ALVO" NO_COLOR=1 && eval "$cmd" ) > "$tmp_out" 2>&1 || rc_cmd=$?
+    out="$(strip_ansi < "$tmp_out" || true)"; rm -f "$tmp_out"
     printf '### %s\ncmd: %s\nespera: %s\nsaida: %s\n\n' "$desc" "$cmd" "$esp" "$out" >> "$rundir/criterios.txt"
     if criterio_match "$out" "$esp"; then
       log "  critério ok: $desc"
     else
       log "  critério FALHA: $desc (esperava '$esp')"
       CRITERIOS_FALHOS="${CRITERIOS_FALHOS:+$CRITERIOS_FALHOS; }$desc"
+      # rc 126 (não executável) / 127 (não encontrado): o HARNESS não conseguiu
+      # executar o critério — único caso de 'ambiente' por critério (decisao.ts,
+      # criteriosNaoExecutados). Critério que rodou e reprovou é mérito.
+      case "$rc_cmd" in
+        126|127)
+          log "  critério NÃO EXECUTADO (rc=$rc_cmd): $desc"
+          CRITERIOS_NAO_EXECUTADOS="$(printf '%s' "$CRITERIOS_NAO_EXECUTADOS" | jq -c --arg d "$desc" '. + [$d]')" ;;
+      esac
     fi
   # join("\u001f") em vez de @tsv: @tsv ESCAPA barra invertida (dobra \ -> \\),
   # o que corrompe qualquer cmd com regex escapado (ex.: grep -E 'fetch\(') —
@@ -929,8 +941,11 @@ run_attempt() {
     --argjson cf "$(printf '%s' "$CRITERIOS_FALHOS" | jq -Rn '[inputs | select(length>0)]')" \
     --argjson grc "$gates_rc" --arg gs "$(head -c 20000 "$rundir/gates.txt" 2>/dev/null || true)" --arg gp "$papel_falho" \
     --argjson dur "$DUR" --argjson tout "$tout" \
+    --argjson pn "${PERMISSOES_NEGADAS:-[]}" \
+    --argjson cne "${CRITERIOS_NAO_EXECUTADOS:-[]}" \
     '{exitCode:$e, saida:$s, diffLines:$d, gateInterrompido:$gi, enforcementViolado:$enf, criteriosFalhos:$cf,
-      gatesRc:$grc, gatesSaida:$gs, gatePapelFalho:$gp, duracaoSecs:$dur}
+      gatesRc:$grc, gatesSaida:$gs, gatePapelFalho:$gp, duracaoSecs:$dur,
+      permissoesNegadas:$pn, criteriosNaoExecutados:$cne}
      + (if $tout == null then {} else {timeoutSecs:$tout} end)')"
   if [ "$gates_rc" != 0 ]; then
     sinal="$(printf '%s' "$sinal" | jq '.criteriosFalhos += ["gates reprovados"]')"
@@ -1190,6 +1205,8 @@ drive_ticket() {
     # Só REPROVAÇÃO consome. Adiado, aprovado e refatiar devolvem o valor de
     # antes; o commit de cada desfecho abaixo leva a devolução junto.
     [ "$RESULT" = "reprovado" ] || ticket_set_tentativas "$file" "$attempt"
+    # Reprovação quebra a sequência de adiamentos por ambiente (lib.sh, teto).
+    [ "$RESULT" = "reprovado" ] && ticket_zera_adiamentos_ambiente "$file"
     local tok; tok="$(motivo_token "$(cat "$rundir/veredito.json" 2>/dev/null || echo '{}')")"
 
     if [ "$RESULT" = "adiado" ]; then
@@ -1199,6 +1216,23 @@ drive_ticket() {
       local arma
       arma="$(jq -r 'if .cooldown == false then "nao" else "sim" end' "$rundir/veredito.json" 2>/dev/null || echo sim)"
       event "$id" ADIADO "motivo=$tok" "attempt=$((attempt + 1))" "rc=$AGENTE_RC" "dur=${DUR}s" "cooldown=$arma"
+      # TETO de adiamento por 'ambiente' (lib.sh, ADIAMENTOS POR AMBIENTE): o
+      # N-ésimo consecutivo bloqueia em vez de devolver a pendente.
+      if [ "$tok" = "ambiente" ]; then
+        local n_amb negadas
+        n_amb=$(( $(ticket_adiamentos_ambiente "$file") + 1 ))
+        if [ "$n_amb" -ge "$TETO_ADIAMENTO_AMBIENTE" ]; then
+          negadas="$(printf '%s' "${PERMISSOES_NEGADAS:-[]}" | jq -r '.[:3] | join(" | ")' 2>/dev/null || true)"
+          ticket_set_status "$file" "bloqueado"
+          ticket_set_nota "$file" "bloqueado: $n_amb adiamentos consecutivos por causa 'ambiente' (teto $TETO_ADIAMENTO_AMBIENTE). Falha de ambiente que se repete não passa sozinha: cada adiamento pagou uma execução inteira sem desfecho. Último motivo: $MOTIVO.${negadas:+ Permissões negadas: $negadas.} Evidência em runs/$id/. Corrija o ambiente (ferramenta negada, allowlist de tools, worktree) e reabra o ticket, que volta sem contador."
+          ticket_commit "$file" "fila: $id bloqueado (teto de adiamento por ambiente)"
+          event "$id" BLOQUEADO "motivo=teto-adiamento-ambiente" "adiamentos=$n_amb" "attempt=$((attempt + 1))"
+          status_set "estado=ocioso" "ultimo=$id BLOQUEADO $(date '+%H:%M:%S') (${DUR}s)" "motivo=bloqueado: teto de adiamento por ambiente"
+          DESFECHO_NOMEADO=1; log "BLOQUEADO: $n_amb adiamentos consecutivos por ambiente"; cleanup_worktree "$id" "$wt"; return 0
+        fi
+        ticket_set_adiamentos_ambiente "$file" "$n_amb"
+        log "  adiamento por ambiente $n_amb/$TETO_ADIAMENTO_AMBIENTE (consecutivos)"
+      fi
       status_set "estado=ocioso" "ultimo=$id ADIADO $(date '+%H:%M:%S') (${DUR}s)" "motivo=adiado: $tok"
       DESFECHO_NOMEADO=1; mark_adiado "$file" "executor" "$MOTIVO" "$arma"; cleanup_worktree "$id" "$wt"; return 0
     fi

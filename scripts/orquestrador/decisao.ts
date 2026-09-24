@@ -92,6 +92,7 @@ export type CausaInfra =
   | 'gate_interrompido'
   | 'gate_crash'
   | 'juiz_ilegivel'
+  | 'ambiente'
 export type CausaMerito = 'diff_cap' | 'enforcement' | 'criterio_qualidade'
 export type Desfecho = 'aprovado' | 'adiado' | 'reprovado' | 'refatiar'
 
@@ -116,6 +117,9 @@ const ROTULO_PARA_CAUSA: [RegExp, CausaInfra][] = [
   [/gate\s+interrompido/i, 'gate_interrompido'],
   [/gate\s+interrompido/i, 'gate_crash'],
   [/ju[ií]z|veredito/i, 'juiz_ilegivel'],
+  // Porte do Actus (43fccdd, 625): "falha de ambiente da worktree" — o harness
+  // não conseguiu EXECUTAR o comando de um critério (rc 126/127). Sem cooldown.
+  [/ambiente|impedimento/i, 'ambiente'],
 ]
 
 /**
@@ -187,6 +191,23 @@ export interface SinalTentativa {
    * armadilha do parser na SKILL ("falha de parse = adiado, nunca reprovação").
    */
   juizIlegivel?: boolean
+  /**
+   * Ferramentas negadas ao agente durante a sessão (`permission_denials[]` do
+   * envelope). CAMPO PRÓPRIO pela mesma razão: vem do envelope JSON do CLI, não
+   * de padrão em stdout. Alimenta o DIAGNÓSTICO do retry; desde o ticket 625
+   * (23/09/2026) não pesa em desfecho nenhum — ver `criteriosNaoExecutados`.
+   */
+  permissoesNegadas?: string[]
+  /**
+   * Critérios de aceite cujo COMANDO o próprio harness não conseguiu executar
+   * (run_criterios, executor.sh): rc 126 (não executável) ou 127 (não
+   * encontrado). É o único sinal de 'ambiente' por critério (ticket 625): um
+   * critério que RODOU e reprovou é mérito, mesmo que o agente tenha tido uma
+   * permissão negada na mesma tentativa. rc 124 não entra: run_criterios roda o
+   * critério sem timeout, então o harness nunca produz 124 ali — se um timeout
+   * for introduzido, o 124 entra aqui na mesma mudança.
+   */
+  criteriosNaoExecutados?: string[]
 }
 
 const PADRAO_CAUSA: [RegExp, CausaInfra][] = [
@@ -279,12 +300,62 @@ function motivoInfra(infra: CausaInfra, sinal: SinalTentativa): string {
   return `infraestrutura: ${infra} (${medida})`
 }
 
+/**
+ * Marcadores com que o executor (executor.sh, passo 8) empurra GATE reprovado e
+ * JUIZ que reprovou para dentro de `criteriosFalhos`. Precisam casar com o
+ * literal de lá: "gates reprovados" e o prefixo "juiz: ".
+ */
+const MARCA_GATE = 'gates reprovados'
+const PREFIXO_JUIZ = 'juiz:'
+
+/**
+ * A falha desta tentativa é SÓ de critério de aceite? (porte do Actus, 9ecd02b)
+ * Sem falha nenhuma (entrega verde) também devolve false. Gate, enforcement e
+ * juiz que reprovou são mérito SEMPRE; agente que morreu (rc != 0) também não
+ * é "só critério". Medido no Actus em 22/09/2026: o 470c (typecheck) e o 481
+ * (juiz) foram ADIADOS por 'ambiente' só porque um grep incidental foi negado.
+ */
+function falhaSoDeCriterio(sinal: SinalTentativa): boolean {
+  const cf = sinal.criteriosFalhos ?? []
+  if (cf.length === 0 || sinal.exitCode !== 0 || sinal.enforcementViolado) return false
+  return !cf.some((c) => c.trim() === MARCA_GATE || c.trimStart().startsWith(PREFIXO_JUIZ))
+}
+
 /** Detecta causa de INFRA. null quando nada de infra aconteceu. */
 export function detectarCausaInfra(sinal: SinalTentativa): CausaInfra | null {
   // ANTES do curto-circuito de exitCode===0: o juiz roda DEPOIS de o agente
   // sair com rc=0, então a tentativa inteira é bem-sucedida e o único sinal de
   // que não houve veredito é este campo.
   if (sinal.juizIlegivel) return 'juiz_ilegivel'
+  // 'ambiente' também passa à frente do curto-circuito de rc=0 — mas, ao
+  // contrário do juiz, SÓ quando há falha real de resultado junto.
+  //
+  // POR QUE A POSIÇÃO NÃO É A MESMA DO `juizIlegivel`, embora as duas linhas
+  // estejam no mesmo lugar do arquivo: `juizIlegivel` significa que NÃO HOUVE
+  // JULGAMENTO — não existe resultado verde para respeitar, então ele adia
+  // incondicionalmente. Permissão negada significa outra coisa: o agente tentou
+  // um caminho, foi barrado, e ACHOU OUTRO. Se gates, critérios e juiz vieram
+  // verdes, o trabalho está feito e o muro que ele contornou é história da
+  // execução, não desfecho. Nada que tenha acontecido DURANTE a execução pode
+  // sobrepor um resultado final verde.
+  //
+  // Medido no 488 (2026-09-20): typecheck/testes/build ok, 48+10 testes
+  // passados, os 3 critérios verdes e o juiz com `aprovado:true` e
+  // `criterios_falhos:[]` — e o ticket foi ADIADO por causa 'ambiente'. Era
+  // para ter mergeado. Ver PLAYBOOK (regra 10).
+  //
+  // E o outro lado (22/09/2026): 'ambiente' só quando a ÚNICA falha é de
+  // CRITÉRIO. Gate, enforcement e juiz reprovado seguem para o caminho de
+  // mérito mesmo com permissão negada — ver `falhaSoDeCriterio`.
+  //
+  // Ticket 625 (23/09/2026): e mesmo só-critério, 'ambiente' exige que o
+  // HARNESS não tenha conseguido executar o comando (criteriosNaoExecutados,
+  // rc 126/127). Permissão negada ao AGENTE deixou de pesar aqui: no 503
+  // attempt-0 o critério reprovou de verdade e o comando negado era o próprio
+  // critério, que o agente tentou conferir — o adiamento escondeu a falha.
+  if (falhaSoDeCriterio(sinal) && sinal.criteriosNaoExecutados && sinal.criteriosNaoExecutados.length > 0) {
+    return 'ambiente'
+  }
   if (sinal.exitCode === 124) return cortadoPeloRelogio(sinal) ? 'timeout' : 'gate_interrompido'
   if (sinal.exitCode === 129 || sinal.exitCode === 130) return 'gate_interrompido'
   if (sinal.gateInterrompido) return 'gate_interrompido'

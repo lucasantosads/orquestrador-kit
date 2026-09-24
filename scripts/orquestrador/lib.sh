@@ -179,7 +179,13 @@ ticket_set() {
   rm -f "$tmpjson"
 }
 
-ticket_set_status() { ticket_set "$1" '.status = $s' --arg s "$2"; }
+# Toda transição para fora de `pendente` zera o contador do teto de adiamento
+# por ambiente (ver ADIAMENTOS POR AMBIENTE, abaixo): passar de fase quebra a
+# sequência. E como bloqueado também passa por aqui, o ticket reaberto à mão
+# (bloqueado -> pendente) volta sem contador.
+ticket_set_status() {
+  ticket_set "$1" '.status = $s | if $s != "pendente" then del(.adiamentos_ambiente) else . end' --arg s "$2"
+}
 ticket_set_nota()   { ticket_set "$1" '.notas_status = $v' --arg v "$2"; }
 
 # --- TENTATIVAS PERSISTIDAS (peça 7b-4, porte do f3aaa89 do Actus) ------------
@@ -220,6 +226,8 @@ reabertura_humana() {
   awk -v id="$id" '$2 == id' "$EVENTS_FILE" 2>/dev/null \
     | "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/decisao-cli.ts" "$MAIN_CHECKOUT" reaberto >/dev/null 2>&1 || return 1
   ticket_zera_tentativas "$file"
+  # Porte do Actus (ae29dcd): o contador de adiamentos por 'ambiente' zera junto.
+  ticket_zera_adiamentos_ambiente "$file"
   ticket_commit "$file" "fila: $id reaberto de bloqueado (contadores zerados)"
   if escrita_de_teste_permitida "$RUNS_BASE/$id"; then
     rm -f "$RUNS_BASE/$id/.sem-progresso" "$RUNS_BASE/$id/.adiamentos" 2>/dev/null || true
@@ -227,6 +235,34 @@ reabertura_humana() {
   event "$id" RECUPERADO "motivo=reaberto" "de=bloqueado"
   log "  $id devolvido de bloqueado para pendente: tentativas, .sem-progresso e .adiamentos zerados"
   return 0
+}
+
+# --- ADIAMENTOS POR AMBIENTE (teto, harness manual 2026-09-22) ---------------
+# Adiamento não consome tentativa, e é de propósito: infra caída não é defeito do
+# trabalho. Só que a causa 'ambiente' (permissão negada junto com falha de
+# resultado) nem sempre passa sozinha. O 481 foi adiado por 'ambiente' em
+# drenagem atrás de drenagem, cada uma pagando agente e juiz inteiros (888 s em
+# 22/09), sem desfecho. Adiamento sem teto é retry sem teto disfarçado.
+#
+# `adiamentos_ambiente` no ticket conta os adiamentos CONSECUTIVOS por essa
+# causa. No TETO, o drive_ticket bloqueia com a causa na nota. Zera quando o
+# ticket passa de fase (ticket_set_status para qualquer coisa que não seja
+# pendente, ou reprovação, que quebra a sequência) ou é reaberto. Adiamento por
+# OUTRA causa (rate limit, sessão, timeout...) nem conta nem zera. Constante e
+# não config: mexer no 000-config.json é decisão humana.
+TETO_ADIAMENTO_AMBIENTE=3
+ticket_adiamentos_ambiente() {
+  local n
+  n="$(ticket_field "$1" '.adiamentos_ambiente // 0')"
+  case "$n" in ''|*[!0-9]*) n=0 ;; esac
+  echo "$n"
+}
+ticket_set_adiamentos_ambiente() { ticket_set "$1" '.adiamentos_ambiente = ($n | tonumber)' --arg n "$2"; }
+# Só reescreve o ticket quando o campo existe: não mexe na formatação de quem
+# nunca foi adiado por ambiente.
+ticket_zera_adiamentos_ambiente() {
+  [ "$(ticket_field "$1" 'has("adiamentos_ambiente")')" = true ] || return 0
+  ticket_set "$1" 'del(.adiamentos_ambiente)'
 }
 
 # ticket_commit <arquivo> <mensagem>
