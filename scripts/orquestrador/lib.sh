@@ -425,7 +425,7 @@ status_set() {
   for kv in "$@"; do
     k="${kv%%=*}"; v="${kv#*=}"
     case "$k" in
-      estado|ticket|desde|desde_epoch|fase|ultimo|motivo) : ;;
+      estado|ticket|desde|desde_epoch|fase|ultimo|motivo|gates_ausentes) : ;;
       *) log "status_set: chave desconhecida '$k' (ignorada)"; continue ;;
     esac
     arg="v_$k"
@@ -449,13 +449,14 @@ status_set() {
 # status_render — REESCREVE $STATUS_FILE inteiro a partir do estado + do disco.
 # Nunca append: se o arquivo crescer, está errado (contrato §1).
 status_render() {
-  local estado ticket desde desde_epoch fase ultimo motivo tmp agora decorrido tout resta
+  local estado ticket desde desde_epoch fase ultimo motivo tmp agora decorrido tout resta gates_ausentes
   escrita_de_teste_permitida "$STATUS_FILE" || return 0
   [ -s "$STATUS_STATE" ] || return 0
   IFS=$'\t' read -r estado ticket desde desde_epoch fase ultimo motivo < <(
     jq -r '[(.estado // "—"), (.ticket // "—"), (.desde // "—"), (.desde_epoch // "0"),
             (.fase // "—"), (.ultimo // "—"), (.motivo // "")] | @tsv' "$STATUS_STATE" 2>/dev/null
   ) || return 0
+  gates_ausentes="$(jq -r '.gates_ausentes // ""' "$STATUS_STATE" 2>/dev/null || true)"
 
   # Ocioso não tem ticket nem fase: campo preenchido aqui é estado velho lido
   # como atual, que é a origem nº 1 de diagnóstico errado.
@@ -483,6 +484,7 @@ status_render() {
     printf 'FILA     %s\n' "$(placar_fila)"
     printf 'STAGING  %s\n' "$(staging_linha)"
     printf 'ÚLTIMO   %s\n' "$ultimo"
+    if [ -n "$gates_ausentes" ]; then printf 'GATES    ausentes: %s\n' "$gates_ausentes"; fi
     if [ "$estado" != executando ] && [ -n "$motivo" ]; then printf 'MOTIVO   %s\n' "$motivo"; fi
   } > "$tmp" 2>/dev/null && mv -f "$tmp" "$STATUS_FILE" 2>/dev/null || rm -f "$tmp"
   return 0
