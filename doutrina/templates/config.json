@@ -269,6 +269,10 @@
         "modelo": "ESCALAR",
         "acao": "subir para retry_final_model e repetir com o mesmo escopo",
         "_porque": "Reprovação do avaliador é falha de CAPACIDADE; aí escalar é o remédio certo."
+      },
+      "arquivo_solto": {
+        "modelo": "MANTER",
+        "acao": "remover o arquivo solto da worktree"
       }
     },
     "proibicao": "NUNCA escalar modelo por falha de tamanho (diff_cap) nem por violação de fronteira (enforcement)."

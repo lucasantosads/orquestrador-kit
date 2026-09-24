@@ -75,7 +75,10 @@ trilha; fxe_limpa
 
 echo
 echo "== C. gate de testes vermelho (com placar): sub=gate_testes, mesmo modelo =="
-fxe_novo '.max_retries = 1'
+# O teste vermelho é DO ticket: está na allowlist. Com o porte do 632 do Actus,
+# teste vermelho SÓ fora do diff e da allowlist é base vermelha (bloqueia), não
+# mérito — e a intenção deste caso é o teste do próprio agente falhando.
+FXE_ALLOWLIST='["src/a.ts", "test/a.test.ts"]' fxe_novo '.max_retries = 1'
 fxe_gate test 'echo " FAIL  test/a.test.ts > soma"; echo " Tests  1 failed | 3 passed (4)"; exit 1'
 fxe_fila linhas:5 linhas:6
 fxe_roda

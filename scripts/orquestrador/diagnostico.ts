@@ -60,10 +60,19 @@ export interface EntradaDiagnostico {
   permissoesNegadas?: string[]
   /** veredito do juiz que reprovou (motivo e criterios_falhos do juiz.veredito.json) */
   juiz?: { motivo: string; criteriosFalhos?: string[] }
+  /** ticket 631: caminhos não rastreados antes do `add -A` (runs/<id>/attempt-N/arquivos-soltos.txt) */
+  arquivosSoltos?: string[]
 }
 
 export const INSTRUCAO =
   'corrija só o apontado; não toque fora da allowlist; se o quebrado está fora, reporte IMPEDIMENTO no commit'
+
+/**
+ * Ticket 631: instrução quando a única violação é arquivo solto. Vai NA FRENTE
+ * da instrução geral: é a única coisa que o agente precisa fazer.
+ */
+export const instrucaoArquivoSolto = (arquivos: string[]) =>
+  `remova da worktree: ${arquivos.join(', ')}; temporário vai para /tmp`
 
 /**
  * Instrução ADICIONAL quando houve permissão negada. Sem ela o agente tende a
@@ -160,8 +169,16 @@ export function montarDiagnostico(e: EntradaDiagnostico): Diagnostico {
   const enf = seguro(e.enforcementJson)
   if (enf && enf.ok === false) {
     const vs = (enf.violations ?? []) as { tipo?: string; detalhe?: string }[]
+    // Ticket 631: só fora_do_pathspec de arquivo solto é o caso que chega aqui
+    // com retry (reprovado/arquivo_solto no decisao.ts); a regra é a mesma.
+    const soltos = e.arquivosSoltos ?? []
+    const soSoltos =
+      vs.length > 0 && vs.every((v) => v.tipo === 'fora_do_pathspec' && soltos.includes(v.detalhe ?? ''))
     return {
       ...base,
+      ...(soSoltos
+        ? { instrucao: `${instrucaoArquivoSolto([...new Set(vs.map((v) => v.detalhe ?? ''))])}; ${base.instrucao}` }
+        : {}),
       gate: 'enforcement',
       arquivo: (vs[0]?.detalhe ?? '').split(' ')[0] ?? '',
       obtido: corta(vs.map((v) => `${v.tipo}: ${v.detalhe}`).join('; ')),
@@ -261,6 +278,7 @@ if (process.argv.includes('--run-cli') && /diagnostico\.(ts|js)$/.test(process.a
         criteriosFalhos: entrada.criteriosFalhos ?? [],
         permissoesNegadas: entrada.permissoesNegadas ?? [],
         ...(entrada.juiz ? { juiz: entrada.juiz } : {}),
+        arquivosSoltos: ler('arquivos-soltos.txt').split('\n').filter(Boolean),
       }),
       null,
       2,

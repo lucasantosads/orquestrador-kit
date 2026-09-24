@@ -336,16 +336,47 @@ caminho_fisico() {
   if [ -d "$dir" ]; then printf '%s%s' "$(cd "$dir" && pwd -P)" "$resto"; else printf '%s' "$alvo"; fi
 }
 
-# tickets_status_stream -> um status por linha, UM jq para a fila inteira.
-# (N tickets × 2 jq por ticket fazia o status_set custar segundos.)
-tickets_status_stream() {
-  local f
-  for f in $(ticket_files); do ticket_json "$f"; done 2>/dev/null | jq -r '.status // "?"' 2>/dev/null
+# ticket_corrompido <arquivo> -> 0 se o bloco ```json falta, está vazio ou não
+# passa em `jq empty`.
+#
+# Ticket 630 (23/09/2026). `ticket_json` de arquivo sem bloco ou com bloco vazio
+# não imprime nada, e `jq empty` com entrada vazia sai 0: o teste de vazio vem
+# antes, senão o bloco vazio passa por válido. O teste é `=~` e não
+# `${j//[[:space:]]/}`: a substituição do bash é quadrática e levou minutos na
+# fila real (blocos de dezenas de KB).
+ticket_corrompido() {
+  local j
+  j="$(ticket_json "$1" 2>/dev/null)"
+  [[ "$j" =~ [^[:space:]] ]] || return 0
+  printf '%s' "$j" | jq empty >/dev/null 2>&1 && return 1
+  return 0
 }
 
-# placar_fila -> "3 pendente · 5 bloqueado · 41 done" (ordem fixa; extras no fim).
-placar_fila() {
-  tickets_status_stream | awk '
+# tickets_status_stream -> "<status>\t<arquivo>" por linha, um `jq` POR TICKET.
+#
+# Ticket 630: era UM jq para a fila inteira (N tickets × 2 jq fazia o
+# status_set custar segundos), e um único ticket quebrado derrubava o parse de
+# todos: o placar virava "sem ticket" com 4 tickets válidos na fila. Um jq por
+# arquivo isola o quebrado, que sai com status `corrompido` (bloco ausente,
+# vazio ou que não parseia: o mesmo critério do ticket_corrompido). O basename
+# vai junto para o status_render tirar placar e lista de corrompidos de UMA
+# passada pela fila.
+tickets_status_stream() {
+  local f j st
+  for f in $(ticket_files); do
+    j="$(ticket_json "$f" 2>/dev/null)"
+    st=""
+    if [[ "$j" =~ [^[:space:]] ]]; then
+      st="$(printf '%s' "$j" | jq -r '.status // "?"' 2>/dev/null)" || st=""
+    fi
+    printf '%s\t%s\n' "${st:-corrompido}" "$(basename "$f")"
+  done
+}
+
+# placar_do_stream -> lê tickets_status_stream no stdin e imprime o placar.
+placar_do_stream() {
+  awk -F '\t' '
+    $1 == "" { next }
     { n[$1]++ }
     END {
       split("pendente aguardando_merge refatiar bloqueado done", o, " ")
@@ -355,6 +386,18 @@ placar_fila() {
       printf "\n"
     }'
 }
+
+# corrompidos_do_stream -> lê tickets_status_stream no stdin e imprime o
+# basename de cada ticket corrompido, um por linha.
+corrompidos_do_stream() {
+  awk -F '\t' '$1 == "corrompido" { print $2 }'
+}
+
+# placar_fila -> "3 pendente · 5 bloqueado · 41 done" (ordem fixa; extras no fim).
+placar_fila() { tickets_status_stream | placar_do_stream; }
+
+# fila_corrompida -> o basename de cada ticket corrompido, um por linha.
+fila_corrompida() { tickets_status_stream | corrompidos_do_stream; }
 
 # staging_linha -> HEAD curto da branch alvo + estado do push (regra 12: a
 # supressão esquecida tem que aparecer no snapshot).
@@ -449,7 +492,7 @@ status_set() {
 # status_render — REESCREVE $STATUS_FILE inteiro a partir do estado + do disco.
 # Nunca append: se o arquivo crescer, está errado (contrato §1).
 status_render() {
-  local estado ticket desde desde_epoch fase ultimo motivo tmp agora decorrido tout resta gates_ausentes
+  local estado ticket desde desde_epoch fase ultimo motivo tmp agora decorrido tout resta gates_ausentes corr fila_stream
   escrita_de_teste_permitida "$STATUS_FILE" || return 0
   [ -s "$STATUS_STATE" ] || return 0
   IFS=$'\t' read -r estado ticket desde desde_epoch fase ultimo motivo < <(
@@ -474,6 +517,9 @@ status_render() {
     fi
   fi
 
+  # Uma passada pela fila para o placar e para as linhas CORROMPIDA (630).
+  fila_stream="$(tickets_status_stream)"
+
   tmp="$(mktemp 2>/dev/null)" || return 0
   {
     printf 'ORQUESTRADOR · %s\n' "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo '?')"
@@ -481,7 +527,10 @@ status_render() {
     printf 'TICKET   %s\n' "$ticket"
     printf 'DESDE    %s%s\n' "$desde" "$decorrido"
     printf 'FASE     %s\n' "$fase"
-    printf 'FILA     %s\n' "$(placar_fila)"
+    printf 'FILA     %s\n' "$(printf '%s\n' "$fila_stream" | placar_do_stream)"
+    printf '%s\n' "$fila_stream" | corrompidos_do_stream | while IFS= read -r corr; do
+      [ -n "$corr" ] && printf 'CORROMPIDA fila corrompida: %s\n' "$corr"
+    done
     printf 'STAGING  %s\n' "$(staging_linha)"
     printf 'ÚLTIMO   %s\n' "$ultimo"
     if [ -n "$gates_ausentes" ]; then printf 'GATES    ausentes: %s\n' "$gates_ausentes"; fi
@@ -668,9 +717,14 @@ deps_resolvidas() {
 # para o próximo em vez de reescolhê-lo para sempre. String e não array: o
 # motor roda no bash 3.2 do macOS, sem array associativo. Sem argumento, o
 # comportamento é o de sempre — é assim que o executor a chama.
+#
+# Ticket 630 (porte do Actus): ticket corrompido não para a fila (os válidos
+# seguem sendo selecionados), mas deixa de sumir em silêncio: vai para o log
+# aqui e para o STATUS.md pelo status_render.
 proximo_pendente() {
   local f id pular=" ${1:-} "
   for f in $(ticket_files); do
+    if ticket_corrompido "$f"; then log "fila corrompida: $(basename "$f")"; continue; fi
     [ "$(ticket_field "$f" '.status')" = "pendente" ] || continue
     if [ -n "${1:-}" ]; then
       id="$(ticket_field "$f" '.id')"

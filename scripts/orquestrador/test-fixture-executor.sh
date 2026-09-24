@@ -36,6 +36,10 @@ FXE_NM="$(git -C "$FXE_AQUI" rev-parse --show-toplevel 2>/dev/null || true)/node
 
 # fxe_novo [filtro-jq] — um tmp novo com repo, claude falso e gates verdes. O
 # filtro opcional ajusta o config do caso (ex.: '.max_retries = 0').
+# FXE_ALLOWLIST (JSON, opcional): a pathspec_allowlist do ticket; padrão
+# ["src/a.ts"]. Existe para o caso que precisa de um arquivo de teste DO ticket
+# (porte do Actus: base_vermelha, 632, só reprova por mérito o teste que o
+# ticket pode tocar).
 fxe_novo() {
   local filtro="${1:-.}" r
   FXE_ID="${FXE_ID:-901}"
@@ -93,12 +97,14 @@ JSON
   echo '{"$schema_versao": 2, "tokens": []}' > "$r/docs/fila/liberacoes.json"
   printf '| data | origem | alvo | pergunta | visto |\n|---|---|---|---|---|\n' > "$r/docs/fila/decisoes-pendentes.md"
   echo ok > "$FXE/criterio"
+  local fxe_allow='["src/a.ts"]'
+  [ -z "${FXE_ALLOWLIST:-}" ] || fxe_allow="$FXE_ALLOWLIST"
   cat > "$r/docs/fila/$FXE_ID-t.md" <<TICKET
 # $FXE_ID
 
 \`\`\`json
 {"id": "$FXE_ID", "slug": "t-$FXE_ID", "status": "pendente", "origem": "humano",
- "objetivo": "escrever src/a.ts", "pathspec_allowlist": ["src/a.ts"], "dependencias": [],
+ "objetivo": "escrever src/a.ts", "pathspec_allowlist": $fxe_allow, "dependencias": [],
  "criterios_aceite": [
    {"tipo": "alvo", "descricao": "o arquivo existe", "cmd": "test -f src/a.ts && cat $FXE/criterio", "espera": "ok"}],
  "notas_status": ""}

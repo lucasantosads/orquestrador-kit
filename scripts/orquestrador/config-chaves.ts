@@ -68,6 +68,7 @@ export const CHAVES_CONFIG: ChaveConfig[] = [
   { chave: 'zona_proibida', onde: 'enforcement-core.ts:211, executor.sh:364', obrigatoria: true, nota: 'a fronteira que o enforcement aplica' },
   { chave: 'politica_adiamento.causas_que_adiam', onde: 'decisao.ts:113', obrigatoria: true, nota: 'sem ela nada é adiável: falha de infra viraria reprovação' },
   { chave: 'politica_retry.por_causa', onde: 'decisao.ts:277', obrigatoria: true },
+  { chave: 'politica_retry.por_causa.arquivo_solto', onde: 'decisao.ts:558', obrigatoria: false, nota: 'sem ela, arquivo_solto bloqueia em vez de ir a retry (porte do Actus, 631)' },
   { chave: 'cooldown_minutes', onde: 'lib.sh:572', obrigatoria: false, nota: 'default 60 no código' },
   { chave: 'sem_progresso_limite', onde: 'local-loop.sh:160', obrigatoria: false, nota: 'peça 7a-3: disparos seguidos sem progresso até bloquear o ticket; ausente ou inválida = 3 no código' },
   { chave: 'adiamentos_limite', onde: 'local-loop.sh:adiamentos_limite', obrigatoria: false, nota: 'peça 7b-3: adiamentos seguidos sem cooldown até bloquear o ticket com a causa real; ausente ou inválida = 4 no código' },

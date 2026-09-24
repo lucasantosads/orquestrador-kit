@@ -8,6 +8,8 @@
  * causas aparece hardcoded aqui.
  */
 
+import { matchesAllowlist } from './enforcement-core.js'
+
 export interface DecisaoConfig {
   executor_model: string
   avaliador_model: string
@@ -93,7 +95,7 @@ export type CausaInfra =
   | 'gate_crash'
   | 'juiz_ilegivel'
   | 'ambiente'
-export type CausaMerito = 'diff_cap' | 'enforcement' | 'criterio_qualidade'
+export type CausaMerito = 'diff_cap' | 'enforcement' | 'criterio_qualidade' | 'arquivo_solto'
 export type Desfecho = 'aprovado' | 'adiado' | 'reprovado' | 'refatiar'
 
 /**
@@ -157,6 +159,18 @@ export interface SinalTentativa {
    * qualidade são causas diferentes e pedem remédios diferentes no retry.
    */
   enforcementViolado?: boolean
+  /**
+   * Ticket 631: as violações do enforcement (tipo e detalhe), e não só o
+   * booleano, para separar "arquivo solto" de violação de escopo.
+   */
+  violacoesEnforcement?: { tipo: string; detalhe?: string }[]
+  /**
+   * Ticket 631: caminhos NÃO rastreados na worktree antes do `git add -A` do
+   * commit_do_agente (<rundir>/arquivos-soltos.txt). O harness os varre para o
+   * commit `wip`, e sem esta lista o enforcement não distingue o rascunho que o
+   * agente esqueceu do arquivo que ele commitou fora da allowlist.
+   */
+  arquivosSoltos?: string[]
   /** critérios de aceite / avaliador que reprovaram por conteúdo. */
   criteriosFalhos?: string[]
   /**
@@ -413,6 +427,20 @@ export function subDoSinal(sinal: SinalTentativa): string {
  * ficavam vermelhas no gate e as que a cruzaram caíam no enforcement — três
  * ciclos pagos para chegar a uma conclusão que era do humano, não do agente.
  */
+/**
+ * Ticket 631: os arquivos soltos quando TODAS as violações do enforcement são
+ * `fora_do_pathspec` de caminhos listados em `arquivosSoltos`; `[]` em qualquer
+ * outro caso (sem violação detalhada, tipo diferente, arquivo commitado pelo
+ * agente, mistura).
+ */
+export function violacaoSoDeArquivoSolto(sinal: SinalTentativa): string[] {
+  const vs = sinal.violacoesEnforcement ?? []
+  const soltos = sinal.arquivosSoltos ?? []
+  if (vs.length === 0 || soltos.length === 0) return []
+  const todas = vs.every((v) => v.tipo === 'fora_do_pathspec' && soltos.includes(v.detalhe ?? ''))
+  return todas ? [...new Set(vs.map((v) => v.detalhe ?? ''))] : []
+}
+
 export function decidirDesfecho(config: DecisaoConfig, sinal: SinalTentativa): Veredito {
   const adia = causasDeAdiamentoDoConfig(config)
   const infra = detectarCausaInfra(sinal)
@@ -429,6 +457,20 @@ export function decidirDesfecho(config: DecisaoConfig, sinal: SinalTentativa): V
     }
   }
   if (sinal.enforcementViolado) {
+    // Ticket 631 (513, 23/09/2026): TODA violação é fora_do_pathspec de arquivo
+    // que estava solto antes do `add -A` do harness. Não é escopo: é sujeira que
+    // o agente conserta sabendo o nome. Mérito, com retry e o nome no
+    // diagnóstico. Qualquer outra forma (zona proibida, arquivo que o agente
+    // commitou, violação mista) segue em refatiar.
+    const soltos = violacaoSoDeArquivoSolto(sinal)
+    if (soltos.length > 0) {
+      return {
+        desfecho: 'reprovado',
+        causa: 'arquivo_solto',
+        motivo: `arquivo solto fora da allowlist: ${soltos.join(', ')}`,
+        contaComoRetry: true,
+      }
+    }
     return {
       desfecho: 'refatiar',
       causa: 'enforcement',
@@ -484,8 +526,9 @@ export interface PlanoRetry {
  * julgou o trabalho, disse que o diff saiu do lugar permitido — e capacidade não
  * é o que faz um diff respeitar a pathspec. Escalar nos dois é gasto sem
  * hipótese; nos dois o remédio é manter o modelo e estreitar o escopo.
+ * `arquivo_solto` (631): apagar um rascunho não pede modelo maior.
  */
-const NUNCA_ESCALA: readonly string[] = ['diff_cap', 'enforcement']
+const NUNCA_ESCALA: readonly string[] = ['diff_cap', 'enforcement', 'arquivo_solto']
 
 /**
  * A causa decide o remédio. `diff_cap` e `enforcement` MANTÊM o modelo e
@@ -691,4 +734,49 @@ export function prefixoDeWorktree(config: DecisaoConfig): string {
   const p = config.worktrees_prefixo
   if (!p) throw new Error('config sem worktrees_prefixo')
   return p
+}
+
+// ─── 6 · base vermelha (ticket 632) ────────────────────────────────────────
+
+/**
+ * Arquivos das linhas de falha do vitest num `gates.txt`: ` FAIL  <arquivo>` e
+ * ` FAIL  <arquivo> > <teste>`. Deduplicados, na ordem em que aparecem. Cor
+ * ANSI sai antes (o `gates.ts` grava a saída crua do runner).
+ *
+ * Lista vazia quer dizer "não reconheci a falha", nunca "não houve falha": quem
+ * chama trata vazio como caminho de hoje (fail-closed para o comportamento
+ * atual).
+ */
+export function arquivosFalhosDoVitest(gatesTxt: string): string[] {
+  const vistos: string[] = []
+  for (const cru of gatesTxt.split('\n')) {
+    const linha = cru.replace(/\x1b\[[0-9;]*m/g, '')
+    const m = /^\s*FAIL\s+(\S+?)(?:\s+>\s.*)?\s*$/.exec(linha)
+    if (!m) continue
+    const arquivo = m[1]!
+    if (!vistos.includes(arquivo)) vistos.push(arquivo)
+  }
+  return vistos
+}
+
+/**
+ * Ticket 632 (decisão do Lucas, 23/09/2026). O gate de testes que falha SÓ em
+ * arquivo de teste que o ticket não tocou nem pode tocar é base vermelha, não
+ * mérito do ticket: devolve a lista desses arquivos. Devolve `[]` (caminho de
+ * hoje) quando a falha não foi reconhecida ou quando QUALQUER arquivo falho está
+ * no diff do ticket ou casa um glob da allowlist.
+ *
+ * As outras condições (enforcement ok, critérios verdes, só gate de papel
+ * `testes` reprovado, gates não interrompidos) são do executor, que tem o
+ * estado da tentativa.
+ */
+export function arquivosBaseVermelha(entrada: {
+  gatesTxt: string
+  arquivosDoDiff: string[]
+  allowlist: string[]
+}): string[] {
+  const falhos = arquivosFalhosDoVitest(entrada.gatesTxt)
+  if (falhos.length === 0) return []
+  const proprio = (a: string) => entrada.arquivosDoDiff.includes(a) || matchesAllowlist(a, entrada.allowlist)
+  return falhos.some(proprio) ? [] : falhos
 }

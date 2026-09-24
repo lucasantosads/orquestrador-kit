@@ -11,9 +11,12 @@
  *   repeticao <sub> <diff>    -> stdin = linhas da trilha do ticket; exit 0 = repete a anterior (7b-4)
  *   reaberto                  -> stdin = linhas da trilha do ticket; exit 0 = último desfecho é BLOQUEADO (7b-8)
  *   disallowed                -> o piso de --disallowedTools do config (T17)
+ *   base-vermelha             -> stdin = {gatesTxt, arquivosDoDiff, allowlist};
+ *                                imprime a lista (vazia = caminho de hoje), ticket 632
  */
 import { readFileSync } from 'node:fs'
 import {
+  arquivosBaseVermelha,
   avaliaRestricaoExecucao,
   decidirDesfecho,
   decidirRetry,
@@ -108,6 +111,10 @@ switch (sub) {
   }
   case 'meta': {
     out(registroMeta(stdin()))
+    break
+  }
+  case 'base-vermelha': {
+    out(arquivosBaseVermelha(stdin() as { gatesTxt: string; arquivosDoDiff: string[]; allowlist: string[] }))
     break
   }
   default:

@@ -576,6 +576,21 @@ gates_ausentes() {
   printf '%s' "$out"
 }
 
+# so_testes_reprovaram <gates.txt> -> 0 se ao menos um gate do config reprovou e
+# TODOS os reprovados são de papel `testes` (ticket 632). typecheck, build ou
+# lint reprovado junto = 1: aí a falha pode ser do ticket, e o caminho é o de
+# hoje.
+so_testes_reprovaram() {
+  local f="$1" nome declarado n=0
+  while IFS=$'\t' read -r nome declarado; do
+    [ -n "$nome" ] || continue
+    [ "$(gate_marca "$f" "$nome")" = falha ] || continue
+    [ "$(papel_do_gate "$nome" "$declarado")" = testes ] || return 1
+    n=$((n + 1))
+  done < <(cfg '.gates[]? | [.nome, (.papel // "")] | @tsv' 2>/dev/null || true)
+  [ "$n" -gt 0 ]
+}
+
 # event_gate <id> <rundir> <enf_ok>
 # fora_do_pathspec= so entra quando o ENFORCEMENT reprova: e o dado que
 # transforma um beco sem saida em ticket acionavel (colisao de teste na SKILL).
@@ -794,7 +809,13 @@ permissoes_negadas() {
 }
 
 # --- 7e · O COMMIT QUE O AGENTE NÃO DEU (peça 0b) ---------------------------
-# commit_do_agente <arquivo-ticket> <worktree>
+# commit_do_agente <arquivo-ticket> <worktree> [rundir] [base]
+#
+# Ticket 631: com `rundir`, os caminhos NÃO RASTREADOS (`??`) vão para
+# <rundir>/arquivos-soltos.txt ANTES do `add -A` (vazio quando não há), e o log
+# separa "o agente saiu sem commitar" (nenhum commit desde `base`) de "commitou
+# e deixou N arquivo(s) solto(s)". No 513 o agente tinha commitado e só um
+# diag-tmp.txt estava solto, e o log afirmava o contrário.
 #
 # O prompt manda commitar por checkpoint e avisa que arquivo não commitado conta
 # como NADA FEITO. Isso é verdade sobre a MEDIÇÃO — `git diff base...HEAD` não vê
@@ -817,21 +838,34 @@ permissoes_negadas() {
 # existe para pegar.
 COMMIT_DO_HARNESS=0
 commit_do_agente() {
-  local file="$1" wt="$2" id em nm
+  local file="$1" wt="$2" rundir="${3:-}" base="${4:-}" id em nm soltos="" n_soltos=0 n_commits=0 motivo
   COMMIT_DO_HARNESS=0
+  if [ -n "$rundir" ]; then
+    soltos="$(git -C "$wt" --no-optional-locks status --porcelain --untracked-files=all 2>/dev/null | sed -n 's/^?? //p')"
+    printf '%s' "$soltos" > "$rundir/arquivos-soltos.txt"
+    [ -z "$soltos" ] || { printf '\n' >> "$rundir/arquivos-soltos.txt"; n_soltos="$(printf '%s\n' "$soltos" | wc -l | tr -d ' ')"; }
+  fi
   [ -n "$(git -C "$wt" --no-optional-locks status --porcelain 2>/dev/null)" ] || return 0
   id="$(ticket_field "$file" '.id')"
+  [ -n "$base" ] && n_commits="$(git -C "$wt" rev-list --count "$base"..HEAD 2>/dev/null || echo 0)"
+  if [ "$n_commits" -gt 0 ] && [ "$n_soltos" -gt 0 ]; then
+    motivo="agente commitou e deixou $n_soltos arquivo(s) solto(s): $(printf '%s' "$soltos" | paste -sd, - | sed 's/,/, /g')"
+  elif [ "$n_commits" -gt 0 ]; then
+    motivo="agente commitou e deixou mudança não commitada"
+  else
+    motivo="agente saiu sem commitar"
+  fi
   # Identidade só é forçada quando NÃO há uma configurada: sobrescrever a do
   # repo faria todo commit de checkpoint do loop mudar de autor.
   em="$(git -C "$wt" config user.email 2>/dev/null || true)"; [ -n "$em" ] || em="orquestrador@local"
   nm="$(git -C "$wt" config user.name  2>/dev/null || true)"; [ -n "$nm" ] || nm="orquestrador"
   if git -C "$wt" add -A >/dev/null 2>&1 &&
      git -C "$wt" -c user.email="$em" -c user.name="$nm" commit -q \
-       -m "wip($id): agente saiu sem commitar" \
+       -m "wip($id): $motivo" \
        -m "$(cfg '.executor.trailer_commit'): $id" >/dev/null 2>&1; then
     COMMIT_DO_HARNESS=1
-    log "  commit do harness: o agente saiu sem commitar — trabalho commitado como wip($id) e julgado normalmente"
-    event "$id" COMMIT_HARNESS "motivo=agente-saiu-sem-commitar"
+    log "  commit do harness: $motivo — commitado como wip($id) e julgado normalmente"
+    event "$id" COMMIT_HARNESS "motivo=$(printf '%s' "$motivo" | cut -d: -f1 | tr ' ' '-')"
   else
     log "  commit do harness: FALHOU — o trabalho não commitado fica de fora do diff"
   fi
@@ -923,7 +957,7 @@ run_attempt() {
   AGENTE_RC="$rc"
   fase pos-agente
   permissoes_negadas "$saida" "$file"
-  commit_do_agente "$file" "$wt"
+  commit_do_agente "$file" "$wt" "$rundir" "$base"
   DIFF_LINES="$(git -C "$wt" diff "$base"...HEAD --numstat | awk '{s+=$1+$2} END{print s+0}')"
   log "  diff: $DIFF_LINES linha(s) em $DUR s"
   # ANTES do enforcement e de qualquer descarte: o patch é evidência, e evidência
@@ -934,6 +968,7 @@ run_attempt() {
   # idêntico ao da anterior encerra a tentativa AQUI — sem enforcement, gates,
   # critérios nem juiz. O hash é do diff.patch inteiro.
   RETRY_SEM_MUDANCA=0; HASH_DIFF_ANTERIOR=""; HASH_DIFF_NOVO=""
+  BASE_VERMELHA=""
   #
   # SÓ com o agente saído rc 0 (porte, 24/09/2026): diff idêntico depois de uma
   # falha de infra (503, rede, sessão, timeout) não é "sem hipótese nova", é
@@ -991,6 +1026,34 @@ run_attempt() {
   run_criterios "$file" "$wt" "$rundir"
   event_gate "$(ticket_field "$file" '.id')" "$rundir" "$ENF_OK"
 
+  # 7b · BASE VERMELHA (ticket 632, decisão do Lucas de 23/09/2026). Enforcement
+  # ok, critérios verdes, só gate de papel `testes` reprovado e TODOS os arquivos
+  # FAIL fora do diff e da allowlist: a base está vermelha, não o ticket. Bloqueia
+  # sem juiz, sem retry e sem consumir tentativa. Sequência real do 510c:
+  # REPROVADO criterio_qualidade -> RETRY opus -> BLOQUEADO retry_sem_mudanca,
+  # duas tentativas pagas por um hook timeout do 0283, arquivo fora do ticket.
+  # Lista vazia (FAIL não reconhecido) ou arquivo próprio = caminho de hoje. O
+  # CLI que falha derruba o executor: erro não vira "não é base vermelha".
+  if [ "$ENF_OK" = 1 ] && [ "$gates_rc" != 0 ] && [ -z "$CRITERIOS_FALHOS" ] \
+     && ! grep -qi 'reexecutar' "$rundir/gates.txt" && so_testes_reprovaram "$rundir/gates.txt"; then
+    local bv_json
+    bv_json="$(jq -n --rawfile g "$rundir/gates.txt" \
+        --argjson d "$(git -C "$wt" diff --name-only "$base"...HEAD | jq -Rn '[inputs | select(length > 0)]')" \
+        --argjson al "$(ticket_json "$file" | jq '.pathspec_allowlist // []')" \
+        '{gatesTxt:$g, arquivosDoDiff:$d, allowlist:$al}' | decisao base-vermelha)" \
+      || { log "ERRO: decisao base-vermelha falhou — o executor não segue sem saber se a base está vermelha"; exit 1; }
+    BASE_VERMELHA="$(printf '%s' "$bv_json" | jq -r 'join(",")')"
+  fi
+  if [ -n "$BASE_VERMELHA" ]; then
+    RESULT="bloqueado"
+    MOTIVO="base_vermelha: gate testes falhou só em arquivo(s) fora do diff e da allowlist: ${BASE_VERMELHA//,/, }; juiz não chamado"
+    jq -n --arg m "$MOTIVO" --argjson a "$bv_json" --arg ev "$rundir/gates.txt" \
+      '{desfecho:"bloqueado", causa:"base_vermelha", motivo:$m, contaComoRetry:false, arquivos:$a, evidencia:$ev}' \
+      > "$rundir/veredito.json"
+    log "  base vermelha: FAIL só em $BASE_VERMELHA (fora do diff e da allowlist) — juiz NÃO chamado"
+    return 0
+  fi
+
   # 7c · JUIZ — só com TODO o mecânico verde e o diff dentro do cap. Julgar um
   # diff que já reprovou é gasto sem hipótese: o remédio dele não é opinião.
   JUIZ_ROU=0; JUIZ_APROVADO=""; JUIZ_MOTIVO=""; JUIZ_FALHOS=""; JUIZ_ILEGIVEL=0
@@ -1018,9 +1081,12 @@ run_attempt() {
     --argjson dur "$DUR" --argjson tout "$tout" \
     --argjson pn "${PERMISSOES_NEGADAS:-[]}" \
     --argjson cne "${CRITERIOS_NAO_EXECUTADOS:-[]}" \
+    --argjson soltos "$(jq -Rn '[inputs | select(length > 0)]' < "$rundir/arquivos-soltos.txt" 2>/dev/null || echo '[]')" \
+    --argjson venf "$(jq -c '[.violations[]? | {tipo, detalhe}]' "$rundir/enforcement.json" 2>/dev/null || echo '[]')" \
     '{exitCode:$e, saida:$s, diffLines:$d, gateInterrompido:$gi, enforcementViolado:$enf, criteriosFalhos:$cf,
       gatesRc:$grc, gatesSaida:$gs, gatePapelFalho:$gp, duracaoSecs:$dur,
-      permissoesNegadas:$pn, criteriosNaoExecutados:$cne}
+      permissoesNegadas:$pn, criteriosNaoExecutados:$cne,
+      arquivosSoltos:$soltos, violacoesEnforcement:$venf}
      + (if $tout == null then {} else {timeoutSecs:$tout} end)')"
   if [ "$gates_rc" != 0 ]; then
     sinal="$(printf '%s' "$sinal" | jq '.criteriosFalhos += ["gates reprovados"]')"
@@ -1302,6 +1368,17 @@ drive_ticket() {
     [ "$RESULT" = "reprovado" ] && ticket_zera_adiamentos_ambiente "$file"
     local tok; tok="$(motivo_token "$(cat "$rundir/veredito.json" 2>/dev/null || echo '{}')")"
 
+    # Ticket 632: base vermelha bloqueia direto. RESULT é 'bloqueado', então a
+    # linha de cima já devolveu a tentativa (bloqueio não consome).
+    if [ -n "${BASE_VERMELHA:-}" ]; then
+      ticket_set_status "$file" "bloqueado"
+      ticket_set_nota "$file" "bloqueado: base_vermelha — gate testes falhou só em arquivo(s) fora do diff e da allowlist: ${BASE_VERMELHA//,/, }; evidência: $rundir/gates.txt"
+      ticket_commit "$file" "fila: $id bloqueado (base_vermelha)"
+      event "$id" BLOQUEADO "motivo=base_vermelha" "arquivos=$BASE_VERMELHA" "attempt=$((attempt + 1))"
+      status_set "estado=ocioso" "ultimo=$id BLOQUEADO $(date '+%H:%M:%S') (${DUR}s)" "motivo=bloqueado: base_vermelha"
+      DESFECHO_NOMEADO=1; log "BLOQUEADO: base_vermelha ($BASE_VERMELHA)"; cleanup_worktree "$id" "$wt"; return 0
+    fi
+
     # Ticket 623: retry sem mudança bloqueia direto, sem juiz e sem nova
     # tentativa — repetir o mesmo diff não é hipótese nova.
     if [ "${RETRY_SEM_MUDANCA:-0}" = 1 ]; then
@@ -1392,11 +1469,16 @@ drive_ticket() {
     # e false, e o `set -e` mata o loop de retry sem log nenhum (attempt unico).
     MOTIVO_ANTERIOR="$(diagnostico_retry "$file" "$rundir")$( { [ "$(printf '%s' "$plano" | jq -r '.estreitarEscopo')" = true ] && printf '\n%s' "$(printf '%s' "$plano" | jq -r '.acao')"; } || true)"
     log "retry $((attempt + 1)): modelo=$modelo escalou=$(printf '%s' "$plano" | jq -r '.escalou')"
+    # Ticket 631 (porte): arquivo_solto também reaproveita — o resto do diff
+    # passou, e "remova da worktree: <arquivo>" só é verdade se a worktree for a mesma.
+    local reaproveita=0
+    { [ "$ENF_OK" = 1 ] || [ "$tok" = arquivo_solto ]; } && reaproveita=1
     event "$id" RETRY "attempt=$((attempt + 2))" "model=$modelo" "motivo=$tok" "sub=$sub" \
-      "worktree=$([ "$ENF_OK" = 1 ] && echo reaproveitada || echo nova)"
+      "worktree=$([ "$reaproveita" = 1 ] && echo reaproveitada || echo nova)"
     attempt=$((attempt + 1))
-    # A worktree só sobrevive ao retry quando o enforcement aprovou o diff dela.
-    if [ "$ENF_OK" = 1 ]; then
+    # A worktree só sobrevive ao retry quando o enforcement aprovou o diff dela
+    # (ou quando a única violação é arquivo solto, 631).
+    if [ "$reaproveita" = 1 ]; then
       reusar=1
     else
       reusar=0
