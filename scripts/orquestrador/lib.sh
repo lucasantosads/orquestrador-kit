@@ -909,13 +909,29 @@ PAUSA_FILE="$ROOT/docs/fila/.orq-pause"
 # pausa_ativa -> 0 se a fila está pausada.
 pausa_ativa() { [ -f "$CFG_PAUSAR_FILE" ] || [ -f "$PAUSA_FILE" ]; }
 
-# pausa_motivo -> conteúdo do sentinela que estiver presente.
-pausa_motivo() {
+# pausa_conteudo -> a 1ª linha CRUA da primeira sentinela presente
+# ("<AAAA-MM-DD HH:MM> | motivo"), sem o caminho. É o que pausa_registro e
+# pausa_inicio_epoch leem para achar a data (K12-F). O pausa_motivo passou a
+# prefixar o caminho (porte do 514) e deixou de servir para isso.
+pausa_conteudo() {
   local f
   for f in "$CFG_PAUSAR_FILE" "$PAUSA_FILE"; do
-    [ -f "$f" ] && { cat "$f" 2>/dev/null || true; return 0; }
+    [ -f "$f" ] && { head -1 "$f" 2>/dev/null || true; return 0; }
   done
-  echo "sem motivo registrado"
+  return 0
+}
+
+# pausa_motivo -> "<sentinela>: <conteúdo>" de CADA sentinela presente,
+# separadas por "; ". Ticket 514: o STATUS dizia só "pausado", e ninguém sabia,
+# olhando para ele, qual arquivo segurava o loop.
+pausa_motivo() {
+  local f p out=""
+  for f in "$CFG_PAUSAR_FILE" "$PAUSA_FILE"; do
+    [ -f "$f" ] || continue
+    p="${f#"$MAIN_CHECKOUT"/}"; p="${p#"$ROOT"/}"
+    out="${out:+$out; }$p: $(tr '\n' ' ' < "$f" 2>/dev/null | sed 's/ *$//')"
+  done
+  printf '%s\n' "${out:-sem motivo registrado}"
 }
 
 # --- PAUSA NA TRILHA (peças K12-C e K12-F) -----------------------------------
@@ -965,7 +981,7 @@ pausa_registro() {
   por="$(printf '%s\n' "$l" | tr ' ' '\n' | sed -n 's/^por=//p' | head -1)"
   ep="$(epoch_de '%Y-%m-%dT%H:%M:%S%z' "$iso")"
   [ -n "$ep" ] || return 0
-  cont="$(pausa_motivo | head -1)"
+  cont="$(pausa_conteudo)"
   ep_cont="$(epoch_de '%Y-%m-%d %H:%M' "${cont%% |*}")"
   if [ -n "$ep_cont" ] && [ "$ep" -lt $((ep_cont - 60)) ]; then return 0; fi
   printf '%s|%s|%s\n' "$ep" "${por:-?}" "$iso"
@@ -978,7 +994,7 @@ pausa_inicio_epoch() {
   local r cont
   r="$(pausa_registro)"
   if [ -n "$r" ]; then printf '%s\n' "${r%%|*}"; return 0; fi
-  cont="$(pausa_motivo | head -1)"
+  cont="$(pausa_conteudo)"
   epoch_de '%Y-%m-%d %H:%M' "${cont%% |*}"
 }
 
