@@ -19,8 +19,9 @@
  *   - rc 1 se houve violação, 0 se não;
  *   - `--relatorio` imprime TUDO (inclusive o que passou) e sai 0.
  */
+import { spawnSync } from 'node:child_process'
 import { readFileSync, readdirSync, existsSync, realpathSync } from 'node:fs'
-import { basename, join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { globToRegExp } from './enforcement-core.js'
 
@@ -76,6 +77,12 @@ export interface Violacao {
 export interface GateCfg {
   proibido_no_cmd: string[]
   cmd_prefixos_permitidos: string[]
+  /**
+   * `branch_alvo` do 000-config.json: onde o check 9 confere que cada caminho
+   * de `contexto_juiz` existe (é dela que a worktree do ticket nasce).
+   * Ausente = o check 9 reprova quem declarar contexto, em vez de adivinhar.
+   */
+  branch_alvo?: string
 }
 
 /** O ticket como ele chega do disco: sem promessa nenhuma sobre os campos. */
@@ -422,9 +429,10 @@ export function lerFila(filaDir: string): TicketLido[] {
 export function carregarCfg(filaDir: string): GateCfg {
   const p = join(filaDir, '000-config.json')
   if (!existsSync(p)) return { proibido_no_cmd: [], cmd_prefixos_permitidos: [] }
-  const j = JSON.parse(readFileSync(p, 'utf8')) as { gate_ticket?: Partial<GateCfg> }
+  const j = JSON.parse(readFileSync(p, 'utf8')) as { gate_ticket?: Partial<GateCfg>; branch_alvo?: unknown }
   const g = j.gate_ticket ?? {}
   return {
+    ...(typeof j.branch_alvo === 'string' && j.branch_alvo !== '' ? { branch_alvo: j.branch_alvo } : {}),
     // A CHAVE É `proibido_no_cmd`, e não `padroes_proibidos`: é o nome que está
     // no disco desde a Etapa 1, já semeado com os padrões que o
     // `autoalimentacao.md` §2 nomeia. Confirmado por grep, não por memória.
@@ -569,6 +577,59 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
     }
   }
 
+  // 9. contexto_juiz — só em ticket pendente, como 5–8: é o que ainda vai rodar.
+  if (pendente) v.push(...checarContextoJuiz(alvo, cfg))
+
+  return v
+}
+
+/**
+ * O caminho existe na branch alvo? `git cat-file -e <branch>:<path>` a partir do
+ * repo que contém a fila. Erro de git (fila fora de repo, branch inexistente)
+ * responde "não existe": o gate reprova, nunca aprova no escuro.
+ */
+export function existeNaBranch(filaDir: string, branch: string, caminho: string): boolean {
+  const r = spawnSync('git', ['-C', filaDir, 'cat-file', '-e', `${branch}:${caminho}`], { encoding: 'utf8' })
+  return r.status === 0
+}
+
+/**
+ * 9. `contexto_juiz` (ticket 622): lista de strings; cada caminho existe na
+ * branch alvo; nenhum é arquivo que o próprio ticket edita. Caminho LISTADO na
+ * allowlist é violação (o que o ticket edita já chega ao juiz pelo diff, e
+ * declarar de novo duplica e confunde). Caminho só coberto por GLOB da allowlist
+ * é AVISO: é o caso do 501 (allowlist `supabase/migrations/*.sql`, referência a
+ * 0264), em que o próprio ticket proíbe tocar a referência por critério.
+ */
+function checarContextoJuiz(alvo: TicketLido, cfg: GateCfg): Violacao[] {
+  const t = alvo.json
+  if (!t || t.contexto_juiz === undefined) return []
+  const arq = basename(alvo.arquivo)
+  const v: Violacao[] = []
+  const ctx = t.contexto_juiz
+  if (!Array.isArray(ctx) || ctx.some((c) => typeof c !== 'string' || c.trim() === '')) {
+    v.push({ arquivo: arq, campo: 'contexto_juiz', mensagem: 'não é lista de strings não-vazias (caminhos de repo)' })
+    return v
+  }
+  const allow = ehArray(t.pathspec_allowlist) ? t.pathspec_allowlist.map(String) : []
+  ;(ctx as string[]).forEach((c, i) => {
+    const campo = `contexto_juiz[${i}]`
+    if (!cfg.branch_alvo) {
+      v.push({ arquivo: arq, campo, mensagem: `sem branch_alvo no 000-config.json para conferir que '${c}' existe` })
+    } else if (!existeNaBranch(dirname(alvo.arquivo), cfg.branch_alvo, c)) {
+      v.push({ arquivo: arq, campo, mensagem: `'${c}' não existe na branch alvo '${cfg.branch_alvo}'` })
+    }
+    if (allow.includes(c)) {
+      v.push({ arquivo: arq, campo, mensagem: `'${c}' está na pathspec_allowlist do próprio ticket: arquivo editado chega ao juiz pelo diff, não como referência` })
+    } else if (allow.some((g) => globToRegExp(g).test(c))) {
+      v.push({
+        arquivo: arq,
+        campo,
+        mensagem: `AVISO: '${c}' é coberto por glob da pathspec_allowlist — se o ticket puder editá-lo, a referência (estado na base) e o diff vão divergir`,
+        aviso: true,
+      })
+    }
+  })
   return v
 }
 

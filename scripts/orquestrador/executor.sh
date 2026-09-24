@@ -579,6 +579,48 @@ event_gate() {
 JUIZ_ROU=0; JUIZ_APROVADO=""; JUIZ_MOTIVO=""; JUIZ_FALHOS=""; JUIZ_ILEGIVEL=0
 juiz() { "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/juiz.ts" --run-cli "$MAIN_CHECKOUT" "$@"; }
 
+# --- 7c.1 · CONTEXTO DO JUIZ (ticket 622) -----------------------------------
+# `contexto_juiz` no ticket: caminhos de REFERÊNCIA que o critério manda
+# comparar e que não fazem parte do diff (o 501 mandava comparar com a 0264, que
+# o juiz nunca recebia). O juiz continua SEM ferramentas: quem lê é o harness, e
+# lê da BASE da tentativa (`git show <base>:<path>`), o estado de antes do
+# agente, nunca a worktree.
+#
+# Tetos como constante (decisão do 622: config é decisão humana, fica para
+# depois). Truncamento é MARCADO no texto, nunca silencioso. Caminho ausente na
+# base é erro ALTO (rc 1): o pré-voo do gate-ticket já deveria ter barrado.
+JUIZ_CTX_MAX_LINHAS_ARQ=400
+JUIZ_CTX_MAX_LINHAS_TOTAL=1200
+
+# contexto_juiz_json <ticket> <wt> <base> -> JSON [{path, conteudo}] no stdout.
+# Ticket sem o campo = '[]' (o prompt sai byte a byte como antes).
+contexto_juiz_json() {
+  local file="$1" wt="$2" base="$3" paths p conteudo n limite usado=0 out='[]'
+  paths="$(ticket_json "$file" | jq -r '(.contexto_juiz // []) | if type == "array" then .[] else error("contexto_juiz não é lista") end')" \
+    || { log "  juiz: contexto_juiz ilegível no ticket (não é lista de strings)"; return 1; }
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    if ! conteudo="$(git -C "$wt" show "$base:$p" 2>/dev/null)"; then
+      log "  juiz: contexto_juiz '$p' AUSENTE na base $(printf '%.8s' "$base") — erro alto, juiz não roda"
+      return 1
+    fi
+    n="$(printf '%s\n' "$conteudo" | wc -l | tr -d ' ')"
+    limite=$(( JUIZ_CTX_MAX_LINHAS_TOTAL - usado ))
+    [ "$limite" -gt "$JUIZ_CTX_MAX_LINHAS_ARQ" ] && limite="$JUIZ_CTX_MAX_LINHAS_ARQ"
+    if [ "$limite" -le 0 ]; then
+      conteudo="[... TRUNCADO: teto total de $JUIZ_CTX_MAX_LINHAS_TOTAL linhas de referência já atingido — as $n linhas deste arquivo foram OMITIDAS ...]"
+    elif [ "$n" -gt "$limite" ]; then
+      conteudo="$(printf '%s\n' "$conteudo" | head -n "$limite")
+[... TRUNCADO: $((n - limite)) de $n linhas omitidas (teto de $JUIZ_CTX_MAX_LINHAS_ARQ por arquivo, $JUIZ_CTX_MAX_LINHAS_TOTAL no total) ...]"
+      usado=$(( usado + limite ))
+    else
+      usado=$(( usado + n ))
+    fi
+    out="$(printf '%s' "$out" | jq --arg p "$p" --arg c "$conteudo" '. + [{path: $p, conteudo: $c}]')"
+  done <<< "$paths"
+  printf '%s' "$out"
+}
+
 run_juiz() {
   local file="$1" wt="$2" rundir="$3" base="$4" attempt="$5"
   local id nivel modelo classe prompt raw rc=0 vd prc=0 arquivos
@@ -597,6 +639,9 @@ run_juiz() {
   classe="$(printf '%s' "$nivel" | jq -r '.classe')"
 
   prompt="$rundir/juiz.prompt.txt"; raw="$rundir/juiz.raw.json"
+  local ctx
+  ctx="$(contexto_juiz_json "$file" "$wt" "$base")" \
+    || die "juiz: contexto_juiz do ticket $id não pôde ser lido da base $(printf '%.8s' "$base") (ver log acima)"
   jq -n --arg id "$id" --arg o "$(ticket_field "$file" '.objetivo')" \
       --argjson c "$(ticket_json "$file" | jq '[.criterios_aceite[]? | {tipo, descricao, cmd, espera: (.espera|tostring)}]')" \
       --argjson al "$(ticket_json "$file" | jq '.pathspec_allowlist // []')" \
@@ -604,7 +649,8 @@ run_juiz() {
       --arg gates "$(cat "$rundir/gates.txt" 2>/dev/null || true)" \
       --arg nota "$([ "${COMMIT_DO_HARNESS:-0}" = 1 ] && printf '%s' \
         'O agente saiu sem commitar e o COMMIT DESTE DIFF FOI DADO PELO HARNESS (wip). O trabalho pode estar num ponto intermediário e a mensagem de commit não é do agente — julgue o diff, não o commit.')" \
-      '{id:$id, objetivo:$o, criterios:$c, allowlist:$al, diff:$diff, gates:$gates, nota:$nota}' \
+      --argjson ctx "$ctx" \
+      '{id:$id, objetivo:$o, criterios:$c, allowlist:$al, diff:$diff, gates:$gates, nota:$nota, contexto:$ctx}' \
     | juiz prompt > "$prompt"
 
   fase juiz
