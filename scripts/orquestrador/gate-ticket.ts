@@ -22,6 +22,7 @@
 import { readFileSync, readdirSync, existsSync, realpathSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { globToRegExp } from './enforcement-core.js'
 
 // ─── Vocabulário do ticket ────────────────────────────────────────────────
 
@@ -68,6 +69,8 @@ export interface Violacao {
   mensagem: string
   /** Isenção NÃO é violação: entra na saída para ser vista, mas não muda o rc. */
   isencao?: boolean
+  /** Aviso NÃO é violação: sinal para quem escreve o ticket, não muda o rc. */
+  aviso?: boolean
 }
 
 export interface GateCfg {
@@ -268,6 +271,86 @@ export interface AchadoCmd {
   isencao?: boolean
 }
 
+/**
+ * `| grep -q` (e `-Eq`, `-iqE`, `-E -q`, `--quiet`, `--silent`) recebendo PIPE.
+ *
+ * O executor avalia o critério sob `set -euo pipefail` (executor.sh:23, `eval`
+ * em run_criterios). O `grep -q` sai no primeiro acerto e fecha o pipe; o
+ * produtor morre de SIGPIPE ao escrever o resto; o `pipefail` torna o pipeline
+ * não-zero e o `&& echo ok` nunca roda. Saída vazia com o trabalho verde: foi o
+ * que bloqueou o 431 e o 472 (21/09/2026). `grep -q` lendo ARQUIVO, sem pipe,
+ * não tem produtor para matar e segue permitido. Nunca isento, por prefixo
+ * nenhum. A forma certa é `grep -c`/`grep -E` com espera por regex.
+ */
+export function grepQuietoEmPipe(cmd: string): string[] {
+  const visivel = mascararAspas(cmd)
+  const achados: string[] = []
+  // `|` simples (não `||`), seguido de `grep` como comando do segmento.
+  const re = /(?<!\|)\|(?!\|)\s*grep(?![A-Za-z0-9_-])([^|;&]*)/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(visivel)) !== null) {
+    const flags = (m[1] ?? '').trim().split(/\s+/).filter((t) => t.startsWith('-'))
+    const quieto = flags.find((f) => f === '--quiet' || f === '--silent' || /^-[A-Za-z]*q/.test(f))
+    if (quieto) achados.push(`| grep ${quieto}`)
+  }
+  return achados
+}
+
+/**
+ * O critério interpreta a SAÍDA TEXTUAL do vitest em vez do rc (regra de
+ * 21/09/2026). `vitest run 2>&1 | tail -5` com espera "passed" casa
+ * `Tests 1 failed | 5 passed`, e `| grep -E 'passed|failed'` também: verde com
+ * teste vermelho. Forma mínima: o stdout de `vitest` (qualquer subcomando que
+ * não seja `list`), `npm test`/`npm run test` ou `pnpm test` alimentando um
+ * pipe `|`. Quem lê o rc (`>/dev/null 2>&1 && echo OK`, `; echo rc=$?`,
+ * `! vitest ... && echo X`) não tem pipe depois do vitest e passa; `vitest
+ * list | grep -c` conta testes, não interpreta resultado, e passa.
+ */
+export function saidaTextualDoVitest(cmd: string): boolean {
+  // `2>&1`/`>&2` saem antes da busca: o `&` deles cortaria o segmento.
+  const visivel = mascararAspas(cmd).replace(/\d?>&\d/g, '    ')
+  const re =
+    /(?:(?<![\w-])vitest(?![\w-])(?!\s+list(?![\w-]))|(?<![\w-])npm\s+(?:run\s+)?test(?![\w-])|(?<![\w-])pnpm\s+(?:run\s+)?test(?![\w-]))[^|;&]*\|(?!\|)/
+  return re.test(visivel)
+}
+
+/** Caminho de arquivo (com extensão de código/dado) ou glob de diretório. */
+const RE_CAMINHO =
+  /(?<![\w./@*-])((?:[\w.@-]+\/)+\*\*(?:\/\*)?|(?:[\w.@-]+\/)*[\w@-][\w.@-]*\.(?:tsx?|jsx?|mjs|cjs|sql|json|sh|md|ya?ml))(?![\w/*])/g
+
+/**
+ * Caminhos citados no OBJETIVO que a allowlist não cobre (regra de 21/09/2026,
+ * AVISO, não reprovação). O 488 antes do refatiamento mandava usar
+ * detalhe-mensagem.ts, fora da allowlist, e o juiz reprovou três vezes pelo
+ * mesmo ponto. Citar arquivo para LER é legítimo — por isso é aviso.
+ *
+ * Cobre: item igual; item-glob que casa o caminho; nome solto que é o fim de um
+ * item; glob citado com algum item dentro dele. Texto depois de "FORA DE
+ * ESCOPO" ou de "PROIBIDO" não conta: ali, por definição, o caminho está fora
+ * da allowlist (22/09/2026: "PROIBIDO: alterar X" avisava X em todo ticket que
+ * nomeia o que não pode tocar). Vale o PRIMEIRO dos dois cortes.
+ */
+export function caminhosForaDaAllowlist(objetivo: string, allowlist: string[]): string[] {
+  const corte = objetivo.search(/FORA DE ESCOPO|\bPROIBID[OA]S?\b/i)
+  const texto = corte >= 0 ? objetivo.slice(0, corte) : objetivo
+  const fora: string[] = []
+  for (const m of texto.matchAll(RE_CAMINHO)) {
+    const c = m[1]!
+    if (fora.includes(c)) continue
+    const coberto = allowlist.some((item) => {
+      if (item === c) return true
+      if (c.includes('*')) {
+        const prefixo = c.replace(/\*.*$/, '')
+        return item.startsWith(prefixo)
+      }
+      if (c.includes('/')) return globToRegExp(item).test(c)
+      return item === c || item.endsWith('/' + c) || globToRegExp(item).test(c)
+    })
+    if (!coberto) fora.push(c)
+  }
+  return fora
+}
+
 export function checarCmd(cmd: string, cfg: GateCfg): AchadoCmd[] {
   const achados: AchadoCmd[] = []
   const segmentos = segmentarCmd(cmd)
@@ -298,6 +381,16 @@ export function checarCmd(cmd: string, cfg: GateCfg): AchadoCmd[] {
       })
     }
   })
+  if (saidaTextualDoVitest(cmd)) {
+    achados.push({
+      mensagem: `vitest: saída textual interpretada em vez do rc ('passed' casa 'Tests 1 failed | 5 passed'; use '>/dev/null 2>&1 && echo OK' ou '; echo rc=$?') — cmd: ${cmd}`,
+    })
+  }
+  for (const g of grepQuietoEmPipe(cmd)) {
+    achados.push({
+      mensagem: `grep -q em pipe ('${g}'): morre de SIGPIPE sob pipefail e a saída sai vazia com o trabalho verde (use grep -c ou grep -E com espera por regex) — cmd: ${cmd}`,
+    })
+  }
   return achados
 }
 
@@ -426,6 +519,19 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
     })
   }
 
+  // 6b. AVISO: caminho citado no objetivo fora da allowlist (não muda o rc).
+  if (pendente && typeof t.objetivo === 'string' && ehArray(t.pathspec_allowlist)) {
+    const fora = caminhosForaDaAllowlist(t.objetivo, t.pathspec_allowlist.map(String))
+    if (fora.length > 0) {
+      v.push({
+        arquivo: arq,
+        campo: 'objetivo',
+        mensagem: `AVISO: o objetivo cita caminho(s) fora da allowlist: ${fora.join(', ')} (se é para EDITAR, falta na allowlist; se é só para ler, ignore)`,
+        aviso: true,
+      })
+    }
+  }
+
   // 7. dependências: id existente na fila, ou `humano:<token>`.
   if (pendente && ehArray(t.dependencias)) {
     const ids = new Set(fila.map((f) => (typeof f.json?.id === 'string' ? f.json.id : '')).filter(Boolean))
@@ -524,19 +630,20 @@ function main(argv: string[]): number {
   }
 
   const achados = validar(alvos, fila, cfg)
-  const violacoes = achados.filter((a) => !a.isencao)
+  const violacoes = achados.filter((a) => !a.isencao && !a.aviso)
 
   if (relatorio) {
     process.stdout.write(`GATE DE TICKET · ${alvos.length} ticket(s) · fila ${filaDir}\n\n`)
     for (const alvo of alvos) {
       const arq = basename(alvo.arquivo)
       const meus = achados.filter((a) => a.arquivo === arq)
-      const erros = meus.filter((a) => !a.isencao)
+      const erros = meus.filter((a) => !a.isencao && !a.aviso)
       process.stdout.write(`${arq}  ${erros.length === 0 ? 'OK' : `${erros.length} violação(ões)`}\n`)
       for (const a of meus) process.stdout.write(`  ${arq}:${a.campo} ${a.mensagem}\n`)
     }
-    const isencoes = achados.length - violacoes.length
-    process.stdout.write(`\nTOTAL: ${violacoes.length} violação(ões), ${isencoes} isenção(ões), em ${alvos.length} ticket(s)\n`)
+    const isencoes = achados.filter((a) => a.isencao).length
+    const avisos = achados.filter((a) => a.aviso).length
+    process.stdout.write(`\nTOTAL: ${violacoes.length} violação(ões), ${isencoes} isenção(ões), ${avisos} aviso(s), em ${alvos.length} ticket(s)\n`)
     return 0
   }
 

@@ -332,7 +332,10 @@ describe('check 6 · o veto, a isenção e o que a isenção NÃO alcança', () 
   });
 
   it('regra (b): `2>&1`, `>/dev/null` e `2>/dev/null` passam', () => {
-    expect(checarCmd('npx vitest run t.ts 2>&1 | grep -c passed', cfg).filter((a) => !a.isencao)).toEqual([]);
+    // Porte do Actus (a15daca): ler a saída textual do VITEST virou violação
+    // própria; o redirecionamento que este caso prova segue passando em
+    // qualquer outro comando.
+    expect(checarCmd('git log --oneline 2>&1 | grep -c porte', cfg).filter((a) => !a.isencao)).toEqual([]);
     expect(checarCmd('npm run build >/dev/null 2>&1', cfg).filter((a) => !a.isencao)).toEqual([]);
     expect(checarCmd('npm run lint 2>/dev/null', cfg).filter((a) => !a.isencao)).toEqual([]);
   });
@@ -452,7 +455,8 @@ describe('a CLI é o contrato que `orq validar` repassa', () => {
     const r = cli(dir, '--pendentes', '--relatorio');
     expect(r.rc).toBe(0);
     expect(r.out).toMatch(/GATE DE TICKET · 1 ticket\(s\)/);
-    expect(r.out).toMatch(/TOTAL: 1 violação\(ões\), 0 isenção\(ões\), em 1 ticket\(s\)/);
+    // Porte do Actus (a15daca): o TOTAL passou a contar os avisos também.
+    expect(r.out).toMatch(/TOTAL: 1 violação\(ões\), 0 isenção\(ões\), 0 aviso\(s\), em 1 ticket\(s\)/);
   });
 
   it('--pendentes pega SÓ os pendentes', () => {
