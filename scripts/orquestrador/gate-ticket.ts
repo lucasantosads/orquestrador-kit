@@ -125,7 +125,7 @@ export const REGRAS: Readonly<Record<string, Regra>> = {
   '9w': { severidade: 'aviso', oque: 'contexto_juiz coberto por glob da allowlist', porque: 'o caso do 501: referência que o ticket pode editar' },
   '10n': { severidade: 'aviso', oque: 'critério com regex sem exemplos_regex', porque: '56/45/499 FP, 0 causal; nenhum ticket anterior ao 624 declara exemplos' },
   '10c': { severidade: 'erro', oque: '\\[ ou \\] dentro de classe [...]', porque: '0/0/0 FP (caso-origem 503)' },
-  '10x': { severidade: 'erro', oque: 'exemplos_regex contra o padrão do cmd', porque: 'CORRIGIR: 0/8/0 FP, todos das aspas escapadas e do grep -v' },
+  '10x': { severidade: 'erro', oque: 'exemplos_regex contra o padrão do cmd', porque: 'era 0/8/0 FP, todos das aspas escapadas e do grep -v de comentário' },
 }
 
 export function severidadePadrao(regra: string): Severidade {
@@ -567,9 +567,19 @@ export class GateNaoRodou extends Error {}
  * escapa `$`, `` ` ``, `"`, `\` e quebra de linha; fora de aspas escapa tudo.
  */
 export function palavrasShell(seg: string): string[] {
-  const out: string[] = []
+  return palavrasShellComCru(seg).map((w) => w.valor)
+}
+
+/**
+ * O mesmo, com o texto CRU de cada palavra como está no cmd (etapa 7d-1b): o
+ * exemplo do check 10 pode ser escrito na forma que o shell entrega ou na forma
+ * que está entre as aspas do cmd.
+ */
+export function palavrasShellComCru(seg: string): { valor: string; cru: string }[] {
+  const out: { valor: string; cru: string }[] = []
   let atual = ''
   let tem = false
+  let inicio = 0
   let aspas: string | null = null
   for (let i = 0; i < seg.length; i++) {
     const c = seg[i]!
@@ -584,6 +594,7 @@ export function palavrasShell(seg: string): string[] {
       else atual += c
       continue
     }
+    if (!tem && !/\s/.test(c)) inicio = i
     if (c === "'" || c === '"') {
       aspas = c
       tem = true
@@ -595,7 +606,7 @@ export function palavrasShell(seg: string): string[] {
       continue
     }
     if (/\s/.test(c)) {
-      if (tem) out.push(atual)
+      if (tem) out.push({ valor: atual, cru: seg.slice(inicio, i) })
       atual = ''
       tem = false
       continue
@@ -603,22 +614,56 @@ export function palavrasShell(seg: string): string[] {
     atual += c
     tem = true
   }
-  if (tem) out.push(atual)
+  if (tem) out.push({ valor: atual, cru: seg.slice(inicio) })
   return out
+}
+
+/** O texto cru de um argumento sem o par de aspas de fora (`'a|'b'|c'` → `a|'b'|c`). */
+function semAspasDeFora(cru: string): string {
+  const q = cru[0]
+  if ((q === "'" || q === '"') && cru.length >= 2 && cru.endsWith(q)) return cru.slice(1, -1)
+  return cru
 }
 
 const OPCOES_GREP_COM_ARG = new Set(['m', 'A', 'B', 'C', 'd', 'D', 'e', 'f'])
 
 /** Padrões ERE passados a grep (com -E, ou egrep) e literais /.../ de programas awk. */
 export function padroesDoCmd(cmd: string): PadraoDoCmd[] {
-  const out: PadraoDoCmd[] = []
+  return argumentosDePadrao(cmd)
+    .filter((p) => p.ere)
+    .map(({ ferramenta, regex }) => ({ ferramenta, regex }))
+}
+
+/** Um padrão que o cmd passa a grep ou awk, com o que o check 10 precisa saber dele. */
+export interface ArgumentoDePadrao extends PadraoDoCmd {
+  /** O argumento como está escrito no cmd, sem o par de aspas de fora. */
+  cru: string
+  /** Passado a `grep -v`: exclusão de linha. */
+  exclusao: boolean
+  /** ERE (grep -E, egrep, awk): só estes exigem exemplo (regra 1 do 624). */
+  ere: boolean
+}
+
+/**
+ * Todo padrão que o cmd passa a grep (ERE, BRE ou -F) e todo literal /.../ de
+ * awk. Etapa 7d-1b: o check 10 precisa de três coisas que `padroesDoCmd` não
+ * dá — o texto cru (o exemplo pode estar escrito como no cmd), a marca de
+ * exclusão (padrão de `grep -v` não exige exemplo: o filtro de comentário
+ * `grep -vE '^[[:space:]]*(//|/?\*)'` era 12 das 20 mensagens do 10x nos done
+ * do Actus, calibração §4.1) e os padrões não-ERE (um exemplo declarado para
+ * `grep -c 'x'` corresponde a ele, 530[14] do Actus).
+ */
+export function argumentosDePadrao(cmd: string): ArgumentoDePadrao[] {
+  const out: ArgumentoDePadrao[] = []
   for (const seg of segmentarCmd(cmd)) {
-    const ws = palavrasShell(seg)
+    const pal = palavrasShellComCru(seg)
+    const ws = pal.map((w) => w.valor)
+    const cru = (k: number) => semAspasDeFora(pal[k]!.cru)
     for (let i = 0; i < ws.length; i++) {
       const nome = basename(ws[i]!)
       if (nome === 'grep' || nome === 'egrep') {
         let flags = nome === 'egrep' ? 'E' : ''
-        const pads: string[] = []
+        const pads: { regex: string; cru: string }[] = []
         let arquivoDePadrao = false
         let j = i + 1
         for (; j < ws.length; j++) {
@@ -630,7 +675,8 @@ export function padroesDoCmd(cmd: string): PadraoDoCmd[] {
           if (w.startsWith('--')) {
             if (w === '--extended-regexp') flags += 'E'
             else if (w === '--fixed-strings') flags += 'F'
-            else if (w.startsWith('--regexp=')) pads.push(w.slice(9))
+            else if (w === '--invert-match') flags += 'v'
+            else if (w.startsWith('--regexp=')) pads.push({ regex: w.slice(9), cru: w.slice(9) })
             else if (w.startsWith('--file=')) arquivoDePadrao = true
             continue
           }
@@ -639,7 +685,9 @@ export function padroesDoCmd(cmd: string): PadraoDoCmd[] {
               const o = w[k]!
               if (OPCOES_GREP_COM_ARG.has(o)) {
                 const resto = w.slice(k + 1)
-                const arg = resto !== '' ? resto : ws[++j]
+                let arg: { regex: string; cru: string } | undefined
+                if (resto !== '') arg = { regex: resto, cru: resto }
+                else if (j + 1 < ws.length) arg = { regex: ws[++j]!, cru: cru(j) }
                 if (o === 'e' && arg !== undefined) pads.push(arg)
                 if (o === 'f') arquivoDePadrao = true
                 break
@@ -650,10 +698,9 @@ export function padroesDoCmd(cmd: string): PadraoDoCmd[] {
           }
           break
         }
-        if (pads.length === 0 && !arquivoDePadrao && j < ws.length) pads.push(ws[j]!)
-        if (!flags.includes('F') && flags.includes('E')) {
-          for (const p of pads) out.push({ ferramenta: 'grep', regex: p })
-        }
+        if (pads.length === 0 && !arquivoDePadrao && j < ws.length) pads.push({ regex: ws[j]!, cru: cru(j) })
+        const ere = !flags.includes('F') && flags.includes('E')
+        for (const p of pads) out.push({ ferramenta: 'grep', ...p, exclusao: flags.includes('v'), ere })
       } else if (nome === 'awk') {
         let j = i + 1
         for (; j < ws.length; j++) {
@@ -666,7 +713,9 @@ export function padroesDoCmd(cmd: string): PadraoDoCmd[] {
           break
         }
         const prog = ws[j]
-        if (prog !== undefined) for (const r of literaisRegexAwk(prog)) out.push({ ferramenta: 'awk', regex: r })
+        if (prog !== undefined) {
+          for (const r of literaisRegexAwk(prog)) out.push({ ferramenta: 'awk', regex: r, cru: r, exclusao: false, ere: true })
+        }
       }
     }
   }
@@ -774,16 +823,18 @@ export function achadosExemplosRegex(
   const out: AchadoRegex[] = []
   // Tudo que não é `10n` nem `10c` é `10x`: a mesma partição da calibração.
   const msgs = { push: (mensagem: string, regra: AchadoRegex['regra'] = '10x') => out.push({ regra, mensagem }) }
-  const padroes = padroesDoCmd(cmd)
+  const todos = argumentosDePadrao(cmd)
+  const padroes = todos.filter((p) => p.ere)
   for (const p of padroes) {
     if (classeComColcheteEscapado(p.regex)) {
       msgs.push(`regex '${p.regex}' tem \\[ ou \\] dentro de classe [...]: no /usr/bin/grep o ] fecha a classe (caso do 503)`, '10c')
     }
   }
   if (padroes.length === 0 && exemplosCru === undefined) return out
+  const exigem = padroes.filter((p) => !p.exclusao)
   if (!ehArray(exemplosCru) || exemplosCru.length === 0) {
-    if (padroes.length > 0) {
-      msgs.push(`critério passa regex a ${padroes[0]!.ferramenta} e não declara exemplos_regex (lista de {regex, positivo, negativo})`, '10n')
+    if (exigem.length > 0) {
+      msgs.push(`critério passa regex a ${exigem[0]!.ferramenta} e não declara exemplos_regex (lista de {regex, positivo, negativo})`, '10n')
     }
     return out
   }
@@ -799,20 +850,35 @@ export function achadosExemplosRegex(
     }
     exemplos.push(x as unknown as ExemploRegex)
   })
-  for (const p of padroes) {
-    if (!exemplos.some((e) => e.regex === p.regex)) {
+  // O exemplo corresponde a um padrão do cmd se é o padrão como o SHELL o
+  // entrega ao grep/awk, ou o argumento como está ESCRITO entre as aspas de fora
+  // (`['\"]` dentro de aspas duplas, `'a|'b'|c'` concatenado): a segunda forma é
+  // a única que a regra 2 antiga aceitava, e os tickets do 624 em diante a usam
+  // (510b[4], 512b[1], 528[1] do Actus). A prova de positivo e negativo roda
+  // sempre com o padrão que a ferramenta recebe de fato.
+  const padraoDe = (e: ExemploRegex) => todos.find((p) => p.regex === e.regex) ?? todos.find((p) => p.cru === e.regex)
+  for (const p of exigem) {
+    if (!exemplos.some((e) => padraoDe(e) === p)) {
       msgs.push(`padrão '${p.regex}' do cmd (${p.ferramenta}) sem exemplo correspondente em exemplos_regex`)
     }
   }
   for (const e of exemplos) {
-    if (!cmd.includes(e.regex)) msgs.push(`regex de exemplo '${e.regex}' não aparece literal no cmd`)
+    // Regra 2, etapa 7d-1b: o exemplo é comparado com o padrão que o SHELL
+    // entrega ao grep/awk (aspas resolvidas, o mesmo que a regra 3 extrai), não
+    // com o texto cru do cmd. Com `\"perdida\"` no cmd (510b[5] do Actus),
+    // nenhum valor satisfazia as duas regras ao mesmo tempo.
+    const p = padraoDe(e)
+    if (!p) {
+      msgs.push(`regex de exemplo '${e.regex}' não é padrão que o cmd passa ao grep/awk (compare com o padrão já com as aspas resolvidas pelo shell)`)
+    }
     if (classeComColcheteEscapado(e.regex)) {
       msgs.push(`regex de exemplo '${e.regex}' tem \\[ ou \\] dentro de classe [...]`, '10c')
     }
-    const pos = casaExemplo(e, e.positivo, exec)
+    const prova = p ? { ...e, regex: p.regex } : e
+    const pos = casaExemplo(prova, e.positivo, exec)
     if (pos.erro) msgs.push(`regex '${e.regex}' recusada: ${pos.erro}`)
     else if (!pos.casa) msgs.push(`positivo '${e.positivo}' NÃO casa '${e.regex}' (${e.ferramenta ?? 'grep'} ${e.flags ?? '-E'})`)
-    const neg = casaExemplo(e, e.negativo, exec)
+    const neg = casaExemplo(prova, e.negativo, exec)
     if (!neg.erro && neg.casa) msgs.push(`negativo '${e.negativo}' CASA '${e.regex}' (${e.ferramenta ?? 'grep'} ${e.flags ?? '-E'})`)
   }
   return out

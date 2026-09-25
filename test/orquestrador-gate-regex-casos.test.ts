@@ -152,9 +152,11 @@ describe('624 · regras, uma por caso', () => {
     expect(check10(crit(CMD, [])).msgs).toEqual([SEM_EXEMPLO_GREP]);
   });
 
-  it('recusa (regra 2): regex de exemplo que não aparece literal no cmd', () => {
+  // Etapa 7d-1b: mesma recusa, com a mensagem da regra 2 corrigida (o padrão
+  // que o shell entrega ao grep, não o texto cru do cmd).
+  it('recusa (regra 2): regex de exemplo que não é padrão do cmd', () => {
     expect(check10(crit(CMD, [OK, { regex: 'fora', positivo: 'fora', negativo: 'x' }])).msgs).toEqual([
-      "regex de exemplo 'fora' não aparece literal no cmd",
+      "regex de exemplo 'fora' não é padrão que o cmd passa ao grep/awk (compare com o padrão já com as aspas resolvidas pelo shell)",
     ]);
   });
 

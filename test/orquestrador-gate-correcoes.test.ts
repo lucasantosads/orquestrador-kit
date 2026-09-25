@@ -132,3 +132,48 @@ describe('7d1b-3 · check 5: tipo ausente é inferido; cmd vazio vale em critér
     expect(erros(daRegra(v, '5c')).map((x) => x.mensagem)).toContain('cmd vazio');
   });
 });
+
+describe('7d1b-3 · check 10x: exemplo contra o padrão que o shell entrega; grep -v dispensa exemplo', () => {
+  // Os 8 da calibração (0/8/0) mais o 530, que a primeira versão da correção
+  // marcava (exemplo para um grep sem -E).
+  const CASOS_10X = ['471', '471b', '471c', '508', '509', '510b', '512b', '528', '530'];
+
+  it('os done do Actus que o 10x marcava (aspas escapadas, aspas concatenadas, filtro de comentário): nenhum achado 10x', () => {
+    for (const id of CASOS_10X) {
+      expect(daRegra(rodar('Actus', id), '10x').map((x) => `${x.campo} ${x.mensagem}`), id).toEqual([]);
+    }
+  });
+
+  it("510b[5]: o exemplo com \\\"perdida\\\" é o padrão depois das aspas resolvidas, e é aceito", () => {
+    const cr = (caso('Actus', '510b').ticket.criterios_aceite as Record<string, unknown>[])[5]!;
+    expect(String(cr.cmd)).toContain('\\"perdida\\"');
+    expect(daRegra(rodar('Actus', '510b'), '10x').filter((x) => x.campo === 'criterios_aceite[5].exemplos_regex')).toEqual([]);
+  });
+
+  it('exemplo que não é padrão do cmd segue ERRO (a regra 2 do 624 continua valendo)', () => {
+    const v = rodar('Actus', '510b', (t) => {
+      const cr = (t.criterios_aceite as Record<string, unknown>[])[1]!;
+      (cr.exemplos_regex as Record<string, unknown>[]).push({ regex: 'nao-esta-no-cmd', positivo: 'nao-esta-no-cmd', negativo: 'x' });
+    });
+    expect(erros(daRegra(v, '10x')).map((x) => x.mensagem)).toEqual([
+      "regex de exemplo 'nao-esta-no-cmd' não é padrão que o cmd passa ao grep/awk (compare com o padrão já com as aspas resolvidas pelo shell)",
+    ]);
+  });
+
+  it('padrão do grep -v sem exemplo é dispensado; padrão POSITIVO sem exemplo segue acusado', () => {
+    const doCriterio1 = (v: Violacao[]) =>
+      daRegra(v, '10x').filter((x) => x.campo === 'criterios_aceite[1].exemplos_regex').map((x) => x.mensagem);
+    const soPositivo = rodar('Actus', '510b', (t) => {
+      const cr = (t.criterios_aceite as Record<string, unknown>[])[1]!;
+      cr.exemplos_regex = [{ regex: 'em_conversa_apagada', positivo: 'em_conversa_apagada: {}', negativo: 'x' }];
+    });
+    expect(doCriterio1(soPositivo)).toEqual([]);
+    const soExclusao = rodar('Actus', '510b', (t) => {
+      const cr = (t.criterios_aceite as Record<string, unknown>[])[1]!;
+      cr.exemplos_regex = [{ regex: '^[[:space:]]*(//|/?\\*)', positivo: '// x', negativo: 'x' }];
+    });
+    expect(doCriterio1(soExclusao)).toEqual([
+      "padrão 'em_conversa_apagada' do cmd (grep) sem exemplo correspondente em exemplos_regex",
+    ]);
+  });
+});

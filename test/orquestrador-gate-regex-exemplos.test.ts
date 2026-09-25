@@ -110,13 +110,15 @@ describe('624 · o critério "cita arquivo:linha" do 503', () => {
     expect(v).toEqual([`negativo 'scripts/orq:1' CASA '${REGEX_NOVO}' (grep -E)`]);
   });
 
-  it('regra 2: regex de exemplo que não aparece literal no cmd reprova', () => {
+  // Etapa 7d-1b: a regra 2 compara o exemplo com o padrão que o shell entrega
+  // ao grep (não mais com o texto cru do cmd), e a mensagem diz isso.
+  it('regra 2: regex de exemplo que não é padrão do cmd reprova', () => {
     const fx = criarFixture([]);
     ticket503(fx, '907', REGEX_NOVO, [
       { regex: REGEX_NOVO, positivo: POSITIVO_503, negativo: NEGATIVO_503 },
       { regex: 'nao-esta-no-cmd', positivo: 'nao-esta-no-cmd', negativo: 'x' },
     ]);
-    expect(doTicket(fx, '907').some((x) => /não aparece literal no cmd/.test(x.mensagem))).toBe(true);
+    expect(doTicket(fx, '907').some((x) => /'nao-esta-no-cmd' não é padrão que o cmd passa ao grep\/awk/.test(x.mensagem))).toBe(true);
   });
 });
 
