@@ -243,3 +243,23 @@ describe('7d1b-3 · check 6v: só marca o critério que aprovaria uma suíte com
     expect(doCriterio(v, 1).map((x) => /não dá para saber/.test(x.mensagem))).toEqual([true]);
   });
 });
+
+describe('7d1b-3 · check 8 vira o C8: sobreposição sem dependência nem TRANSITIVA', () => {
+  it('CI 240 × 242 (242 depende do 241, que depende do 240): sem achado 8', () => {
+    expect(daRegra(rodar('CI', '240'), '8').map((x) => x.mensagem)).toEqual([]);
+  });
+
+  it('Actus 222 × 211 e Comarka 172 × 175: idem, pelo fecho', () => {
+    expect(daRegra(rodar('Actus', '222'), '8').map((x) => x.mensagem)).toEqual([]);
+    expect(daRegra(rodar('Comarka', '172'), '8').map((x) => x.mensagem)).toEqual([]);
+  });
+
+  it('sem caminho nenhum entre os dois, segue acusado (aviso, nomeando o path comum)', () => {
+    // O 211 alcança o 222 pelo 221 (211 -> 221 -> 222). Com outro id, o 221
+    // passa a depender de um ticket que não é este, e não sobra caminho.
+    const v = rodar('Actus', '222', (t) => (t.id = '299'));
+    const oito = daRegra(v, '8');
+    expect(oito.length).toBeGreaterThan(0);
+    expect(oito.every((x) => x.aviso && /sobrepõe o \d{3}[a-z0-9]* sem dependência declarada entre os dois/.test(x.mensagem))).toBe(true);
+  });
+});

@@ -121,7 +121,7 @@ export const REGRAS: Readonly<Record<string, Regra>> = {
   '6q': { severidade: 'aviso', oque: 'grep -q recebendo pipe', porque: '0/12/83 FP; causal 4 (Actus); o dano é do pipefail do executor' },
   '6b': { severidade: 'aviso', oque: 'objetivo cita caminho fora da allowlist', porque: '55/60/363 FP; causal 1 (488)' },
   '7': { severidade: 'erro', oque: 'dependência é id da fila ou humano:<token> (C7, dependência órfã)', porque: '0/0/0 FP depois de conferir as 19 do snapshot' },
-  '8': { severidade: 'aviso', oque: 'allowlist sobreposta com outro pendente sem dependência', porque: 'CORRIGIR → AVISO: 3/15/119 FP, 0 causal' },
+  '8': { severidade: 'aviso', oque: 'allowlist sobreposta com outro pendente sem dependência, nem transitiva (C8)', porque: 'era 3/15/119 FP só com a dependência direta; com o fecho (C8): 0/14/77 na calibração, 0 causal' },
   '9': { severidade: 'erro', oque: 'contexto_juiz existe na branch alvo e não está na allowlist', porque: '0/0/0 FP (só o Actus usa o campo)' },
   '9w': { severidade: 'aviso', oque: 'contexto_juiz coberto por glob da allowlist', porque: 'o caso do 501: referência que o ticket pode editar' },
   '10n': { severidade: 'aviso', oque: 'critério com regex sem exemplos_regex', porque: '56/45/499 FP, 0 causal; nenhum ticket anterior ao 624 declara exemplos' },
@@ -1187,17 +1187,38 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
   //    entre os dois. A doutrina (passo 5) manda que sobreposição de superfície
   //    vire dependência por ID: dois agentes na mesma linha do mesmo arquivo é
   //    conflito de merge garantido, e o segundo reprova por trabalho do primeiro.
+  //
+  //    Etapa 7d-1b (C8 do comarka-operacional): a dependência vale TRANSITIVA.
+  //    242 depende de 241, que depende de 240: os dois nunca rodam da mesma
+  //    base. Olhar só a direta marcava 3/15/119 done na calibração de 25/09.
   if (pendente && ehArray(t.pathspec_allowlist)) {
     const meus = new Set(t.pathspec_allowlist.map(String))
-    const minhasDeps = ehArray(t.dependencias) ? t.dependencias.map(String) : []
+    const deps = new Map<string, string[]>()
+    for (const f of fila) {
+      const o = f.json
+      if (!o || typeof o.id !== 'string') continue
+      deps.set(o.id, ehArray(o.dependencias) ? o.dependencias.map(String).filter((d) => !d.startsWith('humano:')) : [])
+    }
+    deps.set(id, ehArray(t.dependencias) ? t.dependencias.map(String).filter((d) => !d.startsWith('humano:')) : [])
+    const alcance = (de: string): Set<string> => {
+      const vistos = new Set<string>()
+      const pilha = [...(deps.get(de) ?? [])]
+      while (pilha.length > 0) {
+        const d = pilha.pop()!
+        if (vistos.has(d)) continue
+        vistos.add(d)
+        pilha.push(...(deps.get(d) ?? []))
+      }
+      return vistos
+    }
+    const meuAlcance = alcance(id)
     for (const outro of fila) {
       const o = outro.json
       if (!o || o.status !== 'pendente' || o.id === id || typeof o.id !== 'string') continue
       const dele = ehArray(o.pathspec_allowlist) ? o.pathspec_allowlist.map(String) : []
       const comuns = dele.filter((p) => meus.has(p))
       if (comuns.length === 0) continue
-      const depsDele = ehArray(o.dependencias) ? o.dependencias.map(String) : []
-      if (minhasDeps.includes(o.id) || depsDele.includes(id)) continue
+      if (meuAlcance.has(o.id) || alcance(o.id).has(id)) continue
       achado(
         '8',
         'pathspec_allowlist',
