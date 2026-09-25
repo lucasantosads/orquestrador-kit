@@ -191,6 +191,7 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `PREVOO_NOGO` | `local-loop.sh:prevoo_ou_sai` | `item=cat.0\|cat.1\|cat.6` |
 | `OCIOSO` | `local-loop.sh:drenar` (peça 7a-4) | `pendentes=` e um `<id>=<razão>` por pendente; ver abaixo |
 | `AMBIENTE` | `local-loop.sh:drenar` (peça 7a-8) | `tickets=<id>,<id>` `causa=<normalizada>` (a causa vai até o fim da linha); ver abaixo |
+| `AMBIENTE_ADIAMENTO_DESFEITO` | `local-loop.sh:adiamentos_ambiente_desfazer` (porte-actus j2) | `adiamentos_ambiente=<antes>-><depois>` — a drenagem terminou em `AMBIENTE` e o `adiamentos_ambiente` que o executor somou no ticket nesta drenagem volta ao valor de antes (commitado); um por ticket ainda pendente cujo valor mudou |
 | `PAUSA` | `lib.sh:pausa_registrar`, chamada por `orq pausar`, pelo `orq-pause.sh` (514, §11) e pelo painel (peças K12-C, K12-F) | `motivo=<token>` `por=terminal\|painel` |
 | `RETOMADA` | `lib.sh:retomada_registrar`, chamada por `orq retomar` e pelo painel (peças K12-C, K12-F) | `por=terminal\|painel` `dur=<N>min` |
 

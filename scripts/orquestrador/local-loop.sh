@@ -318,6 +318,30 @@ $1
 EOF
 }
 
+# adiamentos_ambiente_desfazer <backup> -> o mesmo para o `adiamentos_ambiente`
+# que o executor grava no JSON do ticket (teto de 3, porte-actus d). Backup:
+# uma linha "<id><TAB><arquivo><TAB><valor anterior>" por ticket chamado nesta
+# drenagem. Sem isto a absolvição da 7a-8 desfazia o `.adiamentos` e deixava
+# este avançar: dois tickets adiados por 'ambiente' iam a bloqueado pelo teto
+# no 3º disparo, com o loop dizendo AMBIENTE nos dois primeiros (porte-actus
+# j2). Só mexe em ticket ainda pendente e cujo valor mudou; cada desfeito vai
+# para a trilha com o de/para, e o ticket é commitado como o executor faz.
+adiamentos_ambiente_desfazer() {
+  local bid bfile bval atual
+  while IFS=$'\t' read -r bid bfile bval <&3; do
+    [ -n "$bid" ] && [ -f "$bfile" ] || continue
+    [ "$(ticket_field "$bfile" '.status')" = pendente ] || continue
+    atual="$(ticket_adiamentos_ambiente "$bfile")"
+    [ "$atual" != "$bval" ] || continue
+    if [ "$bval" = 0 ]; then ticket_zera_adiamentos_ambiente "$bfile"
+    else ticket_set_adiamentos_ambiente "$bfile" "$bval"; fi
+    ticket_commit "$bfile" "fila: $bid adiamentos_ambiente $atual -> $bval (drenagem terminou em AMBIENTE)"
+    event "$bid" AMBIENTE_ADIAMENTO_DESFEITO "adiamentos_ambiente=$atual->$bval"
+  done 3<<EOF
+$1
+EOF
+}
+
 # --- OCIOSO QUE DIZ POR QUÊ (peça 7a-4) --------------------------------------
 # O CI ficou 12 dias parado com 4 pendentes presos atrás de dependências
 # bloqueadas, e a única coisa escrita, a cada disparo, era "sem ticket
@@ -404,6 +428,9 @@ drenar() {
   # Peça 7b-3: o mesmo par (backup, bloqueios que esperam o fim) para o
   # contador de adiamentos.
   local ad_backup='' a_bloquear_ad='' ad
+  # porte-actus j2: o `adiamentos_ambiente` do JSON de cada ticket chamado,
+  # antes da chamada, para a absolvição por AMBIENTE devolver.
+  local amb_backup=''
   local bid bfile bsp blim bcausa
   stwt="$(ensure_staging_worktree)"
   t0="$(date +%s)"
@@ -463,6 +490,7 @@ drenar() {
     # vai para o log como sempre (tee) e fica numa cópia para a causa.
     ev_antes="$(trilha_linhas)"; sha_antes="$(staging_sha)"
     nota_antes="$(ticket_field "$prox" '.notas_status // ""')"
+    amb_backup="$amb_backup$prox_id"$'\t'"$prox"$'\t'"$(ticket_adiamentos_ambiente "$prox")"$'\n'
     exe_out="$(mktemp 2>/dev/null || echo "${TMPDIR:-/tmp}/orq-executor-saida.$$")"
     run_executor_once --ticket "$prox" 2>&1 | tee "$exe_out" && exe_rc=0 || exe_rc="${PIPESTATUS[0]}"
     if [ "$exe_rc" = 0 ]; then say "  executor rc=0"; else say "  executor rc=$exe_rc (não fatal; reavalia a fila)"; fi
@@ -547,7 +575,8 @@ drenar() {
         if [ -n "$outro" ]; then
           sem_progresso_desfazer "$sp_backup"
           contador_desfazer "$ad_backup" .adiamentos
-          sp_backup=''; a_bloquear=''; sem_progresso=0; ad_backup=''; a_bloquear_ad=''
+          adiamentos_ambiente_desfazer "$amb_backup"
+          sp_backup=''; a_bloquear=''; sem_progresso=0; ad_backup=''; a_bloquear_ad=''; amb_backup=''
           tentados="$tentados$prox_id "
           [ "$adiado" = 0 ] || adiados=$((adiados + 1))
           event '---' AMBIENTE "tickets=$outro,$prox_id" "causa=$norm"
