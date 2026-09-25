@@ -107,8 +107,8 @@ export const REGRAS: Readonly<Record<string, Regra>> = {
   '2c': { severidade: 'aviso', oque: 'criterios_aceite ausente ou vazio', porque: '0/0/1 FP (Comarka 346a, done sem critério: o executor roda e o juiz decide)' },
   '3': { severidade: 'erro', oque: 'id no formato e igual ao prefixo do arquivo', porque: 'CORRIGIR: 0/0/23 FP por ids de fatiamento (407a0)' },
   '4': { severidade: 'erro', oque: 'status no vocabulário', porque: '0/0/0 FP' },
-  '5t': { severidade: 'erro', oque: 'tipo do critério', porque: 'CORRIGIR: 4/48/535 FP por tipo ausente, todo inferível' },
-  '5c': { severidade: 'erro', oque: 'cmd do critério não vazio', porque: 'CORRIGIR: 0/0/192 FP por critério avaliador sem cmd' },
+  '5t': { severidade: 'erro', oque: 'tipo do critério, quando presente, no vocabulário', porque: 'era 4/48/535 FP por tipo ausente, todo inferível; inferido: 0/0/0' },
+  '5c': { severidade: 'erro', oque: 'cmd não vazio em critério que o executor roda', porque: 'era 0/0/192 FP por espera "avaliador" sem cmd; aceito: 0/0/0' },
   '5e': { severidade: 'erro', oque: 'espera do critério não vazia', porque: '0/0/0 FP' },
   '6a': { severidade: 'erro', oque: 'padrão de proibido_no_cmd sem linha própria', porque: 'crase, eval, sudo, curl, wget: 0/0/0 FP; regra de segurança' },
   '6a:$(': { severidade: 'off', oque: "'$(' fora da isenção do 1º segmento", porque: 'DESLIGAR: 54/7/74 FP, 0 causal; forma dominante de comparação numérica' },
@@ -948,11 +948,20 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
     t.criterios_aceite.forEach((c, i) => {
       const campo = `criterios_aceite[${i}]`
       const cr = (c ?? {}) as Cru
-      const tipo = typeof cr.tipo === 'string' ? cr.tipo : ''
-      if (!(TIPOS_CRITERIO as readonly string[]).includes(tipo)) {
-        achado('5t', campo, `tipo '${tipo}' inválido (${TIPOS_CRITERIO.join(', ')})`)
+      // Etapa 7d-1b: `tipo` AUSENTE é inferido, como o executor já faz ao ler
+      // (`espera: "avaliador"` é o critério qualitativo; o resto é alvo). Cobrar
+      // o campo marcava 4/48/535 done na calibração de 25/09. Presente, tem de
+      // estar no vocabulário.
+      const avaliador = cr.espera === 'avaliador'
+      if (cr.tipo !== undefined && cr.tipo !== null) {
+        const tipo = typeof cr.tipo === 'string' ? cr.tipo : ''
+        if (!(TIPOS_CRITERIO as readonly string[]).includes(tipo)) {
+          achado('5t', campo, `tipo '${tipo}' inválido (${TIPOS_CRITERIO.join(', ')})`)
+        }
       }
-      if (vazio(cr.cmd)) achado('5c', campo, 'cmd vazio')
+      // `cmd` vazio só vale onde o executor não roda o critério: `espera:
+      // "avaliador"` (run_criterios pula). Eram 192 done do Comarka.
+      if (vazio(cr.cmd) && !avaliador) achado('5c', campo, 'cmd vazio')
       if (vazio(cr.espera)) achado('5e', campo, 'espera vazia')
 
       if (typeof cr.cmd === 'string' && cr.cmd.trim() !== '') {

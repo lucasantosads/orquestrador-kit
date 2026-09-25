@@ -104,3 +104,31 @@ describe('7d1b-3 · check 3: id com sufixo de fatiamento (407a0, 315b1b)', () =>
     expect(daRegra(rodar('Comarka', '346a-lib-periodo-compartilhada'), '3').map((x) => x.campo)).toContain('id');
   });
 });
+
+describe('7d1b-3 · check 5: tipo ausente é inferido; cmd vazio vale em critério avaliador', () => {
+  it('Actus 110 e Comarka 003 (critérios sem tipo): nenhum achado de tipo', () => {
+    for (const [r, id] of [['Actus', '110'], ['Comarka', '003']] as const) {
+      expect(daRegra(rodar(r, id), '5t').map((x) => x.mensagem), `${r} ${id}`).toEqual([]);
+    }
+  });
+
+  it('Comarka 296b (espera "avaliador" sem cmd, o critério qualitativo): nenhum achado de cmd vazio', () => {
+    const t = caso('Comarka', '296b').ticket;
+    const crs = t.criterios_aceite as Record<string, unknown>[];
+    expect(crs.some((c) => c.espera === 'avaliador' && !c.cmd)).toBe(true);
+    expect(daRegra(rodar('Comarka', '296b'), '5c').map((x) => x.campo)).toEqual([]);
+  });
+
+  it('tipo PRESENTE fora do vocabulário segue ERRO', () => {
+    const v = rodar('Comarka', '003', (t) => ((t.criterios_aceite as Record<string, unknown>[])[0]!.tipo = 'smoke'));
+    expect(erros(daRegra(v, '5t')).map((x) => x.mensagem)).toEqual(["tipo 'smoke' inválido (alvo, guarda, avaliador)"]);
+  });
+
+  it('cmd vazio em critério que o executor RODA (espera que não é avaliador) segue ERRO', () => {
+    const v = rodar('Comarka', '296b', (t) => {
+      const c = (t.criterios_aceite as Record<string, unknown>[]).find((x) => x.espera === 'avaliador')!;
+      c.espera = 'ok';
+    });
+    expect(erros(daRegra(v, '5c')).map((x) => x.mensagem)).toContain('cmd vazio');
+  });
+});
