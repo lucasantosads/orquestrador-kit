@@ -720,32 +720,47 @@ Actus vendorizou em `0bc0bf2`). Onde o kit já tinha peça própria, ficou a do 
 do Actus passou a valer sobre ela. Decisões do Lucas de 24/09/2026. O contrato está no
 CONTRATO §11. Uma peça por commit, suíte inteira verde em cada um.
 
-- **a** `d5efe1a`: gate de ticket reprova `| grep -q` em pipe e leitura textual do vitest;
+- **a** `017e3cc`: gate de ticket reprova `| grep -q` em pipe e leitura textual do vitest;
   AVISO de caminho fora da allowlist (aab3f4e, a15daca, c7e81bc).
-- **b** `9eebef1`: o gate vira pré-voo do `drive_ticket` (c404986), com a chave nova
+- **b** `89e0afc`: o gate vira pré-voo do `drive_ticket` (c404986), com a chave nova
   `gate_ticket.modo_pre_voo` = `aviso` (template e `--migrar`) ou `bloqueia`.
-- **c** `2652000`: `contexto_juiz` (622).
-- **d** `69e1e9b`: causa de infra `ambiente` (8ª causa, "falha de ambiente da worktree")
+- **c** `1259eca`: `contexto_juiz` (622).
+- **d** `8557f7a`: causa de infra `ambiente` (8ª causa, "falha de ambiente da worktree")
   só quando o harness não executou o comando do critério; teto de 3 adiamentos por
   `ambiente`; cooldown e tentativas persistidas ficam os da 7b-2 e 7b-4, com os testes do
   Actus (08afb3e, 43fccdd, 9ecd02b, 625, ae29dcd, 629, 9e109cb, f3aaa89).
-- **e** `7aa291d`: motivo do juiz no retry e `retry_sem_mudanca` (623, só com o agente
+- **e** `ab1d848`: motivo do juiz no retry e `retry_sem_mudanca` (623, só com o agente
   saído rc 0 — o Actus tem o defeito); gates de fonte única (626), com a correção de
   marcação: gate pulado depois de falha não é ausente.
-- **f** `4cd219b`: JSON quebrado falha alto (630), `base_vermelha` (632), `arquivo_solto`
+- **f** `262feea`: JSON quebrado falha alto (630), `base_vermelha` (632), `arquivo_solto`
   (631, regra no template, na fixture, na config-tabela e no `--migrar`); a 8ª causa também
   no `--migrar` (`ITENS_NOVOS`: item novo no fim de uma lista que o repo já tem). A entrada
   do caso C do `test-reprovado-sub.sh` passou a ter o teste vermelho na allowlist do ticket.
-- **j** `411b88f`: timeout do agente falso proporcional à carga no `test-reprovado-sub.sh`
+- **j** `886b656`: timeout do agente falso proporcional à carga no `test-reprovado-sub.sh`
   e no `test-reabertura-humana.sh` (a falha intermitente da linha de base desta rodada).
-- **g** `fbbd6dd`: `orq-pause.sh` trata as duas sentinelas e grava na trilha; STATUS nomeia
+- **g** `bea11e7`: `orq-pause.sh` trata as duas sentinelas e grava na trilha; STATUS nomeia
   a sentinela ativa (514). `pausa_conteudo` separa a data da pausa do texto do STATUS.
-- **h** `ac10faa`: regra contra evidência fabricada no prompt (627), definições dos
+- **h** `957c178`: regra contra evidência fabricada no prompt (627), definições dos
   helpers para o juiz (628), `exemplos_regex` no gate (624).
-- **i** (este commit): CONTRATO §11, dicionário do ticket (`contexto_juiz`,
+- **i** `f4605b7`: CONTRATO §11, dicionário do ticket (`contexto_juiz`,
   `exemplos_regex`), e `TESTES_HARNESS` com os 13 testes do porte (lista aprovada pelo
   Lucas); o `fixture/` passa a ter a 8ª causa e a regra `arquivo_solto`, como um repo
   migrado.
+- **j2** `ea28962`: AMBIENTE absolvido desfaz também o `adiamentos_ambiente` do JSON do
+  ticket (a peça d o grava; a regra de AMBIENTE só desfazia o `.adiamentos` do RUNS_BASE).
+  Sem isso, dois tickets adiados por `ambiente` na mesma causa eram bloqueados pelo teto
+  no 3º disparo, antes da régua. Cada devolução commita o ticket e grava
+  `AMBIENTE_ADIAMENTO_DESFEITO` na trilha (vocabulário do CONTRATO §4.1). Teste:
+  `test-ambiente.sh`, caso 5.
+- **k** `6366b55`: teste do 627, que não tinha nenhum. `orquestrador-prompt-evidencia.test.ts`
+  roda o `run_attempt` com o `claude_run` interceptado e cobra o bloco no `prompt.txt`
+  (posição, as quatro regras, presença no retry). Sem o bloco, 6 de 6 falham.
+- **l** `dce7f9e`: o check 10 (624) caso a caso, em `orquestrador-gate-regex-casos.test.ts`,
+  com a lista exata de mensagens de cada caso aceito e recusado, e casos reais do
+  conteudos-infinitos (012, 015, 002) e do actus-saas (631) na fixture
+  `test/fixtures/gate-regex-casos-reais/`. Importa só o que o gate exportava antes do
+  624: sem o check 10, 13 de 18 falham por asserção, não por import. Os testes de k e l
+  não entraram no `TESTES_HARNESS` do `vendorizado.sh`.
 
 Testes do kit ajustados, sem afrouxar asserção: arames de contagem (chamadas `ORQ_TSX`,
 desfechos nomeados 9 → 13, causas e rótulos 7 → 8), o formato do TOTAL do `--relatorio`,
