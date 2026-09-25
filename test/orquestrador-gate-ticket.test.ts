@@ -157,26 +157,28 @@ describe('check 2 · campos obrigatórios (só para pendente)', () => {
     }
   });
 
-  it('`risco` basta EXISTIR: vazio passa (quem preenche é o passo 6), lixo não', () => {
+  // Etapa 7d-1b: `risco` e `bloco` viraram OPCIONAIS (a calibração de 25/09
+  // mediu 609 done sem risco e 461 sem bloco; o executor não lê nenhum dos
+  // dois). O caso "ausente" passou de violação a nenhuma violação; vazio e lixo
+  // seguem como eram.
+  it('`risco` é opcional: ausente e vazio passam, lixo não', () => {
     const vazio = criarFila([pendenteBom({ id: '901', risco: '' })]);
     expect(violacoes(vazio, '901')).toEqual([]);
     const ausente = criarFila([pendenteBom({ id: '902', risco: undefined })]);
-    expect(violacoes(ausente, '902')).toContain('risco campo obrigatório de ticket pendente ausente');
+    expect(violacoes(ausente, '902')).toEqual([]);
     const lixo = criarFila([pendenteBom({ id: '903', risco: 'medio' })]);
     expect(violacoes(lixo, '903')[0]).toMatch(/^risco 'medio' não é classe de risco/);
   });
 
-  it('a lista de campos obrigatórios é a do contrato, item a item', () => {
+  it('a lista de campos obrigatórios é a do contrato, item a item (sem bloco e sem risco desde a 7d-1b)', () => {
     expect([...CAMPOS_PENDENTE]).toEqual([
       'id',
       'slug',
-      'bloco',
       'objetivo',
       'pathspec_allowlist',
       'dependencias',
       'criterios_aceite',
       'status',
-      'risco',
     ]);
   });
 });

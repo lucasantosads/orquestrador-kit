@@ -67,6 +67,7 @@ describe('7d1b-2 · a tabela única', () => {
     expect(sev).toEqual({
       '1': 'erro',
       '2': 'erro',
+      '2c': 'aviso',
       '3': 'erro',
       '4': 'erro',
       '5t': 'erro',

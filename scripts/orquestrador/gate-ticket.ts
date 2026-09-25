@@ -44,17 +44,24 @@ export const STATUS_VALIDOS = [
  */
 export const STATUS_TERMINAIS = ['done', 'obsoleto', 'bloqueado'] as const
 
-/** Campos que um ticket `pendente` PRECISA ter para o executor poder lê-lo. */
+/**
+ * Campos que um ticket `pendente` PRECISA ter para o executor poder lê-lo.
+ *
+ * Etapa 7d-1b: `bloco` e `risco` saíram. Nenhum dos dois é lido pelo executor,
+ * e cobrá-los marcava 4/48/557 done (CI/Actus/Comarka) na calibração de 25/09
+ * — 609 tickets sem `risco`, 461 sem `bloco`. `risco` presente continua tendo de
+ * ser classe de risco. `criterios_aceite` segue na lista, mas ausente ou vazio é
+ * a regra `2c` (aviso): o executor roda ticket sem critério (o juiz decide), e o
+ * Comarka tem um done assim (346a).
+ */
 export const CAMPOS_PENDENTE = [
   'id',
   'slug',
-  'bloco',
   'objetivo',
   'pathspec_allowlist',
   'dependencias',
   'criterios_aceite',
   'status',
-  'risco',
 ] as const
 
 export const TIPOS_CRITERIO = ['alvo', 'guarda', 'avaliador'] as const
@@ -91,7 +98,8 @@ export interface Regra {
  */
 export const REGRAS: Readonly<Record<string, Regra>> = {
   '1': { severidade: 'erro', oque: 'bloco ```json parseável', porque: '0/0/0 FP; sem JSON o executor não lê o ticket' },
-  '2': { severidade: 'erro', oque: 'campo obrigatório de pendente', porque: 'CORRIGIR: 4/48/557 FP por risco e bloco, que o executor não lê' },
+  '2': { severidade: 'erro', oque: 'campo obrigatório de pendente (risco, se presente, é classe de risco)', porque: 'era 4/48/557 FP por risco e bloco, que o executor não lê; sem os dois: 0/0/0' },
+  '2c': { severidade: 'aviso', oque: 'criterios_aceite ausente ou vazio', porque: '0/0/1 FP (Comarka 346a, done sem critério: o executor roda e o juiz decide)' },
   '3': { severidade: 'erro', oque: 'id no formato e igual ao prefixo do arquivo', porque: 'CORRIGIR: 0/0/23 FP por ids de fatiamento (407a0)' },
   '4': { severidade: 'erro', oque: 'status no vocabulário', porque: '0/0/0 FP' },
   '5t': { severidade: 'erro', oque: 'tipo do critério', porque: 'CORRIGIR: 4/48/535 FP por tipo ausente, todo inferível' },
@@ -901,19 +909,16 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
         }
         continue
       }
-      // `risco` também basta EXISTIR: quem o preenche é o PASSO 6 do gate
-      // (classe de risco), que fica de fora desta peça. Os 7 pendentes de hoje o
-      // trazem vazio, e exigir valor aqui seria o gate reprovando ticket por não
-      // ter feito o que o próprio gate ainda não faz.
-      if (campo === 'risco') {
-        if (t.risco === undefined || t.risco === null) {
-          achado('2', campo, 'campo obrigatório de ticket pendente ausente')
-        } else if (typeof t.risco === 'string' && t.risco !== '' && t.risco !== 'baixo' && t.risco !== 'alto') {
-          achado('2', campo, `'${t.risco}' não é classe de risco (baixo, alto, ou vazio até o passo 6 classificar)`)
-        }
+      if (campo === 'criterios_aceite') {
+        if (vazio(t[campo])) achado('2c', campo, 'campo obrigatório de ticket pendente ausente ou vazio')
         continue
       }
       if (vazio(t[campo])) achado('2', campo, 'campo obrigatório de ticket pendente ausente ou vazio')
+    }
+    // `risco` é opcional (etapa 7d-1b). Presente, vale o vocabulário: vazio até
+    // o PASSO 6 do gate classificar, depois baixo ou alto.
+    if (typeof t.risco === 'string' && t.risco !== '' && t.risco !== 'baixo' && t.risco !== 'alto') {
+      achado('2', 'risco', `'${t.risco}' não é classe de risco (baixo, alto, ou vazio até o passo 6 classificar)`)
     }
   }
 
