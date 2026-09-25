@@ -68,7 +68,8 @@ describe('7d1b-2 · a tabela única', () => {
       '1': 'erro',
       '2': 'erro',
       '2c': 'aviso',
-      '3': 'erro',
+      // 7d1b-3h: a correção do id deixou 1 FP (346a-lib-periodo-compartilhada).
+      '3': 'aviso',
       '4': 'erro',
       '5t': 'erro',
       '5c': 'erro',

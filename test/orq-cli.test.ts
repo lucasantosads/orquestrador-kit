@@ -346,10 +346,13 @@ describe('orq validar — o gate de ticket, com o rc repassado', () => {
   });
 
   it('ticket torto: rc 1, e a linha nomeia arquivo e campo', () => {
-    const raiz = criarFixture([{ id: '901', slug: 'da-vez', status: 'pendente' }]);
+    // Etapa 7d-1b: bloco e risco deixaram de ser obrigatórios (calibração de
+    // 25/09), e eram eles que tornavam torto este ticket (a fixture preenche o
+    // resto). O torto agora é o objetivo vazio, campo que o executor lê.
+    const raiz = criarFixture([{ id: '901', slug: 'da-vez', status: 'pendente', objetivo: '' }]);
     const r = orq(raiz, 'validar', '--pendentes');
     expect(r.rc).toBe(1);
-    expect(r.out).toMatch(/901-da-vez\.md:(bloco|risco) campo obrigatório/);
+    expect(r.out).toMatch(/901-da-vez\.md:objetivo campo obrigatório/);
   });
 
   it('--relatorio sai 0 mesmo com violação (é o modo de olhar, não de barrar)', () => {

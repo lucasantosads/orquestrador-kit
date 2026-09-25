@@ -106,7 +106,7 @@ export const REGRAS: Readonly<Record<string, Regra>> = {
   '1': { severidade: 'erro', oque: 'bloco ```json parseável', porque: '0/0/0 FP; sem JSON o executor não lê o ticket' },
   '2': { severidade: 'erro', oque: 'campo obrigatório de pendente (risco, se presente, é classe de risco)', porque: 'era 4/48/557 FP por risco e bloco, que o executor não lê; sem os dois: 0/0/0' },
   '2c': { severidade: 'aviso', oque: 'criterios_aceite ausente ou vazio', porque: '0/0/1 FP (Comarka 346a, done sem critério: o executor roda e o juiz decide)' },
-  '3': { severidade: 'erro', oque: 'id no formato e igual ao prefixo do arquivo', porque: 'CORRIGIR: 0/0/23 FP por ids de fatiamento (407a0)' },
+  '3': { severidade: 'aviso', oque: 'id no formato e igual ao prefixo do arquivo', porque: 'era 0/0/23 FP por ids de fatiamento (407a0); corrigida: 0/0/1 (346a-lib-periodo-compartilhada, id com o slug colado, que rodou e fechou) — com FP, não é ERRO' },
   '4': { severidade: 'erro', oque: 'status no vocabulário', porque: '0/0/0 FP' },
   '5t': { severidade: 'erro', oque: 'tipo do critério, quando presente, no vocabulário', porque: 'era 4/48/535 FP por tipo ausente, todo inferível; inferido: 0/0/0' },
   '5c': { severidade: 'erro', oque: 'cmd não vazio em critério que o executor roda', porque: 'era 0/0/192 FP por espera "avaliador" sem cmd; aceito: 0/0/0' },
