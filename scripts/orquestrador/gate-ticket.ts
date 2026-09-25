@@ -115,7 +115,7 @@ export const REGRAS: Readonly<Record<string, Regra>> = {
   '6a:rm ': { severidade: 'aviso', oque: "'rm ' no cmd", porque: '0/13/20 FP (rm -rf .next antes do build), 0 causal' },
   '6a:bash': { severidade: 'aviso', oque: "'bash' no cmd", porque: '0/1/6 FP, 0 causal' },
   '6a:sh -c': { severidade: 'aviso', oque: "'sh -c' no cmd", porque: '0/0/1 FP, 0 causal' },
-  '6r': { severidade: 'aviso', oque: 'redirecionamento que escreve arquivo', porque: 'CORRIGIR → AVISO: 0/3/48 FP, 0 causal' },
+  '6r': { severidade: 'aviso', oque: 'redirecionamento que escreve arquivo da worktree', porque: 'era 0/3/48 FP (build para /tmp, `)` lido como alvo); corrigida: 0/0/1 (615, que sobrescreve arquivo do repo)' },
   '6v': { severidade: 'aviso', oque: 'saída textual do vitest em pipe', porque: 'CORRIGIR → AVISO: 53/34/272 FP; causal 6, nunca chega a zero FP' },
   '6q': { severidade: 'aviso', oque: 'grep -q recebendo pipe', porque: '0/12/83 FP; causal 4 (Actus); o dano é do pipefail do executor' },
   '6b': { severidade: 'aviso', oque: 'objetivo cita caminho fora da allowlist', porque: '55/60/363 FP; causal 1 (488)' },
@@ -312,12 +312,17 @@ export function segmentarCmd(cmd: string): string[] {
 }
 
 /**
- * Redirecionamentos INÓCUOS, e só eles: `2>&1`, `>/dev/null`, `2>/dev/null`.
- * Qualquer `>` ou `>>` para arquivo real reprova SEMPRE — inclusive dentro de
- * prefixo permitido. Critério de aceite que escreve arquivo deixou de ser
- * medição e virou efeito colateral.
+ * Redirecionamentos INÓCUOS, e só eles: `2>&1`, `>/dev/null`, `2>/dev/null` e
+ * arquivo em `/tmp/`. Qualquer `>` ou `>>` para arquivo da worktree reprova
+ * SEMPRE — inclusive dentro de prefixo permitido. Critério de aceite que
+ * escreve arquivo do repo deixou de ser medição e virou efeito colateral.
+ *
+ * Etapa 7d-1b (calibração de 25/09, 0/3/48 FP): `npm run build >
+ * /tmp/build_<id>.log` escreve FORA da worktree e era 49 dos 51 disparos; e o
+ * alvo parava só em espaço, então `2>/dev/null)` dentro de `$( )` virava o
+ * arquivo `/dev/null)`. O `)` agora fecha o alvo.
  */
-const RE_REDIR = /(\d?)(>>?)\s*(&\d|[^\s;|&]*)/g
+const RE_REDIR = /(\d?)(>>?)\s*(&\d|[^\s;|&)]*)/g
 
 export function redirecionamentosProibidos(segmentoVisivel: string): string[] {
   const ruins: string[] = []
@@ -327,6 +332,7 @@ export function redirecionamentosProibidos(segmentoVisivel: string): string[] {
     const seta = m[2]!
     const alvo = m[3] ?? ''
     if (seta === '>' && (alvo === '/dev/null' || /^&\d$/.test(alvo))) continue
+    if (/^\/tmp\/[^/]/.test(alvo)) continue
     ruins.push(`${m[1] ?? ''}${seta}${alvo}`)
   }
   return ruins
@@ -483,7 +489,7 @@ export function checarCmd(cmd: string, cfg: GateCfg): AchadoCmd[] {
 
     for (const r of redirecionamentosProibidos(visivel)) {
       achados.push({
-        mensagem: `redirecionamento '${r}' escreve arquivo (só 2>&1, >/dev/null e 2>/dev/null passam) — cmd: ${cmd}`,
+        mensagem: `redirecionamento '${r}' escreve arquivo (só 2>&1, >/dev/null, 2>/dev/null e /tmp/* passam) — cmd: ${cmd}`,
         regra: '6r',
       })
     }

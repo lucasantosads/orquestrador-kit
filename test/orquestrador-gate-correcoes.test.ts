@@ -177,3 +177,32 @@ describe('7d1b-3 · check 10x: exemplo contra o padrão que o shell entrega; gre
     ]);
   });
 });
+
+describe('7d1b-3 · check 6r: /tmp é fora da worktree; o `)` fecha o alvo do redirecionamento', () => {
+  it('Comarka 202 e Actus 418 (npm run build > /tmp/build_<id>.log): nenhum achado 6r', () => {
+    for (const [r, id] of [['Comarka', '202'], ['Actus', '418']] as const) {
+      expect(daRegra(rodar(r, id), '6r').map((x) => x.mensagem), `${r} ${id}`).toEqual([]);
+    }
+  });
+
+  it("Comarka 543 (`2>/dev/null)` dentro de `$( )`): o alvo é /dev/null, não '/dev/null)'", () => {
+    expect(daRegra(rodar('Comarka', '543'), '6r').map((x) => x.mensagem)).toEqual([]);
+    expect(daRegra(rodar('Comarka', '522'), '6r').map((x) => x.mensagem)).toEqual([]);
+  });
+
+  it('Comarka 615 (`git show <sha>:"$f" > "$f"`, sobrescreve arquivo do repo) segue acusado', () => {
+    expect(daRegra(rodar('Comarka', '615'), '6r').length).toBeGreaterThan(0);
+  });
+
+  it('redirecionamento para arquivo da worktree segue acusado, dentro ou fora de $( )', () => {
+    const v = rodar('Comarka', '202', (t) => {
+      const cr = t.criterios_aceite as Record<string, unknown>[];
+      cr.push({ tipo: 'alvo', descricao: 'x', cmd: 'npm run build > build.log 2>&1 && echo ok', espera: 'ok' });
+      cr.push({ tipo: 'alvo', descricao: 'y', cmd: 'n=$(grep -c x src/a.ts 2>erro.txt); echo $n', espera: '1' });
+    });
+    expect(daRegra(v, '6r').map((x) => x.mensagem.split(' — ')[0])).toEqual([
+      "redirecionamento '>build.log' escreve arquivo (só 2>&1, >/dev/null, 2>/dev/null e /tmp/* passam)",
+      "redirecionamento '2>erro.txt' escreve arquivo (só 2>&1, >/dev/null, 2>/dev/null e /tmp/* passam)",
+    ]);
+  });
+});
