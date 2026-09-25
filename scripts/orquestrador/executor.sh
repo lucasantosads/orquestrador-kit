@@ -459,7 +459,11 @@ run_criterios() {
     # Ticket 625: o rc do COMANDO do critério agora é guardado (antes o pipe com
     # strip_ansi e o `|| true` o descartavam). A saída comparada é a mesma.
     tmp_out="$(mktemp)"; rc_cmd=0
-    ( cd "$wt" && export BASE_REF="$CFG_BRANCH_ALVO" NO_COLOR=1 && eval "$cmd" ) > "$tmp_out" 2>&1 || rc_cmd=$?
+    # Etapa 7d-1b: FORCE_COLOR=0 junto do NO_COLOR=1. O vitest (tinyrainbow)
+    # obedece NO_COLOR; quem segue supports-color/chalk ignora NO_COLOR e só
+    # desliga com FORCE_COLOR=0. Os dois, sempre: a cor entra no pipeline do
+    # critério antes do strip_ansi, que só limpa o resultado final.
+    ( cd "$wt" && export BASE_REF="$CFG_BRANCH_ALVO" NO_COLOR=1 FORCE_COLOR=0 && eval "$cmd" ) > "$tmp_out" 2>&1 || rc_cmd=$?
     out="$(strip_ansi < "$tmp_out" || true)"; rm -f "$tmp_out"
     printf '### %s\ncmd: %s\nespera: %s\nsaida: %s\n\n' "$desc" "$cmd" "$esp" "$out" >> "$rundir/criterios.txt"
     if criterio_match "$out" "$esp"; then
@@ -1040,7 +1044,11 @@ run_attempt() {
   fase gates
   # Ticket 626: executa NA worktree, lê o config da MAIN (fonte única, a mesma
   # de papel_marca, decisao-cli.ts e juiz.ts).
-  "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/gates.ts" --run-cli "$wt" --config "$MAIN_CHECKOUT/docs/fila/000-config.json" > "$rundir/gates.txt" 2>&1 || gates_rc=$?
+  # Etapa 7d-1b: os gates rodam SEM COR, como os critérios. Herdavam o ambiente
+  # de quem chamou o executor, e com FORCE_COLOR ou CI nele o vitest colore o
+  # placar ("Tests \e[22m \e[1m\e[32m2 passed"): gate que lê o placar com grep
+  # reprovava com a suíte verde (test-sem-cor.sh).
+  NO_COLOR=1 FORCE_COLOR=0 "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/gates.ts" --run-cli "$wt" --config "$MAIN_CHECKOUT/docs/fila/000-config.json" > "$rundir/gates.txt" 2>&1 || gates_rc=$?
   log "  gates: $([ "$gates_rc" = 0 ] && echo APROVADO || echo "REPROVADO (rc=$gates_rc)")"
   grep -qi 'reexecutar' "$rundir/gates.txt" && log "  gates: interrompidos — conjunto não vale parcialmente"
   # Peça 7b-2: o PAPEL do gate que reprovou vai para o decisao.ts, que separa
