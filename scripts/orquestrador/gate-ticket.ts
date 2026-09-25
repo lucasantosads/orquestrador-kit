@@ -22,7 +22,7 @@
 import { spawnSync } from 'node:child_process'
 import { readFileSync, readdirSync, existsSync, realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { basename, dirname, join, resolve } from 'node:path'
+import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { globToRegExp } from './enforcement-core.js'
 
@@ -126,6 +126,14 @@ export const REGRAS: Readonly<Record<string, Regra>> = {
   '9w': { severidade: 'aviso', oque: 'contexto_juiz coberto por glob da allowlist', porque: 'o caso do 501: referência que o ticket pode editar' },
   '10n': { severidade: 'aviso', oque: 'critério com regex sem exemplos_regex', porque: '56/45/499 FP, 0 causal; nenhum ticket anterior ao 624 declara exemplos' },
   '10c': { severidade: 'erro', oque: '\\[ ou \\] dentro de classe [...]', porque: '0/0/0 FP (caso-origem 503)' },
+  'C2c': { severidade: 'aviso', oque: "grep -c … || echo com a saída indo direto ao resultado ('0 0')", porque: 'Comarka: 0/1/4 FP; causal 3 (CI 003, 407a0, 486); os FP são o mesmo defeito latente' },
+  'C2v': { severidade: 'aviso', oque: 'espera numérica com test/[ encadeado por && antes do número (saída vazia)', porque: 'Comarka (executado): 5/0/0 FP, 0 causal; aqui na forma estática' },
+  'C2P': { severidade: 'erro', oque: 'grep -P, que o /usr/bin/grep do macOS não tem', porque: '0 disparo em (a) e (b); erro de plataforma' },
+  'C3': { severidade: 'aviso', oque: 'ausência com padrão amplo sem exceção nem teto', porque: 'Comarka: 3/0/9 FP; causal 1 (523b)' },
+  'C4': { severidade: 'aviso', oque: 'regex que casa diferente em locale C e em UTF-8 (acento)', porque: 'Comarka: 0/0/12 FP, 0 causal; o kit roda sob launchd com a mesma exposição' },
+  'C9': { severidade: 'aviso', oque: 'item da allowlist no checkout e fora da branch alvo (topologia)', porque: 'Comarka: 0/1/0 FP, 0 causal' },
+  'C11': { severidade: 'aviso', oque: 'arquivo da allowlist citado em 1 a 4 testes fora dela (colisão de teste)', porque: 'Comarka: 9/4/122 FP; causal 4 (152, 161, 402, 277)' },
+  'C12': { severidade: 'aviso', oque: 'item sem extensão da allowlist sem arquivo nem diretório pai na branch alvo', porque: 'executor do Comarka: 0 disparo, sem dado' },
   '10x': { severidade: 'erro', oque: 'exemplos_regex contra o padrão do cmd', porque: 'era 0/8/0 FP, todos das aspas escapadas e do grep -v de comentário' },
 }
 
@@ -1052,13 +1060,341 @@ export function lerSeveridade(cru: unknown, origem: string): Record<string, Seve
   return out
 }
 
+// ─── Regras estáticas do comarka-operacional (etapa 7d-1b, peça 4) ─────────
+//
+// Portadas do `scripts/validar-fila.py` do comarka-operacional, a régua mais
+// madura da frota, só as que NÃO executam critério (C1, C5 e C6 ficam para a
+// etapa seguinte). A severidade é a da tabela `REGRAS`, pela calibração de
+// 25/09. C7 (dependência órfã) é o check 7 do kit, que já existia.
+
+/**
+ * O que as regras C4, C9, C11 e C12 precisam saber do repositório. Em produção
+ * vem do git e do disco do checkout que contém a fila (`contextoGit`); o corpus
+ * de calibração injeta os fatos gravados da base de cada caso.
+ */
+export interface ContextoRepo {
+  /** O caminho na branch alvo: arquivo, diretório, ausente (null) ou não sei (undefined). */
+  naAlvo(caminho: string): 'arquivo' | 'diretorio' | null | undefined
+  /** O caminho existe no checkout de onde a fila é lida (C9, topologia). */
+  noDisco(caminho: string): boolean
+  /** Arquivos de teste rastreados que citam o texto (C11, colisão de teste). */
+  testesQueCitam(texto: string): string[]
+  /** Palavras com letra acentuada do código do repo (C4). */
+  palavrasAcentuadas(): Set<string>
+}
+
+// Onde mora teste, em qualquer repo da frota: `test/` (Comarka), `apps/web/test/` (CI), `*.test.ts`.
+const RE_ARQ_TESTE = /(^|\/)(test|tests|__tests__)\/|\.(test|spec)\.[^/]*$/
+const PATHSPEC_TESTES = [':(glob)**/test/**', ':(glob)**/tests/**', ':(glob)**/__tests__/**', ':(glob)**/*.test.*', ':(glob)**/*.spec.*']
+
+/**
+ * O contexto real: o repositório que contém a fila, a `branch_alvo` do config
+ * para C9/C12 e o disco do checkout para C9, C11 e C4 (é o que o pre-commit do
+ * Comarka lê). Fora de repositório git, null: as regras de árvore não rodam.
+ */
+export function contextoGit(filaDir: string, cfg: GateCfg): ContextoRepo | null {
+  const r = spawnSync('git', ['-C', filaDir, 'rev-parse', '--show-toplevel'], { encoding: 'utf8' })
+  if (r.status !== 0) return null
+  const raiz = r.stdout.trim()
+  // Os tickets da própria fila não são teste, nem quando a fila mora dentro de
+  // um `test/` (as fixtures do kit): um ticket cita a própria allowlist.
+  const filaRel = relative(realpathSync(raiz), realpathSync(filaDir))
+  const branch = cfg.branch_alvo
+  const alvo = new Map<string, 'arquivo' | 'diretorio' | null | undefined>()
+  const testes = new Map<string, string[]>()
+  let palavras: Set<string> | null = null
+  return {
+    naAlvo(caminho) {
+      if (!branch) return undefined
+      if (!alvo.has(caminho)) {
+        const t = spawnSync('git', ['-C', raiz, 'cat-file', '-t', `${branch}:${caminho}`], { encoding: 'utf8' })
+        const v = spawnSync('git', ['-C', raiz, 'rev-parse', '--verify', '--quiet', `${branch}^{commit}`], { encoding: 'utf8' })
+        // branch que não existe: não sei (a regra não roda), nunca "ausente".
+        alvo.set(caminho, v.status !== 0 ? undefined : t.status !== 0 ? null : t.stdout.trim() === 'tree' ? 'diretorio' : 'arquivo')
+      }
+      return alvo.get(caminho)
+    },
+    noDisco: (caminho) => existsSync(join(raiz, caminho)),
+    testesQueCitam(texto) {
+      if (!testes.has(texto)) {
+        const g = spawnSync('git', ['-C', raiz, 'grep', '-l', '-F', '-e', texto, '--', ...PATHSPEC_TESTES], { encoding: 'utf8' })
+        const achados = g.status === 0 ? g.stdout.split('\n').filter(Boolean) : []
+        testes.set(texto, achados.filter((f) => filaRel === '' || !f.startsWith(`${filaRel}/`)))
+      }
+      return testes.get(texto)!
+    },
+    palavrasAcentuadas() {
+      if (palavras) return palavras
+      palavras = new Set()
+      const ls = spawnSync('git', ['-C', raiz, 'ls-files', '--', ':(glob)**/src/**/*.ts', ':(glob)**/src/**/*.tsx'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+      for (const f of (ls.stdout ?? '').split('\n').filter(Boolean)) {
+        let txt = ''
+        try {
+          txt = readFileSync(join(raiz, f), 'utf8')
+        } catch {
+          continue
+        }
+        for (const w of txt.match(/[\p{L}\p{N}_]+/gu) ?? []) if (/[^\x00-\x7f]/.test(w)) palavras.add(w.toLowerCase())
+      }
+      return palavras
+    },
+  }
+}
+
+/**
+ * O cmd visto só no nível de topo do shell (`_nivel_topo` do Comarka): aspas
+ * viram Q, `$( … )` e crase viram S (a saída de dentro não vai direto para o
+ * resultado), e grupos `{ …; true; }` somem (o `true` fixa rc 0 e o `||`
+ * seguinte nunca dispara).
+ */
+export function nivelTopo(cmd: string): string {
+  const out: string[] = []
+  const n = cmd.length
+  let i = 0
+  while (i < n) {
+    const ch = cmd[i]!
+    if (ch === '\\' && i + 1 < n) {
+      out.push('x')
+      i += 2
+      continue
+    }
+    if (ch === "'") {
+      let j = cmd.indexOf("'", i + 1)
+      if (j < 0) j = n - 1
+      out.push('Q')
+      i = j + 1
+      continue
+    }
+    if (ch === '"') {
+      let j = i + 1
+      while (j < n && cmd[j] !== '"') j += cmd[j] === '\\' ? 2 : 1
+      out.push('Q')
+      i = j + 1
+      continue
+    }
+    if (ch === '`') {
+      let j = cmd.indexOf('`', i + 1)
+      if (j < 0) j = n - 1
+      out.push('S')
+      i = j + 1
+      continue
+    }
+    if (cmd.startsWith('$(', i)) {
+      let prof = 1
+      let j = i + 2
+      while (j < n && prof > 0) {
+        if (cmd[j] === "'") {
+          const k = cmd.indexOf("'", j + 1)
+          j = k < 0 ? n : k + 1
+          continue
+        }
+        if (cmd[j] === '(') prof++
+        else if (cmd[j] === ')') prof--
+        j++
+      }
+      out.push('S')
+      i = j
+      continue
+    }
+    out.push(ch)
+    i++
+  }
+  let topo = out.join('')
+  let anterior: string | null = null
+  while (anterior !== topo) {
+    anterior = topo
+    topo = topo.replace(/\{[^{}]*;\s*true\s*;?\s*\}/g, 'G')
+  }
+  return topo
+}
+
+/**
+ * C2c: `grep -c … || echo X` com a saída do grep indo direto para o resultado.
+ * Com zero matches o grep -c IMPRIME 0 e sai 1, o `||` dispara e imprime de
+ * novo: "0 0" (486[6] do Comarka), "0 ARQUIVO_AUSENTE" (407a0[3]), "0\n0" (003
+ * do CI).
+ */
+export function grepCOuEcho(cmd: string): boolean {
+  return /\bgrep\s+-[A-Za-z]*c[A-Za-z]*\b[^|;&]*\|\|\s*echo\b/.test(nivelTopo(cmd))
+}
+
+/**
+ * C2v (a forma estática do "espera numérica e saída vazia" do Comarka, que lá
+ * roda o cmd): espera numérica, e um `test`/`[` encadeado por `&&` antes do
+ * comando que imprime o número, sem `||` que dê saída quando o teste falha. Se
+ * o arquivo não existir, a saída é vazia e o critério reprova por forma, não
+ * por número (212, 229 e 234 do CI).
+ */
+export function saidaVaziaPossivel(cmd: string, espera: string): boolean {
+  if (!/^\d+$/.test(espera.trim())) return false
+  const topo = nivelTopo(cmd)
+  if (topo.includes('||')) return false
+  const elos = topo.split('&&')
+  return elos.length > 1 && elos.slice(0, -1).some((e) => /^\s*[{(]?\s*(test|\[\[?)\s/.test(e))
+}
+
+/** C2P: `grep -P` (ou `--perl-regexp`) — não existe no /usr/bin/grep do macOS. */
+export function grepPerl(cmd: string): boolean {
+  for (const seg of segmentarCmd(cmd)) {
+    const ws = palavrasShell(seg)
+    for (let i = 0; i < ws.length; i++) {
+      const nome = basename(ws[i]!)
+      if (nome !== 'grep' && nome !== 'egrep') continue
+      for (let j = i + 1; j < ws.length; j++) {
+        const w = ws[j]!
+        if (w === '--') break
+        if (w === '--perl-regexp') return true
+        if (w.startsWith('--')) continue
+        if (!w.startsWith('-') || w.length < 2) break
+        for (let k = 1; k < w.length; k++) {
+          if (w[k] === 'P') return true
+          if (OPCOES_GREP_COM_ARG.has(w[k]!)) {
+            if (k === w.length - 1) j++
+            break
+          }
+        }
+      }
+    }
+  }
+  return false
+}
+
+/** Padrão AMPLO de grep (C3): casa uso legítimo que o ticket não tem por que tocar. */
+const AMPLOS: [string, RegExp][] = [
+  ['NEXT_PUBLIC_', /NEXT_PUBLIC_(?![A-Z0-9])/],
+  ['process.env', /process\\*\.env(?!\\*\.[A-Za-z_]|\\*\[)/],
+  ['fetch', /(?<!git )\bfetch\b/],
+  ['import', /\bimport\b(?![^'"]*[/@])/],
+]
+/** Exceção ou teto declarado, na descrição ou no cmd. */
+const DECLARA = /EXCE[CÇ][AÃ]O|\bexce[cç][aã]o|\bEXCETO\b|\bexceto\b|\bteto\b|\bTETO\b|grep\s+-\w*v/
+
+/** Os padrões (entre aspas simples ou duplas) passados a cada grep do cmd, como o Comarka os lê. */
+function padroesGrepEntreAspas(cmd: string): { flags: string; padrao: string }[] {
+  const out: { flags: string; padrao: string }[] = []
+  for (const m of cmd.matchAll(/\bgrep\b((?:\s+-[A-Za-z]+)*)\s+(['"])(.*?)\2/g)) out.push({ flags: m[1] ?? '', padrao: m[3] ?? '' })
+  return out
+}
+
+/**
+ * C3: critério de AUSÊNCIA com padrão amplo e sem exceção nem teto declarado.
+ * Incidente 523b do Comarka (22/09): proibia `NEXT_PUBLIC_` no arquivo que já
+ * lia `NEXT_PUBLIC_SUPABASE_URL`; a tentativa 3 montou o nome com `.join("_")`.
+ */
+export function ausenciaAmpla(cmd: string, espera: string, descricao: string): string[] {
+  const ausencia =
+    espera.trim() === '0' || /^\s*AUS[EÊ]NCIA/i.test(descricao) || /=\s*"?0"?\s*\]|-eq\s+0\b|!\s*grep\b/.test(cmd)
+  if (!ausencia || DECLARA.test(descricao) || DECLARA.test(cmd)) return []
+  const achados: string[] = []
+  for (const { padrao } of padroesGrepEntreAspas(cmd)) {
+    for (const [nome, rx] of AMPLOS) if (rx.test(padrao) && !achados.includes(nome)) achados.push(nome)
+  }
+  return achados
+}
+
+const PALAVRA_PONTO = /(?<![\\\w.])([A-Za-z]{2,})((?:(?<!\\)\.){1,2})([A-Za-z]+)/g
+const NAO_ASCII = /[^\x00-\x7f]/
+
+/**
+ * C4: grep que casa diferente em locale C e em UTF-8 (incidente 533 do Comarka:
+ * o loop roda sob launchd sem LANG, onde `.` casa UM byte e acento tem dois).
+ *  1. `.` no lugar de letra acentuada (`Relat.rio`, contra o dicionário do repo)
+ *     ou `..` entre letras (`Implementa..o`);
+ *  2. acento dentro de `[...]`, ou acento com `grep -i` sem LC_ALL;
+ *  3. `wc -m` / `cut -c` sem LC_ALL.
+ */
+export function regexComAcento(cmd: string, palavras: () => Set<string>): string[] {
+  const achados: string[] = []
+  const temLc = cmd.includes('LC_ALL=')
+  for (const { flags, padrao } of padroesGrepEntreAspas(cmd)) {
+    const fixo = /-\w*F/.test(flags)
+    if (!fixo) {
+      for (const t of padrao.matchAll(PALAVRA_PONTO)) {
+        const [inteiro, esq, pontos, dir] = t as unknown as [string, string, string, string]
+        if (pontos.length === 2) {
+          achados.push(`'${inteiro}' usa '..' no lugar de letra acentuada`)
+          continue
+        }
+        const esc = (x: string) => x.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const rx = new RegExp(`${esc(esq)}[^\\x00-\\x7f]{1,2}${esc(dir)}`, 'u')
+        const ex = [...palavras()].sort().find((w) => rx.test(w))
+        if (ex) achados.push(`'${inteiro}' usa '.' no lugar de letra acentuada (casa '${ex}' só em UTF-8)`)
+      }
+    }
+    if (!NAO_ASCII.test(padrao)) continue
+    if (!fixo && /\[[^\]]*[^\x00-\x7f][^\]]*\]/.test(padrao)) achados.push(`'${padrao}' tem acento dentro de [...]`)
+    else if (!temLc && /-\w*i/.test(flags)) achados.push(`'${padrao}' tem acento com grep -i sem LC_ALL`)
+  }
+  if (!temLc && /\bwc\s+-\w*m|\bcut\s+-\w*c/.test(cmd)) achados.push('wc -m / cut -c sem LC_ALL: acento conta 2 caracteres em locale C')
+  return achados
+}
+
+const DICA_ACENTO =
+  "o loop roda em locale C, onde '.' casa 1 byte e acento tem 2 (533 do Comarka). Forma segura: âncora ASCII da mesma palavra, '.{1,2}' no lugar do acento, ou o literal acentuado sem -i e sem [...]"
+
+/** C9, C11 e C12: a allowlist contra a árvore. */
+function checarArvore(t: Cru, ctx: ContextoRepo, achado: (regra: string, campo: string, mensagem: string) => void, branch: string) {
+  const allow = ehArray(t.pathspec_allowlist) ? t.pathspec_allowlist.map(String) : []
+  const itens = allow.filter((p) => !p.includes('*') && !p.endsWith('/'))
+  const crs = ehArray(t.criterios_aceite) ? t.criterios_aceite : []
+  const blob = `${typeof t.objetivo === 'string' ? t.objetivo : JSON.stringify(t.objetivo ?? '')} ${crs
+    .map((c) => String(((c ?? {}) as Cru).cmd ?? ''))
+    .join(' ')}`
+  const cria = new Set(ehArray(t.cria_novo) ? t.cria_novo.map(String) : [])
+
+  // C9 — topologia (392a/393a/394a do Comarka, 16-17/09): o arquivo existe no
+  // checkout e não na branch de onde a worktree nasce. O ticket que DECLARA
+  // criar o caminho ("NOVO <caminho>") é esperado ausente.
+  for (const p of itens) {
+    if (blob.includes(`NOVO ${p}`) || blob.includes(`novo ${p}`)) continue
+    if (ctx.naAlvo(p) === null && ctx.noDisco(p)) {
+      achado('C9', 'pathspec_allowlist', `'${p}' existe no checkout mas não na branch alvo '${branch}' — ticket escrito contra árvore diferente da que o loop usa (mergeie antes de enfileirar)`)
+    }
+  }
+
+  // C11 — colisão de teste (HARDENING do Comarka, 24/09): o arquivo que o
+  // ticket toca é citado em 1 a 4 testes fora da allowlist. Basename curto
+  // (< 6) é ruído; mais de 4 testes é arquivo "hub", não pista.
+  for (const src of itens) {
+    if (RE_ARQ_TESTE.test(src) || cria.has(src)) continue
+    const nome = basename(src).replace(/\.[^.]*$/, '')
+    if (nome.length < 6) continue
+    const fora = ctx.testesQueCitam(nome).filter((tf) => !allow.includes(tf))
+    if (fora.length > 0 && fora.length <= 4) {
+      achado(
+        'C11',
+        'pathspec_allowlist',
+        `a allowlist toca ${src} (basename '${nome}'), citado em ${[...fora].sort().join(', ')} — fora da allowlist. Se a mudança quebrar esse teste, o executor não pode corrigi-lo: declare o teste na allowlist (com critério anti-afrouxamento) ou confirme que a mudança não o afeta`,
+      )
+    }
+  }
+
+  // C12 — allowlist sem arquivo e sem diretório pai (aviso_allowlist (c) do
+  // executor do Comarka): não parece arquivo novo a criar; o pathspec pode
+  // estar errado. Só item sem extensão, como lá.
+  for (const p of itens) {
+    const aqui = ctx.naAlvo(p)
+    if (aqui !== null || basename(p).includes('.')) continue
+    const pai = dirname(p)
+    if (pai === '.' || pai === '') continue
+    if (ctx.naAlvo(pai) === null) {
+      achado('C12', 'pathspec_allowlist', `'${p}' não casa arquivo nem diretório da branch alvo, e o diretório pai '${pai}' também não existe — confira se o pathspec está correto`)
+    }
+  }
+}
+
 /**
  * Valida UM ticket. `fila` é a fila inteira, necessária para os checks 7
- * (dependência por id existente) e 8 (sobreposição de allowlist).
+ * (dependência por id existente) e 8 (sobreposição de allowlist). `contexto`
+ * (etapa 7d-1b) é o repositório que C4, C9, C11 e C12 leem: ausente, o gate o
+ * monta do git do diretório da fila, só se alguma regra precisar; null, essas
+ * regras não rodam.
  */
-export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg): Violacao[] {
+export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg, contexto?: ContextoRepo | null): Violacao[] {
   const v: Violacao[] = []
   const arq = basename(alvo.arquivo)
+  let ctx = contexto
+  const obterCtx = (): ContextoRepo | null => (ctx === undefined ? (ctx = contextoGit(dirname(alvo.arquivo), cfg)) : ctx)
   // Todo achado passa por aqui: a tabela `REGRAS`, por cima dela o config,
   // decidem se ele é violação, aviso ou nada (etapa 7d-1b).
   const achado = (regra: string, campo: string, mensagem: string, isencao = false) => {
@@ -1152,6 +1488,24 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
         for (const a of achadosExemplosRegex(cr.cmd, cr.exemplos_regex, execRegexPadrao(cfg))) {
           achado(a.regra, `${campo}.exemplos_regex`, a.mensagem)
         }
+        // C2, C3, C4 do comarka-operacional (peça 4), só onde o executor roda.
+        if (!avaliador) {
+          const esp = cr.espera === undefined || cr.espera === null ? '' : String(cr.espera)
+          if (grepCOuEcho(cr.cmd)) {
+            achado('C2c', campo, "grep -c seguido de '|| echo' com a saída do grep indo direto para o resultado: com zero matches imprime duas vezes ('0 0', 486 do Comarka) — use '{ grep -c ...; true; }' ou compare dentro de $( )")
+          }
+          if (saidaVaziaPossivel(cr.cmd, esp)) {
+            achado('C2v', campo, `espera numérica ('${esp}'), mas um test/[ encadeado por && vem antes do número: se ele falhar a saída sai vazia e o critério reprova por forma, não por número`)
+          }
+          if (grepPerl(cr.cmd)) achado('C2P', campo, 'grep -P não existe no /usr/bin/grep do macOS — use -E')
+          const amplos = ausenciaAmpla(cr.cmd, esp, typeof cr.descricao === 'string' ? cr.descricao : '')
+          if (amplos.length > 0) {
+            achado('C3', campo, `ausência com padrão amplo (${amplos.join(', ')}) sem exceção nem teto medido — liste os usos legítimos que já existem (ex.: EXCETO NEXT_PUBLIC_SUPABASE_URL, teto 1); senão o executor escolhe entre reprovar e esconder (523b do Comarka)`)
+          }
+          for (const a of regexComAcento(cr.cmd, () => obterCtx()?.palavrasAcentuadas() ?? new Set())) {
+            achado('C4', campo, `${a} — ${DICA_ACENTO}`)
+          }
+        }
       }
     })
   }
@@ -1227,6 +1581,12 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
     }
   }
 
+  // C9, C11, C12: a allowlist contra a árvore (peça 4).
+  if (pendente && ehArray(t.pathspec_allowlist)) {
+    const c = obterCtx()
+    if (c) checarArvore(t, c, (regra, campo, mensagem) => achado(regra, campo, mensagem), cfg.branch_alvo ?? '?')
+  }
+
   // 9. contexto_juiz — só em ticket pendente, como 5–8: é o que ainda vai rodar.
   if (pendente) for (const c of checarContextoJuiz(alvo, cfg)) achado(c.regra, c.campo, c.mensagem)
 
@@ -1284,8 +1644,8 @@ function checarContextoJuiz(alvo: TicketLido, cfg: GateCfg): Violacao[] {
   return v
 }
 
-export function validar(alvos: TicketLido[], fila: TicketLido[], cfg: GateCfg): Violacao[] {
-  return alvos.flatMap((a) => validarTicket(a, fila, cfg))
+export function validar(alvos: TicketLido[], fila: TicketLido[], cfg: GateCfg, contexto?: ContextoRepo | null): Violacao[] {
+  return alvos.flatMap((a) => validarTicket(a, fila, cfg, contexto))
 }
 
 // ─── CLI ──────────────────────────────────────────────────────────────────

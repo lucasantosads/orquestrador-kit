@@ -90,6 +90,15 @@ describe('7d1b-2 · a tabela única', () => {
       '10n': 'aviso',
       '10c': 'erro',
       '10x': 'erro',
+      // peça 4: as regras estáticas do comarka-operacional (C7 é o check 7)
+      C2c: 'aviso',
+      C2v: 'aviso',
+      C2P: 'erro',
+      C3: 'aviso',
+      C4: 'aviso',
+      C9: 'aviso',
+      C11: 'aviso',
+      C12: 'aviso',
     });
   });
 

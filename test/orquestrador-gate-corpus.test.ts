@@ -10,6 +10,9 @@
  *   (a) os done que nunca bloquearam e rodaram no loop (CI 58, Actus 91,
  *       Comarka 557 desde 26/07) — todo disparo é FP por definição.
  *
+ * `arvores.json`/`acentos.json` (peça 4) são os fatos de árvore da base de cada
+ * caso que C4, C9, C11 e C12 leem (`contexto.ts`).
+ *
  * `fila` de cada caso é a fila no instante T reduzida ao que os checks 7 e 8
  * leem: as dependências (com o fecho), os pendentes com allowlist em comum e o
  * fecho deles. As 19 dependências cujo arquivo não existe mais hoje foram
@@ -28,17 +31,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { REPO_ROOT } from './fixtures/orq-harness.js';
 import { carregarCfg, validarTicket, type TicketLido, type Violacao } from '../scripts/orquestrador/gate-ticket.js';
-
-interface Caso {
-  grupo: 'a' | 'b';
-  repo: 'CI' | 'Actus' | 'Comarka';
-  id: string;
-  arquivo: string;
-  classe?: string;
-  causa?: string;
-  ticket: Record<string, unknown>;
-  fila: Record<string, unknown>[];
-}
+import { contextoDoCorpus, type CasoCorpus as Caso } from './fixtures/gate-corpus-7d1/contexto.js';
 
 const CASOS = JSON.parse(
   readFileSync(join(REPO_ROOT, 'test', 'fixtures', 'gate-corpus-7d1', 'casos.json'), 'utf8'),
@@ -85,7 +78,9 @@ function rodarCaso(c: Caso): Violacao[] {
   const alvo: TicketLido = { arquivo: join(dir, c.arquivo), json: { ...c.ticket, status: 'pendente' } };
   const fila: TicketLido[] = c.fila.map((o) => ({ arquivo: join(dir, `${String(o.id)}-ctx.md`), json: o }));
   fila.push(alvo);
-  return validarTicket(alvo, fila, CFG);
+  // Peça 4: C4, C9, C11 e C12 leem o repositório; no corpus, os fatos gravados
+  // da base de cada caso (arvores.json, acentos.json).
+  return validarTicket(alvo, fila, CFG, contextoDoCorpus(c));
 }
 
 interface Celula {
