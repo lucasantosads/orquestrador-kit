@@ -1319,7 +1319,18 @@ drive_ticket() {
   if [ "$gate_rc" = 1 ] && [ "$modo_pv" = aviso ]; then
     log "AVISO do gate de ticket ($n_viol violação(ões)) — modo 'aviso': o ticket segue"
     printf '%s\n' "$gate_out" | sed 's/^/  /' | while IFS= read -r l; do log "$l"; done
-    event "$id" GATE_TICKET_AVISO "violacoes=$n_viol"
+    # UMA vez por versão do ticket (etapa 7d-1b). Antes a trilha ganhava um
+    # GATE_TICKET_AVISO a cada drenagem que passava pelo ticket, e o mesmo aviso
+    # repetido é o que ensina a não ler a trilha. A versão é o hash do bloco JSON
+    # SEM os campos que o próprio loop reescreve (status, nota, tentativas,
+    # adiamentos): editar o ticket gera versão nova e aviso novo.
+    local versao
+    versao="$(ticket_json "$file" | jq -S -c 'del(.status, .notas_status, .tentativas, .adiamentos_ambiente, .adiado_ate)' 2>/dev/null | shasum -a 256 | cut -c1-12)"
+    if grep -F " $id GATE_TICKET_AVISO " "$EVENTS_FILE" 2>/dev/null | grep -qE " hash=$versao( |\$)"; then
+      log "  gate de ticket: aviso desta versão já está na trilha (hash=$versao) — não repete"
+    else
+      event "$id" GATE_TICKET_AVISO "violacoes=$n_viol" "hash=$versao"
+    fi
     gate_rc=0
   fi
   case "$gate_rc" in

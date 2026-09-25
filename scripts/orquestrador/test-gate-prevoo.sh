@@ -26,6 +26,10 @@
 #   8 · etapa 7d-1b: modo 'bloqueia' com ticket que só tem AVISO pela tabela de
 #       severidade (grep -q em pipe e vitest por texto, rebaixados pela
 #       calibração de 25/09): executa, nada bloqueia.
+#   9 · etapa 7d-1b: modo 'aviso', DUAS drenagens seguidas com o ticket
+#       adiado entre elas (o loop reescreve status, nota e tentativas): UM
+#       GATE_TICKET_AVISO, com o hash da versão; o ticket editado (outro cmd)
+#       é versão nova e ganha o seu.
 #
 # Etapa 7d-1b: o RUIM dos casos 1, 3 e 5 era o critério com `| grep -q` e saída
 # textual do vitest. As duas regras viraram AVISO (calibração), e o ticket com
@@ -293,6 +297,66 @@ else
     && ok "status não é bloqueado" || falha "status=bloqueado por regra de AVISO: $(campo "$fx/docs/fila/903-t.md" '.notas_status')"
   grep -q ' 903 BLOQUEADO' "$fx/docs/fila/runs/events.log" 2>/dev/null \
     && falha "a trilha tem BLOQUEADO do 903" || ok "a trilha não tem BLOQUEADO do 903"
+  rm -rf "$(dirname "$fx")"
+fi
+
+echo
+echo "== 9 · modo 'aviso', dois disparos seguidos: GATE_TICKET_AVISO uma vez por versão do ticket =="
+fx="$(fixture_repo aviso)"
+if [ -z "$fx" ]; then
+  falha "não consegui montar o fixture"
+else
+  # O agente falso ADIA (causa local, sem cooldown): o ticket volta a pendente
+  # e o loop reescreve status, notas_status e tentativas — campos que não são
+  # a versão do ticket.
+  STUB_ADIA='
+    source "$AQUI_T/executor.sh"
+    set +e
+    ticket_commit() { return 0; }
+    cooldown_arm() { return 0; }
+    run_attempt() {
+      local rundir="$3"
+      mkdir -p "$rundir"
+      echo "ENTRADA $(ticket_field "$1" ".id")"
+      RESULT=adiado; MOTIVO="timeout local"; ENF_OK=1; DUR=1; DIFF_LINES=0; AGENTE_RC=124
+      printf "{\"desfecho\":\"adiado\",\"causa\":\"timeout\",\"motivo\":\"timeout local\",\"contaComoRetry\":false,\"cooldown\":false}\n" > "$rundir/veredito.json"
+    }
+    drive_ticket "$(ticket_file_by_id "$TID_T")"
+    echo "RC_DRIVE=$?"
+  '
+  disparo() {
+    ORQ_EXEC_ROOT="$fx" LOCAL_LOOP_SOURCED=1 AQUI_T="$AQUI" STUB_T="$STUB_ADIA" bash -c '
+      source "$AQUI_T/local-loop.sh"
+      set +e
+      ensure_staging_worktree() { echo /tmp; }
+      ticket_commit() { return 0; }
+      merge_em_alvo() { return 0; }
+      cleanup_frente() { return 0; }
+      run_executor_once() {
+        ORQ_EXEC_ROOT="$ORQ_EXEC_ROOT" EXECUTOR_SOURCED=1 AQUI_T="$AQUI_T" \
+          TID_T="$(ticket_field "$2" ".id")" bash -c "$STUB_T"
+      }
+      drenar
+    ' 2>&1
+  }
+  ev="$fx/docs/fila/runs/events.log"
+  d1="$(disparo)"; d2="$(disparo)"
+  n_pv="$(printf '%s\n%s\n' "$d1" "$d2" | grep -c 'AVISO do gate de ticket')"
+  [ "$n_pv" -ge 2 ] && ok "o 901 passou pelo pré-voo nos dois disparos ($n_pv)" \
+    || falha "o pré-voo não rodou nos dois disparos ($n_pv): $(printf '%s' "$d2" | tail -3)"
+  [ "$(campo "$fx/docs/fila/901-t.md" '.status')" = pendente ] \
+    && ok "o 901 segue pendente (adiado)" || falha "status=$(campo "$fx/docs/fila/901-t.md" '.status')"
+  n_ev="$(grep -c ' 901 GATE_TICKET_AVISO ' "$ev" 2>/dev/null || true)"
+  [ "$n_ev" = 1 ] && ok "UM GATE_TICKET_AVISO na trilha em dois disparos" \
+    || falha "$n_ev eventos GATE_TICKET_AVISO: $(grep ' 901 GATE_TICKET_AVISO ' "$ev" 2>/dev/null)"
+  grep -qE ' 901 GATE_TICKET_AVISO violacoes=[1-9][0-9]* hash=[0-9a-f]{12}$' "$ev" 2>/dev/null \
+    && ok "o evento carrega o hash da versão" || falha "evento sem hash: $(grep ' 901 GATE_TICKET_AVISO ' "$ev" 2>/dev/null)"
+  # Versão nova: outro cmd de critério (ainda com o eval). Terceiro disparo.
+  sed -i.bak 's|eval \\"echo ok\\"|eval \\"echo ok\\" \&\& true|' "$fx/docs/fila/901-t.md" && rm -f "$fx/docs/fila/901-t.md.bak"
+  grep -q '&& true' "$fx/docs/fila/901-t.md" || falha "não consegui editar o 901"
+  disparo > /dev/null
+  n_ev="$(grep -c ' 901 GATE_TICKET_AVISO ' "$ev" 2>/dev/null || true)"
+  [ "$n_ev" = 2 ] && ok "o 901 editado é versão nova: segundo GATE_TICKET_AVISO" || falha "$n_ev eventos depois da edição"
   rm -rf "$(dirname "$fx")"
 fi
 
