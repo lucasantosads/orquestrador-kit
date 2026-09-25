@@ -21,6 +21,7 @@
  */
 import { spawnSync } from 'node:child_process'
 import { readFileSync, readdirSync, existsSync, realpathSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { globToRegExp } from './enforcement-core.js'
@@ -116,7 +117,7 @@ export const REGRAS: Readonly<Record<string, Regra>> = {
   '6a:bash': { severidade: 'aviso', oque: "'bash' no cmd", porque: '0/1/6 FP, 0 causal' },
   '6a:sh -c': { severidade: 'aviso', oque: "'sh -c' no cmd", porque: '0/0/1 FP, 0 causal' },
   '6r': { severidade: 'aviso', oque: 'redirecionamento que escreve arquivo da worktree', porque: 'era 0/3/48 FP (build para /tmp, `)` lido como alvo); corrigida: 0/0/1 (615, que sobrescreve arquivo do repo)' },
-  '6v': { severidade: 'aviso', oque: 'saída textual do vitest em pipe', porque: 'CORRIGIR → AVISO: 53/34/272 FP; causal 6, nunca chega a zero FP' },
+  '6v': { severidade: 'aviso', oque: 'critério que lê o texto do vitest e aprovaria uma suíte com falha', porque: 'era 53/34/272 FP; só o que aprovaria a falha: 0/23/250 medido na calibração, nunca chega a zero FP' },
   '6q': { severidade: 'aviso', oque: 'grep -q recebendo pipe', porque: '0/12/83 FP; causal 4 (Actus); o dano é do pipefail do executor' },
   '6b': { severidade: 'aviso', oque: 'objetivo cita caminho fora da allowlist', porque: '55/60/363 FP; causal 1 (488)' },
   '7': { severidade: 'erro', oque: 'dependência é id da fila ou humano:<token> (C7, dependência órfã)', porque: '0/0/0 FP depois de conferir as 19 do snapshot' },
@@ -418,11 +419,100 @@ export function grepQuietoEmPipe(cmd: string): string[] {
  * list | grep -c` conta testes, não interpreta resultado, e passa.
  */
 export function saidaTextualDoVitest(cmd: string): boolean {
+  return jusanteDoVitest(cmd) !== null
+}
+
+/**
+ * O que vem DEPOIS do pipe que recebe o stdout do vitest, ou null se não há.
+ * Etapa 7d-1b: `vitest` seguido de `.` (`vitest.config.ts`) é arquivo, não o
+ * comando (o 620 do Actus lia o config com grep).
+ */
+export function jusanteDoVitest(cmd: string): string | null {
   // `2>&1`/`>&2` saem antes da busca: o `&` deles cortaria o segmento.
   const visivel = mascararAspas(cmd).replace(/\d?>&\d/g, '    ')
   const re =
-    /(?:(?<![\w-])vitest(?![\w-])(?!\s+list(?![\w-]))|(?<![\w-])npm\s+(?:run\s+)?test(?![\w-])|(?<![\w-])pnpm\s+(?:run\s+)?test(?![\w-]))[^|;&]*\|(?!\|)/
-  return re.test(visivel)
+    /(?:(?<![\w-])vitest(?![\w.-])(?!\s+list(?![\w-]))|(?<![\w-])npm\s+(?:run\s+)?test(?![\w-])|(?<![\w-])pnpm\s+(?:run\s+)?test(?![\w-]))[^|;&]*\|(?!\|)/
+  const m = re.exec(visivel)
+  return m ? cmd.slice(m.index + m[0].length) : null
+}
+
+/**
+ * Saídas de referência do vitest para o 6v (calibração de 25/09, §4.2): a
+ * suíte com UMA falha e a suíte verde. O executor compara sem ANSI (NO_COLOR e
+ * strip_ansi), então a referência não tem cor.
+ */
+export const VITEST_COM_FALHA =
+  ' Test Files  1 failed | 2 passed (3)\n      Tests  1 failed | 5 passed (6)\n   Start at  10:00:00\n   Duration  1.00s'
+export const VITEST_VERDE = ' Test Files  3 passed (3)\n      Tests  6 passed (6)\n   Start at  10:00:00\n   Duration  1.00s'
+
+/** Os únicos comandos que o 6v roda sobre a saída de referência: filtros de texto. */
+const FILTROS_DE_TEXTO = new Set([
+  'grep', 'egrep', 'awk', 'sed', 'wc', 'head', 'tail', 'cat', 'tr', 'cut', 'sort', 'uniq',
+  'echo', 'printf', 'test', '[', 'true', 'false', ':',
+])
+
+export type LeituraDoVitest =
+  | { tipo: 'aprova_falha' }
+  | { tipo: 'so_verde' }
+  | { tipo: 'nunca_casa' }
+  | { tipo: 'indeterminado'; motivo: string }
+
+/** A comparação do harness (`lib.sh:criterio_match`): número = igualdade; senão igualdade ou grep -E. */
+function casaEspera(saida: string, espera: string, grep: string): boolean {
+  const o = saida.trim()
+  const e = espera.trim()
+  if (/^\d+$/.test(e)) return o === e
+  if (o === e) return true
+  return spawnSync(grep, ['-qE', '--', e], { input: o, encoding: 'utf8' }).status === 0
+}
+
+/**
+ * O critério aprovaria uma suíte com falha? (regra 6v, etapa 7d-1b.) Roda o
+ * trecho DEPOIS do pipe do vitest sobre as duas saídas de referência, como a
+ * calibração mediu. Só roda se o trecho for feito de filtros de texto, sem `$(`,
+ * crase e sem escrever arquivo, com PATH do sistema, em diretório temporário;
+ * senão é indeterminado — e indeterminado continua acusado.
+ */
+export function leituraDoVitest(cmd: string, espera: string, exec: ExecRegex): LeituraDoVitest | null {
+  let resto = jusanteDoVitest(cmd)
+  if (resto === null) return null
+  if (/\$\(|`/.test(resto)) return { tipo: 'indeterminado', motivo: 'o vitest está dentro de $( ) ou há subcomando depois dele' }
+  // O pipe pode estar dentro de `{ …; }` ou `( … )`: o fechamento sem abertura
+  // no trecho é do grupo de fora, e sai antes de rodar.
+  for (const [abre, fecha] of [['{', '}'], ['(', ')']] as const) {
+    let vis = mascararAspas(resto)
+    const conta = (c: string) => vis.split('').filter((x) => x === c).length
+    while (conta(fecha) > conta(abre)) {
+      const k = vis.lastIndexOf(fecha)
+      resto = resto.slice(0, k) + resto.slice(k + 1)
+      vis = mascararAspas(resto)
+    }
+  }
+  if (redirecionamentosProibidos(mascararAspas(resto)).length > 0) {
+    return { tipo: 'indeterminado', motivo: 'o trecho depois do vitest escreve arquivo' }
+  }
+  for (const seg of segmentarCmd(resto)) {
+    const ws = palavrasShell(seg).filter((w) => !['{', '}', '(', ')', '!'].includes(w) && !/^[A-Za-z_]\w*=/.test(w))
+    const nome = ws[0] === undefined ? '' : basename(ws[0])
+    if (nome === '' || nome === 'fi' || nome === 'done') continue
+    if (!FILTROS_DE_TEXTO.has(nome) || (nome === 'sed' && ws.some((w) => /^-[a-z]*i/.test(w))) || /system\s*\(/.test(seg)) {
+      return { tipo: 'indeterminado', motivo: `'${nome}' depois do vitest não é filtro de texto que o gate roda` }
+    }
+  }
+  const roda = (entrada: string) => {
+    const r = spawnSync('/bin/bash', ['-c', resto!], {
+      input: entrada,
+      encoding: 'utf8',
+      cwd: tmpdir(),
+      timeout: exec.timeoutMs,
+      env: { PATH: '/usr/bin:/bin', LC_ALL: 'C' },
+    })
+    if (r.error) throw new GateNaoRodou(`/bin/bash não rodou o trecho do 6v: ${r.error.message}`)
+    return `${r.stdout ?? ''}${r.stderr ?? ''}`
+  }
+  if (casaEspera(roda(VITEST_COM_FALHA), espera, exec.grep)) return { tipo: 'aprova_falha' }
+  if (casaEspera(roda(VITEST_VERDE), espera, exec.grep)) return { tipo: 'so_verde' }
+  return { tipo: 'nunca_casa' }
 }
 
 /** Caminho de arquivo (com extensão de código/dado) ou glob de diretório. */
@@ -462,7 +552,12 @@ export function caminhosForaDaAllowlist(objetivo: string, allowlist: string[]): 
   return fora
 }
 
-export function checarCmd(cmd: string, cfg: GateCfg): AchadoCmd[] {
+/**
+ * `espera` (etapa 7d-1b) liga a leitura do 6v: com ela, só é acusado o critério
+ * que aprovaria uma suíte com falha (ou que o gate não consegue avaliar). Sem
+ * ela, vale a forma mínima de antes: saída textual do vitest em pipe.
+ */
+export function checarCmd(cmd: string, cfg: GateCfg, espera?: string): AchadoCmd[] {
   const achados: AchadoCmd[] = []
   const segmentos = segmentarCmd(cmd)
   const primeiro = segmentos[0] ?? ''
@@ -494,7 +589,18 @@ export function checarCmd(cmd: string, cfg: GateCfg): AchadoCmd[] {
       })
     }
   })
-  if (saidaTextualDoVitest(cmd)) {
+  const leitura = espera === undefined ? null : leituraDoVitest(cmd, espera, execRegexPadrao(cfg))
+  if (leitura?.tipo === 'aprova_falha') {
+    achados.push({
+      mensagem: `vitest: saída textual interpretada em vez do rc, e o critério aprovaria uma suíte com falha (com 'Tests 1 failed | 5 passed' a saída casa a espera '${espera}'; use '>/dev/null 2>&1 && echo OK' ou '; echo rc=$?') — cmd: ${cmd}`,
+      regra: '6v',
+    })
+  } else if (leitura?.tipo === 'indeterminado') {
+    achados.push({
+      mensagem: `vitest: saída textual interpretada em vez do rc, e não dá para saber se o critério aprovaria uma suíte com falha (${leitura.motivo}; use '>/dev/null 2>&1 && echo OK' ou '; echo rc=$?') — cmd: ${cmd}`,
+      regra: '6v',
+    })
+  } else if (espera === undefined && saidaTextualDoVitest(cmd)) {
     achados.push({
       mensagem: `vitest: saída textual interpretada em vez do rc ('passed' casa 'Tests 1 failed | 5 passed'; use '>/dev/null 2>&1 && echo OK' ou '; echo rc=$?') — cmd: ${cmd}`,
       regra: '6v',
@@ -1039,7 +1145,9 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
       if (typeof cr.cmd === 'string' && cr.cmd.trim() !== '') {
         // A isenção do `$(` segue a linha do padrão: `6a:$(` desligada não
         // isenta nem acusa.
-        for (const a of checarCmd(cr.cmd, cfg)) achado(a.regra, campo, a.mensagem, a.isencao === true)
+        for (const a of checarCmd(cr.cmd, cfg, cr.espera === undefined || cr.espera === null ? '' : String(cr.espera))) {
+          achado(a.regra, campo, a.mensagem, a.isencao === true)
+        }
         // 10. regex do critério contra os exemplos declarados (ticket 624).
         for (const a of achadosExemplosRegex(cr.cmd, cr.exemplos_regex, execRegexPadrao(cfg))) {
           achado(a.regra, `${campo}.exemplos_regex`, a.mensagem)

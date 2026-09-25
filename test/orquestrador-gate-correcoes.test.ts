@@ -206,3 +206,40 @@ describe('7d1b-3 · check 6r: /tmp é fora da worktree; o `)` fecha o alvo do re
     ]);
   });
 });
+
+describe('7d1b-3 · check 6v: só marca o critério que aprovaria uma suíte com falha', () => {
+  const doCriterio = (v: Violacao[], i: number) => daRegra(v, '6v').filter((x) => x.campo === `criterios_aceite[${i}]`);
+
+  it("CI 015[6] (`grep -E 'Tests +[0-9]+ passed'`, espera passed): só casa sem falha, nenhum achado", () => {
+    expect(String((caso('CI', '015').ticket.criterios_aceite as Record<string, unknown>[])[6]!.cmd)).toMatch(/Tests \+\[0-9\]\+ pa/);
+    expect(doCriterio(rodar('CI', '015'), 6)).toEqual([]);
+  });
+
+  it("Comarka 057[2] (`grep -c 'failed'`, espera 0): leitura equivalente ao rc, nenhum achado", () => {
+    expect(doCriterio(rodar('Comarka', '057'), 2)).toEqual([]);
+  });
+
+  it('Actus 620 (grep em vitest.config.ts): não é o comando vitest', () => {
+    expect(daRegra(rodar('Actus', '620'), '6v')).toEqual([]);
+  });
+
+  it("Actus 001[1] (`grep -E 'passed|failed'`, espera passed): aprovaria a suíte vermelha, segue acusado", () => {
+    const v = doCriterio(rodar('Actus', '001'), 1);
+    expect(v.length).toBe(1);
+    expect(v[0]!.mensagem).toMatch(/aprovaria uma suíte com falha/);
+  });
+
+  it('Comarka 570[6] (vitest dentro de $( )): indeterminado, segue acusado', () => {
+    const v = doCriterio(rodar('Comarka', '570'), 6);
+    expect(v.length).toBe(1);
+    expect(v[0]!.mensagem).toMatch(/não dá para saber/);
+  });
+
+  it('pipeline com comando fora dos filtros de texto não é executado: indeterminado', () => {
+    const v = rodar('Actus', '001', (t) => {
+      const cr = (t.criterios_aceite as Record<string, unknown>[])[1]!;
+      cr.cmd = 'node_modules/.bin/vitest run a.test.ts 2>&1 | node -e "process.exit(0)" && echo passed';
+    });
+    expect(doCriterio(v, 1).map((x) => /não dá para saber/.test(x.mensagem))).toEqual([true]);
+  });
+});
