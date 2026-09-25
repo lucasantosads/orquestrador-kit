@@ -1,0 +1,38 @@
+{
+  "_origem": "Critérios copiados byte a byte (cmd, descricao, espera, exemplos_regex) de tickets done, só o necessário para o check 10 do gate de ticket (624). Leitura em 25/09/2026. Os tickets do conteudos-infinitos são do formato antigo, sem 'tipo': o tipo abaixo foi acrescentado aqui para o ticket passar pelo gate (o check 10 não olha o tipo).",
+  "ci_012": {
+    "_de": "conteudos-infinitos 95c115a:docs/fila/012-loop-nao-suja-arvore.md, criterios_aceite[0]",
+    "tipo": "guarda",
+    "descricao": "a suite da raiz segue verde",
+    "cmd": "npx vitest run 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
+    "espera": "1"
+  },
+  "ci_015": {
+    "_de": "conteudos-infinitos f039a03:docs/fila/015-historico-paginacao-backend.md, criterios_aceite[2]",
+    "tipo": "alvo",
+    "descricao": "usa range, nao limit, no metodo novo",
+    "cmd": "awk '/listarRecentesPaginado/,/^  }/' services/persona-roteirizador/src/supabase-store.ts | grep -c '.range('",
+    "espera": "1"
+  },
+  "ci_002": {
+    "_de": "conteudos-infinitos b731b10:docs/fila/002-sql-remocao-usuarios-e2e.md, criterios_aceite[3]",
+    "tipo": "guarda",
+    "descricao": "não apaga por padrão de email (LIKE), só por id",
+    "cmd": "grep -ciE \"like\\s*'e2e|like\\s*'%e2e\" docs/sql-pendente/002-remove-usuarios-e2e.sql",
+    "espera": "0"
+  },
+  "actus_631": {
+    "_de": "actus-saas 2da6723:docs/fila/631-arquivo-solto-reprova-por-merito.md, criterios_aceite[8]",
+    "tipo": "guarda",
+    "descricao": "config e tabela: nenhuma linha alterada fora da regra arquivo_solto (grep -v conta o que sobra)",
+    "cmd": "{ git diff -U0 $BASE_REF...HEAD -- docs/fila/000-config.json scripts/orquestrador/config-tabela.ts | grep -E '^[+-][^+-]' | grep -vcE 'arquivo_solto|\"?modelo\"?: *.MANTER.,?$|\"?acao\"?: *.remover o arquivo solto da worktree.,?$|^[+-][[:space:]]*[}],?$' || true; }",
+    "espera": "^0$",
+    "exemplos_regex": [
+      {
+        "regex": "arquivo_solto|\"?modelo\"?: *.MANTER.,?$|\"?acao\"?: *.remover o arquivo solto da worktree.,?$|^[+-][[:space:]]*[}],?$",
+        "positivo": "+        acao: 'remover o arquivo solto da worktree',",
+        "negativo": "+    \"max_retries\": 3,"
+      }
+    ]
+  }
+}
