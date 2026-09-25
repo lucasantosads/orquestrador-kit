@@ -133,10 +133,13 @@ describe('decisão 4 · `risco` é derivado, não exigido de quem escreve', () =
     expect(SKILL).toMatch(/passo 6/);
   });
 
-  it('NÃO contradiz o CONTRATO: o gate cobra a CHAVE, não o valor', () => {
-    // CONTRATO §2: "risco basta EXISTIR". A doutrina não pode dizer que a chave
-    // é dispensável enquanto o gate a cobra.
-    expect(CONTRATO).toMatch(/`risco` basta EXISTIR/);
+  // Etapa 7d-1b: o gate deixou de cobrar a chave (calibração de 25/09: 609 done
+  // sem `risco`), e o CONTRATO §2 diz isso. A SKILL (doutrina/, fora do escopo de
+  // escrita da etapa) ainda diz que o gate cobra a chave: PENDÊNCIA de doutrina,
+  // registrada no relatório e no PECAS.md. As duas asserções seguem com a mesma
+  // força: o CONTRATO com o texto novo, a SKILL com o texto que ela tem.
+  it('o CONTRATO diz que risco é opcional (7d-1b); a SKILL ainda cita a chave cobrada (pendência)', () => {
+    expect(CONTRATO).toMatch(/`risco` é opcional/);
     expect(SKILL).toMatch(/cobra que a\s+CHAVE exista/);
   });
 

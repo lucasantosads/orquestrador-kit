@@ -95,25 +95,32 @@ três: `gate-ticket.ts:blocoJson` (`:99`), `fila-read.ts:extractJsonBlock` e
 
 O que o gate cobra hoje (`scripts/orquestrador/gate-ticket.ts`):
 
-- `id` casa `^\d{3}[a-z]?$` (`RE_ID`, `gate-ticket.ts:61`) **e** é igual ao
-  prefixo do nome do arquivo (`:398`). O sufixo de letra existe: `001a`, `309a`.
+- `id` casa `^\d{3}[a-z0-9]*$` (`RE_ID`, `gate-ticket.ts:76`) **e** é igual ao
+  prefixo do nome do arquivo. O sufixo existe: `001a`, `309a`, e o de fatiamento
+  `407a0`, `315b1b` (etapa 7d-1b; regra `3`, aviso, §12).
 - `status` ∈ `pendente · em_execucao · done · bloqueado · obsoleto · refatiar`
   (`STATUS_VALIDOS`, `:28`).
-- Campos obrigatórios **só para `pendente`** (`CAMPOS_PENDENTE`, `:46`): `id`,
-  `slug`, `bloco`, `objetivo`, `pathspec_allowlist`, `dependencias`,
-  `criterios_aceite`, `status`, `risco`. Status terminal (`done`, `obsoleto`,
+- Campos obrigatórios **só para `pendente`** (`CAMPOS_PENDENTE`, `:58`): `id`,
+  `slug`, `objetivo`, `pathspec_allowlist`, `dependencias`,
+  `criterios_aceite`, `status`. `bloco` e `risco` são opcionais desde a etapa
+  7d-1b; `criterios_aceite` ausente ou vazio é a regra `2c` (aviso, §12). Status terminal (`done`, `obsoleto`,
   `bloqueado`) só precisa parsear: a fila tem dezenas escritos sob schemas
   anteriores, e cobrar campo de quem já entregou não é gate, é ruído.
 - `dependencias` basta ser lista — `[]` é o caso NORMAL. Cada item é `id` de
   outro ticket (resolve quando `done`) ou `humano:<token>` (§6).
-- `risco` basta EXISTIR; se tiver valor, ∈ `baixo · alto` (vazio até o passo 6
-  do gate classificar) (`:381-386`).
-- `criterios_aceite[].tipo` ∈ `alvo · guarda · avaliador` (`TIPOS_CRITERIO`,
-  `:59`). Cada critério tem `tipo`, `cmd`, `espera`, `descricao`.
+- `risco` é opcional; se tiver valor, ∈ `baixo · alto` (vazio até o passo 6
+  do gate classificar).
+- `criterios_aceite[].tipo`, quando presente, ∈ `alvo · guarda · avaliador`
+  (`TIPOS_CRITERIO`); ausente, é inferido (`espera: "avaliador"` = avaliador, o
+  resto = alvo). `cmd` pode ser vazio só no critério `espera: "avaliador"`, que o
+  executor não roda.
 - `criterios_aceite[].cmd` só com prefixo de `gate_ticket.cmd_prefixos_permitidos`
   e sem nada de `gate_ticket.proibido_no_cmd`.
-- Allowlist sobreposta entre dois `pendente` exige dependência declarada entre
-  eles (`:445-461`).
+- Allowlist sobreposta entre dois `pendente` pede dependência entre eles,
+  direta ou transitiva (regra `8`, aviso desde a etapa 7d-1b, §12).
+- Cada regra tem severidade `erro`, `aviso` ou `off` (tabela `REGRAS`,
+  `gate-ticket.ts:105`, sobrescrevível por `gate_ticket.severidade`); o rc do
+  gate, e o pré-voo em modo `bloqueia`, só contam `erro` (§12).
 
 ---
 
@@ -187,7 +194,7 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `COMMIT_HARNESS` | `executor.sh:commit_do_agente` | `motivo=agente-saiu-sem-commitar` · ou `motivo=agente-commitou-e-deixou-N-arquivo(s)-solto(s)` / `motivo=agente-commitou-e-deixou-mudança-não-commitada` (631, §11) |
 | `DECISAO_PENDENTE` | `lib.sh:744` | `origem=` |
 | `ANOTACAO` | `lib.sh:274` | `nota=` |
-| `GATE_TICKET_AVISO` | `executor.sh:drive_ticket` (porte do Actus, §11) | `violacoes=<N>` — o pré-voo achou violação e `gate_ticket.modo_pre_voo` é `aviso`: o ticket SEGUE |
+| `GATE_TICKET_AVISO` | `executor.sh:drive_ticket` (porte do Actus, §11) | `violacoes=<N>` `hash=<12 hex>` — o pré-voo achou violação e `gate_ticket.modo_pre_voo` é `aviso`: o ticket SEGUE. Uma vez por ticket e por versão (`hash` do bloco JSON sem `status`, `notas_status`, `tentativas`, `adiamentos_ambiente`, `adiado_ate`; etapa 7d-1b, §12) |
 | `PREVOO_NOGO` | `local-loop.sh:prevoo_ou_sai` | `item=cat.0\|cat.1\|cat.6` |
 | `OCIOSO` | `local-loop.sh:drenar` (peça 7a-4) | `pendentes=` e um `<id>=<razão>` por pendente; ver abaixo |
 | `AMBIENTE` | `local-loop.sh:drenar` (peça 7a-8) | `tickets=<id>,<id>` `causa=<normalizada>` (a causa vai até o fim da linha); ver abaixo |
@@ -934,6 +941,62 @@ o legado vira `PAUSAR` pelo `--migrar`.
 | `gate_ticket.modo_pre_voo` | `aviso` | `executor.sh`, passo 5b do `drive_ticket` |
 | `politica_retry.por_causa.arquivo_solto` | `{modelo: MANTER, acao: "remover o arquivo solto da worktree"}` | `decisao.ts:decidirRetry` |
 | `politica_adiamento.causas_que_adiam` | + `"falha de ambiente da worktree"` (o `--migrar` acrescenta no fim de uma lista que já exista: `ITENS_NOVOS` da `config-tabela.ts`) | `decisao.ts:ROTULO_PARA_CAUSA` |
+
+## 12. Etapa 7d-1b: severidade por regra e calibração do gate de ticket (25/09/2026)
+
+A régua é a calibração de 25/09 (`~/orq-sessoes/levantamento-7d1-calibracao.md`
+§5): ERRO só com ZERO falso positivo nos done dos três repos. O corpus dela
+está em `test/fixtures/gate-corpus-7d1/` (57 bloqueados por spec, com a causa,
+e 706 done), e `test/orquestrador-gate-corpus.test.ts` reprova se uma regra
+ERRO marcar um done.
+
+### 12.1 Severidade
+
+Tabela única `REGRAS` (`gate-ticket.ts:105`). `erro` é violação (rc 1, e o
+pré-voo em `bloqueia` bloqueia); `aviso` sai na saída com `AVISO (<regra>):` e
+nunca bloqueia; `off` não é avaliada. `gate_ticket.severidade` no config
+sobrescreve por regra (`{"6q": "erro", "6a:rm ": "off"}`); valor fora de
+`erro|aviso|off` ou regra desconhecida é falha alta (rc 2). Chave `_*` é
+comentário.
+
+| Severidade | Regras |
+|---|---|
+| `erro` | `1` json, `2` campos, `4` status, `5t` tipo presente fora do vocabulário, `5c` cmd vazio em critério que roda, `5e` espera vazia, `6a` crase/`eval`/`sudo`/`curl`/`wget` (e padrão sem linha própria), `7` dependência órfã (= C7), `9` contexto_juiz, `10c` colchete escapado em classe, `10x` exemplo × padrão, `C2P` `grep -P` |
+| `aviso` | `2c` critérios ausentes, `3` id, `6a:rm `, `6a:bash`, `6a:sh -c`, `6r` redirecionamento, `6v` vitest por texto, `6q` `grep -q` em pipe, `6b` objetivo fora da allowlist, `8` sobreposição (fecho transitivo = C8), `9w`, `10n` sem exemplos, `C2c` `grep -c … \|\| echo`, `C2v` saída vazia, `C3` ausência ampla, `C4` acento em locale C, `C9` topologia, `C11` colisão de teste, `C12` allowlist sem arquivo nem pai |
+| `off` | `6a:$(` |
+
+### 12.2 Regras corrigidas
+
+`2` sem `bloco` e `risco`; `3` aceita `[a-z0-9]*` (também no `lerFila`); `5t`
+infere o tipo; `5c` aceita o avaliador sem cmd; `6r` aceita `/tmp/*` e fecha o
+alvo no `)`; `6v` só acusa o critério que aprovaria uma suíte com falha
+(roda o trecho depois do pipe sobre uma saída de referência com
+`Tests  1 failed | 5 passed`, só com filtros de texto; indeterminado continua
+acusado); `8` usa o fecho transitivo das dependências; `10x` aceita o exemplo
+como o shell entrega o padrão OU como ele está escrito entre as aspas de fora,
+prova positivo e negativo com o padrão real, e dispensa exemplo no `grep -v`.
+
+### 12.3 Regras do comarka-operacional
+
+Portadas do `validar-fila.py` sem executar critério (C1, C5 e C6 ficam para a
+etapa seguinte). C4, C9, C11 e C12 leem o repositório por `ContextoRepo`
+(`validarTicket`, 4º parâmetro): em produção, `contextoGit` usa a
+`branch_alvo` do config (C9, C12) e o disco do checkout da fila (C9, C11, e o
+dicionário de palavras acentuadas de `**/src/**/*.ts(x)` para o C4). Fora de
+repositório git, essas regras não rodam; branch alvo inexistente = C9/C12 não
+rodam. Os tickets da própria fila não contam como teste no C11.
+
+### 12.4 Execução sem cor
+
+`run_criterios` e o `gates.ts` rodam com `NO_COLOR=1 FORCE_COLOR=0`
+(`executor.sh:458`, `:1040`). O vitest obedece `NO_COLOR`; `FORCE_COLOR=0`
+desliga o que segue supports-color/chalk.
+
+### 12.5 Config (§8)
+
+| Chave | Valor no template / `--migrar` | Lida em |
+|---|---|---|
+| `gate_ticket.severidade` | `{}` (vale a tabela) | `gate-ticket.ts:lerSeveridade`, `:severidadeDe` |
 
 ---
 

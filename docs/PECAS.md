@@ -925,7 +925,39 @@
   *Teste:* caso 4 do `test-ambiente.sh`, com o texto real da recusa: 4 disparos, 1 AMBIENTE
   em cada, 906 e 907 pendentes. **Antes, nenhum AMBIENTE e os dois bloqueados no 4º.**
 
+- **Etapa 7d-1b · severidade por regra e calibração do gate de ticket** (25/09/2026).
+  Tabela `REGRAS` (erro/aviso/off) com `gate_ticket.severidade` por cima; o pré-voo em
+  `bloqueia` só bloqueia por ERRO. Correções de 2, 3, 5t, 5c, 6r, 6v, 8 (C8) e 10x; regras
+  estáticas do Comarka (C2c, C2v, C2P, C3, C4, C9, C11, C12); critérios e gates sem cor;
+  `GATE_TICKET_AVISO` uma vez por versão. Commits `960d8e6` (corpus), `635ddd3`
+  (severidade), `fe505ce` `2b49f34` `74fffeb` `1d942d7` `e6bd065` `394c241` `440b055`
+  `08aa971` (correções e severidade final), `62a8461` (Comarka), `da51053` (sem cor),
+  `b72e3bc` (aviso por versão).
+  *Evidência:* `~/orq-sessoes/levantamento-7d1-calibracao.md` §5 e
+  `~/orq-sessoes/relatorio-kit-etapa7d1b.md`.
+  *Teste:* `orquestrador-gate-corpus.test.ts` (nenhuma regra ERRO com FP nos 706 done),
+  `orquestrador-gate-severidade.test.ts`, `orquestrador-gate-correcoes.test.ts`,
+  `orquestrador-gate-comarka.test.ts`, `test-sem-cor.sh`, `test-gate-prevoo.sh` casos 8 e 9.
+
 ## PENDENTES
+
+- **7d-2 · o gate executa: C1, C5, C6.** Recon executado (C1, a única regra com causa e
+  zero FP nos três repos na calibração), guarda que já falha (C5, com a exceção de arquivo
+  que o ticket cria) e alvo que já passa (C6), contra a branch alvo em worktree
+  descartável; recon divergente = `obsoleto` sem tentativa, como no Comarka.
+  *Evidência:* calibração §5 (C1 0/0/0 FP, causal 288 e 264; C5 44/22/0 FP sem a exceção).
+  *Teste:* o corpus da 7d-1b com os `cmd` executados contra a base de cada caso.
+
+- **Doutrina do `risco` (SKILL.md, DOUTRINA-v2).** A SKILL diz que o gate cobra a CHAVE
+  `risco`; desde a 7d-1b o gate não cobra (`risco` e `bloco` opcionais). Fora do escopo de
+  escrita da 7d-1b; `doutrina-v2.test.ts` (decisão 4) registra a divergência.
+  *Teste:* a asserção da SKILL em `doutrina-v2.test.ts` passa a exigir o texto novo.
+
+- **Aviso de guarda de teto com número fixado na autoria** (caixa de defeitos,
+  `docs/defeitos/2026-09-25-teto-medido-fora-do-executor.md`, 627 do Comarka): regra nova
+  do gate de ticket, aviso, na tabela `REGRAS`.
+  *Teste:* o critério executável do próprio defeito (fixture com `TETO = 273` e
+  `[ "$t" -le 273 ]` avisa; a contraprova não).
 
 - **K6d · `scripts/kit/pureza.sh`.** O grep que TRANCA a pureza: em CÓDIGO (não em
   comentário) de `scripts/orquestrador/**` e `scripts/orq`, zero premissa de repo. As três

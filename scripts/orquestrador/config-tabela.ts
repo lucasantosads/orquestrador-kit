@@ -249,7 +249,7 @@ export const NOVAS: Nova[] = [
     procedencia: 'politica',
     valor: {},
     porque:
-      "gate-ticket.ts:846 (lerSeveridade) e gate-ticket.ts:128 (severidadeDe), etapa 7d-1b. Objeto VAZIO = vale a tabela REGRAS do motor, que é a decisão da calibração de 25/09 (ERRO só com zero falso positivo nos done dos três repos). A chave nasce vazia para ficar à vista de quem abre o config: rebaixar ou subir uma regra ('6q': 'erro') é decisão do repo, e o motor recusa alto regra ou valor que não conhece.",
+      "gate-ticket.ts:1045 (lerSeveridade) e gate-ticket.ts:150 (severidadeDe), etapa 7d-1b. Objeto VAZIO = vale a tabela REGRAS do motor, que é a decisão da calibração de 25/09 (ERRO só com zero falso positivo nos done dos três repos). A chave nasce vazia para ficar à vista de quem abre o config: rebaixar ou subir uma regra ('6q': 'erro') é decisão do repo, e o motor recusa alto regra ou valor que não conhece.",
   },
   {
     chave: 'gate_ticket.cmd_prefixos_permitidos',
