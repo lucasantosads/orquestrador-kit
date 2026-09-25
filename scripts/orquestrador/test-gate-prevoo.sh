@@ -23,6 +23,14 @@
 #       GATE_TICKET_AVISO na trilha;
 #   6 · chave gate_ticket.modo_pre_voo ausente: vale 'aviso', dito no log;
 #   7 · valor desconhecido: falha alta.
+#   8 · etapa 7d-1b: modo 'bloqueia' com ticket que só tem AVISO pela tabela de
+#       severidade (grep -q em pipe e vitest por texto, rebaixados pela
+#       calibração de 25/09): executa, nada bloqueia.
+#
+# Etapa 7d-1b: o RUIM dos casos 1, 3 e 5 era o critério com `| grep -q` e saída
+# textual do vitest. As duas regras viraram AVISO (calibração), e o ticket com
+# elas não bloqueia mais — é o caso 8. O RUIM passou a ter uma regra que segue
+# ERRO (`eval`), e as asserções dos casos 1 e 5 procuram essa violação.
 #
 # Uso: bash scripts/orquestrador/test-gate-prevoo.sh
 
@@ -75,7 +83,8 @@ ticket() {
 TICKET
 }
 
-RUIM='node_modules/.bin/vitest run visao 2>&1 | grep -qE "[1-9] passed" && echo ok'
+RUIM='test -f src/a901.ts && eval "echo ok"'
+SO_AVISO='node_modules/.bin/vitest run visao 2>&1 | grep -qE "[1-9] passed" && echo ok'
 BOM='test -f src/a902.ts && echo ok'
 
 # fixture_repo [modo] — o modo vai para gate_ticket.modo_pre_voo: 'bloqueia' (o
@@ -129,7 +138,7 @@ drive() {
   ORQ_EXEC_ROOT="$1" EXECUTOR_SOURCED=1 AQUI_T="$AQUI" TID_T="$2" bash -c "$STUB_EXECUTOR" 2>&1
 }
 
-echo "== 1 · critério com '| grep -q' em pipe: bloqueia ANTES da worktree =="
+echo "== 1 · critério com 'eval' (regra ERRO): bloqueia ANTES da worktree =="
 fx="$(fixture_repo)"
 if [ -z "$fx" ]; then
   falha "não consegui montar o fixture"
@@ -140,7 +149,7 @@ else
     && falha "o ticket 901 foi EXECUTADO com critério inválido" || ok "o ticket 901 não foi executado"
   [ "$(campo "$f901" '.status')" = bloqueado ] \
     && ok "status bloqueado" || falha "status=$(campo "$f901" '.status') (esperado bloqueado)"
-  campo "$f901" '.notas_status' | grep -q "grep -q em pipe" \
+  campo "$f901" '.notas_status' | grep -q "padrão proibido 'eval'" \
     && ok "a nota lista a violação" || falha "nota sem a violação: $(campo "$f901" '.notas_status')"
   campo "$f901" '.notas_status' | grep -q "AVISO" \
     && falha "a nota trouxe AVISO junto com a violação" || ok "a nota não mistura aviso"
@@ -228,7 +237,7 @@ else
     && ok "status não é bloqueado" || falha "status=bloqueado em modo aviso"
   grep -qE ' 901 GATE_TICKET_AVISO violacoes=[1-9]' "$fx/docs/fila/runs/events.log" 2>/dev/null \
     && ok "evento GATE_TICKET_AVISO na trilha" || falha "sem GATE_TICKET_AVISO: $(grep ' 901 ' "$fx/docs/fila/runs/events.log" 2>/dev/null | head -3)"
-  printf '%s\n' "$s5" | grep -q "grep -q em pipe" \
+  printf '%s\n' "$s5" | grep -q "padrão proibido 'eval'" \
     && ok "o log lista a violação" || falha "o log não lista a violação"
   rm -rf "$(dirname "$fx")"
 fi
@@ -266,6 +275,24 @@ else
     && falha "modo inválido passou como rc 0" || ok "modo inválido = rc != 0"
   printf '%s\n' "$s7" | grep -q "modo_pre_voo='talvez'" \
     && ok "o log nomeia o valor inválido" || falha "log sem o valor inválido"
+  rm -rf "$(dirname "$fx")"
+fi
+
+echo
+echo "== 8 · modo 'bloqueia', ticket só com AVISO pela tabela de severidade: executa =="
+fx="$(fixture_repo)"
+if [ -z "$fx" ]; then
+  falha "não consegui montar o fixture"
+else
+  ticket "$fx" 903 "$SO_AVISO" "escreve src/a903.ts"
+  (cd "$fx" && git add -A && git -c user.email=t@t -c user.name=t commit -qm t903) >/dev/null 2>&1
+  s8="$(drive "$fx" 903)"
+  printf '%s\n' "$s8" | grep -q "ENTRADA 903" \
+    && ok "o 903 foi executado (grep -q e vitest por texto são aviso)" || falha "o 903 não executou: $(printf '%s' "$s8" | tail -3)"
+  [ "$(campo "$fx/docs/fila/903-t.md" '.status')" != bloqueado ] \
+    && ok "status não é bloqueado" || falha "status=bloqueado por regra de AVISO: $(campo "$fx/docs/fila/903-t.md" '.notas_status')"
+  grep -q ' 903 BLOQUEADO' "$fx/docs/fila/runs/events.log" 2>/dev/null \
+    && falha "a trilha tem BLOQUEADO do 903" || ok "a trilha não tem BLOQUEADO do 903"
   rm -rf "$(dirname "$fx")"
 fi
 

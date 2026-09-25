@@ -245,6 +245,13 @@ export const NOVAS: Nova[] = [
       "executor.sh:1052, passo 5b do drive_ticket (porte do Actus, c404986 e 624). O pré-voo do gate de ticket entra em repo que já tem fila, e regra nova de critério (grep -q em pipe, vitest textual, exemplos_regex) reprovaria tickets escritos antes dela: 'aviso' põe as violações no log e na trilha sem bloquear. Quem quer o bloqueio troca para 'bloqueia' no próprio config.",
   },
   {
+    chave: 'gate_ticket.severidade',
+    procedencia: 'politica',
+    valor: {},
+    porque:
+      "gate-ticket.ts:846 (lerSeveridade) e gate-ticket.ts:128 (severidadeDe), etapa 7d-1b. Objeto VAZIO = vale a tabela REGRAS do motor, que é a decisão da calibração de 25/09 (ERRO só com zero falso positivo nos done dos três repos). A chave nasce vazia para ficar à vista de quem abre o config: rebaixar ou subir uma regra ('6q': 'erro') é decisão do repo, e o motor recusa alto regra ou valor que não conhece.",
+  },
+  {
     chave: 'gate_ticket.cmd_prefixos_permitidos',
     procedencia: 'politica',
     valor: [

@@ -109,6 +109,8 @@
     "timeout_cmd_secs": 120,
     "modo_pre_voo": "aviso",
     "_modo_pre_voo": "Pré-voo do gate de ticket no drive_ticket (porte do Actus, c404986 e 624): 'aviso' registra as violações no log e na trilha (GATE_TICKET_AVISO) e deixa o ticket seguir; 'bloqueia' marca o ticket bloqueado antes da worktree, sem consumir tentativa. Ausente = 'aviso'. Gate que não roda é falha alta nos dois.",
+    "severidade": {},
+    "_severidade": "Severidade por regra do gate de ticket (etapa 7d-1b): objeto regra -> erro|aviso|off por cima da tabela REGRAS do gate-ticket.ts. Vazio = a tabela, que aplica a calibração de 25/09 (ERRO só com zero falso positivo nos done dos três repos). 'bloqueia' no modo_pre_voo bloqueia SÓ por regra erro. Ex.: {\"6q\": \"erro\", \"6a:rm \": \"off\"}. Regra ou valor desconhecido é falha alta.",
     "cmd_prefixos_permitidos": [
       "npx vitest run",
       "npx jest",

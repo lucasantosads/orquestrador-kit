@@ -357,13 +357,21 @@ describe('check 6 · o veto, a isenção e o que a isenção NÃO alcança', () 
     expect(checarCmd("grep -c 'form ' src/a.ts", cfg).filter((a) => !a.isencao)).toEqual([]);
   });
 
-  it('regra (d): a isenção chega ao ticket, nomeando o critério e o prefixo', () => {
-    const dir = criarFila([
-      pendenteBom({
-        id: '901',
-        criterios_aceite: [{ tipo: 'alvo', cmd: "test $(grep -c 'it(' f.ts) -ge 8 && echo ok", espera: 'ok' }],
-      }),
-    ]);
+  // Etapa 7d-1b: a linha `6a:$(` nasce DESLIGADA (calibração: 54/7/74 FP, 0
+  // causal), e desligada ela não acusa nem isenta. Ligada pelo config, a regra
+  // (d) volta inteira: a isenção chega ao ticket com o prefixo.
+  it('regra (d): a isenção chega ao ticket, nomeando o critério e o prefixo (com 6a:$( ligada)', () => {
+    const ticket = pendenteBom({
+      id: '901',
+      criterios_aceite: [{ tipo: 'alvo', cmd: "test $(grep -c 'it(' f.ts) -ge 8 && echo ok", espera: 'ok' }],
+    });
+    const desligada = criarFila([ticket]);
+    expect(violacoes(desligada, '901')).toEqual([]);
+    expect(isencoes(desligada, '901')).toEqual([]);
+    const dir = criarFila([ticket]);
+    const cfg = JSON.parse(CFG_REAL);
+    cfg.gate_ticket.severidade = { '6a:$(': 'erro' };
+    writeFileSync(join(dir, '000-config.json'), JSON.stringify(cfg));
     expect(violacoes(dir, '901')).toEqual([]);
     const i = isencoes(dir, '901');
     expect(i).toHaveLength(1);

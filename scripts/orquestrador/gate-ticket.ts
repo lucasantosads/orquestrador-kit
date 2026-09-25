@@ -62,12 +62,85 @@ export const TIPOS_CRITERIO = ['alvo', 'guarda', 'avaliador'] as const
 /** `231`, `001a`. Três dígitos, sufixo de letra opcional para o ticket enxertado. */
 export const RE_ID = /^\d{3}[a-z]?$/
 
+// ─── Severidade por regra (etapa 7d-1b) ───────────────────────────────────
+//
+// Cada regra do gate tem UMA severidade, nesta tabela, e o config pode
+// sobrescrevê-la (`gate_ticket.severidade`). `erro` é violação: muda o rc, e o
+// pré-voo em modo `bloqueia` bloqueia por ela. `aviso` sai na saída e nunca
+// bloqueia. `off` não é avaliada.
+//
+// A régua é a calibração de 25/09/2026 (`levantamento-7d1-calibracao.md` §5):
+// ERRO só com ZERO falso positivo nos done dos três repos (o comarka-operacional
+// é a régua mais madura da frota). Os números de cada linha são os FP em (a),
+// CI/Actus/Comarka, medidos pelo corpus (`test/fixtures/gate-corpus-7d1`).
+
+export type Severidade = 'erro' | 'aviso' | 'off'
+export const SEVERIDADES = ['erro', 'aviso', 'off'] as const
+
+export interface Regra {
+  severidade: Severidade
+  /** O que a regra olha, em uma linha. */
+  oque: string
+  /** Por que esta severidade: a medida que a decidiu. */
+  porque: string
+}
+
+/**
+ * A tabela única. `6a:<padrão>` é a linha de UM padrão de `proibido_no_cmd`;
+ * padrão sem linha própria cai em `6a`.
+ */
+export const REGRAS: Readonly<Record<string, Regra>> = {
+  '1': { severidade: 'erro', oque: 'bloco ```json parseável', porque: '0/0/0 FP; sem JSON o executor não lê o ticket' },
+  '2': { severidade: 'erro', oque: 'campo obrigatório de pendente', porque: 'CORRIGIR: 4/48/557 FP por risco e bloco, que o executor não lê' },
+  '3': { severidade: 'erro', oque: 'id no formato e igual ao prefixo do arquivo', porque: 'CORRIGIR: 0/0/23 FP por ids de fatiamento (407a0)' },
+  '4': { severidade: 'erro', oque: 'status no vocabulário', porque: '0/0/0 FP' },
+  '5t': { severidade: 'erro', oque: 'tipo do critério', porque: 'CORRIGIR: 4/48/535 FP por tipo ausente, todo inferível' },
+  '5c': { severidade: 'erro', oque: 'cmd do critério não vazio', porque: 'CORRIGIR: 0/0/192 FP por critério avaliador sem cmd' },
+  '5e': { severidade: 'erro', oque: 'espera do critério não vazia', porque: '0/0/0 FP' },
+  '6a': { severidade: 'erro', oque: 'padrão de proibido_no_cmd sem linha própria', porque: 'crase, eval, sudo, curl, wget: 0/0/0 FP; regra de segurança' },
+  '6a:$(': { severidade: 'off', oque: "'$(' fora da isenção do 1º segmento", porque: 'DESLIGAR: 54/7/74 FP, 0 causal; forma dominante de comparação numérica' },
+  '6a:rm ': { severidade: 'aviso', oque: "'rm ' no cmd", porque: '0/13/20 FP (rm -rf .next antes do build), 0 causal' },
+  '6a:bash': { severidade: 'aviso', oque: "'bash' no cmd", porque: '0/1/6 FP, 0 causal' },
+  '6a:sh -c': { severidade: 'aviso', oque: "'sh -c' no cmd", porque: '0/0/1 FP, 0 causal' },
+  '6r': { severidade: 'aviso', oque: 'redirecionamento que escreve arquivo', porque: 'CORRIGIR → AVISO: 0/3/48 FP, 0 causal' },
+  '6v': { severidade: 'aviso', oque: 'saída textual do vitest em pipe', porque: 'CORRIGIR → AVISO: 53/34/272 FP; causal 6, nunca chega a zero FP' },
+  '6q': { severidade: 'aviso', oque: 'grep -q recebendo pipe', porque: '0/12/83 FP; causal 4 (Actus); o dano é do pipefail do executor' },
+  '6b': { severidade: 'aviso', oque: 'objetivo cita caminho fora da allowlist', porque: '55/60/363 FP; causal 1 (488)' },
+  '7': { severidade: 'erro', oque: 'dependência é id da fila ou humano:<token> (C7, dependência órfã)', porque: '0/0/0 FP depois de conferir as 19 do snapshot' },
+  '8': { severidade: 'aviso', oque: 'allowlist sobreposta com outro pendente sem dependência', porque: 'CORRIGIR → AVISO: 3/15/119 FP, 0 causal' },
+  '9': { severidade: 'erro', oque: 'contexto_juiz existe na branch alvo e não está na allowlist', porque: '0/0/0 FP (só o Actus usa o campo)' },
+  '9w': { severidade: 'aviso', oque: 'contexto_juiz coberto por glob da allowlist', porque: 'o caso do 501: referência que o ticket pode editar' },
+  '10n': { severidade: 'aviso', oque: 'critério com regex sem exemplos_regex', porque: '56/45/499 FP, 0 causal; nenhum ticket anterior ao 624 declara exemplos' },
+  '10c': { severidade: 'erro', oque: '\\[ ou \\] dentro de classe [...]', porque: '0/0/0 FP (caso-origem 503)' },
+  '10x': { severidade: 'erro', oque: 'exemplos_regex contra o padrão do cmd', porque: 'CORRIGIR: 0/8/0 FP, todos das aspas escapadas e do grep -v' },
+}
+
+export function severidadePadrao(regra: string): Severidade {
+  const r = REGRAS[regra] ?? (regra.startsWith('6a:') ? REGRAS['6a'] : undefined)
+  return r?.severidade ?? 'erro'
+}
+
+/**
+ * A severidade que vale para a regra: a do config, se houver, senão a da tabela.
+ * Para `6a:<padrão>`: a linha do padrão no config, a da tabela, a linha `6a` do
+ * config, a `6a` da tabela — nessa ordem.
+ */
+export function severidadeDe(regra: string, cfg: GateCfg): Severidade {
+  const s = cfg.severidade ?? {}
+  if (s[regra]) return s[regra]!
+  if (REGRAS[regra]) return REGRAS[regra]!.severidade
+  if (regra.startsWith('6a:') && s['6a']) return s['6a']!
+  return severidadePadrao(regra)
+}
+
 // ─── Resultado ────────────────────────────────────────────────────────────
 
 export interface Violacao {
   arquivo: string
   campo: string
   mensagem: string
+  /** A regra da tabela `REGRAS` que produziu o achado (etapa 7d-1b). */
+  regra: string
   /** Isenção NÃO é violação: entra na saída para ser vista, mas não muda o rc. */
   isencao?: boolean
   /** Aviso NÃO é violação: sinal para quem escreve o ticket, não muda o rc. */
@@ -88,6 +161,11 @@ export interface GateCfg {
    * do check 10 (exemplos_regex, ticket 624). Ausente = 10 s.
    */
   timeout_cmd_secs?: number
+  /**
+   * `gate_ticket.severidade` do config (etapa 7d-1b): regra → erro|aviso|off,
+   * por cima da tabela `REGRAS`. Ausente = a tabela inteira.
+   */
+  severidade?: Record<string, Severidade>
 }
 
 /** O ticket como ele chega do disco: sem promessa nenhuma sobre os campos. */
@@ -280,6 +358,8 @@ function contemPadrao(visivel: string, padrao: string): boolean {
 
 export interface AchadoCmd {
   mensagem: string
+  /** `6a:<padrão>`, `6r`, `6v` ou `6q` (tabela `REGRAS`). */
+  regra: string
   isencao?: boolean
 }
 
@@ -379,28 +459,32 @@ export function checarCmd(cmd: string, cfg: GateCfg): AchadoCmd[] {
       if (isentavel && ISENTAVEIS.has(padrao)) {
         achados.push({
           mensagem: `ISENCAO '${padrao}' no segmento 1 pelo prefixo permitido '${prefixo}' — cmd: ${cmd}`,
+          regra: `6a:${padrao}`,
           isencao: true,
         })
         continue
       }
       const onde = i === 0 ? 'segmento 1' : `segmento ${i + 1} ('${seg}')`
-      achados.push({ mensagem: `padrão proibido '${padrao}' em ${onde} — cmd: ${cmd}` })
+      achados.push({ mensagem: `padrão proibido '${padrao}' em ${onde} — cmd: ${cmd}`, regra: `6a:${padrao}` })
     }
 
     for (const r of redirecionamentosProibidos(visivel)) {
       achados.push({
         mensagem: `redirecionamento '${r}' escreve arquivo (só 2>&1, >/dev/null e 2>/dev/null passam) — cmd: ${cmd}`,
+        regra: '6r',
       })
     }
   })
   if (saidaTextualDoVitest(cmd)) {
     achados.push({
       mensagem: `vitest: saída textual interpretada em vez do rc ('passed' casa 'Tests 1 failed | 5 passed'; use '>/dev/null 2>&1 && echo OK' ou '; echo rc=$?') — cmd: ${cmd}`,
+      regra: '6v',
     })
   }
   for (const g of grepQuietoEmPipe(cmd)) {
     achados.push({
       mensagem: `grep -q em pipe ('${g}'): morre de SIGPIPE sob pipefail e a saída sai vazia com o trabalho verde (use grep -c ou grep -E com espera por regex) — cmd: ${cmd}`,
+      regra: '6q',
     })
   }
   return achados
@@ -657,19 +741,38 @@ export function casaExemplo(ex: ExemploRegex, texto: string, exec: ExecRegex): {
 
 /** Regras 1–5 do ticket 624 para UM critério. Devolve as mensagens de violação. */
 export function checarExemplosRegex(cmd: string, exemplosCru: unknown, exec: ExecRegex): string[] {
-  const msgs: string[] = []
+  return achadosExemplosRegex(cmd, exemplosCru, exec).map((a) => a.mensagem)
+}
+
+export interface AchadoRegex {
+  regra: '10n' | '10c' | '10x'
+  mensagem: string
+}
+
+/**
+ * O mesmo, com a regra de cada mensagem: `10n` (regex sem exemplos), `10c`
+ * (colchete escapado dentro de classe) e `10x` (exemplo contra o padrão).
+ */
+export function achadosExemplosRegex(
+  cmd: string,
+  exemplosCru: unknown,
+  exec: ExecRegex,
+): AchadoRegex[] {
+  const out: AchadoRegex[] = []
+  // Tudo que não é `10n` nem `10c` é `10x`: a mesma partição da calibração.
+  const msgs = { push: (mensagem: string, regra: AchadoRegex['regra'] = '10x') => out.push({ regra, mensagem }) }
   const padroes = padroesDoCmd(cmd)
   for (const p of padroes) {
     if (classeComColcheteEscapado(p.regex)) {
-      msgs.push(`regex '${p.regex}' tem \\[ ou \\] dentro de classe [...]: no /usr/bin/grep o ] fecha a classe (caso do 503)`)
+      msgs.push(`regex '${p.regex}' tem \\[ ou \\] dentro de classe [...]: no /usr/bin/grep o ] fecha a classe (caso do 503)`, '10c')
     }
   }
-  if (padroes.length === 0 && exemplosCru === undefined) return msgs
+  if (padroes.length === 0 && exemplosCru === undefined) return out
   if (!ehArray(exemplosCru) || exemplosCru.length === 0) {
     if (padroes.length > 0) {
-      msgs.push(`critério passa regex a ${padroes[0]!.ferramenta} e não declara exemplos_regex (lista de {regex, positivo, negativo})`)
+      msgs.push(`critério passa regex a ${padroes[0]!.ferramenta} e não declara exemplos_regex (lista de {regex, positivo, negativo})`, '10n')
     }
-    return msgs
+    return out
   }
   const exemplos: ExemploRegex[] = []
   exemplosCru.forEach((e, i) => {
@@ -691,7 +794,7 @@ export function checarExemplosRegex(cmd: string, exemplosCru: unknown, exec: Exe
   for (const e of exemplos) {
     if (!cmd.includes(e.regex)) msgs.push(`regex de exemplo '${e.regex}' não aparece literal no cmd`)
     if (classeComColcheteEscapado(e.regex)) {
-      msgs.push(`regex de exemplo '${e.regex}' tem \\[ ou \\] dentro de classe [...]`)
+      msgs.push(`regex de exemplo '${e.regex}' tem \\[ ou \\] dentro de classe [...]`, '10c')
     }
     const pos = casaExemplo(e, e.positivo, exec)
     if (pos.erro) msgs.push(`regex '${e.regex}' recusada: ${pos.erro}`)
@@ -699,7 +802,7 @@ export function checarExemplosRegex(cmd: string, exemplosCru: unknown, exec: Exe
     const neg = casaExemplo(e, e.negativo, exec)
     if (!neg.erro && neg.casa) msgs.push(`negativo '${e.negativo}' CASA '${e.regex}' (${e.ferramenta ?? 'grep'} ${e.flags ?? '-E'})`)
   }
-  return msgs
+  return out
 }
 
 export function lerFila(filaDir: string): TicketLido[] {
@@ -729,7 +832,33 @@ export function carregarCfg(filaDir: string): GateCfg {
       ? g.cmd_prefixos_permitidos.map(String)
       : [],
     ...(typeof g.timeout_cmd_secs === 'number' && g.timeout_cmd_secs > 0 ? { timeout_cmd_secs: g.timeout_cmd_secs } : {}),
+    ...(g.severidade !== undefined ? { severidade: lerSeveridade(g.severidade, p) } : {}),
   }
+}
+
+/**
+ * `gate_ticket.severidade`: objeto regra → erro|aviso|off. Valor fora do
+ * vocabulário ou regra que a tabela não conhece é falha ALTA (GateNaoRodou, rc
+ * 2): um erro de digitação ('6Q', 'avsio') que o gate engolisse deixaria a regra
+ * na severidade da tabela sem ninguém saber. Chave que começa com `_` é
+ * comentário, como no resto do config.
+ */
+export function lerSeveridade(cru: unknown, origem: string): Record<string, Severidade> {
+  if (!cru || typeof cru !== 'object' || Array.isArray(cru)) {
+    throw new GateNaoRodou(`${origem}: gate_ticket.severidade não é objeto (regra -> ${SEVERIDADES.join('|')})`)
+  }
+  const out: Record<string, Severidade> = {}
+  for (const [regra, v] of Object.entries(cru as Record<string, unknown>)) {
+    if (regra.startsWith('_')) continue
+    if (!REGRAS[regra] && !/^6a:.+/.test(regra)) {
+      throw new GateNaoRodou(`${origem}: gate_ticket.severidade.${regra}: regra desconhecida (${Object.keys(REGRAS).join(', ')}, ou 6a:<padrão>)`)
+    }
+    if (typeof v !== 'string' || !(SEVERIDADES as readonly string[]).includes(v)) {
+      throw new GateNaoRodou(`${origem}: gate_ticket.severidade.${regra}='${String(v)}' não é ${SEVERIDADES.join('|')}`)
+    }
+    out[regra] = v as Severidade
+  }
+  return out
 }
 
 /**
@@ -739,12 +868,20 @@ export function carregarCfg(filaDir: string): GateCfg {
 export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg): Violacao[] {
   const v: Violacao[] = []
   const arq = basename(alvo.arquivo)
-  const erro = (campo: string, mensagem: string) => v.push({ arquivo: arq, campo, mensagem })
+  // Todo achado passa por aqui: a tabela `REGRAS`, por cima dela o config,
+  // decidem se ele é violação, aviso ou nada (etapa 7d-1b).
+  const achado = (regra: string, campo: string, mensagem: string, isencao = false) => {
+    const sev = severidadeDe(regra, cfg)
+    if (sev === 'off') return
+    if (isencao) v.push({ arquivo: arq, campo, mensagem, regra, isencao: true })
+    else if (sev === 'aviso') v.push({ arquivo: arq, campo, mensagem, regra, aviso: true })
+    else v.push({ arquivo: arq, campo, mensagem, regra })
+  }
 
   // 1. bloco ```json parseável.
   if (!alvo.json) {
     const r = blocoJson(readFileSync(alvo.arquivo, 'utf8'))
-    erro('json', r.ok ? 'bloco ```json ilegível' : r.motivo)
+    achado('1', 'json', r.ok ? 'bloco ```json ilegível' : r.motivo)
     return v // sem JSON não há o que checar depois: fail-fast de verdade.
   }
   const t = alvo.json
@@ -760,7 +897,7 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
       // existir e ser lista, nada além.
       if (campo === 'dependencias') {
         if (!ehArray(t.dependencias)) {
-          erro(campo, 'campo obrigatório de ticket pendente ausente ou não é lista')
+          achado('2', campo, 'campo obrigatório de ticket pendente ausente ou não é lista')
         }
         continue
       }
@@ -770,29 +907,29 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
       // ter feito o que o próprio gate ainda não faz.
       if (campo === 'risco') {
         if (t.risco === undefined || t.risco === null) {
-          erro(campo, 'campo obrigatório de ticket pendente ausente')
+          achado('2', campo, 'campo obrigatório de ticket pendente ausente')
         } else if (typeof t.risco === 'string' && t.risco !== '' && t.risco !== 'baixo' && t.risco !== 'alto') {
-          erro(campo, `'${t.risco}' não é classe de risco (baixo, alto, ou vazio até o passo 6 classificar)`)
+          achado('2', campo, `'${t.risco}' não é classe de risco (baixo, alto, ou vazio até o passo 6 classificar)`)
         }
         continue
       }
-      if (vazio(t[campo])) erro(campo, 'campo obrigatório de ticket pendente ausente ou vazio')
+      if (vazio(t[campo])) achado('2', campo, 'campo obrigatório de ticket pendente ausente ou vazio')
     }
   }
 
   // 3. `id` no formato e igual ao prefixo do nome do arquivo.
   const id = typeof t.id === 'string' ? t.id : ''
   if (!RE_ID.test(id)) {
-    erro('id', `'${id}' fora do formato NNN[a] (três dígitos, letra opcional)`)
+    achado('3', 'id', `'${id}' fora do formato NNN[a] (três dígitos, letra opcional)`)
   }
   const prefixoArquivo = /^(\d{3}[a-z]?)-/.exec(arq)?.[1] ?? ''
   if (id && prefixoArquivo && id !== prefixoArquivo) {
-    erro('id', `'${id}' não bate com o prefixo do nome do arquivo ('${prefixoArquivo}')`)
+    achado('3', 'id', `'${id}' não bate com o prefixo do nome do arquivo ('${prefixoArquivo}')`)
   }
 
   // 4. `status` dentro do vocabulário.
   if (!(STATUS_VALIDOS as readonly string[]).includes(status)) {
-    erro('status', `'${status}' não é status de fila (${STATUS_VALIDOS.join(', ')})`)
+    achado('4', 'status', `'${status}' não é status de fila (${STATUS_VALIDOS.join(', ')})`)
   }
 
   // 5 e 6 só em ticket pendente: é o que ainda vai rodar. Critério de ticket
@@ -803,18 +940,18 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
       const cr = (c ?? {}) as Cru
       const tipo = typeof cr.tipo === 'string' ? cr.tipo : ''
       if (!(TIPOS_CRITERIO as readonly string[]).includes(tipo)) {
-        erro(campo, `tipo '${tipo}' inválido (${TIPOS_CRITERIO.join(', ')})`)
+        achado('5t', campo, `tipo '${tipo}' inválido (${TIPOS_CRITERIO.join(', ')})`)
       }
-      if (vazio(cr.cmd)) erro(campo, 'cmd vazio')
-      if (vazio(cr.espera)) erro(campo, 'espera vazia')
+      if (vazio(cr.cmd)) achado('5c', campo, 'cmd vazio')
+      if (vazio(cr.espera)) achado('5e', campo, 'espera vazia')
 
       if (typeof cr.cmd === 'string' && cr.cmd.trim() !== '') {
-        for (const a of checarCmd(cr.cmd, cfg)) {
-          v.push(a.isencao ? { arquivo: arq, campo, mensagem: a.mensagem, isencao: true } : { arquivo: arq, campo, mensagem: a.mensagem })
-        }
+        // A isenção do `$(` segue a linha do padrão: `6a:$(` desligada não
+        // isenta nem acusa.
+        for (const a of checarCmd(cr.cmd, cfg)) achado(a.regra, campo, a.mensagem, a.isencao === true)
         // 10. regex do critério contra os exemplos declarados (ticket 624).
-        for (const m of checarExemplosRegex(cr.cmd, cr.exemplos_regex, execRegexPadrao(cfg))) {
-          erro(`${campo}.exemplos_regex`, m)
+        for (const a of achadosExemplosRegex(cr.cmd, cr.exemplos_regex, execRegexPadrao(cfg))) {
+          achado(a.regra, `${campo}.exemplos_regex`, a.mensagem)
         }
       }
     })
@@ -824,12 +961,11 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
   if (pendente && typeof t.objetivo === 'string' && ehArray(t.pathspec_allowlist)) {
     const fora = caminhosForaDaAllowlist(t.objetivo, t.pathspec_allowlist.map(String))
     if (fora.length > 0) {
-      v.push({
-        arquivo: arq,
-        campo: 'objetivo',
-        mensagem: `AVISO: o objetivo cita caminho(s) fora da allowlist: ${fora.join(', ')} (se é para EDITAR, falta na allowlist; se é só para ler, ignore)`,
-        aviso: true,
-      })
+      achado(
+        '6b',
+        'objetivo',
+        `AVISO: o objetivo cita caminho(s) fora da allowlist: ${fora.join(', ')} (se é para EDITAR, falta na allowlist; se é só para ler, ignore)`,
+      )
     }
   }
 
@@ -840,11 +976,11 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
       const dep = String(d)
       if (dep.startsWith('humano:')) {
         if (dep.slice('humano:'.length).trim() === '') {
-          erro(`dependencias[${i}]`, "'humano:' sem token")
+          achado('7', `dependencias[${i}]`, "'humano:' sem token")
         }
         return
       }
-      if (!ids.has(dep)) erro(`dependencias[${i}]`, `'${dep}' não é id de ticket da fila nem 'humano:<token>'`)
+      if (!ids.has(dep)) achado('7', `dependencias[${i}]`, `'${dep}' não é id de ticket da fila nem 'humano:<token>'`)
     })
   }
 
@@ -863,7 +999,8 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
       if (comuns.length === 0) continue
       const depsDele = ehArray(o.dependencias) ? o.dependencias.map(String) : []
       if (minhasDeps.includes(o.id) || depsDele.includes(id)) continue
-      erro(
+      achado(
+        '8',
         'pathspec_allowlist',
         `sobrepõe o ${o.id} sem dependência declarada entre os dois: ${comuns.join(', ')}`,
       )
@@ -871,7 +1008,7 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
   }
 
   // 9. contexto_juiz — só em ticket pendente, como 5–8: é o que ainda vai rodar.
-  if (pendente) v.push(...checarContextoJuiz(alvo, cfg))
+  if (pendente) for (const c of checarContextoJuiz(alvo, cfg)) achado(c.regra, c.campo, c.mensagem)
 
   return v
 }
@@ -901,23 +1038,24 @@ function checarContextoJuiz(alvo: TicketLido, cfg: GateCfg): Violacao[] {
   const v: Violacao[] = []
   const ctx = t.contexto_juiz
   if (!Array.isArray(ctx) || ctx.some((c) => typeof c !== 'string' || c.trim() === '')) {
-    v.push({ arquivo: arq, campo: 'contexto_juiz', mensagem: 'não é lista de strings não-vazias (caminhos de repo)' })
+    v.push({ arquivo: arq, campo: 'contexto_juiz', regra: '9', mensagem: 'não é lista de strings não-vazias (caminhos de repo)' })
     return v
   }
   const allow = ehArray(t.pathspec_allowlist) ? t.pathspec_allowlist.map(String) : []
   ;(ctx as string[]).forEach((c, i) => {
     const campo = `contexto_juiz[${i}]`
     if (!cfg.branch_alvo) {
-      v.push({ arquivo: arq, campo, mensagem: `sem branch_alvo no 000-config.json para conferir que '${c}' existe` })
+      v.push({ arquivo: arq, campo, regra: '9', mensagem: `sem branch_alvo no 000-config.json para conferir que '${c}' existe` })
     } else if (!existeNaBranch(dirname(alvo.arquivo), cfg.branch_alvo, c)) {
-      v.push({ arquivo: arq, campo, mensagem: `'${c}' não existe na branch alvo '${cfg.branch_alvo}'` })
+      v.push({ arquivo: arq, campo, regra: '9', mensagem: `'${c}' não existe na branch alvo '${cfg.branch_alvo}'` })
     }
     if (allow.includes(c)) {
-      v.push({ arquivo: arq, campo, mensagem: `'${c}' está na pathspec_allowlist do próprio ticket: arquivo editado chega ao juiz pelo diff, não como referência` })
+      v.push({ arquivo: arq, campo, regra: '9', mensagem: `'${c}' está na pathspec_allowlist do próprio ticket: arquivo editado chega ao juiz pelo diff, não como referência` })
     } else if (allow.some((g) => globToRegExp(g).test(c))) {
       v.push({
         arquivo: arq,
         campo,
+        regra: '9w',
         mensagem: `AVISO: '${c}' é coberto por glob da pathspec_allowlist — se o ticket puder editá-lo, a referência (estado na base) e o diff vão divergir`,
         aviso: true,
       })
@@ -968,7 +1106,17 @@ function main(argv: string[]): number {
   }
 
   const fila = lerFila(filaDir)
-  const cfg = carregarCfg(filaDir)
+  let cfg: GateCfg
+  try {
+    cfg = carregarCfg(filaDir)
+  } catch (e) {
+    // Config de severidade inválido é falha ALTA, como check que não rodou.
+    if (e instanceof GateNaoRodou) {
+      process.stderr.write(`gate-ticket: ${e.message}\n`)
+      return 2
+    }
+    throw e
+  }
 
   let alvos: TicketLido[]
   if (pendentes) {
@@ -1014,7 +1162,7 @@ function main(argv: string[]): number {
       const meus = achados.filter((a) => a.arquivo === arq)
       const erros = meus.filter((a) => !a.isencao && !a.aviso)
       process.stdout.write(`${arq}  ${erros.length === 0 ? 'OK' : `${erros.length} violação(ões)`}\n`)
-      for (const a of meus) process.stdout.write(`  ${arq}:${a.campo} ${a.mensagem}\n`)
+      for (const a of meus) process.stdout.write(`  ${linha(a)}\n`)
     }
     const isencoes = achados.filter((a) => a.isencao).length
     const avisos = achados.filter((a) => a.aviso).length
@@ -1022,8 +1170,18 @@ function main(argv: string[]): number {
     return 0
   }
 
-  for (const a of soViolacoes ? violacoes : achados) process.stdout.write(`${a.arquivo}:${a.campo} ${a.mensagem}\n`)
+  for (const a of soViolacoes ? violacoes : achados) process.stdout.write(`${linha(a)}\n`)
   return violacoes.length > 0 ? 1 : 0
+}
+
+/**
+ * `<arquivo>:<campo> <mensagem>`. Achado rebaixado a aviso pela tabela de
+ * severidade ganha o prefixo `AVISO:` que as regras que já nasceram aviso (6b,
+ * 9w) trazem no texto: na saída sem --relatorio, é o que o separa de violação.
+ */
+function linha(a: Violacao): string {
+  const prefixo = a.aviso && !a.mensagem.startsWith('AVISO') ? `AVISO (${a.regra}): ` : ''
+  return `${a.arquivo}:${a.campo} ${prefixo}${a.mensagem}`
 }
 
 // `import.meta.url` só bate com o argv quando o arquivo foi CHAMADO, não

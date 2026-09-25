@@ -52,10 +52,12 @@ describe('(a) saída textual do vitest reprova', () => {
     expect(saidaTextualDoVitest(cmd)).toBe(false);
   });
 
-  it('entra no validar como violação do critério', () => {
+  // Etapa 7d-1b: a regra (6v) virou AVISO pela calibração de 25/09 (53/34/272
+  // FP nos done). A asserção segue exigindo o achado, agora com a marca de aviso.
+  it('entra no validar como aviso do critério (regra 6v)', () => {
     const fila = lerFila(FILA);
     const v = validar(fila.filter((t) => t.arquivo.includes('903-')), fila, CFG);
-    expect(v.some((x) => !x.aviso && x.campo.startsWith('criterios_aceite') && /vitest: saída textual/.test(x.mensagem))).toBe(true);
+    expect(v.some((x) => x.aviso && x.regra === '6v' && x.campo.startsWith('criterios_aceite') && /vitest: saída textual/.test(x.mensagem))).toBe(true);
   });
 });
 
