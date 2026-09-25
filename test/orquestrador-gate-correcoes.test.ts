@@ -7,10 +7,11 @@
  * instante T reduzida ao contexto dos checks 7 e 8, config do template.
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { REPO_ROOT } from './fixtures/orq-harness.js';
-import { carregarCfg, validarTicket, type TicketLido, type Violacao } from '../scripts/orquestrador/gate-ticket.js';
+import { carregarCfg, lerFila, validarTicket, type TicketLido, type Violacao } from '../scripts/orquestrador/gate-ticket.js';
 
 interface Caso {
   grupo: 'a' | 'b';
@@ -81,5 +82,25 @@ describe('7d1b-3 · check 2: risco e bloco opcionais; critérios ausentes em reg
     const v = rodar('Comarka', '346a-lib-periodo-compartilhada');
     expect(erros(v).filter((x) => x.campo === 'criterios_aceite')).toEqual([]);
     expect(daRegra(v, '2c').map((x) => [x.campo, x.aviso])).toEqual([['criterios_aceite', true]]);
+  });
+});
+
+describe('7d1b-3 · check 3: id com sufixo de fatiamento (407a0, 315b1b)', () => {
+  it('Comarka 407a0 (bloqueado por spec) e 062a1 (done): o id é válido e bate com o arquivo', () => {
+    for (const id of ['407a0', '062a1', '315b1b']) {
+      expect(daRegra(rodar('Comarka', id), '3').map((x) => x.mensagem), id).toEqual([]);
+    }
+    expect(caso('Comarka', '407a0').arquivo).toMatch(/^407a0-/);
+  });
+
+  it('a fila lê o arquivo 407a0-*.md (senão o check 7 não acha a dependência)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orq-id-'));
+    writeFileSync(join(dir, '407a0-x.md'), '# 407a0\n\n```json\n{"id": "407a0"}\n```\n');
+    expect(lerFila(dir).map((f) => f.json?.id)).toEqual(['407a0']);
+  });
+
+  it('id torto segue acusado: 9z1, e o 346a-lib-periodo-compartilhada (slug colado no id)', () => {
+    expect(daRegra(rodar('Comarka', '407a0', (t) => (t.id = '9z1')), '3').length).toBeGreaterThan(0);
+    expect(daRegra(rodar('Comarka', '346a-lib-periodo-compartilhada'), '3').map((x) => x.campo)).toContain('id');
   });
 });

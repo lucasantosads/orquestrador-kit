@@ -205,7 +205,11 @@ describe('check 3 · id NNN[a], igual ao prefixo do nome do arquivo', () => {
     const md = readFileSync(join(dir, '9z1-torto.md'), 'utf8');
     const r = blocoJson(md);
     const v = validarTicket({ arquivo: join(dir, '9z1-torto.md'), json: r.ok ? r.json : null }, fila, cfg);
-    expect(v.map((x) => x.mensagem)).toContain("'9z1' fora do formato NNN[a] (três dígitos, letra opcional)");
+    // Etapa 7d-1b: o sufixo passou de `[a-z]?` a `[a-z0-9]*` (407a0, 315b1b), e a
+    // mensagem diz o formato novo. O 9z1 continua fora dele.
+    expect(v.map((x) => x.mensagem)).toContain(
+      "'9z1' fora do formato NNN[sufixo] (três dígitos e letras/dígitos minúsculos, ex.: 407a0)",
+    );
   });
 
   it('MAU: id que não bate com o prefixo do arquivo', () => {

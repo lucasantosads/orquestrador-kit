@@ -66,8 +66,13 @@ export const CAMPOS_PENDENTE = [
 
 export const TIPOS_CRITERIO = ['alvo', 'guarda', 'avaliador'] as const
 
-/** `231`, `001a`. Três dígitos, sufixo de letra opcional para o ticket enxertado. */
-export const RE_ID = /^\d{3}[a-z]?$/
+/**
+ * `231`, `001a`, `407a0`, `315b1b`. Três dígitos e um sufixo de letras e
+ * dígitos: o ticket enxertado (`a`) e o fatiado de um fatiado (`a0`, `b1b`).
+ * Etapa 7d-1b: era `[a-z]?`, e marcava 23 done do Comarka (calibração de 25/09);
+ * o sufixo agora é o do pre-commit do Comarka.
+ */
+export const RE_ID = /^\d{3}[a-z0-9]*$/
 
 // ─── Severidade por regra (etapa 7d-1b) ───────────────────────────────────
 //
@@ -510,7 +515,7 @@ function vazio(v: unknown): boolean {
   return false
 }
 
-/** Todo `NNN[a]-*.md` do diretório da fila, lido uma vez. */
+/** Todo `NNN[sufixo]-*.md` do diretório da fila, lido uma vez. */
 // ─── Check 10: regex do critério contra exemplos declarados (ticket 624) ──
 //
 // Causa (auditoria de 22/09/2026): o regex "cita arquivo:linha" do 503 tinha
@@ -816,7 +821,7 @@ export function achadosExemplosRegex(
 export function lerFila(filaDir: string): TicketLido[] {
   if (!existsSync(filaDir)) return []
   return readdirSync(filaDir)
-    .filter((f) => /^\d{3}[a-z]?-.*\.md$/.test(f))
+    .filter((f) => /^\d{3}[a-z0-9]*-.*\.md$/.test(f))
     .sort()
     .map((f) => {
       const arquivo = join(filaDir, f)
@@ -925,9 +930,9 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
   // 3. `id` no formato e igual ao prefixo do nome do arquivo.
   const id = typeof t.id === 'string' ? t.id : ''
   if (!RE_ID.test(id)) {
-    achado('3', 'id', `'${id}' fora do formato NNN[a] (três dígitos, letra opcional)`)
+    achado('3', 'id', `'${id}' fora do formato NNN[sufixo] (três dígitos e letras/dígitos minúsculos, ex.: 407a0)`)
   }
-  const prefixoArquivo = /^(\d{3}[a-z]?)-/.exec(arq)?.[1] ?? ''
+  const prefixoArquivo = /^(\d{3}[a-z0-9]*)-/.exec(arq)?.[1] ?? ''
   if (id && prefixoArquivo && id !== prefixoArquivo) {
     achado('3', 'id', `'${id}' não bate com o prefixo do nome do arquivo ('${prefixoArquivo}')`)
   }
