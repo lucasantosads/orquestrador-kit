@@ -46,14 +46,14 @@ uma camada, um critério `alvo` que só fica verde depois da implementação.
     {
       "tipo": "alvo",
       "descricao": "o caso novo de somaNegativos aparece no relatório do vitest (DEVE estar ausente antes de implementar)",
-      "cmd": "npx vitest run test/soma.test.ts --reporter=verbose 2>&1 | grep -E 'somaNegativos'",
-      "espera": "somaNegativos"
+      "cmd": "npx vitest run test/soma.test.ts -t 'somaNegativos soma só os menores que zero' >/dev/null 2>&1 && grep -cF 'somaNegativos soma só os menores que zero' test/soma.test.ts",
+      "espera": "1"
     },
     {
       "tipo": "guarda",
       "descricao": "a suíte inteira segue verde",
-      "cmd": "npx vitest run 2>&1 | grep -cE 'Tests +[0-9]+ passed'",
-      "espera": "1"
+      "cmd": "npx vitest run >/dev/null 2>&1 && echo OK",
+      "espera": "OK"
     },
     {
       "tipo": "guarda",
