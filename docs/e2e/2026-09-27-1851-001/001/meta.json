@@ -1,0 +1,12 @@
+[
+  {
+    "attempt": 0,
+    "model": "sonnet",
+    "claude_dur_secs": 103,
+    "diff_lines": 12,
+    "resultado": "adiado",
+    "ts": "2026-09-27T21:51:55Z",
+    "dir": "attempt-0",
+    "commitDoHarness": false
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "attempt": 0,
+    "model": "sonnet",
+    "claude_dur_secs": 65,
+    "diff_lines": 12,
+    "resultado": "aprovado",
+    "ts": "2026-09-27T22:13:39Z",
+    "dir": "attempt-0",
+    "commitDoHarness": false
+  }
+]

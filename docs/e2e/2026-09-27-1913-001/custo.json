@@ -1,0 +1,36 @@
+{
+  "dias": {
+    "2026-09-27": [
+      {
+        "data": "2026-09-27",
+        "papel": "probe",
+        "ticket": "---",
+        "attempt": 0,
+        "tokens_in": 2,
+        "tokens_out": 4,
+        "tokens_cache": 18639,
+        "custo_usd": 0.0938718
+      },
+      {
+        "data": "2026-09-27",
+        "papel": "executor",
+        "ticket": "001",
+        "attempt": 0,
+        "tokens_in": 14,
+        "tokens_out": 2145,
+        "tokens_cache": 387178,
+        "custo_usd": 0.28441359999999993
+      },
+      {
+        "data": "2026-09-27",
+        "papel": "juiz",
+        "ticket": "001",
+        "attempt": 0,
+        "tokens_in": 2,
+        "tokens_out": 148,
+        "tokens_cache": 23999,
+        "custo_usd": 0.0897878
+      }
+    ]
+  }
+}

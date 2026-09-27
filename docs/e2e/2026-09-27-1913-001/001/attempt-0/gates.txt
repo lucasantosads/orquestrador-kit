@@ -1,0 +1,3 @@
+ok   typecheck               412ms
+ok   test                  16696ms
+VEREDITO: APROVADO

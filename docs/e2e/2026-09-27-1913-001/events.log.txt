@@ -1,0 +1,8 @@
+2026-09-27T19:11:43-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=1
+2026-09-27T19:11:49-0300 001 GATE_TICKET_AVISO violacoes=4
+2026-09-27T19:11:50-0300 001 INICIO attempt=1 model=sonnet
+2026-09-27T19:13:31-0300 001 GATE typecheck=ok testes=ok enforcement=ok criterios=4/4 build=nao-configurado
+2026-09-27T19:13:39-0300 001 JUIZ veredito=aprovado classe=baixo modelo=sonnet attempt=1
+2026-09-27T19:13:39-0300 001 APROVADO merge=aguardando dur=65s attempt=1
+2026-09-27T19:13:39-0300 001 MERGE alvo=staging-auto sha=fd0b86d
+2026-09-27T19:13:39-0300 --- DRENAGEM_FIM aprovados=1 bloqueados=0 adiados=0 refatiar=0 sem_progresso=0 dur=2min

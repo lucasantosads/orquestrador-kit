@@ -1,0 +1,26 @@
+{
+  "dias": {
+    "2026-09-27": [
+      {
+        "data": "2026-09-27",
+        "papel": "probe",
+        "ticket": "---",
+        "attempt": 0,
+        "tokens_in": 2,
+        "tokens_out": 4,
+        "tokens_cache": 18639,
+        "custo_usd": 0.0969678
+      },
+      {
+        "data": "2026-09-27",
+        "papel": "executor",
+        "ticket": "001",
+        "attempt": 0,
+        "tokens_in": 38,
+        "tokens_out": 6896,
+        "tokens_cache": 1298482,
+        "custo_usd": 0.5834524000000001
+      }
+    ]
+  }
+}

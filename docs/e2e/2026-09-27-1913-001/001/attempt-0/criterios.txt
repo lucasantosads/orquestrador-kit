@@ -1,0 +1,20 @@
+### typecheck não regride: nenhum erro de tipo no fixture
+cmd: npx tsc --noEmit >/dev/null 2>&1 && echo OK
+espera: OK
+saida: OK
+
+### o caso novo de somaNegativos aparece no relatório do vitest (DEVE estar ausente antes de implementar)
+cmd: npx vitest run test/soma.test.ts --reporter=verbose 2>&1 | grep -E 'somaNegativos'
+espera: somaNegativos
+saida:  ✓ test/soma.test.ts > soma > somaNegativos soma só os menores que zero
+
+### a suíte inteira segue verde
+cmd: npx vitest run 2>&1 | grep -cE 'Tests +[0-9]+ passed'
+espera: 1
+saida: 1
+
+### escopo: o diff da worktree toca exatamente os dois arquivos da allowlist
+cmd: git diff --name-only $BASE_REF...HEAD -- src/soma.ts test/soma.test.ts | wc -l | tr -d ' '
+espera: 2
+saida: 2
+

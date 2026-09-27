@@ -1,0 +1,1 @@
+{"aprovado":true,"motivo":"src/soma.ts:15-18 exporta somaNegativos com filtro n<0; test/soma.test.ts importa e chama somaNegativos([-2,3,-4]) e ([1,2]) com asserções não-triviais que quebrariam se revertidas; soma() original permanece byte-idêntica e nenhuma asserção existente foi tocada.","criterios_falhos":[]}

@@ -1,0 +1,34 @@
+diff --git a/src/soma.ts b/src/soma.ts
+index 1f20217..eb09931 100644
+--- a/src/soma.ts
++++ b/src/soma.ts
+@@ -10,3 +10,8 @@
+ export function soma(numeros: number[]): number {
+   return numeros.reduce((acc, n) => acc + n, 0);
+ }
++
++/** Soma apenas os números menores que zero. Lista sem negativos soma 0. */
++export function somaNegativos(numeros: number[]): number {
++  return numeros.filter((n) => n < 0).reduce((acc, n) => acc + n, 0);
++}
+diff --git a/test/soma.test.ts b/test/soma.test.ts
+index 951ce73..8d488e8 100644
+--- a/test/soma.test.ts
++++ b/test/soma.test.ts
+@@ -1,5 +1,5 @@
+ import { describe, it, expect } from 'vitest';
+-import { soma } from '../src/soma.js';
++import { soma, somaNegativos } from '../src/soma.js';
+ 
+ describe('soma', () => {
+   it('soma uma lista de positivos', () => {
+@@ -13,4 +13,9 @@ describe('soma', () => {
+   it('mistura de sinais soma o total, sem filtrar', () => {
+     expect(soma([-2, 3, -4])).toBe(-3);
+   });
++
++  it('somaNegativos soma só os menores que zero', () => {
++    expect(somaNegativos([-2, 3, -4])).toBe(-6);
++    expect(somaNegativos([1, 2])).toBe(0);
++  });
+ });

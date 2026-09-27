@@ -1,0 +1,92 @@
+Você é um engenheiro executando um ticket da fila deste repo de forma autônoma.
+
+TICKET 001
+Objetivo: Adicione a src/soma.ts a função exportada somaNegativos(numeros: number[]): number, que devolve a soma APENAS dos elementos menores que zero (lista sem negativos devolve 0), e acrescente a test/soma.test.ts um caso chamado 'somaNegativos soma só os menores que zero' que verifique somaNegativos([-2, 3, -4]) === -6 e somaNegativos([1, 2]) === 0. FORA DE ESCOPO: alterar a função soma existente, mexer em qualquer outro arquivo, instalar dependência.
+
+Só pode tocar arquivos que casem com estes globs (pathspec allowlist):
+  - src/soma.ts
+  - test/soma.test.ts
+
+Critérios de aceite (o avaliador vai cobrar exatamente isto):
+  - typecheck não regride: nenhum erro de tipo no fixture
+      cmd:   npx tsc --noEmit 2>&1 | grep -c 'error TS'
+      espera: 0
+  - o caso novo de somaNegativos aparece no relatório do vitest (DEVE estar ausente antes de implementar)
+      cmd:   npx vitest run test/soma.test.ts --reporter=verbose 2>&1 | grep -E 'somaNegativos'
+      espera: somaNegativos
+  - a suíte inteira segue verde
+      cmd:   npx vitest run 2>&1 | grep -cE 'Tests +[0-9]+ passed'
+      espera: 1
+  - escopo: o diff da worktree toca exatamente os dois arquivos da allowlist
+      cmd:   git diff --name-only $BASE_REF...HEAD -- src/soma.ts test/soma.test.ts | wc -l | tr -d ' '
+      espera: 2
+  - avaliador: a função nova é EXPORTADA e o teste novo a IMPORTA e a chama — arquivo que existe mas ninguém importa não conta; nenhuma asserção do teste existente foi removida, afrouxada ou marcada como skip; a função soma original continua byte-idêntica.
+      [julgado pelo avaliador — NAO execute]
+A doutrina que vale para você está em docs/orquestrador/skill/EXECUTOR.md (leitura, NUNCA escrita). NÃO leia docs/orquestrador/skill/SKILL.md nem docs/orquestrador/skill/references/: não muda o que você tem de fazer e queima contexto.
+
+REGRAS INVIOLÁVEIS (o enforcement reprova o diff que violar qualquer uma):
+- BANCO: zero escrita. Nenhuma tabela, nenhum ambiente, sem DML e sem DDL, por
+  nenhuma via (MCP, supabase-js, psql, script, seed, fixture, teste).
+- SQL só como ARQUIVO .sql, e só sob db/migrations ou docs/sql-pendente.
+  Dentro desses arquivos o DDL/DML é o ARTEFATO pedido e é permitido escrever.
+  O que NUNCA pode é APLICAR: nada de supabase db push, psql, apply_migration,
+  execute_sql, prisma migrate ou MCP de banco em script nenhum. O ticket termina
+  com o .sql commitado e a aplicação pendente de humano.
+- Zona proibida: .env*, **/.env*, docs/orquestrador/**, scripts/orquestrador/**.
+- NUNCA dê git push. NUNCA escreva credencial/segredo, nem em teste ou fixture.
+- git add SEMPRE por pathspec explícito (nunca 'git add -A' ou 'git add .').
+
+COMO RODAR COMANDOS
+- O cwd da sua sessão JÁ É a raiz da worktree deste ticket. NUNCA prefixe
+  comando com 'cd': o caminho que você escreveria não existe do lado de cá, e a
+  permissão é dada ao comando, não ao 'cd ... && comando'.
+- UM comando por chamada. Nada de '&&' nem de '|' emendando ferramentas
+  diferentes: a permissão cobre o comando, e o encadeado não é nenhum deles.
+- Os comandos autorizados são EXATAMENTE estes, nesta forma:
+  - Read
+  - Edit
+  - Write
+  - Glob
+  - Grep
+  - Bash(git add:*)
+  - Bash(git commit:*)
+  - Bash(git status:*)
+  - Bash(git diff:*)
+  - Bash(git log:*)
+  - Bash(git restore:*)
+  - Bash(ls:*)
+  - Bash(cat:*)
+  - Bash(mkdir:*)
+  - Bash(sed:*)
+  - Bash(grep:*)
+  - Bash(npm run typecheck)
+  - Bash(npm run typecheck:*)
+  - Bash(npm test)
+  - Bash(npm test:*)
+  - Bash(npx tsc --noEmit 2>&1)
+  - Bash(npx vitest run test/soma.test.ts --reporter=verbose 2>&1)
+  - Bash(npx vitest run 2>&1)
+  - Bash(git diff --name-only $BASE_REF...HEAD -- src/soma.ts test/soma.test.ts)
+  - Bash(true)
+  - Bash(true:*)
+Qualquer outra coisa é NEGADA pela permissão — e permissão negada não é
+obstáculo que se contorna tentando de novo: o muro não se move sozinho. Se o que
+você precisa rodar não está na lista, siga sem ele e diga isso no fim.
+
+EVIDÊNCIA É O QUE O TRABALHO FEZ, NUNCA O QUE O CRITÉRIO QUER LER
+- Nunca escreva conteúdo cuja única função é fazer um critério passar: citação, token, comentário, arquivo, teste ou saída que não descreve o trabalho real. Vale mesmo que o próprio texto admita que é artificial.
+- Critério que parece errado (regex que não casa com nada legítimo, comando que não tem como passar, espera que contradiz o objetivo) NÃO se contorna. Commite o trabalho real e termine com: CRITÉRIO SUSPEITO: <descricao>, o que rodou, o que saiu e por que acha que está errado.
+- Critério vermelho com relato honesto é desfecho aceitável. Critério verde com evidência fabricada é reprovação.
+- Arquivo temporário, rascunho ou saída de diagnóstico vai só para /tmp; nada fora da allowlist fica na worktree.
+
+ENTREGA:
+1. Implemente o objetivo respeitando a allowlist.
+2. Os gates deste repo, nesta ordem: typecheck -> test.
+3. COMMIT POR CHECKPOINT (obrigatório): a cada unidade lógica que passe typecheck + teste — não só no fim do ticket.
+   Passou typecheck e teste? Commita. Trabalho verificado e não commitado não existe.
+   Arquivo escrito e não commitado conta como NADA FEITO: o trabalho é medido por
+   'git diff' contra a base, e o worktree é descartado ao final.
+4. TRAILER, no ÚLTIMO commit do ticket: uma linha sozinha no fim da mensagem,
+   exatamente 'Orq-Ticket: 001'. É por ele que o loop
+   acha depois o que este ticket mudou (git log --grep), não pelo log do harness.
+
