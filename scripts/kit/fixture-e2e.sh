@@ -123,6 +123,17 @@ fi
 
 command -v claude >/dev/null 2>&1 || { printf 'ERRO: claude fora do PATH\n' >&2; exit 2; }
 
+# Pré-requisito GRÁTIS antes de qualquer chamada paga: a worktree que o motor
+# monta no fixture passa nos gates REAIS do config, sem agente nem juiz. O e2e
+# de 27/09 (docs/e2e/2026-09-27-1851-001) gastou US$ 0,68 para descobrir que a
+# worktree nascia sem node_modules — coisa que este teste acha em ~20 s e US$ 0.
+printf '== pré-requisito: test-fixture-gates.sh (grátis) ==\n'
+if ! bash "$KIT/scripts/kit/test-fixture-gates.sh"; then
+  printf '\nABORTADO: test-fixture-gates.sh não passou — nenhuma chamada paga foi feita.\n' >&2
+  exit 3
+fi
+printf '\n'
+
 FX="$(bash "$KIT/scripts/kit/fixture.sh")" || { printf 'ERRO: fixture.sh falhou\n' >&2; exit 2; }
 printf '\nfixture: %s  (NÃO é removido no fim — a evidência mora nele)\n\n' "$FX"
 

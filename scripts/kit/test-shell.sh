@@ -43,6 +43,10 @@
 #   test-tentativas-persistidas.sh  o contador já está no arquivo quando o processo morre; done zera (f3aaa89, casos novos)
 #   test-orq-pause.sh               --off/--status tratam as duas sentinelas; trilha PAUSA/RETOMADA; orq retomar com o legado (514)
 #
+# E um que mora no KIT, não no fixture, porque instancia o PRÓPRIO fixture
+# (roda depois do laço, pelo caminho do kit):
+#   scripts/kit/test-fixture-gates.sh  a worktree do motor passa nos gates REAIS do config (e2e de 27/09)
+#
 # Cada um monta o PRÓPRIO `ORQ_EXEC_ROOT` num `mktemp -d` (drenagem e retry) ou
 # trabalha direto no checkout (lib-config); nada aqui precisa exportar
 # `ORQ_EXEC_ROOT` por fora — fazer isso sobrescreveria o isolamento que cada
@@ -77,6 +81,15 @@ for s in $SCRIPTS; do
 "
   [ "$rc" = 0 ] || FALHAS=$((FALHAS + 1))
 done
+
+# Fora do laço: instancia o próprio fixture, então roda do kit.
+printf -- '--- %s ---\n' 'test-fixture-gates.sh (kit)'
+bash "$KIT/scripts/kit/test-fixture-gates.sh"
+rc=$?
+printf '\nrc(%s) = %s\n\n' 'test-fixture-gates.sh' "$rc"
+PLACAR="$PLACAR  rc=$rc  test-fixture-gates.sh (kit)
+"
+[ "$rc" = 0 ] || FALHAS=$((FALHAS + 1))
 
 printf '== placar ==\n%s' "$PLACAR"
 [ "$FALHAS" = 0 ] && { printf 'TODOS OS SCRIPTS SAÍRAM rc 0\n'; exit 0; }
