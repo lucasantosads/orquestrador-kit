@@ -232,14 +232,22 @@ ${trecho:-(o CLI não escreveu NADA em stdout nem stderr — rc=$rc é tudo o qu
 # lista fixa produzia para o CI — `.` (0x2E) antes de `apps/web` antes de
 # `services/*`, estes em ordem de glob. Ordem decide qual symlink e criado antes
 # de qual; "o CI nao faz nada diferente" e afirmacao sobre a saida inteira.
+#
+# `-type l` alem de `-type d`: node_modules pode ser SYMLINK para um store fora
+# do checkout — e a forma do fixture do kit (fixture.sh linka o do kit). So com
+# `-type d` a lista saia VAZIA, a worktree nascia sem node_modules e o gate dava
+# `tsc: command not found` (e2e de 27/09, docs/e2e/2026-09-27-1851-001). Sem
+# `find -L`: ele desceria para dentro do store. O `[ -d ]` descarta symlink
+# quebrado (e o que nao aponta para diretorio).
 pacotes_do_checkout() {
   local nm rel
   while IFS= read -r nm; do
     [ -n "$nm" ] || continue
+    [ -d "$nm" ] || continue
     rel="$(dirname "$nm")"
     rel="${rel#"$MAIN_CHECKOUT"}"; rel="${rel#/}"
     printf '%s\n' "${rel:-.}"
-  done < <(find "$MAIN_CHECKOUT" -maxdepth 3 -type d -name node_modules \
+  done < <(find "$MAIN_CHECKOUT" -maxdepth 3 \( -type d -o -type l \) -name node_modules \
              -not -path '*/node_modules/*' 2>/dev/null) | LC_ALL=C sort
 }
 

@@ -22,10 +22,16 @@
  *      pacote — senão a lista explodiria em centenas de entradas;
  *   4. `limpa_cache_vite` apaga o `.vite` de TODOS os pacotes detectados —
  *      inclusive de um `packages/ui`, nome que a lista fixa NÃO cobria: é ele
- *      que separa "detecta" de "adivinha".
+ *      que separa "detecta" de "adivinha";
+ *   5. `node_modules` que é SYMLINK para diretório conta como pacote — é a
+ *      forma do fixture do kit (`fixture.sh` linka o do kit). Sem este caso o
+ *      `find -type d` do K6a (d613b07) devolvia lista vazia, a worktree nascia
+ *      sem `node_modules` e o e2e de 27/09 adiou por `tsc: command not found`
+ *      (docs/e2e/2026-09-27-1851-001). Symlink QUEBRADO não é pacote.
  */
 import { describe, it, expect } from 'vitest';
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, mkdtempSync, rmSync, symlinkSync, lstatSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { bashNoFixture, criarFixture, REPO_ROOT } from './fixtures/orq-harness.js';
 
@@ -85,6 +91,34 @@ describe('pacotes_do_checkout detecta quem tem node_modules próprio', () => {
     mkdirSync(join(raiz, 'node_modules', 'vite', 'node_modules'), { recursive: true });
     const r = noExecutor(raiz, 'pacotes_do_checkout');
     expect(r.stdout.trim().split('\n')).toEqual(['.']);
+  });
+
+  it('node_modules da raiz como SYMLINK para diretório de fora: é pacote, e a worktree ganha o link', () => {
+    const raiz = criarFixture([]);
+    // O store mora FORA do checkout, como no fixture do kit (-> kit/node_modules).
+    // Leva junto o .bin/tsx que o criarFixture pôs na raiz, porque o lib.sh o usa.
+    const store = mkdtempSync(join(tmpdir(), 'orq-store-'));
+    mkdirSync(join(store, '.bin'), { recursive: true });
+    symlinkSync(join(REPO_ROOT, 'node_modules', '.bin', 'tsx'), join(store, '.bin', 'tsx'));
+    rmSync(join(raiz, 'node_modules'), { recursive: true, force: true });
+    symlinkSync(store, join(raiz, 'node_modules'));
+
+    const r = noExecutor(raiz, 'pacotes_do_checkout');
+    expect(r.stdout.trim().split('\n')).toEqual(['.']);
+
+    const wt = join(raiz, '..', `wt-symlink-${Date.now()}`);
+    const l = noExecutor(raiz, [`wt="${wt}"`, 'mkdir -p "$wt"', 'linkar_node_modules "$wt"'].join('\n'));
+    expect(l.rc).toBe(0);
+    expect(lstatSync(join(wt, 'node_modules')).isSymbolicLink()).toBe(true);
+    expect(existsSync(join(wt, 'node_modules', '.bin', 'tsx'))).toBe(true);
+  });
+
+  it('node_modules como symlink QUEBRADO não é pacote: lista vazia', () => {
+    const raiz = criarFixture([]);
+    rmSync(join(raiz, 'node_modules'), { recursive: true, force: true });
+    symlinkSync(join(tmpdir(), `orq-nao-existe-${Date.now()}`), join(raiz, 'node_modules'));
+    const r = noExecutor(raiz, 'pacotes_do_checkout');
+    expect(r.stdout.trim()).toBe('');
   });
 
   it('diretório sem node_modules próprio fica de fora', () => {
