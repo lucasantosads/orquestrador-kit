@@ -765,3 +765,35 @@ CONTRATO §11. Uma peça por commit, suíte inteira verde em cada um.
 Testes do kit ajustados, sem afrouxar asserção: arames de contagem (chamadas `ORQ_TSX`,
 desfechos nomeados 9 → 13, causas e rótulos 7 → 8), o formato do TOTAL do `--relatorio`,
 um `cmd` de exemplo que lia a saída do vitest, e a entrada do caso C citada acima.
+
+### e2e de 27/09 · a worktree sem `node_modules` (defeito do K6a)
+
+O e2e pago de 27/09 18:50 adiou por `gate_crash` (`sh: tsc: command not found`,
+exit 127; US$ 0,68). Causa: o `pacotes_do_checkout` do **K6a** (`d613b07`) só casava
+`node_modules` diretório, e o do fixture é symlink para o do kit. A lista saía vazia e
+a worktree nascia sem `node_modules`. O e2e de 08/09 passou porque rodou 31 min antes do
+K6a. Nenhum commit do porte do Actus tocou nisso. Evidência e procedência em
+`docs/e2e/2026-09-27-1851-001`.
+
+- **a** `6045788`: `pacotes_do_checkout` aceita symlink para diretório
+  (`\( -type d -o -type l \)` + `[ -d "$nm" ] || continue`, sem `find -L`). Efeito
+  aceito: `limpa_cache_vite` apaga o `.vite` do destino do symlink. Dois casos novos em
+  `orquestrador-pacotes.test.ts`: o do symlink falhava antes do conserto
+  (`1 failed | 7 passed`); depois, `8 passed`.
+- **b** `6fd4f46`: `scripts/kit/test-fixture-gates.sh`. Fixture real, `setup_worktree`
+  do motor vendorizado, `gates.ts` com os gates REAIS do config, sem agente e sem juiz.
+  Espera `VEREDITO: APROVADO`. Contra o motor sem **a**: 5 falhas, com o gates.txt do e2e.
+  Entra no `test-shell.sh` e é **pré-requisito do e2e pago**: o `fixture-e2e.sh` o roda
+  antes de qualquer chamada e aborta com rc 3 se ele falhar.
+- **c** `167b209`: o critério de typecheck do fixture passa a depender do rc
+  (`>/dev/null 2>&1 && echo OK`). Antes, `| grep -c 'error TS'` com espera `0` saía verde
+  com o tsc ausente. A família fica no backlog do motor:
+  `docs/defeitos/2026-09-27-grep-c-esconde-rc-127.md`.
+- **d** `681e8b2`: o ticket do fixture fica sem violação no gate de ticket. Os critérios
+  [1] e [2] leem o rc do vitest, sem pipe, e o [1] troca `grep -E` por `grep -cF`.
+- **e** `752c9ca`: evidência dos dois runs de 27/09 com `PROCEDENCIA.md`.
+- **e2e aprovado, 27/09 19:11** (`docs/e2e/2026-09-27-1913-001`): ticket 001 `done` na
+  primeira tentativa, merge `fd0b86d` em `staging-auto`, `criterios=4/4`. Custo
+  **US$ 0,47**: probe 0,0939 + executor 0,2844 + juiz 0,0898, contra teto de 1,10. O
+  executor usou 12 turnos, sem permissão negada. Rodou com o motor em `167b209`, antes
+  de **d**.
