@@ -40,8 +40,8 @@ uma camada, um critério `alvo` que só fica verde depois da implementação.
     {
       "tipo": "guarda",
       "descricao": "typecheck não regride: nenhum erro de tipo no fixture",
-      "cmd": "npx tsc --noEmit 2>&1 | grep -c 'error TS'",
-      "espera": "0"
+      "cmd": "npx tsc --noEmit >/dev/null 2>&1 && echo OK",
+      "espera": "OK"
     },
     {
       "tipo": "alvo",
