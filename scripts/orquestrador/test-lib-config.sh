@@ -47,8 +47,27 @@ esperado_amb="$(jq -r '.ambiente_id' "$CONFIG")"
 esperado_cap="$(jq -r '.diff_cap_linhas' "$CONFIG")"
 [ "$CFG_AMBIENTE_ID" = "$esperado_amb" ] && [ -n "$CFG_AMBIENTE_ID" ] && [ "$CFG_AMBIENTE_ID" != null ] \
   && ok "ambiente_id bate com o arquivo" || falha "ambiente_id divergente ou vazio"
-[ "$CFG_DIFF_CAP" = "$esperado_cap" ] && [ "$CFG_DIFF_CAP" = 600 ] \
-  && ok "diff_cap = 600 (o NOSSO, não o 2500 do comarka-os)" || falha "diff_cap inesperado: $CFG_DIFF_CAP"
+# `diff_cap` é conferido contra o ARQUIVO e contra a FORMA — nunca contra um
+# número cravado. Até 2026-09-27 este check exigia `= 600` (o valor do
+# _referencia-ci); o Actus traz 2500 (valor v1, MEDIDO: mediana 231, p90 533,
+# máx 1323 em 121 tentativas) e o mesmo check ficou vermelho lá por estar
+# desatualizado, não por bug — teste que falha por rotina deixa de ser sinal
+# (actus-saas bf658ec, portado aqui). Trocar 600 por outro número recriaria o
+# problema no próximo repo instalado. O que há para provar aqui são duas coisas,
+# e o NÚMERO não é nenhuma delas: (a) o lib.sh LÊ o valor do config, em vez de
+# trazer um default próprio; (b) o valor é utilizável como teto, isto é, inteiro
+# positivo — `null` de chave ausente, vazio ou texto passariam despercebidos até
+# o `[ "$DIFF_LINES" -le "$CFG_DIFF_CAP" ]` do executor quebrar em produção.
+# Quanto DEVE valer o cap é decisão de política, e quem a guarda é o config.
+[ "$CFG_DIFF_CAP" = "$esperado_cap" ] \
+  && ok "diff_cap bate com o arquivo ($CFG_DIFF_CAP)" \
+  || falha "diff_cap divergente: lib=$CFG_DIFF_CAP arquivo=$esperado_cap"
+case "$CFG_DIFF_CAP" in
+  ''|*[!0-9]*) falha "diff_cap não é inteiro: '$CFG_DIFF_CAP'" ;;
+  *) [ "$CFG_DIFF_CAP" -gt 0 ] \
+       && ok "diff_cap é inteiro positivo" \
+       || falha "diff_cap não é positivo: $CFG_DIFF_CAP" ;;
+esac
 
 echo
 echo "== causas de adiamento declaradas no config =="

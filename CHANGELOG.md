@@ -797,3 +797,15 @@ K6a. Nenhum commit do porte do Actus tocou nisso. Evidência e procedência em
   **US$ 0,47**: probe 0,0939 + executor 0,2844 + juiz 0,0898, contra teto de 1,10. O
   executor usou 12 turnos, sem permissão negada. Rodou com o motor em `167b209`, antes
   de **d**.
+
+### 27/09 · `diff_cap` conferido pela forma (porte do Actus `bf658ec`)
+
+- `test-lib-config.sh` deixa de cobrar `diff_cap_linhas = 600`. Agora confere duas coisas:
+  o `lib.sh` lê o valor do arquivo (jq direto contra `CFG_DIFF_CAP`) e o valor é
+  inteiro positivo. O número é política do config de cada repo. O Actus usa 2500 e
+  ficava vermelho pelo mesmo check. Contra o fixture (600): rc 0. Contra o fixture com
+  2500: rc 0. A guarda reprova chave ausente (`null`), vazio, `abc`, `-5`, `12x` e `0`.
+  O comentário `_diff_cap_linhas` do config do fixture passa a dizer isso.
+- Backlog: a tabela `caso_decisao`, o `DL=1` e o cabeçalho de 8 causas do
+  `test-lib-config.sh` do Actus são genéricos do motor e deveriam morar no kit.
+  Ver `docs/defeitos/2026-09-27-test-lib-config-casos-do-actus.md`.
