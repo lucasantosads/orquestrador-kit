@@ -43,6 +43,9 @@
 #   test-tentativas-persistidas.sh  o contador já está no arquivo quando o processo morre; done zera (f3aaa89, casos novos)
 #   test-orq-pause.sh               --off/--status tratam as duas sentinelas; trilha PAUSA/RETOMADA; orq retomar com o legado (514)
 #
+# E o do probe de modelo (ORQ-07):
+#   test-preflight.sh               papel PENDENTE_* aborta antes de gastar; recusa de modelo; juiz por stub
+#
 # E um que mora no KIT, não no fixture, porque instancia o PRÓPRIO fixture
 # (roda depois do laço, pelo caminho do kit):
 #   scripts/kit/test-fixture-gates.sh  a worktree do motor passa nos gates REAIS do config (e2e de 27/09)
@@ -53,20 +56,33 @@
 # script declara antes do `source`, que é justamente o que o
 # orquestrador-isolamento-teste.test.ts cobra.
 #
-# FICA DE FORA, por decisão: `test-preflight.sh`. Ele chama a API da Anthropic
-# (sondagem paga). Entra numa peça própria, com OK humano explícito.
+# `test-preflight.sh` ficou de fora até 01/10/2026 porque chamava a API da
+# Anthropic (a sondagem paga de US$ 0,34, peça 10 do PLAYBOOK). Não chama mais:
+# o probe roda num ROOT sintético com papel PENDENTE_*, que aborta ANTES do
+# `claude_run`, e o juiz roda por `--stub-juiz`. Mesmo assim ele roda aqui com
+# um `claude` FALSO na frente do PATH, que só registra a chamada: se uma
+# regressão desarmar o abort, o falso responde no lugar do real, nada é cobrado,
+# e este script FALHA ao achar a chamada no registro.
 #
 # Uso: bash scripts/kit/test-shell.sh
 
 set -uo pipefail
 
 KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPTS='test-lib-config.sh test-drenagem.sh test-retry-worktree.sh test-drenagem-sem-progresso.sh test-sem-progresso-limite.sh test-ocioso.sh test-rc-executor.sh test-ambiente.sh test-causa-adiamento.sh test-ambiente-adiado.sh test-adiamentos-limite.sh test-reprovado-sub.sh test-notificacao-ambiente.sh test-reabertura-humana.sh test-painel-visao.sh test-painel-detalhe.sh test-painel-pausa.sh test-painel-alarmes.sh test-painel-lento.sh test-gate-prevoo.sh test-tentativas-persistidas.sh test-orq-pause.sh'
+SCRIPTS='test-lib-config.sh test-drenagem.sh test-retry-worktree.sh test-drenagem-sem-progresso.sh test-sem-progresso-limite.sh test-ocioso.sh test-rc-executor.sh test-ambiente.sh test-causa-adiamento.sh test-ambiente-adiado.sh test-adiamentos-limite.sh test-reprovado-sub.sh test-notificacao-ambiente.sh test-reabertura-humana.sh test-painel-visao.sh test-painel-detalhe.sh test-painel-pausa.sh test-painel-alarmes.sh test-painel-lento.sh test-gate-prevoo.sh test-tentativas-persistidas.sh test-orq-pause.sh test-preflight.sh'
 
 FX="$(bash "$KIT/scripts/kit/fixture.sh")" || {
   printf 'ERRO: fixture.sh falhou — nada foi rodado\n' >&2; exit 2
 }
-trap 'bash "$KIT/scripts/kit/fixture.sh" --limpar "$FX" >/dev/null 2>&1 || true' EXIT
+# O `claude` falso do test-preflight.sh: registra e falha, nunca responde.
+CLAUDE_FALSO="$(mktemp -d)"
+cat > "$CLAUDE_FALSO/claude" <<'FALSO'
+#!/bin/sh
+printf '%s\n' "$*" >> "$(dirname "$0")/chamadas.log"
+exit 1
+FALSO
+chmod +x "$CLAUDE_FALSO/claude"
+trap 'bash "$KIT/scripts/kit/fixture.sh" --limpar "$FX" >/dev/null 2>&1 || true; rm -rf "$CLAUDE_FALSO"' EXIT
 
 printf '== testes de shell do motor · fixture em %s ==\n\n' "$FX"
 
@@ -74,8 +90,18 @@ FALHAS=0
 PLACAR=''
 for s in $SCRIPTS; do
   printf -- '--- %s ---\n' "$s"
-  bash "$FX/scripts/orquestrador/$s"
-  rc=$?
+  if [ "$s" = test-preflight.sh ]; then
+    PATH="$CLAUDE_FALSO:$PATH" bash "$FX/scripts/orquestrador/$s"
+    rc=$?
+    if [ -s "$CLAUDE_FALSO/chamadas.log" ]; then
+      printf 'FALHA: o test-preflight.sh chamou o claude (o real seria PAGO):\n' >&2
+      sed 's/^/  | /' "$CLAUDE_FALSO/chamadas.log" >&2
+      [ "$rc" = 0 ] && rc=3
+    fi
+  else
+    bash "$FX/scripts/orquestrador/$s"
+    rc=$?
+  fi
   printf '\nrc(%s) = %s\n\n' "$s" "$rc"
   PLACAR="$PLACAR  rc=$rc  $s
 "

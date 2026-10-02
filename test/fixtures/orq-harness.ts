@@ -212,6 +212,12 @@ export function ler(caminho: string): string {
   return existsSync(caminho) ? readFileSync(caminho, 'utf8') : '';
 }
 
+// `AAAA-MM-DD` no fuso LOCAL — o mesmo dia do `hoje()` do lib.sh. Mora no
+// motor (o pré-voo usa a mesma regra) e o teste reaproveita, para que as duas
+// pontas não divirjam: `toISOString()` dá o dia em UTC, que em -0300 já é
+// amanhã das 21h à meia-noite.
+export { diaLocal } from '../../scripts/orquestrador/prevoo.js';
+
 // ─── Stub de launchctl (peça K6e) ─────────────────────────────────────────
 // Nenhum teste do kit pode tocar o launchd desta máquina. A regra nasceu de um
 // incidente real (2026-09-08): o "vermelho antes" da K6c rodou o instalador

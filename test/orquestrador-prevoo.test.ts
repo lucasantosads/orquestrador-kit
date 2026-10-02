@@ -13,7 +13,7 @@
  * `decisao.ts`, onde a MESMA lista de padrões decide adiar em vez de reprovar.
  * O que sobra aqui é a leitura do resultado da última sondagem em `runs/`.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -161,6 +161,34 @@ describe('cat.3 · última sondagem (sem nenhuma chamada nova)', () => {
     const r = checarUltimaSondagem(depsVerdes({ ultimaSondagem: () => ({ dia: '2026-09-08', falhou: true }) }));
     expect(r.ok).toBe(true);
     expect(r.motivo).toMatch(/FALHOU/);
+  });
+
+  it('o "hoje" do pré-voo é o dia LOCAL do lib.sh: 23:30 em São Paulo ainda é hoje', () => {
+    // 2026-10-02T02:30Z = 2026-10-01 23:30 em -0300. O lib.sh gravou a sondagem
+    // na chave LOCAL (2026-10-01); com o dia em UTC o pré-voo dizia "ontem".
+    const raiz = mkdtempSync(join(tmpdir(), 'orq-prevoo-tz-'));
+    const runs = join(raiz, 'docs/fila/runs');
+    mkdirSync(runs, { recursive: true });
+    writeFileSync(join(runs, 'custo.json'), JSON.stringify({ dias: { '2026-10-01': [{ papel: 'probe' }] } }));
+    const tzAntes = process.env.TZ;
+    process.env.TZ = 'America/Sao_Paulo';
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-02T02:30:00Z') });
+    try {
+      expect(new Date().getHours()).toBe(23); // o fuso pegou: é noite local, madrugada em UTC
+      const deps = preVooDepsReais({
+        repoRoot: raiz,
+        filaDir: join(raiz, 'docs/fila'),
+        runsDir: runs,
+        custoFile: join(runs, 'custo.json'),
+        git: () => ({ status: 0, stdout: '' }),
+      });
+      expect(deps.hoje()).toBe('2026-10-01');
+      expect(checarUltimaSondagem(deps).motivo).toBe('última sondagem 2026-10-01 (hoje)');
+    } finally {
+      vi.useRealTimers();
+      if (tzAntes === undefined) delete process.env.TZ;
+      else process.env.TZ = tzAntes;
+    }
   });
 
   it('repo que nunca sondou não é NO-GO', () => {

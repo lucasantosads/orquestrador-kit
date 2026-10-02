@@ -20,6 +20,12 @@
 set -uo pipefail
 
 AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# A mesma raiz que o lib.sh vai resolver (git --git-common-dir, peça 7b-9).
+CHECKOUT_REAL="$(git -C "$AQUI" rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's#/\.git/*$##' || true)"
+[ -n "$CHECKOUT_REAL" ] || CHECKOUT_REAL="$(git -C "$AQUI" rev-parse --show-toplevel 2>/dev/null || true)"
+# Sem fila, nada aqui faz sentido: o kit não tem docs/fila (ela é do repo
+# instalado). Falha dizendo como rodar, em vez do `jq`/`cp` crípticos de depois.
+[ -f "$CHECKOUT_REAL/docs/fila/000-config.json" ] || { printf 'ERRO: %s não existe — rode via scripts/kit/test-shell.sh (ele roda este script dentro do fixture, que tem a fila)\n' "$CHECKOUT_REAL/docs/fila/000-config.json" >&2; exit 2; }
 # shellcheck source=./lib.sh
 source "$AQUI/lib.sh"
 

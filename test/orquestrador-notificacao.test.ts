@@ -11,7 +11,7 @@ import { readFileSync, mkdtempSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { FX_CHECKOUT, REPO_ROOT, bashNoFixture, criarFixture, escrever, ler } from './fixtures/orq-harness.js';
+import { FX_CHECKOUT, REPO_ROOT, bashNoFixture, criarFixture, diaLocal, escrever, ler } from './fixtures/orq-harness.js';
 
 const LIB = join(REPO_ROOT, 'scripts', 'orquestrador', 'lib.sh');
 const notif = (raiz: string) => join(raiz, 'docs', 'fila', 'runs', 'notificacoes.log');
@@ -272,7 +272,7 @@ describe('drenagem que PROCESSOU notifica, com o placar', () => {
       join(raiz, 'docs', 'fila', 'runs', 'custo.json'),
       JSON.stringify({
         dias: {
-          [new Date().toISOString().slice(0, 10)]: [
+          [diaLocal()]: [
             { papel: 'executor', ticket: '901', custo_usd: 999, tokens_in: 1, tokens_out: 1 },
           ],
         },

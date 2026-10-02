@@ -10,12 +10,12 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { FX_CHECKOUT, REPO_ROOT, bashComLog, bashNoFixture, criarFixture, escrever, ler } from './fixtures/orq-harness.js';
+import { FX_CHECKOUT, REPO_ROOT, bashComLog, bashNoFixture, criarFixture, diaLocal, escrever, ler } from './fixtures/orq-harness.js';
 
 const custoFile = (raiz: string) => join(raiz, 'docs', 'fila', 'runs', 'custo.json');
 const runs = (raiz: string, ...p: string[]) => join(raiz, 'docs', 'fila', 'runs', ...p);
 const CFG = JSON.parse(readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8'));
-const HOJE = new Date().toISOString().slice(0, 10);
+const HOJE = diaLocal();
 
 const FILA = [{ id: '901', slug: 'da-vez', status: 'pendente' }, { id: '902', slug: 'depois', status: 'pendente' }];
 
@@ -261,7 +261,7 @@ describe('mark_adiado_orcamento: adiado, não reprovado', () => {
   const amanha = () => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    return d.toISOString().slice(0, 10);
+    return diaLocal(d);
   };
 
   it('volta a pendente com adiado_ate = próximo dia', () => {

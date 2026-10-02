@@ -41,6 +41,9 @@ AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHECKOUT_REAL="$(git -C "$AQUI" rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's#/\.git/*$##' || true)"
 [ -n "$CHECKOUT_REAL" ] || CHECKOUT_REAL="$(git -C "$AQUI" rev-parse --show-toplevel 2>/dev/null || true)"
 CONFIG_REAL="$CHECKOUT_REAL/docs/fila/000-config.json"
+# Sem fila, nada aqui faz sentido: o kit não tem docs/fila (ela é do repo
+# instalado). Falha dizendo como rodar, em vez do `jq`/`cp` crípticos de depois.
+[ -f "$CONFIG_REAL" ] || { printf 'ERRO: %s não existe — rode via scripts/kit/test-shell.sh (ele roda este script dentro do fixture, que tem a fila)\n' "$CONFIG_REAL" >&2; exit 2; }
 export ORQ_TESTE=1
 ORQ_EXEC_ROOT="$(mktemp -d)/checkout"; export ORQ_EXEC_ROOT
 mkdir -p "$ORQ_EXEC_ROOT/docs/fila/runs"

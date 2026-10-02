@@ -14,7 +14,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { FX_CHECKOUT, REPO_ROOT, criarFixture, escrever, ler, orq } from './fixtures/orq-harness.js';
+import { FX_CHECKOUT, REPO_ROOT, criarFixture, diaLocal, escrever, ler, orq } from './fixtures/orq-harness.js';
 
 const CFG = JSON.parse(readFileSync(join(FX_CHECKOUT, 'docs', 'fila', '000-config.json'), 'utf8'));
 const TRAILER = CFG.executor.trailer_commit;
@@ -214,7 +214,7 @@ describe('trilha e STATUS contam a primeira tentativa como 1', () => {
 
 describe('aprovação de primeira sai da trilha, com a conta 1-based', () => {
   const trilha = (raiz: string, linhas: string[]) => escrever(join(raiz, 'docs', 'fila', 'runs', 'events.log'), linhas.join('\n') + '\n');
-  const HOJE = new Date().toISOString().slice(0, 10);
+  const HOJE = diaLocal();
 
   it('conta APROVADO com attempt=1 sobre o total de APROVADO do dia', () => {
     const raiz = criarFixture([{ id: '901' }]);

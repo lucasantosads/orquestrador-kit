@@ -201,6 +201,17 @@ export function checarEstruturaFila(
   return { ok: true, token: 'cat.6', item: 'estrutura da fila' }
 }
 
+/**
+ * `AAAA-MM-DD` no fuso LOCAL — a mesma regra do `hoje()` do lib.sh
+ * (`date '+%Y-%m-%d'`), que é quem grava as chaves de dia do `custo.json`.
+ * `toISOString()` daria o dia em UTC: em -0300, das 21h à meia-noite ele já é
+ * amanhã, e uma sondagem de hoje sairia como "ontem".
+ */
+export function diaLocal(d: Date = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
 /** Dias inteiros entre dois `AAAA-MM-DD`. Negativo vira 0 (relógio para trás não é idade). */
 export function diasEntre(de: string, ate: string): number {
   const a = Date.parse(`${de}T00:00:00Z`)
@@ -408,7 +419,7 @@ export function preVooDepsReais(entrada: {
     },
     lerLiberacoes: () => readFileSync(join(entrada.filaDir, 'liberacoes.json'), 'utf8'),
     ultimaSondagem: () => ultimaSondagemDe(entrada.runsDir, entrada.custoFile),
-    hoje: entrada.hoje ?? (() => new Date().toISOString().slice(0, 10)),
+    hoje: entrada.hoje ?? (() => diaLocal()),
   }
 }
 
