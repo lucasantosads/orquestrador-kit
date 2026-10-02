@@ -984,7 +984,10 @@ run_attempt() {
   fase pos-agente
   permissoes_negadas "$saida" "$file"
   commit_do_agente "$file" "$wt" "$rundir" "$base"
-  DIFF_LINES="$(git -C "$wt" diff "$base"...HEAD --numstat | awk '{s+=$1+$2} END{print s+0}')"
+  # diff_lines = inserções + deleções (numstat), nunca wc -l do patch: o cru
+  # conta cabeçalho, @@ e contexto (comarka 723 att-2: 1050 cru, 650 real).
+  # Binário (numstat "-") conta zero. Prova: test-diff-lines.sh.
+  DIFF_LINES="$(git -C "$wt" diff "$base"...HEAD --numstat 2>/dev/null | awk '$1!="-"{s+=$1+$2} END{print s+0}')"; [ -n "$DIFF_LINES" ] || DIFF_LINES=0
   log "  diff: $DIFF_LINES linha(s) em $DUR s"
   # ANTES do enforcement e de qualquer descarte: o patch é evidência, e evidência
   # que só existe quando o desfecho é bom não serve para diagnosticar o ruim.
