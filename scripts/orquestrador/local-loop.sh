@@ -783,6 +783,46 @@ prevoo_ou_sai() {
   exit 1
 }
 
+# --- AUTOCOMMIT do status da fila (fim da drenagem; porte do comarka 5f2785d) --
+# O executor grava status/nota nos tickets do MAIN_CHECKOUT (fonte única, lib.sh);
+# sem commit o checkout principal fica sujo e diverge do origin a cada drenagem.
+# Commita SÓ os tickets rastreados e modificados ($FILA_DIR/[0-9]*.md, o mesmo
+# padrão do ticket_files) — pathspec explícito, nunca -A/. — e só se o checkout
+# principal estiver em branch_protegida. Ticket novo não rastreado fica de fora.
+# É a ÚNICA escrita do motor em branch_protegida: commit no checkout principal,
+# sem checkout e sem push (D11, CONTRATO §8) — o commit fica local, publicar é
+# humano.
+# Falha é logada e não é fatal; não tenta de novo no mesmo ciclo.
+autocommit_status_fila() {
+  local br fila_rel arquivos ids f quando
+  br="$(git -C "$MAIN_CHECKOUT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')"
+  if [ "$br" != "$BRANCH_PROTEGIDA" ]; then
+    say "autocommit fila: checkout principal em '$br' (não $BRANCH_PROTEGIDA) — pulado"; return 0
+  fi
+  fila_rel="${FILA_DIR#"$MAIN_CHECKOUT"/}"
+  # :(glob) => '*' não atravessa '/': exclui runs/** e qualquer subpasta da fila.
+  arquivos="$(git -C "$MAIN_CHECKOUT" diff --name-only HEAD -- ":(glob)$fila_rel/[0-9]*.md" 2>/dev/null || true)"
+  if [ -z "$arquivos" ]; then
+    say "autocommit fila: nenhum ticket modificado em $fila_rel — nada a commitar"; return 0
+  fi
+  ids=""
+  local -a paths=()
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    paths+=("$f")
+    f="$(basename "$f" .md)"; ids="${ids:+$ids }${f%%-*}"
+  done <<<"$arquivos"
+  quando="$(date '+%Y-%m-%d %H:%M')"
+  if ! git -C "$MAIN_CHECKOUT" add -- "${paths[@]}"; then
+    say "autocommit fila: git add falhou (não fatal)"; return 0
+  fi
+  # 'commit -- <paths>' (= --only) ignora qualquer outra coisa já staged.
+  if ! git -C "$MAIN_CHECKOUT" commit -q -m "fila: status automatico do loop $quando ($ids)" -- "${paths[@]}"; then
+    say "autocommit fila: commit falhou (não fatal)"; return 0
+  fi
+  say "autocommit fila: commit $(git -C "$MAIN_CHECKOUT" rev-parse --short HEAD) em $BRANCH_PROTEGIDA ($ids) — sem push"
+}
+
 main_local_loop() {
   mkdir -p "$(dirname "$LOG")"
   exec >>"$LOG" 2>&1
@@ -812,6 +852,7 @@ main_local_loop() {
   git -C "$REPO" fetch origin --quiet 2>/dev/null || say "aviso: fetch falhou (segue offline)"
   bash "$ORQ_LIB_DIR/executor.sh" --reconcile || say "aviso: reconcile falhou (não fatal)"
   drenar
+  autocommit_status_fila
   say "========== local-loop fim =========="
 }
 
