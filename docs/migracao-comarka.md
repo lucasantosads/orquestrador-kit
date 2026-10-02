@@ -22,7 +22,7 @@ para o kit antes da migração · **OBS** = obsoleto/artefato, já coberto pelo 
 |---|---|---|---|---|
 | 1 | `scripts/orquestrador/.impeccable/` | cache do hook do impeccable, não versionado | — | OBS |
 | 2 | `avaliador.sh` | juiz: chama o claude, lê o veredito, merge `--no-ff` em staging-auto | total: `juiz.ts` + executor + `merge_em_alvo` do local-loop | OBS |
-| 3 | `avisa-bloqueio.sh` | osascript quando `.orq-pause` passa de 40 min (crontab `*/20`); pela leitura já está morto hoje (caminho relativo, cron roda do `$HOME`) | parcial: `notificar()` + alarmes do painel | ESP |
+| 3 | `avisa-bloqueio.sh` | osascript quando `.orq-pause` passa de 40 min (crontab `*/20`). Até 02/10 estava morto (caminho relativo, cron roda do `$HOME`); consertado no comarka bed7c14 (PORTE-PENDENTE, ver abaixo) | parcial: `notificar()` + alarmes do painel | ESP |
 | 4 | `avisa-fila-parada.sh` | osascript quando 0 prontos e 0 em execução por mais de 40 min (crontab `*/20`) | parcial: evento OCIOSO + `deve_notificar` | ESP |
 | 5 | `com.comarka.orq-server.plist.template` | launchd de **serviço** (RunAtLoad + KeepAlive) do painel em 127.0.0.1:8787 | nenhum: o kit não tem plist de serviço para o painel | GEN |
 | 6 | `com.comarka.orquestrador.plist.template` | job do loop, label fixo, StartInterval 900 | total: `com.orquestrador.plist.template` com `{{LABEL}}`/`{{START_INTERVAL}}` | OBS |
@@ -143,12 +143,27 @@ Opcionais (o comarka não perde nada que use todo dia): fetch com retry ao acord
 ### Sobe para o kit: pontos de configuração/extensão para o que é do comarka (5)
 
 10. **Gancho de extensão pós-drenagem/notificação** para plugar writeback Notion (`writeback-notion.ts`), relatório por e-mail (`relatorio-email.ts`) e os avisos de fila parada/bloqueada sem tocar no motor.
+    - **Nota (02/10):** desde 29/09/2026 o Notion não é mais usado na operação da Comarka. Avaliar se o
+      `writeback-notion.ts` e tudo que depende dele viram **obsoletos** em vez de serem portados; se sim, o gancho
+      fica só para e-mail e avisos. Quem chama ou depende do `writeback-notion.ts` no comarka (02/10, 718206d):
+      - `scripts/orquestrador/local-loop.sh:414-436` — passo 4 da drenagem (`npx tsx scripts/orquestrador/writeback-notion.ts sync`); só roda com `ORQ_NOTION_WRITEBACK=1`, que não está no plist instalado, então já está inativo localmente
+      - `.github/workflows/orquestrador.yml:84` — `writeback-notion.ts sync` no workflow (disparo manual)
+      - `test/writeback.test.ts` e `test/writeback-notion-chunking.test.ts` — importam o módulo; apagar o `.ts` sem apagar os dois quebra o vitest
+      - `docs/fila/000-config.json:14-15` — chave `writeback_notion: true` e sua descrição (lida pelo local-loop)
+      - doutrina: `references/setup.md` §6.5 (board Notion) e a Fase 2 de `references/instalacao-portavel.md` (adaptador de writeback)
 11. **Escopo no gate `baseline`** (o equivalente de `baseline_scope_regex`): sem ele a contagem do tsc do comarka (baseline 3, filtro `^\.next/`) deixa de valer.
 12. **Dev server para critério curl/localhost** (`serve_up/down`) como capacidade opcional de config.
 13. **`migrar-config` cobre os nomes do comarka**: `worktree_prefix` → `worktrees_prefixo` (sem isso volta a colisão com o actus) e `disjuntor_sem_progresso_limite` → `sem_progresso_limite`. Grep vazio hoje.
 14. **Execução fora do checkout principal**: o caso orq-runner/`ORQ_EXEC_ROOT` (defeito aberto 8fb9047) precisa de resposta no kit — suporte ou decisão escrita de abandonar o orq-runner — porque o `enforcement.sh` do comarka depende disso.
 
 Fica como configuração no comarka, sem mudança no kit: `zona_proibida` (lista C0), `launchd.label` + `start_interval: 900`, `perfis_tools`, `modelos.juiz_*` (de `avaliador_model`). Fica fora do motor: push por ticket e do autocommit (D11 proíbe; vira passo humano ou extensão do item 10).
+
+### PORTE-PENDENTE abertos no comarka
+
+| commit comarka | o que é | estado no kit |
+|---|---|---|
+| 6307912 | `diff_lines` via numstat | equivalente ao kit e167e0d; fecha na migração |
+| bed7c14 (02/10) | `avisa-bloqueio.sh`: shebang bash e repo resolvido por `dirname "${BASH_SOURCE[0]}"`. Antes testava `~/docs/fila/.orq-pause` (cron roda do `$HOME`) e nunca avisava. Provado com repo falso pausado há 2h: antes silêncio, depois `IDADE=120` e osascript | o kit não tem o arquivo (grupo a, #3, ESP). Não porta como script: entra como caso do gancho do item 10, e a lição genérica é "script de cron do motor resolve o repo pelo próprio caminho" |
 
 ### Lado do comarka, na hora da migração (não é item do kit)
 
