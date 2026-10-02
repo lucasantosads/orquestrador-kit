@@ -126,7 +126,7 @@ be8b0a7 → RunAtLoad (porte Actus 7b-7).
 
 ## Antes de migrar
 
-### Sobe para o kit: melhorias genéricas (9)
+### Sobe para o kit: melhorias genéricas (10)
 
 1. **Recon executado no loop** antes do agente: `run_recon`, o exemplo no `TICKET.md` e a lição do `SKILL.md`. O kit adiou de propósito ("peça 1b", `gate-ticket.ts:12`); cerca de 44 pendentes do comarka usam.
 2. **Allowlist `dir/` → `dir/**`**: `normalizarEntradaAllowlist`.
@@ -137,15 +137,16 @@ be8b0a7 → RunAtLoad (porte Actus 7b-7).
 7. **Limpeza de worktree órfã**: `limpar_worktrees_orfaos` no início da drenagem + `limpar-worktrees.sh` (raiz em config) + `test-cleanup-worktree.sh`.
 8. **Painel como serviço launchd**: template RunAtLoad/KeepAlive + instalador, apontando para o `orq-painel.py` do kit. Inclui ou descarta `instalar_agente`.
 9. **Doutrina**: regra 21 e as lições de critério do `SKILL.md`, e a Fase 2 de `instalacao-portavel.md` sem os exemplos do comarka.
+15. **Aviso de loop parado, não só de fila pausada** (registrado 02/10; numerado 15 para não renumerar as referências ao item 10). O `avisa-bloqueio.sh` só olha a idade do `docs/fila/.orq-pause`. Não detecta o LaunchAgent descarregado nem o loop sem rodar há horas: em 01→02/10 o loop ficou desligado a madrugada inteira via `launchctl bootout` e nenhum aviso saiu. Proposta: alertar quando o run mais recente em `docs/fila/runs/*/meta.json` tiver mais de N horas (N em config) **e** houver ticket pendente elegível (mesma seleção do `selecionar_pendente`, para não alertar com a fila vazia ou toda bloqueada). Entra como caso do gancho do item 10. Só registrado, não implementado.
 
 Opcionais (o comarka não perde nada que use todo dia): fetch com retry ao acordar, `aviso_allowlist`, `wt_add_or_die` com stderr, eco do motivo da pausa, `orq-granularidade.py` (só depois de corrigir o falso sinal).
 
 ### Sobe para o kit: pontos de configuração/extensão para o que é do comarka (5)
 
 10. **Gancho de extensão pós-drenagem/notificação** para plugar writeback Notion (`writeback-notion.ts`), relatório por e-mail (`relatorio-email.ts`) e os avisos de fila parada/bloqueada sem tocar no motor.
-    - **Nota (02/10):** desde 29/09/2026 o Notion não é mais usado na operação da Comarka. Avaliar se o
-      `writeback-notion.ts` e tudo que depende dele viram **obsoletos** em vez de serem portados; se sim, o gancho
-      fica só para e-mail e avisos. Quem chama ou depende do `writeback-notion.ts` no comarka (02/10, 718206d):
+    - **Nota (02/10):** desde 29/09/2026 o Notion não é mais usado na operação da Comarka. Decidido em 02/10:
+      o `writeback-notion.ts` e tudo que depende dele **não é portado; remover na migração** (já está desligado, nada
+      sai antes). O gancho fica só para e-mail e avisos. Remover na migração, no comarka (02/10, 718206d):
       - `scripts/orquestrador/local-loop.sh:414-436` — passo 4 da drenagem (`npx tsx scripts/orquestrador/writeback-notion.ts sync`); só roda com `ORQ_NOTION_WRITEBACK=1`, que não está no plist instalado, então já está inativo localmente
       - `.github/workflows/orquestrador.yml:84` — `writeback-notion.ts sync` no workflow (disparo manual)
       - `test/writeback.test.ts` e `test/writeback-notion-chunking.test.ts` — importam o módulo; apagar o `.ts` sem apagar os dois quebra o vitest
@@ -175,14 +176,15 @@ Fica como configuração no comarka, sem mudança no kit: `zona_proibida` (lista
 - Criar `docs/roadmap/MAPA.md` + `mapa.json` ou desligar o lint do mapa.
 - Descarregar `com.comarka.orq-server` antes (KeepAlive na porta 8787, que é a mesma do painel do kit; o `orq-server.py` importa funções que o `orq-painel.py` do kit não tem).
 - Remover os crons `*/20` dos avisos e trocar pelo item 10; revisar o job do GitHub Actions do relatório.
+- Remover o writeback Notion (decidido 02/10): `writeback-notion.ts`, o passo 4 de `local-loop.sh:414-436`, a chamada em `.github/workflows/orquestrador.yml:84`, `test/writeback.test.ts` + `test/writeback-notion-chunking.test.ts`, e a chave `writeback_notion` em `docs/fila/000-config.json:14-15`.
 - Rodar a contagem do tsc com os testes vitest do kit dentro de `test/`.
 
 ## Estimativa
 
-**14 itens precisam subir para o kit** antes de o comarka poder ser instalado sem perder capacidade:
-9 melhorias genéricas + 5 pontos de configuração/extensão. Os maiores são o recon no loop (1), a prioridade (4),
+**15 itens precisam subir para o kit** antes de o comarka poder ser instalado sem perder capacidade:
+10 melhorias genéricas + 5 pontos de configuração/extensão. Os maiores são o recon no loop (1), a prioridade (4),
 o gate streak (5) e o gancho de extensão (10). Os outros são portes de função ou de chave.
-Mais 5 opcionais pequenos. Do lado do comarka são 9 frentes de adaptação, a maioria mecânica via `--migrar`.
+Mais 5 opcionais pequenos. Do lado do comarka são 10 frentes de adaptação, a maioria mecânica via `--migrar`.
 
 Classificação: grupo (a) e (c) do comarka lidos arquivo a arquivo; (b) agrupado por capacidade. As afirmações
 "quebra depois da troca" sobre `orq-server.py` e os `test-*.sh` são inferência por leitura, não execução.
