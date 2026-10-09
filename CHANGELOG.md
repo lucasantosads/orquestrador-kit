@@ -772,39 +772,42 @@ Aplica a tabela de decisão da calibração de 25/09
 (`~/orq-sessoes/levantamento-7d1-calibracao.md` §5): ERRO só com zero falso positivo
 nos done dos três repos, e o comarka-operacional é a régua. CONTRATO §12.
 
-- **7d1b-1** `960d8e6`: corpus `test/fixtures/gate-corpus-7d1/` (os 57 bloqueados por
+- **7d1b-1** `c798949`: corpus `test/fixtures/gate-corpus-7d1/` (os 57 bloqueados por
   spec, com a causa, e os 706 done da calibração, só com os campos que o gate lê; a fila
   no instante T reduzida ao contexto dos checks 7 e 8) e
   `orquestrador-gate-corpus.test.ts`, que imprime a matriz (VP em (b), FP em (a), por
   regra e por repo) e reprova regra ERRO com FP. Nasceu vermelho, com a matriz da
   calibração reproduzida regra a regra.
-- **7d1b-2** `635ddd3`: tabela única `REGRAS` no `gate-ticket.ts` (erro, aviso, off),
+- **7d1b-2** `2a016b4`: tabela única `REGRAS` no `gate-ticket.ts` (erro, aviso, off),
   `gate_ticket.severidade` no config (template `{}`, `--migrar`, config-chaves); todo
   achado diz a regra; o rc, e o `modo_pre_voo` `bloqueia`, só contam ERRO.
   `6a:$(` off; `6a:rm `/`bash`/`sh -c`, `6q`, `6b`, `10n`, `6r`, `6v`, `8` aviso.
-- **7d1b-3a** `fe505ce`: check 2 sem `bloco` e `risco` obrigatórios; critérios ausentes
+- **7d1b-3a** `227de0f`: check 2 sem `bloco` e `risco` obrigatórios; critérios ausentes
   viram a regra `2c` (aviso: o 346a do Comarka rodou sem critério).
-- **7d1b-3b** `2b49f34`: check 3 aceita `407a0`/`315b1b`, também no `lerFila`.
-- **7d1b-3c** `74fffeb`: check 5 infere o tipo ausente e aceita cmd vazio no critério
+- **7d1b-3b** `f0e5f49`: check 3 aceita `407a0`/`315b1b`, também no `lerFila`.
+- **7d1b-3c** `d857f8c`: check 5 infere o tipo ausente e aceita cmd vazio no critério
   `espera: "avaliador"`.
-- **7d1b-3d** `1d942d7`: check 10x compara o exemplo com o padrão que o shell entrega
+- **7d1b-3d** `4dc09dd`: check 10x compara o exemplo com o padrão que o shell entrega
   (ou como está escrito entre as aspas de fora), prova com o padrão real e dispensa
   exemplo no `grep -v`.
-- **7d1b-3e** `e6bd065`: check 6r aceita `/tmp/*` e fecha o alvo no `)`.
-- **7d1b-3f** `394c241`: check 6v só acusa o critério que aprovaria uma suíte com falha.
-- **7d1b-3g** `440b055`: check 8 com o fecho transitivo das dependências (C8).
-- **7d1b-3h** `08aa971`: severidade final pela matriz: `3` vira aviso (0/0/1, o
+- **7d1b-3e** `924fa84`: check 6r aceita `/tmp/*` e fecha o alvo no `)`.
+- **7d1b-3f** `f219c7f`: check 6v só acusa o critério que aprovaria uma suíte com falha.
+- **7d1b-3g** `9eecc1b`: check 8 com o fecho transitivo das dependências (C8).
+- **7d1b-3h** `69d9e14`: severidade final pela matriz: `3` vira aviso (0/0/1, o
   `346a-lib-periodo-compartilhada`); o teste do corpus fica verde.
-- **7d1b-4** `62a8461`: regras estáticas do `validar-fila.py` do Comarka: C2c, C2v, C2P
+- **7d1b-4** `3294224`: regras estáticas do `validar-fila.py` do Comarka: C2c, C2v, C2P
   (erro), C3, C4, C9, C11, C12 (aviso); C7 é o check 7. C4/C9/C11/C12 leem o repo por
   `ContextoRepo` (git e disco em produção; fatos da base no corpus).
-- **7d1b-5** `da51053`: `run_criterios` e `gates.ts` com `NO_COLOR=1 FORCE_COLOR=0`
+- **7d1b-5** `da5ea35`: `run_criterios` e `gates.ts` com `NO_COLOR=1 FORCE_COLOR=0`
   (`test-sem-cor.sh`, vitest real).
 - **7d1b-6** (sem commit de código): medição do `pipefail` nos 2492 `cmd` de inspeção
   pura do corpus: 280 mudam de rc, nenhum muda a saída nem o veredito (relatório).
-- **7d1b-7** `b72e3bc`: `GATE_TICKET_AVISO` uma vez por ticket e por versão
+- **7d1b-7** `7e96201`: `GATE_TICKET_AVISO` uma vez por ticket e por versão
   (`hash=` do bloco JSON sem os campos que o loop reescreve).
 - **7d1b-8**: este registro, `docs/PECAS.md` e CONTRATO §2, §4 e §12.
+- Pendência de outra frente: `docs/migracao-comarka.md:174` (os 35 pendentes sem `bloco`
+  nem `risco`, "aviso no pré-voo") está desatualizada desde a **7d1b-3a** `227de0f`, que
+  tirou os dois do check 2: não geram mais violação. Quem corrige é a frente da migração.
 
 Matriz final do corpus (FP em (a) CI/Actus/Comarka): nenhuma regra ERRO com FP. Testes
 antigos ajustados com asserção de mesma força: a isenção do `$(` com `6a:$(` ligada pelo

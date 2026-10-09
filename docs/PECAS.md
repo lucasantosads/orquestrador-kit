@@ -929,10 +929,10 @@
   Tabela `REGRAS` (erro/aviso/off) com `gate_ticket.severidade` por cima; o pré-voo em
   `bloqueia` só bloqueia por ERRO. Correções de 2, 3, 5t, 5c, 6r, 6v, 8 (C8) e 10x; regras
   estáticas do Comarka (C2c, C2v, C2P, C3, C4, C9, C11, C12); critérios e gates sem cor;
-  `GATE_TICKET_AVISO` uma vez por versão. Commits `960d8e6` (corpus), `635ddd3`
-  (severidade), `fe505ce` `2b49f34` `74fffeb` `1d942d7` `e6bd065` `394c241` `440b055`
-  `08aa971` (correções e severidade final), `62a8461` (Comarka), `da51053` (sem cor),
-  `b72e3bc` (aviso por versão).
+  `GATE_TICKET_AVISO` uma vez por versão. Commits `c798949` (corpus), `2a016b4`
+  (severidade), `227de0f` `f0e5f49` `d857f8c` `4dc09dd` `924fa84` `f219c7f` `9eecc1b`
+  `69d9e14` (correções e severidade final), `3294224` (Comarka), `da5ea35` (sem cor),
+  `7e96201` (aviso por versão).
   *Evidência:* `~/orq-sessoes/levantamento-7d1-calibracao.md` §5 e
   `~/orq-sessoes/relatorio-kit-etapa7d1b.md`.
   *Teste:* `orquestrador-gate-corpus.test.ts` (nenhuma regra ERRO com FP nos 706 done),
