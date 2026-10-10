@@ -939,7 +939,31 @@
   `orquestrador-gate-severidade.test.ts`, `orquestrador-gate-correcoes.test.ts`,
   `orquestrador-gate-comarka.test.ts`, `test-sem-cor.sh`, `test-gate-prevoo.sh` casos 8 e 9.
 
+- **Etapa 7f-b1 · triador de bloqueios, só leitura** (10/10/2026). Para cada bloqueado, a
+  classe R1-R7, a prova `arquivo:linha` e o remédio, gravados em `~/.orq/diagnosticos` e
+  nunca no repo; extração determinística D1-D12 primeiro, modelo (Opus 5.5, US$ 3,00/dia)
+  só para palpite, em stub nesta etapa. Commits `0ebe0f6` (fixture), `81574fc` (leitores),
+  `541f9d1` (regras), `6ce01fd` (saída), `9ed29f0` (modelo e `orq triar`).
+  *Evidência:* `~/orq-sessoes/spec-7f-triador.md` e `~/orq-sessoes/medicao-bloqueios-out.md`
+  §3 e §5; `~/orq-sessoes/relatorio-kit-etapa7f-b1.md`.
+  *Teste:* `orquestrador-triador-aceite.test.ts` ((A) e (B): 16 firmes certos, 0 errado;
+  controle sem firme), `-fixture`, `-leitores`, `-extrair`, `-saida` (repo git intocado,
+  `GIT_OPTIONAL_LOCKS=0`), `-modelo` (stub; `claude` do PATH é trava).
+
 ## PENDENTES
+
+- **7f peça 6 · corrida real e replay.** `orq triar --fixture test/fixtures/triador-7f` com o
+  modelo de verdade, teto US$ 6,30, nos 21 casos de palpite; as `resposta-modelo.json` entram
+  na fixture e o aceite (C) vira replay (≥ 30/37).
+  *Evidência:* spec 7f-a §7.2 e §8; o comando e o que conferir estão no relatório da 7f-b1.
+  *Teste:* aceite (C) por replay, sem chamada no CI.
+
+- **7f-b2 · gatilho e painel.** A peça 7 da spec redefinida (o painel nunca dispara gasto:
+  `orq triar` manual e depois job do launchd) e a peça 8 (coluna Diagnóstico, clique, filtro
+  por classe, linha na pausa, `pulado`/`obsoleto`); CONTRATO §9.5 lendo
+  `~/.orq/diagnosticos`.
+  *Evidência:* spec 7f-a §1 e §5 (Painel K12).
+  *Teste:* `test-painel-triador.sh` da spec, com os quatro estados.
 
 - **7d-2 · o gate executa: C1, C5, C6.** Recon executado (C1, a única regra com causa e
   zero FP nos três repos na calibração), guarda que já falha (C5, com a exceção de arquivo

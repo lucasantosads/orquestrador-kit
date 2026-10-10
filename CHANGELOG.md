@@ -860,3 +860,31 @@ K6a. Nenhum commit do porte do Actus tocou nisso. Evidência e procedência em
 - Backlog: a tabela `caso_decisao`, o `DL=1` e o cabeçalho de 8 causas do
   `test-lib-config.sh` do Actus são genéricos do motor e deveriam morar no kit.
   Ver `docs/defeitos/2026-09-27-test-lib-config-casos-do-actus.md`.
+
+### Etapa 7f-b1 · triador de bloqueios, só leitura, modelo só em stub (10/10/2026)
+
+Spec `~/orq-sessoes/spec-7f-triador.md` (7f-a), peças 1 a 5 da §8, com as decisões do chat
+do programa (Opus 5.5, US$ 3,00/dia, 30 mil tokens; a passada promove palpite a firme; o
+painel não dispara gasto, quem roda é `orq triar`; a corrida real é a peça 6, depois do
+merge). CONTRATO §9.1 e §13.
+
+- **7f-b1-1** `0ebe0f6`: `test/fixtures/triador-7f/` (2,6 MB): os 37 bloqueios da medição
+  de 09/10 com `esperado.json` (classe da §5, evidência e linha da tabela) e 20 done de
+  controle, montados por `montar.py` só lendo o comarka-operacional. O aceite
+  (`orquestrador-triador-aceite.test.ts`) entra vermelho por asserção (0 de 16 firmes).
+- **7f-b1-2** `81574fc`: leitores `kit` e `legado-comarka` → a mesma `Evidencia`; recorte
+  do gate de testes igual ao do `montar.py`; `gitLeitura`.
+- **7f-b1-3** `541f9d1`: extração e regras D1-D12. Na fixture: 16 firmes certos (os da
+  spec §3.3), 0 firme errado, controle sem firme; 14 firmes no instante do bloqueio.
+- **7f-b1-4** `6ce01fd`: saída em `ORQ_DIAG_DIR` (`~/.orq/diagnosticos`) pela `Guarda`,
+  assinatura, trava `O_EXCL`, histórico, cópia mascarada. Teste num repo git de fixture:
+  `git status` e mtimes (até de `.git`) iguais, nenhum `index.lock`, todo git com
+  `GIT_OPTIONAL_LOCKS=0` (git falso no PATH).
+- **7f-b1-5** `9ed29f0`: camada do modelo com stub (prompt literal, corte por ordem, teto
+  do dia com `pulado`, parser, evidência descartada, ledger) e `orq triar`, despachado
+  antes do `lib.sh`, com `--passada`, `--forcar`, `--sem-modelo` e `--fixture` (a corrida da
+  peça 6).
+- **7f-b1-6**: este registro, `docs/PECAS.md` e CONTRATO §9.1 e §13.
+
+Nenhuma asserção existente mudou. O teste da peça 2 cedeu o `materializar` para
+`test/triador-repo-legado.ts`, sem mudar asserção.

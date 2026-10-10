@@ -671,7 +671,10 @@ estava.
 | `orq pausar [motivo]` | cria o `pausar_file` e grava `PAUSA motivo=<token> por=terminal` na trilha — **escreve** |
 | `orq retomar` | imprime quem pausou, quando e por quê; remove o `pausar_file` e grava `RETOMADA por=terminal dur=<N>min` — **escreve** |
 | `orq liberar <humano:token> [nota]` | acrescenta um token v2 em `liberacoes_file` — **escreve** (§6.2) |
+| `orq triar <repo> [<id>] [--passada] [--forcar] [--sem-modelo]` | triador de bloqueios (§13): lê OUTRO repo e grava o diagnóstico em `~/.orq/diagnosticos`, nunca no repo; despachado antes do `lib.sh` (`scripts/orq:88`) |
 
+`orq triar` não escreve no repo: toda escrita dele passa pela `Guarda` (§13.4), fora
+de qualquer repo do `repos.json`.
 Os TRÊS que escrevem escrevem UM arquivo do repo cada, nunca estado de execução;
 `pausar` e `retomar` acrescentam, além dele, UMA linha à trilha (peça K12-F), pelo
 `event()` do `lib.sh`, a mesma que o painel grava. A trilha é append-only e não é
@@ -999,6 +1002,144 @@ desliga o que segue supports-color/chalk.
 | `gate_ticket.severidade` | `{}` (vale a tabela) | `gate-ticket.ts:lerSeveridade`, `:severidadeDe` |
 
 ---
+
+## 13. Etapa 7f-b1: triador de bloqueios, só leitura (10/10/2026)
+
+Spec: `~/orq-sessoes/spec-7f-triador.md` (7f-a), peças 1 a 5 da §8, com as decisões do
+chat do programa: modelo `claude-opus-5-5` com teto de US$ 3,00 por dia e entrada cortada
+em 30 mil tokens; a passada pode promover palpite a firme; o painel nunca dispara gasto
+(quem roda é `orq triar`, manual e depois job do launchd, peça 7 redefinida na 7f-b2); a
+corrida real com o modelo (peça 6) não é da sessão de etapa. O painel (§9.5) ainda não lê
+os diagnósticos: isso é a 7f-b2.
+
+### 13.1 O que é
+
+Para cada ticket `bloqueado` de um repo, o triador lê a evidência que o motor já gravou,
+diz qual dos sete destinos (R1 a R7) o bloqueio tem, onde está a prova (`arquivo:linha` do
+artefato ORIGINAL) e o remédio em uma linha, e grava isso FORA do repo. Não decide, não
+reabre, não muda status, nota ou critério, não roda script do repo.
+
+Código: `scripts/orquestrador/triador/`. Comando: `orq triar` (`cli.ts`).
+
+### 13.2 Fontes (dois leitores, uma `Evidencia`)
+
+O leitor sai da forma do diretório (`leitor.ts:22`): `<runs_dir>/events.log` → `kit`;
+sem ela e com `docs/fila/runs/local-loop.log` → `legado-comarka`. Os dois devolvem a mesma
+`Evidencia` (`tipos.ts`); a extração e o modelo só veem ela.
+
+| | `kit` (`leitor-kit.ts:71`) | `legado-comarka` (`leitor-legado-comarka.ts:195`) |
+|---|---|---|
+| ticket | 1º bloco json de `docs/fila/<id>-*.md` (§2) | idem |
+| bloqueio | último `BLOQUEADO` do id na trilha (§4); token = `motivo[:sub]` | última linha `ticket <id>: BLOQUEADO …`/`reprovado após` do `local-loop.log`; token `circuit_breaker`, `enforcement`, `retries_esgotados` |
+| série | `INICIO` do id desde o desfecho anterior; `attempt=N` → `attempt-(N-1)` (§5.3) | última sequência 1..n do `meta.json` (`serieDoMeta`, `:378`); entre `attempt-k` e `attempt-k.prevJ`, o de mtime mais recente até fim + 180 s (`:32`) |
+| estágio | `veredito.json .causa`, `FALHA <gate>` do `gates.txt`, juiz | pela PRESENÇA dos arquivos, o fail-fast do executor do legado (`estagioPorPresenca`, `:65`) |
+| vermelho | recorte do próprio `gates.txt` (`--- recorte de … ---`) | `gate-vitest.txt` recortado (`recorte.ts:59`) |
+| fonte do teste | não há HEAD por tentativa: acoplamento `null` | `git show <head.txt>:<teste>` por `gitLeitura` |
+| vizinhos | `BLOQUEADO motivo=base_vermelha arquivos=` de outros ids | todo `FAIL` de `runs/*/attempt-*/gate-vitest.txt` com mtime nas ±6 h (`:31`) |
+
+Recorte do gate de testes (`recorte.ts:59`): âncoras fortes (`FAIL`, `❯ arquivo:N:M`,
+`Test Files`, `Tests`, Timeout, EMFILE, ENOSPC, `Cannot find module`) sempre; sem `FAIL`, só
+elas; depois as fracas (AssertionError, Expected, Received, `Error:`) e contexto de 6
+linhas até 300; quadro de pilha que não cita arquivo de teste nunca entra. Cada linha
+guarda o número do original.
+
+Regra de falta: fonte ausente entra em `falta[]` e a classe só é firme com as fontes que a
+regra usa. Nada é estimado.
+
+### 13.3 Regras (`extrair.ts:107`)
+
+A primeira que casa decide; o estágio é o da última tentativa. Firme vai ao diagnóstico
+sem modelo; palpite (`?`) ou sem regra vai ao modelo, se houver orçamento.
+
+| # | condição | classe | linha |
+|---|---|---|---|
+| D1 | merge recusado por mudança local (`overwritten by merge`) e juiz aprovou | R5 árvore suja | `:184` |
+| D2 | diff-cap e diff.stat ≤ `diff_cap_linhas` | R6 | `:197` |
+| D3 | diff-cap e diff.stat > cap | R3? | `:197` |
+| D4 | `Timeout waiting for worker`/`Timeout starting`/EMFILE/ENOSPC na última tentativa | R5 máquina | `:207` |
+| D5 | o motor do kit já decidiu `base_vermelha`; ou o vermelho fora da allowlist e do diff aparece em outra família nas ±6 h | R5 base | `:214` |
+| D6 | vitest/enforcement, vermelho fora da allowlist e do diff, e o fonte em HEAD cita nome-base (≥ 4) ou diretório (≥ 5) do diff | R1 | `:229` |
+| D7 | vitest, vermelho fora, não acoplado (ou sem fonte) | R5? | `:236` |
+| D8 | enforcement | R1? | `:240` |
+| D9 | vitest, vermelho dentro, allowlist toda em `test/` | R4? | `:245` |
+| D10 | vitest, vermelho dentro | R2? | `:245` |
+| D11 | critério e vermelho fora em tentativa anterior | R1\|R2? | `:251` |
+| D12 | critério | R2? | `:251` |
+
+Allowlist pelo `matchesAllowlist` do enforcement (`enforcement-core.ts:178`); local do
+vermelho pelo `primeiroLocal` (`diagnostico.ts:109`). A prova de um vermelho é a linha
+`FAIL`, o erro logo abaixo e o local `❯`. O que o agente disse nunca entra em regra.
+
+Placar na fixture dos 37 (estado da passada): 16 firmes certos, 0 firme errado, 13
+palpites certos, 7 errados, 1 sem regra; no instante do bloqueio, 14 firmes (760 e 898 #31
+ficam `R5?` até o vizinho aparecer). Nenhum dos 20 de controle sai firme.
+
+### 13.4 Saída (`saida.ts`)
+
+Raiz: `ORQ_DIAG_DIR` ou `~/.orq/diagnosticos` (`raizDiagnosticos`, `:25`).
+
+| caminho | o quê |
+|---|---|
+| `<repo>/<id>.json` | o diagnóstico atual (`$schema_versao: 1`, formato da spec §5) |
+| `<repo>/<id>.lock` | trava `O_EXCL` com pid e hora; órfã depois de 10 min (`travar`, `:160`) |
+| `<repo>/<id>/historico/<assinatura12>.json` | os anteriores (`gravarDiagnostico`, `:200`) |
+| `<repo>/<id>/<assinatura12>/evidencia/<caminho original>` | cópia do que foi lido, recortada e mascarada (`copiarEvidencia`, `:213`) |
+| `custo.json` | ledger do modelo: `{dias: {"AAAA-MM-DD": [{repo, id, assinatura, custo_usd, tokens_in, tokens_out}]}}` |
+
+`<repo>` é o `nome` do `repos.json` (padrão: o nome do diretório), o mesmo do painel.
+
+Regras duras:
+- **Guarda** (`saida.ts:79`): toda escrita resolve o caminho real e LANÇA se ele não está
+  sob a raiz, ou está sob qualquer caminho do `repos.json` ou sob o repo triado. Raiz
+  dentro de um repo lança no construtor.
+- **Git** (`git.ts:24`): só `gitLeitura`, com `GIT_OPTIONAL_LOCKS=0`; verbos `show`, `log`,
+  `rev-parse`, `ls-tree`, `status --porcelain`; outro verbo lança antes de existir processo.
+- **Assinatura** (`saida.ts:146`): sha256 de repo, id, status, nota e nome/mtime/tamanho de
+  cada arquivo lido. Mesma assinatura: não roda (só `--forcar`). Assinatura nova: o
+  anterior vai para o histórico.
+- **Passada** (`--passada`, `triar.ts:133`): sem modelo; só diagnósticos de até 6 h com
+  classe em palpite; grava só se a extração ficou firme (promove).
+- Ticket que saiu de `bloqueado`: o diagnóstico fica, com `encerrado_em` (`triarRepo`, `:203`).
+- `arvore_alvo_agora`: `git status --porcelain` da worktree alvo, só registro, nunca prova.
+- Máscara (`mascara.ts:22`): `sk-…`, JWT, `service_role`, `SUPABASE_*=`/`*_KEY=`/`*_TOKEN=`
+  com valor, e-mail → `‹segredo›`, antes de qualquer envio e na cópia.
+
+### 13.5 Modelo e tetos (`modelo.ts`)
+
+Só para palpite e sem regra, uma vez por assinatura (mesmo que falhe: `modelo.erro`).
+
+- Config: `ORQ_TRIADOR_CONFIG` ou `~/.orq/triador.json` (`lerConfigModelo`, `:48`):
+  `modelo` (padrão `claude-opus-5-5`; `null` desliga), `teto_dia_usd` (3,00),
+  `teto_caso_usd` (0,30), `entrada_max_tokens` (30000), `timeout_secs` (120).
+  `ORQ_TRIADOR_TETO_DIA` sobrepõe o teto do dia.
+- Entrada (`montarEntrada`, `:141`): as 7 seções da spec §4 (ticket; extração; recorte do
+  vitest; critérios FALHA; diff.stat; juiz; o que o agente disse, 3000 + 1500 caracteres),
+  cortadas de baixo para cima até `entrada_max_tokens × 3,5` caracteres, e mascaradas. O
+  diff cru não entra. O prompt é o literal da spec (`prompt.ts`).
+- Chamada (`chamar`, `:199`): `claude -p --output-format json --model <m> --allowedTools ""
+  --max-turns 1 --max-budget-usd <teto_caso>`, prompt pela entrada padrão. O binário é
+  `ORQ_TRIADOR_CLAUDE` ou `claude`; sob teste (vitest ou `ORQ_TESTE=1`) sem
+  `ORQ_TRIADOR_CLAUDE`, a chamada é recusada.
+- Teto do dia (`criarPassoModelo`, `:352`): a chamada só sai se gasto do dia + teto do caso
+  ≤ teto do dia (entrada sem custo conhecido conta como o teto do caso); senão
+  `modelo: {pulado: "teto_dia"}` e vale a extração. Custo acima do teto do caso marca
+  `custo_acima_do_teto` no ledger.
+- Resposta (`lerResposta`, `:260`): a última linha JSON com `classe` em R1-R7. Cada
+  evidência tem de ser de um arquivo lido e de uma linha que ele tem (no recorte, uma
+  linha guardada); a que não confere sai e conta `evidencia_descartada`
+  (`conferirEvidencia`, `:286`). Envelope ilegível, sem evidência válida ou classe fora da
+  lista: vale a extração, com `modelo.erro`. A resposta do modelo nunca é firme.
+
+### 13.6 Fixture e testes
+
+`test/fixtures/triador-7f/`: os 37 bloqueios da medição de 09/10 e 20 done de controle,
+montados por `montar.py` (só leitura do comarka-operacional, git com
+`GIT_OPTIONAL_LOCKS=0`), cada um com `esperado.json` (classe e evidência da medição, com a
+linha da tabela). `orq triar --fixture <dir>` (`corrida.ts:46`) roda o triador sobre os 37
+e imprime o placar (C) da spec §7.2; é a corrida da peça 6.
+
+Testes: `orquestrador-triador-{fixture,leitores,extrair,aceite,saida,modelo}.test.ts`. O
+`claude` deles é `test/fixtures/claude-envelope/triador-stub.sh`; o do PATH é uma trava.
 
 ## 10. Divergências conhecidas
 
