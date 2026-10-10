@@ -1,0 +1,96 @@
+{
+ "id": "671d",
+ "slug": "visao-linha-resumo-comercial",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "Decisao de 26/09 (humano:decisao-comercial-cliente): a ficha ganha o Comercial do cliente, uma 5a aba propria mais um resumo na Visao, com o funil dos leads do escritorio vindos do GHL dele e analises para o trafego (CPMQL, CAC, campanha que gera lead que fecha). ORCAMENTO DE DIFF: teto de 170 linhas (~3 em src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx, ~60 no NOVO src/app/dashboard/clientes/[id]/_components/linha-comercial.tsx, ~100 no teste NOVO test/visao-linha-comercial.test.tsx). Se passar de 450, pare e reporte. O QUE EXISTE (recon 26/09 em staging-auto 8d4b0ac): retorno do GeralTab em src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx:902; ordem aviso-dado-parado (~925), <KpisVisao (934), {perfClienteId && <TabelaCampanhas (945-952), data-testid=\"visao-trio\" (955), <TimelineVisao (967), onboarding, NPS, <AnaliseIA (1119). GET src/app/api/clientes/[id]/comercial/route.ts (671b) devolve totais, cpmql, cac e sem_leads. PASSO 1: leia src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx:880-1000, test/visao-aceite-estrutura.test.tsx (:227, :283, :417-419, :464-465, :536-549), test/visao-estrutura-trio.test.tsx e test/visao-aceite-mockup.test.tsx:734-855. FAZER: (1) NOVO src/app/dashboard/clientes/[id]/_components/linha-comercial.tsx LinhaComercial(clienteId uuid, periodo, onAbrir): busca a rota com fetchJson e rende UMA linha (sem cartao, sem heading grande): Comercial · N leads · N MQL · N vendas · CPMQL R$ · CAC R$ e o link Ver comercial que chama onAbrir; numeros em f",
+ "cria_novo": [
+  "src/app/dashboard/clientes/[id]/_components/linha-comercial.tsx",
+  "test/visao-linha-comercial.test.tsx"
+ ],
+ "pathspec_allowlist": [
+  "src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx",
+  "src/app/dashboard/clientes/[id]/_components/linha-comercial.tsx",
+  "test/visao-aceite-estrutura.test.tsx",
+  "test/visao-estrutura-trio.test.tsx",
+  "test/visao-dado-parado-e-link.test.ts",
+  "test/visao-aceite-mockup.test.tsx",
+  "test/visao-linha-comercial.test.tsx"
+ ],
+ "dependencias": [
+  "671b",
+  "665",
+  "666",
+  "667"
+ ],
+ "prioridade": 45,
+ "recon_esperado": [
+  {
+   "descricao": "Visao sem linha comercial",
+   "cmd": "n=$(grep -c 'LinhaComercial' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'); echo \"L=$n\"",
+   "espera": "L=0"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 em src/",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -c '^src/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes da allowlist verdes (recalculados, nunca afrouxados)",
+   "cmd": "fs=\"\"; for f in test/visao-aceite-estrutura.test.tsx test/visao-estrutura-trio.test.tsx test/visao-dado-parado-e-link.test.ts test/visao-aceite-mockup.test.tsx; do [ -f \"$f\" ] && fs=\"$fs $f\"; done; [ -z \"$fs\" ] && echo VERDE || { npx vitest run $fs >/dev/null 2>&1 && echo VERDE || echo VERMELHO; }",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum teste existente da allowlist perdeu it(/expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (contra o merge-base com staging-auto)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=NAO_AFROUXOU; for f in test/visao-aceite-estrutura.test.tsx test/visao-estrutura-trio.test.tsx test/visao-dado-parado-e-link.test.ts test/visao-aceite-mockup.test.tsx; do [ -f \"$f\" ] || { git cat-file -e \"$b:$f\" 2>/dev/null && r=APAGOU_$f; continue; }; for p in 'expect(' 'it('; do a=$(git show \"$b:$f\" 2>/dev/null | grep -cF \"$p\"); n=$(grep -cF \"$p\" \"$f\"); [ \"${n:-0}\" -ge \"${a:-0}\" ] || r=CAIU_$f; done; s0=$(git show \"$b:$f\" 2>/dev/null | grep -cE '\\.(skip|only|todo)\\('); s1=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"${s1:-0}\" -le \"${s0:-0}\" ] || r=SKIP_NOVO_$f; d0=$(git show \"$b:$f\" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' \"$f\"); [ \"${d1:-0}\" -le \"${d0:-0}\" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r",
+   "espera": "NAO_AFROUXOU",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "linha montada entre a tabela e o trio",
+   "cmd": "python3 -c \"import sys;s=open(sys.argv[1]).read();a=s.find('<TabelaCampanhas');b=s.find('<LinhaComercial');c=s.find('visao-trio');print('ORDEM_OK' if -1<a<b<c else 'ORDEM_%d.%d.%d'%(a,b,c))\" 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'",
+   "espera": "ORDEM_OK"
+  },
+  {
+   "descricao": "geral-tab com mudanca minima (<= 6 linhas)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; g=$(git diff --numstat \"$b\" -- 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx' | awk '{print $1+$2}'); [ \"${g:-0}\" -le 6 ] && echo MINIMO || echo GRANDE_$g",
+   "espera": "MINIMO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde",
+   "cmd": "test -f test/visao-linha-comercial.test.tsx && npx vitest run test/visao-linha-comercial.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "avaliador: na Visao, abaixo da tabela de campanhas, uma linha resume o comercial do periodo e leva a aba Comercial; sem dado ou sem CRM, diz isso numa linha, sem zeros. REPROVE se: cartao ou heading novo; posicao diferente; import proibido; assercao removida.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "RECON 26/09. Ordem da Visao e restricoes medidas em visao-aceite-estrutura (39 it), visao-estrutura-trio (5), visao-dado-parado-e-link (5), visao-aceite-mockup (58). Dep 671b (rota), 665/666/667 (mesmos testes da Visao na allowlist).",
+ "_objetivo_cortado_na_fixture": 3349
+}

@@ -1,0 +1,22 @@
+Ticket 624 is committed as `e7a4868`. No `git push`.
+
+`npm run build` and the full `npx vitest run` were not run. tsc was run without the `rm -rf .next` step, which the permission system denied. It shows the baseline of 3 errors, all in the `qualificacao` files and perf routes, and nothing new.
+
+I ran a subset of vitest: the new test, the 6 `testes_conferidos` and the 4 global guards. All 11 files pass (113 tests).
+
+- **Cadastro route** (`src/app/api/config/automacoes/route.ts`):
+  - `GET` and `POST` only, with the same 401/403 guards as `src/app/api/automacoes/route.ts`.
+  - `POST` returns 422 for a bad `gatilho_tipo`, `escopo` or slug format, and 409 for a duplicate slug.
+  - `POST` sets `criado_por` from `session.employeeId` when there is one.
+- **Cadastro screen** (`page.tsx` + `automacoes-cadastro.tsx`):
+  - Table with Nome, Gatilho, Ação, Escopo and an Ativo badge, plus a "Nova automação" form that reloads the list on save.
+  - Errors show inline and there is no `alert()`.
+  - A 401/403 from the API shows the "Acesso restrito" state.
+- **Matrix list** (`src/lib/clientes/automacoes.ts`):
+  - `SLUGS_COM_CALCULO` maps `alerta_saldo` to `alerta_pix`.
+  - `listarAutomacoesPorCliente(db)` reads `ops_automacoes` (`por_cliente`, `ativo`, by `ordem`) and ignores any slug not in that map.
+- **Status route** (`automacoes-status/route.ts`): reads the list in its own try/catch. An error, a thrown exception or an empty list falls back to `AUTOMACAO_CHAVES`, so it never becomes a 500.
+
+**Added optional param:** I added an optional `chaves` param to `buildClienteStatus`. If an automation is deactivated in the table, it comes out as "desligado" with no prerequisites, because the response fields can't be removed without touching `automacoes-block.tsx`. Say if you'd rather handle that differently.
+
+`AUTOMACAO_LABELS`, the order and the field names are unchanged, and `automacoes-block.tsx` was not touched.

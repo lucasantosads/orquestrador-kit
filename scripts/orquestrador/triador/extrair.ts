@@ -226,11 +226,20 @@ export function extrair(ev: Evidencia): Extracao {
     return sai('R5', 'D5', provas, `consertar a base: ${local(vermelhoRefs(b.t, b.arquivo), b.arquivo)} vermelho também em ${ids.join(', ')}, fora do diff`, `sim_apos:base_verde:${b.arquivo}`)
   }
 
-  // D6 · vermelho fora da allowlist e do diff, acoplado ao que o ticket mudou
+  // D6 · vermelho fora da allowlist e do diff, acoplado ao que o ticket mudou.
+  // Firme só com o MESMO teste vermelho fora em ≥ 2 tentativas da série
+  // (7f-b1-7, decisão do chat do programa): com uma só, o agente ainda pode
+  // resolver no retry (os 5 de série cortada da fixture), e vira `R1?`.
   if ((u === 'vitest' || u === 'enforcement') && fora.length && acoplado === true) {
-    const a = acoplados.at(-1)!
+    const tentativasDe = (f: string) => new Set(fora.filter((x) => x.arquivo === f).map((x) => x.t.n)).size
+    const persistentes = acoplados.filter((x) => tentativasDe(x.arquivo) >= 2)
+    const a = (persistentes.length ? persistentes : acoplados).at(-1)!
     const provas = acoplados.flatMap((x) => vermelhoRefs(x.t, x.arquivo))
-    return sai('R1', 'D6', provas, `pôr ${a.arquivo} na allowlist com guarda (mesma contagem de it/expect, sem skip); vermelho em ${local(vermelhoRefs(a.t, a.arquivo), a.arquivo)}`)
+    const onde = local(vermelhoRefs(a.t, a.arquivo), a.arquivo)
+    if (persistentes.length) {
+      return sai('R1', 'D6', provas, `pôr ${a.arquivo} na allowlist com guarda (mesma contagem de it/expect, sem skip); vermelho em ${onde}`)
+    }
+    return sai('R1?', 'D6', provas, `conferir ${a.arquivo}: vermelho fora da allowlist numa tentativa só (${onde}); se for acoplado, pôr na allowlist com guarda`)
   }
   const refsFora = fora.flatMap((x) => vermelhoRefs(x.t, x.arquivo))
   // D7 · vermelho fora, não acoplado (ou acoplamento sem fonte): base ou acoplamento indireto

@@ -1,19 +1,25 @@
 /**
  * Etapa 7f · aceite do triador de bloqueios (spec 7f-a §7.2), sobre a fixture
- * dos 37 bloqueios da medição de 09/10 e dos 20 de controle.
+ * dos 37 bloqueios da medição de 09/10, dos 20 de controle e dos 5 de série
+ * cortada.
  *
  *   (A) só extração: os 7 R5 e R6 saem com classe firme certa e ao menos uma
  *       evidência igual a uma do esperado.json (mesmo arquivo; linha a ±3 no
  *       original), com `vizinhos.tsv` inteiro (o estado depois da passada G3).
  *       Com só os vizinhos de antes do bloqueio, 760 e 898 #31 saem `R5?`, não
  *       firmes. O teste fixa os dois instantes.
- *   (B) zero firme errado nos 37, e os 16 firmes certos são os da spec §3.3.
+ *   (B) zero firme errado nos 37, e os firmes certos são os 16 da spec §3.3
+ *       menos o 346d: com a restrição da D6 (7f-b1-7, decisão do chat do
+ *       programa), R1 só é firme com o mesmo vermelho fora da allowlist em ≥ 2
+ *       tentativas; o 346d tem uma só e vira `R1?`. Ficam 15.
  *   (controle) nenhum dos 20 sai firme.
+ *   (cortados) nenhum dos 5 de série cortada sai firme: com a D6 da spec os 5
+ *       saíam R1 firme, e errado (o agente resolveu o vermelho no retry).
  *   (C) extração + modelo, por replay de `resposta-modelo.json`: peça 6, que
  *       não é da 7f-b1 (a sessão não chama modelo).
  *
  * Os módulos do triador entram por import DINÂMICO tolerante: sem eles, todo
- * caso sai "sem diagnóstico" e o vermelho é de asserção (0 de 16 firmes), não
+ * caso sai "sem diagnóstico" e o vermelho é de asserção (0 de 15 firmes), não
  * de import quebrado.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
@@ -84,9 +90,9 @@ function evidenciaCasa(dada: Ref[], esp: Ref[]): boolean {
   )
 }
 
-// Spec §3.3: os 16 firmes e certos.
+// Spec §3.3: os 16 firmes e certos, menos o 346d (D6 com ≥ 2 tentativas, 7f-b1-7).
 const FIRMES_DA_SPEC = [
-  '07-627j-L57368', '11-689-L65280', '13-346d-L66187', '15-722-L67970', '17-715-L68793',
+  '07-627j-L57368', '11-689-L65280', '15-722-L67970', '17-715-L68793',
   '22-762-L72665', '23-856-L73817', '26-711b3-L78647', '35-950-L85145',
   '20-801-L72121', '21-760-L72407', '31-898-L82594', '32-741a-L82726', '36-940-L85222', '37-932-L85272',
   '16-723-L68736',
@@ -110,21 +116,30 @@ describe('aceite do triador (spec 7f-a §7.2)', () => {
       expect({ nome, classe: r.get(nome)?.classe, firme: r.get(nome)?.firme }).toEqual({ nome, classe: 'R5?', firme: false })
     }
     const firmes = [...r].filter(([, x]) => x.firme).map(([n]) => n)
-    expect(firmes).toHaveLength(14)
+    expect(firmes).toHaveLength(13)
   })
 
-  it('(B) zero firme errado nos 37, e os firmes certos são os 16 da spec', async () => {
+  it('(B) zero firme errado nos 37, e os firmes certos são os 15 (16 da spec menos o 346d)', async () => {
     const r = await triarTodos('', 'passada')
     const firmes = [...r].filter(([, x]) => x.firme)
     const errados = firmes.filter(([n, x]) => x.classe !== esperado(n).classe).map(([n, x]) => `${n}=${x.classe}`)
     expect(errados).toEqual([])
     expect(firmes.map(([n]) => n).sort()).toEqual(FIRMES_DA_SPEC)
+    expect({ classe: r.get('13-346d-L66187')?.classe, firme: r.get('13-346d-L66187')?.firme }).toEqual({ classe: 'R1?', firme: false })
   })
 
   it('(controle) nenhum dos 20 done sai firme, nos dois instantes', async () => {
     for (const instante of ['bloqueio', 'passada'] as const) {
       const r = await triarTodos('controle', instante)
       expect(r.size).toBe(20)
+      expect([...r].filter(([, x]) => x.firme).map(([n, x]) => `${n}=${x.classe}`)).toEqual([])
+    }
+  })
+
+  it('(cortados) nenhum dos 5 de série cortada sai firme, nos dois instantes (D6 pede o vermelho em ≥ 2 tentativas)', async () => {
+    for (const instante of ['bloqueio', 'passada'] as const) {
+      const r = await triarTodos('cortados', instante)
+      expect(r.size).toBe(5)
       expect([...r].filter(([, x]) => x.firme).map(([n, x]) => `${n}=${x.classe}`)).toEqual([])
     }
   })

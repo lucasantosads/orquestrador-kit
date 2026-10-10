@@ -1,0 +1,17 @@
+80400	[2026-10-08 01:45:17-0300] drenagem: ticket 367 (18 pendentes restantes)
+80401	[orq 04:45:17] orquestrador iniciando · modo: real · once
+80402	[orq 04:45:17] preflight: validando infra (scripts, fila, env, claude)...
+80403	[orq 04:45:21] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+80404	[orq 04:45:27] preflight: ok
+80405	[orq 04:45:44] === ticket 367 (briefing-criativo-etapa-onboarding) — tentativa 1 · modo: real ===
+80406	[orq 04:45:45]   recon_esperado: ok (2 comando(s))
+80407	[orq 04:45:45] aviso allowlist: test/header-cliente-consolidado.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80408	[orq 04:45:45] aviso allowlist: test/abas-montadas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80409	[orq 04:45:45]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/367/attempt-1/prompt.txt
+80410	[orq 04:45:45]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+80411	[orq 04:48:23]   diff cru salvo (812 linhas alteradas) · HEAD julgado c259b4ba
+80412	[orq 04:48:23]   enforcement: ok
+80413	[orq 04:48:38]   gate tsc: ok (baseline)
+80414	[orq 04:48:58]   gate vitest: FALHA
+80415	[orq 04:48:58]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/367/attempt-1/gate-vitest.txt)
+80416	[orq 04:48:58] ticket 367: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/367/attempt-1/gate-vitest.txt)

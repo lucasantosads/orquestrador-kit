@@ -1,0 +1,21 @@
+As três rotas contratuais (comunicações, disputa, entregas) agora resolvem o `[id]` com uma única chamada a `resolverCliente` por requisição. O trabalho está commitado em `afd7456`, sem push. Rodei o `tsc`, os testes do ticket e as guardas globais. Não rodei `npx vitest run` completo nem `npm run build`.
+
+- **tsc:** 3 erros, que é o baseline.
+- **Testes do ticket:** os 3 arquivos passam, 29 testes ao todo.
+- **Guardas globais:** verdes.
+- **Gate `rm -rf .next`:** o Bash negou a combinação `rm -rf .next; npx tsc`, então medi o `tsc` sem limpar o `.next` antes. A contagem de 3 já exclui o ruído de `.next/`.
+- **Diff:** 166 linhas adicionadas e 24 removidas, 190 no total, dentro do teto de 300.
+- **Critérios de aceite:** não rodei um a um os comandos de aceite do ticket (as checagens de allowlist, `.json()` novo e anti-afrouxamento). O diff só tem os 6 arquivos da allowlist e o `.json()` literal não foi tocado.
+
+O que mudou em cada rota:
+- **Comunicações e entregas, GET:** par sem `cliente_id` devolve a mesma resposta de sem vínculo de antes, com status 200 e `sem_vinculo: true`.
+- **Comunicações e entregas, POST:** par sem `cliente_id` devolve o mesmo 404 "Cliente sem vínculo de cadastro".
+- **Disputa:** sem `cliente_id`, entregas e comunicações entram vazias e as pendências seguem sendo lidas pelo `notion_id`. Isso mantém o comportamento de hoje.
+- **Pendências da disputa:** continuam lidas com o `notion_id` e o `cliente_id` do par juntos, porque as gravadas pela Relação ainda usam o `notion_id`.
+- **Par com os dois lados null:** 404 "Cliente não encontrado".
+- **Erro do resolver:** 500 com a mensagem, sem consultar nada.
+- **Imports:** não sobra import de `resolve-cockpit-id` nem de `resolver-chave`.
+
+Nos testes existentes de disputa e entregas só troquei o alvo do `vi.mock` para `@/lib/clientes/resolver-cliente`. Nenhuma asserção foi tocada.
+
+O teste novo, `test/resolver-cliente-rota-contratual.test.ts`, cobre os GET das três rotas. Ele verifica que uuid e `notion_id` chegam à mesma consulta com um só `resolverCliente`, e cobre sem vínculo, 404 e 500. Os POST ficam sem teste novo; o ticket pedia o teste só para o que a rota devolve na leitura.

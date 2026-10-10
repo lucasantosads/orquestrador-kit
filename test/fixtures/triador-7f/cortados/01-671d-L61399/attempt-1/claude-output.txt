@@ -1,0 +1,17 @@
+A linha do Comercial está na Visão da ficha, entre a tabela de campanhas e o trio, e o trabalho está commitado (`7f58215`, `ffc8dde`). Não rodei o `npm run build`, o `npx vitest run` completo nem os critérios de merge-base (numstat de `geral-tab`, anti-afrouxamento, sem `.sql`).
+
+O que rodei:
+- **tsc:** 3 erros em `src/`, o baseline. Rodei sem o `rm -rf .next` (o comando foi negado).
+- **Testes da allowlist:** os 4 existentes (108 testes) passam sem edição.
+- **Teste novo:** `test/visao-linha-comercial.test.tsx` passa (6 testes).
+- **Guardas globais:** as 7 passam (65 testes) e nenhuma foi editada.
+
+O que mudou:
+- **`linha-comercial.tsx` (novo):** `LinhaComercial` busca a rota do funil e mostra uma linha sem cartão nem título: leads, MQL, vendas, CPMQL e CAC em fonte mono, mais o link "Ver comercial".
+- **Sem dado:** CPMQL ou CAC nulos aparecem como "sem base" em cinza. Sem leads, a linha diz "nenhum lead do escritório no período", sem zeros.
+- **CRM não conectado:** o 404 da rota vira "CRM do cliente não conectado".
+- **`geral-tab.tsx`:** 2 linhas a mais (o import e a montagem, com `onAbrir` abrindo a aba `"comercial"`), dentro do teto de 6.
+- **Fora do pedido:** falha de rede ou erro de servidor mostram "Comercial · sem base no momento". O ticket não definia esse caso.
+- **Período:** vem de `metricasData?.period`. Se estiver indefinido, a rota usa o padrão dela (do início do mês até hoje), que pode divergir da janela dos KPIs da Visão.
+
+O teste renderiza uma `LinhaComercialView` sem hooks e sem fetch, com respostas fixas, e confere a ordem por leitura do fonte.

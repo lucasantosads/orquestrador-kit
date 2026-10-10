@@ -1,0 +1,15 @@
+{
+ "id": "671d",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/671d-visao-linha-resumo-comercial.md",
+ "ticket_sha": "d6af04565b2e035265684900dd7dad19b42cb479",
+ "ticket_antes": true,
+ "linha_bloqueio": null,
+ "linha_fim": 61399,
+ "log_inicio": 61380,
+ "fim": "2026-09-26T23:19:58Z",
+ "tentativas": 1,
+ "meta_dir": "docs/fila/runs/671d",
+ "cortado_de": "controle/02-671d-L61424",
+ "cortado_em": 1
+}

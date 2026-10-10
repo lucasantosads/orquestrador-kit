@@ -12,7 +12,10 @@ De onde sai cada caso (spec 7f-a §7.1):
     102-138; classe da §5), com a linha `BLOQUEADO` do local-loop.log (`L`);
   - 20 tickets `done` do período, de controle (§7.3): os 10 com vermelho de
     vitest numa tentativa intermediária, resolvido no retry, e 10 com critério
-    vermelho intermediário. Nenhum deles pode sair firme.
+    vermelho intermediário. Nenhum deles pode sair firme;
+  - 5 de série cortada (`cortados/`, 7f-b1-7): controles cortados na última
+    tentativa que reprovou. Saem de `controle/`, sem o comarka
+    (`--so-cortados` refaz só eles). Nenhum deles pode sair firme.
 
 O que vai para cada caso é SÓ o que o triador lê, já recortado:
   caso.json, ticket.json, meta.json, config.json, log.txt, serie.json,
@@ -83,6 +86,10 @@ CASOS = [
 # critério intermediário, por ordem de id.
 CONTROLE = ["633", "671d", "624", "694", "627e", "656", "808", "706", "367", "891",
             "907", "707a", "868", "860", "650", "712", "662b", "735", "648", "744"]
+# Os 5 de série cortada (7f-b1-7): controles cortados na última tentativa que
+# reprovou, como se o motor tivesse bloqueado ali. Com a D6 da spec, os 5 saíam
+# R1 firme, e errado: o próprio agente resolveu o vermelho no retry.
+CORTADOS = ["671d", "624", "627e", "808", "367"]
 
 # --- O recorte: o MESMO algoritmo de triador/recorte.ts -----------------------
 ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
@@ -549,6 +556,61 @@ def monta_controle(cm, saida, nn, tid):
     return destino
 
 
+def monta_cortado(saida, nn, tid):
+    """Um controle já montado, cortado na última tentativa que reprovou. Só lê
+    `controle/`: não precisa do comarka. Os vizinhos ficam os do controle que
+    caem nas ±6 h do novo fim (o controle só guardou os das ±6 h do fim dele)."""
+    origem = next(d for d in sorted(glob.glob(os.path.join(saida, "controle", "[0-9][0-9]-*")))
+                  if os.path.basename(d).split("-")[1] == tid)
+    ler = lambda f: open(os.path.join(origem, f), encoding="utf-8").read()
+    caso = json.loads(ler("caso.json"))
+    meta = json.loads(ler("meta.json"))
+    final = meta[-caso["tentativas"]:]
+    k = max(m["attempt"] for m in final if m["resultado"] != "done")
+    i_k = meta.index(next(m for m in final if m["attempt"] == k))
+    fim = ts_de(meta[i_k]["ts"])
+    cab = re.compile(rf"=== ticket {re.escape(tid)} \(.*\) — tentativa {k + 1} ")
+    log = ler("log.txt").splitlines(keepends=True)
+    corte = next(i for i, l in enumerate(log) if cab.search(l))
+    log = log[:corte]
+    L = int(log[-1].split("\t")[0])
+    destino = os.path.join(saida, "cortados", f"{nn:02d}-{tid}-L{L}")
+    os.makedirs(destino, exist_ok=True)
+    for f in ("ticket.json", "config.json"):
+        escreve(os.path.join(destino, f), ler(f))
+    escreve(os.path.join(destino, "log.txt"), "".join(log))
+    json_escreve(os.path.join(destino, "meta.json"), meta[:i_k + 1])
+    serie = json.loads(ler("serie.json"))[:k]
+    json_escreve(os.path.join(destino, "serie.json"), serie)
+    heads = set()
+    for s in serie:
+        a = f"attempt-{s['k']}"
+        subprocess.run(["cp", "-R", os.path.join(origem, a), os.path.join(destino, a)], check=True)
+        h = os.path.join(origem, a, "head.txt")
+        if os.path.exists(h):
+            heads.add(open(h).read().strip())
+    for h in sorted(heads):
+        if os.path.isdir(os.path.join(origem, "fontes", h)):
+            os.makedirs(os.path.join(destino, "fontes"), exist_ok=True)
+            subprocess.run(["cp", "-R", os.path.join(origem, "fontes", h), os.path.join(destino, "fontes", h)], check=True)
+    cab_v, *linhas = ler("vizinhos.tsv").splitlines()
+    viz = [cab_v]
+    for l in linhas:
+        c = l.split("\t")
+        m = ts_de(c[4])
+        if abs(m - fim) <= 6 * 3600:
+            viz.append("\t".join(c[:5] + ["1" if m <= fim + 180 else "0"]))
+    escreve(os.path.join(destino, "vizinhos.tsv"), "\n".join(viz) + "\n")
+    json_escreve(os.path.join(destino, "caso.json"), {
+        **caso, "linha_bloqueio": None, "linha_fim": L, "fim": iso(fim), "tentativas": k,
+        "cortado_de": f"controle/{os.path.basename(origem)}", "cortado_em": k})
+    json_escreve(os.path.join(destino, "esperado.json"), {
+        "classe": None, "cortado": True, "firme_proibido": True,
+        "fonte_da_verdade": f"controle/{os.path.basename(origem)} cortado na tentativa {k}, a última que reprovou "
+                            "(o agente resolveu o vermelho no retry: R1 firme seria errado)"})
+    return destino
+
+
 INTEIROS = [("627j", "docs/fila/runs/627j/attempt-3/gate-vitest.txt"),
             ("627b", "docs/fila/runs/627b/attempt-1.prev1/gate-vitest.txt"),
             ("600", "docs/fila/runs/600/attempt-3/gate-vitest.txt")]
@@ -558,7 +620,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--comarka", default=os.path.expanduser("~/Projetos/comarka-operacional"))
     ap.add_argument("--saida", default=AQUI)
+    ap.add_argument("--so-cortados", action="store_true", help="refaz só cortados/, a partir de controle/ (sem o comarka)")
     a = ap.parse_args()
+    subprocess.run(["rm", "-rf", os.path.join(a.saida, "cortados")], check=True)
+    if a.so_cortados:
+        for nn, tid in enumerate(CORTADOS, 1):
+            monta_cortado(a.saida, nn, tid)
+        return
     cm = Comarka(os.path.abspath(a.comarka))
     for d in (glob.glob(os.path.join(a.saida, "[0-9][0-9]-*")) + glob.glob(os.path.join(a.saida, "controle", "[0-9][0-9]-*"))
               + [os.path.join(a.saida, "vitest-inteiros")]):
@@ -569,6 +637,9 @@ def main():
     for nn, tid in enumerate(CONTROLE, 1):
         print("controle", nn, tid, file=sys.stderr)
         monta_controle(cm, a.saida, nn, tid)
+    for nn, tid in enumerate(CORTADOS, 1):
+        print("cortado", nn, tid, file=sys.stderr)
+        monta_cortado(a.saida, nn, tid)
     # Três gate-vitest INTEIROS (sem recorte, só com a máscara), para o teste da
     # peça 2 provar que o recorte guarda todo FAIL e todo ❯.
     for tid, rel in INTEIROS:

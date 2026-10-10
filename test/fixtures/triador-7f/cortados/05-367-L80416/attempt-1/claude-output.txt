@@ -1,0 +1,12 @@
+O ticket 367 está feito e commitado na `frente/367`, sem push. O `tsc` dá 3 erros (o baseline) e rodei só 4 testes (`test/briefing-etapa.test.tsx`, `abas-montadas`, `header-cliente-consolidado`, `c0-guard`), que passaram. Não rodei `npx vitest run` completo nem `npm run build`. Também não rodei `rm -rf .next` antes do `tsc`; o gate dá 3 mesmo assim.
+
+- **Seed:** `scripts/dados/367-briefing-template.ts` lê `docs/briefing/MODELO.md` e roda em dry-run por padrão. Cada pergunta sai com tipo texto longo, ajuda `Seção: <título>` e obrigatoriedade pela marca `(obrigatória)`. Sem o MODELO, ele aborta com mensagem. O `--apply` exige `BRIEFING_CRIADO_POR` (id de funcionário), porque `criado_por` é obrigatório na tabela.
+- **Fonte `briefing_pendente`:** `src/lib/hoje/fontes/briefing.ts` gera um item por cliente ativo com envio sem resposta há mais de 7 dias, usando `isClienteAtivo` do 037. O prazo conta a partir do envio do briefing, não do início do onboarding.
+- **Ficha:** o bloco "Briefing criativo" fica em Conta › Onboarding, com o link público montado a partir do token do envio e as respostas quando existirem. Para isso, `GET /api/briefings-criativos?cliente_id=` passou a devolver o token. A lista geral continua sem token.
+- **Rota antiga:** `/dashboard/briefings-criativos` agora redireciona para `/dashboard/clientes`, a lista de clientes, porque não há cliente específico para apontar. O redirect remove a tela de novo envio e de templates, e a ficha ainda não tem botão de envio. Se você quiser um, é um follow-up.
+- **Teste:** criei `test/briefing-etapa.test.tsx`, que cobre o parser do seed, a fonte, o link e o redirect.
+
+Pendências e achados:
+- **Fonte ainda não entra na coleta:** falta acrescentar `import "./fontes/briefing";` em `src/lib/hoje/fontes.ts`, que está fora da allowlist. É a mesma situação da fonte de onboarding (316).
+- **Página pública:** a página pública está em `src/app/briefing/[token]`; `briefing-publico` não existe no disco. Não toquei nela.
+- **Cron:** não criei rota de cron, então não há entrada nova para o `vercel.json`.

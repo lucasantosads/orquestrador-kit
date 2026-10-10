@@ -213,25 +213,25 @@ describe('modelo do triador, com stub (peça 5)', () => {
     expect(orq('comarka-fx', '559', '--passada', '--x').status).toBe(1)
   })
 
-  it('orq triar --fixture (a corrida da peça 6): 21 chamadas no teto de US$ 6,30, 10 no de US$ 3,00, nada na fixture, rerodar não paga', () => {
+  it('orq triar --fixture (a corrida da peça 6): 22 chamadas no teto de US$ 6,60, 10 no de US$ 3,00, nada na fixture, rerodar não paga', () => {
     envelope(JSON.stringify({ classe: 'R2', confianca: 'baixa', evidencia: [], remedio: 'x', requeue: 'nao', justificativa: 'stub' }), 0.3)
     const antes = spawnSync('git', ['status', '--porcelain', '--', FX], { encoding: 'utf8', cwd: RAIZ, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } }).stdout
     const orq = (teto: string, ...a: string[]) =>
       spawnSync('bash', [join(RAIZ, 'scripts', 'orq'), 'triar', '--fixture', FX, ...a], { encoding: 'utf8', env: { ...process.env, ORQ_TRIADOR_TETO_DIA: teto } })
-    const r = orq('6.30')
+    const r = orq('6.60')
     expect(r.status, r.stderr).toBe(0)
-    expect(chamadas()).toHaveLength(21)
-    expect(r.stdout).toMatch(/-- \(C\) classe e evidência certas: \d+\/37 \(aceite: >= 30\); chamadas novas: 21; custo desta corrida: US\$ 6\.3000/)
+    expect(chamadas()).toHaveLength(22)
+    expect(r.stdout).toMatch(/-- \(C\) classe e evidência certas: \d+\/37 \(aceite: >= 30\); chamadas novas: 22; custo desta corrida: US\$ 6\.6000/)
     const dir = join(base, 'diag', 'fixture-triador-7f')
-    expect(readdirSync(dir).filter((f) => existsSync(join(dir, f, 'resposta-modelo.json')))).toHaveLength(21)
-    expect(orq('6.30').stdout).toMatch(/chamadas novas: 0;/)
-    expect(chamadas()).toHaveLength(21)
+    expect(readdirSync(dir).filter((f) => existsSync(join(dir, f, 'resposta-modelo.json')))).toHaveLength(22)
+    expect(orq('6.60').stdout).toMatch(/chamadas novas: 0;/)
+    expect(chamadas()).toHaveLength(22)
     expect(spawnSync('git', ['status', '--porcelain', '--', FX], { encoding: 'utf8', cwd: RAIZ, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } }).stdout).toBe(antes)
-    // num dia novo de ledger, com o teto padrão de US$ 3,00: 10 chamadas e 11 puladas
+    // num dia novo de ledger, com o teto padrão de US$ 3,00: 10 chamadas e 12 puladas
     writeFileSync(join(base, 'diag', 'custo.json'), '{"dias":{}}')
     const r3 = orq('3', '--forcar')
     expect(r3.stdout).toMatch(/chamadas novas: 10;/)
-    expect(chamadas()).toHaveLength(31)
+    expect(chamadas()).toHaveLength(32)
   })
 
   it('orq triar --passada não chama modelo e promove R5? a R5 quando o vizinho de outra família aparece (760)', async () => {

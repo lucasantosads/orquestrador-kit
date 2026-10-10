@@ -1,0 +1,85 @@
+{
+ "id": "367",
+ "slug": "briefing-criativo-etapa-onboarding",
+ "onda": 3,
+ "frente": "F1",
+ "camada": "motor+UI",
+ "serie": "ficha",
+ "tam": "M",
+ "objetivo": "CONTEXTO: ops_briefing_template (0) e ops_briefing_resposta (0) existem; a página pública src/app/briefing-publico/[token] existe (lista negra — não tocar); há dois onboardings (Notion: onboarding_tracking 270; OS: ops_onboarding 1). D32 (default Notion): o briefing vira ITEM do motor + link na ficha, não etapa do wizard do OS. FAZER: (a) seed scripts/dados/367-briefing-template.ts (dry-run padrão) com o Modelo de Briefing em docs/briefing/MODELO.md (o humano escreve; se ausente, o script aborta com mensagem); (b) na ficha › Conta › Onboarding: bloco 'Briefing criativo' com link público (token da resposta) e a resposta quando existir; (c) fonte 'briefing_pendente' no motor 315b1 (cliente ativo sem resposta há >7d do início); (d) /dashboard/briefings-criativos vira redirect para a ficha. Seed do MODELO: o título ## de cada seção vai para o texto de ajuda de todas as perguntas daquela seção (formato 'Seção: <título>'); tipo padrão de toda pergunta é texto longo; obrigatoriedade segue a marcação do MODELO.md. REGRAS INVIOLÁVEIS: (0) Rota de cron nova NÃO edita vercel.json — reporte no commit a entrada que o humano deve registrar. (1) git add só por pathspec explícito. (2) Zona C0 = zero escrita e zero DDL em clientes_receita, leads_crm, leads_crm_historico, trafego_*, ads_metadata, ads_performance, vw_*, fn_mql_sql_by_month; leitura via SELECT é permitida. (3) Nunca tocar as rotas da lista negra — src/app/api/auth/**, src/app/api/nps/public/**, src/app/api/briefing-publico/**, s",
+ "pathspec_allowlist": [
+  "src/app/dashboard/clientes/[id]/**",
+  "src/app/dashboard/briefings-criativos/**",
+  "src/app/api/briefings-criativos/**",
+  "scripts/dados/367-briefing-template.ts",
+  "src/lib/hoje/fontes/briefing*.ts",
+  "test/briefing-etapa.test.tsx",
+  "test/header-cliente-consolidado.test.ts",
+  "test/abas-montadas.test.ts"
+ ],
+ "dependencias": [
+  "258",
+  "296",
+  "306b",
+  "311a1",
+  "311a2",
+  "311b",
+  "315b1a",
+  "323",
+  "337",
+  "humano:briefing-modelo-escrito",
+  "humano:decisao-D22",
+  "humano:decisao-D32",
+  "500",
+  "515",
+  "519",
+  "520b",
+  "521",
+  "556",
+  "599",
+  "711b4",
+  "723"
+ ],
+ "recon_esperado": [
+  {
+   "descricao": "diretório src/app/dashboard/clientes/[id] existe",
+   "cmd": "( test -d 'src/app/dashboard/clientes/[id]' ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  },
+  {
+   "descricao": "rota pública de briefing existe (lista negra, intocada)",
+   "cmd": "( test $(find src/app -type d -name 'briefing-publico' | wc -l) -ge 1 ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "fonte registrada",
+   "cmd": "( grep -q 'registrarFonte' src/lib/hoje/fontes/briefing.ts ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  },
+  {
+   "descricao": "bloco na ficha",
+   "cmd": "( grep -rq 'Briefing criativo' 'src/app/dashboard/clientes/[id]' ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  },
+  {
+   "descricao": "rota antiga redireciona",
+   "cmd": "( grep -rq 'redirect' 'src/app/dashboard/briefings-criativos' ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  },
+  {
+   "descricao": "test/briefing-etapa.test.tsx verde",
+   "cmd": "( npx vitest run 'test/briefing-etapa.test.tsx' ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  },
+  {
+   "descricao": "avaliador: seed lê o MODELO (não inventa campos); bloco montado na ficha com link público existente; fonte no motor; página pública intocada",
+   "cmd": "true",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "conserto 01/10 (auditoria preventiva da fila): dependencia 711b acrescentada: a allowlist cobre src/app/dashboard/clientes/[id]/** e o 711b mexe em page.tsx, geral-tab.tsx e resumo-tab.tsx da ficha.",
+ "_objetivo_cortado_na_fixture": 3198
+}

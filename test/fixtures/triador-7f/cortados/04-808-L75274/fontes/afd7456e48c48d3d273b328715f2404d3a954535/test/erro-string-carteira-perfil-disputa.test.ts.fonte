@@ -1,0 +1,91 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const ARQUIVOS = [
+  "src/app/api/dashboard/clientes/route.ts",
+  "src/app/api/cron/onboarding-sync/route.ts",
+  "src/app/api/clientes/[id]/perfil/route.ts",
+  "src/app/api/clientes/[id]/contratual/disputa/route.ts",
+];
+
+function fonte(rel: string): string {
+  return readFileSync(join(process.cwd(), rel), "utf8");
+}
+
+// Blocos `catch (x) { ... }` de primeiro nível (até a chave que fecha o catch).
+function blocosCatch(src: string): string[] {
+  const blocos: string[] = [];
+  const re = /catch\s*\((\w+)\)\s*\{/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(src)) !== null) {
+    let prof = 1;
+    let i = re.lastIndex;
+    while (i < src.length && prof > 0) {
+      if (src[i] === "{") prof++;
+      else if (src[i] === "}") prof--;
+      i++;
+    }
+    blocos.push(src.slice(m.index, i));
+  }
+  return blocos;
+}
+
+describe("500 sem erro cru: leitura de fonte", () => {
+  for (const rel of ARQUIVOS) {
+    it(`${rel}: nenhum NextResponse.json de status 500 devolve String(e) ou e.message`, () => {
+      const src = fonte(rel);
+      const respostas500 = src.match(/NextResponse\.json\(\{[^}]*\}\s*,\s*\{\s*status:\s*500\s*\}\)/g) ?? [];
+      expect(respostas500.length).toBeGreaterThan(0);
+      for (const r of respostas500) {
+        expect(r).not.toMatch(/String\((e|err|error)\)/);
+        expect(r).not.toMatch(/\b(e|err)\.message\b/);
+      }
+    });
+
+    it(`${rel}: o catch registra com console.error e responde 500 fixo`, () => {
+      const catches = blocosCatch(fonte(rel)).filter((b) => /status:\s*500/.test(b));
+      expect(catches.length).toBeGreaterThan(0);
+      for (const b of catches) {
+        expect(b).toContain("console.error(");
+        expect((b.match(/console\.error\(/g) ?? []).length).toBe(1);
+        expect(b).not.toMatch(/String\((e|err|error)\)/);
+      }
+    });
+  }
+});
+
+describe("cron onboarding-sync: erro que não é Error", () => {
+  const segredoOriginal = process.env.CRON_SECRET;
+
+  afterEach(() => {
+    if (segredoOriginal === undefined) delete process.env.CRON_SECRET;
+    else process.env.CRON_SECRET = segredoOriginal;
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  it("responde 500 com mensagem fixa, sem '[object Object]' nem detalhe interno", async () => {
+    process.env.CRON_SECRET = "s";
+    vi.resetModules();
+    vi.doMock("@/lib/jobs/onboarding-creator", () => ({
+      runOnboardingSync: vi.fn().mockRejectedValue({ code: "X", message: "detalhe interno" }),
+    }));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { GET } = await import("@/app/api/cron/onboarding-sync/route");
+    const req = new Request("http://localhost/api/cron/onboarding-sync", {
+      headers: { "x-cron-secret": "s" },
+    });
+    const res = await GET(req as never);
+    const corpo = await res.text();
+    const json = JSON.parse(corpo) as { error: unknown };
+
+    expect(res.status).toBe(500);
+    expect(typeof json.error).toBe("string");
+    expect(corpo).not.toContain("[object Object]");
+    expect(corpo).not.toContain("detalhe interno");
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0][0]).toBe("[api/cron/onboarding-sync]");
+  });
+});

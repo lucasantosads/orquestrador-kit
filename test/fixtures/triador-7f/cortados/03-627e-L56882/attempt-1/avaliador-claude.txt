@@ -1,0 +1,1 @@
+{"aprovado": false, "motivo": "fila/page.tsx: LinhaDetalhe troca o travessao por um span de texto feito a mao em vez de SemDado compacto (regra 2); o comentario ainda fala em travessao. safeMonth devolve string vazia em vez de null. Celula eh_lideranca fica vazia (null) sem SemDado."}

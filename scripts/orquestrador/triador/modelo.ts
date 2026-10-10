@@ -14,7 +14,7 @@
  * Config: `ORQ_TRIADOR_CONFIG` ou `~/.orq/triador.json`, chaves opcionais
  * (`modelo`, `teto_dia_usd`, `teto_caso_usd`, `entrada_max_tokens`,
  * `timeout_secs`). `modelo: null` desliga o modelo. `ORQ_TRIADOR_TETO_DIA`
- * sobrepõe o teto do dia (a corrida da peça 6 usa US$ 6,30).
+ * sobrepõe o teto do dia (a corrida da peça 6 usa US$ 6,60).
  */
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'

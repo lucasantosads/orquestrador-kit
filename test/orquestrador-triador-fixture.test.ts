@@ -19,6 +19,8 @@ const CASO_RE = /^\d\d-[0-9a-z]+-L\d+$/
 const casos = () => (existsSync(FX) ? readdirSync(FX).filter((d) => CASO_RE.test(d)).sort() : [])
 const controles = () =>
   existsSync(join(FX, 'controle')) ? readdirSync(join(FX, 'controle')).filter((d) => CASO_RE.test(d)).sort() : []
+const cortados = () =>
+  existsSync(join(FX, 'cortados')) ? readdirSync(join(FX, 'cortados')).filter((d) => CASO_RE.test(d)).sort() : []
 const json = <T>(p: string): T => JSON.parse(readFileSync(p, 'utf8')) as T
 
 interface Esperado {
@@ -27,6 +29,7 @@ interface Esperado {
   requeue?: string
   fonte_da_verdade: string
   controle?: boolean
+  cortado?: boolean
   firme_proibido?: boolean
 }
 interface Caso {
@@ -46,7 +49,11 @@ function bytesDe(dir: string): number {
 }
 
 function todosOsDiretorios(): string[] {
-  return [...casos().map((c) => join(FX, c)), ...controles().map((c) => join(FX, 'controle', c))]
+  return [
+    ...casos().map((c) => join(FX, c)),
+    ...controles().map((c) => join(FX, 'controle', c)),
+    ...cortados().map((c) => join(FX, 'cortados', c)),
+  ]
 }
 
 function faixasContam(faixas: [number, number][]): number {
@@ -140,6 +147,22 @@ describe('fixture triador-7f (peça 1)', () => {
       expect(e).toMatchObject({ classe: null, controle: true, firme_proibido: true })
       const meta = json<{ resultado: string }[]>(join(FX, 'controle', c, 'meta.json'))
       expect(meta.at(-1)!.resultado, c).toBe('done')
+    }
+  })
+
+  it('série cortada (7f-b1-7): 671d, 624, 627e, 808 e 367, cada um o controle cortado na última tentativa que reprovou', () => {
+    expect(cortados().map((c) => c.split('-')[1])).toEqual(['671d', '624', '627e', '808', '367'])
+    for (const c of cortados()) {
+      const d = join(FX, 'cortados', c)
+      const e = json<Esperado>(join(d, 'esperado.json'))
+      expect(e).toMatchObject({ classe: null, cortado: true, firme_proibido: true })
+      const caso = json<Caso & { cortado_de: string; cortado_em: number }>(join(d, 'caso.json'))
+      const meta = json<{ attempt: number; resultado: string }[]>(join(d, 'meta.json'))
+      expect(meta.at(-1), c).toMatchObject({ attempt: caso.cortado_em, resultado: 'reprovado' })
+      expect(caso.tentativas, c).toBe(caso.cortado_em)
+      const orig = json<{ attempt: number; resultado: string }[]>(join(FX, caso.cortado_de, 'meta.json'))
+      expect(orig.at(-1)!.resultado, c).toBe('done')
+      expect(orig.at(-1)!.attempt, c).toBeGreaterThan(caso.cortado_em)
     }
   })
 

@@ -1,0 +1,232 @@
+/**
+ * Ticket 488b: badge de renovação no cartão do topo (IdentidadeCliente).
+ * Mesmo carregador de test/cadastro-colapsavel.test.ts: compila o arquivo real
+ * com esbuild e dubla só as dependências externas.
+ */
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { Module, createRequire } from "node:module";
+import vm from "node:vm";
+import { transformSync } from "esbuild";
+import React from "react";
+
+const GERAL_TAB_PATH = resolve(__dirname, "../src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx");
+
+// @types/react-dom não está instalado (mesma nota de sessao-degradada.test.ts).
+const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/server") as {
+  renderToStaticMarkup: (element: React.ReactElement) => string;
+};
+
+type FichaMock = {
+  id: string;
+  cliente: Record<string, unknown>;
+  update: (field: string, value: string) => Promise<void>;
+  setCliente: (updater: unknown) => void;
+  gestores: unknown[];
+  extra: Record<string, unknown> | null;
+  fechamento: Record<string, unknown> | null;
+  perfClienteId: string | null;
+  editingPlataforma: boolean;
+  setEditingPlataforma: (v: boolean) => void;
+  editingNicho: boolean;
+  setEditingNicho: (v: boolean) => void;
+  nichoOpts: string[];
+  salvarExtra: (fields: Record<string, unknown>) => Promise<void>;
+};
+
+let fichaMock: FichaMock & { contratoData?: { fidelidade_fim: string } | null };
+
+function iconeStub() {
+  return function Icone() {
+    return null;
+  };
+}
+
+function loadIdentidadeCliente(): {
+  IdentidadeCliente: React.ComponentType<{ score: unknown; risco: string | null; perfResolved: boolean }>;
+  faixaRenovacao: (fim: string | null | undefined, hoje?: Date) => { dias: number; tom: string; texto: string } | null;
+} {
+  const source = readFileSync(GERAL_TAB_PATH, "utf-8");
+  const { code } = transformSync(source, {
+    loader: "tsx",
+    jsx: "automatic",
+    format: "cjs",
+    target: "node18",
+    sourcefile: GERAL_TAB_PATH,
+  });
+
+  const iconesLucide = new Proxy(
+    {},
+    { get: () => iconeStub() },
+  );
+
+  const mocks: Record<string, unknown> = {
+    react: React,
+    sonner: { toast: { error: () => {}, success: () => {} } },
+    "lucide-react": iconesLucide,
+    "@/lib/format": { formatCurrency: (n: number) => `R$ ${n}` },
+    // Ticket 295: geral-tab.tsx passou a importar fetchJson (helper único de
+    // fetch+parse) — precisa de um dublê aqui pelo mesmo motivo dos outros
+    // módulos: o customRequire acima só resolve o que está neste dicionário.
+    "@/lib/fetch-json": {
+      fetchJson: async () => { throw new Error("fetchJson não deveria ser chamado neste teste (sem render de efeitos)"); },
+      FetchJsonError: class FetchJsonError extends Error {},
+    },
+    "@/components/ui/card": {
+      Card: (props: React.HTMLAttributes<HTMLDivElement>) => React.createElement("div", props),
+      CardContent: (props: React.HTMLAttributes<HTMLDivElement>) => React.createElement("div", props),
+      CardHeader: (props: React.HTMLAttributes<HTMLDivElement>) => React.createElement("div", props),
+      CardTitle: (props: React.HTMLAttributes<HTMLDivElement>) => React.createElement("div", props),
+    },
+    "@/components/ui/badge": {
+      Badge: (props: React.HTMLAttributes<HTMLSpanElement>) => React.createElement("span", props),
+    },
+    "@/components/ui/button": {
+      // Dublê que se comporta como um <button> nativo, mas grava o onClick
+      // recebido por data-testid para o teste poder "clicar" de verdade
+      // chamando a MESMA função que o componente passou pro botão real.
+      Button: ({ ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { "data-testid"?: string }) => {
+        const testId = props["data-testid"];
+        if (testId && typeof props.onClick === "function") {
+          void 0;
+        }
+        return React.createElement("button", props);
+      },
+    },
+    "@/components/ui/input": {
+      Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => React.createElement("input", props),
+    },
+    "@/components/ui/label": {
+      Label: (props: React.LabelHTMLAttributes<HTMLLabelElement>) => React.createElement("label", props),
+    },
+    "@/components/estados/sem-insumo": {
+      corScoreSaude: () => "text-green-400",
+      temValor: (estado: { valor?: number | null }) => estado != null && estado.valor != null,
+      MOTIVO_NAO_AVALIADO: "ainda não avaliado",
+    },
+    "@/components/estados/sem-dado": {
+      SemDado: ({ motivo }: { motivo: string }) => React.createElement("span", null, motivo),
+    },
+    // Ticket 302: geral-tab.tsx passou a importar BlocoVazioLinha (estado
+    // vazio de uma linha) — mesmo motivo dos outros dublês deste dicionário:
+    // o customRequire só resolve o que está aqui.
+    "@/components/estados/bloco-vazio-linha": {
+      BlocoVazioLinha: ({ rotulo, texto }: { rotulo: string; texto: string }) =>
+        React.createElement("p", null, `${rotulo} — ${texto}`),
+    },
+    "../_components/cockpit-visao-geral": {
+      CockpitVisaoGeral: () => React.createElement("div", { "data-testid": "cockpit-stub" }),
+    },
+    "./ficha-types": {
+      STATUS_OPTS: ["Ativo", "Pausado", "Finalizado"],
+      CHURN_BLOCKED_FROM: [],
+      STATUS_COLORS: {},
+      SITUACAO_COLORS: {},
+      RESULTADOS_COLORS: {},
+      ATENCAO_OPTS: ["Verde", "Amarelo", "Vermelho"],
+      ATENCAO_COLORS: {},
+      DIA_OPTS: ["Segunda"],
+      PLATAFORMA_OPTS: ["Meta"],
+      TESE_STATUS_COLORS: {},
+      ENTREGAVEL_STATUS_COLORS: {},
+    },
+    "./ficha-context": { useFicha: () => fichaMock },
+  };
+
+  const mod = new Module(GERAL_TAB_PATH, module);
+  mod.filename = GERAL_TAB_PATH;
+  mod.paths = (Module as unknown as { _nodeModulePaths(dir: string): string[] })._nodeModulePaths(
+    dirname(GERAL_TAB_PATH),
+  );
+  const wrapper = vm.runInThisContext(Module.wrap(code), { filename: GERAL_TAB_PATH });
+  const customRequire = (id: string) => (id in mocks ? mocks[id] : mod.require(id));
+  wrapper.call(mod.exports, mod.exports, customRequire, mod, GERAL_TAB_PATH, dirname(GERAL_TAB_PATH));
+
+  return mod.exports as {
+    IdentidadeCliente: React.ComponentType<{ score: unknown; risco: string | null; perfResolved: boolean }>;
+    faixaRenovacao: (fim: string | null | undefined, hoje?: Date) => { dias: number; tom: string; texto: string } | null;
+  };
+}
+
+const { IdentidadeCliente, faixaRenovacao } = loadIdentidadeCliente();
+
+const HOJE = new Date(2026, 8, 20); // 20/09/2026, hora local
+
+function ficha(fim: string | null | undefined): FichaMock & { contratoData?: { fidelidade_fim: string } | null } {
+  return {
+    id: "cliente-488b",
+    cliente: { nome: "Cliente Teste", status: "Ativo", analista: "Fulano", situacao: "Em dia", atencao: "Verde" },
+    update: async () => {},
+    setCliente: () => {},
+    gestores: [],
+    extra: null,
+    fechamento: null,
+    perfClienteId: "p1",
+    editingPlataforma: false,
+    setEditingPlataforma: () => {},
+    editingNicho: false,
+    setEditingNicho: () => {},
+    nichoOpts: [],
+    salvarExtra: async () => {},
+    contratoData: fim === undefined ? null : { fidelidade_fim: fim as string },
+  };
+}
+
+function render(fim: string | null | undefined): string {
+  fichaMock = ficha(fim);
+  return renderToStaticMarkup(
+    React.createElement(IdentidadeCliente, { score: { valor: 78, motivo: null }, risco: "Baixo", perfResolved: true }),
+  );
+}
+
+describe("faixaRenovacao", () => {
+  it("mais de 45 dias: sem badge", () => {
+    // 20/09 + 46 dias = 05/11
+    expect(faixaRenovacao("2026-11-05", HOJE)).toBeNull();
+  });
+  it("45 dias exatos: âmbar", () => {
+    // 20/09 + 45 dias = 04/11
+    expect(faixaRenovacao("2026-11-04", HOJE)).toMatchObject({ dias: 45, tom: "ambar" });
+  });
+  it("16 dias: âmbar; 15 dias: vermelho (15 vence 45)", () => {
+    // 20/09 + 16 = 06/10; + 15 = 05/10
+    expect(faixaRenovacao("2026-10-06", HOJE)).toMatchObject({ dias: 16, tom: "ambar" });
+    expect(faixaRenovacao("2026-10-05", HOJE)).toMatchObject({ dias: 15, tom: "vermelho" });
+  });
+  it("vencido: vermelho", () => {
+    expect(faixaRenovacao("2026-09-01", HOJE)).toMatchObject({ tom: "vermelho", texto: "Fidelidade vencida" });
+  });
+  it("ausente ou inválida: null", () => {
+    expect(faixaRenovacao(null, HOJE)).toBeNull();
+    expect(faixaRenovacao(undefined, HOJE)).toBeNull();
+    expect(faixaRenovacao("", HOJE)).toBeNull();
+    expect(faixaRenovacao("lixo", HOJE)).toBeNull();
+  });
+});
+
+describe("IdentidadeCliente: badge de renovação", () => {
+  const diaIso = (delta: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + delta);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  it("mais de 45 dias, ausente e inválida: nada renderizado", () => {
+    for (const v of [diaIso(46), null, undefined, "lixo"]) {
+      const html = render(v as string | null | undefined);
+      expect(html).not.toContain("badge-renovacao");
+      expect(html).not.toContain("Renova");
+    }
+  });
+  it("45 a 16 dias: âmbar", () => {
+    const html = render(diaIso(30));
+    expect(html).toContain("badge-renovacao");
+    expect(html).toContain("text-yellow-400");
+    expect(html).toContain("Renova em 30 dias");
+  });
+  it("15 dias ou menos: vermelho", () => {
+    const html = render(diaIso(15));
+    expect(html).toContain("badge-renovacao");
+    expect(html).toContain("text-red-400");
+  });
+});

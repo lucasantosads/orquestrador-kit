@@ -1,0 +1,20 @@
+75255	[2026-10-06 19:39:47-0300] drenagem: ticket 808 (17 pendentes restantes)
+75256	[orq 22:39:47] orquestrador iniciando · modo: real · once
+75257	[orq 22:39:47] preflight: validando infra (scripts, fila, env, claude)...
+75258	[orq 22:39:50] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+75259	[orq 22:39:57] preflight: ok
+75260	[orq 22:40:19] === ticket 808 (resolver-cliente-rota-contratual) — tentativa 1 · modo: real ===
+75261	[orq 22:40:21]   recon_esperado: ok (5 comando(s))
+75262	[orq 22:40:21] aviso allowlist: src/app/api/clientes/[id]/contratual/comunicacoes/route.ts já existe no worktree — o agente vai EDITAR, não criar
+75263	[orq 22:40:21] aviso allowlist: src/app/api/clientes/[id]/contratual/disputa/route.ts já existe no worktree — o agente vai EDITAR, não criar
+75264	[orq 22:40:21] aviso allowlist: src/app/api/clientes/[id]/contratual/entregas/route.ts já existe no worktree — o agente vai EDITAR, não criar
+75265	[orq 22:40:21] aviso allowlist: test/contratual-disputa.test.ts já existe no worktree — o agente vai EDITAR, não criar
+75266	[orq 22:40:21] aviso allowlist: test/contratual-entregas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+75267	[orq 22:40:21]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/808/attempt-1/prompt.txt
+75268	[orq 22:40:21]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+75269	[orq 22:42:04]   diff cru salvo (190 linhas alteradas) · HEAD julgado afd7456e
+75270	[orq 22:42:05]   enforcement: ok
+75271	[orq 22:42:42]   gate tsc: ok (baseline)
+75272	[orq 22:43:24]   gate vitest: FALHA
+75273	[orq 22:43:24]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/808/attempt-1/gate-vitest.txt)
+75274	[orq 22:43:24] ticket 808: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/808/attempt-1/gate-vitest.txt)
