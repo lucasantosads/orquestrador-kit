@@ -52,6 +52,12 @@ export interface Vermelho {
   ref: Ref
 }
 
+export interface Falha {
+  arquivo: string
+  ref: Ref
+  erro: Ref | null
+}
+
 export interface CriterioFalho {
   criterio: string
   cmd: string
@@ -77,6 +83,8 @@ export interface Tentativa {
   vermelhos: Vermelho[]
   /** arquivos de teste com FAIL na tentativa */
   arquivos_vermelhos: string[]
+  /** cada linha FAIL e a linha de erro logo abaixo dela (Error, AssertionError, timed out) */
+  falhas: Falha[]
   criterios_falhos: CriterioFalho[]
   diff_arquivos: string[]
   diff_linhas: number | null

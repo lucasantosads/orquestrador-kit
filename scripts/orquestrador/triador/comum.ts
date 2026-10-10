@@ -6,7 +6,7 @@
  */
 import { primeiroLocal } from '../diagnostico.js'
 import { trecho } from './recorte.js'
-import type { Arquivo, CriterioFalho, Juiz, Ref, TicketLido, Vermelho } from './tipos.js'
+import type { Arquivo, CriterioFalho, Falha, Juiz, Ref, TicketLido, Vermelho } from './tipos.js'
 
 export const ref = (a: Arquivo, n: number | null, t: string): Ref => ({ arquivo: a.rel, linha: n, trecho: trecho(t) })
 
@@ -42,28 +42,42 @@ const ARQ_TESTE = String.raw`\S+\.(?:test|spec)\.[cm]?[jt]sx?`
 const RE_FAIL = new RegExp(String.raw`^\s*FAIL\s+(${ARQ_TESTE})(?:\s+(?:>\s+)?(.*))?$`)
 const RE_LOCAL = new RegExp(String.raw`❯\s+(${ARQ_TESTE}):(\d+):\d+`)
 const RE_MAQUINA = /Timeout waiting for worker|Timeout starting|\bEMFILE\b|\bENOSPC\b/
+const RE_ERRO = /Error|Cannot find module|timed out/
+const ATE_O_ERRO = 3
 
 /**
  * Os vermelhos de um recorte de gate de testes: um por `❯ arquivo:linha`
  * (o local, por `primeiroLocal` do diagnostico.ts), e um por arquivo com FAIL
  * que não teve local. O `it` é o nome do FAIL mais recente do mesmo arquivo.
  */
-export function vermelhosDe(a: Arquivo): { vermelhos: Vermelho[]; arquivos: string[]; maquina: Ref[] } {
+export function vermelhosDe(a: Arquivo): { vermelhos: Vermelho[]; arquivos: string[]; falhas: Falha[]; maquina: Ref[] } {
   const vermelhos: Vermelho[] = []
+  const falhas: Falha[] = []
   const arquivos: string[] = []
   const comLocal = new Set<string>()
   const ultimoIt = new Map<string, string>()
   const primeiroFail = new Map<string, { n: number; t: string; it: string | null }>()
   const maquina: Ref[] = []
-  for (const l of a.linhas) {
+  a.linhas.forEach((l, i) => {
     const f = RE_FAIL.exec(l.t)
     if (f) {
       const arq = f[1]!
+      // o erro é a linha logo abaixo do FAIL (até 3, sem buraco no original)
+      let erro: Ref | null = null
+      for (let j = i + 1; j <= i + ATE_O_ERRO && j < a.linhas.length; j++) {
+        const lj = a.linhas[j]!
+        if (lj.n !== l.n + (j - i) || RE_FAIL.test(lj.t)) break
+        if (RE_ERRO.test(lj.t)) {
+          erro = ref(a, lj.n, lj.t)
+          break
+        }
+      }
+      falhas.push({ arquivo: arq, ref: ref(a, l.n, l.t), erro })
       if (!arquivos.includes(arq)) arquivos.push(arq)
       const it = (f[2] ?? '').replace(/\s*\[.*\]\s*$/, '').trim() || null
       if (it) ultimoIt.set(arq, it)
       if (!primeiroFail.has(arq)) primeiroFail.set(arq, { n: l.n, t: l.t, it })
-      continue
+      return
     }
     if (RE_LOCAL.test(l.t)) {
       const loc = primeiroLocal(l.t.slice(l.t.indexOf('❯')))
@@ -75,11 +89,11 @@ export function vermelhosDe(a: Arquivo): { vermelhos: Vermelho[]; arquivos: stri
       }
     }
     if (RE_MAQUINA.test(l.t)) maquina.push(ref(a, l.n, l.t))
-  }
+  })
   for (const [arq, f] of primeiroFail) {
     if (!comLocal.has(arq)) vermelhos.push({ arquivo: arq, linha: null, it: f.it, ref: ref(a, f.n, f.t) })
   }
-  return { vermelhos, arquivos, maquina }
+  return { vermelhos, arquivos, falhas, maquina }
 }
 
 /** Blocos `### criterio[i] -> X` com X != PASS do criterios.txt do legado. */

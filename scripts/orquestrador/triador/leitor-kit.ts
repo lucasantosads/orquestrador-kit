@@ -145,7 +145,7 @@ export function lerRepoKit(raiz: string, id: string): Evidencia {
     // o recorte do gate que reprovou vem no próprio gates.txt (`--- recorte de X ---`)
     const iRec = gates ? gates.linhas.findIndex((l) => /^--- recorte de .* ---$/.test(l.t)) : -1
     const recorte: Arquivo | null = gates && iRec >= 0 ? { rel: gates.rel, linhas: gates.linhas.slice(iRec + 1), total: gates.total } : null
-    const v = recorte ? vermelhosDe(recorte) : { vermelhos: [], arquivos: [], maquina: [] }
+    const v = recorte ? vermelhosDe(recorte) : { vermelhos: [], arquivos: [], falhas: [], maquina: [] }
     const patch = lerArq(`${dirRel}/diff.patch`)
     const dp = patch ? diffPatch(patch) : null
     const vd = lerJson<{ motivo?: string; criterios_falhos?: string[]; criteriosFalhos?: string[] }>(join(dirAbs, 'veredito.json'))
@@ -181,6 +181,7 @@ export function lerRepoKit(raiz: string, id: string): Evidencia {
       estagio: estagioKit(dirAbs, gatesTxt, k === inicios.length - 1, motivoBloq),
       vermelhos: v.vermelhos,
       arquivos_vermelhos: v.arquivos,
+      falhas: v.falhas,
       criterios_falhos: crit ? criteriosFalhosKit(crit, falhos) : [],
       diff_arquivos: dp?.arquivos ?? [],
       diff_linhas: dp ? dp.linhas : typeof m?.diffLines === 'number' ? m.diffLines : null,

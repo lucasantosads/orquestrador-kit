@@ -101,7 +101,7 @@ function tentativa(fonte: FonteLegado, k: number, dir: string, meta: MetaLegado 
   const vd = ler('verdict.json')
   const co = ler('claude-output.txt')
   const hd = ler('head.txt')
-  const v = vit ? vermelhosDe(vit) : { vermelhos: [], arquivos: [], maquina: [] }
+  const v = vit ? vermelhosDe(vit) : { vermelhos: [], arquivos: [], falhas: [], maquina: [] }
   const ds = stat ? diffStat(stat) : { arquivos: [], linhas: null, ref: null }
   let enforcement: Tentativa['enforcement'] = null
   if (enf) {
@@ -127,6 +127,7 @@ function tentativa(fonte: FonteLegado, k: number, dir: string, meta: MetaLegado 
     estagio: estagioPorPresenca(fonte, dir, presentes),
     vermelhos: v.vermelhos,
     arquivos_vermelhos: v.arquivos,
+    falhas: v.falhas,
     criterios_falhos: crit ? criteriosFalhosLegado(crit) : [],
     diff_arquivos: ds.arquivos,
     diff_linhas: ds.linhas,
