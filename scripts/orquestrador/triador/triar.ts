@@ -17,7 +17,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { blocoJson } from './comum.js'
-import { extrair, type Extracao } from './extrair.js'
+import { extrair, rotuloDe, type Extracao } from './extrair.js'
 import { gitLeitura } from './git.js'
 import { lerRepo } from './leitor.js'
 import { Guarda, assinatura, caminhoDiagnostico, copiarEvidencia, gravarDiagnostico, lerDiagnostico, lerRepos, travar, type RepoListado } from './saida.js'
@@ -148,28 +148,35 @@ export function triarTicket(o: OpcoesTriar): Resultado {
   try {
     const ext = extrair(ev)
     if (o.passada && !ext.firme) return { id: o.id, feito: 'nao_promoveu' }
-    const copia = copiarEvidencia(g, o.repo.nome, ev, assin)
-    const diag = montar(o.repo.nome, ev, ext, assin, agora, copia, o.repo.caminho)
-    if (!o.passada && !ext.firme && o.modelo) {
-      const m = o.modelo({ ev, ext, repo: o.repo.nome, assinatura: assin, guarda: g, agora, copia })
-      diag.modelo = m.registro
-      if (m.resposta) {
-        diag.classe = m.resposta.classe
-        diag.rotulo = m.resposta.classe === 'R5' ? 'ambiente' : diag.rotulo
-        diag.fonte = 'modelo'
-        diag.firme = false
-        diag.regra = ext.regra
-        diag.confianca = m.resposta.confianca
-        diag.evidencia = m.resposta.evidencia
-        diag.remedio = m.resposta.remedio
-        diag.requeue = m.resposta.requeue
-      }
-    }
+    const diag = diagnosticar(g, o.repo.nome, ev, ext, assin, agora, o.repo.caminho, o.passada ? null : (o.modelo ?? null))
     gravarDiagnostico(g, o.repo.nome, o.id, diag)
     return { id: o.id, feito: o.passada ? 'promovido' : 'diagnosticado', diagnostico: diag }
   } finally {
     soltar()
   }
+}
+
+/**
+ * Cópia da evidência + diagnóstico da extração + (palpite ou sem regra, com
+ * modelo) a resposta do modelo por cima. A resposta do modelo nunca é firme.
+ */
+export function diagnosticar(g: Guarda, repo: string, ev: Evidencia, ext: Extracao, assin: string, agora: number, raizRepo: string, modelo: PassoModelo | null): Diagnostico {
+  const copia = copiarEvidencia(g, repo, ev, assin)
+  const diag = montar(repo, ev, ext, assin, agora, copia, raizRepo)
+  if (ext.firme || !modelo) return diag
+  const m = modelo({ ev, ext, repo, assinatura: assin, guarda: g, agora, copia })
+  diag.modelo = m.registro
+  if (m.resposta) {
+    diag.classe = m.resposta.classe
+    diag.rotulo = rotuloDe(m.resposta.classe)
+    diag.fonte = 'modelo'
+    diag.firme = false
+    diag.confianca = m.resposta.confianca
+    diag.evidencia = m.resposta.evidencia
+    diag.remedio = m.resposta.remedio
+    diag.requeue = m.resposta.requeue
+  }
+  return diag
 }
 
 /** Os ids com `status: "bloqueado"` no 1º bloco json dos tickets do repo. */
