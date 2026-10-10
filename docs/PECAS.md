@@ -943,19 +943,21 @@
   classe R1-R7, a prova `arquivo:linha` e o remédio, gravados em `~/.orq/diagnosticos` e
   nunca no repo; extração determinística D1-D12 primeiro, modelo (Opus 5.5, US$ 3,00/dia)
   só para palpite, em stub nesta etapa. Commits `0ebe0f6` (fixture), `81574fc` (leitores),
-  `541f9d1` (regras), `6ce01fd` (saída), `9ed29f0` (modelo e `orq triar`).
+  `541f9d1` (regras), `6ce01fd` (saída), `9ed29f0` (modelo e `orq triar`), `20f41b8`
+  (D6 firme só com o vermelho em ≥ 2 tentativas; 5 casos de série cortada).
   *Evidência:* `~/orq-sessoes/spec-7f-triador.md` e `~/orq-sessoes/medicao-bloqueios-out.md`
   §3 e §5; `~/orq-sessoes/relatorio-kit-etapa7f-b1.md`.
-  *Teste:* `orquestrador-triador-aceite.test.ts` ((A) e (B): 16 firmes certos, 0 errado;
-  controle sem firme), `-fixture`, `-leitores`, `-extrair`, `-saida` (repo git intocado,
+  *Teste:* `orquestrador-triador-aceite.test.ts` ((A) e (B): 15 firmes certos, 0 errado;
+  controle e série cortada sem firme), `-fixture`, `-leitores`, `-extrair`, `-saida` (repo git intocado,
   `GIT_OPTIONAL_LOCKS=0`), `-modelo` (stub; `claude` do PATH é trava).
 
 ## PENDENTES
 
 - **7f peça 6 · corrida real e replay.** `orq triar --fixture test/fixtures/triador-7f` com o
-  modelo de verdade, teto US$ 6,30, nos 21 casos de palpite; as `resposta-modelo.json` entram
+  modelo de verdade, teto US$ 6,60, nos 22 casos de palpite; as `resposta-modelo.json` entram
   na fixture e o aceite (C) vira replay (≥ 30/37).
-  *Evidência:* spec 7f-a §7.2 e §8; o comando e o que conferir estão no relatório da 7f-b1.
+  *Evidência:* spec 7f-a §7.2 e §8; o comando em `~/orq-sessoes/corrida-7f-peca6.cmd` e o
+  que conferir em `~/orq-sessoes/corrida-7f-peca6-conferir.md`.
   *Teste:* aceite (C) por replay, sem chamada no CI.
 
 - **7f-b2 · gatilho e painel.** A peça 7 da spec redefinida (o painel nunca dispara gasto:

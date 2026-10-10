@@ -884,7 +884,18 @@ merge). CONTRATO §9.1 e §13.
   do dia com `pulado`, parser, evidência descartada, ledger) e `orq triar`, despachado
   antes do `lib.sh`, com `--passada`, `--forcar`, `--sem-modelo` e `--fixture` (a corrida da
   peça 6).
-- **7f-b1-6**: este registro, `docs/PECAS.md` e CONTRATO §9.1 e §13.
+- **7f-b1-6** `48d682d`: este registro, `docs/PECAS.md` e CONTRATO §9.1 e §13.
+- **7f-b1-7** `20f41b8`: a D6 só dá R1 firme com o mesmo teste vermelho fora da allowlist
+  em ≥ 2 tentativas da série; com uma só, `R1?` (decisão do chat do programa). A fixture
+  ganha `cortados/`: 671d, 624, 627e, 808 e 367, os controles cortados na última tentativa
+  que reprovou, que com a D6 da spec saíam R1 firme e errado. Placar: 15 firmes certos
+  (o 346d vira `R1?`), 0 firme errado, nenhum firme no controle nem nos cortados; 13
+  firmes no instante do bloqueio. A corrida da peça 6 passa a 22 palpites, teto US$ 6,60.
+  Vermelho antes por asserção (4 falhas).
+- **7f-b1-8**: CONTRATO §13.3 e §13.6, este registro e `docs/PECAS.md` com o sha da 7f-b1-7.
 
-Nenhuma asserção existente mudou. O teste da peça 2 cedeu o `materializar` para
+Até a 7f-b1-6, nenhuma asserção existente mudou. Na 7f-b1-7, por decisão do chat do
+programa, três mudaram de número (sem mudar de força): firmes certos 16 → 15 e 14 → 13
+no instante do bloqueio, e a corrida da peça 6 de 21 chamadas a US$ 6,30 para 22 a
+US$ 6,60. O teste da peça 2 cedeu o `materializar` para
 `test/triador-repo-legado.ts`, sem mudar asserção.

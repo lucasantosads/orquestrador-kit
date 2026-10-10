@@ -1058,21 +1058,28 @@ sem modelo; palpite (`?`) ou sem regra vai ao modelo, se houver orçamento.
 | D3 | diff-cap e diff.stat > cap | R3? | `:197` |
 | D4 | `Timeout waiting for worker`/`Timeout starting`/EMFILE/ENOSPC na última tentativa | R5 máquina | `:207` |
 | D5 | o motor do kit já decidiu `base_vermelha`; ou o vermelho fora da allowlist e do diff aparece em outra família nas ±6 h | R5 base | `:214` |
-| D6 | vitest/enforcement, vermelho fora da allowlist e do diff, e o fonte em HEAD cita nome-base (≥ 4) ou diretório (≥ 5) do diff | R1 | `:229` |
-| D7 | vitest, vermelho fora, não acoplado (ou sem fonte) | R5? | `:236` |
-| D8 | enforcement | R1? | `:240` |
-| D9 | vitest, vermelho dentro, allowlist toda em `test/` | R4? | `:245` |
-| D10 | vitest, vermelho dentro | R2? | `:245` |
-| D11 | critério e vermelho fora em tentativa anterior | R1\|R2? | `:251` |
-| D12 | critério | R2? | `:251` |
+| D6 | vitest/enforcement, vermelho fora da allowlist e do diff, e o fonte em HEAD cita nome-base (≥ 4) ou diretório (≥ 5) do diff; firme só com o mesmo teste vermelho fora em ≥ 2 tentativas da série, senão `R1?` (7f-b1-7) | R1 / R1? | `:229` |
+| D7 | vitest, vermelho fora, não acoplado (ou sem fonte) | R5? | `:245` |
+| D8 | enforcement | R1? | `:249` |
+| D9 | vitest, vermelho dentro, allowlist toda em `test/` | R4? | `:254` |
+| D10 | vitest, vermelho dentro | R2? | `:254` |
+| D11 | critério e vermelho fora em tentativa anterior | R1\|R2? | `:260` |
+| D12 | critério | R2? | `:260` |
 
 Allowlist pelo `matchesAllowlist` do enforcement (`enforcement-core.ts:178`); local do
 vermelho pelo `primeiroLocal` (`diagnostico.ts:109`). A prova de um vermelho é a linha
 `FAIL`, o erro logo abaixo e o local `❯`. O que o agente disse nunca entra em regra.
 
-Placar na fixture dos 37 (estado da passada): 16 firmes certos, 0 firme errado, 13
-palpites certos, 7 errados, 1 sem regra; no instante do bloqueio, 14 firmes (760 e 898 #31
-ficam `R5?` até o vizinho aparecer). Nenhum dos 20 de controle sai firme.
+Placar na fixture dos 37 (estado da passada): 15 firmes certos, 0 firme errado, 14
+palpites certos, 7 errados, 1 sem regra; no instante do bloqueio, 13 firmes (760 e 898 #31
+ficam `R5?` até o vizinho aparecer). Nenhum dos 20 de controle e nenhum dos 5 de série
+cortada sai firme.
+
+A restrição da D6 (7f-b1-7, decisão do chat do programa) existe porque um vermelho fora da
+allowlist numa tentativa só pode ser mérito que o próprio agente resolve no retry: os 5
+controles cortados na última tentativa que reprovou (671d, 624, 627e, 808, 367) saíam R1
+firme, e errado. O preço é o 346d, R1 de verdade com o vermelho numa tentativa só (na T2 o
+mesmo teste aparece como violação de enforcement): vira `R1?` e vai ao modelo.
 
 ### 13.4 Saída (`saida.ts`)
 
@@ -1132,10 +1139,11 @@ Só para palpite e sem regra, uma vez por assinatura (mesmo que falhe: `modelo.e
 
 ### 13.6 Fixture e testes
 
-`test/fixtures/triador-7f/`: os 37 bloqueios da medição de 09/10 e 20 done de controle,
-montados por `montar.py` (só leitura do comarka-operacional, git com
-`GIT_OPTIONAL_LOCKS=0`), cada um com `esperado.json` (classe e evidência da medição, com a
-linha da tabela). `orq triar --fixture <dir>` (`corrida.ts:46`) roda o triador sobre os 37
+`test/fixtures/triador-7f/`: os 37 bloqueios da medição de 09/10, 20 done de controle e,
+em `cortados/`, 5 controles cortados na última tentativa que reprovou, montados por
+`montar.py` (só leitura do comarka-operacional, git com `GIT_OPTIONAL_LOCKS=0`; os
+cortados saem de `controle/`, `--so-cortados`), cada um com `esperado.json` (classe e
+evidência da medição, com a linha da tabela; nos de controle e cortados, `firme_proibido`). `orq triar --fixture <dir>` (`corrida.ts:46`) roda o triador sobre os 37
 e imprime o placar (C) da spec §7.2; é a corrida da peça 6.
 
 Testes: `orquestrador-triador-{fixture,leitores,extrair,aceite,saida,modelo}.test.ts`. O
