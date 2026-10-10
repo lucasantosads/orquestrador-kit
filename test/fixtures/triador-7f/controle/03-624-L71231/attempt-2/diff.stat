@@ -1,0 +1,7 @@
+ src/app/api/clientes/automacoes-status/route.ts    |  15 ++
+ src/app/api/config/automacoes/route.ts             | 107 +++++++++
+ .../config/automacoes/automacoes-cadastro.tsx      | 245 +++++++++++++++++++++
+ src/app/dashboard/config/automacoes/page.tsx       |  11 +
+ src/lib/clientes/automacoes.ts                     |  59 ++++-
+ test/ops-automacoes-cadastro.test.ts               | 133 +++++++++++
+ 6 files changed, 566 insertions(+), 4 deletions(-)

@@ -1,0 +1,19 @@
+A opção 1 do 867 está implementada e commitada em `940f4c0`. Nada foi enviado por push. Diff de 230 linhas, dentro do teto de 260.
+
+Rodei o `tsc` e o vitest dos testes do ticket e das guardas globais; não rodei `npm run build` nem o `vitest run` completo, e os outros critérios de aceite só conferi pelo diff.
+- **`tsc`:** 3 erros, o baseline. Não rodei `rm -rf .next`, que foi negado. Os erros contados já excluem o ruído de `.next/`.
+- **Vitest:** 13 arquivos e 221 testes verdes, entre eles os 5 testes alterados, o novo `test/relacao-sem-escrita-reuniao.test.ts` e as 7 guardas globais, que não foram editadas.
+
+O que mudou:
+- **Formulário:** o formulário "Salvar Reunião" saiu de `reunioes-tab.tsx`.
+- **Estado e contexto:** `showNovaReuniao`, `novaReuniao`, `criarReuniao` (com o POST para `/api/clientes/reunioes`) e os campos do contexto saíram de `page.tsx` e `ficha-context.tsx`. A leitura em `page.tsx:734` ficou.
+- **Pulso:** o "+" de reunião, o "Agendar" e a prop `abrirReuniao` saíram. "Última reunião sem base" e "Próxima reunião nenhuma agendada" ficam como texto cinza, sem botão.
+- **Teste novo:** o `test/relacao-sem-escrita-reuniao.test.ts` cobre as ausências nas três fontes e renderiza `LinhasPulso` sem botão nas duas linhas.
+
+**Pendente de OK do Lucas:** a reprovação anterior apontou duas asserções fora da lista fechada, e eu as mantive recalculadas, porque o tipo e o estado `executandoCriarReuniao` saem junto com `criarReuniao`. Cada uma tem comentário citando o 867.
+- **`PUBLICADOS.length`:** passou de 16 para 15 em `acao-unica-ficha-controles`.
+- **`new Set(...).size`:** passou de 13 para 12 no mesmo arquivo, porque `criarReuniao` era um dos 13 nomes.
+
+Para deixá-las intactas só dá para manter um `executandoCriarReuniao` morto no contexto. Preferi não fazer isso. Se o Lucas não aprovar, o caminho é outro ticket que inclua as duas na lista.
+
+As asserções de 16 para 15 e 12 booleanas em `acao-unica-ficha-mutacoes` e as de 22 para 21 em `controles` estavam autorizadas.

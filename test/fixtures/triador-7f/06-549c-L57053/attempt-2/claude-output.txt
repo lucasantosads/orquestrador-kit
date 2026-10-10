@@ -1,0 +1,11 @@
+O cron da leitura-relacao está agendado e commitado (`d85dc07`), mas o critério da contagem de crons (19 → 20) vai reprovar. O ticket está desatualizado nesse ponto.
+
+- **`vercel.json`:** acrescentei `/api/cron/leitura-relacao` com `0 10 * * *` no fim da lista, sem mexer nas outras entradas. Isso corrige o `SEM_CRON` da reprovação anterior.
+- **Contagem de crons:** a base já tinha 20 crons, porque o ticket 619 somou `resumo-grupos-semanal`. Com a leitura-relacao são 21. O teste já dizia `toHaveLength(20)` e não `19`. Deixar em 20 o faria falhar. Troquei só essa linha para `toHaveLength(21)`, com comentário citando o 549c e a origem do número.
+- **Critério `ALVO_20_CRONS`:** vai dar `ALVO_ANTIGO`, porque exige a linha `toHaveLength(20);` e não aceita `21`. Não deixei o valor em 20 só para passar esse critério, pois o teste ficaria vermelho.
+- **Título do `it(` (não alterado):** continua dizendo "20 entradas". Não o mudei porque o ticket restringe a alteração a uma linha. Vale corrigir depois.
+- **Critérios verificados:** o teto `CAP_POR_EXECUCAO = 40` na rota está presente e o `vercel.json` segue JSON válido. `test/crons-meta-consolidacao.test.ts` passa com 18 testes.
+- **Não rodei:** `tsc`, `vitest` completo e `npm run build`. A mudança é só JSON e uma constante de teste.
+- **Tamanho do diff:** 8 linhas inseridas e 1 removida, dentro do teto de 30.
+
+Corrija o alvo do critério de 20 para 21.

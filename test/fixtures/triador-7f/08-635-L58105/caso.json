@@ -1,0 +1,12 @@
+{
+ "id": "635",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/635-conta-crm-aviso-e-link.md",
+ "ticket_sha": "b59549309ee266c853cdec484e65fc445032828f",
+ "ticket_antes": true,
+ "linha_bloqueio": 58105,
+ "log_inicio": 58048,
+ "fim": "2026-09-26T02:12:39Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/635.pre-requeue-26set"
+}

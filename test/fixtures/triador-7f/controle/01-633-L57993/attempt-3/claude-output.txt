@@ -1,0 +1,26 @@
+O ticket 633 está pronto. A suíte inteira agora passa: 569 arquivos e 5.919 testes. Eram 2 falhas na tentativa anterior.
+
+**Por que a tentativa 2 reprovou:** ela trocou o nome da função dos links cruzados (`setActiveTab`) para `irParaBloco`. Dois testes fora da allowlist procuram o texto exato `setActiveTab("config")` e `setActiveTab("meta-ads")` em `page.tsx`: `test/ltv-na-conta.test.ts:43` e `test/ficha-nps.test.tsx:137`. A correção foi trocar o nome da outra ponta. O setter direto do `useState` virou `setAbaAtiva`, e `setActiveTab` passou a ser o setter que também liga a rolagem. Assim os links continuam com o mesmo texto.
+
+**O que mudou:**
+- **`anchor-block.tsx`:** o `<h3>` em caixa alta saiu. O rótulo agora é só `aria-label={label}` da `<section>`, sem texto visível. A moldura azul saiu em todos os estados; a classe ficou `scroll-mt-4 rounded-lg`. A linha de estado (carregando, sem base, erro) continua como "Rótulo · texto". A rolagem até o bloco só acontece quando está ligada, por um contexto novo que por padrão fica ligado.
+- **`page.tsx`:**
+  - A rolagem até o bloco fica ligada para `?sub=` na primeira carga e para os links entre blocos, que chamam `setActiveTab`.
+  - Clicar numa aba chama `selecionarAba`: desliga a rolagem, ativa o 1º filho do grupo (monta o conteúdo e mantém `?aba=` na URL) e leva a tela para o topo.
+  - Quando o controle de permissão troca a aba ativa, isso também não rola a tela.
+  - Os 27 blocos seguem passando `label={CHILD_LABELS…}` e `active={activeTab === …}`.
+- **Testes:** em `ficha-subsecoes-sequencia` e `anchor-block`, as asserções que dependiam do anel azul e do `<h3>` agora exigem o contrário: nenhum anel e o rótulo como `aria-label`. Cada uma tem um comentário citando o ticket 633. Nenhuma asserção foi removida. O teste novo `test/ficha-rotulo-moldura.test.ts` cobre os cinco pontos pedidos.
+
+**Verificação:** o `tsc` ficou nos 3 erros de baseline em `src/`, o build deu `BUILD_OK`, e os critérios de grep batem:
+
+| Critério | Resultado |
+|---|---|
+| Heading e anel no `anchor-block.tsx` | 0 |
+| `aria-label={label}` e `<LinhaEstado label={label}` | 1 cada |
+| Clique antigo na aba | 0 |
+| `</h3>` ou `ring-1` no teste de sequência | 0 |
+| Blocos com `label=` e `active=` | 27/27, igual à base |
+
+As guardas globais passaram sem edição. O diff contra `staging-auto` tem 141 linhas adicionadas e 14 removidas, abaixo do teto de 250.
+
+Fiz dois commits, sem push: `f4e44dc` (código) e `635c8b9` (testes). Também salvei uma nota na memória sobre os testes que exigem o texto `setActiveTab`, para não repetir o erro em outro ticket.

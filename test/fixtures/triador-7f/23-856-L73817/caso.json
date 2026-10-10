@@ -1,0 +1,12 @@
+{
+ "id": "856",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/856-remove-super-admin.md",
+ "ticket_sha": "00b8ef701836f9142c75e75aa499eef2ca8215e6",
+ "ticket_antes": true,
+ "linha_bloqueio": 73817,
+ "log_inicio": 73784,
+ "fim": "2026-10-06T16:49:00Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/856.pre-requeue-06out"
+}

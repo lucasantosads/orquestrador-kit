@@ -1,0 +1,19 @@
+{
+ "classe": "R7",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/707/attempt-1.prev1/gate-vitest.txt",
+   "linha": 13,
+   "origem": "trecho",
+   "trecho": "Abrir grupo"
+  },
+  {
+   "arquivo": "docs/fila/runs/707/attempt-2.prev1/gate-vitest.txt",
+   "linha": 17,
+   "origem": "trecho",
+   "trecho": "Abrir grupo"
+  }
+ ],
+ "requeue": "nao",
+ "fonte_da_verdade": "medicao-bloqueios-out.md:129"
+}

@@ -1,0 +1,11 @@
+Os dois arquivos do ticket 900 estão criados e commitados em `frente/900` (7095822), sem push. Os testes e o tsc passam. Não rodei `npm run build` nem os critérios que comparam com `origin/staging-auto`.
+
+Os arquivos de uma tentativa anterior não estavam na árvore, então escrevi tudo do zero. O motivo da reprovação anterior (`ST_0_2`) não pôde ser confirmado, porque o `.sql` antigo sumiu. Nesta versão, o cabeçalho tem "APLICAR E HUMANO" e as duas linhas `create policy churn_(aprovacoes|monthly_summary)_leitura` de reversão. As duas checagens do critério 7 dão 1 e 2.
+
+- **`.sql`:** `supabase/migrations/20261007190900_churn_fecha_leitura_anon.sql` tem 25 linhas. Dentro de `begin; … commit;` ele derruba as duas policies de leitura e faz `revoke all` de anon e authenticated nas duas tabelas. Não tem nenhum `create policy`, `grant` ou `only_service_role` no código. O cabeçalho traz o ensaio em bloco desfeito, o GET com a chave anon (tem de dar 401 ou 42501) e a reversão exata.
+- **Teste:** `test/churn-fecha-leitura-anon-ddl.test.ts` tem 45 linhas e afirma o conteúdo do `.sql`.
+- **Orçamento:** o diff soma 70 linhas, dentro do teto de 160.
+
+O `test/migrations-policy-idempotente.test.ts` reprovou a primeira versão. Ele exige que todo arquivo com "create policy" mencione `pg_policies`, mesmo em comentário. Por isso a linha de reversão no cabeçalho ganhou "guardar cada policy com checagem em pg_policies".
+
+Rodei as guardas globais, os testes que varrem as migrations e o `churn-fecha-escrita-anon`: 13 arquivos e 104 testes passaram. O tsc deu 3 erros, igual ao baseline.

@@ -1,0 +1,139 @@
+/**
+ * Ticket 337 — sub-seção Relação › NPS da ficha do cliente.
+ *
+ * Mesma limitação de test/header-cliente-consolidado.test.ts: sem jsdom /
+ * @testing-library e com "jsx": "preserve", importar um .tsx com JSX quebra o
+ * parse do vitest. Então: (1) as regras de tela são testadas de verdade pelo
+ * módulo puro nps-ficha.ts; (2) registro, montagem, consulta por cliente_id e
+ * reuso do formulário existente são provados lendo os arquivos REAIS do disco.
+ */
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  faixaNps,
+  formatarMesReferencia,
+  resumirNpsFicha,
+  rotuloOrigem,
+  type RespostaNps,
+} from "@/app/dashboard/clientes/[id]/tabs/nps-ficha";
+import { TAB_GROUPS, CHILD_LABELS } from "@/app/dashboard/clientes/[id]/tabs/ficha-types";
+
+const DIR = join("src", "app", "dashboard", "clientes", "[id]");
+const ler = (...p: string[]) => readFileSync(join(DIR, ...p), "utf8");
+
+function resposta(parcial: Partial<RespostaNps>): RespostaNps {
+  return {
+    id: crypto.randomUUID(),
+    nps_score: 8,
+    mes_referencia: "2026-08-01",
+    respondente_nome: "Ana",
+    comentario: null,
+    origem: "link_publico",
+    created_at: "2026-08-10T12:00:00Z",
+    ...parcial,
+  };
+}
+
+describe("resumirNpsFicha — três estados que nunca se confundem", () => {
+  it("leitura sem base continua sem base (cinza), nunca vira 'sem resposta' nem zero", () => {
+    const r = resumirNpsFicha({ estado: "sem_base", motivo: "cliente ainda sem identificador no cadastro" });
+    expect(r).toEqual({ estado: "sem_base", motivo: "cliente ainda sem identificador no cadastro" });
+  });
+
+  it("leitura OK sem nenhuma resposta vira 'sem_resposta'", () => {
+    expect(resumirNpsFicha({ estado: "ok", respostas: [] })).toEqual({ estado: "sem_resposta" });
+  });
+
+  it("nota fora de 0-10 não conta como resposta", () => {
+    const r = resumirNpsFicha({ estado: "ok", respostas: [resposta({ nps_score: 11 })] });
+    expect(r.estado).toBe("sem_resposta");
+  });
+
+  it("último score = mês de referência mais recente; histórico do mais novo ao mais antigo", () => {
+    const julho = resposta({ nps_score: 6, mes_referencia: "2026-07-01" });
+    const agosto = resposta({ nps_score: 10, mes_referencia: "2026-08-01" });
+    const junho = resposta({ nps_score: 9, mes_referencia: "2026-06-01" });
+    const r = resumirNpsFicha({ estado: "ok", respostas: [julho, agosto, junho] });
+    expect(r.estado).toBe("ok");
+    if (r.estado !== "ok") return;
+    expect(r.ultimo.id).toBe(agosto.id);
+    expect(r.historico.map((h) => h.nps_score)).toEqual([10, 6, 9]);
+  });
+});
+
+describe("faixas, origem e mês", () => {
+  it("faixas padrão do NPS: 9-10 promotor, 7-8 neutro, 0-6 detrator", () => {
+    expect([10, 9, 8, 7, 6, 0].map(faixaNps)).toEqual(["promotor", "promotor", "neutro", "neutro", "detrator", "detrator"]);
+  });
+
+  it("origem vira linguagem do domínio, nunca o valor gravado", () => {
+    expect(rotuloOrigem("link_publico")).toBe("Link de coleta");
+    expect(rotuloOrigem("registro_interno")).toBe("Registro manual");
+    expect(rotuloOrigem("qualquer_coisa")).toBe("Outra origem");
+  });
+
+  it("mês de referência formatado MM/AAAA; ausente → null", () => {
+    expect(formatarMesReferencia("2026-08-01")).toBe("08/2026");
+    expect(formatarMesReferencia(null)).toBeNull();
+  });
+});
+
+describe("sub-seção registrada E montada", () => {
+  it("'nps' está no grupo Relação e tem rótulo", () => {
+    const relacao = TAB_GROUPS.find((g) => g.key === "relacao");
+    expect(relacao?.children).toContain("nps");
+    expect(CHILD_LABELS.nps).toBe("NPS");
+  });
+
+  it("page.tsx importa NpsTab e monta o AnchorBlock 'nps' dentro do grupo relacao, com o uuid do pipeline", () => {
+    const page = ler("page.tsx");
+    expect(page).toMatch(/import\s*\{\s*NpsTab\s*\}\s*from\s*"\.\/tabs\/nps-tab"/);
+    const relacao = page.match(/grupoAtivo === "relacao" && \(<>([\s\S]*?)<\/>\)\}/);
+    expect(relacao, "bloco do grupo relacao não encontrado em page.tsx").not.toBeNull();
+    expect(relacao![1]).toMatch(/<AnchorBlock id="nps" label=\{CHILD_LABELS\.nps\} active=\{activeTab === "nps"\}>/);
+    expect(relacao![1]).toMatch(/<NpsTab clienteId=\{clientePipelineId\}/);
+  });
+});
+
+describe("consulta por cliente_id", () => {
+  it("nps-acoes.ts lê perf_nps_respostas filtrando por cliente_id e não escreve nada", () => {
+    const acoes = ler("tabs", "nps-acoes.ts");
+    expect(acoes.startsWith('"use server"')).toBe(true);
+    expect(acoes).toMatch(/\.from\("perf_nps_respostas"\)/);
+    expect(acoes).toMatch(/\.eq\("cliente_id", clienteId\)/);
+    expect(acoes).not.toMatch(/cliente_notion_id/);
+    expect(acoes).not.toMatch(/\.(insert|update|upsert|delete)\(/);
+    expect(acoes).toMatch(/getSession\(\)/);
+  });
+});
+
+describe("registro manual reutiliza o formulário existente (importado, sem cópia)", () => {
+  const tab = ler("tabs", "nps-tab.tsx");
+
+  it("importa RegistrarNpsForm de clientes/nps/registrar-form e o renderiza dentro do Sheet", () => {
+    expect(tab).toMatch(/import\s*\{\s*RegistrarNpsForm\s*\}\s*from\s*"@\/app\/dashboard\/clientes\/nps\/registrar-form"/);
+    expect(tab).toMatch(/<SheetContent[\s\S]*<RegistrarNpsForm[\s\S]*<\/SheetContent>/);
+    expect(tab).toContain("Registrar manualmente");
+  });
+
+  it("não cria formulário paralelo: nenhum <form>, POST ou rota de registro no arquivo da ficha", () => {
+    expect(tab).not.toMatch(/<form\b/);
+    expect(tab).not.toMatch(/\/api\/clientes\/nps\/registrar/);
+    expect(tab).not.toMatch(/method:\s*"POST"/);
+  });
+
+  it("sem dado = linha 'sem resposta ainda'; sem base = linha cinza 'sem base'", () => {
+    expect(tab).toMatch(/<BlocoVazioLinha rotulo="NPS" texto="sem resposta ainda" \/>/);
+    // ticket 504: o travessão saiu do separador; rótulo, motivo e linha única ficam, separados por dois-pontos.
+    expect(tab).toMatch(/texto=\{`sem base: \$\{resumo\.motivo\}`\}/);
+  });
+
+  it("link de coleta: só atalho de navegação, sem duplicar o bloco nem gerar token aqui", () => {
+    expect(tab).toContain("onAbrirLinkColeta");
+    expect(tab).not.toMatch(/\/api\/nps\/token/);
+    // Ticket 550: o link de coleta saiu da Relacao para Conta > Conexoes; "meta-ads" e a key
+    // que o 531 usa para a secao Conexoes, entao o atalho nao aponta mais para "geral".
+    expect(ler("page.tsx")).toMatch(/onAbrirLinkColeta=\{\(\) => setActiveTab\("meta-ads"\)\}/);
+  });
+});

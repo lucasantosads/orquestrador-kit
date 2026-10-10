@@ -1,0 +1,36 @@
+83736	[2026-10-08 15:40:21-0300] drenagem: ticket 907 (2 pendentes restantes)
+83737	[orq 18:40:21] orquestrador iniciando · modo: real · once
+83738	[orq 18:40:21] preflight: validando infra (scripts, fila, env, claude)...
+83739	[orq 18:40:24] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+83740	[orq 18:40:30] preflight: ok
+83741	[orq 18:40:46] === ticket 907 (operacao-inicio-registra-falha) — tentativa 1 · modo: real ===
+83742	[orq 18:40:48]   recon_esperado: ok (3 comando(s))
+83743	[orq 18:40:48] aviso allowlist: src/app/api/cron/operacao-inicio/route.ts já existe no worktree — o agente vai EDITAR, não criar
+83744	[orq 18:40:48]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/907/attempt-1/prompt.txt
+83745	[orq 18:40:48]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+83746	[orq 18:41:42]   diff cru salvo (137 linhas alteradas) · HEAD julgado 2d5dad99
+83747	[orq 18:41:42]   enforcement: ok
+83748	[orq 18:41:59]   gate tsc: ok (baseline)
+83749	[orq 18:42:34]   gate vitest: ok
+83750	[orq 18:42:56]   criterios mecânicos: FALHA — criterio[7] mecânico: esperado 'REGISTRA', obteve 'ST_0_1_1'
+83751	[orq 18:42:56]   REPROVA (mecânica, sem Opus): criterio[7] mecânico: esperado 'REGISTRA', obteve 'ST_0_1_1'
+83752	[orq 18:42:57] ticket 907: reprovado — retry 1/2. motivo: criterio[7] mecânico: esperado 'REGISTRA', obteve 'ST_0_1_1'
+83753	[orq 18:42:57] === ticket 907 (operacao-inicio-registra-falha) — tentativa 2 · modo: real ===
+83754	[orq 18:42:58]   recon_esperado: ok (3 comando(s))
+83755	[orq 18:42:58] aviso allowlist: src/app/api/cron/operacao-inicio/route.ts já existe no worktree — o agente vai EDITAR, não criar
+83756	[orq 18:42:58]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/907/attempt-2/prompt.txt
+83757	[orq 18:42:58]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+83758	[orq 18:44:23]   diff cru salvo (122 linhas alteradas) · HEAD julgado a95abc3d
+83759	[orq 18:44:23]   enforcement: ok
+83760	[orq 18:44:39]   gate tsc: ok (baseline)
+83761	[orq 18:45:06]   gate vitest: ok
+83762	[orq 18:45:26]   criterios mecânicos: ok
+83763	[orq 18:45:58]   gate build: ok
+83764	Merge made by the 'ort' strategy.
+83765	 src/app/api/cron/operacao-inicio/route.ts | 26 ++++++++-
+83766	 test/operacao-inicio-registro.test.ts     | 96 +++++++++++++++++++++++++++++++
+83767	 2 files changed, 119 insertions(+), 3 deletions(-)
+83768	 create mode 100644 test/operacao-inicio-registro.test.ts
+83769	[orq 18:46:06] avaliador: merge --no-ff de frente/907 em staging-auto ok
+83770	[orq 18:46:06] avaliador: APROVADO e mergeado.
+83771	[orq 18:46:07] ticket 907: APROVADO e mergeado em staging-auto

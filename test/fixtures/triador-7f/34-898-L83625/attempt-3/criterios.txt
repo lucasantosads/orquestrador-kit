@@ -1,0 +1,14 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-898
+sanear_tsc: nao
+cmd:    f=supabase/migrations/20261008121000_perf_cliente_verba.sql; [ -f $f ] || { echo AUSENTE; exit 0; }; c=$(grep -c 'create table if not exists public.perf_cliente_verba' $f); k=$(grep -cF 'check (verba_teto_mes > 0)' $f); r=$(grep -c 'alter table public.perf_cliente_verba enable row level security' $f); p=$(grep -c "tablename = 'perf_cliente_verba'" $f); v=$(grep -c 'revoke all on public.perf_cliente_verba from anon, authenticated' $f); x=$(grep -vE '^[[:space:]]*--' $f | grep -ciE 'drop |delete|truncate|grant|security definer|insert'); [ "$c$k$r$p$v" = 11111 ] && [ "$x" = 0 ] && echo MIGRATION_OK || echo ST_${c}${k}${r}${p}${v}_${x}
+espera: MIGRATION_OK
+-- saida --
+ST_11111_2
+
+### criterio[5] -> PASS
+### criterio[6] -> PASS

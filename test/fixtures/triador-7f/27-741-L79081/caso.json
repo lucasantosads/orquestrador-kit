@@ -1,0 +1,12 @@
+{
+ "id": "741",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/741-backtest-promessas-aquino.md",
+ "ticket_sha": "41aa2e2cd26b798ef50bc4d8102ccb2b9f930997",
+ "ticket_antes": true,
+ "linha_bloqueio": 79081,
+ "log_inicio": 79054,
+ "fim": "2026-10-08T00:37:36Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/741"
+}

@@ -1,0 +1,162 @@
+{
+ "id": "868",
+ "slug": "visao-apolo-sem-call-de-venda",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 260 linhas (~15 em atividade-periodo.tsx, ~15 em timeline-visao.tsx, ~30 em src/lib/apolo/ferramentas.ts, ~180 no teste NOVO test/visao-apolo-reuniao-operacional.test.ts). Se passar do teto, pare e reporte. DECISAO DO LUCAS (07/10): call de venda e cadastrada e vinculada no dashboard comercial, o OS so le, nunca vincula nem grava; a aba Relacao mostra so reuniao operacional (perf_reuniao); a call de venda aparece na ficha como historico da venda, fora da Relacao. Recon no banco vivo em 07/10 (so leitura, execute_sql): reunioes_cliente tem 163 linhas, todas fonte='tldv' (tl;dv COMERCIAL, calls de venda), 0 com cliente_id, 0 com cliente_notion_id, 121 com lead_id (FK para leads_crm.id), 0 com lead_match_revisado=true, ultima gravacao em 08/09; perf_reuniao (tl;dv OPERACIONAL, alimentada por src/app/api/perf/reunioes/webhook) tem 0 linhas, FK cliente_id -> clientes.id. Lead vira cliente por leads_crm.cliente_id (74 leads preenchidos); contratos.lead_id/cliente_id e clientes_receita.lead_id/cliente_id concordam com ele nas 3 reunioes que chegam a um cliente (3 de 163). Recon de codigo em 07/10 (HEAD 70b2e14): GET /api/clientes/[id]/reunioes (le reunioes_cliente) alimenta a Visao em src/app/dashboard/clientes/[id]/_components/atividade-periodo.tsx:93 e src/app/dashboard/clientes/[id]/_components/timeline-visao.tsx:163 (useCarga com lista('reunioes')) e o Apolo em src/lib/apolo/ferramentas.ts:294 (reunioesRecentes: 'const lista = dados?.reunioes ?? []' e ",
+ "cria_novo": [
+  "test/visao-apolo-reuniao-operacional.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/app/dashboard/clientes/[id]/_components/atividade-periodo.tsx",
+  "src/app/dashboard/clientes/[id]/_components/timeline-visao.tsx",
+  "src/lib/apolo/ferramentas.ts",
+  "test/apolo-ferramentas-cliente.test.ts",
+  "test/visao-apolo-reuniao-operacional.test.ts"
+ ],
+ "dependencias": [
+  "865"
+ ],
+ "recon_esperado": [
+  {
+   "descricao": "src/app/dashboard/clientes/[id]/_components/atividade-periodo.tsx existe na arvore do loop",
+   "cmd": "test -e 'src/app/dashboard/clientes/[id]/_components/atividade-periodo.tsx' && echo EXISTE || echo AUSENTE",
+   "espera": "EXISTE"
+  },
+  {
+   "descricao": "src/app/dashboard/clientes/[id]/_components/timeline-visao.tsx existe na arvore do loop",
+   "cmd": "test -e 'src/app/dashboard/clientes/[id]/_components/timeline-visao.tsx' && echo EXISTE || echo AUSENTE",
+   "espera": "EXISTE"
+  },
+  {
+   "descricao": "src/lib/apolo/ferramentas.ts existe na arvore do loop",
+   "cmd": "test -e 'src/lib/apolo/ferramentas.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "EXISTE"
+  },
+  {
+   "descricao": "test/visao-apolo-reuniao-operacional.test.ts ainda nao existe",
+   "cmd": "test -e 'test/visao-apolo-reuniao-operacional.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "Visao e Apolo ainda leem a rota de reunioes_cliente (3 pontos)",
+   "cmd": "grep -cE '/api/clientes/[$][{][a-zA-Z]+[}]/reunioes' 'src/app/dashboard/clientes/[id]/_components/atividade-periodo.tsx' 'src/app/dashboard/clientes/[id]/_components/timeline-visao.tsx' 'src/lib/apolo/ferramentas.ts' | awk -F: '{s+=$2} END {print s+0}'",
+   "espera": "3"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/app/dashboard/clientes/[id]/_components/atividade-periodo.tsx' 'src/app/dashboard/clientes/[id]/_components/timeline-visao.tsx' 'src/lib/apolo/ferramentas.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 260 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 260 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "zero escrita nova em banco nas linhas adicionadas de src (insert/update/upsert/delete/rpc)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/app/dashboard/clientes/[id]/_components/atividade-periodo.tsx' 'src/app/dashboard/clientes/[id]/_components/timeline-visao.tsx' 'src/lib/apolo/ferramentas.ts' | grep -E '^[+][^+]' | grep -cE '[.](insert|update|upsert|delete|rpc)[(]'); [ \"$n\" = 0 ] && echo SEM_ESCRITA || echo ESCRITA_$n",
+   "espera": "SEM_ESCRITA",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum teste trocado perdeu expect( (contagem >= a do merge-base)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=OK; for f in test/apolo-ferramentas-cliente.test.ts; do a=$(git show \"$b:$f\" | grep -c 'expect('); c=$(grep -c 'expect(' \"$f\"); [ \"$c\" -ge \"$a\" ] || r=PERDEU_$f; done; echo $r",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum .skip/.only/.todo nem toBeDefined/toBeTruthy novo nos testes trocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- test/apolo-ferramentas-cliente.test.ts | grep -E '^[+][^+]' | grep -cE '[.](skip|only|todo)[(]|toBeDefined|toBeTruthy'); [ \"$n\" = 0 ] && echo FIRME || echo AFROUXOU_$n",
+   "espera": "FIRME",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "cada teste trocado cita o 867 nos comentarios novos",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=OK; for f in test/apolo-ferramentas-cliente.test.ts; do if [ -n \"$(git diff \"$b\" HEAD -- \"$f\")\" ]; then n=$(git diff \"$b\" HEAD -- \"$f\" | grep -E '^[+][^+]' | grep -c '867'); [ \"$n\" -ge 1 ] || r=SEM_CITAR_$f; fi; done; echo $r",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/app/dashboard/clientes/[id]/_components/atividade-periodo.tsx' 'src/app/dashboard/clientes/[id]/_components/timeline-visao.tsx' 'src/lib/apolo/ferramentas.ts' 'test/apolo-ferramentas-cliente.test.ts' 'test/visao-apolo-reuniao-operacional.test.ts'; do if [ \"$f\" = \"$p\" ]; then ok=1; fi; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "rotas e adaptador intocados",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/app/api/clientes/[id]/reunioes/route.ts' 'src/app/api/perf/reunioes/route.ts' 'src/lib/perf/reunioes/para-relacao.ts' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "Visao e Apolo nao leem mais a rota de reunioes_cliente",
+   "cmd": "n=$(grep -cE '/api/clientes/[$][{][a-zA-Z]+[}]/reunioes' 'src/app/dashboard/clientes/[id]/_components/atividade-periodo.tsx' 'src/app/dashboard/clientes/[id]/_components/timeline-visao.tsx' 'src/lib/apolo/ferramentas.ts' | awk -F: '{s+=$2} END {print s+0}'); [ \"$n\" = 0 ] && echo SO_OPERACIONAL || echo AINDA_LE_$n",
+   "espera": "SO_OPERACIONAL"
+  },
+  {
+   "descricao": "Apolo: falha de leitura nao vira 'nenhuma reunião registrada'",
+   "cmd": "grep -c 'nenhuma reunião registrada para o cliente' 'src/lib/apolo/ferramentas.ts'",
+   "espera": "0"
+  },
+  {
+   "descricao": "teste novo verde (test/visao-apolo-reuniao-operacional.test.ts)",
+   "cmd": "test -f test/visao-apolo-reuniao-operacional.test.ts && npx vitest run test/visao-apolo-reuniao-operacional.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "avaliador: Visao (atividade do periodo e linha do tempo) e Apolo (reunioes_recentes) leem so perf_reuniao; falha aparece como falha. REPROVE se: rota mudou; leitor fora da lista tocado; erro vira vazio; jargao de banco na tela.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/timeline-estado-vazio-unico.test.tsx",
+   "motivo": "renderiza a linha do tempo da Visao com cargas prontas (reunioes: vazia/falhou); nao le a URL nem a fonte do dado; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/ficha-visao-blocos-vazios.test.ts",
+   "motivo": "mesma fixture de cargas prontas (linha 68); nao le a URL; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/apolo-ferramentas.test.ts",
+   "motivo": "so confere o nome 'reunioes_recentes' no catalogo (linha 29); se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/apolo-contexto.test.ts",
+   "motivo": "nao cita reunioes (grep em 07/10); se quebrar, PARE e descreva"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 6379
+}

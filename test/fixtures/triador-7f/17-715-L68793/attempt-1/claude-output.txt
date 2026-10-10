@@ -1,0 +1,20 @@
+O ticket 715 está implementado e commitado (`ee835fa`), sem push. Rodei tsc e os testes do 715 e do `cron-paths-vercel`. Os critérios de diff e de allowlist, os guardas globais, `npm run build` e a suíte completa de vitest eu não rodei.
+
+- **tsc:** deu 3 erros, o baseline esperado.
+- **Testes:** `test/eventos-resposta-grupo.test.ts` e `test/cron-paths-vercel.test.ts` passaram, 15 testes no total. `test/kanban-higiene-cron-arquivada.test.ts` não existe no repo, então não foi executado.
+- **Pontas soltas:**
+  - Uma tentativa de rodar `rm -rf .next` e o tsc num único comando foi negada. O tsc rodou depois, sem limpar o `.next`, e mesmo assim deu 3.
+  - Um primeiro comando em lote que criava os arquivos foi negado, então regravei tudo com Write e Edit. Nada ficou pela metade.
+- **Tamanho:** 301 linhas adicionadas, dentro do teto de 520.
+- **`registrar.ts`:** vi o arquivo sem editar. As funções reutilizadas de equipe, autor e minutos úteis ficaram como estavam.
+- **`CRON_PENDENTES_REVISAO`:** não ganhou entrada. A rota nova entrou direto no `CRON_PATHS`.
+
+O que foi feito:
+- **Etapa de resposta:** `src/lib/eventos/resposta-grupo.ts` lê as mensagens dos últimos 48h (teto de 5000) dos grupos vinculados. Para cada mensagem de fora da equipe, pega a primeira da equipe depois dela e registra um evento `resposta_grupo`.
+  - **Minutos úteis:** o valor é a diferença em minutos úteis, contada a partir do início útil da mensagem do cliente.
+  - **Colaborador:** é achado pelo telefone da resposta. Sem telefone, fica null.
+  - **Chave:** `resposta:<group_jid>:<enviada_em do cliente>`. Mensagens seguidas do cliente contam da primeira, e reprocessar a janela não duplica.
+- **Job:** `src/lib/jobs/operacao-inicio.ts` roda cada etapa em try/catch próprio e devolve `{ etapas }`. Dei a `rodarOperacaoInicio` um terceiro parâmetro opcional com as etapas a rodar, para o teste injetar uma etapa que falha.
+- **Rota:** `GET /api/cron/operacao-inicio` devolve 401 sem o Bearer, 503 sem a variável `CRON_SECRET`, 500 se alguma etapa falhar (com o resultado) e 200 caso contrário.
+- **Registro:** a rota entrou no `vercel.json` (`*/15 11-22 * * 1-5`) e no `CRON_PATHS` do middleware.
+- **Feriados:** a etapa não carrega feriados. Passa lista vazia, então só conta seg a sex em expediente.

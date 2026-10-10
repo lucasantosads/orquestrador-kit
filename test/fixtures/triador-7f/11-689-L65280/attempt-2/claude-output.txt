@@ -1,0 +1,16 @@
+O trabalho do 689 está commitado (`d768ac5`), mas a suíte completa do vitest continua vermelha por um teste fora da allowlist.
+
+**Teste vermelho.** `test/cron-paths-vercel.test.ts` falhou no gate da tentativa anterior. Ele mantém `CRON_PENDENTES_REVISAO` com `/api/cron/kanban-higiene` e exige que essa rota continue barrada. O ticket libera a rota no `CRON_PATHS`, então a asserção "toda pendência continua barrada" quebra. O próprio comentário do teste diz "ao liberar no CRON_PATHS, tire da lista". Esse arquivo não está na allowlist e o ticket manda parar e descrever quando um teste de fora quebra, então não o editei. Não rodei a suíte completa de novo nesta tentativa, só os três testes do ticket.
+
+**Decisão pendente:** é preciso remover `"/api/cron/kanban-higiene"` de `CRON_PENDENTES_REVISAO` (uma linha) e acrescentá-lo ao teste dos cron liberados em 30/09. Para isso, o arquivo entra na allowlist do 689 ou alguém faz essa edição à mão.
+
+**O que foi feito:**
+- **`src/middleware.ts`:** `/api/cron/kanban-higiene` entra no `CRON_PATHS`, com comentário citando o 689. Nenhuma outra rota mudou.
+- **`scripts/dados/365-kanban-higiene.ts`:** `calcularTotalSegundosEncerramento` soma no máximo 12h (`LIMITE_HORAS_CRONOMETRO`) do delta desde `ultimo_inicio`, com comentário do 689.
+- **`test/kanban-higiene-cron-arquivada.test.ts`** (novo, 3 testes):
+  - O `CRON_PATHS` do middleware contém a rota.
+  - Tarefa arquivada com cronômetro ligado há 60 dias encerra com `em_andamento=false`, `cronometro_encerrado=true` e `total_segundos` igual ao anterior mais 43200.
+  - Cronômetro ligado há 2h não é tocado.
+- **Recálculos com comentário** (teto de 12h no lugar do delta de 1257h): dois totais em `test/kanban-higiene-regras.test.ts` e um em `test/kanban-higiene-job.test.ts`. Nenhuma asserção foi removida nem afrouxada.
+
+**Verificação:** os três testes do ticket passam (35 testes) e o tsc dá 3 erros, o baseline. O diff tem 102 linhas, dentro do teto de 260. Não consegui rodar o `rm -rf .next` (permissão negada), então a contagem do tsc saiu sem limpar o `.next`.

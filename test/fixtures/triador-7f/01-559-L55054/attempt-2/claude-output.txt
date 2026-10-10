@@ -1,0 +1,14 @@
+O teste de aceite está commitado, mas 3 dos 50 `it(` ficam vermelhos porque a tela ainda não cumpre o mockup. O critério "teste novo verde" continua reprovado.
+
+Recuperei o teste da tentativa anterior e corrigi só o que era imprecisão minha. Ele foi escrito do zero na worktree, com 467 linhas (teto: 600). O `tsc` dá 3 erros em `src/` (o baseline), e nada em `src/` foi tocado.
+
+Corrigi dois itens que falhavam só por diferença de caixa. "Observações do Closer" na tela contra "closer" no mockup, e "Último insight" contra "último insight". A comparação desses dois ignora a caixa; o resto do texto continua exato.
+
+Os 3 vermelhos restantes são divergências reais. Não afrouxei nenhum, porque o ticket proíbe:
+- **`conexoes: Grupo de WhatsApp so link com Trocar`:** `conexoes-relacao.tsx:43` ainda monta `WhatsAppGruposSection` (a lista de grupos) junto do link. O mockup (`:175-176`) mostra só o link com "Trocar".
+- **`operacao: Auditoria recolhida`:** a linha de Auditoria em `onboarding-tab.tsx:269` mostra "histórico de alterações da conta". O mockup (`:200`) mostra "nenhum evento".
+- **`copy: nenhum s/ dado nem travessao de ausencia na aba Conta`:** ainda há "—" como ausência em `documentos-section.tsx:55` (tamanho do arquivo), `onboarding-tab.tsx:30` (data vazia) e `onboarding-tab.tsx:126` (etapa vazia).
+
+Rodei só o teste novo e o `tsc`. Não rodei `npm run build`, o `vitest` completo nem as cinco guardas globais.
+
+Para o critério "teste novo verde" passar, é preciso um ticket de correção em `src/` para esses três pontos. A alternativa é você decidir que o aceite aceita a divergência, o que eu não fiz sozinho.

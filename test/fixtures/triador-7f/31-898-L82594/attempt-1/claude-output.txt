@@ -1,0 +1,7 @@
+Commitei a migration e o teste (c7a52eb, 86 linhas, dentro do teto de 130). Um critério de aceite do ticket vai falhar, porque contradiz o corpo exigido do `.sql`.
+
+- **Migration:** `supabase/migrations/20261008121000_perf_cliente_verba.sql` tem o cabeçalho com `APLICAR E HUMANO` e `humano:ddl-898`. O corpo segue a ordem do ticket: tabela, RLS, policy `only_service_role` guardada por `pg_policies` e `revoke` para anon e authenticated. Não apliquei a migration e não toquei em `src/`.
+- **Teste:** `test/perf-cliente-verba-migration.test.ts` cobre os itens (a) a (f) do ticket.
+- **Testes rodados:** o novo e as 5 guardas globais (`c0-guard`, `migration-security-definer-anon`, `migrations-cabecalho-aplicada`, `migrations-policy-idempotente`, `sync-log-status`) passam, 53 testes. Não rodei `tsc` nem `npm run build`, porque o diff não toca TypeScript de `src/`.
+- **Critério que vai dar `ST_…_2` em vez de `MIGRATION_OK`:** o ticket manda `references public.clientes(id) on delete cascade` e `references public.employees(id) on delete set null`. O grep do critério procura `delete` em linha que não é comentário, e acha essas duas linhas. Mantive o corpo exato do ticket, porque tirar o `on delete` mudaria o comportamento (o cliente ou o funcionário deixaria de poder ser apagado). No teste (d), ignorei só esses dois trechos de `on delete` ao procurar DELETE.
+- **Para o Lucas:** ou aceita esse resultado do critério, ou o critério passa a ignorar `on delete`. Dá para tirar o `on delete` do `.sql`, mas é você quem decide, porque muda a regra de exclusão.

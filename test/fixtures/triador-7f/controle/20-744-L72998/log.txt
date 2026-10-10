@@ -1,0 +1,59 @@
+72940	[2026-10-05 19:03:27-0300] drenagem: ticket 744 (8 pendentes restantes)
+72941	[orq 22:03:27] orquestrador iniciando · modo: real · once
+72942	[orq 22:03:27] preflight: validando infra (scripts, fila, env, claude)...
+72943	[orq 22:03:31] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+72944	[orq 22:03:37] preflight: ok
+72945	[orq 22:03:58] === ticket 744 (crm-cliente-etapas-sync) — tentativa 1 · modo: real ===
+72946	[orq 22:04:00]   recon_esperado: ok (7 comando(s))
+72947	[orq 22:04:00] aviso allowlist: src/lib/perf/ghl-agencia.ts já existe no worktree — o agente vai EDITAR, não criar
+72948	[orq 22:04:00] aviso allowlist: src/lib/perf/crm-conexao.ts já existe no worktree — o agente vai EDITAR, não criar
+72949	[orq 22:04:00]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/744/attempt-1/prompt.txt
+72950	[orq 22:04:00]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+72951	[orq 22:06:48]   diff cru salvo (538 linhas alteradas) · HEAD julgado ca2cc1c1
+72952	[orq 22:06:48]   enforcement: ok
+72953	[orq 22:07:05]   gate tsc: ok (baseline)
+72954	[orq 22:07:41]   gate vitest: ok
+72955	[orq 22:08:08]   criterios mecânicos: FALHA — criterio[5] mecânico: esperado 'SEM_VAZIO_SILENCIOSO', obteve 'VAZIO_SILENCIOSO_1'
+72956	[orq 22:08:08]   REPROVA (mecânica, sem Opus): criterio[5] mecânico: esperado 'SEM_VAZIO_SILENCIOSO', obteve 'VAZIO_SILENCIOSO_1'
+72957	[orq 22:08:08] ticket 744: reprovado — retry 1/2. motivo: criterio[5] mecânico: esperado 'SEM_VAZIO_SILENCIOSO', obteve 'VAZIO_SILENCIOSO_1'
+72958	[orq 22:08:08] === ticket 744 (crm-cliente-etapas-sync) — tentativa 2 · modo: real ===
+72959	[orq 22:08:09]   recon_esperado: ok (7 comando(s))
+72960	[orq 22:08:09] aviso allowlist: src/lib/perf/ghl-agencia.ts já existe no worktree — o agente vai EDITAR, não criar
+72961	[orq 22:08:09] aviso allowlist: src/lib/perf/crm-conexao.ts já existe no worktree — o agente vai EDITAR, não criar
+72962	[orq 22:08:09]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/744/attempt-2/prompt.txt
+72963	[orq 22:08:09]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+72964	[orq 22:10:15]   diff cru salvo (535 linhas alteradas) · HEAD julgado 2eea3bad
+72965	[orq 22:10:15]   enforcement: ok
+72966	[orq 22:10:31]   gate tsc: ok (baseline)
+72967	[orq 22:11:00]   gate vitest: ok
+72968	[orq 22:11:27]   criterios mecânicos: FALHA — criterio[14] mecânico: esperado 'NOME_OK', obteve 'NOME_1_2_1'
+72969	[orq 22:11:27]   REPROVA (mecânica, sem Opus): criterio[14] mecânico: esperado 'NOME_OK', obteve 'NOME_1_2_1'
+72970	[orq 22:11:28] ticket 744: reprovado — retry 2/2. motivo: criterio[14] mecânico: esperado 'NOME_OK', obteve 'NOME_1_2_1'
+72971	[orq 22:11:28] === ticket 744 (crm-cliente-etapas-sync) — tentativa 3 · modo: real ===
+72972	[orq 22:11:29]   recon_esperado: ok (7 comando(s))
+72973	[orq 22:11:29] aviso allowlist: src/lib/perf/ghl-agencia.ts já existe no worktree — o agente vai EDITAR, não criar
+72974	[orq 22:11:29] aviso allowlist: src/lib/perf/crm-conexao.ts já existe no worktree — o agente vai EDITAR, não criar
+72975	[orq 22:11:29]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/744/attempt-3/prompt.txt
+72976	[orq 22:11:29]   tentativa final: escalando modelo do executor para 'opus'
+72977	[orq 22:11:29]   chamando claude -p (headless, --model opus, timeout 1500s) no worktree...
+72978	[orq 22:16:18]   diff cru salvo (586 linhas alteradas) · HEAD julgado f22f4f5f
+72979	[orq 22:16:18]   enforcement: ok
+72980	[orq 22:16:35]   gate tsc: ok (baseline)
+72981	[orq 22:17:07]   gate vitest: ok
+72982	[orq 22:17:33]   criterios mecânicos: ok
+72983	[orq 22:18:14]   gate build: ok
+72984	Merge made by the 'ort' strategy.
+72985	 src/app/api/clientes/[id]/crm/etapas/route.ts      |  30 +++
+72986	 src/app/api/clientes/[id]/crm/sincronizar/route.ts |  57 ++++
+72987	 src/lib/perf/crm-conexao.ts                        |  46 +++-
+72988	 src/lib/perf/crm-etapas.ts                         | 128 +++++++++
+72989	 src/lib/perf/ghl-agencia.ts                        |  31 +++
+72990	 test/crm-cliente-etapas-sync.test.ts               | 294 +++++++++++++++++++++
+72991	 6 files changed, 577 insertions(+), 9 deletions(-)
+72992	 create mode 100644 src/app/api/clientes/[id]/crm/etapas/route.ts
+72993	 create mode 100644 src/app/api/clientes/[id]/crm/sincronizar/route.ts
+72994	 create mode 100644 src/lib/perf/crm-etapas.ts
+72995	 create mode 100644 test/crm-cliente-etapas-sync.test.ts
+72996	[orq 22:18:26] avaliador: merge --no-ff de frente/744 em staging-auto ok
+72997	[orq 22:18:26] avaliador: APROVADO e mergeado.
+72998	[orq 22:18:27] ticket 744: APROVADO e mergeado em staging-auto

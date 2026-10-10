@@ -1,0 +1,22 @@
+O chip Saúde da ficha agora mostra o rótulo e a dica de `chipSaude`, lidos por `lerSinalCliente`. Dois testes de `test/saude-motivo-sem-base.test.ts` quebraram, e esse arquivo está fora da allowlist. Parei nele e não editei. Está commitado em `a1965f9`, sem push.
+
+**O que corrigi (critério 13).** O trabalho da tentativa anterior não estava na árvore: `page.tsx` ainda chamava `estadoScoreSaude(health?.score` duas vezes e não importava o módulo. Refiz a mudança.
+
+- **`page.tsx`:** chama `lerSinalCliente(String(id))` num efeito e guarda o `ChipSaude`. Enquanto carrega, mostra "Saúde · carregando". O cabeçalho recebe `chip={chipSaude}`. O prompt de IA usa `chipSaude.rotulo` no lugar do score antigo. A URL da rota fica no módulo.
+- **`geral-tab.tsx`:** `IdentidadeCliente` recebe `chip` no lugar de `score` e `motivoSaude`. O chip mostra `chip.rotulo` e a dica vem de `chip.dica`. O número do score saiu do chip e `corScoreSaude` saiu do arquivo.
+- **Cor do chip:** uma tabela `COR_TOM_SAUDE` só traduz o tom que já vem de `chipSaude` em classe de cor. Não há limiar novo. O tom de erro usa a cor neutra.
+- **Testes da allowlist:** recalculei as asserções que exigiam o score antigo, cada uma com comentário citando o 711b3. As fixtures de render passaram a usar `chip`. Nenhum `it(` foi apagado e nenhuma asserção foi afrouxada. Os outros 10 arquivos que leem `page.tsx`/`geral-tab.tsx` seguem verdes sem edição.
+- **Teste novo:** `test/saude-chip-ficha.test.ts` renderiza o `IdentidadeCliente` para verde, amarelo, vermelho, sem base e erro (rótulo e dica). Também checa que `page.tsx` importa `ler-sinal-cliente`.
+
+**Verificação:**
+- `tsc` dá 3 erros, o baseline.
+- Guardas globais: 70 testes passam.
+- Os testes que leem `page.tsx`/`geral-tab.tsx` e o novo: 545 passam.
+- Não rodei `npm run build` nem os critérios de diff e allowlist (tamanho, testids, `.sql`), então esses ficam sem confirmação minha.
+- Não consegui rodar `rm -rf .next`; o comando foi negado. O `tsc` filtrou `.next/`, mas a árvore pode ter tipos antigos.
+
+**Teste quebrado fora da allowlist.** `test/saude-motivo-sem-base.test.ts` fixa dois literais que o ticket manda remover:
+- `motivoSaude={motivoSaudeSemBase(health)}` em `page.tsx`.
+- `<Dica texto={motivoSaude ?? score.motivo}>{chipSaude}</Dica>` em `geral-tab.tsx`.
+
+Os dois não podem coexistir com o ticket sem eu manter código morto só para casar a string. Prefiro que esse teste entre na allowlist e seja recalculado, como fiz com `visao-aceite-estrutura` (mesma asserção). Sem isso o critério de suíte vai falhar nesses 2 testes.

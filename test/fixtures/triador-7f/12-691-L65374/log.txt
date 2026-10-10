@@ -1,0 +1,28 @@
+65347	[2026-09-30 17:06:14-0300] drenagem: ticket 691 (4 pendentes restantes)
+65348	[orq 20:06:14] orquestrador iniciando · modo: real · once
+65349	[orq 20:06:14] preflight: validando infra (scripts, fila, env, claude)...
+65350	[orq 20:06:17] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+65351	[orq 20:06:23] preflight: ok
+65352	[orq 20:06:38] === ticket 691 (inicio-ddl) — tentativa 1 · modo: real ===
+65353	[orq 20:06:39]   recon_esperado: ok (2 comando(s))
+65354	[orq 20:06:39]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/691/attempt-1/prompt.txt
+65355	[orq 20:06:39]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+65356	[orq 20:07:20]   diff cru salvo (210 linhas) · HEAD julgado 6fd29174
+65357	[orq 20:07:21]   enforcement: ok
+65358	[orq 20:07:40]   gate tsc: ok (baseline)
+65359	[orq 20:08:16]   gate vitest: ok
+65360	[orq 20:08:42]   criterios mecânicos: FALHA — criterio[8] mecânico: esperado 'UM_SQL', obteve 'SQL_1_0 0'
+65361	[orq 20:08:42]   REPROVA (mecânica, sem Opus): criterio[8] mecânico: esperado 'UM_SQL', obteve 'SQL_1_0 0'
+65362	[orq 20:08:42] ticket 691: reprovado — retry 1/2. motivo: criterio[8] mecânico: esperado 'UM_SQL', obteve 'SQL_1_0 0'
+65363	[orq 20:08:42] === ticket 691 (inicio-ddl) — tentativa 2 · modo: real ===
+65364	[orq 20:08:43]   recon_esperado: ok (2 comando(s))
+65365	[orq 20:08:43]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/691/attempt-2/prompt.txt
+65366	[orq 20:08:43]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+65367	[orq 20:09:47]   diff cru salvo (173 linhas) · HEAD julgado 698ec69d
+65368	[orq 20:09:47]   enforcement: ok
+65369	[orq 20:10:04]   gate tsc: ok (baseline)
+65370	[orq 20:10:30]   gate vitest: ok
+65371	[orq 20:10:52]   criterios mecânicos: FALHA — criterio[8] mecânico: esperado 'UM_SQL', obteve 'SQL_1_0 0'
+65372	[orq 20:10:52]   REPROVA (mecânica, sem Opus): criterio[8] mecânico: esperado 'UM_SQL', obteve 'SQL_1_0 0'
+65373	[orq 20:10:52] ticket 691: motivo de reprova REPETIU — circuit breaker (por ticket)
+65374	[orq 20:10:52] ticket 691: BLOQUEADO sem gastar a próxima volta

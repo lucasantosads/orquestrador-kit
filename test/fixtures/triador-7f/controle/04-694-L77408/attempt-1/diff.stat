@@ -1,0 +1,6 @@
+ src/app/api/portal/inicio/route.ts   |  85 ++++++++++++++
+ src/lib/contrato/fidelidade-fim.ts   |  48 +++++---
+ src/lib/inicio/carregar-carteira.ts  | 219 +++++++++++++++++++++++++++++++++++
+ test/inicio-resumo-api.test.ts       | 169 +++++++++++++++++++++++++++
+ test/selects-quebrados-28-09.test.ts |   2 +
+ 5 files changed, 510 insertions(+), 13 deletions(-)

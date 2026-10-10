@@ -1,0 +1,3 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+689	docs/fila/runs/689/attempt-1.prev1	test/cron-paths-vercel.test.ts	1377	2026-09-30T19:49:43Z	1
+689	docs/fila/runs/689/attempt-2	test/cron-paths-vercel.test.ts	1375	2026-09-30T19:52:10Z	1

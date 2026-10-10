@@ -1,0 +1,24 @@
+{
+ "classe": "R1",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/950/attempt-2/claude-output.txt",
+   "linha": null,
+   "origem": "medicao"
+  },
+  {
+   "arquivo": "docs/fila/runs/950/attempt-1.prev1/gate-vitest.txt",
+   "linha": 1973,
+   "origem": "trecho",
+   "trecho": "etapa2-funil-motor.test.ts:92"
+  },
+  {
+   "arquivo": "docs/fila/runs/950/attempt-2/gate-vitest.txt",
+   "linha": 1973,
+   "origem": "trecho",
+   "trecho": "etapa2-funil-motor.test.ts:92"
+  }
+ ],
+ "requeue": "nao",
+ "fonte_da_verdade": "medicao-bloqueios-out.md:136"
+}

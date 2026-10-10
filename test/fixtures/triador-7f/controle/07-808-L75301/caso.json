@@ -1,0 +1,13 @@
+{
+ "id": "808",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/808-resolver-cliente-rota-contratual.md",
+ "ticket_sha": "87522d9cf77bf067dfa699ee7afb2597ca2c1add",
+ "ticket_antes": true,
+ "linha_bloqueio": null,
+ "linha_fim": 75301,
+ "log_inicio": 75255,
+ "fim": "2026-10-06T22:47:56Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/808"
+}

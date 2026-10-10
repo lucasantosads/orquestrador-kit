@@ -1,0 +1,8 @@
+[
+ "claude-output.txt",
+ "diff.raw",
+ "diff.stat",
+ "enforcement.json",
+ "head.txt",
+ "prompt.txt"
+]

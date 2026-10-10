@@ -1,0 +1,16 @@
+O travessão mudo saiu dos três arquivos de clientes-perf e o TETO de `test/travessao-mudo.test.ts` baixou de 44 para 29. Está commitado em `6f6792b`, sem push.
+
+**Verificação**
+- **tsc:** 3 erros, todos em `qualificacao*`. Rodei da pasta `perf`, então o caminho saiu relativo em vez de `src/` e o comando literal do critério não foi executado.
+- **Contador do teto:** com TETO 29 a guarda passa. Com 28 ela falha e reporta `29 > teto 28`, então 29 é a contagem exata. A área não aparece mais nas ocorrências.
+- **Guardas globais:** `travessao-mudo`, `fetch-json-teto`, `consistencia-contagens`, `bloco-vazio-linha`, `abas-montadas` e `cartao-topo-perfil` passam (49 testes).
+- **Não rodei:** `npm run build` e a suíte completa do `vitest`. Também não medi o critério do TETO por relatório, porque `TRAVESSAO_RELATORIO=... npx vitest` foi negado no ambiente.
+
+**O que mudou**
+- **Células de tabela e valores em linha:** viraram `<SemDado compacto motivo="..."/>` com motivo do caso, por exemplo "sem leads no período para calcular o custo", "sem MQL no período para calcular o custo", "anúncio não tem orçamento próprio" e "componente fora do cálculo do score".
+- **KPI:** `MetricCard` (em `ClientePerfPanel.tsx` e em `perf-block.tsx`) e o valor do Perf Score mostram "sem base" quando não há valor. Nenhum zero foi fabricado.
+- **Funções de formatação:** `brl`, `int` e `previewValor` (em `ControleCampanhasPanel.tsx`) e `fmt` (em `perf-block.tsx`) passaram a devolver `string | null`. Em `ClientePerfPanel.tsx` criei `fmtNum` e `fmtIntNum` como versões puras.
+
+**Desvio da regra:** em `ClientePerfPanel.tsx` e `perf-block.tsx`, `fmt` e `fmtInt` continuam existindo como wrappers que devolvem o valor ou o `SemDado`. Fiz assim para não reescrever cerca de 50 chamadores.
+
+**Ponto que merece atenção:** alguns campos usam motivo padrão da própria função, "métrica não medida no período" e "contagem não medida no período". São específicos do domínio e não estão na lista de genéricos proibidos, mas o avaliador pode achar pouco específicos.

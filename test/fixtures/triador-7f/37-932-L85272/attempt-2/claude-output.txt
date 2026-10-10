@@ -1,0 +1,10 @@
+Refiz o ticket 932 do zero em cima do HEAD atual da `staging-auto` (`1159317`) e commitei como `2147d97`. Não testei o merge em si, então não sei se o conflito de antes foi resolvido. O tratamento é refazer sobre a base atual, pois a branch não tinha trabalho anterior. Dois arquivos novos, 116 linhas, dentro do teto de 170:
+
+- **`supabase/migrations/20261009200000_perf_ranking_foto_mensal.sql`:** tabela, índice, RLS, policy `only_service_role` e `revoke` de anon e authenticated, no molde do `perf_cliente_verba`. O cabeçalho traz "APLICAR E HUMANO", o token `humano:ddl-ranking-foto-aplicada` e a reversão. Não tem função, trigger, view nem grant.
+- **`test/perf-ranking-foto-mensal-ddl.test.ts`:** lê o `.sql` e confere colunas, check do escopo, unique, RLS, policy, revoke, cabeçalho e ausência de tabela C0 ou `vw_`.
+
+Os 6 testes que varrem a pasta de migrations (o novo, `c0-guard`, `migration-security-definer-anon`, `migrations-cabecalho-aplicada`, `migrations-policy-idempotente` e `sync-log-status`) passam: 54 testes.
+
+Não rodei `tsc` nem `npm run build`, porque só entraram um `.sql` e um teste. Também não rodei a suíte inteira nem as outras guardas globais do critério (`regra19`, `ui-guard` e as demais). A checagem de merge contra a `staging-auto` foi negada por permissão.
+
+Não apliquei a migration; isso fica com o Lucas.

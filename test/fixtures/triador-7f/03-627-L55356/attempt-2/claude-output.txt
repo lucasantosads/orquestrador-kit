@@ -1,0 +1,18 @@
+Parei sem commitar: a guarda está escrita, mas o teto de 273 do ticket não bate com o que o código tem hoje.
+
+**Medição.** Com o contador exatamente como o ticket define, o `src/` do HEAD (`dec47c2`) dá **278** ocorrências de travessão mudo. O `git diff --stat 2f58e67 HEAD -- src` sai vazio, então o `src/` é idêntico ao da medição original. Ninguém adicionou travessão depois; o 273 do ticket é que não bate com essa definição. Como o ticket manda parar quando a contagem é maior, não ajustei o teto.
+
+**Por que isso reprovou a tentativa 1.** O teste "travessao mudo nao passa do teto" falha com `expected 278 to be less than or equal to 273`. Foi a única falha da suíte, que teve 5757 testes passando e 1 falhando. O teste é o mesmo que escrevi agora, e a falha se repete.
+
+**O que já está pronto.** O arquivo `test/travessao-mudo.test.ts` existe, com os quatro `it` de nomes exatos. Os outros três passam. O comentário do teto cita `2f58e67`, e o teste não toca em `src/`. Ele está no worktree, sem commit.
+
+**Por que não commitei.** As duas saídas que eu tinha quebram alguma regra:
+- Com `TETO = 273`, a guarda fica vermelha e derruba o gate do vitest.
+- Com `TETO = 278`, o critério "teto ≤ 273" reprova. Isso também contraria o pedido de que o teto reflita a medição real do ticket.
+
+**Decisão necessária.** Uma destas três saídas destrava o ticket:
+1. Confirmar `TETO = 278` medido em `2f58e67` e relaxar o critério de `≤ 273` para `≤ 278`. É a que eu recomendo.
+2. Me dizer qual das definições do ticket está mais frouxa que a usada na medição de 273, por exemplo contar por linha em vez de por ocorrência. Contando por linha distinta, dá 276 (as duas duplicatas que vi valem no máximo 2 linhas a menos), ainda não 273.
+3. Remover 5 travessões de tela, o que este ticket proíbe. Caberia num dos tickets 627a–627k.
+
+Com a decisão, o commit sai em um passo.

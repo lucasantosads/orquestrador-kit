@@ -1,0 +1,4 @@
+ src/app/api/whatsapp/grupos-sem-vinculo/route.ts   |  86 +++++++++++-
+ .../integracoes/grupos-sem-vinculo-bloco.tsx       |  73 +++++++++-
+ test/grupos-cliente-que-saiu.test.ts               | 156 +++++++++++++++++++++
+ 3 files changed, 310 insertions(+), 5 deletions(-)

@@ -1,0 +1,25 @@
+Os 44 travessões mudos da área ficha-cliente saíram e o TETO baixou de 278 para 234, mas dois testes fora da allowlist quebraram. Parei nesses dois, como o ticket manda. Está commitado (`6d06221`) e não houve push.
+
+**Testes quebrados**
+- `test/delta-sem-base.test.ts` falha com "Cannot find module '@/components/estados/sem-dado'". O teste carrega `tabs/relatorio-tab.tsx` com esbuild e um `require` próprio que só conhece os mocks dele. O import novo do `SemDado` não resolve.
+- `test/perf-cliente-438.test.tsx` renderiza `performance/page.tsx`. O vitest não tem plugin de JSX e falha ao ler `src/components/estados/sem-dado.tsx`, que passou a ser importado pela página.
+- Nenhum dos dois está na allowlist, então não mexi neles.
+- Para destravar, o dono do ticket precisa incluí-los na allowlist e mockar `@/components/estados/sem-dado` neles. Trocar o `SemDado` por marcação inline nas duas telas fugiria da regra de substituição.
+- A suíte completa ficou com 2 arquivos falhando e 5835 testes passando. Não rodei `npm run build`.
+
+**Verificação**
+- O `tsc` dá 3 erros em `src/`, o baseline. Não consegui rodar `rm -rf .next` (negado), mas o filtro `^src/` já exclui esse ruído.
+- O contador do teste mede 234 depois da mudança. Como só não consegui rodar com `TRAVESSAO_RELATORIO` (o comando pediu aprovação), medi baixando o TETO para 0 e lendo o total da falha. A única sobra de "—" na pasta é um comentário em `resultados-tab.tsx`, fora da allowlist.
+- As 5 guardas globais e a guarda do travessao passam.
+- No teste da guarda mudei só o `TETO` e o comentário da medição.
+
+**O que virou o quê**
+- **Célula ou valor em linha sem dado:** `<SemDado compacto motivo="..."/>` com motivo específico do caso (por exemplo "lead sem telefone cadastrado", "responsável não atribuído", "campanha sem leads para calcular o CPL", "nicho sem CPL medido no período").
+- **KPI sem base de cálculo:** texto "sem base", sem 0 fabricado. Vale para CPL, ROAS, % Meta, score, ROI, Investiu, Fechou, CTR, metas e métricas do relatório.
+- **Metadado ausente:** o elemento some. Isso vale para categoria, status da tese, etapa do lead, data da linha do tempo, "meta:" no card de % Meta, o chip de variação, a linha de participantes da reunião e os blocos vazios de sinais de upsell e riscos.
+- **Funções de formatação:** `fmtDate`, `fmtNumero`, `fmtData` e `tempoDeCasa` agora devolvem `string | null`, e cada chamador escolhe o caso. `formatMetrica` devolve "sem base".
+- **Placeholder do input de verba:** de "—" para "R$".
+- **Vigência do histórico Meta:** quando a data de início falta, mostra "início não registrado".
+
+**Para conferir**
+- Nos blocos de sinais de upsell e riscos, escolhi omitir o bloco vazio em vez de deixar uma linha explicando a ausência. Se preferir a linha, é uma troca pequena.

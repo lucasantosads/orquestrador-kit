@@ -1,0 +1,34 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> PASS
+### criterio[9] -> PASS
+### criterio[10] -> PASS
+### criterio[11] -> PASS
+### criterio[12] -> PASS
+### criterio[13] -> PASS
+### criterio[14] -> PASS
+### criterio[15] -> PASS
+### criterio[16] -> PASS
+### criterio[23] -> PASS
+### criterio[24] -> PASS
+### criterio[25] -> PASS
+### criterio[26] -> PASS
+### criterio[28] -> PASS
+### criterio[29] -> PASS
+### criterio[30] -> PASS
+### criterio[31] -> PASS
+### criterio[32] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then N="$(basename "$F")"; T="$(printf '%s' "$N" | cut -c1-14)"; M="$(ls supabase/migrations/ | grep -E '^[0-9]{14}_' | grep -vxF "$N" | cut -c1-14 | sort | tail -1)"; [ "$T" \> "$M" ] && echo OK || echo FAIL; else echo ARQUIVO_AUSENTE; fi
+espera: OK
+-- saida --
+FAIL
+
+### criterio[33] -> PASS

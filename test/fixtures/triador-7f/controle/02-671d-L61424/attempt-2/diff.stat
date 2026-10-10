@@ -1,0 +1,4 @@
+ .../clientes/[id]/_components/linha-comercial.tsx  | 57 +++++++++++++++
+ src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx |  3 +
+ test/visao-linha-comercial.test.tsx                | 82 ++++++++++++++++++++++
+ 3 files changed, 142 insertions(+)

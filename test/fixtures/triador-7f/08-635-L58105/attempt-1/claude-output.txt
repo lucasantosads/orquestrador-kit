@@ -1,0 +1,14 @@
+O ticket 635 está feito, menos a exclusão de `crm.tsx`. Os comandos `rm` e `git rm` foram negados por permissão, então o arquivo continua na árvore. Não contornei a negação.
+
+**O que foi feito** (commit `d064eba`):
+- **`page.tsx`:** o aviso `FonteIndisponivel` do bloco de configurações saiu. O bloco `config` continua como key e só monta `<ConfigTab />` por link direto. O bloco `crm` fica só com `<ConexaoCrm />`. O import de `CrmTab` saiu.
+- **`config-tab.tsx`:** o cartão do CRM ganhou uma linha cinza abaixo do seletor de pipeline, só quando `crmPipelines.length === 0`. O texto é "sem base · a lista de pipelines do CRM ainda não está disponível, o seletor fica sem opções". Não é heading, card nem `FonteIndisponivel`.
+- **Testes:** recalculei os testes existentes da allowlist, cada asserção com comentário citando o 635. Criei `test/conta-crm-sem-contradicao.test.ts`.
+- **Verificações:** o tsc em `src/` segue em 3. `rotas-fantasma-ficha` passa com 19 testes.
+- **Fora do que o ticket listou:** três testes de `rotas-fantasma-ficha` também quebravam por construção, porque liam o mesmo aviso (ordem antes do formulário, jargão, "não some em silêncio"). Recalculei os três sem tirar nenhum `expect`.
+
+**O que falta:**
+- **Apagar `crm.tsx`:** falta rodar `git rm "src/app/dashboard/clientes/[id]/tabs/crm.tsx"` e commitar. Enquanto o arquivo existir, 4 testes falham: 2 em `conta-crm-sem-contradicao`, 2 em `ghl-um-lugar-so`. Também fica falhando o critério de aceite do `sub=config`, porque o link velho está nesse arquivo.
+- **Verificações não rodadas:** o `npm run build` e os critérios de aceite completos (suítes globais, anti-afrouxamento) não rodaram. Só rodei os testes citados acima e o tsc.
+
+Deixei a função local `FonteIndisponivel` em `page.tsx`, agora sem uso. Duas asserções que o ticket mandou manter (`data-testid="fonte-indisponivel"` e "fonte não disponível") leem o texto dessa função. Removê-la exigiria mexer nelas.

@@ -1,0 +1,29 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> PASS
+### criterio[9] -> PASS
+### criterio[10] -> PASS
+### criterio[11] -> PASS
+### criterio[12] -> PASS
+### criterio[13] -> PASS
+### criterio[14] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f "$F" && { grep -v '^[[:space:]]*--' "$F" | grep -oE "'[0-9]{4}-[0-9]{2}'" | wc -l | tr -d ' '; } || echo ARQUIVO_AUSENTE
+espera: 0
+-- saida --
+0
+ARQUIVO_AUSENTE
+
+### criterio[15] -> PASS
+### criterio[16] -> PASS
+### criterio[23] -> PASS
+### criterio[24] -> PASS
+### criterio[25] -> PASS
+### criterio[26] -> PASS

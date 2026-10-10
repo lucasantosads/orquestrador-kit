@@ -1,0 +1,13 @@
+Não fiz nenhuma alteração: a premissa do ticket está desatualizada e dois critérios se contradizem. Não há commit.
+
+- **Pré-condição:** `route.ts` tem `CAP_POR_EXECUCAO = 40` (linha 24) e `elegiveis.slice(0, CAP_POR_EXECUCAO)` (linha 114). Está ok.
+- **Contagem de crons:** o ticket diz que `vercel.json` tem 19 crons, mas na minha base tem **20**. O `/api/cron/resumo-grupos-semanal`, do ticket 619, já está no fim da lista. O `/api/cron/leitura-relacao` ainda não está.
+- **Teste:** `test/crons-meta-consolidacao.test.ts:430` já tem `toHaveLength(20)`, com comentário "Recalculado 19->20 (ticket 619)". Não existe mais a linha `toHaveLength(19)` em 427 que o ticket manda trocar.
+
+**Por que parei.** Com o cron do `leitura-relacao` acrescentado, `vercel.json` passa a ter **21** entradas. O teste só fica verde com `toHaveLength(21)`. Mas o critério `ALVO_20_CRONS` exige exatamente `toHaveLength(20);` e a instrução do ticket diz que a linha "vira exatamente" isso. Com 20 no teste e 21 no JSON, o `VERDE` falha. Não dá para cumprir os dois, e escolher um deles seria decisão sua.
+
+**O que falta decidir:**
+1. Reescrever o ticket com o alvo 21, ajustando o critério e o título do `it(` na linha 428 ("as 20 entradas..."). Aí basta acrescentar a entrada em `vercel.json`, no fim da lista, e trocar 20 por 21 no teste, com o comentário de recálculo 20->21 citando o 549c. Cabe folgado nas 30 linhas de orçamento.
+2. Ou me autorizar a fazer isso agora.
+
+O agendamento também continua sujeito ao token `humano:ligar-cron-ia`, porque o cron passa a chamar provedor de IA todo dia.

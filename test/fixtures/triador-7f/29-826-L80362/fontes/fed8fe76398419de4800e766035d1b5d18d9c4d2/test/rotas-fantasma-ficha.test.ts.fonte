@@ -1,0 +1,347 @@
+/**
+ * Ticket 258 — a ficha do cliente não pode referenciar rota de API que não
+ * existe em disco.
+ *
+ * O QUE ESTAVA ERRADO: a ficha buscava lista de pipelines/etapas do CRM e o
+ * par closer/data de fechamento em dois caminhos que nunca foram publicados.
+ * Toda abertura de ficha disparava 404 — um deles engolido por `.catch()`,
+ * o outro quebrando a promise em silêncio. O recon do ticket confirmou que
+ * não havia rota equivalente com outro caminho (não era renomeação), então
+ * os `fetch` saíram e a tela passou a declarar a ausência.
+ *
+ * COMO A PROVA É FEITA (mesma limitação de
+ * test/header-cliente-consolidado.test.ts): o projeto tem `"jsx": "preserve"`
+ * e não tem jsdom instalado, então importar o `.tsx` quebra o parse do vitest.
+ * A prova é ler o arquivo REAL do disco, extrair os caminhos `/api/…` citados
+ * e resolvê-los contra a árvore REAL de `src/app/api/`.
+ *
+ * DUAS EXIGÊNCIAS, DE FORÇA DIFERENTE — e o motivo de serem duas:
+ *
+ *   1. Todo caminho que a ficha REQUISITA (dentro de um `fetch(...)`) tem de
+ *      ter um `route.ts` correspondente. É a regra que o ticket cobra: 404 na
+ *      abertura da ficha é bug.
+ *   2. Todo caminho CITADO em qualquer lugar do arquivo — inclusive em
+ *      comentário — tem de resolver para um diretório real de `src/app/api/`.
+ *      Aqui a exigência é mais fraca de propósito: o arquivo cita
+ *      `/api/perf/dashboard/cliente` em prosa como o PREFIXO da rota real
+ *      `/api/perf/dashboard/cliente/[clienteId]`, que existe. Esse prefixo não
+ *      tem `route.ts` próprio e nunca é requisitado — cobrar `route.ts` dele
+ *      seria falso positivo. Mas o diretório precisa existir: caminho inteiro
+ *      inventado (como os dois removidos neste ticket, cujos diretórios `ghl/`
+ *      e `dashboard/fechamento/` não existem) continua reprovando.
+ */
+import { describe, it, expect } from "vitest";
+import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+
+const CAMINHO_FICHA = join("src", "app", "dashboard", "clientes", "[id]", "page.tsx");
+// Ticket 517: a linha do fechamento saiu de page.tsx e passou a morar dentro
+// do cartão de identidade (IdentidadeCliente), em geral-tab.tsx.
+const CAMINHO_GERAL = join("src", "app", "dashboard", "clientes", "[id]", "tabs", "geral-tab.tsx");
+const RAIZ_API = join("src", "app", "api");
+
+const srcFicha = readFileSync(CAMINHO_FICHA, "utf8");
+const srcGeral = readFileSync(CAMINHO_GERAL, "utf8");
+
+/**
+ * Um caminho de API como ele aparece no fonte: até o primeiro espaço, aspa,
+ * crase ou `)`. Pontuação de prosa colada no fim (`,` `.` `;` `:`) é aparada
+ * — em comentário o caminho costuma terminar em vírgula ou ponto.
+ */
+const RE_CAMINHO_API = /\/api\/[^\s"'`)]+/g;
+
+function extrairCaminhos(texto: string): string[] {
+  const achados = Array.from(texto.matchAll(RE_CAMINHO_API)).map((m) =>
+    m[0].replace(/[.,;:]+$/, "").split("?")[0],
+  );
+  return Array.from(new Set(achados)).sort();
+}
+
+/** Remove comentários de linha e de bloco, para separar requisição de prosa. */
+function semComentarios(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .filter((l) => !l.trim().startsWith("//"))
+    .join("\n");
+}
+
+/**
+ * Resolve `/api/a/b/c` contra a árvore de `src/app/api`. Um segmento que é
+ * interpolação (`${id}`) — ou um segmento literal que não existe como pasta —
+ * casa com o segmento dinâmico do diretório (`[id]`, `[...slug]`), que é
+ * exatamente como o roteador do Next resolve. Devolve o diretório resolvido,
+ * ou null se algum segmento não tem para onde ir.
+ */
+function resolverDiretorio(caminho: string): string | null {
+  const segmentos = caminho.replace(/^\/api\//, "").split("/").filter(Boolean);
+  let dir = RAIZ_API;
+  for (const seg of segmentos) {
+    const literal = join(dir, seg);
+    if (existsSync(literal) && statSync(literal).isDirectory()) {
+      dir = literal;
+      continue;
+    }
+    const dinamicos = readdirSync(dir, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && /^\[.+\]$/.test(e.name))
+      .map((e) => e.name);
+    if (dinamicos.length !== 1) return null;
+    dir = join(dir, dinamicos[0]);
+  }
+  return dir;
+}
+
+/** Caminho que a ficha efetivamente requisita — só o que está dentro de fetch(). */
+function caminhosRequisitados(src: string): string[] {
+  const chamadas = Array.from(
+    semComentarios(src).matchAll(/fetch\(\s*(`[^`]*`|"[^"]*"|'[^']*')/g),
+  ).map((m) => m[1]);
+  return extrairCaminhos(chamadas.join("\n"));
+}
+
+const REQUISITADOS = caminhosRequisitados(srcFicha);
+const CITADOS = extrairCaminhos(srcFicha);
+
+describe("ticket 258 — recon: a árvore de rotas que serve de referência é real", () => {
+  it("o arquivo da ficha e a raiz de rotas existem no disco", () => {
+    expect(existsSync(CAMINHO_FICHA)).toBe(true);
+    expect(existsSync(RAIZ_API)).toBe(true);
+  });
+
+  it("o resolvedor sabe distinguir rota existente de rota inventada", () => {
+    // Prova de que a asserção principal não é vácua: uma rota que existe
+    // resolve com route.ts, e um caminho inventado no mesmo formato não.
+    const real = resolverDiretorio("/api/clientes/situacao");
+    expect(real).not.toBeNull();
+    expect(existsSync(join(real!, "route.ts"))).toBe(true);
+    expect(resolverDiretorio("/api/nao/existe/mesmo")).toBeNull();
+  });
+
+  it("a ficha requisita um número plausível de rotas (o extrator não voltou vazio)", () => {
+    // Se o extrator quebrar (regex ou formato de fetch mudando), a lista
+    // esvazia e todos os testes abaixo passariam sem verificar nada.
+    expect(REQUISITADOS.length).toBeGreaterThan(15);
+    expect(CITADOS.length).toBeGreaterThanOrEqual(REQUISITADOS.length);
+  });
+});
+
+describe("ticket 258 — toda rota requisitada pela ficha existe em disco", () => {
+  it("nenhum fetch aponta para caminho sem route.ts", () => {
+    const fantasmas = REQUISITADOS.filter((c) => {
+      const dir = resolverDiretorio(c);
+      return dir === null || !existsSync(join(dir, "route.ts"));
+    });
+    expect(
+      fantasmas,
+      `a ficha requisita caminho(s) sem route.ts em disco: ${fantasmas.join(", ")}`,
+    ).toEqual([]);
+  });
+
+  it("nenhum caminho citado no arquivo aponta para diretório inexistente", () => {
+    const semDiretorio = CITADOS.filter((c) => resolverDiretorio(c) === null);
+    expect(
+      semDiretorio,
+      `caminho(s) citado(s) sem diretório correspondente: ${semDiretorio.join(", ")}`,
+    ).toEqual([]);
+  });
+});
+
+describe("ticket 258 — as duas rotas fantasma específicas do ticket sumiram", () => {
+  // Prova nominal, além da varredura: mesmo que a árvore de rotas mude, estes
+  // dois caminhos não podem voltar para a ficha enquanto não existirem.
+  const REMOVIDAS = [
+    { caminho: "/api/ghl/pipelines", dava: "lista de pipelines e etapas do CRM" },
+    { caminho: "/api/dashboard/fechamento", dava: "closer que fechou e data de fechamento" },
+  ];
+
+  for (const { caminho, dava } of REMOVIDAS) {
+    it(`a ficha não referencia mais ${caminho} (${dava})`, () => {
+      expect(srcFicha).not.toContain(caminho);
+      // E continua não existindo — se alguém publicar a rota, este teste cai
+      // e força reavaliar se o fetch deve voltar (aí com a UI de volta também).
+      expect(resolverDiretorio(caminho)).toBeNull();
+    });
+  }
+
+  it("o estado que os dois fetch alimentavam saiu junto — sem setter órfão", () => {
+    // RECALCULA (Entrega 2A, modo agência do GHL, 27/09): crmPipelines voltou a ser estado
+    // porque ganhou fonte real (perf_crm_pipelines, lido por GET /api/clientes/[id]/crm/status,
+    // que tem route.ts). O setter deixa de ser órfão: ele só pode ser alimentado por essa rota,
+    // e o caminho fantasma /api/ghl/pipelines continua proibido (teste nominal acima).
+    expect(srcFicha).toMatch(/setCrmPipelines\([^\n]*\)\)\)/);
+    expect(srcFicha).toContain("/api/clientes/${id}/crm/status");
+    expect(srcFicha).not.toContain("/api/ghl/pipelines");
+    expect(srcFicha).not.toContain("setCrmStages");
+    expect(srcFicha).not.toContain("setFechamento");
+    expect(srcFicha).toMatch(/const \[crmPipelines, setCrmPipelines\] = useState<\{ id: string; name: string \}\[\]>\(\[\]\)/);
+    expect(srcFicha).not.toMatch(/const \[crmStages/);
+    expect(srcFicha).not.toMatch(/const \[fechamento/);
+  });
+
+  it("o contrato do contexto recebe vazio/nulo, nunca sentinela fabricada", () => {
+    // ficha-types.ts está fora da allowlist do ticket, então as chaves seguem
+    // existindo — mas com o valor honesto de "não tenho isso".
+    expect(srcFicha).toContain("fechamento: null");
+    // RECALCULA (Entrega 2A): crmPipelines passa o estado real (vazio até a rota responder,
+    // nunca sentinela); a chave vai por shorthand. crmStages segue sem fonte: [].
+    expect(srcFicha).toMatch(/crmConfig, setCrmConfig, crmPipelines, crmStages: \[\]/);
+    expect(srcFicha).toContain("crmStages: []");
+  });
+});
+
+describe("ticket 258 — a ausência aparece na tela, não só no comentário", () => {
+  const jsx = semComentarios(srcFicha);
+  // RECALCULA (ticket 517): a linha do fechamento (BlocoVazioLinha,
+  // rotulo="Closer que fechou e Tempo de casa") saiu de page.tsx e passou a
+  // morar DENTRO do cartão de identidade, em geral-tab.tsx — abaixo da linha
+  // de resumo de Teses, só aparecendo quando falta Tempo de casa ou Closer.
+  // jsxGeral aplica o mesmo filtro semComentarios ao arquivo novo.
+  const jsxGeral = semComentarios(srcGeral);
+  // Ticket 635: o aviso dos pipelines vive em config-tab.tsx (cartão ConexaoCrm).
+  const jsxConfig = semComentarios(readFileSync(join("src", "app", "dashboard", "clientes", "[id]", "tabs", "config-tab.tsx"), "utf8"));
+  const linhaPipelines = /crmPipelines\.length === 0[\s\S]*?<p[^>]*>\s*([^<]*?)\s*<\/p>/.exec(jsxConfig)?.[1] ?? "";
+
+  it("o aviso do CRM continua um FonteIndisponivel isolado em page.tsx", () => {
+    // RECALCULA (ticket 635): o aviso saiu de page.tsx e virou uma linha dentro do cartão
+    // ConexaoCrm (config-tab.tsx). page.tsx passa a ter 0 <FonteIndisponivel no JSX.
+    // RECALCULA (ticket 517): antes eram 2 avisos no JSX de page.tsx
+    // (FonteIndisponivel do CRM + BlocoVazioLinha do fechamento, medido em
+    // 488d). O fechamento saiu para dentro do cartão (geral-tab.tsx), então
+    // page.tsx sobra só com o FonteIndisponivel do CRM: 1, e 0 BlocoVazioLinha.
+    expect((jsx.match(/<FonteIndisponivel/g) ?? []).length).toBe(0);
+    expect((jsx.match(/<BlocoVazioLinha/g) ?? []).length).toBe(0);
+    // O componente é JSX de verdade, não uma string solta num comentário.
+    // (o componente segue definido em page.tsx, então essas duas continuam valendo)
+    expect(jsx).toContain('data-testid="fonte-indisponivel"');
+    expect(jsx).toContain("fonte não disponível");
+  });
+
+  it("o aviso do fechamento nomeia os campos que ficaram vazios, agora dentro do cartão", () => {
+    // RECALCULA (ticket 517): rotulo/texto saíram de page.tsx; page.tsx não
+    // cita mais o rótulo, e geral-tab.tsx (dentro de IdentidadeCliente) é
+    // quem o carrega agora.
+    expect(jsx).not.toMatch(/rotulo="Closer que fechou e Tempo de casa"/);
+    expect(jsxGeral).toMatch(/rotulo="Closer que fechou e Tempo de casa"/);
+    // RECALCULA (ticket 648): a dica deixou de dizer "ainda não foi publicada" e
+    // passou a nomear de onde vem cada campo; o fechamento continua nomeado.
+    expect(jsxGeral).toMatch(/O tempo de casa conta a partir da data de fechamento do contrato/);
+  });
+
+  it("o aviso do CRM nomeia pipelines e etapas", () => {
+    // RECALCULA (ticket 635): o aviso nomeia a lista de pipelines dentro de config-tab.tsx
+    // (linha condicionada a crmPipelines.length === 0); page.tsx não cita mais o campos=.
+    expect(jsxConfig).toMatch(/crmPipelines\.length === 0[\s\S]*lista de pipelines do CRM/);
+  });
+
+  it("o aviso do fechamento fica dentro do cartão de identidade, abaixo de Teses/Entregáveis (ticket 517)", () => {
+    // RECALCULA (ticket 517): antes o aviso era uma linha solta em page.tsx,
+    // logo depois de <IdentidadeCliente>. Agora está DENTRO do componente
+    // IdentidadeCliente (geral-tab.tsx), depois da linha de resumo de Teses
+    // — a prova mais próxima e estável do bloco anterior a ele.
+    const funcaoInicio = jsxGeral.indexOf("export function IdentidadeCliente");
+    const teses = jsxGeral.indexOf('rotulo="Teses"', funcaoInicio);
+    const aviso = jsxGeral.indexOf('rotulo="Closer que fechou e Tempo de casa"', funcaoInicio);
+    expect(funcaoInicio).toBeGreaterThan(-1);
+    expect(teses).toBeGreaterThan(funcaoInicio);
+    expect(aviso).toBeGreaterThan(teses);
+
+    // E em page.tsx, o cartão segue direto para ContaNovaSugestao — nenhum
+    // bloco de aviso sobrou entre os dois (SetupBanner já não existia desde
+    // o 488d).
+    const cartaoPage = jsx.indexOf("<IdentidadeCliente");
+    expect(jsx.indexOf("<ContaNovaSugestao", cartaoPage)).toBeGreaterThan(cartaoPage);
+    expect(jsx).not.toContain("<SetupBanner");
+  });
+
+  it("o aviso do CRM fica antes do formulário cujo seletor ficou sem opções", () => {
+    // RECALCULA (ticket 635): o aviso saiu de page.tsx e virou a linha de pipelines dentro do
+    // cartão ConexaoCrm, logo abaixo do seletor. No fonte de config-tab.tsx a linha vem
+    // depois do rótulo "Pipeline principal" (índice do aviso > índice do seletor > -1).
+    const seletor = jsxConfig.indexOf("Pipeline principal");
+    const aviso = jsxConfig.indexOf("lista de pipelines do CRM");
+    expect(seletor).toBeGreaterThan(-1);
+    expect(aviso).toBeGreaterThan(seletor);
+  });
+
+  it("o texto dos avisos é da linguagem do domínio, sem jargão de banco nem de rota", () => {
+    // RECALCULA (ticket 517): em page.tsx sobram só campos+detalhe do aviso
+    // do CRM (2, era 4 — rotulo+texto do fechamento saíram para
+    // geral-tab.tsx). O par do fechamento é checado à parte, pelo texto
+    // conhecido: geral-tab.tsx tem outras linhas de BlocoVazioLinha (Teses,
+    // Entregáveis, NPS) que não fazem parte deste aviso e entrariam no ruído
+    // de uma varredura genérica por rotulo=/texto= no arquivo inteiro.
+    const textosPage = Array.from(jsx.matchAll(/(?:campos|detalhe|rotulo|texto)="([^"]*)"/g)).map((m) => m[1]);
+    // RECALCULA (ticket 635): o aviso do CRM saiu de page.tsx, então campos+detalhe = 0 lá
+    // (era 2); a linha de pipelines de config-tab.tsx entra na varredura de jargão abaixo.
+    expect(textosPage.length).toBe(0);
+    const rotuloFechamento = /rotulo="Closer que fechou e Tempo de casa"/.exec(jsxGeral);
+    // RECALCULA (ticket 598, mockup 23/09 visao.dc.html:74): o texto longo passou
+    // do texto= da linha para o texto= da Dica do "?" (maiúscula inicial).
+    // RECALCULA (ticket 648): a Dica agora é um ícone de ajuda e o texto explica as
+    // duas fontes (registro comercial do fechamento e data de fechamento).
+    const textoFechamento = /texto="O closer vem do registro comercial do fechamento do contrato\. O tempo de casa conta a partir da data de fechamento do contrato\. Campo sem base neste cartão não significa contrato sem closer"/.exec(jsxGeral);
+    expect(rotuloFechamento).not.toBeNull();
+    expect(textoFechamento).not.toBeNull();
+    for (const t of [...textosPage, linhaPipelines, rotuloFechamento![0], textoFechamento![0]]) {
+      expect(t, `"${t}" vaza jargão técnico para o usuário`).not.toMatch(
+        /\/api\/|route\.ts|404|endpoint|select |ilike|perf_|meta_|_id\b/i,
+      );
+    }
+  });
+
+  it("nenhuma das duas fontes some em silêncio: o aviso diz que branco não é ausência do dado", () => {
+    // Regra dos tickets 251/252 — a tela explica por que não sabe, em vez de
+    // deixar o campo vazio parecer "este cliente não tem closer / não tem
+    // pipeline cadastrado".
+    // RECALCULA (ticket 517): detalhe= do CRM continua só em page.tsx (1).
+    // texto= do fechamento saiu de page.tsx (0 lá agora) e vive em
+    // geral-tab.tsx — mesma regra de antes, endereço novo.
+    const detalhes = Array.from(jsx.matchAll(/detalhe="([^"]*)"/g)).map((m) => m[1]);
+    const linhasPage = Array.from(jsx.matchAll(/texto="([^"]*)"/g)).map((m) => m[1]);
+    // RECALCULA (ticket 635): detalhe= do CRM saiu de page.tsx (0 lá agora, era 1). A regra
+    // "a tela explica por que não sabe" vale na linha de pipelines de config-tab.tsx, que abre
+    // com "sem base" e diz que o seletor fica sem opções (em vez de /não é que/).
+    expect(detalhes.length).toBe(0);
+    expect(linhasPage.length).toBe(0);
+    expect(linhaPipelines).toMatch(/^sem base · .*seletor fica sem opções/);
+
+    // RECALCULA (ticket 598, mockup 23/09 visao.dc.html:74): o primeiro texto= após
+    // o rótulo agora é "sem base"; a explicação está no texto= da Dica seguinte.
+    const linhaFechamento = /<Dica texto="([^"]*)"/.exec(
+      jsxGeral.slice(jsxGeral.indexOf('rotulo="Closer que fechou e Tempo de casa"')),
+    );
+    expect(linhaFechamento).not.toBeNull();
+    expect(linhaFechamento![1]).toMatch(/não significa/);
+  });
+});
+
+describe("ticket 258 — nada foi criado nem silenciado no lugar", () => {
+  it("o ticket não criou rota de API para as fontes que faltam", () => {
+    // RECALCULA (Entrega 2A, modo agência do GHL): a pasta src/app/api/ghl passou a existir
+    // com rotas pedidas pela spec (contas, agencia, test-connection). O que o 258 proibia
+    // era a rota FANTASMA de pipelines: ela segue sem existir, e a lista de pipelines vem de
+    // /api/clientes/[id]/crm/status (perf_crm_pipelines).
+    expect(existsSync(join(RAIZ_API, "ghl", "pipelines"))).toBe(false);
+    expect(existsSync(join(RAIZ_API, "clientes", "[id]", "crm", "status", "route.ts"))).toBe(true);
+    expect(existsSync(join(RAIZ_API, "dashboard", "fechamento"))).toBe(false);
+  });
+
+  it("nenhum fetch da ficha foi apenas silenciado com catch vazio", () => {
+    // Um `.catch(() => {})` sobre um 404 conhecido é o anti-padrão que este
+    // ticket veio corrigir: mantém o fetch morto e esconde a evidência.
+    //
+    // De onde vem o 8: são os `.catch(() => {})` que já existiam e continuam
+    // existindo (entregáveis, NPS, token de NPS, metadados de contrato,
+    // tracking de onboarding, histórico de status e os dois de risco de
+    // contrato) — todos sobre rota REAL, tratando falha de rede. O ticket 258
+    // não acrescentou nenhum: os dois fetch fantasma saíram inteiros, não
+    // ganharam catch. A contagem trava para cima justamente para pegar quem
+    // "resolver" um 404 futuro engolindo-o.
+    const vazios = semComentarios(srcFicha).match(/\.catch\(\(\)\s*=>\s*\{\s*\}\)/g) ?? [];
+    expect(vazios.length).toBeLessThanOrEqual(8);
+  });
+
+  it("a tela de login do Google ficou fora do escopo — a ficha não a toca", () => {
+    expect(srcFicha).not.toContain("/api/auth/google");
+  });
+});

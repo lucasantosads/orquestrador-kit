@@ -1,0 +1,7 @@
+ src/app/api/cron/ghl-backfill/route.ts |  42 ++++
+ src/lib/jobs/handlers/index.ts         |   2 +
+ src/lib/perf/crm-conexao.ts            |   1 +
+ src/lib/perf/ghl-backfill.ts           | 158 ++++++++++++++
+ test/ghl-backfill-job.test.ts          | 367 +++++++++++++++++++++++++++++++++
+ vercel.json                            |   4 +
+ 6 files changed, 574 insertions(+)

@@ -1,0 +1,21 @@
+Criei `test/portal-inicio-aceite.test.tsx` e commitei (207a653). O teste novo passa com 22 de 22. O diff tem 320 linhas, dentro do teto de 560. Não alterei nada em `src/`.
+
+Verifiquei só o teste novo e o tsc. O tsc não regride: o filtro sem `.next/` mostra exatamente 3 erros, todos já existentes (`qualificacao-block.tsx` e duas rotas de perf). Não rodei as guardas globais, o `npm run build` nem o `vitest` completo. O `rm -rf .next` foi negado por permissão, então o tsc rodou sem limpar `.next`.
+
+- **Mockups:** o teste lê os dois mockups com `readFileSync` e tira deles os rótulos de contadores, colunas, filtros, títulos e botões.
+- **Tela:** a tela é conferida renderizando as peças com `renderToStaticMarkup`. O Responder agora e o kanban fazem busca na rede, então esses dois são conferidos pela fonte.
+- **Âncoras:** só texto visível ou `data-testid`.
+- **Tabela de divergências (cabeçalho):**
+  - "Abrir grupo" fica fora da fase: exige link de convite via Evolution e só o AQUINO ADV está vinculado (decisão de 08/10). O teste não exige o botão.
+  - "Criar tarefa" do mockup aparece como "Subir tarefa" na tela (697/736).
+  - Renovações destaca 15 dias, não 7.
+  - Saldo Pix, atalhos de teclado e rotinas agrupadas ficam fora da fase.
+  - No Por gestor, "s/ dado" do mockup vira "sem base" com o motivo.
+
+Duas divergências de redação não têm decisão registrada em nenhum ticket que li, e as pus na tabela como diferença de redação:
+- O carimbo "Meta atualizada às" do mockup é "Meta coletada até" na tela.
+- O tipo "Promessa no prazo" do mockup é "Promessa vence hoje" na tela.
+
+Se não forem intencionais, o Lucas decide: ou os dois it( passam a cobrar o rótulo do mockup e ficam vermelhos, ou a decisão entra no adendo.
+
+Nenhum item ficou vermelho. As colunas do kanban ("A fazer", "Fazendo", "Concluído hoje") não estão em nenhum dos 22 itens, então não as cobri.

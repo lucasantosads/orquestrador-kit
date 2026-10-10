@@ -1,0 +1,11 @@
+ ❯ ../../comarka-operacional/node_modules/vitest/dist/chunks/cli-api.24X8XwN1.js:3465:94
+Caused by: Error: [vitest-pool-runner]: Timeout waiting for worker to respond
+ ❯ Timeout.<anonymous> ../../comarka-operacional/node_modules/vitest/dist/chunks/cli-api.24X8XwN1.js:3041:58
+ ❯ ../../comarka-operacional/node_modules/vitest/dist/chunks/cli-api.24X8XwN1.js:3465:94
+Caused by: Error: [vitest-pool-runner]: Timeout waiting for worker to respond
+ ❯ Timeout.<anonymous> ../../comarka-operacional/node_modules/vitest/dist/chunks/cli-api.24X8XwN1.js:3041:58
+ ❯ ../../comarka-operacional/node_modules/vitest/dist/chunks/cli-api.24X8XwN1.js:3465:94
+Caused by: Error: [vitest-pool-runner]: Timeout waiting for worker to respond
+ ❯ Timeout.<anonymous> ../../comarka-operacional/node_modules/vitest/dist/chunks/cli-api.24X8XwN1.js:3041:58
+ Test Files  740 passed (740)
+      Tests  7617 passed (7617)

@@ -1,0 +1,13 @@
+{
+ "id": "891",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/891-grupos-sem-vinculo.md",
+ "ticket_sha": "43492e0e5b498aa5e0a749f5cd1bb9c95dd077a7",
+ "ticket_antes": true,
+ "linha_bloqueio": null,
+ "linha_fim": 81042,
+ "log_inicio": 81005,
+ "fim": "2026-10-08T06:30:05Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/891"
+}

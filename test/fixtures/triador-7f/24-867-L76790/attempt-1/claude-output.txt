@@ -1,0 +1,27 @@
+A Relação não grava mais reunião e o Pulso só lê (opção 1). Está commitado como `aceb758`, sem push.
+
+**Verificação**
+- `tsc` deu 3 erros, o baseline.
+- Os 5 testes trocados e o teste novo passaram (151 testes).
+- As 7 guardas globais passaram (70 testes).
+- O diff tem 233 linhas, dentro do teto de 260.
+- Não rodei `npm run build` nem a suíte `vitest run` completa.
+- Não rodei os outros critérios de shell (como `SO_ALLOWLIST`, `FIRME`, `SEM_ESCRITA`).
+- Só os 4 arquivos de `src` e os 6 de teste da allowlist foram tocados. Zero `.sql`.
+
+**O que mudou**
+- **`reunioes-tab.tsx`:** o formulário "Salvar Reunião", o `abrirReuniao` e o `handleCriar` saíram. O `useFicha` agora só pega o que a aba ainda usa.
+- **`page.tsx` e `ficha-context.tsx`:** `showNovaReuniao`, `novaReuniao`, `criarReuniao` e `executandoCriarReuniao` saíram. A leitura de `reunioes` e o `gerarResumoReuniao` ficaram.
+- **`pulso-relacao.tsx`:** o `+` de Registrar reunião, o botão Agendar e a prop `abrirReuniao` saíram. "Sem base" e "nenhuma agendada" aparecem como texto cinza, sem botão.
+- **Testes:** as asserções da lista mudaram uma a uma, cada uma com comentário citando o 867. O teste novo é `test/relacao-sem-escrita-reuniao.test.ts`.
+
+**Duas asserções fora da lista fechada**
+Elas quebraram como consequência direta da remoção de `criarReuniao`. Recalculei cada uma com comentário citando o 867:
+- `acao-unica-ficha-controles.test.tsx`: o total de mutações distintas passou de 13 para 12.
+- `acao-unica-ficha-controles.test.tsx`: o total de campos `executando*` publicados passou de 16 para 15.
+
+Como a regra proíbe afrouxar, mantive as duas asserções com o valor recalculado.
+
+**Fora do escopo**
+- A rota `POST /api/clientes/reunioes` ficou sem chamador. Removê-la é outro ticket.
+- O tipo `NovaReuniao` em `ficha-types.ts` ficou sem uso, porque o arquivo está fora da allowlist.

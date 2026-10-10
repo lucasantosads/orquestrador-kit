@@ -1,0 +1,4 @@
+ src/app/api/churn-log/route.ts                     |   8 +-
+ .../20260920000000_fn_reativar_churn.sql           | 131 +++++++++++++++++++++
+ test/espelho-fase-churn.test.ts                    |  15 ++-
+ 3 files changed, 150 insertions(+), 4 deletions(-)

@@ -1,0 +1,22 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> PASS
+### criterio[9] -> PASS
+### criterio[10] -> PASS
+### criterio[11] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-712
+sanear_tsc: nao
+cmd:    f=src/app/api/tarefas-kanban/route.ts; a=$(grep -c 'gravarAviso' $f); b=$(grep -c "categoria: 'tarefa'" $f); [ "$a" -ge 1 ] && [ "$b" -ge 1 ] && echo AVISA || echo FALTA_${a}_${b}
+espera: AVISA
+-- saida --
+FALTA_2_0
+
+### criterio[12] (qualitativo — julgado pelo Opus)
+descricao: avaliador: atribuir tarefa a outra pessoa (na criacao ou reatribuicao) gera 1 aviso para ela com link para a tarefa; falha do aviso nao derruba a tarefa. REPROVE se: avisa quem atribuiu a si mesmo; duplica; derruba a gravacao.
+

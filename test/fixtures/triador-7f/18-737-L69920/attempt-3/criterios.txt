@@ -1,0 +1,21 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-737
+sanear_tsc: nao
+cmd:    b="$(git merge-base HEAD origin/staging-auto)"; r=SO_ALLOWLIST; for f in $(git diff --name-only "$b" HEAD); do ok=0; for p in 'src/components/relacao/responder-agora.tsx' 'src/app/dashboard/clientes/[id]/page.tsx' 'test/relacao-responder-tela.test.ts'; do case "$f" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r
+espera: SO_ALLOWLIST
+-- saida --
+FORA_src/app/dashboard/clientes/[id]/page.tsx
+
+### criterio[7] -> PASS
+### criterio[8] -> PASS
+### criterio[9] -> PASS
+### criterio[10] -> PASS
+### criterio[11] -> PASS
+### criterio[12] -> PASS
+### criterio[13] -> PASS

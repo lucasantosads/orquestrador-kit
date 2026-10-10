@@ -1,0 +1,28 @@
+O ticket 407a está feito e commitado (`2e3f4bb`). Nada foi aplicado no banco e nada foi enviado com push.
+
+**Verificação**
+- `tsc`: 3 erros, o baseline. Não rodei o `rm -rf .next` do gate porque o comando foi negado, então o número pode estar incluindo ou omitindo erros de `.next/`. O filtro `grep -v '^\.next/'` tira esse ruído.
+- `vitest`: 690 arquivos e 7102 testes passam.
+- `npm run build`: `BUILD_OK`.
+- Critérios de grep da migration: não os rodei, porque o shell bloqueou os comandos compostos. Conferi os números por leitura do arquivo.
+
+**Migration** (`supabase/migrations/20260920000000_fn_reativar_churn.sql`)
+- **Cabeçalho:** só comentário de linha `--`. Declara a exceção C0 (Lucas, 19/09) e `cliente_id` como a chave escolhida.
+- **`sync_churn_summary_num_saidas()`:** agora atualiza `churn_rate = round(n::numeric / nullif(total_clientes, 0) * 100, 4)` no mesmo UPDATE de `num_saidas`. Comparo o mês como `'YYYY/MM'`, com barra.
+- **`reverter_para_nao_iniciado()`:** não converte para `nao_iniciado` quando `app.reativacao_direta` é `'on'`, e não insere mais histórico próprio. Sem a flag, o fluxo normal de venda continua como hoje.
+- **`fn_reativar_churn(p_cliente_id uuid)`:**
+  - É `SECURITY DEFINER` com `search_path` fixo e localiza tudo por `cliente_id`.
+  - Se `clientes` não tem a linha, ou `clientes_receita` não tem linha com esse `cliente_id`, dá `RAISE EXCEPTION`. No segundo caso a mensagem é a exata do ticket, e tudo desfaz.
+  - Ela seta a flag antes de atualizar `clientes`, grava `data_cancelamento = null` e marca `churn_aprovacoes` e `churn_log` com `revertido = true` e `revertido_em = now()` nas linhas ainda não revertidas. Não faz DELETE nem escreve no resumo mensal.
+  - Acrescentei um `revoke`/`grant` só para `‹segredo›`, que o ticket não pedia. Se preferir outra política de permissão, é só tirar.
+
+**Rota** (`src/app/api/churn-log/route.ts`): o DELETE agora faz `.update({ revertido: true, revertido_em })` na mesma linha, com o erro "Não foi possível reverter a saída". O resto da rota ficou como estava, e a contagem de `from("clientes_receita")` não mudou.
+
+**Testes**
+- Uma asserção de `test/espelho-fase-churn.test.ts` quebrou com a regra nova (esperava só `["s-antiga"]` depois da reversão). Recalculei para as duas linhas continuarem lá e só `s-nova` ficar com `revertido = true`, com comentário citando o 407a.
+- Acrescentei o `it` novo que prova que a linha continua em `db.churn_log` com `revertido === true` depois do DELETE.
+- `test/churn-log-auth.test.ts` não precisou de mudança.
+
+**Para conferir antes de aplicar**
+- O `migrations/migration-churn-monthly-summary.sql` legado declara `churn_rate NOT NULL DEFAULT 0` e o gatilho `calc_churn_rate` força 0 quando `total_clientes` é 0. Se o banco vivo ainda for assim, o "sem base = NULL" do item (g) não se sustenta. Deixei um aviso no cabeçalho da migration.
+- A função não limpa `motivo_cancelamento` nem `etapa_churn` em `clientes`, porque o ticket só pede `status` e `data_cancelamento`. A rota atual limpa esses dois na reversão. O 407b decide se a função deve fazer o mesmo.

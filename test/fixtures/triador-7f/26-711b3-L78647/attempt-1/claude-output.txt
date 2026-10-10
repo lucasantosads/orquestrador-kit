@@ -1,0 +1,14 @@
+Parei sem alterar nada. O ticket manda parar quando um teste fora da allowlist quebra, e esta mudança quebra `test/saude-motivo-sem-base.test.ts` (o teste do ticket 599).
+
+Esse teste fica fora da allowlist e deveria seguir verde sem edição. Duas asserções exigem trechos que a regra nova remove:
+
+- **`test/saude-motivo-sem-base.test.ts:65`** exige `motivoSaude={motivoSaudeSemBase(health)}` em `page.tsx`. A regra nova faz a dica vir de `chipSaude`, então a prop `motivoSaude` sai.
+- **`test/saude-motivo-sem-base.test.ts:70`** exige `<Dica texto={motivoSaude ?? score.motivo}>{chipSaude}</Dica>` em `geral-tab.tsx`. Com o rótulo e a dica vindos de `chipSaude`, a prop `score` e esse `Dica` deixam de existir.
+
+Manter essas duas linhas só para o teste passar deixaria código morto e uma segunda fonte de dica, o que o ticket reprova ("segunda regra de cor"). Também há um conflito dentro da allowlist: `test/visao-aceite-estrutura.test.tsx:573-574` fixa as mesmas duas strings, mas esse arquivo pode ser recalculado. `saude-motivo-sem-base.test.ts` não pode.
+
+**O que preciso de você:** autorizar a inclusão de `test/saude-motivo-sem-base.test.ts` na allowlist, só para recalcular essas duas asserções (com comentário citando o 711b3). Se preferir, posso manter `motivoSaude` e o `Dica` antigo, mas não recomendo.
+
+Além disso, `page.tsx:1059` chama `estadoScoreSaude(health?.score ?? null)` no prompt da análise de IA. O critério `MESMA_REGRA` exige zero ocorrências dessa chamada no arquivo, então vou trocar essa linha por uma leitura direta do número do score (sem mudar o texto do prompt). Isso não depende da sua decisão.
+
+Não houve commit nem edição de arquivo.

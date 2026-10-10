@@ -1,0 +1,23 @@
+I fixed what the reviewer flagged, but this ticket will still fail one of its automatic checks: the check and the reviewer ask for opposite things.
+
+**Fix (commit `b516f4a`):** the migration file now says `on delete cascade` on `cliente_id` and `on delete set null` on `definido_por`, as the ticket asks. The test also checks both clauses. The diff is 111 lines, under the 130 budget. Nothing in `src/` was touched and the migration was not applied.
+
+**Results:**
+- **Type check:** 3 errors, the known baseline, nothing new. I couldn't clear the `.next` folder first (permission denied), but none of the errors came from it.
+- **Tests:** the full suite passes (859 files, 8629 tests), including the 5 global migration guards and the new test.
+- **Build:** passes (`BUILD_OK`).
+- **Other checks:** "only allowlisted files", "no `src` changes", "within budget" and "header" pass.
+
+**The conflict:** the "migration ok" check (expects `MIGRATION_OK`) fails on this commit. It searches every non-comment line for the bare word `delete`, so it rejects the two `on delete` lines the reviewer required:
+```
+3:  cliente_id uuid primary key references public.clientes(id) on delete cascade,
+5:  definido_por uuid references public.employees(id) on delete set null,
+```
+The previous attempt passed this check only because it left those clauses out, which is exactly why the reviewer rejected it. No correct file can satisfy both. Hiding the word with string tricks to get past the search would be gaming the check, so I didn't.
+
+**What you need to decide:** the check is in the ticket file, outside what I'm allowed to edit. To fix it, strip the foreign-key clauses before searching, for example:
+`... | sed -E 's/on delete (cascade|set null)//I' | grep -ciE 'drop |delete|...'`
+
+My test already handles it this way: it removes the `on delete` clauses before checking for drop, delete, truncate, grant, insert and security definer. Until the check changes, every retry of this ticket fails one way or the other.
+
+When you apply the migration, the token to release is `humano:ddl-898`. I didn't push.

@@ -1,0 +1,1 @@
+{"aprovado": true, "motivo": "POST e PATCH avisam só quem recebe tarefa de outra pessoa; quem atribui a si não recebe. A chave tarefa:id:atribuida:resp evita duplicar, o link é /portal#tarefas e o try/catch mantém a tarefa gravada. Ressalva: se o insert falhar, gravarAviso devolve gravado:false sem lançar erro, e nada vai para o log."}

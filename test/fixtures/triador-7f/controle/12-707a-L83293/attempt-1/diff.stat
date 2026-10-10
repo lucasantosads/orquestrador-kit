@@ -1,0 +1,3 @@
+ src/components/relacao/responder-agora.tsx |  24 ++++++-
+ test/inicio-responder-prazo.test.ts        | 109 +++++++++++++++++++++++++++++
+ 2 files changed, 132 insertions(+), 1 deletion(-)

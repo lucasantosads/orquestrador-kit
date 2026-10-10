@@ -1,0 +1,3 @@
+ src/lib/promessas/detectar.ts       | 200 ++++++++++++++++++++++++++++--------
+ test/promessas-avaliar-pura.test.ts | 168 ++++++++++++++++++++++++++++++
+ 2 files changed, 323 insertions(+), 45 deletions(-)

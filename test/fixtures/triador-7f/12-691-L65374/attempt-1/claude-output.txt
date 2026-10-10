@@ -1,0 +1,15 @@
+Escrevi e commitei a migration das 4 tabelas `perf_` (commit `6fd2917`), mas não consegui rodar o gate do `tsc`: o comando foi negado por permissão. Não rodei `npm run build` nem o `vitest run` completo. Nada foi aplicado ao banco e não houve push.
+
+- **Migration:** `supabase/migrations/20261001090000_portal_inicio.sql`, com 157 linhas.
+  - `perf_eventos_produtividade` tem `chave` UNIQUE e o índice `(colaborador_id, ocorrido_em desc)`.
+  - `perf_cliente_cor_override` tem UNIQUE parcial em `cliente_id` onde `removido_em` é nulo.
+  - `perf_vacuo_tratado` tem UNIQUE `(group_jid, mensagem_enviada_em)`.
+  - `perf_promessas` tem `wpp_message_id` UNIQUE e o índice `(status, prazo)`.
+  - Nas quatro há RLS ligado, policy `only_service_role` idempotente em bloco DO e `revoke all` de `anon` e `authenticated`.
+  - O cabeçalho traz propósito, ticket 691, "aplicar é humano" e a reversão exata (`drop table` das 4).
+- **Teste:** `test/portal-inicio-ddl.test.ts`, com 41 linhas, lendo o `.sql` como texto. Confere as 4 tabelas `perf_`, 4 RLS, 4 revokes de anon, as duas chaves únicas e a ausência de nomes da zona C0.
+- **Verificações que rodei:**
+  - O teste novo, `test/c0-guard.test.ts` e `test/travessao-mudo.test.ts` passaram (29 testes).
+  - O grep de C0 e de `notifications`/`comunicados` no `.sql` dá 0.
+  - O diff é de 198 linhas, abaixo do teto de 220. Só os dois arquivos da allowlist foram tocados.
+- **Pendente:** o gate do `tsc` (baseline 3). Só adicionei um `.sql` e um teste, então não esperava regressão, mas o gate precisa rodar.

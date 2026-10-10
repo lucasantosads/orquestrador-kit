@@ -1,0 +1,18 @@
+As reprovações do critério 4 estão resolvidas: `grep -c 'sem base, nenhuma análise gerada'` em `analise-ia.tsx` agora dá 0, ou seja, `IA_LINHA`.
+
+A branch não tinha nenhum trabalho anterior do 650, então implementei o ticket inteiro. Ficou em dois commits, `102838f` (fontes) e `14faff8` (testes), sem push.
+
+- **Análise IA:** sem análise vira a linha `Análise IA · nenhuma · Gerar análise`, sem cartão. Gerada, mantém o cartão colapsado que expande.
+- **Relação:** vazio renderiza uma linha (`Temperatura · sem base | Último contato · sem base | Próximo compromisso · sem base`) com 1 `Registrar` e 1 `Ver relação`, sem heading. Leitura com temperatura `sem_base` conta como sem leitura e o texto do banco não é impresso. `src/lib/ia/leitura-relacao.ts` ficou intocado.
+- **Linha do tempo:** os chips só aparecem com pelo menos um evento. Sem evento, a linha é `Linha do tempo · nenhum evento entre DD/MM e DD/MM`, e `geral-tab.tsx` passa o período por prop. Sem período, o texto cai em `nenhum evento no período`.
+- **Otimizações:** vazio vira `Otimizações · nenhuma no período · Registrar em Campanhas`, sem `<h3>`. `Ver histórico completo` só aparece com dado.
+
+Verificação:
+- **tsc:** 3 erros em `src/` (baseline).
+- **Build:** `BUILD_OK`.
+- **vitest:** os 49 arquivos (allowlist mais as guardas globais e o teste novo) passam, 672 testes.
+- **Teste novo:** `test/ficha-visao-blocos-vazios.test.ts` cobre os casos pedidos: Relação vazia com 1 `Registrar` e 1 `Ver relação`, Linha do tempo com 0 chips sem evento e com chips com 1 evento. Também cobre a leitura `sem_base` e o período com datas.
+
+Recalculei 9 testes existentes com comentário citando o 650, sem remover asserção nem apagar `it(`. O critério de contagem de `it(` e o de skip/only/todo não foram executados; só conferi por diff que nenhum `it(` foi removido. Além dos testes listados no ticket, também tive que recalcular alguns em `test/visao-aceite-estrutura.test.tsx` (chips, rodapé de Otimizações, Análise IA, copy) e em `test/visao-estrutura-relacao.test.tsx` (cabeçalho e ordem). Onde o estado vazio deixou de ter estrutura (cartão da Relação, chips, cartão colapsado), as asserções passaram a medir o estado com dado, e adicionei asserções do novo vazio ao lado.
+
+Não consegui rodar `rm -rf .next` antes do tsc (comando negado); o resultado 3 saiu sem a limpeza.

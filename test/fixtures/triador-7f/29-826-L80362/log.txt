@@ -1,0 +1,57 @@
+80306	[2026-10-08 01:16:45-0300] drenagem: ticket 826 (19 pendentes restantes)
+80307	[orq 04:16:46] orquestrador iniciando · modo: real · once
+80308	[orq 04:16:46] preflight: validando infra (scripts, fila, env, claude)...
+80309	[orq 04:16:49] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+80310	[orq 04:16:56] preflight: ok
+80311	[orq 04:17:13] === ticket 826 (ficha-sem-reescrita-notion) — tentativa 1 · modo: real ===
+80312	[orq 04:17:14]   recon_esperado: ok (4 comando(s))
+80313	[orq 04:17:14] aviso allowlist: src/app/dashboard/clientes/[id]/page.tsx já existe no worktree — o agente vai EDITAR, não criar
+80314	[orq 04:17:14] aviso allowlist: test/campanhas-aceite-mockup.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+80315	[orq 04:17:14] aviso allowlist: test/cartao-topo-setup-e-closer.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80316	[orq 04:17:14] aviso allowlist: test/ficha-por-uuid.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80317	[orq 04:17:14] aviso allowlist: test/link-setup-notion-id.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80318	[orq 04:17:14] aviso allowlist: test/painel-em-campanhas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80319	[orq 04:17:14]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/826/attempt-1/prompt.txt
+80320	[orq 04:17:14]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+80321	[orq 04:18:53]   diff cru salvo (89 linhas alteradas) · HEAD julgado fed8fe76
+80322	[orq 04:18:53]   enforcement: ok
+80323	[orq 04:19:09]   gate tsc: ok (baseline)
+80324	[orq 04:19:34]   gate vitest: FALHA
+80325	[orq 04:19:34]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/826/attempt-1/gate-vitest.txt)
+80326	[orq 04:19:34] ticket 826: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/826/attempt-1/gate-vitest.txt)
+80327	[orq 04:19:34] === ticket 826 (ficha-sem-reescrita-notion) — tentativa 2 · modo: real ===
+80328	[orq 04:19:35]   recon_esperado: ok (4 comando(s))
+80329	[orq 04:19:35] aviso allowlist: src/app/dashboard/clientes/[id]/page.tsx já existe no worktree — o agente vai EDITAR, não criar
+80330	[orq 04:19:35] aviso allowlist: test/campanhas-aceite-mockup.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+80331	[orq 04:19:35] aviso allowlist: test/cartao-topo-setup-e-closer.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80332	[orq 04:19:35] aviso allowlist: test/ficha-por-uuid.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80333	[orq 04:19:35] aviso allowlist: test/link-setup-notion-id.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80334	[orq 04:19:35] aviso allowlist: test/painel-em-campanhas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80335	[orq 04:19:35]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/826/attempt-2/prompt.txt
+80336	[orq 04:19:35]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+80337	[orq 04:22:32]   diff cru salvo (106 linhas alteradas) · HEAD julgado cea47377
+80338	[orq 04:22:32]   enforcement: ok
+80339	[orq 04:22:49]   gate tsc: ok (baseline)
+80340	[orq 04:23:23]   gate vitest: ok
+80341	[orq 04:23:48]   criterios mecânicos: FALHA — criterio[4] mecânico: esperado 'ZERO_JSON_NOVO', obteve 'JSON_NOVO_6'
+80342	[orq 04:23:48]   REPROVA (mecânica, sem Opus): criterio[4] mecânico: esperado 'ZERO_JSON_NOVO', obteve 'JSON_NOVO_6'
+80343	[orq 04:23:48] ticket 826: reprovado — retry 2/2. motivo: criterio[4] mecânico: esperado 'ZERO_JSON_NOVO', obteve 'JSON_NOVO_6'
+80344	[orq 04:23:48] === ticket 826 (ficha-sem-reescrita-notion) — tentativa 3 · modo: real ===
+80345	[orq 04:23:49]   recon_esperado: ok (4 comando(s))
+80346	[orq 04:23:49] aviso allowlist: src/app/dashboard/clientes/[id]/page.tsx já existe no worktree — o agente vai EDITAR, não criar
+80347	[orq 04:23:49] aviso allowlist: test/campanhas-aceite-mockup.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+80348	[orq 04:23:49] aviso allowlist: test/cartao-topo-setup-e-closer.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80349	[orq 04:23:49] aviso allowlist: test/ficha-por-uuid.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80350	[orq 04:23:49] aviso allowlist: test/link-setup-notion-id.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80351	[orq 04:23:49] aviso allowlist: test/painel-em-campanhas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80352	[orq 04:23:49]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/826/attempt-3/prompt.txt
+80353	[orq 04:23:49]   tentativa final: escalando modelo do executor para 'opus'
+80354	[orq 04:23:49]   chamando claude -p (headless, --model opus, timeout 1500s) no worktree...
+80355	[orq 04:36:15]   diff cru salvo (133 linhas alteradas) · HEAD julgado cc2e50b4
+80356	[orq 04:36:15]   enforcement: ok
+80357	[orq 04:36:31]   gate tsc: ok (baseline)
+80358	[orq 04:36:50]   gate vitest: ok
+80359	[orq 04:37:08]   criterios mecânicos: ok
+80360	[orq 04:37:32]   gate build: ok
+80361	[orq 04:37:47] avaliador: REPROVADO — URL mantida e leituras legadas usam nid: ok. Mas sem notionId reuniões e resumos viram [[],[]] e setam lista vazia, e NPS e tracking somem sem 'sem base'. Só teses e WhatsApp mostram o motivo, contra o critério 'lista vazia no lugar de sem base'.
+80362	[orq 04:37:48] ticket 826: reprovado após 2 retries — BLOQUEADO

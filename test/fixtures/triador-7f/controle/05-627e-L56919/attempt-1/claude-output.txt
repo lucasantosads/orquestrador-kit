@@ -1,0 +1,21 @@
+O travessão mudo saiu das 8 telas da área admin. O `TETO` em `test/travessao-mudo.test.ts` caiu de 125 para 104, que é a contagem medida menos a folga zero: 21 ocorrências removidas. Está tudo commitado, sem push.
+
+**Verificado**
+- `tsc`: 3 erros em `src/`, o baseline. Não rodei o `rm -rf .next` do gate porque o comando foi negado.
+- `vitest run` completo: 566 arquivos e 5884 testes passam, incluindo as cinco guardas globais.
+- Só o `TETO` e o comentário da medição mudaram no teste.
+- O critério "AREA_LIMPA" não rodou como escrito: o `TRAVESSAO_RELATORIO=` na frente do comando foi bloqueado. Medi de outro jeito, com `TETO` temporariamente em 0: total 104, e sem nenhuma linha das 8 telas na lista de ocorrências.
+- Não rodei `npm run build`: o comando foi bloqueado.
+
+**Como cada caso foi resolvido**
+- **Células e valores em linha:**
+  - `super-admin`: `SemDado compacto` com motivo específico, por exemplo "saídas não apuradas no mês" e "sem mês anterior para comparar".
+  - `OrganizacaoAdmin`: `SemDado compacto` para "gestor não atribuído", "rotina sem alvo definido" e "autor não registrado".
+  - `metas`: `SemDado compacto` com "meta da agência não definida".
+- **KPIs sem base:** viram o texto "sem base" (capacidade do time em `comando`, NRR, churn e margem em `super-admin`).
+- **Formatação:** `fmtPct` agora devolve `string | null`. Adicionei um helper `PctOuSemDado` em `super-admin/components.tsx` para as células.
+- **Metadado omitido:** a origem em branco no `RbacAdmin`, o selo de liderança em `OrganizacaoAdmin` e o nome do cargo na frase de `RbacAdmin`. Em `RbacAdmin`, "delegável" agora mostra "não" em vez de travessão.
+- **Texto:** `comando` mostra "Health sem base" quando não há score. Em `OrganizacaoAdmin` a lista de dias vazia mostra "nenhum dia definido".
+- **`safeMonth`:** devolve o mês como veio, sem travessão.
+
+**Desvio da regra 2 em `fila/page.tsx`:** ali não usei `SemDado`. Importar `sem-dado.tsx` quebra `test/fila-item-abre.test.tsx`, porque o tsconfig local da fila não cobre esse arquivo, e nenhum dos dois está na allowlist. Em vez disso, as linhas do painel lateral mostram o motivo em texto ("tarefa sem descrição", "tarefa sem cliente vinculado", "origem da tarefa não registrada"). Os blocos de histórico e fonte vazios viram uma linha ("Sem eventos no histórico.", "Tarefa sem fonte vinculada."). Se a regra exigir o componente `SemDado` em `fila`, `fila/tsconfig.json` ou o teste da fila entram na allowlist e a troca é pequena.

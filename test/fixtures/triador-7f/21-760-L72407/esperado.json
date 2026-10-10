@@ -1,0 +1,12 @@
+{
+ "classe": "R5",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/760/attempt-1.prev1/gate-vitest.txt",
+   "linha": 1553,
+   "origem": "medicao"
+  }
+ ],
+ "requeue": "sim_apos:base_verde",
+ "fonte_da_verdade": "medicao-bloqueios-out.md:122"
+}

@@ -1,0 +1,13 @@
+O ticket 856 está commitado, mas um teste fora da allowlist quebra e parei sem editá-lo, como o ticket manda.
+
+**O que foi feito** (commits `4ecbeba` e `ddd5129`):
+- Apaguei `src/app/dashboard/super-admin/page.tsx` e `error.tsx`. `components.tsx` e `/api/admin/metrics` ficam.
+- Tirei só a entrada da tela em `test/regra19.test.ts` (D33) e em `test/error-boundaries-rotas-lote6.test.ts`.
+- Criei `test/remove-super-admin.test.ts`. Ele confere que os dois arquivos não existem e que nenhum href, redirect ou string literal de `src` aponta para `/dashboard/super-admin`.
+- O `tsc` dá 3 erros (baseline). O diff soma cerca de 200 linhas, abaixo do teto de 350.
+
+**O que quebra:** `test/rotas-orfas.test.ts:257`, o mesmo teste que reprovou a tentativa 1. É o teste "prova de vermelho". Ele espera achar `/dashboard/super-admin` entre as rotas órfãs, e a rota deixou de existir. A rota está em `RESTRICTED_ROUTES` na linha 157, e o comentário da linha 159 diz que o `c0-guard` exige a pasta com conteúdo. O `components.tsx` mantém a pasta, então o `c0-guard` segue válido.
+
+**Suíte:** passa tudo, exceto esse caso. Rodei só os testes deste ticket e o `rotas-orfas`, não a suíte inteira. Não rodei o `npm run build` nem os critérios de aceite do ticket (guardas globais, `git diff` contra o merge-base). Contei o diff e o `tsc` à mão.
+
+**Decisão sua:** para fechar o ticket, `test/rotas-orfas.test.ts` precisa entrar na allowlist. A correção cabe nele: tirar `/dashboard/super-admin` de `RESTRICTED_ROUTES` e recalcular o número do comentário da linha 255 ("18 órfãs antes + 4 = 22"). Pelas regras de teste existente, a mudança deve vir com comentário citando o ticket 856. Sem isso, a suíte continua vermelha e a tentativa 2 reprova pelo mesmo motivo.

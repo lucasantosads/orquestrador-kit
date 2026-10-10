@@ -1,0 +1,20 @@
+Parei sem alterar nenhum arquivo e sem commit. O ticket manda parar quando o código usa coluna que a tabela `penalizacoes` não tem, e isso acontece aqui.
+
+**Colunas que faltam.** O `INSERT` em `src/app/api/comarka-pro/penalizacoes/route.ts:117` grava `lancamento_id` e `criado_por`. O `SELECT` em `validar/route.ts:38` lê `lancamento_id`. A única definição de `penalizacoes` no repo está em `supabase/migrations/20260515202640_liga_comarka_completa.sql:180`, e nenhuma migration posterior adiciona essas duas colunas. Não consegui conferir o banco real, porque a leitura de produção é negada ao agente. Se o banco tiver essas colunas, o ticket pode seguir.
+
+**Relacionamento com `employees`.** O `SELECT` em `route.ts:46` usa o embed `employees!comarka_pro_penalizacoes_gestor_id_fkey`. A migration não declara FK em `gestor_id`. Esse nome de constraint contém o nome antigo, então o critério "zero ocorrências em `src/`" obriga a renomeá-lo. Se o banco real não tiver uma FK com o nome novo, o PostgREST vai rejeitar a consulta.
+
+**Critério de aceite inalcançável com a allowlist.** Além dos 4 arquivos, o nome antigo aparece só em comentários, em:
+- `src/lib/liga-conquistas.ts:7`
+- `src/app/api/clientes/entregaveis/route.ts:12`
+- `src/app/api/clientes/entregaveis/historico/route.ts:10`
+- `src/app/api/clientes/teses-metricas/route.ts:8`
+
+Esses arquivos estão fora da allowlist, então o `grep` do critério não chega a 0 sem tocá-los.
+
+**Não registrei em `notas_status`.** O único arquivo `docs/fila/*739*` é `_hold/739-promessa-par-pedido.md`, de outro ticket (colisão de id). Editar ficha de ticket também está fora da allowlist. O registro fica para você: `penalizacoes` não tem `lancamento_id` nem `criado_por`, e o embed de `gestor_id` depende de uma FK que não aparece nas migrations.
+
+Para destravar, escolha entre:
+- confirmar no banco as colunas e a FK;
+- ampliar a allowlist para os 4 comentários e a ficha do ticket;
+- abrir ticket separado para a migration, que fica com você aplicar.

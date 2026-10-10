@@ -1,0 +1,12 @@
+{
+ "classe": "R3",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/826/attempt-3.prev1/verdict.json",
+   "linha": null,
+   "origem": "medicao"
+  }
+ ],
+ "requeue": "nao",
+ "fonte_da_verdade": "medicao-bloqueios-out.md:130"
+}

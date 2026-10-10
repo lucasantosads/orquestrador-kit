@@ -1,0 +1,17 @@
+Implementei o ticket 744 e commitei em dois commits (`0da8536` com o código, `ca2cc1c` com o teste). O diff dá 538 linhas contra o teto de 600 e só toca arquivos da allowlist.
+
+O que rodei:
+- **tsc:** 3 erros, o baseline. Um erro novo no teste apareceu e eu corrigi antes do commit.
+- **vitest:** o teste novo (21 casos), as 7 guardas globais e os 13 testes existentes de GHL e conexão passaram.
+- **Não rodei:** `npm run build`, o `rm -rf .next` do gate (a permissão foi negada), nem os outros critérios por comando (SQL, `.json()`, escrita C0, etc.).
+
+O que mudou:
+- **`nomeDaConta`** (`ghl-agencia.ts`): faz GET em `/locations/:id`, devolve `location.name` aparado e retorna `null` com log em qualquer falha. Nunca lança.
+- **`sincronizarConexao`** (`crm-conexao.ts`): antes do update final de status, lê `location_nome`. Se a leitura deu certo e o nome é nulo, busca o nome no GHL e o grava no mesmo update final e em `perf_ghl_locations` (só onde está nulo). Erro na leitura loga e segue sem tocar no nome. O update de status continua sendo a última escrita.
+- **`conectarContaCliente`** (`crm-conexao.ts`): `location_nome` só entra nos dois upserts quando há nome, então reconectar sem nome não apaga mais um nome bom.
+- **`crm-etapas.ts` (novo):** `conexaoViva`, `estadoBackfill` (usa `PREFIXO_ERRO_BACKFILL` do `ghl-backfill.ts`) e `carregarEtapasCrm`. Os totais vêm das listas devolvidas, e qualquer erro de leitura lança com o motivo.
+- **Rotas novas:** `GET .../crm/etapas` e `POST .../crm/sincronizar`. O POST responde 502 com o motivo quando o sync falha ou quando não consegue enfileirar o backfill.
+
+Para enfileirar o backfill na rota POST, usei `getWorkerDb` de `src/app/api/jobs/worker/db.ts` como banco da fila, porque a rota precisa de um `JobsDb` e esse é o que já existe. Se preferir outro caminho, é um ponto fácil de trocar.
+
+Não houve push.

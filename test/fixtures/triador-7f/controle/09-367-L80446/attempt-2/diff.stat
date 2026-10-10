@@ -1,0 +1,9 @@
+ scripts/dados/367-briefing-template.ts             | 132 +++++++
+ src/app/api/briefings-criativos/route.ts           |  18 +-
+ src/app/dashboard/briefings-criativos/page.tsx     | 379 +--------------------
+ .../clientes/[id]/tabs/briefing-criativo-bloco.tsx | 111 ++++++
+ .../dashboard/clientes/[id]/tabs/briefing-link.ts  |   4 +
+ .../clientes/[id]/tabs/onboarding-tab.tsx          |   2 +
+ src/lib/hoje/fontes/briefing.ts                    | 112 ++++++
+ test/briefing-etapa.test.tsx                       |  59 ++++
+ 8 files changed, 443 insertions(+), 374 deletions(-)

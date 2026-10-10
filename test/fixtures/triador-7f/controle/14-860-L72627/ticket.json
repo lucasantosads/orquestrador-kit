@@ -1,0 +1,208 @@
+{
+ "id": "860",
+ "slug": "evolution-credencial-erro-nunca-sem-nome",
+ "lane": "produto",
+ "perfil": "api",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 320 linhas (~5 em src/lib/whatsapp/grupos.ts, ~30 em src/lib/whatsapp/nome-grupo-cache.ts, ~15 em src/lib/whatsapp/backfill-grupo-nome.ts, ~45 em scripts/backfill-grupo-nome.ts, ~180 no teste NOVO test/wpp-evolution-credencial.test.ts, ~20 de ajuste nos 3 testes existentes da allowlist). Se passar do teto, pare e reporte. CAUSA (05/10): o backfill do 729 rodou 3 vezes com credencial errada (EVOLUTION_API_KEY vazia, EVOLUTION_API_KEY com o placeholder [SENSITIVE] e EVOLUTION_API_URL vazia) e nas 3 imprimiu '(sem nome na Evolução)' para os 48 grupos, sem nenhum erro e com codigo de saida 0; com a credencial certa vieram os 48 nomes. Mecanismo (recon em origin/staging-auto): listarGrupos (src/lib/whatsapp/grupos.ts) devolve {success:false, error:'Evolution API <status>: ...'} sem o status numerico, ou {success:false, error:ENV_ERROR} quando falta env (placeholder [SENSITIVE] passa como env presente); carregar() em src/lib/whatsapp/nome-grupo-cache.ts engole isso e devolve false; nomeDoGrupo devolve null sem log; backfillGrupoNome poe nome null no plano; o script imprime '(sem nome na Evolução)'. Falha virou 'sem nome', que e o defeito a fechar. PASSO 1: leia inteiros src/lib/whatsapp/nome-grupo-cache.ts, src/lib/whatsapp/backfill-grupo-nome.ts, scripts/backfill-grupo-nome.ts, src/lib/whatsapp/grupos.ts (getEvolutionEnv, ListarGruposResult, listarGrupos), src/app/api/webhooks/whatsapp/evolution/route.ts (linha do grupoNome com nomeDoGrupo(...).catch(() ",
+ "cria_novo": [
+  "test/wpp-evolution-credencial.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/lib/whatsapp/grupos.ts",
+  "src/lib/whatsapp/nome-grupo-cache.ts",
+  "src/lib/whatsapp/backfill-grupo-nome.ts",
+  "scripts/backfill-grupo-nome.ts",
+  "test/wpp-evolution-credencial.test.ts",
+  "test/wpp-nome-grupo-cache.test.ts",
+  "test/wpp-backfill-grupo-nome.test.ts",
+  "test/whatsapp-grupos.test.ts"
+ ],
+ "colunas_escritas": [
+  "cs_wpp_mensagem.grupo_nome"
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/whatsapp-webhook.test.ts",
+   "motivo": "importa a rota do webhook, que chama nomeDoGrupo; a rota nao muda e nomeDoGrupo segue devolvendo null em falha (so passa a logar)"
+  },
+  {
+   "teste": "test/wpp-webhook-grupo.test.ts",
+   "motivo": "importa a rota do webhook, que chama nomeDoGrupo; a rota nao muda e nomeDoGrupo segue devolvendo null em falha (so passa a logar)"
+  },
+  {
+   "teste": "test/wpp-webhook-lid.test.ts",
+   "motivo": "importa a rota do webhook, que chama nomeDoGrupo; a rota nao muda e nomeDoGrupo segue devolvendo null em falha (so passa a logar)"
+  },
+  {
+   "teste": "test/cs-wpp-ingestao.test.ts",
+   "motivo": "importa a rota do webhook, que chama nomeDoGrupo; a rota nao muda e nomeDoGrupo segue devolvendo null em falha (so passa a logar)"
+  },
+  {
+   "teste": "test/wpp-cliente-por-telefone.test.ts",
+   "motivo": "importa a rota do webhook; nada do caminho de telefone muda"
+  },
+  {
+   "teste": "test/relatorio-mensal-envio.test.ts",
+   "motivo": "mocka @/lib/whatsapp/grupos com o modulo real espalhado; a mudanca em grupos.ts e so um campo opcional novo em ListarGruposResult"
+  },
+  {
+   "teste": "test/relatorio-semanal-envio.test.ts",
+   "motivo": "mocka @/lib/whatsapp/grupos com o modulo real espalhado; a mudanca em grupos.ts e so um campo opcional novo em ListarGruposResult"
+  },
+  {
+   "teste": "test/wpp-grupos-disponiveis.test.ts",
+   "motivo": "mocka listarGrupos inteiro; campo opcional novo nao muda o contrato que a rota le"
+  },
+  {
+   "teste": "test/wpp-vincular-jid.test.ts",
+   "motivo": "importa classificarIdentificadorGrupo de grupos.ts, que nao muda"
+  },
+  {
+   "teste": "test/relatorio-semanal-tela.test.ts",
+   "motivo": "chega a grupos.ts so por import indireto (nao cita grupos nem Evolution); a mudanca e um campo opcional novo em ListarGruposResult"
+  }
+ ],
+ "dependencias": [
+  "729"
+ ],
+ "prioridade": 30,
+ "recon_esperado": [
+  {
+   "descricao": "ListarGruposResult ainda nao carrega status",
+   "cmd": "grep -c 'status?: number' src/lib/whatsapp/grupos.ts",
+   "espera": "0"
+  },
+  {
+   "descricao": "script ainda nao checa placeholder SENSITIVE",
+   "cmd": "grep -c 'SENSITIVE' scripts/backfill-grupo-nome.ts",
+   "espera": "0"
+  },
+  {
+   "descricao": "cache ainda nao loga falha",
+   "cmd": "grep -c 'console.error' src/lib/whatsapp/nome-grupo-cache.ts",
+   "espera": "0"
+  },
+  {
+   "descricao": "webhook usa nomeDoGrupo (import e chamada) e segue fora do escopo",
+   "cmd": "grep -c 'nomeDoGrupo' src/app/api/webhooks/whatsapp/evolution/route.ts",
+   "espera": "2"
+  },
+  {
+   "descricao": "test/wpp-evolution-credencial.test.ts ainda nao existe",
+   "cmd": "test -e 'test/wpp-evolution-credencial.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc: zero erro fora do baseline de qualificacao (sem cache de .next/types nem tsbuildinfo)",
+   "cmd": "rm -rf .next/types; rm -f tsconfig.tsbuildinfo; npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc qualificacao",
+   "espera": "0",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes da allowlist verdes (mock completado ou valor recalculado, nunca afrouxado)",
+   "cmd": "npx vitest run test/wpp-nome-grupo-cache.test.ts test/wpp-backfill-grupo-nome.test.ts test/whatsapp-grupos.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum teste existente da allowlist perdeu it(/expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (contra o merge-base com staging-auto)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=NAO_AFROUXOU; for f in test/wpp-nome-grupo-cache.test.ts test/wpp-backfill-grupo-nome.test.ts test/whatsapp-grupos.test.ts; do [ -f \"$f\" ] || { git cat-file -e \"$b:$f\" 2>/dev/null && r=APAGOU_$f; continue; }; for p in 'expect(' 'it('; do a=$(git show \"$b:$f\" 2>/dev/null | grep -cF \"$p\"); n=$(grep -cF \"$p\" \"$f\"); [ \"${n:-0}\" -ge \"${a:-0}\" ] || r=CAIU_$f; done; s0=$(git show \"$b:$f\" 2>/dev/null | grep -cE '\\.(skip|only|todo)\\('); s1=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"${s1:-0}\" -le \"${s0:-0}\" ] || r=SKIP_NOVO_$f; d0=$(git show \"$b:$f\" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' \"$f\"); [ \"${d1:-0}\" -le \"${d0:-0}\" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r",
+   "espera": "NAO_AFROUXOU",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes conferidos (webhook e consumidores de grupos.ts) seguem verdes sem edicao",
+   "cmd": "npx vitest run test/whatsapp-webhook.test.ts test/wpp-webhook-grupo.test.ts test/wpp-webhook-lid.test.ts test/cs-wpp-ingestao.test.ts test/wpp-cliente-por-telefone.test.ts test/relatorio-mensal-envio.test.ts test/relatorio-semanal-envio.test.ts test/wpp-grupos-disponiveis.test.ts test/wpp-vincular-jid.test.ts test/relatorio-semanal-tela.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/lib/whatsapp/grupos.ts' 'src/lib/whatsapp/nome-grupo-cache.ts' 'src/lib/whatsapp/backfill-grupo-nome.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/lib/whatsapp/grupos.ts' 'src/lib/whatsapp/nome-grupo-cache.ts' 'src/lib/whatsapp/backfill-grupo-nome.ts' 'scripts/backfill-grupo-nome.ts' 'test/wpp-evolution-credencial.test.ts' 'test/wpp-nome-grupo-cache.test.ts' 'test/wpp-backfill-grupo-nome.test.ts' 'test/whatsapp-grupos.test.ts'; do case \"$f\" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 320 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 320 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "rota do webhook intocada",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD -- src/app/api/webhooks/whatsapp/evolution/route.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo ROTA_INTOCADA || echo ROTA_EDITADA",
+   "espera": "ROTA_INTOCADA",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "piloto preservado e backfill so escreve grupo_nome: nenhuma linha nova cita wpp_grupo ou cliente_id em src/ ou scripts/",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- src scripts | grep -E '^[+][^+]' | grep -cE 'wpp_grupo|cliente_id'); [ \"$n\" = 0 ] && echo SO_NOME || echo TOCA_$n",
+   "espera": "SO_NOME",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova loga ou imprime valor de credencial da Evolution",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- src scripts | grep -E '^[+][^+]' | grep -E 'console[.]|log[(]|erro[(]' | grep -cE 'env[.](key|url|instance)|EVOLUTION_API_KEY[]}]|env[.]EVOLUTION_[A-Z_]+[)}]|apikey'); [ \"$n\" = 0 ] && echo SEM_VALOR || echo VAZA_$n",
+   "espera": "SEM_VALOR",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "ListarGruposResult carrega o status HTTP",
+   "cmd": "grep -c 'status?: number' src/lib/whatsapp/grupos.ts",
+   "espera": "1"
+  },
+  {
+   "descricao": "script checa credencial (vazia ou SENSITIVE) antes de criar o cliente do banco",
+   "cmd": "f=scripts/backfill-grupo-nome.ts; s=$(grep -n 'SENSITIVE' $f | head -1 | cut -d: -f1); c=$(grep -n 'criarDb(' $f | grep -v 'criarDb:' | head -1 | cut -d: -f1); [ -n \"$s\" ] && [ -n \"$c\" ] && [ \"$s\" -lt \"$c\" ] && echo CHECA_ANTES || echo FALTA_${s:-x}_${c:-x}",
+   "espera": "CHECA_ANTES"
+  },
+  {
+   "descricao": "cache loga a falha da Evolution",
+   "cmd": "f=src/lib/whatsapp/nome-grupo-cache.ts; [ \"$(grep -c 'console.error' $f)\" -ge 1 ] && [ \"$(grep -c 'resolverNomeDoGrupo' $f)\" -ge 1 ] && echo LOGA || echo MUDO",
+   "espera": "LOGA"
+  },
+  {
+   "descricao": "teste novo verde e com a Evolution mockada",
+   "cmd": "f=test/wpp-evolution-credencial.test.ts; test -f $f && [ \"$(grep -cE 'stubGlobal\\(.fetch|listar:|resolverNome' $f)\" -ge 1 ] && npx vitest run $f >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "teste novo cobre os 4 itens (401, 403, 404, SENSITIVE, grupo_nome null no webhook, sem nome so com 200)",
+   "cmd": "f=test/wpp-evolution-credencial.test.ts; [ -f $f ] || { echo AUSENTE; exit 0; }; r=COBRE; for p in 401 403 404 SENSITIVE grupo_nome 'sem nome' console.error; do grep -qF \"$p\" $f || r=FALTA_$p; done; echo \"$r\"",
+   "espera": "COBRE"
+  },
+  {
+   "descricao": "avaliador: falha da Evolution (env vazia ou placeholder, 401/403/404, rede) nunca vira 'sem nome': o script aborta antes do banco com os nomes das envs ou com o codigo HTTP e sai 1; o webhook loga o codigo, grava a mensagem com grupo_nome null e nao guarda a falha no cache; 'sem nome' so com resposta 200 sem o jid. REPROVE se: imprime ou loga valor de credencial; a checagem de credencial vem depois de ler o banco; alguma linha '(sem nome na Evolução)' sai num caminho de falha; a falha entra no cache (negativo ou positivo); a rota foi editada; o ticket rodou o backfill ou chamou a Evolution real; assercao existente afrouxada.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "_objetivo_cortado_na_fixture": 7268
+}

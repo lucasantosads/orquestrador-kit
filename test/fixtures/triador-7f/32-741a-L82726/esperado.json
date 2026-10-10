@@ -1,0 +1,24 @@
+{
+ "classe": "R5",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/local-loop.log",
+   "linha": 82725,
+   "origem": "medicao"
+  },
+  {
+   "arquivo": "docs/fila/runs/741a/attempt-1.prev2/gate-vitest.txt",
+   "linha": 1899,
+   "origem": "trecho",
+   "trecho": "Cannot find module '@/hooks/useAcaoUnica'"
+  },
+  {
+   "arquivo": "docs/fila/runs/741a/attempt-2/gate-vitest.txt",
+   "linha": 1898,
+   "origem": "trecho",
+   "trecho": "Cannot find module '@/hooks/useAcaoUnica'"
+  }
+ ],
+ "requeue": "sim_apos:base_verde",
+ "fonte_da_verdade": "medicao-bloqueios-out.md:133"
+}

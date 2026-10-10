@@ -1,0 +1,4 @@
+ src/app/api/clientes/[id]/auditoria/route.ts |  13 ++--
+ test/auditoria-cliente.test.ts               |   6 ++
+ test/resolver-cliente-rota-auditoria.test.ts | 103 +++++++++++++++++++++++++++
+ 3 files changed, 116 insertions(+), 6 deletions(-)

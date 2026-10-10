@@ -1,0 +1,19 @@
+O webhook do app agora grava os quatro eventos de oportunidade (Create, StageUpdate, StatusUpdate, Delete) no espelho do CRM do cliente. Está commitado em `788f0d0`, sem push.
+
+- **tsc:** 3 erros, igual ao baseline. Rodei sem o `rm -rf .next` do gate, porque o comando foi negado. A contagem filtra `.next/` e deu 3.
+- **Testes:** o teste novo e o `ghl-app-webhook.test.ts` passam (30 testes). As guardas globais e os testes existentes de GHL, motor e jobs também passam.
+- **Diff:** cerca de 611 linhas, dentro do teto de 640 (rota +54, lib 265, teste novo 290, `ghl-app-webhook.test.ts` +2/−1).
+- **`npm run build`:** não rodei.
+- **Demais critérios:** conferi só o comportamento pelos testes. Os critérios por `cmd:` de diff (SO_ALLOWLIST, ZERO_JSON_NOVO, SEM_DELETE e os demais) não rodei, mas o diff só toca a allowlist, sem `.sql` e sem `delete`. A lib não escreve em nenhuma tabela C0.
+
+O que mudou:
+- **`src/lib/perf/crm-oportunidades.ts` (novo):** `normalizarOportunidadeGhl`, `gravarOportunidade`, `removerOportunidade` e `requalificarContato`, com as duas classes de erro (`OportunidadeSemConexaoError` e `OportunidadeSemEtapaError`).
+- **Etapa desconhecida:** `gravarOportunidade` tenta um sync de pipelines uma vez e tenta de novo. Se ainda faltar, lança `OportunidadeSemEtapaError`.
+- **Histórico:** o histórico entra por upsert com `ignoreDuplicates`, então reenvio idêntico não cria linha. Só grava quando etapa ou status mudaram.
+- **Delete:** só preenche `removido_em`, sem apagar e sem mexer no histórico.
+- **`src/app/api/webhooks/ghl/app/route.ts`:** os quatro tipos são tratados depois da assinatura e do `appId`, e o tratamento dos eventos de contato não mudou.
+  - **Respostas de erro:** location ausente dá 400, sem conexão dá 404, etapa desconhecida ou payload sem pipeline/etapa dá 422, e outro erro dá 500.
+  - **Requalificação:** quando falha, o erro vai no corpo em `qualificacao.erro` e a resposta continua 200.
+- **`test/ghl-app-webhook.test.ts`:** o exemplo de tipo ignorado passou de `OpportunityCreate` para `InvoiceCreate`, com comentário citando o 760. Nenhuma asserção foi removida.
+
+Uma coisa fora do ticket, para quem for olhar o dado: o Delete sem `id` no payload responde 422 em vez de 200, porque não há o que remover.

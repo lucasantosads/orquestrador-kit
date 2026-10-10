@@ -1,0 +1,20 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-633
+sanear_tsc: nao
+cmd:    n=$(grep -cE '</h3>|ring-1' test/ficha-subsecoes-sequencia.test.ts); [ "$n" = 0 ] && echo REGRA_NOVA || echo REGRA_VELHA_$n
+espera: REGRA_NOVA
+-- saida --
+REGRA_VELHA_1
+
+### criterio[9] -> PASS
+### criterio[10] -> PASS
+### criterio[11] -> PASS
+### criterio[12] -> PASS

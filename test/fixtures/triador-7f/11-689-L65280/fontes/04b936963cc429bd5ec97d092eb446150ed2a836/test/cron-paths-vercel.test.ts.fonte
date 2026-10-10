@@ -1,0 +1,98 @@
+/**
+ * Todo cron agendado no vercel.json precisa passar pelo middleware com o
+ * Bearer CRON_SECRET que o Vercel Cron manda. Sem isso a rota toma 401 antes
+ * do handler, em silêncio: foi o que aconteceu com /api/jobs/worker (a cada
+ * 5 min desde 24/09) e com o planejador do resumo semanal dos grupos.
+ *
+ * Chama a função `middleware` de verdade (molde de middleware-webhooks.test.ts).
+ * Path novo no vercel.json fora do CRON_PATHS e fora de CRON_PENDENTES_REVISAO
+ * reprova.
+ */
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { NextRequest } from "next/server";
+
+process.env.SESSION_SECRET = "segredo-de-teste-cron-paths-nao-usar-em-producao";
+process.env.CRON_SECRET = "cron-secret-de-teste";
+
+import { middleware } from "@/middleware";
+
+// Crons do vercel.json que ainda NÃO passam pelo middleware, de propósito:
+// nunca rodaram em produção e escrevem no banco ou chamam serviço externo.
+// Cada um só sai daqui para o CRON_PATHS depois de revisado (decisão do Lucas, 30/09).
+// relatorio-mensal e meta-otimizacoes saíram em 30/09: revisados e ligados.
+const CRON_PENDENTES_REVISAO = [
+  "/api/cron/sync-clientes",
+  "/api/cron/kanban-higiene",
+  "/api/cron/leitura-relacao",
+];
+
+const vercel = JSON.parse(readFileSync(join(__dirname, "..", "vercel.json"), "utf8")) as {
+  crons?: { path: string; schedule: string }[];
+};
+const pathsAgendados = Array.from(
+  new Set((vercel.crons ?? []).map((c) => c.path.split("?")[0])),
+);
+
+function reqCron(path: string) {
+  return new NextRequest(`http://localhost${path}`, {
+    method: "GET",
+    headers: { authorization: "Bearer cron-secret-de-teste" },
+  });
+}
+
+describe("crons do vercel.json passam pelo middleware com Bearer CRON_SECRET", () => {
+  it("o vercel.json tem crons para conferir", () => {
+    expect(pathsAgendados.length).toBeGreaterThan(0);
+  });
+
+  it("toda pendência de revisão ainda está agendada no vercel.json", () => {
+    const fora = CRON_PENDENTES_REVISAO.filter((p) => !pathsAgendados.includes(p));
+    expect(fora).toEqual([]);
+  });
+
+  it("todo cron fora da lista de pendências passa direto para o handler", async () => {
+    const barrados: string[] = [];
+    for (const p of pathsAgendados) {
+      if (CRON_PENDENTES_REVISAO.includes(p)) continue;
+      const res = await middleware(reqCron(p));
+      if (res.headers.get("x-middleware-next") !== "1") barrados.push(p);
+    }
+    expect(barrados).toEqual([]);
+  });
+
+  it("toda pendência continua barrada (ao liberar no CRON_PATHS, tire da lista)", async () => {
+    const liberados: string[] = [];
+    for (const p of CRON_PENDENTES_REVISAO) {
+      const res = await middleware(reqCron(p));
+      if (res.headers.get("x-middleware-next") === "1") liberados.push(p);
+    }
+    expect(liberados).toEqual([]);
+  });
+
+  it("relatório mensal e otimizações Meta passam (ligados em 30/09)", async () => {
+    for (const p of ["/api/cron/relatorio-mensal", "/api/cron/meta-otimizacoes"]) {
+      const res = await middleware(reqCron(p));
+      expect(res.headers.get("x-middleware-next")).toBe("1");
+    }
+  });
+
+  it("worker e planejador do resumo semanal passam", async () => {
+    for (const p of ["/api/jobs/worker", "/api/cron/resumo-grupos-semanal"]) {
+      const res = await middleware(reqCron(p));
+      expect(res.headers.get("x-middleware-next")).toBe("1");
+    }
+  });
+
+  it("Bearer errado no worker continua 401", async () => {
+    const res = await middleware(
+      new NextRequest("http://localhost/api/jobs/worker", {
+        method: "GET",
+        headers: { authorization: "Bearer outro" },
+      }),
+    );
+    expect(res.headers.get("x-middleware-next")).not.toBe("1");
+    expect(res.status).toBe(401);
+  });
+});

@@ -1,0 +1,12 @@
+{
+ "id": "707",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/707-aceite-inicio-e-head.md",
+ "ticket_sha": "2b7524778b5fcd01b9b54e2fe1fbec29c1f30f8a",
+ "ticket_antes": true,
+ "linha_bloqueio": 83026,
+ "log_inicio": 82986,
+ "fim": "2026-10-08T16:07:41Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/707"
+}

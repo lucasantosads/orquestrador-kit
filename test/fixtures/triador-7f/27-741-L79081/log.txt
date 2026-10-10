@@ -1,0 +1,28 @@
+79054	[2026-10-07 21:34:18-0300] drenagem: ticket 741 (27 pendentes restantes)
+79055	[orq 00:34:18] orquestrador iniciando · modo: real · once
+79056	[orq 00:34:18] preflight: validando infra (scripts, fila, env, claude)...
+79057	[orq 00:34:21] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+79058	[orq 00:34:29] preflight: ok
+79059	[orq 00:34:46] === ticket 741 (backtest-promessas-aquino) — tentativa 1 · modo: real ===
+79060	[orq 00:34:47]   recon_esperado: ok (2 comando(s))
+79061	[orq 00:34:47]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/741/attempt-1/prompt.txt
+79062	[orq 00:34:47]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+79063	[orq 00:35:05]   diff cru salvo (0 linhas alteradas) · HEAD julgado 64279a61
+79064	[orq 00:35:06]   enforcement: ok
+79065	[orq 00:35:22]   gate tsc: ok (baseline)
+79066	[orq 00:35:47]   gate vitest: ok
+79067	[orq 00:36:06]   criterios mecânicos: FALHA — criterio[8] mecânico: esperado 'VERDE', obteve 'VERMELHO'
+79068	[orq 00:36:06]   REPROVA (mecânica, sem Opus): criterio[8] mecânico: esperado 'VERDE', obteve 'VERMELHO'
+79069	[orq 00:36:07] ticket 741: reprovado — retry 1/2. motivo: criterio[8] mecânico: esperado 'VERDE', obteve 'VERMELHO'
+79070	[orq 00:36:07] === ticket 741 (backtest-promessas-aquino) — tentativa 2 · modo: real ===
+79071	[orq 00:36:07]   recon_esperado: ok (2 comando(s))
+79072	[orq 00:36:08]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/741/attempt-2/prompt.txt
+79073	[orq 00:36:08]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+79074	[orq 00:36:31]   diff cru salvo (0 linhas alteradas) · HEAD julgado 64279a61
+79075	[orq 00:36:31]   enforcement: ok
+79076	[orq 00:36:47]   gate tsc: ok (baseline)
+79077	[orq 00:37:18]   gate vitest: ok
+79078	[orq 00:37:36]   criterios mecânicos: FALHA — criterio[8] mecânico: esperado 'VERDE', obteve 'VERMELHO'
+79079	[orq 00:37:36]   REPROVA (mecânica, sem Opus): criterio[8] mecânico: esperado 'VERDE', obteve 'VERMELHO'
+79080	[orq 00:37:37] ticket 741: motivo de reprova REPETIU — circuit breaker (por ticket)
+79081	[orq 00:37:37] ticket 741: BLOQUEADO sem gastar a próxima volta

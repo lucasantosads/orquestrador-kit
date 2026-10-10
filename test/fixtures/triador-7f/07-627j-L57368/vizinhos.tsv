@@ -1,0 +1,5 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+627j	docs/fila/runs/627j/attempt-1.prev1	test/contas-anuncio-tabela.test.ts	984	2026-09-25T22:41:04Z	1
+627j	docs/fila/runs/627j/attempt-1.prev1	test/painel-campanhas-mockup.test.ts	963	2026-09-25T22:41:04Z	1
+627j	docs/fila/runs/627j/attempt-3	test/painel-campanhas-mockup.test.ts	949	2026-09-25T22:50:59Z	1
+627j	docs/fila/runs/627j/attempt-1	test/contas-anuncio-tabela.test.ts	964	2026-09-25T23:05:11Z	0

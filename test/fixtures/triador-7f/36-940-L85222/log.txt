@@ -1,0 +1,36 @@
+85187	[2026-10-09 16:46:10-0300] drenagem: ticket 940 (14 pendentes restantes)
+85188	[orq 19:46:11] orquestrador iniciando · modo: real · once
+85189	[orq 19:46:11] preflight: validando infra (scripts, fila, env, claude)...
+85190	[orq 19:46:14] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+85191	[orq 19:46:21] preflight: ok
+85192	[orq 19:46:44] === ticket 940 (nicho-tese-agregado-lib) — tentativa 1 · modo: real ===
+85193	[orq 19:46:46]   recon_esperado: ok (6 comando(s))
+85194	[orq 19:46:46]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/940/attempt-1/prompt.txt
+85195	[orq 19:46:46]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+85196	[orq 19:49:23]   diff cru salvo (738 linhas alteradas) · HEAD julgado acb97be8
+85197	[orq 19:49:24]   enforcement: ok
+85198	[orq 19:49:39]   gate tsc: ok (baseline)
+85199	[orq 19:50:03]   gate vitest: ok
+85200	[orq 19:50:23]   criterios mecânicos: ok
+85201	[orq 19:50:52]   gate build: ok
+85202	error: Your local changes to the following files would be overwritten by merge:
+85203	  docs/fila/854-remove-equipe-geral.md
+85204	Merge with strategy ort failed.
+85205	[orq 19:51:12] avaliador: REPROVADO — aprovado no mérito, mas merge em staging-auto conflitou
+85206	[orq 19:51:13] ticket 940: reprovado — retry 1/2. motivo: aprovado no mérito, mas merge em staging-auto conflitou
+85207	[orq 19:51:13] === ticket 940 (nicho-tese-agregado-lib) — tentativa 2 · modo: real ===
+85208	[orq 19:51:14]   recon_esperado: ok (6 comando(s))
+85209	[orq 19:51:14]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/940/attempt-2/prompt.txt
+85210	[orq 19:51:14]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+85211	[orq 19:54:19]   diff cru salvo (653 linhas alteradas) · HEAD julgado 06b2f15c
+85212	[orq 19:54:19]   enforcement: ok
+85213	[orq 19:54:36]   gate tsc: ok (baseline)
+85214	[orq 19:54:56]   gate vitest: ok
+85215	[orq 19:55:14]   criterios mecânicos: ok
+85216	[orq 19:55:40]   gate build: ok
+85217	error: Your local changes to the following files would be overwritten by merge:
+85218	  docs/fila/854-remove-equipe-geral.md
+85219	Merge with strategy ort failed.
+85220	[orq 19:56:08] avaliador: REPROVADO — aprovado no mérito, mas merge em staging-auto conflitou
+85221	[orq 19:56:08] ticket 940: motivo de reprova REPETIU — circuit breaker (por ticket)
+85222	[orq 19:56:08] ticket 940: BLOQUEADO sem gastar a próxima volta

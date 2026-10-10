@@ -1,0 +1,13 @@
+{
+ "id": "627e",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/627e-travessao-mudo-admin.md",
+ "ticket_sha": "d01396af4a0dcc5ad124d372bcd4c690c5cd85d8",
+ "ticket_antes": true,
+ "linha_bloqueio": null,
+ "linha_fim": 56919,
+ "log_inicio": 56832,
+ "fim": "2026-09-25T20:54:00Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/627e"
+}

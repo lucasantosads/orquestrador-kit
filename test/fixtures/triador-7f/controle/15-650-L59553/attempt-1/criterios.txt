@@ -1,0 +1,18 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-650
+sanear_tsc: nao
+cmd:    a=$(grep -c 'sem base, nenhuma análise gerada' 'src/app/dashboard/clientes/[id]/_components/analise-ia.tsx'); [ "$a" = 0 ] && echo IA_LINHA || echo IA_$a
+espera: IA_LINHA
+-- saida --
+IA_1
+
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> PASS
+### criterio[9] -> PASS
+### criterio[10] -> PASS

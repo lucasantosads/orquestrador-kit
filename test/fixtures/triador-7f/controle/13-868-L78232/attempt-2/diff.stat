@@ -1,0 +1,6 @@
+ .../[id]/_components/atividade-periodo.tsx         |  5 ++-
+ .../clientes/[id]/_components/timeline-visao.tsx   |  5 ++-
+ src/lib/apolo/ferramentas.ts                       | 28 ++++++++----
+ test/apolo-ferramentas-cliente.test.ts             | 19 +++++---
+ test/visao-apolo-reuniao-operacional.test.ts       | 50 ++++++++++++++++++++++
+ 5 files changed, 89 insertions(+), 18 deletions(-)

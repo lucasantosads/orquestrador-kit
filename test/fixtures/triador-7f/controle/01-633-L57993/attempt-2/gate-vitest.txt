@@ -1,0 +1,123 @@
+ ✓ test/saude-denominador-churn.test.tsx (4 tests) 18ms
+ ✓ test/metricas-por-tipo.test.ts (24 tests) 54ms
+ ✓ test/metricas-diarias-tela.test.ts (12 tests) 43ms
+ ✓ test/nav-config-absorvidas.test.ts (13 tests) 54ms
+ ✓ test/vinculo-tese-nicho.test.ts (8 tests) 42ms
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes-extra/[id] > exceção do logAudit não muda o status da resposta
+[clientes-extra PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-633/test/audit-log-rotas.test.ts:258:36
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > POST: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-633/test/audit-log-rotas.test.ts:293:36
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > PATCH: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-633/test/audit-log-rotas.test.ts:309:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/[id]/crm-config PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-633/test/audit-log-rotas.test.ts:336:36
+
+stderr | test/audit-log-rotas.test.ts > PUT /api/clientes/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/crm-config PUT] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-633/test/audit-log-rotas.test.ts:363:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/perfil-obs > exceção do logAudit não muda o status da resposta
+[clientes/[id]/perfil-obs PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-633/test/audit-log-rotas.test.ts:392:36
+
+ ✓ test/retencao-saidas-checklist.test.tsx (12 tests) 72ms
+ ✓ test/acao-unica-reunioes.test.tsx (6 tests) 68ms
+ ✓ test/resumo-erro-nao-persiste.test.ts (17 tests) 31ms
+ ✓ test/tabela-funil-tese.test.tsx (17 tests) 50ms
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/registros/[registroId] > exceção do logAudit não muda o status da resposta
+[registros PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-633/test/audit-log-rotas.test.ts:432:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/tarefas-kanban > exceção do logAudit não muda o status da resposta
+[tarefas-kanban POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-633/test/audit-log-rotas.test.ts:459:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/clientes/relatorio-config (ativo=true) > exceção do logAudit não muda o status da resposta
+[clientes/relatorio-config POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-633/test/audit-log-rotas.test.ts:486:36
+ ✓ test/getsession-legados-onboarding-churn.test.ts (20 tests) 33ms
+ ✓ test/crons-meta-rodam.test.ts (6 tests) 28ms
+ ✓ test/radar-renovacao.test.ts (19 tests) 14ms
+ ✓ test/guardrail14-financeiro.test.ts (3 tests) 23ms
+ ✓ test/alertas-regras.test.ts (6 tests) 20ms
+stderr | test/ficha-resolucao-chave.test.ts > GET /api/perf/cockpit/[id] — adota o resolvedor do ticket 094 > falha na resolução da chave vira mensagem humana e acentuada, não o e.message cru
+[perf/cockpit] falha ao resolver chave do cliente: Error: connection terminated unexpectedly
+    at Object.maybeSingle (/Users/lucasantos/Projetos/_worktrees/orq-comarka-633/test/ficha-resolucao-chave.test.ts:48:28)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-633/test/ficha-resolucao-chave.test.ts:110:17
+ ✓ test/produtividade-meta.test.ts (5 tests) 3ms
+ ✓ test/abas-montadas.test.ts (3 tests) 4ms
+ ✓ test/wpp-desvincular-grupo.test.ts (5 tests) 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/ficha-nps.test.tsx > registro manual reutiliza o formulário existente (importado, sem cópia) > link de coleta: só atalho de navegação, sem duplicar o bloco nem gerar token aqui
+AssertionError: expected '"use client";\n\n// Shell da ficha do…' to match /onAbrirLinkColeta=\{\(\) => setActive…/
+
+- Expected:
+/onAbrirLinkColeta=\{\(\) => setActiveTab\("meta-ads"\)\}/
+
++ Received:
+"\"use client\";
+
+// Shell da ficha do cliente (T-D). Dono de TODO o estado/efeitos/handlers; o corpo
+// de cada aba foi extraído para ./tabs/*, consumido via <FichaProvider>. Comportamento
+// idêntico ao monólito anterior — nenhum hook foi movido para as abas.
+
+      </div>
+    </FichaProvider>
+  );
+}
+"
+
+ ❯ test/ficha-nps.test.tsx:137:29
+    135|     // Ticket 550: o link de coleta saiu da Relacao para Conta > Conex…
+    136|     // que o 531 usa para a secao Conexoes, entao o atalho nao aponta …
+    137|     expect(ler("page.tsx")).toMatch(/onAbrirLinkColeta=\{\(\) => setAc…
+       |                             ^
+    138|   });
+    139| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/ltv-na-conta.test.ts > ticket 513 — LTV na aba Conta > Vincular receita abre a sub-aba config e lê o cockpitData do shell
+AssertionError: expected '"use client";\n\n// Shell da ficha do…' to match /<CockpitNegocio[^>]*onConfig=\{\(\) =…/
+
+- Expected:
+/<CockpitNegocio[^>]*onConfig=\{\(\) => setActiveTab\("config"\)\}/
+
++ Received:
+"\"use client\";
+
+// Shell da ficha do cliente (T-D). Dono de TODO o estado/efeitos/handlers; o corpo
+// de cada aba foi extraído para ./tabs/*, consumido via <FichaProvider>. Comportamento
+// idêntico ao monólito anterior — nenhum hook foi movido para as abas.
+
+      </div>
+    </FichaProvider>
+  );
+}
+"
+
+ ❯ test/ltv-na-conta.test.ts:43:17
+     41|
+     42|   it("Vincular receita abre a sub-aba config e lê o cockpitData do she…
+     43|     expect(src).toMatch(/<CockpitNegocio[^>]*onConfig=\{\(\) => setAct…
+       |                 ^
+     44|     expect(src).toContain("negocio={cockpitData?.negocio ?? null}");
+     45|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 567 passed (569)
+      Tests  2 failed | 5917 passed (5919)
+   Start at  22:52:46
+   Duration  27.93s (transform 38.26s, setup 0ms, import 96.71s, tests 23.56s, environment 56ms)
+

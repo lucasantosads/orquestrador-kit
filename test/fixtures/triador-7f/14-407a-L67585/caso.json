@@ -1,0 +1,12 @@
+{
+ "id": "407a",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/407a-fn-reativar-churn-migration.md",
+ "ticket_sha": "5d9f93bf5bf8363e50f18120c025a14bdc2d6cd2",
+ "ticket_antes": true,
+ "linha_bloqueio": 67585,
+ "log_inicio": 67537,
+ "fim": "2026-10-01T23:24:05Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/407a"
+}

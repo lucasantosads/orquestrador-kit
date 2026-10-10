@@ -1,0 +1,4 @@
+ src/lib/qualificacao/motor.ts            | 36 +++++++++++-
+ test/etapa2-motor-fases.test.ts          | 14 +++--
+ test/qualificacao-cascata-marcos.test.ts | 98 ++++++++++++++++++++++++++++++++
+ 3 files changed, 140 insertions(+), 8 deletions(-)

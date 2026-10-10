@@ -1,0 +1,31 @@
+Ticket 600 entregue no commit `4d6d53b`, com um vermelho real: **38 dos 39 `it(` passam e 1 falha**. Por isso o critério "teste de aceite verde" dá **VERMELHO**. Pela regra do ticket, esse item vira ticket de correção; não afrouxei o teste.
+
+**O item vermelho**
+- `copy: titulos de secao do mockup`: o título **"Campanhas"** não aparece na tabela quando há campanhas.
+  - No mockup ele é o título do cartão (`visao.dc.html:103`, `>Campanhas<`).
+  - No código, `CorpoTabela` e `FiltroFunil` em `tabela-campanhas.tsx` não mostram título nenhum, e `geral-tab.tsx:931-937` monta `<TabelaCampanhas>` sem cabeçalho.
+  - "Campanhas" só aparece em `LinhaVazia` (`tabela-campanhas.tsx:393`), quando não há campanhas.
+  - Correção sugerida: um `<h3>Campanhas</h3>` no ramo com dado de `TabelaCampanhas`.
+
+Os outros 6 títulos do mockup (Visão geral, Relação, Tarefas, Alertas, Linha do tempo, Análise IA) estão na tela.
+
+**Como o teste funciona** (`test/visao-aceite-estrutura.test.tsx`)
+- As contagens e rótulos vêm do mockup lido com `readFileSync`: 6 cartões de KPI e `repeat(6`, os 10 cabeçalhos da tabela (6 numéricos), a grade `1.5fr 1fr 1fr` do trio, as 4 linhas fixas da Relação, os 6 filtros da Linha do tempo e os links do rodapé.
+- O código é conferido renderizando as Views puras sem JSX (`React.createElement` + `renderToStaticMarkup`); `geral-tab.tsx` é lido pelo fonte, sem comentários.
+- O mapa de divergências fica no topo do arquivo: Tipo → Funil, Closer → "Closer que fechou e Tempo de casa", Dado inconclusivo → Dados parados, Nicho → Nicho da conta. O rótulo antigo não passa como alternativa.
+
+**Critérios de aceite**
+
+| Critério | Resultado |
+|---|---|
+| tsc | 3 erros em `src/`, a linha de base (`rm -rf .next` foi negado; rodei o tsc sem limpar) |
+| 39 `it(` e todos os nomes dos 4 grupos | presentes |
+| sem `.skip`/`.only`/`.todo`, sem JSX, sem `expect.soft`/`it.fails`, lê o mockup | ok |
+| 5 guardas globais e o aceite do 522 | verdes (103 testes) |
+| aceite de estrutura | **VERMELHO**, só o item "Campanhas" |
+| suíte completa | 5872 passam, 1 falha (o item acima) |
+| build | `BUILD_OK` |
+
+**Tamanho do diff:** 570 linhas, acima das 420 declaradas e abaixo do teto de 600.
+
+A reprovação anterior (`FALTAM_1`) não se repete: conferi os 25 nomes do grupo estrutura, e os outros 14.

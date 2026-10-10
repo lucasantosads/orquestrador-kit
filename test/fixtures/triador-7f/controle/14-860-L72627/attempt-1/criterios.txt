@@ -1,0 +1,28 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> PASS
+### criterio[9] -> PASS
+### criterio[10] -> PASS
+### criterio[11] -> PASS
+### criterio[12] -> PASS
+### criterio[13] -> PASS
+### criterio[14] -> PASS
+### criterio[15] -> PASS
+### criterio[16] -> PASS
+### criterio[17] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-860
+sanear_tsc: nao
+cmd:    f=test/wpp-evolution-credencial.test.ts; [ -f $f ] || { echo AUSENTE; exit 0; }; r=COBRE; for p in 401 403 404 SENSITIVE grupo_nome 'sem nome' console.error; do grep -qF "$p" $f || r=FALTA_$p; done; echo "$r"
+espera: COBRE
+-- saida --
+FALTA_console.error
+
+### criterio[18] (qualitativo — julgado pelo Opus)
+descricao: avaliador: falha da Evolution (env vazia ou placeholder, 401/403/404, rede) nunca vira 'sem nome': o script aborta antes do banco com os nomes das envs ou com o codigo HTTP e sai 1; o webhook loga o codigo, grava a mensagem com grupo_nome null e nao guarda a falha no cache; 'sem nome' so com resposta 200 sem o jid. REPROVE se: imprime ou loga valor de credencial; a checagem de credencial vem depois de ler o banco; alguma linha '(sem nome na Evolução)' sai num caminho de falha; a falha entra no cache (negativo ou positivo); a rota foi editada; o ticket rodou o backfill ou chamou a Evolution real; assercao existente afrouxada.
+

@@ -1,0 +1,116 @@
+{
+ "id": "735",
+ "slug": "api-responder-agora",
+ "lane": "produto",
+ "perfil": "api",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 320 linhas (~40 em src/lib/relacao/pode-agir.ts NOVO, ~110 na rota NOVA src/app/api/relacao/responder/route.ts, ~170 no teste NOVO test/relacao-responder-api.test.ts). Se passar do teto, pare e reporte. FONTE: docs/planos/plano-vacuo-promessa-02out.md (plano aprovado em 02/10; as decisoes de 02/10 escritas la valem sobre o plano). Piloto so AQUINO ADV. PASSO 1: leia src/lib/inicio/vacuo.ts (734: carregarVacuos), src/lib/clientes/quem-cuida.ts, src/lib/nav/papel.ts e src/app/api/admin/organizacao/papel/route.ts (como a sessao vira papel com papelDe), src/lib/fetch-json.ts (lerCorpoJson) e perf_vacuo_tratado (691 + colunas do 730: mensagem_id, tarefa_id, motivo). FAZER: (1) NOVO src/lib/relacao/pode-agir.ts: export async function contextoDeAcao(db, session) -> { papel, quemCuida } e export function podeAgirNoCliente(ctx, employeeId, clienteId): diretor e admin sempre; senao cuidaDoCliente (gestor principal; sem gestor, os heads). Uma regra so, reusada pelo 736. (2) NOVA rota src/app/api/relacao/responder/route.ts: GET 401 sem sessao; com ?cliente_id=<uuid> (zod uuid; invalido = 422): 403 se nao podeAgirNoCliente, senao os vacuos daquele cliente; sem cliente_id: os vacuos de todos os clientes em que podeAgirNoCliente e verdadeiro. Resposta { itens: [{ tipo: 'vacuo', cliente_id, cliente_nome, group_jid, desde, mensagem_id, minutos_uteis, trecho, autor_nome }] (do mais antigo), desconhecidos_24h: number (soma dos grupos devolvidos) }. Falha de leitura = ",
+ "cria_novo": [
+  "src/lib/relacao/pode-agir.ts",
+  "src/app/api/relacao/responder/route.ts",
+  "test/relacao-responder-api.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/lib/relacao/pode-agir.ts",
+  "src/app/api/relacao/responder/route.ts",
+  "test/relacao-responder-api.test.ts"
+ ],
+ "dependencias": [
+  "734"
+ ],
+ "prioridade": 36,
+ "recon_esperado": [
+  {
+   "descricao": "src/app/api/relacao/responder/route.ts ainda nao existe",
+   "cmd": "test -e 'src/app/api/relacao/responder/route.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "src/lib/relacao/pode-agir.ts ainda nao existe",
+   "cmd": "test -e 'src/lib/relacao/pode-agir.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "test/relacao-responder-api.test.ts ainda nao existe",
+   "cmd": "test -e 'test/relacao-responder-api.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/lib/relacao/pode-agir.ts' 'src/app/api/relacao/responder/route.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/lib/inicio/vacuo.ts' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/lib/relacao/pode-agir.ts' 'src/app/api/relacao/responder/route.ts' 'test/relacao-responder-api.test.ts'; do case \"$f\" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 320 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 320 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "piloto preservado: nenhuma linha nova escreve em wpp_grupo",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- src scripts | grep -E '^[+][^+]' | grep -cE 'wpp_grupo.*[.](insert|update|upsert)[(]|[.](insert|update|upsert)[(].*wpp_grupo'); [ \"$n\" = 0 ] && echo SEM_ESCRITA_GRUPO || echo ESCREVE_GRUPO_$n",
+   "espera": "SEM_ESCRITA_GRUPO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde (test/relacao-responder-api.test.ts)",
+   "cmd": "test -f test/relacao-responder-api.test.ts && npx vitest run test/relacao-responder-api.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "rota usa carregarVacuos e a regra unica de quem pode agir",
+   "cmd": "f='src/app/api/relacao/responder/route.ts'; [ -f \"$f\" ] || { echo AUSENTE; exit 0; }; a=$(grep -c 'carregarVacuos' \"$f\"); b=$(grep -c 'podeAgirNoCliente' \"$f\"); c=$(grep -c 'perf_vacuo_tratado' \"$f\"); [ \"$a\" -ge 1 ] && [ \"$b\" -ge 1 ] && [ \"$c\" -ge 1 ] && echo REGRAS_UNICAS || echo ROTA_${a}_${b}_${c}",
+   "espera": "REGRAS_UNICAS"
+  },
+  {
+   "descricao": "quem pode agir sai de quem-cuida e papelDe, nunca de gestor_id",
+   "cmd": "f='src/lib/relacao/pode-agir.ts'; [ -f \"$f\" ] || { echo AUSENTE; exit 0; }; a=$(grep -c 'cuidaDoCliente' \"$f\"); b=$(grep -c 'papelDe' \"$f\"); g=$(grep -c 'gestor_id\\|is_gestor_trafego' \"$f\"); [ \"$a\" -ge 1 ] && [ \"$b\" -ge 1 ] && [ \"$g\" = 0 ] && echo FONTE_UNICA || echo PA_${a}_${b}_${g}",
+   "espera": "FONTE_UNICA"
+  },
+  {
+   "descricao": "avaliador: GET lista os vacuos do cliente ou da carteira de quem pede, do mais antigo, com a contagem de desconhecidos; POST Tratado grava com motivo e sem duplicar; so quem cuida, diretoria e admin. REPROVE se: regra de vacuo copiada na rota; dono por gestor_id ou is_gestor_trafego; falha de leitura vira lista vazia; escreve em wpp_grupo; aceita motivo livre.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "_objetivo_cortado_na_fixture": 5647
+}

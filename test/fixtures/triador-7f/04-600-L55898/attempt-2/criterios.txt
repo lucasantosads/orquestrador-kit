@@ -1,0 +1,19 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-600
+sanear_tsc: nao
+cmd:    m=0; for n in 'estrutura: ordem dos blocos da Visao igual a do mockup' 'estrutura: KPIs em grade de 6 colunas com 6 cartoes' 'estrutura: faixa no topo so no KPI com dado' 'estrutura: KPI sem base com rotulo, sem base e motivo' 'estrutura: barra em dois grupos numa linha' 'estrutura: periodo e relatorio no grupo da direita' 'estrutura: aviso de coleta atrasada acima dos KPIs' 'estrutura: colunas da tabela na ordem do mockup' 'estrutura: numeros da tabela alinhados a direita' 'estrutura: funil, tese e status como chip' 'estrutura: CPL colorido pela media' 'estrutura: expansao campanha conjunto anuncio recuada' 'estrutura: trio em grade de 3 colunas na ordem Relacao Tarefas Alertas' 'estrutura: Relacao e um cartao com temperatura e 4 linhas' 'estrutura: Combinados recolhidos' 'estrutura: Pendencias com chip de dono e prazo' 'estrutura: Relacao com + Registrar e Ver aba Relacao' 'estrutura: Tarefas com caixa de marcar, campo e Ver no kanban' 'estrutura: Alertas com bolinha de estado e Criar alerta' 'estrutura: Linha do tempo em largura cheia' 'estrutura: evento com data, bolinha por origem e texto' 'estrutura: filtros a direita do titulo da Linha do tempo' 'estrutura: rodape de Otimizacoes dentro da Linha do tempo' 'estrutura: Analise IA como faixa recolhida no rodape' 'estrutura: cabecalho em duas linhas'; do grep -qF "\"$n\"" test/visao-aceite-estrutura.test.tsx 2>/dev/null || m=$((m+1)); done; [ $m = 0 ] && echo NOMES_OK || echo FALTAM_$m
+espera: NOMES_OK
+-- saida --
+FALTAM_1
+
+### criterio[7] -> PASS
+### criterio[8] -> PASS
+### criterio[9] -> PASS
+### criterio[10] -> PASS
+### criterio[11] -> PASS

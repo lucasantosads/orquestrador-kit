@@ -1,0 +1,11 @@
+Zerei os 15 travessões mudos da área clientes-perf e baixei o TETO de 44 para 29, no commit `c13bc32`. `npm run build` não rodei, porque o Bash negou o `env` e o `rm -rf .next` e não tentei o build. O resto do gate está verde.
+
+- **Motivo da reprovação anterior:** o `SemDado` importado em `ClientePerfPanel.tsx` quebrava `test/painel-campanhas-mockup.test.ts`, que carrega o componente com stubs e não resolve `@/components/estados/...`. Além disso, os testes de `test/contas-anuncio-tabela.test.ts` procuram no fonte as chamadas literais `{fmt(acc.gasto, "R$")}` e `{fmt(acc.ctr, "", "%")}`. As duas suítes estão fora da allowlist, então não mexi nelas.
+- **`ClientePerfPanel.tsx` e `perf-block.tsx`:** sem importar `SemDado`, `fmt` e `fmtInt` passam a devolver o texto cinza "sem base". O KPI do Perf Score omite o número quando não há valor, porque o `ScoreBadge` ao lado já diz "sem base". Isso desvia da regra (2), que pedia `SemDado` com motivo nas células, e o avaliador deve pesar isso.
+- **`ControleCampanhasPanel.tsx`:** `brl` e `int` devolvem `null`, e as células usam `<SemDado compacto motivo="..."/>` com motivos específicos, como "sem gasto medido nos últimos 7 dias" e "orçamento definido no conjunto, não no anúncio". O `previewValor` da pré-visualização também devolve `null`.
+- **TETO:** o contador mede 29 no total (confirmado com TETO 28, que falhou com "29 > teto 28"). Só mudou a constante e a data no comentário acima dela.
+
+**Verificação:**
+- `tsc` mostra 3 erros em `src/`.
+- `npx vitest run` passou completo: 567 arquivos, 5889 testes.
+- Não rodei os comandos de critério com `TRAVESSAO_RELATORIO`; medi o total pela mensagem de falha do teste.

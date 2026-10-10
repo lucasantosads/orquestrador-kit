@@ -1,0 +1,25 @@
+### criterio[0] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-739
+sanear_tsc: nao
+cmd:    grep -rc 'comarka_pro_penalizacoes' src --include='*.ts' --include='*.tsx' | awk -F: '{s+=$2} END {print s}'
+espera: 0
+-- saida --
+16
+
+### criterio[1] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-739
+sanear_tsc: nao
+cmd:    grep -l '.from("penalizacoes")' src/app/api/comarka-pro/penalizacoes/route.ts 'src/app/api/comarka-pro/penalizacoes/[id]/validar/route.ts' 'src/app/api/comarka-pro/penalizacoes/[id]/contestar/route.ts' src/lib/comarka-pro.ts | wc -l | tr -d ' '
+espera: 4
+-- saida --
+0
+
+### criterio[2] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-739
+sanear_tsc: nao
+cmd:    npx vitest run test/comarka-pro-penalizacoes-tabela.test.ts 2>&1 | grep -E 'passed|failed'
+espera: passed
+-- saida --
+
+
+### criterio[3] -> PASS

@@ -1,0 +1,22 @@
+{
+ "classe": "R5",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/local-loop.log",
+   "linha": 85202,
+   "origem": "medicao"
+  },
+  {
+   "arquivo": "docs/fila/runs/local-loop.log",
+   "linha": 85203,
+   "origem": "medicao"
+  },
+  {
+   "arquivo": "docs/fila/runs/local-loop.log",
+   "linha": 85217,
+   "origem": "medicao"
+  }
+ ],
+ "requeue": "sim_apos:arvore_alvo_limpa",
+ "fonte_da_verdade": "medicao-bloqueios-out.md:137"
+}

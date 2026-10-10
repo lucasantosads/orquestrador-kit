@@ -1,0 +1,31 @@
+O 711a está implementado e commitado em 3 commits na `frente/711a`, sem push. O teste novo que tinha reprovado (critério 11) agora passa. Um critério vai seguir vermelho: o 14, "score antigo sem cor", por um conflito que só você pode resolver.
+
+**O conflito**
+- O critério 14 exige zero `corScoreSaude` em `src/app/dashboard/clientes/risco/page.tsx`.
+- `test/sem-insumo.test.ts:237`, que está fora da allowlist, exige o literal `corScoreSaude(c.score_saude)` nesse mesmo arquivo.
+- Não dá para cumprir os dois. Segui a regra do ticket de não quebrar teste fora da allowlist: a `risco/page.tsx` ficou como estava, e o critério 14 vai dar `COR_ANTIGA_1`.
+- As tentativas 1 e 2 bateram no mesmo conflito e não deixaram nada commitado.
+- Para fechar, coloque `test/sem-insumo.test.ts` na allowlist do 711a. Aí são duas linhas: tirar a cor na `risco/page.tsx` e recalcular a :237 para `not.toContain('corScoreSaude')`, com comentário citando o 711a.
+
+**O que foi entregue**
+- **`f032160`**
+  - Rota nova `GET /api/clientes/sinais?ids=...`. Devolve 401 sem sessão e 422 sem ids, com mais de 300 ou com identificador inválido; falha de leitura dá 500. A resposta é `{ [cliente_id]: { cor, sinal, motivo, faltando, override } }`.
+  - O loader ganhou `carregarSinaisDosClientes`, que passa pelo mesmo caminho do Início (`avaliarCliente` e a cor manual). Nenhuma regra foi copiada para a rota.
+  - Na lista de risco da carteira, o score antigo virou texto neutro.
+- **`071585e`**
+  - A coluna Temperatura da carteira mostra a cor e o motivo vindos da rota, numa chamada com os ids da página (em lotes de 300).
+  - Sem dado aparece como traço com o motivo, nunca verde.
+  - `classificarTemperatura` saiu da tela e continua em `badges.ts`.
+- **`c25f5d7`**
+  - Teste novo `test/saude-mesma-regra.test.ts`, com 9 testes: a rota passa pelo `avaliarCliente` real (só monitorado no teste), cobre 401, 422, 500, cor manual e cliente inativo, e confere pela fonte a coluna da carteira e a lista de risco.
+  - Ele não verifica a `risco/page.tsx`, por causa do conflito acima; há um comentário no teste dizendo isso.
+
+**Verificação**
+- tsc: 3 erros, o baseline.
+- vitest completo: 803 arquivos e 8136 testes verdes, incluindo `sem-insumo` e as guardas globais.
+- Os testes fora da allowlist que leem a carteira e a tela de risco seguem verdes sem edição.
+- O build chegou ao fim e imprimiu a tabela de rotas, mas o código de saída não ficou registrado: a forma `&& echo BUILD_OK` foi negada por permissão.
+- Diff de 359 linhas (o teto é 600). Nenhum `.sql`, nenhum `.json()` novo e nenhum travessão novo.
+- `test/carteira-lista-risco.test.ts` e `test/data-view-renovacoes-risco.test.ts` não precisaram de recálculo.
+
+Também salvei esse conflito na memória do projeto, para o próximo ticket que mexer nessa tela.

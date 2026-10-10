@@ -1,0 +1,16 @@
+O ticket 735 está implementado e commitado em dois commits na `frente/735`. Não rodei `npm run build` nem a suíte inteira do vitest.
+
+**O que foi feito**
+- **`src/lib/relacao/pode-agir.ts`:** `contextoDeAcao` monta o papel por `papelDe` e o dono do cliente por `carregarQuemCuida`. `podeAgirNoCliente` libera diretor e admin sempre. Os demais passam só se `cuidaDoCliente` for verdadeiro, ou seja, o gestor principal ou, sem gestor, os heads.
+- **`src/app/api/relacao/responder/route.ts`:**
+  - O GET dá 401 sem sessão, 422 com `cliente_id` inválido e 403 para quem não cuida do cliente. Devolve `itens` do mais antigo ao mais novo e `desconhecidos_24h` somado só dos grupos devolvidos. Falha de leitura vira 500 com o motivo.
+  - O POST usa `lerCorpoJson` e zod, com o motivo restrito a `respondido_fora` ou `nao_pedia_resposta` (fora da lista dá 422). Acha o cliente pelo vínculo vigente do grupo, só com SELECT em `wpp_grupo`. Sem vínculo dá 404 e sem permissão dá 403. Grava com upsert em `perf_vacuo_tratado` usando `onConflict` `group_jid,mensagem_enviada_em`, então repetir não duplica. A regra do vácuo vem de `carregarVacuos`, sem cópia na rota.
+- **`test/relacao-responder-api.test.ts`:** 12 casos, todos passando, cobrindo os cenários do ticket. Os itens do GET são afirmados com `some`/`indexOf`, sem `toEqual` em lista inteira.
+
+**Verificação**
+- `tsc` deu 3 erros, que é o baseline, todos em `qualificacao*` e nas rotas de perf.
+- As 7 guardas globais deram verde antes do enxugamento do diff, que só mexeu nos três arquivos do ticket. Não as rodei de novo depois.
+- O diff soma 318 linhas, dentro do teto de 320. O primeiro commit estourou com 366, então enxuguei os três arquivos no segundo.
+- Nenhum `.sql`, nenhuma escrita em `wpp_grupo` e nenhum `.json()` novo.
+- Os dois commits tocam só a allowlist. Não fiz push.
+- O `rm -rf .next` foi negado por permissão. O `tsc` já estava no baseline sem ele.

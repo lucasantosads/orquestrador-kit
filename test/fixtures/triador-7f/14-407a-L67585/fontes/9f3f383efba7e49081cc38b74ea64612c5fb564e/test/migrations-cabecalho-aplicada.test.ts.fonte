@@ -1,0 +1,39 @@
+// 29/09: proposta com cabeçalho "NÃO APLICADA" não mora em supabase/migrations/. Quatro
+// arquivos ficaram aplicados no banco com esse cabeçalho (e o ops_automacoes antes deles);
+// proposta vai para docs/specs/sql/ e só entra aqui quando aprovada. O padrão olha só o
+// cabeçalho (5 primeiras linhas): comentário explicativo no meio do arquivo, como o de
+// 20260817000001 ("tabela ainda nao aplicada"), não é marcador de estado.
+import { describe, it, expect } from "vitest";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+
+const DIR = join("supabase", "migrations");
+const MARCADOR = /n[ãa]o\s+aplicada/i;
+
+function sqls(dir: string): string[] {
+  return readdirSync(dir).flatMap((nome) => {
+    const caminho = join(dir, nome);
+    if (statSync(caminho).isDirectory()) return sqls(caminho);
+    return nome.endsWith(".sql") ? [caminho] : [];
+  });
+}
+
+export function cabecalhoNaoAplicada(conteudo: string): boolean {
+  return conteudo.split("\n").slice(0, 5).some((l) => MARCADOR.test(l));
+}
+
+describe("supabase/migrations sem cabeçalho de proposta", () => {
+  it("o padrão pega NÃO APLICADA e NAO APLICADA em qualquer caixa, só no cabeçalho", () => {
+    expect(cabecalhoNaoAplicada("-- ===\n-- NÃO APLICADA. Proposta.")).toBe(true);
+    expect(cabecalhoNaoAplicada("-- ===\n-- nao aplicada ainda")).toBe(true);
+    expect(cabecalhoNaoAplicada("-- ===\n-- APLICADA em 29/09/2026 16:15:33 UTC")).toBe(false);
+    expect(cabecalhoNaoAplicada("1\n2\n3\n4\n5\n-- tabela ainda nao aplicada")).toBe(false);
+  });
+
+  it("nenhum arquivo de supabase/migrations/ tem NÃO APLICADA no cabeçalho", () => {
+    const arquivos = sqls(DIR);
+    expect(arquivos.length).toBeGreaterThan(0);
+    const comMarcador = arquivos.filter((a) => cabecalhoNaoAplicada(readFileSync(a, "utf8")));
+    expect(comMarcador).toEqual([]);
+  });
+});

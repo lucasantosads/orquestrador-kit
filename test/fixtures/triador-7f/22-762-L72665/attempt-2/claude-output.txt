@@ -1,0 +1,22 @@
+O ticket 762 está commitado (`1cf647d`), mas o gate vitest continua vermelho com a mesma falha da tentativa 1. Não consigo corrigir dentro da allowlist.
+
+**O que quebra:** `test/cron-paths-vercel.test.ts`, no caso "todo cron fora da lista de pendências passa direto para o handler". O novo cron `/api/cron/ghl-backfill` está no `vercel.json`, mas fica de fora do `CRON_PATHS` em `src/middleware.ts`. O middleware devolveria 401 ao Bearer do Vercel Cron antes de chegar ao handler, e o cron nunca rodaria em produção. É a mesma armadilha que já pegou o `/api/jobs/worker` e o `resumo-grupos-semanal`.
+
+**Por que não mexi:** `src/middleware.ts` e `test/cron-paths-vercel.test.ts` estão fora da allowlist. O ticket manda parar e descrever quando um teste fora da allowlist quebra. Também não dá para tirar o cron do `vercel.json`, porque um critério de aceite exige a entrada lá.
+
+**Como destravar:** adicionar `"/api/cron/ghl-backfill"` ao `CRON_PATHS` em `src/middleware.ts`. É uma linha, e o teste passa sem edição. Isso precisa de uma allowlist ampliada, ou de um ticket irmão que toque só o middleware.
+
+**O que foi entregue** (574 linhas, dentro do teto de 600):
+- **`ghl-backfill.ts`:** `TIPO_JOB_BACKFILL`, `enfileirarBackfillGhl`, `agendarBackfillsPendentes` e `processarJobBackfillGhl`, como o ticket especifica.
+- **`handlers/index.ts`:** registra o tipo com corte de 240 s.
+- **`crm-conexao.ts`:** reconectar passa a mandar `backfill_concluido_em: null`.
+- **`api/cron/ghl-backfill/route.ts`:** rota nova, GET e POST.
+- **`vercel.json`:** cron `*/15 * * * *`.
+- **`test/ghl-backfill-job.test.ts`:** teste novo.
+
+**Verificação:**
+- `test/ghl-backfill-job.test.ts` passa.
+- `tsc` dá 3 erros, o baseline.
+- Não rodei a suíte completa de vitest nem o `npm run build`. O harness vai rodar a suíte; o único vermelho esperado é o do middleware.
+
+A worktree estava limpa, sem o trabalho da tentativa 1. Recriei os arquivos a partir do `diff.raw` dela, sem mudança de conteúdo.

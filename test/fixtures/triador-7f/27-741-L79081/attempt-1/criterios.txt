@@ -1,0 +1,27 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-741
+sanear_tsc: nao
+cmd:    test -f test/backtest-promessas.test.ts && npx vitest run test/backtest-promessas.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO
+espera: VERDE
+-- saida --
+VERMELHO
+
+### criterio[9] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-741
+sanear_tsc: nao
+cmd:    f=scripts/dados/741-backtest-promessas.ts; [ -f $f ] || { echo AUSENTE; exit 0; }; w=$(grep -E '[.](insert|update|upsert|delete|rpc)[(]' $f | grep -vc 'throw\|lanca\|bloque'); [ "$w" = 0 ] && echo SO_LEITURA || echo ESCREVE_$w
+espera: SO_LEITURA
+-- saida --
+AUSENTE
+
+### criterio[10] (qualitativo — julgado pelo Opus)
+descricao: avaliador: o backtest roda a mesma deteccao do 861 sobre o historico do cliente pedido, imprime cada candidato com prazo, evidencia e motivo de descarte, e nao escreve nada (espiao confirma). REPROVE se: copia a regra de deteccao; escreve em qualquer tabela; roda sem --cliente.
+

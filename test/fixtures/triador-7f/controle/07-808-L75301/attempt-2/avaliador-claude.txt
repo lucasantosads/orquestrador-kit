@@ -1,0 +1,1 @@
+{"aprovado": true, "motivo": "As 3 rotas chamam resolverCliente uma vez dentro do try e consultam por par.cliente_id; disputa lê pendências pelos dois lados do par. Resposta sem vínculo igual a hoje, 404 com os dois lados null, erro do resolver vira 500. Mocks trocados sem perder asserção. Só arquivos da allowlist."}

@@ -1,0 +1,21 @@
+A migration `supabase/migrations/20261001000000_fn_reativar_churn.sql` agora existe, e o commit `9f3f383` está feito, sem push. Dois itens ficaram sem verificação, e um critério de timestamp deve reprovar.
+
+**Timestamp (l):** já existe `20261001090000_portal_inicio.sql` na árvore, com timestamp maior que o do nome fixado na allowlist. O critério de timestamp deve reprovar. O ticket manda parar e reportar, não renomear. Quem decide é o Lucas ou quem mantém a fila: ou a allowlist e o nome sobem para um timestamp maior que `20261001090000`, ou a ordem das migrations é aceita como está.
+
+**O que foi feito:**
+- **Migration:** nasce com o cabeçalho da exceção C0 e a chave `cliente_id`. Contém:
+  - `churn_aprovacoes` ganha `revertido` e `revertido_em`, com `ADD COLUMN IF NOT EXISTS`.
+  - A função `sync_churn_summary_num_saidas()` passa a recalcular `churn_rate` junto de `num_saidas`, com `nullif`.
+  - `reverter_para_nao_iniciado()` não converte quando `app.reativacao_direta` está `'on'` e não insere mais histórico próprio.
+  - `fn_reativar_churn(p_cliente_id uuid)` é `SECURITY DEFINER` com `search_path` fixo e segue o ticket (a)–(m). `revoke` de `public` e `anon` e `grant` só para `‹segredo›` são extras fora do ticket.
+- **Rota** `src/app/api/churn-log/route.ts`: o `.delete()` virou `.update({ revertido: true, revertido_em })` com a mensagem "Não foi possível reverter a saída". A busca por `?cliente_id=` ganhou `.not("revertido", "is", true)`. O 404 mantém o texto original.
+- **Testes** em `test/espelho-fase-churn.test.ts`: a asserção que esperava a linha apagada foi recalculada, com comentário citando o ticket 407a. Há dois `it` novos: a linha sobrevive ao DELETE com `revertido === true`, e uma saída já revertida dá 404. `test/churn-log-auth.test.ts` não precisou de mudança.
+
+**Verificação:**
+- `tsc` deu 3, o baseline.
+- Rodei `espelho-fase-churn`, `churn-log-auth` e `c0-guard`: 59 testes passaram.
+- Não rodei a suíte completa nem `npm run build`.
+- Os critérios mecânicos da migration (grep/awk) não foram executados: o comando pedia aprovação e este modo não interativo não a concede. O script está em `/tmp/chk407a.sh`.
+- O `rm -rf .next` também foi negado, então o `tsc` rodou sem a limpeza.
+
+Dos itens marcados "[julgado]", o ensaio de `num_saidas`/`churn_rate` e os dois caminhos de `nao_iniciado` não foram exercitados num banco, só escritos no SQL.

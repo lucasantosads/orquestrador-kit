@@ -1,0 +1,22 @@
+Ticket 648 está implementado e em dois commits na `frente/648` (`15ec9b1` código, `43238be` testes), sem push. Todas as verificações passaram: tsc com 3 erros em `src/` (o baseline), os testes da allowlist e as guardas globais verdes, a suíte inteira verde (5975 testes), o build ok, e os critérios de grep todos na saída esperada.
+
+**Por que a tentativa anterior reprovou:** o limite de 24 testes em `test/tooltip-acessivel.test.ts` foi medido em main. Só que o ticket 646, que já está na base desta frente, apagou o teste do `relatorio-tab`, e o arquivo nasceu com 23. Para voltar a 24, acrescentei um teste que tem a ver com este ticket: `perfil-chip.tsx` não tem nenhum `title=`.
+
+**O que mudou no cartão do topo**
+- **Chip de Perfil:** mostra o rótulo visível `Perfil · <valor>`, e sem perfil fica `Perfil · sem base` em cinza. Tirei o rótulo que só o leitor de tela lia, para não ser anunciado duas vezes.
+- **Gestor:** passa a `Gestor · <nome>`.
+- **Botão Regenerar:** passa a `Regenerar link NPS` e `Regenerando…` no estado ocupado. O `data-testid` e o `confirm()` continuam iguais.
+- **Teses/Entregáveis:** o texto vazio passa a `nenhuma`/`nenhum`, com `rotulo` e `texto` na mesma linha porque o grep do critério exige isso. O Configurar ficou, e as duas linhas continuam no cartão.
+- **Ajuda do closer:**
+  - O `?` virou o ícone `HelpCircle` dentro da mesma Dica.
+  - O texto agora explica as duas fontes: o closer vem do registro comercial do fechamento e o tempo de casa conta a partir da data de fechamento do contrato, não do START.
+  - Mantive a frase "Campo sem base neste cartão não significa contrato sem closer", para a tela seguir dizendo que vazio não é ausência de closer.
+- **Editar atalhos:** subiu para o grupo de Editar cadastro, à direita, com uma Dica explicando o que são atalhos. O estado e o painel de edição ficaram onde estavam.
+  - Mudei também o rótulo aberto de "Fechar" para "Fechar atalhos", porque lá em cima "Fechar" sozinho ficava ambíguo.
+  - Um efeito colateral: sem link de Ads Manager nem de CRM, a linha de atalhos fica vazia com a borda de cima. Não escondi a linha nesse caso.
+
+**Testes recalculados:** foram 16 asserções em 7 arquivos, todos da allowlist, cada uma com comentário citando o 648. Nenhuma asserção foi removida e não há skip. As asserções que conferem o próprio mockup, que ainda diz "Gestor:" e "?", ficaram como estavam. Recalculei só as que olham o código ou a tela renderizada.
+
+Registrei na memória o problema do limite medido em main antes de um ticket anterior da staging apagar um teste.
+
+Alguns conectores MCP (Fathom, Windsor.ai, WordPress.com e os de marketing) pedem autorização. Isso se faz nas configurações de conectores do claude.ai ou via `/mcp`, e não afetou este ticket.

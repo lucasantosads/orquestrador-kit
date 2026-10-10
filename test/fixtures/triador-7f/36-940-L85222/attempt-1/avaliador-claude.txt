@@ -1,0 +1,1 @@
+{"aprovado": true, "motivo": "Mediana e faixa por cliente com n. Menos de 3 clientes: sem_amostra e valores null. Multitese soma o cliente uma vez no nicho. Engajamento entra no investido e fica fora do custo. Custo por tipo nunca somado. Score 50/30/20 parcial sem CAC. Desvio via DESVIO_TESE. Lib pura. Ressalva: campanha sem objetivo conta como captação."}

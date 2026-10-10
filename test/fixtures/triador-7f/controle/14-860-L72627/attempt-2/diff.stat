@@ -1,0 +1,8 @@
+ scripts/backfill-grupo-nome.ts          |  69 +++++++++++--
+ src/lib/whatsapp/backfill-grupo-nome.ts |  13 ++-
+ src/lib/whatsapp/grupos.ts              |   3 +-
+ src/lib/whatsapp/nome-grupo-cache.ts    |  49 ++++++---
+ test/wpp-backfill-grupo-nome.test.ts    |   3 +-
+ test/wpp-evolution-credencial.test.ts   | 173 ++++++++++++++++++++++++++++++++
+ test/wpp-nome-grupo-cache.test.ts       |   4 +
+ 7 files changed, 286 insertions(+), 28 deletions(-)

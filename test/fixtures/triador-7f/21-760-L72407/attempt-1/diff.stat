@@ -1,0 +1,5 @@
+ src/app/api/webhooks/ghl/app/route.ts  |  54 ++++++
+ src/lib/perf/crm-oportunidades.ts      | 265 ++++++++++++++++++++++++++++++
+ test/ghl-app-webhook.test.ts           |   3 +-
+ test/ghl-oportunidades-webhook.test.ts | 290 +++++++++++++++++++++++++++++++++
+ 4 files changed, 611 insertions(+), 1 deletion(-)

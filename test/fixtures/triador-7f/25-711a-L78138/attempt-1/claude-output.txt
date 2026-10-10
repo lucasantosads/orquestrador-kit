@@ -1,0 +1,17 @@
+A fatia 711a está feita e commitada, mas não consegui rodar `npm run build`. A sandbox bloqueou todas as formas que tentei, então ele não foi verificado.
+
+O `tsc` ficou em 3 erros, o baseline. O teste novo e os guardas globais passam. Os 10 testes existentes dos critérios de aceite também passam sem edição, então não recalculei nenhuma asserção em `test/carteira-lista-risco.test.ts` nem em `test/data-view-renovacoes-risco.test.ts`.
+
+O diff tem 256 linhas, abaixo do teto de 600. Rodei só os testes citados no ticket, não o `vitest run` completo.
+
+Commits: `d383e7a` (código) e `8fc61d9` (teste novo).
+
+- **Loader:** em `src/lib/inicio/carregar-carteira.ts`, o corpo de `carregarInicio` foi extraído para uma função interna. A nova `carregarSinaisPorIds(db, pessoaId, ids, agoraISO)` reaproveita essa função, então `avaliarCliente` continua sendo chamado só no loader. Ela filtra por `isClienteAtivo` e não aplica recorte por papel.
+- **Rota:** `src/app/api/clientes/sinais/route.ts` responde `GET ?ids=` com `{ [cliente_id]: { cor, sinal, motivo, faltando, override } }`. Devolve 401 sem sessão, 422 sem ids ou com mais de 300, e 500 se a leitura falhar.
+- **Carteira:** a coluna Temperatura em `page.tsx` faz uma chamada a `/api/clientes/sinais` com os ids da carteira, usando `fetchJson`. Mostra o chip de cor com o motivo no tooltip, ou `SemDado` com o motivo quando a cor é "sem base". Se a chamada falhar, mostra "não foi possível ler a saúde dos clientes". A leitura por IA saiu da coluna e `classificarTemperatura` continua em `badges.ts`.
+- **Risco:** em `risco/page.tsx` e `lista-risco-bloco.tsx` o score antigo ficou com texto neutro, sem `corScoreSaude`.
+- **Teste novo:** `test/saude-mesma-regra.test.ts` cobre a rota com o loader mockado (200, 422, 401, 500), a coluna da carteira lendo `/api/clientes/sinais` e a ausência de `corScoreSaude` nos dois arquivos de risco.
+
+A carteira não tem paginação, então mando no máximo 300 ids numa chamada, que é o teto da rota. Clientes além disso ficam em "saúde ainda não carregada". Se a carteira passar de 300 ativos, isso vira um problema real.
+
+Para fechar o build, rode `SESSION_SECRET=<qualquer> npm run build >/dev/null 2>&1 && echo BUILD_OK` na worktree.

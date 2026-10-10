@@ -1,0 +1,27 @@
+{
+ "classe": "R3",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/559/attempt-2.prev2/gate-vitest.txt",
+   "linha": 980,
+   "origem": "medicao"
+  },
+  {
+   "arquivo": "docs/fila/runs/559/attempt-2.prev2/gate-vitest.txt",
+   "linha": 1071,
+   "origem": "medicao"
+  },
+  {
+   "arquivo": "docs/fila/runs/559/attempt-2.prev2/gate-vitest.txt",
+   "linha": 1366,
+   "origem": "medicao"
+  },
+  {
+   "arquivo": "docs/fila/runs/local-loop.log",
+   "linha": 55043,
+   "origem": "medicao"
+  }
+ ],
+ "requeue": "nao",
+ "fonte_da_verdade": "medicao-bloqueios-out.md:102"
+}

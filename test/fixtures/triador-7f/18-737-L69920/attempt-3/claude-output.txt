@@ -1,0 +1,24 @@
+O bloco "Responder agora" está pronto e commitado em `frente/737`, mas o critério 6, que reprovou a tentativa anterior, vai reprovar de novo. O defeito está no próprio critério, não no diff, e não dá para corrigir dentro da allowlist.
+
+**Por que o critério 6 falha:** ele compara cada arquivo com `case "$f" in $p)`, com `$p` sem aspas. No bash, `[id]` é lido como "um único caractere `i` ou `d`", então o caminho `src/app/dashboard/clientes/[id]/page.tsx` nunca casa com ele mesmo e o resultado é `FORA_src/app/dashboard/clientes/[id]/page.tsx`. No zsh a comparação é literal e passa, por isso parece certo quando testado à mão. O critério 12 exige que `page.tsx` mude (`SO_MONTAGEM`), então os dois critérios não passam juntos no bash. Não consegui rodar a comparação no bash aqui (o comando pedia aprovação); a conclusão vem da regra de padrões do bash e bate com a reprovação anterior.
+
+**Decisão sua:** a correção está no ticket em `docs/fila`, fora da allowlist. Basta escrever o padrão com colchete escapado (`'src/app/dashboard/clientes/\[id\]/page.tsx'`) ou comparar com `[ "$f" = "$p" ]`. Deixei isso salvo na memória para os próximos tickets que mexem em rota `[id]`.
+
+**Verificação:**
+- **tsc:** os mesmos 3 erros de baseline, nenhum novo.
+- **Testes:** suíte completa com 737 arquivos e 7580 testes passando; o teste novo tem 10 casos; as guardas globais e as da ficha estão verdes.
+- **Build:** `npm run build` saiu com sucesso.
+- **Demais critérios mecânicos:** diff de 348 linhas (teto 400), `page.tsx` com 2 linhas adicionadas e 0 removidas, nenhum `.sql`, nenhuma linha nova com `.json()`, nenhum travessão, guardas e rotas do 735/736 intocadas.
+
+**O que foi feito:**
+- **Componente novo** `src/components/relacao/responder-agora.tsx`:
+  - Lê a fila de vácuos do cliente e não aparece quando não há item nem autor não identificado.
+  - Cada linha mostra o tempo útil em Geist Mono ("42 min", "1h 35min", "1d 3h"), o rótulo "Vácuo" junto da cor, o trecho entre aspas, o autor e, fora da ficha, o nome do cliente com link.
+  - Cada linha tem exatamente 3 ações: "Subir tarefa", "Tratado · respondido fora do grupo" e "Tratado · não pedia resposta".
+  - Ação bem-sucedida tira só aquela linha, sem recarregar. Se der erro, como o 422 "Cliente sem gestor principal", a mensagem aparece e a linha fica.
+  - Havendo autor não identificado, aparece a linha discreta com o link "Identificar" para `/portal/equipe`.
+  - Erro de leitura mostra "Não foi possível carregar a fila de resposta" com o motivo.
+- **Ficha do cliente** (`page.tsx`): só o import e a montagem, logo depois de `IdentidadeCliente` e antes de `ContaNovaSugestao`.
+- **Teste novo** `test/relacao-responder-tela.test.ts`: o projeto não consegue importar `.tsx` direto nos testes, então ele compila o arquivo real com esbuild e renderiza com dublês, igual a `test/sessao-degradada.test.ts`. A posição da montagem é conferida lendo a fonte da página.
+
+São dois commits, `deb64b9` e `c89a104`. O segundo só reescreve um comentário meu que citava `.json()` e fazia o critério do teto casar. Nada foi publicado.

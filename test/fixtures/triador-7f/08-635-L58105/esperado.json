@@ -1,0 +1,17 @@
+{
+ "classe": "R3",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/635.pre-requeue-26set/attempt-2/gate-vitest.txt",
+   "linha": 2239,
+   "origem": "medicao"
+  },
+  {
+   "arquivo": "docs/fila/runs/635.pre-requeue-26set/attempt-2/gate-vitest.txt",
+   "linha": 974,
+   "origem": "medicao"
+  }
+ ],
+ "requeue": "nao",
+ "fonte_da_verdade": "medicao-bloqueios-out.md:109"
+}

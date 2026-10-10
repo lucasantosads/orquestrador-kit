@@ -1,0 +1,6 @@
+ src/lib/perf/nicho-tese/agregar.ts    | 386 ++++++++++++++++++++++++++++++++++
+ src/lib/perf/nicho-tese/constantes.ts |  23 ++
+ src/lib/perf/nicho-tese/desvio.ts     |  26 +++
+ src/lib/perf/nicho-tese/score.ts      |  65 ++++++
+ test/perf-nicho-tese-agregar.test.ts  | 238 +++++++++++++++++++++
+ 5 files changed, 738 insertions(+)

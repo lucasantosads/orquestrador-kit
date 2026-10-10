@@ -1,0 +1,12 @@
+Os três arquivos do ticket 735 estão commitados em `frente/735` e tudo que rodei passou. Não rodei o `npm run build`, o `vitest` completo e as sete guardas globais. A permissão foi negada em um dos comandos de tsc que tentei, e eu não retomei essas execuções depois.
+
+- **Reprovação do critério 11:** o `pode-agir.ts` selecionava a coluna do gestor ao montar o papel, e o grep achava essa menção. Agora a consulta lê só `id, nome, role, cargo_id, ativo`. Isso basta para o `papelDe`, e o grep dá 0.
+- **Quem pode agir:** `contextoDeAcao` monta papel e quem-cuida, e `podeAgirNoCliente` libera diretor e admin sempre. Os demais só no cliente que `cuidaDoCliente` confirma.
+- **Rota GET e POST:** `GET` e `POST` em `src/app/api/relacao/responder/route.ts` seguem a especificação do ticket. A rota só lê `wpp_grupo`, nunca escreve nele.
+- **Tamanho do diff:** o primeiro commit (`855e91b`) saiu com 363 linhas, acima do teto de 320. Enxuguei em um segundo commit e o total ficou em 315: 110 na rota, 38 no `pode-agir.ts` e 167 no teste.
+- **Testes:** `test/relacao-responder-api.test.ts` tem 11 testes e passa. Cobrem os casos pedidos no ticket (401, 422, 403, head, diretor, ordem, Tratado, 404 e nenhuma escrita em `wpp_grupo`), mais o 500 com motivo quando a leitura falha.
+- **tsc:** deu 3 erros, igual ao baseline.
+
+Nenhum arquivo fora da allowlist foi tocado, não há `.sql` novo e não fiz push.
+
+O `desconhecidos_24h` soma só os grupos que aparecem nos itens devolvidos. Um grupo com desconhecidos mas sem vácuo não entra na soma, porque o `carregarVacuos` não informa de que cliente ele é.

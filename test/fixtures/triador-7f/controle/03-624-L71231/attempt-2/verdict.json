@@ -1,0 +1,4 @@
+{
+  "aprovado": true,
+  "motivo": "A tela segue a spec: tabela com Nome/Gatilho+agenda/Ação/Escopo/Ativo, badge verde/cinza, form '+ Nova automação' que recarrega a lista, erro inline sem alert(), estado de acesso negado e textos sem jargão de banco. Ressalvas menores: cores cruas no lugar de tokens e tabela vazia quando a lista dá erro."
+}

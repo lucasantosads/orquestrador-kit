@@ -1,0 +1,222 @@
+{
+ "id": "760",
+ "slug": "ghl-oportunidades-gravacao-webhook",
+ "lane": "produto",
+ "perfil": "backend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 640 linhas (~230 em src/lib/perf/crm-oportunidades.ts NOVO, ~45 na rota src/app/api/webhooks/ghl/app/route.ts, ~6 recalculadas em test/ghl-app-webhook.test.ts, ~330 no teste NOVO test/ghl-oportunidades-webhook.test.ts). Se passar do teto, pare e reporte. FONTE: decisoes do Lucas de 03/10 (regra de MQL do cliente no Setup > CRM passa a usar etapas reais do GHL; tags nos tickets 746 a 748; etapas canonicas seguem so para relatorio agregado). Piloto AQUINO ADV (location BAs5Fw46Xz3uvTtq6Gmz, cliente 7837ac12-c6db-47e8-b4e8-6e043633eb6d): conectado, 7 pipelines em perf_crm_pipelines, 50 etapas em perf_crm_etapas, todas com etapa_canonica nula, location_nome nula, backfill iniciado e nao concluido, 0 linhas em perf_crm_oportunidades e 0 em perf_leads (o backfill de contatos nunca rodou: nada chama a rota nem enfileira job; a ingestao nasce nos tickets 760 a 763). CAUSA DOS 0 LEADS (recon de 03/10): (a) o backfill nunca rodou. Nada em src chama POST /api/perf/ghl/backfill/[clienteId] e nada enfileira job para ele (src/lib/jobs/handlers/index.ts so registra resumo_grupo_semanal; ops_jobs nunca teve tipo de backfill; logs de producao: 0 requisicoes a rota depois do callback das 18:22:39). backfill_iniciado_em e so o carimbo do upsert em conectarContaCliente, e sincronizarConexao vira 'ativa' depois de puxar SO pipelines e etapas. A rota, mesmo chamada, nao escreve em perf_crm_conexoes: por isso nenhum ultimo_erro. (b) Tempo real: 0 POST em /api/webhooks/ghl",
+ "cria_novo": [
+  "src/lib/perf/crm-oportunidades.ts",
+  "test/ghl-oportunidades-webhook.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/lib/perf/crm-oportunidades.ts",
+  "src/app/api/webhooks/ghl/app/route.ts",
+  "test/ghl-oportunidades-webhook.test.ts",
+  "test/ghl-app-webhook.test.ts"
+ ],
+ "dependencias": [
+  "humano:mql-cliente-crm"
+ ],
+ "prioridade": 36,
+ "recon_esperado": [
+  {
+   "descricao": "webhook trata so contato hoje",
+   "cmd": "grep -c 'Opportunity' 'src/app/api/webhooks/ghl/app/route.ts'",
+   "espera": "0"
+  },
+  {
+   "descricao": "nada grava perf_crm_oportunidades em src hoje",
+   "cmd": "grep -rl 'perf_crm_oportunidades' src | wc -l | tr -d ' '",
+   "espera": "0"
+  },
+  {
+   "descricao": "o teste do webhook usa OpportunityCreate como tipo ignorado",
+   "cmd": "grep -c 'type: \"OpportunityCreate\"' 'test/ghl-app-webhook.test.ts'",
+   "espera": "1"
+  },
+  {
+   "descricao": "src/lib/perf/crm-oportunidades.ts ainda nao existe",
+   "cmd": "test -e 'src/lib/perf/crm-oportunidades.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "test/ghl-oportunidades-webhook.test.ts ainda nao existe",
+   "cmd": "test -e 'test/ghl-oportunidades-webhook.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/lib/perf/crm-oportunidades.ts' 'src/app/api/webhooks/ghl/app/route.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma leitura nova vira vazio em silencio (?? [] ou || [] em linha nova de src do ticket)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/lib/perf/crm-oportunidades.ts' 'src/app/api/webhooks/ghl/app/route.ts' | grep -E '^[+][^+]' | grep -cE '[?][?] *\\[\\]|[|][|] *\\[\\]'); [ \"$n\" = 0 ] && echo SEM_VAZIO_SILENCIOSO || echo VAZIO_SILENCIOSO_$n",
+   "espera": "SEM_VAZIO_SILENCIOSO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/lib/perf/leads-ghl.ts' 'src/lib/qualificacao/motor.ts' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/lib/perf/crm-oportunidades.ts' 'src/app/api/webhooks/ghl/app/route.ts' 'test/ghl-oportunidades-webhook.test.ts' 'test/ghl-app-webhook.test.ts'; do if [ \"$f\" = \"$p\" ]; then ok=1; fi; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 640 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 640 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma escrita nova em tabela C0 ou ghl_* do comercial",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- src | grep -E '^[+][^+]' | grep -E '[.](insert|update|upsert|delete)[(]' | grep -cE 'clientes_receita|leads_crm|ads_metadata|ads_performance|trafego_|vw_|ghl_etapa_mapa|ghl_user_map|ghl_funnel'); [ \"$n\" = 0 ] && echo SEM_ESCRITA_C0 || echo ESCREVE_C0_$n",
+   "espera": "SEM_ESCRITA_C0",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "oportunidade removida nunca e apagada (nenhum delete novo em perf_crm_*)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- src | grep -E '^[+][^+]' | grep -cE '[.]delete[(]'); [ \"$n\" = 0 ] && echo SEM_DELETE || echo DELETE_$n",
+   "espera": "SEM_DELETE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "test/ghl-app-webhook.test.ts anti-afrouxamento: nao perdeu assercao (contagem de expect( nao cai)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; a=$(git show \"$b:test/ghl-app-webhook.test.ts\" | grep -c 'expect('); n=$(grep -c 'expect(' 'test/ghl-app-webhook.test.ts'); [ \"$n\" -ge \"$a\" ] && echo SEM_AFROUXAR || echo PERDEU_${a}_${n}",
+   "espera": "SEM_AFROUXAR",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes do GHL, motor e jobs seguem verdes",
+   "cmd": "npx vitest run test/ghl-agencia-2a.test.ts test/ghl-conectar-ficha.test.ts test/middleware-webhooks.test.ts test/ingest-ghl.test.ts test/fechamentos.test.ts test/qualificacao-motor.test.ts test/jobs-motor-geral.test.ts test/setup-assistente-crm-concluir.test.ts test/ghl-app-webhook.test.ts test/ghl-backfill.test.ts test/ghl-oauth.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde (test/ghl-oportunidades-webhook.test.ts)",
+   "cmd": "test -f test/ghl-oportunidades-webhook.test.ts && npx vitest run test/ghl-oportunidades-webhook.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "webhook trata os 4 eventos de oportunidade pela lib",
+   "cmd": "f='src/app/api/webhooks/ghl/app/route.ts'; n=$(grep -oE 'Opportunity(Create|StageUpdate|StatusUpdate|Delete)' \"$f\" | sort -u | wc -l | tr -d ' '); a=$(grep -c 'gravarOportunidade' \"$f\"); b=$(grep -c 'removerOportunidade' \"$f\"); [ \"$n\" = 4 ] && [ \"$a\" -ge 1 ] && [ \"$b\" -ge 1 ] && echo QUATRO_EVENTOS || echo EVENTOS_${n}_${a}_${b}",
+   "espera": "QUATRO_EVENTOS"
+  },
+  {
+   "descricao": "lib grava oportunidade e historico de forma idempotente",
+   "cmd": "f='src/lib/perf/crm-oportunidades.ts'; [ -f \"$f\" ] || { echo AUSENTE; exit 0; }; a=$(grep -c 'perf_crm_oportunidade_historico' \"$f\"); b=$(grep -c 'location_id,ghl_opportunity_id' \"$f\"); c=$(grep -c 'ignoreDuplicates' \"$f\"); d=$(grep -c 'removido_em' \"$f\"); [ \"$a\" -ge 1 ] && [ \"$b\" -ge 1 ] && [ \"$c\" -ge 1 ] && [ \"$d\" -ge 1 ] && echo GRAVACAO_OK || echo GRAV_${a}_${b}_${c}_${d}",
+   "espera": "GRAVACAO_OK"
+  },
+  {
+   "descricao": "avaliador: os 4 eventos de oportunidade do app gravam perf_crm_oportunidades com pipeline e etapa do espelho e o historico de etapa/status, sem duplicar em reenvio; Delete marca removido_em; etapa desconhecida tenta um sync de pipelines e depois 422; o contato do lead e requalificado. REPROVE se: apaga linha; grava historico sem mudanca; reenvio duplica historico; erro de leitura vira 'nao achou'; etapa desconhecida vira 500 (reenvio eterno) ou e gravada sem etapa; muda o tratamento dos eventos de contato; assercao do teste do webhook removida.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "colunas_escritas": [
+  "perf_crm_oportunidades.ghl_opportunity_id",
+  "perf_crm_oportunidades.cliente_id",
+  "perf_crm_oportunidades.location_id",
+  "perf_crm_oportunidades.pipeline_id",
+  "perf_crm_oportunidades.etapa_id",
+  "perf_crm_oportunidades.status",
+  "perf_crm_oportunidades.valor",
+  "perf_crm_oportunidades.nome",
+  "perf_crm_oportunidades.ghl_contact_id",
+  "perf_crm_oportunidades.contato_nome",
+  "perf_crm_oportunidades.ghl_responsavel_id",
+  "perf_crm_oportunidades.ghl_criado_em",
+  "perf_crm_oportunidades.ghl_atualizado_em",
+  "perf_crm_oportunidades.etapa_mudou_em",
+  "perf_crm_oportunidades.status_mudou_em",
+  "perf_crm_oportunidades.removido_em",
+  "perf_crm_oportunidades.payload",
+  "perf_crm_oportunidades.sincronizado_em",
+  "perf_crm_oportunidade_historico.oportunidade_id",
+  "perf_crm_oportunidade_historico.etapa_de_id",
+  "perf_crm_oportunidade_historico.etapa_para_id",
+  "perf_crm_oportunidade_historico.status_de",
+  "perf_crm_oportunidade_historico.status_para",
+  "perf_crm_oportunidade_historico.mudou_em",
+  "perf_crm_oportunidade_historico.origem",
+  "perf_crm_oportunidade_historico.payload"
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/ghl-agencia-2a.test.ts",
+   "motivo": "importa ou mocka um arquivo da allowlist pelo grafo (webhook ou motor); o ticket acrescenta tipos de evento novos e nao muda o caminho de contato. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/ghl-conectar-ficha.test.ts",
+   "motivo": "importa ou mocka um arquivo da allowlist pelo grafo (webhook ou motor); o ticket acrescenta tipos de evento novos e nao muda o caminho de contato. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/middleware-webhooks.test.ts",
+   "motivo": "importa ou mocka um arquivo da allowlist pelo grafo (webhook ou motor); o ticket acrescenta tipos de evento novos e nao muda o caminho de contato. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/ingest-ghl.test.ts",
+   "motivo": "importa ou mocka um arquivo da allowlist pelo grafo (webhook ou motor); o ticket acrescenta tipos de evento novos e nao muda o caminho de contato. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/fechamentos.test.ts",
+   "motivo": "importa ou mocka um arquivo da allowlist pelo grafo (webhook ou motor); o ticket acrescenta tipos de evento novos e nao muda o caminho de contato. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/qualificacao-motor.test.ts",
+   "motivo": "importa ou mocka um arquivo da allowlist pelo grafo (webhook ou motor); o ticket acrescenta tipos de evento novos e nao muda o caminho de contato. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/jobs-motor-geral.test.ts",
+   "motivo": "importa ou mocka um arquivo da allowlist pelo grafo (webhook ou motor); o ticket acrescenta tipos de evento novos e nao muda o caminho de contato. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/setup-assistente-crm-concluir.test.ts",
+   "motivo": "importa ou mocka um arquivo da allowlist pelo grafo (webhook ou motor); o ticket acrescenta tipos de evento novos e nao muda o caminho de contato. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/ghl-backfill.test.ts",
+   "motivo": "importa ou mocka um arquivo da allowlist pelo grafo (webhook ou motor); o ticket acrescenta tipos de evento novos e nao muda o caminho de contato. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/ghl-oauth.test.ts",
+   "motivo": "importa ou mocka um arquivo da allowlist pelo grafo (webhook ou motor); o ticket acrescenta tipos de evento novos e nao muda o caminho de contato. Criterio roda todos sem edicao"
+  }
+ ],
+ "status": "pendente",
+ "tentativas": 0,
+ "notas_status": "escrito em 03/10, nao comitado; preso por humano:mql-cliente-crm ate o Lucas revisar",
+ "_objetivo_cortado_na_fixture": 9707
+}

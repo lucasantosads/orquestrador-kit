@@ -1,0 +1,12 @@
+{
+ "id": "559",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/559-aceite-aba-conta.md",
+ "ticket_sha": "92bee2ca71f34ab9070cb72ea19f515497bdb45f",
+ "ticket_antes": true,
+ "linha_bloqueio": 55209,
+ "log_inicio": 55184,
+ "fim": "2026-09-25T13:59:56Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/559"
+}

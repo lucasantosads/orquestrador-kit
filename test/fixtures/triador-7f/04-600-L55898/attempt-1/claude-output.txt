@@ -1,0 +1,15 @@
+Escrevi `test/visao-aceite-estrutura.test.tsx` com os 39 `it(` e commitei (`e5526d1`). Um deles fica vermelho, então o critério "VERDE" não fecha, como o ticket prevê.
+
+**Vermelho:** `copy: titulos de secao do mockup`. O mockup tem "Campanhas" como título do cartão da tabela (`visao.dc.html:103`). Na tela, `TabelaCampanhas` só renderiza o filtro de funil e a tabela, sem título. A palavra só aparece na linha de estado vazio, como `<span>` em `LinhaVazia`. Os outros seis títulos (Visão geral, Relação, Tarefas, Alertas, Linha do tempo, Análise IA) estão na tela. Isso vira ticket de correção: título de seção e cartão em volta da tabela.
+
+**Verificações:**
+- **tsc:** 3 erros em `src/`, o baseline (as duas rotas de `qualificacao-regras` e o `qualificacao-block.tsx`); nenhum erro no arquivo novo. Não consegui rodar o `rm -rf .next` (negado), mas não havia `.next` na árvore.
+- **Guardas:** as cinco guardas globais e o aceite 522 passam (103 testes, 6 arquivos).
+- **Critérios de arquivo:** 39 `it(`, sem `.skip`/`.only`/`.todo`, sem JSX. Não rodei os greps de nomes, de `expect.soft`/`it.fails` nem o de "LE_MOCKUP" (só verifiquei visualmente que o arquivo lê `visao.dc.html` com `readFileSync`).
+
+**Escolhas para saber:**
+- **Tamanho:** o arquivo tem 598 linhas, sob o teto de 600 da leva mas acima dos ~420 previstos. Deixei assim porque cada item lê a contagem do mockup e renderiza a View real.
+- **Âncoras:** os títulos "Campanhas", "Relação", "Tarefas", "Alertas" e "Linha do tempo" aparecem antes na barra de abas do mockup. Usei a âncora `>Título</div>` para pegar o cartão e não a aba.
+- **CPL:** o mockup pinta de vermelho só 1 CPL, mas o CPL de R$ 285,73 também passa do dobro da média (R$ 19,72) e o mockup o deixa sem cor. No item de CPL, os verdes vêm do mockup (2) e os vermelhos seguem a regra escrita nele ("vermelho acima do dobro"). Há um comentário no teste sobre isso.
+
+Não toquei em nenhum arquivo de `src/`, no mockup nem em outro teste. Não fiz push.

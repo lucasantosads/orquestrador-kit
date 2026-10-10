@@ -1,0 +1,387 @@
+{
+ "id": "737",
+ "slug": "tela-responder-agora-ficha",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 400 linhas (~200 em src/components/relacao/responder-agora.tsx NOVO, ~8 em page.tsx da ficha, ~190 no teste NOVO test/relacao-responder-tela.test.ts). Se passar do teto, pare e reporte. FONTE: docs/planos/plano-vacuo-promessa-02out.md (plano aprovado em 02/10; as decisoes de 02/10 escritas la valem sobre o plano). Piloto so AQUINO ADV. PASSO 1: leia DESIGN.md (secao 6, guardrails), src/app/api/relacao/responder/route.ts (735) e src/app/api/relacao/subir-tarefa/route.ts (736) para a forma das respostas, src/app/dashboard/clientes/[id]/page.tsx (o cartao IdentidadeCliente e renderizado no shell; o bloco entra logo DEPOIS dele e ANTES de ContaNovaSugestao) e src/lib/fetch-json.ts (fetchJson). FAZER: (1) NOVO src/components/relacao/responder-agora.tsx ('use client'): export function ResponderAgora({ clienteId?: string }) busca GET /api/relacao/responder (com ?cliente_id quando houver) por fetchJson. Sem itens e sem desconhecidos = return null (o bloco so aparece com item; decisao de 02/10). Titulo 'Responder agora'. Cada linha (data-testid='responder-item'): tempo em font-mono no formato 'Xh Ymin' (ou 'Y min' abaixo de 1h; '1d 3h' a partir de 420 min uteis) seguido de 'úteis sem resposta'; rotulo 'Vácuo' (cor sempre acompanhada do rotulo); trecho entre aspas; autor; sem clienteId, tambem o nome do cliente com link para a ficha. Exatamente 3 acoes por linha (data-testid='responder-acao'): 'Subir tarefa' (POST /api/relacao/subir-tarefa { alvo: { tipo: 'va",
+ "cria_novo": [
+  "src/components/relacao/responder-agora.tsx",
+  "test/relacao-responder-tela.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/components/relacao/responder-agora.tsx",
+  "src/app/dashboard/clientes/[id]/page.tsx",
+  "test/relacao-responder-tela.test.ts"
+ ],
+ "dependencias": [
+  "735",
+  "736"
+ ],
+ "prioridade": 38,
+ "recon_esperado": [
+  {
+   "descricao": "a ficha monta IdentidadeCliente e depois ContaNovaSugestao no shell",
+   "cmd": "grep -c '<IdentidadeCliente\\|<ContaNovaSugestao' 'src/app/dashboard/clientes/[id]/page.tsx'",
+   "espera": "2"
+  },
+  {
+   "descricao": "a ficha ainda nao monta ResponderAgora",
+   "cmd": "grep -c 'ResponderAgora' 'src/app/dashboard/clientes/[id]/page.tsx'",
+   "espera": "0"
+  },
+  {
+   "descricao": "src/components/relacao/responder-agora.tsx ainda nao existe",
+   "cmd": "test -e 'src/components/relacao/responder-agora.tsx' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "test/relacao-responder-tela.test.ts ainda nao existe",
+   "cmd": "test -e 'test/relacao-responder-tela.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/components/relacao/responder-agora.tsx' 'src/app/dashboard/clientes/[id]/page.tsx' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx' 'src/app/api/relacao/responder/route.ts' 'src/app/api/relacao/subir-tarefa/route.ts' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/components/relacao/responder-agora.tsx' 'src/app/dashboard/clientes/[id]/page.tsx' 'test/relacao-responder-tela.test.ts'; do case \"$f\" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 400 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 400 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "piloto preservado: nenhuma linha nova escreve em wpp_grupo",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- src scripts | grep -E '^[+][^+]' | grep -cE 'wpp_grupo.*[.](insert|update|upsert)[(]|[.](insert|update|upsert)[(].*wpp_grupo'); [ \"$n\" = 0 ] && echo SEM_ESCRITA_GRUPO || echo ESCREVE_GRUPO_$n",
+   "espera": "SEM_ESCRITA_GRUPO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum travessao (U+2014) novo nos arquivos de tela do ticket (contagem por arquivo nao sobe contra o merge-base)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SEM_TRAVESSAO_NOVO; for f in 'src/components/relacao/responder-agora.tsx' 'src/app/dashboard/clientes/[id]/page.tsx'; do [ -f \"$f\" ] || continue; a=$(git show \"$b:$f\" 2>/dev/null | grep -c $'\\xe2\\x80\\x94'); n=$(grep -c $'\\xe2\\x80\\x94' \"$f\"); [ \"${n:-0}\" -le \"${a:-0}\" ] || r=TRAVESSAO_NOVO_$f; done; echo $r",
+   "espera": "SEM_TRAVESSAO_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde (test/relacao-responder-tela.test.ts)",
+   "cmd": "test -f test/relacao-responder-tela.test.ts && npx vitest run test/relacao-responder-tela.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "page.tsx da ficha so ganhou o import e a montagem (2 a 4 linhas adicionadas, 0 removidas)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; s=$(git diff --numstat \"$b\" HEAD -- 'src/app/dashboard/clientes/[id]/page.tsx' | awk '{print $1\"_\"$2}'); case \"$s\" in [2-4]_0) echo SO_MONTAGEM;; '') echo SEM_MONTAGEM;; *) echo PAGINA_MUDOU_$s;; esac",
+   "espera": "SO_MONTAGEM"
+  },
+  {
+   "descricao": "componente tem as 3 acoes e a linha de autor nao identificado",
+   "cmd": "f=src/components/relacao/responder-agora.tsx; [ -f $f ] || { echo AUSENTE; exit 0; }; a=$(grep -c 'Subir tarefa' $f); b=$(grep -c 'não pedia resposta' $f); c=$(grep -c 'respondido fora do grupo' $f); d=$(grep -c 'vácuo pode estar incompleto' $f); [ \"$a\" -ge 1 ] && [ \"$b\" -ge 1 ] && [ \"$c\" -ge 1 ] && [ \"$d\" -ge 1 ] && echo TRES_ACOES || echo RA_${a}_${b}_${c}_${d}",
+   "espera": "TRES_ACOES"
+  },
+  {
+   "descricao": "guardas de tela da ficha seguem verdes",
+   "cmd": "npx vitest run test/a11y/app-dashboard-clientes-id-page.test.ts test/visao-geral-ordem.test.ts test/ficha-nav-colapsavel.test.ts test/aba-na-url.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "avaliador: no topo da ficha, so quando ha item, aparece Responder agora com tempo util em Geist Mono, rotulo, trecho, autor e as 3 acoes; Tratado e Subir tarefa tiram so a linha certa sem recarregar; autor nao identificado aparece como linha discreta com o link para identificar. REPROVE se: bloco vazio aparece; mais de 3 acoes por linha; cor sem rotulo; jargao de banco na tela; travessao; mexe em outra parte da ficha; numero fora de font-mono.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "testes_conferidos": [
+  {
+   "teste": "test/a11y/app-dashboard-clientes-id-page.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/aba-na-url.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/aba-resultados-fechamentos.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/abas-montadas.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/acao-unica-ficha-mutacoes.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/ativo-pela-receita.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/barra-visao.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/bloco-tarefas-visao.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/campanhas-aceite-mockup.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/cartao-copy-sem-travessao.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/cartao-topo-setup-e-closer.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/conta-cadastro-operacao.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/conta-conexoes-entregaveis.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/conta-conexoes.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/conta-crm-sem-contradicao.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/conta-quadro-contrato-aberto.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/conta-resultados-escritorio.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/erro-objeto-nao-quebra.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/ficha-aba-comercial.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/ficha-abas-orfas.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/ficha-nav-colapsavel.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/ficha-nps.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/ficha-obs-contrato.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/ficha-por-uuid.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/ficha-relacao-estados.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/ficha-relacao-leitura.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/ficha-rotulo-moldura.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/ficha-subsecoes-sequencia.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/ghl-um-lugar-so.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/header-cliente-consolidado.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/kpis-visao-buraco-coleta.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/leitura-relacao-tela.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/link-setup-notion-id.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/lote-b3-1-periodo.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/lote-d-colunas.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/ltv-na-conta.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/metricas-filtros-periodo.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/metricas-invalidacao.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/observacoes-notas-fora.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/orquestrador-enforcement.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/otimizacoes-tela.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/painel-em-campanhas.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/painel-estado-explicito.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/perf-cliente-438.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/rbac-visual.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/registrar-verificacao-rotulo.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/registro-unico-relacao.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/relacao-aceite.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/relacao-config-para-conta.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/resumo-grupo-wpp-tela.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/resumo-score-fonte-unica.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/rotas-fantasma-ficha.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/saude-motivo-sem-base.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/score-saude-fonte-unica.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/timeline-relacao.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/visao-aceite-estrutura.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/visao-aceite-mockup.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/visao-copy-ausencia.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/visao-dado-parado-e-link.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/visao-geral-ordem.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/visao-limpeza-final.test.tsx",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/visao-sem-cockpit-antigo.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  },
+  {
+   "teste": "test/whatsapp-grupos-ui.test.ts",
+   "motivo": "le page.tsx da ficha (fonte ou render); o ticket so acrescenta 1 import e 1 linha de montagem. Simulado em 02/10 na arvore da staging com a montagem: 63 arquivos e 833 testes verdes, os mesmos de antes"
+  }
+ ],
+ "_objetivo_cortado_na_fixture": 6310
+}

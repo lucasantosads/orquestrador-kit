@@ -1,0 +1,179 @@
+59048	[2026-09-26 12:36:34-0300] drenagem: ticket 648 (1 pendentes restantes)
+59049	[orq 15:36:34] orquestrador iniciando · modo: real · once
+59050	[orq 15:36:34] preflight: validando infra (scripts, fila, env, claude)...
+59051	[orq 15:36:36] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+59052	[orq 15:36:41] preflight: ok
+59053	[orq 15:36:52] === ticket 648 (cabecalho-ficha-chips-rotulados) — tentativa 1 · modo: real ===
+59054	[orq 15:36:54]   recon_esperado: ok (1 comando(s))
+59055	[orq 15:36:54] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx já existe no worktree — o agente vai EDITAR, não criar
+59056	[orq 15:36:54] aviso allowlist: src/app/dashboard/clientes/[id]/_components/perfil-chip.tsx já existe no worktree — o agente vai EDITAR, não criar
+59057	[orq 15:36:54] aviso allowlist: test/acao-unica-ficha-controles.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59058	[orq 15:36:54] aviso allowlist: test/analise-ia-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59059	[orq 15:36:54] aviso allowlist: test/atalhos-externos.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59060	[orq 15:36:54] aviso allowlist: test/barra-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59061	[orq 15:36:54] aviso allowlist: test/bloco-alertas-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59062	[orq 15:36:54] aviso allowlist: test/bloco-relacao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59063	[orq 15:36:54] aviso allowlist: test/bloco-tarefas-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59064	[orq 15:36:54] aviso allowlist: test/bloco-vazio-linha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59065	[orq 15:36:54] aviso allowlist: test/cadastro-colapsavel.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59066	[orq 15:36:54] aviso allowlist: test/cartao-copy-sem-travessao.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59067	[orq 15:36:54] aviso allowlist: test/cartao-topo-nps.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59068	[orq 15:36:54] aviso allowlist: test/cartao-topo-perfil.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59069	[orq 15:36:54] aviso allowlist: test/cartao-topo-renovacao.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59070	[orq 15:36:54] aviso allowlist: test/cartao-topo-setup-e-closer.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59071	[orq 15:36:54] aviso allowlist: test/cartao-topo-status-popover.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59072	[orq 15:36:54] aviso allowlist: test/cartao-topo-teses.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59073	[orq 15:36:54] aviso allowlist: test/cockpit-blocos-null.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59074	[orq 15:36:54] aviso allowlist: test/conta-resultados-escritorio.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59075	[orq 15:36:54] aviso allowlist: test/ficha-perfil-operacional.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59076	[orq 15:36:54] aviso allowlist: test/header-cliente-consolidado.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59077	[orq 15:36:54] aviso allowlist: test/historico-status-compacto.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59078	[orq 15:36:54] aviso allowlist: test/kpis-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59079	[orq 15:36:54] aviso allowlist: test/orquestrador-enforcement.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59080	[orq 15:36:54] aviso allowlist: test/relacao-aceite.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59081	[orq 15:36:54] aviso allowlist: test/rotas-fantasma-ficha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59082	[orq 15:36:54] aviso allowlist: test/saude-motivo-sem-base.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59083	[orq 15:36:54] aviso allowlist: test/score-saude-fonte-unica.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59084	[orq 15:36:54] aviso allowlist: test/sem-insumo.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59085	[orq 15:36:54] aviso allowlist: test/tabela-campanhas-expansao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59086	[orq 15:36:54] aviso allowlist: test/tabela-funil-tese.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59087	[orq 15:36:54] aviso allowlist: test/timeline-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59088	[orq 15:36:54] aviso allowlist: test/tooltip-acessivel.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59089	[orq 15:36:54] aviso allowlist: test/visao-aceite-estrutura.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59090	[orq 15:36:54] aviso allowlist: test/visao-aceite-mockup.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59091	[orq 15:36:54] aviso allowlist: test/visao-dado-parado-e-link.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59092	[orq 15:36:54] aviso allowlist: test/visao-estrutura-cabecalho.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59093	[orq 15:36:54] aviso allowlist: test/visao-estrutura-timeline.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59094	[orq 15:36:54] aviso allowlist: test/visao-estrutura-trio.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59095	[orq 15:36:54] aviso allowlist: test/visao-limpeza-final.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59096	[orq 15:36:54] aviso allowlist: test/visao-sem-cockpit-antigo.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59097	[orq 15:36:54]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/648/attempt-1/prompt.txt
+59098	[orq 15:36:54]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+59099	[orq 15:39:42]   diff cru salvo (319 linhas) · HEAD julgado ff0d547b
+59100	[orq 15:39:42]   enforcement: ok
+59101	[orq 15:39:58]   gate tsc: ok (baseline)
+59102	[orq 15:40:24]   gate vitest: ok
+59103	[orq 15:40:47]   criterios mecânicos: FALHA — criterio[1] mecânico: esperado 'VAZIO_LINHA', obteve 'VAZIO_0.0.0'
+59104	[orq 15:40:47]   REPROVA (mecânica, sem Opus): criterio[1] mecânico: esperado 'VAZIO_LINHA', obteve 'VAZIO_0.0.0'
+59105	[orq 15:40:47] ticket 648: reprovado — retry 1/2. motivo: criterio[1] mecânico: esperado 'VAZIO_LINHA', obteve 'VAZIO_0.0.0'
+59106	[orq 15:40:47] === ticket 648 (cabecalho-ficha-chips-rotulados) — tentativa 2 · modo: real ===
+59107	[orq 15:40:48]   recon_esperado: ok (1 comando(s))
+59108	[orq 15:40:48] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx já existe no worktree — o agente vai EDITAR, não criar
+59109	[orq 15:40:48] aviso allowlist: src/app/dashboard/clientes/[id]/_components/perfil-chip.tsx já existe no worktree — o agente vai EDITAR, não criar
+59110	[orq 15:40:48] aviso allowlist: test/acao-unica-ficha-controles.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59111	[orq 15:40:48] aviso allowlist: test/analise-ia-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59112	[orq 15:40:48] aviso allowlist: test/atalhos-externos.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59113	[orq 15:40:48] aviso allowlist: test/barra-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59114	[orq 15:40:48] aviso allowlist: test/bloco-alertas-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59115	[orq 15:40:48] aviso allowlist: test/bloco-relacao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59116	[orq 15:40:48] aviso allowlist: test/bloco-tarefas-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59117	[orq 15:40:48] aviso allowlist: test/bloco-vazio-linha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59118	[orq 15:40:48] aviso allowlist: test/cadastro-colapsavel.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59119	[orq 15:40:48] aviso allowlist: test/cartao-copy-sem-travessao.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59120	[orq 15:40:48] aviso allowlist: test/cartao-topo-nps.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59121	[orq 15:40:48] aviso allowlist: test/cartao-topo-perfil.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59122	[orq 15:40:48] aviso allowlist: test/cartao-topo-renovacao.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59123	[orq 15:40:48] aviso allowlist: test/cartao-topo-setup-e-closer.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59124	[orq 15:40:48] aviso allowlist: test/cartao-topo-status-popover.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59125	[orq 15:40:48] aviso allowlist: test/cartao-topo-teses.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59126	[orq 15:40:48] aviso allowlist: test/cockpit-blocos-null.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59127	[orq 15:40:48] aviso allowlist: test/conta-resultados-escritorio.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59128	[orq 15:40:48] aviso allowlist: test/ficha-perfil-operacional.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59129	[orq 15:40:48] aviso allowlist: test/header-cliente-consolidado.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59130	[orq 15:40:48] aviso allowlist: test/historico-status-compacto.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59131	[orq 15:40:48] aviso allowlist: test/kpis-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59132	[orq 15:40:48] aviso allowlist: test/orquestrador-enforcement.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59133	[orq 15:40:48] aviso allowlist: test/relacao-aceite.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59134	[orq 15:40:48] aviso allowlist: test/rotas-fantasma-ficha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59135	[orq 15:40:48] aviso allowlist: test/saude-motivo-sem-base.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59136	[orq 15:40:48] aviso allowlist: test/score-saude-fonte-unica.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59137	[orq 15:40:48] aviso allowlist: test/sem-insumo.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59138	[orq 15:40:48] aviso allowlist: test/tabela-campanhas-expansao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59139	[orq 15:40:48] aviso allowlist: test/tabela-funil-tese.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59140	[orq 15:40:48] aviso allowlist: test/timeline-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59141	[orq 15:40:48] aviso allowlist: test/tooltip-acessivel.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59142	[orq 15:40:48] aviso allowlist: test/visao-aceite-estrutura.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59143	[orq 15:40:48] aviso allowlist: test/visao-aceite-mockup.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59144	[orq 15:40:48] aviso allowlist: test/visao-dado-parado-e-link.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59145	[orq 15:40:48] aviso allowlist: test/visao-estrutura-cabecalho.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59146	[orq 15:40:48] aviso allowlist: test/visao-estrutura-timeline.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59147	[orq 15:40:48] aviso allowlist: test/visao-estrutura-trio.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59148	[orq 15:40:48] aviso allowlist: test/visao-limpeza-final.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59149	[orq 15:40:48] aviso allowlist: test/visao-sem-cockpit-antigo.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59150	[orq 15:40:48]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/648/attempt-2/prompt.txt
+59151	[orq 15:40:48]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+59152	[orq 15:43:40]   diff cru salvo (323 linhas) · HEAD julgado 91fa3c7e
+59153	[orq 15:43:40]   enforcement: ok
+59154	[orq 15:43:54]   gate tsc: ok (baseline)
+59155	[orq 15:44:13]   gate vitest: ok
+59156	[orq 15:44:33]   criterios mecânicos: FALHA — criterio[7] mecânico: esperado 'INTACTOS', obteve 'ENCOLHEU:test/tooltip-acessivel.test.ts'
+59157	[orq 15:44:33]   REPROVA (mecânica, sem Opus): criterio[7] mecânico: esperado 'INTACTOS', obteve 'ENCOLHEU:test/tooltip-acessivel.test.ts'
+59158	[orq 15:44:33] ticket 648: reprovado — retry 2/2. motivo: criterio[7] mecânico: esperado 'INTACTOS', obteve 'ENCOLHEU:test/tooltip-acessivel.test.ts'
+59159	[orq 15:44:33] === ticket 648 (cabecalho-ficha-chips-rotulados) — tentativa 3 · modo: real ===
+59160	[orq 15:44:34]   recon_esperado: ok (1 comando(s))
+59161	[orq 15:44:34] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx já existe no worktree — o agente vai EDITAR, não criar
+59162	[orq 15:44:34] aviso allowlist: src/app/dashboard/clientes/[id]/_components/perfil-chip.tsx já existe no worktree — o agente vai EDITAR, não criar
+59163	[orq 15:44:34] aviso allowlist: test/acao-unica-ficha-controles.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59164	[orq 15:44:34] aviso allowlist: test/analise-ia-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59165	[orq 15:44:34] aviso allowlist: test/atalhos-externos.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59166	[orq 15:44:34] aviso allowlist: test/barra-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59167	[orq 15:44:34] aviso allowlist: test/bloco-alertas-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59168	[orq 15:44:34] aviso allowlist: test/bloco-relacao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59169	[orq 15:44:34] aviso allowlist: test/bloco-tarefas-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59170	[orq 15:44:34] aviso allowlist: test/bloco-vazio-linha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59171	[orq 15:44:34] aviso allowlist: test/cadastro-colapsavel.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59172	[orq 15:44:34] aviso allowlist: test/cartao-copy-sem-travessao.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59173	[orq 15:44:34] aviso allowlist: test/cartao-topo-nps.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59174	[orq 15:44:34] aviso allowlist: test/cartao-topo-perfil.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59175	[orq 15:44:34] aviso allowlist: test/cartao-topo-renovacao.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59176	[orq 15:44:34] aviso allowlist: test/cartao-topo-setup-e-closer.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59177	[orq 15:44:34] aviso allowlist: test/cartao-topo-status-popover.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59178	[orq 15:44:34] aviso allowlist: test/cartao-topo-teses.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59179	[orq 15:44:34] aviso allowlist: test/cockpit-blocos-null.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59180	[orq 15:44:34] aviso allowlist: test/conta-resultados-escritorio.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59181	[orq 15:44:34] aviso allowlist: test/ficha-perfil-operacional.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59182	[orq 15:44:34] aviso allowlist: test/header-cliente-consolidado.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59183	[orq 15:44:34] aviso allowlist: test/historico-status-compacto.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59184	[orq 15:44:34] aviso allowlist: test/kpis-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59185	[orq 15:44:34] aviso allowlist: test/orquestrador-enforcement.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59186	[orq 15:44:34] aviso allowlist: test/relacao-aceite.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59187	[orq 15:44:34] aviso allowlist: test/rotas-fantasma-ficha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59188	[orq 15:44:34] aviso allowlist: test/saude-motivo-sem-base.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59189	[orq 15:44:34] aviso allowlist: test/score-saude-fonte-unica.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59190	[orq 15:44:34] aviso allowlist: test/sem-insumo.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59191	[orq 15:44:34] aviso allowlist: test/tabela-campanhas-expansao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59192	[orq 15:44:34] aviso allowlist: test/tabela-funil-tese.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59193	[orq 15:44:34] aviso allowlist: test/timeline-visao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59194	[orq 15:44:34] aviso allowlist: test/tooltip-acessivel.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59195	[orq 15:44:34] aviso allowlist: test/visao-aceite-estrutura.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59196	[orq 15:44:34] aviso allowlist: test/visao-aceite-mockup.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59197	[orq 15:44:34] aviso allowlist: test/visao-dado-parado-e-link.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59198	[orq 15:44:34] aviso allowlist: test/visao-estrutura-cabecalho.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59199	[orq 15:44:34] aviso allowlist: test/visao-estrutura-timeline.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59200	[orq 15:44:34] aviso allowlist: test/visao-estrutura-trio.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59201	[orq 15:44:34] aviso allowlist: test/visao-limpeza-final.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59202	[orq 15:44:34] aviso allowlist: test/visao-sem-cockpit-antigo.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59203	[orq 15:44:34]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/648/attempt-3/prompt.txt
+59204	[orq 15:44:34]   tentativa final: escalando modelo do executor para 'opus'
+59205	[orq 15:44:34]   chamando claude -p (headless, --model opus, timeout 1500s) no worktree...
+59206	[orq 15:49:10]   diff cru salvo (346 linhas) · HEAD julgado 43238bed
+59207	[orq 15:49:10]   enforcement: ok
+59208	[orq 15:49:24]   gate tsc: ok (baseline)
+59209	[orq 15:49:38]   gate vitest: ok
+59210	[orq 15:49:55]   criterios mecânicos: ok
+59211	[orq 15:50:22]   gate build: ok
+59212	Merge made by the 'ort' strategy.
+59213	 .../clientes/[id]/_components/perfil-chip.tsx      |  3 +-
+59214	 src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx | 44 +++++++++++-----------
+59215	 test/cartao-copy-sem-travessao.test.ts             |  9 +++--
+59216	 test/cartao-topo-setup-e-closer.test.ts            |  4 +-
+59217	 test/cartao-topo-teses.test.tsx                    |  7 +++-
+59218	 test/rotas-fantasma-ficha.test.ts                  |  8 +++-
+59219	 test/tooltip-acessivel.test.ts                     |  6 +++
+59220	 test/visao-aceite-estrutura.test.tsx               | 17 ++++++---
+59221	 test/visao-aceite-mockup.test.tsx                  | 10 +++--
+59222	 test/visao-estrutura-cabecalho.test.tsx            | 12 ++++--
+59223	 10 files changed, 77 insertions(+), 43 deletions(-)
+59224	[orq 15:50:34] avaliador: merge --no-ff de frente/648 em staging-auto ok
+59225	[orq 15:50:34] avaliador: APROVADO e mergeado.
+59226	[orq 15:50:35] ticket 648: APROVADO e mergeado em staging-auto

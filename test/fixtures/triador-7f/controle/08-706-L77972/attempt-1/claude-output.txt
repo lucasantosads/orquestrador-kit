@@ -1,0 +1,22 @@
+A linha da Carteira hoje agora tem o controle de cor manual, e deixei tudo commitado em `40d7413` (sem push). O tsc ficou em 3 erros e os 9 arquivos de teste que rodei passaram (85 testes). Não rodei `npm run build` nem a suíte completa do vitest.
+
+Os 9 arquivos são `test/override-cor-tela.test.tsx`, `test/inicio-carteira-tela.test.tsx` e as 7 guardas globais.
+
+**Em `src/components/portal/inicio/carteira-hoje.tsx`:**
+- **"Ajustar cor":** abre um popover com `role="dialog"`. Ele tem as 3 cores com rótulo, o campo "Motivo" e "Salvar". "Salvar" fica desabilitado enquanto o motivo está vazio. Ele chama a rota do 705 por POST.
+- **Marca:** a linha com override mostra "Ajustado por <nome>" (ou "Ajustado por você") com a data e o motivo.
+- **"Voltar à regra":** chama DELETE e a linha volta à cor da regra na hora, sem recarregar a página.
+- **Clique:** o controle usa `stopPropagation`, então não abre a ficha.
+- **Test ids:** `cor-override`, `cor-override-salvar` e `cor-override-remover`.
+
+**Em `test/override-cor-tela.test.tsx` (novo):**
+- Cobre a marca com data e motivo, o caso "você" e o botão "Salvar" desabilitado sem motivo.
+- Cobre o retorno à cor da regra (função pura `removerOverride`).
+- Cobre o `stopPropagation`, por leitura de fonte.
+
+**Limitações:**
+- Depois de salvar uma cor nova, a marca mostra "você" mesmo que quem salvou seja outra pessoa, porque a tela não conhece o nome do usuário logado. Ao recarregar, aparece o nome real.
+- Depois de "Voltar à regra", o texto de motivo da linha vira "Cor da regra". O motivo original da regra não vem junto com a linha, então não consigo restaurá-lo sem recarregar.
+- A linha não é reordenada depois de mudar de cor; a ordem só se atualiza ao recarregar.
+- O diff é de uns 213 linhas, bem abaixo do teto de 380.
+- O primeiro comando de verificação foi negado por permissão, então rodei os comandos em partes. Não rodei `rm -rf .next`; o `tsc --noEmit` filtrado por `.next/` deu 3 mesmo assim.

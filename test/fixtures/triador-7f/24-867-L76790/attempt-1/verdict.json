@@ -1,0 +1,4 @@
+{
+  "aprovado": false,
+  "motivo": "Opção 1 correta: sem escrita, Pulso cinza sem botão, fonte da lista intacta. Mas mudaram asserções fora da lista fechada: controles PUBLICADOS.length 16→15 e Set size 13→12. É recálculo honesto com 867, mas exige incluir as duas na lista com OK do Lucas."
+}

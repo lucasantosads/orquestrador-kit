@@ -1,0 +1,20 @@
+A promessa que vence hoje agora mostra o prazo na linha do "Responder agora", por exemplo "Até 18h", em `font-mono` e seguido do rótulo "prazo da promessa". O commit é o `80935ea` e não houve push.
+
+**Conferido**
+- O novo `test/inicio-responder-prazo.test.ts` e os três testes vizinhos (`test/relacao-responder-tela.test.ts`, `test/relacao-promessa-lista.test.ts`, `test/inicio-responder-tela.test.tsx`) passaram sem edição, junto com `test/travessao-mudo.test.ts` (26 testes no total).
+- O gate de tsc deu 3, o baseline.
+- O diff tem 133 linhas (132 adições e 1 remoção), dentro do teto de 200.
+
+**Não rodei**
+- As outras seis guardas globais.
+- O `npm run build`.
+- A suíte completa do vitest.
+- Os critérios de aceite em formato de comando, que checam o diff contra o `origin/staging-auto`.
+
+Um `Bash` composto foi negado por permissão, então rodei os comandos separados.
+
+**Mudanças**
+- **`src/components/relacao/responder-agora.tsx`:** `ItemResponder` ganhou `prazo?: string`, e `formatarPrazo(iso)` devolve "Até 18h" ou "Até 9h30" no horário de São Paulo. A linha só usa o prazo quando o tipo é `promessa_hoje` e o prazo existe; promessa vencida, vácuo e `promessa_hoje` sem prazo seguem como antes, sem hora inventada. Continuam 5 `data-testid="responder-acao"` na fonte.
+- **`test/inicio-responder-prazo.test.ts`:** lê o texto do tempo e do rótulo da linha "Até" do mockup, sem copiar "prazo da promessa" à mão. Cobre promessa de hoje, promessa vencida, promessa de hoje sem prazo, `formatarPrazo` e o `font-mono` no HTML.
+
+A rota e a lib não foram tocadas.

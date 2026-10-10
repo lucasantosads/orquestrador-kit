@@ -1,0 +1,151 @@
+/**
+ * Ticket 366 — clicar no card da Fila não fazia nada. Este teste cobre:
+ *
+ * (1) `fontePainel` (função pura extraída de src/app/dashboard/fila/page.tsx):
+ *     dado um item da fila + os campos extras lidos só quando o painel abre
+ *     (onboarding_etapa_id/lead_id), resolve o link "fonte" certo — lead
+ *     ganha prioridade sobre onboarding, que ganha prioridade sobre cliente,
+ *     que cai para o quadro Kanban quando não há nem cliente_id. Quando não
+ *     há absolutamente nada para linkar, devolve null (o painel mostra
+ *     travessão em linha, nunca link morto).
+ * (2) A página renderiza sem lançar com fetch/supabase mockados — smoke test
+ *     do mesmo padrão usado em test/churn-pipeline-drawer.test.tsx (a página
+ *     real nunca sai de "Carregando..." num renderToString síncrono, então a
+ *     interação de clique/abertura do painel é coberta pelo teste unitário
+ *     de fontePainel acima, não aqui).
+ *
+ * Um tsconfig.json local foi adicionado em src/app/dashboard/fila/ com
+ * "jsx": "react-jsx" (mesma técnica de src/app/churn/pipeline/tsconfig.json
+ * e src/app/dashboard/clientes/nps/tsconfig.json): o tsconfig raiz usa
+ * "jsx": "preserve", que o transform do Vite/vitest não interpreta.
+ */
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { createElement, type ReactNode } from "react";
+// @ts-expect-error — @types/react-dom não está instalado neste projeto (fora
+// do escopo deste ticket: instalar dependência não está na allowlist).
+import { renderToString } from "react-dom/server";
+import { fontePainel, type TarefaFila, type FontePainel } from "@/app/dashboard/fila/page";
+
+vi.mock("@/components/ui/badge", () => ({
+  Badge: ({ children, ...props }: { children?: ReactNode }) => createElement("div", props, children),
+}));
+vi.mock("@/components/ui/input", () => ({
+  Input: (props: Record<string, unknown>) => createElement("input", props),
+}));
+vi.mock("@/components/ui/sheet", () => ({
+  Sheet: ({ children, open }: { children?: ReactNode; open?: boolean }) =>
+    createElement("div", { "data-testid": "sheet", "data-open": String(!!open) }, children),
+  SheetContent: ({ children, ...props }: { children?: ReactNode }) =>
+    createElement("div", { "data-testid": "sheet-content", ...props }, children),
+  SheetHeader: ({ children, ...props }: { children?: ReactNode }) => createElement("div", props, children),
+  SheetTitle: ({ children, ...props }: { children?: ReactNode }) => createElement("div", props, children),
+}));
+vi.mock("@/lib/supabase", () => ({
+  supabase: {
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => ({ data: null }),
+        }),
+      }),
+    }),
+  },
+}));
+vi.mock("sonner", () => ({
+  toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn() },
+}));
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({
+    user: { employeeId: "emp-1", role: "sdr" },
+    loading: false,
+  }),
+}));
+
+function mockTarefa(overrides: Partial<TarefaFila> = {}): TarefaFila {
+  return {
+    id: crypto.randomUUID(),
+    titulo: "Tarefa teste",
+    descricao: null,
+    responsavel: null,
+    cliente: null,
+    responsavel_id: null,
+    cliente_id: null,
+    setor: null,
+    urgencia: null,
+    status: "a_fazer",
+    data_vencimento: null,
+    total_segundos: 0,
+    em_andamento: false,
+    ultimo_inicio: null,
+    finalizado_em: null,
+    tipo_tarefa: null,
+    origem: null,
+    fila_bucket: "sem_prazo",
+    dias_para_vencer: null,
+    sem_dono: false,
+    ...overrides,
+  };
+}
+
+const semExtra: FontePainel = { onboarding_etapa_id: null, lead_id: null };
+
+describe("fontePainel — link para a fonte (ticket 366)", () => {
+  it("lead_id presente ganha prioridade e nunca resolve o lead direto (C0): linka pra tela de CRM", () => {
+    const t = mockTarefa({ cliente_id: "cli-1", origem: "onboarding" });
+    const fonte = fontePainel(t, { onboarding_etapa_id: "etapa-1", lead_id: "lead-1" });
+    expect(fonte).toEqual({ label: "Ver lead no CRM", href: "/dashboard/crm" });
+  });
+
+  it("onboarding_etapa_id presente (sem lead) linka pra aba onboarding do cliente", () => {
+    const t = mockTarefa({ cliente_id: "cli-1" });
+    const fonte = fontePainel(t, { onboarding_etapa_id: "etapa-1", lead_id: null });
+    expect(fonte).toEqual({ label: "Ver onboarding do cliente", href: "/dashboard/clientes/cli-1?sub=onboarding" });
+  });
+
+  it("origem='onboarding' sem onboarding_etapa_id (registro legado) também linka pro onboarding do cliente", () => {
+    const t = mockTarefa({ cliente_id: "cli-2", origem: "onboarding" });
+    expect(fontePainel(t, semExtra)).toEqual({
+      label: "Ver onboarding do cliente",
+      href: "/dashboard/clientes/cli-2?sub=onboarding",
+    });
+  });
+
+  it("onboarding sem cliente_id (nada pra linkar) devolve null — painel mostra travessão, não link morto", () => {
+    const t = mockTarefa({ cliente_id: null, origem: "onboarding" });
+    expect(fontePainel(t, { onboarding_etapa_id: "etapa-1", lead_id: null })).toBeNull();
+  });
+
+  it("tarefa comum de um cliente (sem lead/onboarding) linka pra aba de tarefas do cliente", () => {
+    const t = mockTarefa({ cliente_id: "cli-3", origem: "comarka_os" });
+    expect(fontePainel(t, semExtra)).toEqual({
+      label: "Ver tarefas do cliente",
+      href: "/dashboard/clientes/cli-3?sub=tarefas",
+    });
+  });
+
+  it("tarefa solta (sem cliente, sem lead, sem onboarding) cai pro quadro Kanban", () => {
+    const t = mockTarefa();
+    expect(fontePainel(t, semExtra)).toEqual({ label: "Ver quadro Kanban", href: "/tarefas" });
+  });
+});
+
+describe("FilaPage — painel lateral (ticket 366)", () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ tarefas: [], total: 0 }),
+    }) as unknown as typeof fetch;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  it("renderiza sem lançar (fetch/supabase mockados)", async () => {
+    const { default: FilaPage } = await import("@/app/dashboard/fila/page");
+    expect(() => renderToString(createElement(FilaPage))).not.toThrow();
+  });
+});

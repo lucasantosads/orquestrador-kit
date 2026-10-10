@@ -1,0 +1,12 @@
+{
+ "id": "739",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/739-comarka-pro-penalizacoes-tabela.md",
+ "ticket_sha": "cc5281c99e2b24ec1a900a60c41f0c691fb63227",
+ "ticket_antes": false,
+ "linha_bloqueio": 71699,
+ "log_inicio": 71671,
+ "fim": "2026-10-03T17:23:28Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/739"
+}

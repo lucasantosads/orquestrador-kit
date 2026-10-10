@@ -1,0 +1,6 @@
+ src/app/dashboard/super-admin/error.tsx   |  23 -----
+ src/app/dashboard/super-admin/page.tsx    | 139 ------------------------------
+ test/error-boundaries-rotas-lote6.test.ts |   1 -
+ test/regra19.test.ts                      |   8 --
+ test/remove-super-admin.test.ts           |  34 ++++++++
+ 5 files changed, 34 insertions(+), 171 deletions(-)

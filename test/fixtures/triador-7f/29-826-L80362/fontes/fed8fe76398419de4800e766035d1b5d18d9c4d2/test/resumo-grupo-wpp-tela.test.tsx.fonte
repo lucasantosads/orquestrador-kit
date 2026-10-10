@@ -1,0 +1,107 @@
+// Ticket 567b (RL9, fatia 2): bloco "Resumo do grupo de WhatsApp" na aba Relacao.
+// Sem JSX: paraRegistros e LinhaSemGrupo vem do modulo real (esbuild + vm, como o
+// aceite 551); rotulos e montagem em page.tsx por leitura de fonte. Nada de rede.
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { Module, createRequire } from "node:module";
+import vm from "node:vm";
+import React from "react";
+import { transformSync } from "esbuild";
+
+const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/server") as {
+  renderToStaticMarkup: (element: React.ReactElement) => string;
+};
+
+const RAIZ = resolve(__dirname, "..");
+const DIR = resolve(RAIZ, "src/app/dashboard/clientes/[id]");
+const ARQ = resolve(DIR, "_components/resumo-grupo-bloco.tsx");
+const fonte = readFileSync(ARQ, "utf8");
+const page = readFileSync(resolve(DIR, "page.tsx"), "utf8");
+
+function carregar(arquivo: string): Record<string, unknown> {
+  const { code } = transformSync(readFileSync(arquivo, "utf8"), {
+    loader: "tsx", jsx: "automatic", format: "cjs", target: "node18", sourcefile: arquivo,
+  });
+  const mod = new Module(arquivo, module);
+  mod.filename = arquivo;
+  mod.paths = (Module as unknown as { _nodeModulePaths(d: string): string[] })._nodeModulePaths(dirname(arquivo));
+  const req = (id: string): unknown => (id.startsWith("@/") ? {} : mod.require(id));
+  vm.runInThisContext(Module.wrap(code), { filename: arquivo }).call(mod.exports, mod.exports, req, mod, arquivo, dirname(arquivo));
+  return mod.exports;
+}
+
+interface Registros { texto: string; pendencias: { tipo: string; texto: string; prazo: string | null }[] }
+const mod = carregar(ARQ) as {
+  paraRegistros: (r: unknown, p: { inicio: string; fim: string }) => Registros;
+  LinhaSemGrupo: React.ComponentType;
+};
+const { paraRegistros } = mod;
+
+const resumo = {
+  assuntos: [
+    { texto: "Volume de leads abaixo do esperado", evidencia_id: "msg:1" },
+    { texto: "Pedido do relatório de agosto", evidencia_id: "msg:2" },
+  ],
+  pendencias: [
+    { texto: "Mandar lista de contratos fechados", dono: "cliente", data: "2026-09-18", evidencia_id: "msg:3" },
+    { texto: "Enviar relatório de agosto", dono: "comarka", data: "2026-09-20", evidencia_id: "msg:4" },
+  ],
+  tom: { valor: "tenso", citacao: "os leads não atendem", evidencia_id: "msg:5", data: "2026-09-18" },
+};
+const PERIODO = { inicio: "2026-09-15", fim: "2026-09-22" };
+
+describe("paraRegistros", () => {
+  it("monta o texto salvo com periodo, assuntos e pendencias", () => {
+    expect(paraRegistros(resumo, PERIODO).texto).toBe(
+      "WhatsApp · resumo de 15/09 a 22/09 · assuntos: Volume de leads abaixo do esperado; Pedido do relatório de agosto"
+      + " · pendências: cliente: Mandar lista de contratos fechados (18/09); Comarka: Enviar relatório de agosto (20/09)",
+    );
+  });
+  it("pendencia de dono cliente vira pendencia_cliente e comarka vira pendencia_comarka, com o prazo detectado", () => {
+    expect(paraRegistros(resumo, PERIODO).pendencias).toEqual([
+      { tipo: "pendencia_cliente", texto: "Mandar lista de contratos fechados", prazo: "2026-09-18" },
+      { tipo: "pendencia_comarka", texto: "Enviar relatório de agosto", prazo: "2026-09-20" },
+    ]);
+  });
+  it("sem assuntos nem pendencias o texto diz sem base", () => {
+    const vazio = { assuntos: [], pendencias: [], tom: null };
+    expect(paraRegistros(vazio, PERIODO).texto).toContain("assuntos: sem base · pendências: sem base");
+  });
+});
+
+describe("bloco na tela", () => {
+  it("rotulos do card do mockup", () => {
+    for (const r of ["Resumo do grupo de WhatsApp", "Grupo conectado", "Assuntos", "Pedidos e pendências detectados", "Virar pendência",
+      "Tom do grupo", "Salvar na linha do tempo", "Copiar resumo", "pessoas do escritório", "Gerar resumo agora"]) {
+      expect(fonte, r).toContain(r);
+    }
+  });
+  it("as seis opcoes de periodo estao no bloco", () => {
+    // 29/09 (ficha-relacao-estados): o bloco perdeu o seletor próprio e obedece à barra da aba.
+    // Nenhuma das seis opções fica no bloco; "Desde a última reunião" passou para a barra da Relação.
+    for (const o of ["Hoje", "7 dias", "15 dias", "30 dias", "Desde a última reunião", "Personalizado"]) expect(fonte, o).not.toContain(`"${o}"`);
+    expect(fonte).not.toMatch(/aria-label="Período"/);
+    const barra = readFileSync(resolve(process.cwd(), "src/app/dashboard/clientes/[id]/_components/barra-relacao.tsx"), "utf8");
+    expect(barra).toContain('"Desde a última reunião"');
+  });
+  it("sem grupo: uma linha com a copy exata e o link para a aba Conta", () => {
+    // 29/09: navegação para outra aba é link com "→" (regra da Visão); o resto da copy é o mesmo.
+    const html = renderToStaticMarkup(React.createElement(mod.LinhaSemGrupo));
+    expect(html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim()).toBe("Resumo do grupo · sem base, grupo não conectado · Conectar na aba Conta →");
+    expect(html).toContain('href="?aba=conta"');
+  });
+  it("pendencia e salvar gravam pela rota da relacao, e o texto de erro e humano", () => {
+    expect(fonte).toMatch(/\/relacao`/);
+    expect(fonte).toMatch(/tipo: "contato"/);
+    expect(fonte).toContain("Tentar de novo");
+    expect(fonte).not.toMatch(/status 500|err\.message|\.message\}/);
+  });
+  it("page.tsx monta ResumoGrupoBloco uma vez no ramo relacao, dentro do AnchorBlock whatsapp", () => {
+    const ramo = page.slice(page.indexOf('grupoAtivo === "relacao" &&'), page.indexOf('grupoAtivo === "conta" &&'));
+    expect(ramo.match(/<ResumoGrupoBloco\b/g) ?? []).toHaveLength(1);
+    expect(ramo).toMatch(/<AnchorBlock id="whatsapp"[^>]*><ResumoGrupoBloco\b/);
+    expect(ramo.indexOf('id="resumos"')).toBeLessThan(ramo.indexOf("<ResumoGrupoBloco"));
+    expect(ramo.indexOf("<ResumoGrupoBloco")).toBeLessThan(ramo.indexOf('id="registros"'));
+  });
+});

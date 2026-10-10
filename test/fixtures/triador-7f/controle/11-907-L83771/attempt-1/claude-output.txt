@@ -1,0 +1,13 @@
+Implementei o ticket 907 e commitei (`2d5dad9`), mas não rodei `npm run build` nem o `vitest run` completo.
+
+- **Rota:** `src/app/api/cron/operacao-inicio/route.ts` agora roda o job dentro de `registrarExecucaoCron("operacao-inicio", "cron", …)`.
+  - Etapa com falha lança `EtapasComFalha`, com a mensagem `etapas com falha: <nome> (<erro>); …`.
+  - A rota loga com `console.error` e responde 500 com o resultado no corpo, como hoje.
+  - Qualquer outro erro dá 500 com `{ error: "falha no job da operação" }`.
+  - 401 e 503 continuam antes de tudo e sem registro.
+- **Teste novo:** `test/operacao-inicio-registro.test.ts` cobre os quatro casos pedidos: tudo ok (200), etapas falhas (500 com resultado), job que rejeita (500 com `error`) e sem segredo (401 sem registrar).
+- **Verificação:** `tsc` deu 3 erros, o baseline. Rodei o teste novo, os testes existentes do job e do registro de cron, e `c0-guard` e `fetch-json-teto`: 62 testes passaram. Não rodei `senha-visivel-regressao` nem `funcao-escondida-sem-papel`.
+- **Gate do `tsc`:** o `rm -rf .next` foi negado por permissão, então o rodei sem limpar. O filtro `grep -v '^\.next/'` já descarta o ruído de `.next`, mas é uma pequena divergência do gate.
+- **Orçamento:** o diff tem 137 linhas (134 adições e 3 remoções), dentro do teto de 220.
+
+Nada em `src/lib/jobs/**` mudou, não há `.sql` e não fiz push.

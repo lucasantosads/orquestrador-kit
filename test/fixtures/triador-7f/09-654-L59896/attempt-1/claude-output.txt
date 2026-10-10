@@ -1,0 +1,12 @@
+As três mudanças e o teste novo estão commitados (6f20596). O tsc dá 3 erros em `src/`, dentro do baseline. Os 23 arquivos de teste que rodei passam, incluindo os 18 da allowlist e as guardas globais.
+
+Não rodei `npm run build` nem a suíte completa. O tsc foi rodado sem limpar `.next` antes, porque o `rm -rf .next` foi negado por permissão. Isso não afetou a contagem, que escopa `^src/`.
+
+- **Observações do Closer** (`financeiro-tab.tsx`): saiu o botão Editar do cabeçalho. Ficou o Editar inline ao lado de "Sem observações ·". Com observação escrita, o mesmo Editar inline aparece ao lado do texto, com o mesmo `onClick`, então a edição continua possível.
+- **Contratual** (`contratual.tsx`): o vazio agora diz "Nenhuma entrega registrada até DD/MM/AAAA · entregas aparecem conforme as etapas do onboarding são concluídas". A data vem do seletor. "Sem prova de entrega no período" foi removido.
+- **Fechamentos** (`resultados-tab.tsx`): o rótulo "Mês do registro" aparece antes dos chips de mês.
+- **Teste novo** (`test/ficha-conta-contrato.test.ts`): lê a fonte e confere que não há `>Editar</Button>` em `financeiro-tab.tsx`, que há dois Editar inline ligados a `setEditingObs(true)`, e que "Nenhuma entrega registrada" aparece uma vez em `contratual.tsx`.
+
+Nenhum teste existente precisou ser recalculado, e `escopo-bloco.tsx` e `entregaveis-tab.tsx` ficaram fora do diff.
+
+O ticket cita números de linha que não batem com esta árvore. O botão de cabeçalho estava em `financeiro-tab.tsx:99` e o vazio de contratual em `contratual.tsx:109`, então localizei pelo texto.

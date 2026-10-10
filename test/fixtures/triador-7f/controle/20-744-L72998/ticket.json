@@ -1,0 +1,222 @@
+{
+ "id": "744",
+ "slug": "crm-cliente-etapas-sync",
+ "lane": "produto",
+ "perfil": "backend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 600 linhas (~35 em ghl-agencia.ts, ~35 em crm-conexao.ts, ~130 em src/lib/perf/crm-etapas.ts NOVO, ~45 na rota NOVA src/app/api/clientes/[id]/crm/etapas/route.ts, ~60 na rota NOVA src/app/api/clientes/[id]/crm/sincronizar/route.ts, ~280 no teste NOVO test/crm-cliente-etapas-sync.test.ts). Se passar do teto, pare e reporte. FONTE: decisoes do Lucas de 03/10 (regra de MQL do cliente no Setup > CRM passa a usar etapas reais do GHL; tags nos tickets 746 a 748; etapas canonicas seguem so para relatorio agregado). Piloto AQUINO ADV (location BAs5Fw46Xz3uvTtq6Gmz, cliente 7837ac12-c6db-47e8-b4e8-6e043633eb6d): conectado, 7 pipelines em perf_crm_pipelines, 50 etapas em perf_crm_etapas, todas com etapa_canonica nula, location_nome nula, backfill iniciado e nao concluido, 0 linhas em perf_crm_oportunidades e 0 em perf_leads (o backfill de contatos nunca rodou: nada chama a rota nem enfileira job; a ingestao nasce nos tickets 760 a 763). PASSO 1: leia src/lib/perf/crm-conexao.ts (conectarContaCliente, sincronizarConexao), src/lib/perf/ghl-agencia.ts (apiBase, GHL_API_VERSION, obterTokenLocation, sincronizarPipelines, GhlAgenciaErro, textoMotivo), src/lib/perf/crm-status.ts (como a conexao viva e escolhida: status diferente de 'desconectada', updated_at desc, limit 1), src/app/api/clientes/[id]/crm/conectar/route.ts (padrao de rota: getSession, resolveCockpitId, erro por motivo) e src/app/api/auth/ghl/callback/route.ts (o OAuth por conta passa locationNome = pa",
+ "cria_novo": [
+  "src/lib/perf/crm-etapas.ts",
+  "src/app/api/clientes/[id]/crm/etapas/route.ts",
+  "src/app/api/clientes/[id]/crm/sincronizar/route.ts",
+  "test/crm-cliente-etapas-sync.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/lib/perf/ghl-agencia.ts",
+  "src/lib/perf/crm-conexao.ts",
+  "src/lib/perf/crm-etapas.ts",
+  "src/app/api/clientes/[id]/crm/etapas/route.ts",
+  "src/app/api/clientes/[id]/crm/sincronizar/route.ts",
+  "test/crm-cliente-etapas-sync.test.ts"
+ ],
+ "dependencias": [
+  "760",
+  "761",
+  "762",
+  "763"
+ ],
+ "prioridade": 41,
+ "recon_esperado": [
+  {
+   "descricao": "os dois upserts de conectarContaCliente gravam location_nome mesmo nulo",
+   "cmd": "grep -c 'location_nome: p.locationNome' 'src/lib/perf/crm-conexao.ts'",
+   "espera": "2"
+  },
+  {
+   "descricao": "sincronizarConexao nao busca nome hoje",
+   "cmd": "grep -c 'nomeDaConta' 'src/lib/perf/crm-conexao.ts'",
+   "espera": "0"
+  },
+  {
+   "descricao": "callback do OAuth por conta tira o nome so de locationName",
+   "cmd": "grep -c \"locationNome: params.get(\\\"locationName\\\") || null\" 'src/app/api/auth/ghl/callback/route.ts'",
+   "espera": "1"
+  },
+  {
+   "descricao": "src/lib/perf/crm-etapas.ts ainda nao existe",
+   "cmd": "test -e 'src/lib/perf/crm-etapas.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "src/app/api/clientes/[id]/crm/etapas/route.ts ainda nao existe",
+   "cmd": "test -e 'src/app/api/clientes/[id]/crm/etapas/route.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "src/app/api/clientes/[id]/crm/sincronizar/route.ts ainda nao existe",
+   "cmd": "test -e 'src/app/api/clientes/[id]/crm/sincronizar/route.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "test/crm-cliente-etapas-sync.test.ts ainda nao existe",
+   "cmd": "test -e 'test/crm-cliente-etapas-sync.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/lib/perf/ghl-agencia.ts' 'src/lib/perf/crm-conexao.ts' 'src/lib/perf/crm-etapas.ts' 'src/app/api/clientes/[id]/crm/etapas/route.ts' 'src/app/api/clientes/[id]/crm/sincronizar/route.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma leitura nova vira vazio em silencio (?? [] ou || [] em linha nova de src do ticket)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/lib/perf/ghl-agencia.ts' 'src/lib/perf/crm-conexao.ts' 'src/lib/perf/crm-etapas.ts' 'src/app/api/clientes/[id]/crm/etapas/route.ts' 'src/app/api/clientes/[id]/crm/sincronizar/route.ts' | grep -E '^[+][^+]' | grep -cE '[?][?] *\\[\\]|[|][|] *\\[\\]'); [ \"$n\" = 0 ] && echo SEM_VAZIO_SILENCIOSO || echo VAZIO_SILENCIOSO_$n",
+   "espera": "SEM_VAZIO_SILENCIOSO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/lib/perf/crm-status.ts' 'src/app/api/clientes/[id]/crm/status/route.ts' 'src/app/dashboard/clientes/[id]/tabs/config-tab.tsx' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/lib/perf/ghl-agencia.ts' 'src/lib/perf/crm-conexao.ts' 'src/lib/perf/crm-etapas.ts' 'src/app/api/clientes/[id]/crm/etapas/route.ts' 'src/app/api/clientes/[id]/crm/sincronizar/route.ts' 'test/crm-cliente-etapas-sync.test.ts'; do if [ \"$f\" = \"$p\" ]; then ok=1; fi; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 600 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 600 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma escrita nova em tabela C0 ou ghl_* do comercial",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- src | grep -E '^[+][^+]' | grep -E '[.](insert|update|upsert|delete)[(]' | grep -cE 'clientes_receita|leads_crm|ads_metadata|ads_performance|trafego_|vw_|ghl_etapa_mapa|ghl_user_map|ghl_funnel'); [ \"$n\" = 0 ] && echo SEM_ESCRITA_C0 || echo ESCREVE_C0_$n",
+   "espera": "SEM_ESCRITA_C0",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nada novo escreve backfill_concluido_em nem muda status fora de sincronizarConexao",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- src | grep -E '^[+][^+]' | grep -cE 'backfill_concluido_em: *(new Date|agora|now)'); [ \"$n\" = 0 ] && echo SEM_BACKFILL_FALSO || echo GRAVA_BACKFILL_$n",
+   "espera": "SEM_BACKFILL_FALSO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes de GHL e conexao seguem verdes sem edicao",
+   "cmd": "npx vitest run test/ghl-agencia-2a.test.ts test/ghl-conectar-ficha.test.ts test/middleware-webhooks.test.ts test/crons-meta-consolidacao.test.ts test/setup-assistente-crm-concluir.test.ts test/ghl-oauth.test.ts test/atalhos-externos.test.ts test/audit-log-rotas.test.ts test/crm-config-conexao-location.test.ts test/ficha-resolucao-chave.test.ts test/getsession-produtividade-crm-config.test.ts test/modelo-ia-so-superadmin.test.tsx test/perf-meta-ad-map-nomes.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde (test/crm-cliente-etapas-sync.test.ts)",
+   "cmd": "test -f test/crm-cliente-etapas-sync.test.ts && npx vitest run test/crm-cliente-etapas-sync.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "rotas novas existem e leem por carregarEtapasCrm",
+   "cmd": "for f in 'src/app/api/clientes/[id]/crm/etapas/route.ts' 'src/app/api/clientes/[id]/crm/sincronizar/route.ts'; do [ -f \"$f\" ] || { echo AUSENTE_$f; exit 0; }; [ \"$(grep -c 'carregarEtapasCrm' \"$f\")\" -ge 1 ] || { echo SEM_LIB_$f; exit 0; }; done; grep -c 'sincronizarConexao' 'src/app/api/clientes/[id]/crm/sincronizar/route.ts' | grep -q '^[1-9]' && echo ROTAS_OK || echo SYNC_AUSENTE",
+   "espera": "ROTAS_OK"
+  },
+  {
+   "descricao": "nome da conta vem do GHL no sync e reconectar sem nome nao apaga",
+   "cmd": "a=$(grep -c 'export async function nomeDaConta' 'src/lib/perf/ghl-agencia.ts'); b=$(grep -c 'nomeDaConta' 'src/lib/perf/crm-conexao.ts'); c=$(grep -c 'location_nome: p.locationNome' 'src/lib/perf/crm-conexao.ts'); [ \"$a\" = 1 ] && [ \"$b\" -ge 1 ] && [ \"$c\" = 0 ] && echo NOME_OK || echo NOME_${a}_${b}_${c}",
+   "espera": "NOME_OK"
+  },
+  {
+   "descricao": "estado do backfill tem as 4 saidas",
+   "cmd": "f='src/lib/perf/crm-etapas.ts'; [ -f \"$f\" ] || { echo AUSENTE; exit 0; }; n=$(grep -oE \"'(nao_iniciado|iniciado|concluido|erro)'\" \"$f\" | sort -u | wc -l | tr -d ' '); [ \"$n\" = 4 ] && echo QUATRO_ESTADOS || echo ESTADOS_$n",
+   "espera": "QUATRO_ESTADOS"
+  },
+  {
+   "descricao": "avaliador: GET devolve conta (nome, status, ultimo sync, backfill derivado das colunas) e pipelines com etapas na ordem do GHL; POST sincronizar roda o mesmo sync da conexao e devolve o estado novo, 502 com o motivo em erro; o sync preenche location_nome so quando nulo e reconectar sem nome nao apaga. REPROVE se: erro de leitura vira lista vazia ou totais 0; totais vem de outra consulta; nomeDaConta lanca ou derruba o sync; grava backfill_concluido_em ou inventa conclusao; escreve no GHL; le token fora de obterTokenLocation; copia a escolha de conexao em vez de conexaoViva.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/ghl-agencia-2a.test.ts",
+   "motivo": "le ou importa ghl-agencia/crm-conexao; o ticket so acrescenta nomeDaConta e tira location_nome nulo dos upserts (nome presente segue igual). Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/ghl-conectar-ficha.test.ts",
+   "motivo": "le ou importa ghl-agencia/crm-conexao; o ticket so acrescenta nomeDaConta e tira location_nome nulo dos upserts (nome presente segue igual). Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/middleware-webhooks.test.ts",
+   "motivo": "le ou importa ghl-agencia/crm-conexao; o ticket so acrescenta nomeDaConta e tira location_nome nulo dos upserts (nome presente segue igual). Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/crons-meta-consolidacao.test.ts",
+   "motivo": "le ou importa ghl-agencia/crm-conexao; o ticket so acrescenta nomeDaConta e tira location_nome nulo dos upserts (nome presente segue igual). Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/setup-assistente-crm-concluir.test.ts",
+   "motivo": "le ou importa ghl-agencia/crm-conexao; o ticket so acrescenta nomeDaConta e tira location_nome nulo dos upserts (nome presente segue igual). Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/ghl-oauth.test.ts",
+   "motivo": "importa ghl-agencia/crm-conexao pelo grafo (rota ou mock). ghl-oauth afirma que a ultima escrita em perf_crm_conexoes e o update 'ativa': o objetivo exige o nome DENTRO desse update, e o duble de fetch dele devolve corpo sem location.name, entao nomeDaConta da null e nada novo e escrito. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/atalhos-externos.test.ts",
+   "motivo": "importa ghl-agencia/crm-conexao pelo grafo (rota ou mock). ghl-oauth afirma que a ultima escrita em perf_crm_conexoes e o update 'ativa': o objetivo exige o nome DENTRO desse update, e o duble de fetch dele devolve corpo sem location.name, entao nomeDaConta da null e nada novo e escrito. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/audit-log-rotas.test.ts",
+   "motivo": "importa ghl-agencia/crm-conexao pelo grafo (rota ou mock). ghl-oauth afirma que a ultima escrita em perf_crm_conexoes e o update 'ativa': o objetivo exige o nome DENTRO desse update, e o duble de fetch dele devolve corpo sem location.name, entao nomeDaConta da null e nada novo e escrito. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/crm-config-conexao-location.test.ts",
+   "motivo": "importa ghl-agencia/crm-conexao pelo grafo (rota ou mock). ghl-oauth afirma que a ultima escrita em perf_crm_conexoes e o update 'ativa': o objetivo exige o nome DENTRO desse update, e o duble de fetch dele devolve corpo sem location.name, entao nomeDaConta da null e nada novo e escrito. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/ficha-resolucao-chave.test.ts",
+   "motivo": "importa ghl-agencia/crm-conexao pelo grafo (rota ou mock). ghl-oauth afirma que a ultima escrita em perf_crm_conexoes e o update 'ativa': o objetivo exige o nome DENTRO desse update, e o duble de fetch dele devolve corpo sem location.name, entao nomeDaConta da null e nada novo e escrito. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/getsession-produtividade-crm-config.test.ts",
+   "motivo": "importa ghl-agencia/crm-conexao pelo grafo (rota ou mock). ghl-oauth afirma que a ultima escrita em perf_crm_conexoes e o update 'ativa': o objetivo exige o nome DENTRO desse update, e o duble de fetch dele devolve corpo sem location.name, entao nomeDaConta da null e nada novo e escrito. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/modelo-ia-so-superadmin.test.tsx",
+   "motivo": "importa ghl-agencia/crm-conexao pelo grafo (rota ou mock). ghl-oauth afirma que a ultima escrita em perf_crm_conexoes e o update 'ativa': o objetivo exige o nome DENTRO desse update, e o duble de fetch dele devolve corpo sem location.name, entao nomeDaConta da null e nada novo e escrito. Criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/perf-meta-ad-map-nomes.test.ts",
+   "motivo": "importa ghl-agencia/crm-conexao pelo grafo (rota ou mock). ghl-oauth afirma que a ultima escrita em perf_crm_conexoes e o update 'ativa': o objetivo exige o nome DENTRO desse update, e o duble de fetch dele devolve corpo sem location.name, entao nomeDaConta da null e nada novo e escrito. Criterio roda todos sem edicao"
+  }
+ ],
+ "status": "pendente",
+ "tentativas": 0,
+ "notas_status": "escrito em 03/10, nao comitado",
+ "_objetivo_cortado_na_fixture": 9114
+}

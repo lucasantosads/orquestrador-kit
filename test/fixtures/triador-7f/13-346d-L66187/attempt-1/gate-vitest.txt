@@ -1,0 +1,212 @@
+ ✓ test/tarefas-recorrentes-por-cliente.test.ts (13 tests) 95ms
+ ✓ test/lote-b3-3-r2.test.ts (6 tests) 92ms
+ ✓ test/ficha-visao-vazios.test.ts (13 tests) 98ms
+ ✓ test/ficha-aba-comercial.test.tsx (4 tests) 89ms
+ ✓ test/erro-string-clientes-kpis.test.ts (12 tests) 114ms
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura do resumo existente falha → 500 e nada gravado
+[churn-summary PATCH] Error: resumo do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/churn-summary-patch-leitura-falha.test.ts:59:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura de clientes_receita falha → 500 e nada gravado
+[churn-summary PATCH] Error: base de clientes: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/churn-summary-patch-leitura-falha.test.ts:66:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura das saídas falha → 500 e nada gravado
+[churn-summary PATCH] Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/churn-summary-patch-leitura-falha.test.ts:73:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > recalcularAposSaida — não lança, devolve aviso > falha de leitura vira aviso por mês, sem gravar
+[churn/resumo-mensal] 2026/09 Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/churn-summary-patch-leitura-falha.test.ts:123:20
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > recalcularAposSaida — não lança, devolve aviso > falha de leitura vira aviso por mês, sem gravar
+[churn/resumo-mensal] 2026/08 Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/churn-summary-patch-leitura-falha.test.ts:123:20
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > GET /api/cron/churn-resumo > falha visível: 500 com o mês que falhou
+[cron/churn-resumo] 2026/09 Error: base de clientes: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/churn-summary-patch-leitura-falha.test.ts:150:17
+
+ ✓ test/relatorio-semanal-envio.test.ts (9 tests) 92ms
+ ✓ test/kpis-visao-buraco-coleta.test.tsx (7 tests) 40ms
+ ✓ test/painel-campanhas-mockup.test.ts (11 tests) 57ms
+ ✓ test/visao-estrutura-relacao.test.tsx (5 tests) 86ms
+ ✓ test/aba-integracoes.test.ts (45 tests) 36ms
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes-extra/[id] > exceção do logAudit não muda o status da resposta
+[clientes-extra PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/audit-log-rotas.test.ts:258:36
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > POST: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/audit-log-rotas.test.ts:293:36
+
+ ✓ test/relatorio-leitura-ia-fonte-unica.test.ts (5 tests) 84ms
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > PATCH: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/audit-log-rotas.test.ts:309:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/[id]/crm-config PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/audit-log-rotas.test.ts:336:36
+
+stderr | test/audit-log-rotas.test.ts > PUT /api/clientes/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/crm-config PUT] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/audit-log-rotas.test.ts:363:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/perfil-obs > exceção do logAudit não muda o status da resposta
+[clientes/[id]/perfil-obs PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/audit-log-rotas.test.ts:392:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/registros/[registroId] > exceção do logAudit não muda o status da resposta
+[registros PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/audit-log-rotas.test.ts:432:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/tarefas-kanban > exceção do logAudit não muda o status da resposta
+[tarefas-kanban POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/audit-log-rotas.test.ts:459:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/clientes/relatorio-config (ativo=true) > exceção do logAudit não muda o status da resposta
+[clientes/relatorio-config POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/audit-log-rotas.test.ts:486:36
+ ✓ test/onboarding-sla-prazo-card.test.ts (16 tests) 48ms
+ ✓ test/ghl-app-webhook.test.ts (12 tests) 46ms
+ ✓ test/equipe-painel-superadmin.test.tsx (7 tests) 44ms
+ ✓ test/equipe-telefone-escrita.test.ts (13 tests) 36ms
+ ✓ test/cliente-nichos-rota.test.ts (9 tests) 35ms
+stderr | test/ficha-por-uuid.test.ts > uuid resolvido primeiro como id do cliente (29/09) > leitura de clientes que falha: 500, nunca 'não encontrado'
+[/api/notion/clientes/[id]] Error: cliente: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/ficha-por-uuid.test.ts:79:15
+
+ ✓ test/jobs-status.test.ts (13 tests) 16ms
+ ✓ test/ingest-ghl.test.ts (7 tests) 35ms
+ ✓ test/ficha-diario-crm.test.ts (7 tests) 38ms
+ ✓ test/retencao-dados-churn.test.tsx (9 tests) 90ms
+ ✓ test/tabela-campanhas-colunas.test.tsx (14 tests) 114ms
+stderr | test/ficha-resolucao-chave.test.ts > GET /api/perf/cockpit/[id] — adota o resolvedor do ticket 094 > falha na resolução da chave vira mensagem humana e acentuada, não o e.message cru
+[perf/cockpit] falha ao resolver chave do cliente: Error: connection terminated unexpectedly
+    at Object.maybeSingle (/Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/ficha-resolucao-chave.test.ts:49:28)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-346d/test/ficha-resolucao-chave.test.ts:111:17
+ ✓ test/produtividade-meta.test.ts (5 tests) 4ms
+ ✓ test/deeplink-setup.test.ts (3 tests) 3ms
+ ✓ test/abas-montadas.test.ts (3 tests) 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/lote-b3-2-periodo.test.ts > (b) funil do Comparativo às 22:30 da Bahia de 30/09 > sem período na URL abre em Este mês = 01/09 a 30/09 (antes: 30 dias)
+AssertionError: expected undefined to deeply equal { preset: 'mes', inicio: '', fim: '' }
+
+- Expected:
+{
+  "fim": "",
+  "inicio": "",
+  "preset": "mes",
+}
+
++ Received:
+undefined
+
+ ❯ test/lote-b3-2-periodo.test.ts:246:30
+    244|   it("sem período na URL abre em Este mês = 01/09 a 30/09 (antes: 30 d…
+    245|     const m = montarComparativo("");
+    246|     expect(m.seletor?.valor).toEqual({ preset: "mes", inicio: "", fim:…
+       |                              ^
+    247|     expect(parametros(urlFunil(m))).toEqual(MES);
+    248|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  test/lote-b3-2-periodo.test.ts > (b) funil do Comparativo às 22:30 da Bahia de 30/09 > ?periodo=7d = 23/09 a 29/09: 7 dias, não 8
+AssertionError: expected {} to deeply equal { Object (from, to) }
+
+- Expected
++ Received
+
+- {
+-   "from": "2026-09-23",
+-   "to": "2026-09-29",
+- }
++ {}
+
+ ❯ test/lote-b3-2-periodo.test.ts:252:37
+    250|   it("?periodo=7d = 23/09 a 29/09: 7 dias, não 8", () => {
+    251|     const m = montarComparativo("periodo=7d");
+    252|     expect(parametros(urlFunil(m))).toEqual(SETE);
+       |                                     ^
+    253|   });
+    254|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  test/lote-b3-2-periodo.test.ts > (b) funil do Comparativo às 22:30 da Bahia de 30/09 > a URL do funil leva exatamente o from/to do período
+AssertionError: expected undefined to be '/api/perf/dashboard/funil?from=2026-0…' // Object.is equality
+
+- Expected:
+"/api/perf/dashboard/funil?from=2026-09-23&to=2026-09-29"
+
++ Received:
+undefined
+
+ ❯ test/lote-b3-2-periodo.test.ts:257:25
+    255|   it("a URL do funil leva exatamente o from/to do período", () => {
+    256|     const m = montarComparativo("periodo=7d");
+    257|     expect(urlFunil(m)).toBe("/api/perf/dashboard/funil?from=2026-09-2…
+       |                         ^
+    258|   });
+    259|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  test/lote-b3-2-periodo.test.ts > (b) funil do Comparativo às 22:30 da Bahia de 30/09 > a página não calcula mais data em UTC
+AssertionError: expected '"use client";\n\n/**\n * Performance …' to match /usePeriodoUrl\(\)/
+
+- Expected:
+/usePeriodoUrl\(\)/
+
++ Received:
+"\"use client\";
+
+/**
+ * Performance de tráfego: a Carteira é a tela (ticket 346d). Um período só, o
+ * usePeriodoUrl vivido dentro da CarteiraAba, e uma lista só. O comparativo
+ * antigo (funil, histórico e matriz semanal) saiu daqui; os componentes de
+      )}
+    </div>
+  );
+}
+"
+
+ ❯ test/lote-b3-2-periodo.test.ts:274:17
+    272|     const src = readFileSync(resolve("src/app/dashboard/performance/pa…
+    273|     expect(src).not.toMatch(/toISOString|getUTC|86400000|"30d"/);
+    274|     expect(src).toMatch(/usePeriodoUrl\(\)/);
+       |                 ^
+    275|   });
+    276| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  test/lote-b3-2-periodo.test.ts > aceite AQUINO: a linha da Carteira e o funil somam o mesmo que a ficha > Últimos 7 dias: Carteira = funil = R$ 1.239,54
+AssertionError: expected 6816.77 to be 1239.54 // Object.is equality
+
+- Expected
++ Received
+
+- 1239.54
++ 6816.77
+
+ ❯ test/lote-b3-2-periodo.test.ts:335:40
+    333|       const funil = await (await getFunil(new NextRequest(`http://x${u…
+    334|       expect(reais(linha.gasto)).toBe(esperado);
+    335|       expect(reais(funil.atual.gasto)).toBe(esperado);
+       |                                        ^
+    336|     });
+    337|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed | 709 passed (710)
+      Tests  5 failed | 7328 passed (7333)
+   Start at  13:29:04
+   Duration  34.31s (transform 46.18s, setup 0ms, import 125.28s, tests 32.48s, environment 68ms)
+

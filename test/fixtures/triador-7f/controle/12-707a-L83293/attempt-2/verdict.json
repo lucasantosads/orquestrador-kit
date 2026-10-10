@@ -1,0 +1,4 @@
+{
+  "aprovado": true,
+  "motivo": "promessa_hoje com prazo mostra formatarPrazo em span font-mono + 'prazo da promessa'; vencida/vacuo e sem prazo caem no texto antigo; rota/lib intocadas; teste extrai tempo e rotulo do mockup por regex, ancora em texto e font-mono (nao cor); vizinhos sem edicao."
+}

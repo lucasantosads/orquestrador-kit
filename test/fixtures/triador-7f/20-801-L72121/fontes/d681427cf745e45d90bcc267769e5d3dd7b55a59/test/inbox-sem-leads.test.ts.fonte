@@ -1,0 +1,270 @@
+/**
+ * Ticket 368 — itens de lead fora do Inbox do OS, testado na rota REAL
+ * (/api/inbox-operacional, a que a página /dashboard/inbox consome).
+ *
+ * O Supabase fake guarda as linhas em memória e só aplica os filtros que a
+ * rota encadeia na consulta. Se a rota buscasse o lead e filtrasse depois, o
+ * item vazaria na resposta e as asserções de query falhariam.
+ *
+ *   - GET: não-admin nunca recebe lead_atribuido (exclusão na cláusula);
+ *     admin recebe como leitura (tratavel=false) e sem virar crítico em 24h;
+ *   - PATCH por id: lead_atribuido não é processado, para nenhum papel;
+ *   - PATCH mark_all: o update exclui lead_atribuido, para qualquer papel;
+ *   - a rota só toca notifications e perf_health_snapshot;
+ *   - o motor de ações (src/lib/hoje) não registra fonte de inbox/lead.
+ */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+
+vi.mock("@/lib/session", () => ({ getSession: vi.fn() }));
+
+type Row = Record<string, unknown>;
+type Filtro = [op: "eq" | "neq" | "gte", col: string, val: unknown];
+interface Chamada {
+  table: string;
+  op: "select" | "update" | "insert" | "upsert" | "delete";
+  filtros: Filtro[];
+  patch?: Row;
+  limit?: number;
+  single?: boolean;
+}
+
+const fake = vi.hoisted(() => ({
+  db: {} as Record<string, Record<string, unknown>[]>,
+  chamadas: [] as unknown[],
+  falharLeitura: new Set<string>(),
+}));
+
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: () => ({
+    from(table: string) {
+      const st: Chamada = { table, op: "select", filtros: [] };
+      fake.chamadas.push(st);
+      const b: Record<string, unknown> = {
+        select: () => b,
+        update: (patch: Row) => ((st.op = "update"), (st.patch = patch), b),
+        insert: () => ((st.op = "insert"), b),
+        upsert: () => ((st.op = "upsert"), b),
+        delete: () => ((st.op = "delete"), b),
+        eq: (c: string, v: unknown) => (st.filtros.push(["eq", c, v]), b),
+        neq: (c: string, v: unknown) => (st.filtros.push(["neq", c, v]), b),
+        gte: (c: string, v: unknown) => (st.filtros.push(["gte", c, v]), b),
+        order: () => b,
+        limit: (n: number) => ((st.limit = n), b),
+        maybeSingle: () => ((st.single = true), b),
+        then(resolve: (v: unknown) => unknown) {
+          if (st.op === "select" && fake.falharLeitura.has(table)) {
+            return resolve({ data: null, error: { message: "falha simulada" } });
+          }
+          const linhas = (fake.db[table] ?? []).filter((r) =>
+            st.filtros.every(([op, c, v]) =>
+              op === "eq" ? r[c] === v : op === "neq" ? r[c] !== v : String(r[c]) >= String(v),
+            ),
+          );
+          if (st.op === "update") {
+            for (const r of linhas) Object.assign(r, st.patch);
+            return resolve({ data: null, error: null });
+          }
+          if (st.op !== "select") return resolve({ data: null, error: null });
+          const data = st.single ? (linhas[0] ?? null) : linhas.slice(0, st.limit);
+          return resolve({ data, error: null });
+        },
+      };
+      return b;
+    },
+  }),
+}));
+
+import { getSession } from "@/lib/session";
+import { GET, PATCH } from "@/app/api/inbox-operacional/route";
+
+const mockGetSession = vi.mocked(getSession);
+const chamadas = () => fake.chamadas as Chamada[];
+
+const EU = "00000000-0000-4000-8000-000000000001";
+const OUTRO = "00000000-0000-4000-8000-000000000002";
+const CLIENTE = "00000000-0000-4000-8000-0000000000c1";
+
+const ID = {
+  leadAntigo: "00000000-0000-4000-8000-0000000000a1",
+  leadNovo: "00000000-0000-4000-8000-0000000000a2",
+  onboarding: "00000000-0000-4000-8000-0000000000a3",
+  aviso: "00000000-0000-4000-8000-0000000000a4",
+  contratoOutro: "00000000-0000-4000-8000-0000000000a5",
+};
+
+const HORA_MS = 60 * 60 * 1000;
+const agoraMenos = (ms: number) => new Date(Date.now() - ms).toISOString();
+
+function semear() {
+  fake.db.notifications = [
+    // >24h: antes do 368 virava "lead_esfriando" crítico.
+    { id: ID.leadAntigo, employee_id: EU, tipo: "lead_atribuido", titulo: "Lead antigo", mensagem: "Lead X", link: null, lida: false, created_at: agoraMenos(48 * HORA_MS) },
+    { id: ID.leadNovo, employee_id: EU, tipo: "lead_atribuido", titulo: "Lead novo", mensagem: "Lead Y", link: null, lida: false, created_at: agoraMenos(1 * HORA_MS) },
+    { id: ID.onboarding, employee_id: EU, tipo: "onboarding", titulo: "Onboarding", mensagem: "Cliente Z", link: null, lida: false, created_at: agoraMenos(2 * HORA_MS) },
+    { id: ID.aviso, employee_id: EU, tipo: "mensagem_admin", titulo: "Aviso", mensagem: "Oi", link: null, lida: false, created_at: agoraMenos(3 * HORA_MS) },
+    { id: ID.contratoOutro, employee_id: OUTRO, tipo: "contrato_fechado", titulo: "Contrato", mensagem: "Cliente W", link: null, lida: false, created_at: agoraMenos(4 * HORA_MS) },
+  ];
+  fake.db.perf_health_snapshot = [
+    { cliente_id: CLIENTE, data_ref: new Date().toISOString().slice(0, 10), score_composto: 30, faixa: "vermelho", parcial: false, clientes: { nome: "Cliente Health" } },
+  ];
+}
+
+function sessao(role: "admin" | "closer" | "sdr") {
+  return { employeeId: EU, role, entityId: null, nome: "Teste" } as unknown as Awaited<ReturnType<typeof getSession>>;
+}
+
+const lida = (id: string) => fake.db.notifications.find((r) => r.id === id)?.lida;
+
+async function get() {
+  const res = await GET(new NextRequest("http://localhost/api/inbox-operacional"));
+  return { status: res.status, json: await res.json() };
+}
+
+async function patch(body: unknown) {
+  const res = await PATCH(
+    new NextRequest("http://localhost/api/inbox-operacional", { method: "PATCH", body: JSON.stringify(body) }),
+  );
+  return { status: res.status, json: await res.json() };
+}
+
+const excluiLead = (c: Chamada) => c.filtros.some(([op, col, v]) => op === "neq" && col === "tipo" && v === "lead_atribuido");
+
+beforeEach(() => {
+  mockGetSession.mockReset();
+  fake.chamadas.length = 0;
+  fake.falharLeitura.clear();
+  semear();
+});
+
+describe("GET /api/inbox-operacional — leads fora do OS", () => {
+  it("sem sessão devolve 401", async () => {
+    mockGetSession.mockResolvedValue(null);
+    expect((await get()).status).toBe(401);
+  });
+
+  for (const role of ["closer", "sdr"] as const) {
+    it(`${role}: lead_atribuido é excluído na própria consulta`, async () => {
+      mockGetSession.mockResolvedValue(sessao(role));
+      const { status, json } = await get();
+      expect(status).toBe(200);
+
+      const consulta = chamadas().find((c) => c.table === "notifications" && c.op === "select");
+      expect(consulta && excluiLead(consulta)).toBe(true);
+
+      const kinds = json.items.map((i: { kind: string }) => i.kind);
+      expect(kinds).not.toContain("lead_atribuido");
+      expect(kinds).not.toContain("lead_esfriando");
+      // Minhas notificações sem os 2 leads = onboarding + aviso; + 1 health = 3.
+      // (o contrato é de OUTRO employee e fica fora pelo escopo de sempre.)
+      expect(json.counts.total).toBe(3);
+      // Crítico: só o health vermelho.
+      expect(json.counts.critical).toBe(1);
+      // Atenção: só o onboarding (aviso é info).
+      expect(json.counts.warning).toBe(1);
+      expect(json).not.toHaveProperty("producaoLeads");
+    });
+  }
+
+  it("admin: leads aparecem como leitura e o de 48h não vira crítico", async () => {
+    mockGetSession.mockResolvedValue(sessao("admin"));
+    const { json } = await get();
+
+    const leads = json.items.filter((i: { id: string }) => i.id === `notif:${ID.leadAntigo}` || i.id === `notif:${ID.leadNovo}`);
+    expect(leads).toHaveLength(2);
+    for (const l of leads) {
+      expect(l.kind).toBe("lead_atribuido");
+      expect(l.tratavel).toBe(false);
+      expect(l.severity).not.toBe("critical");
+    }
+    // 5 notificações + 1 health, nada removido para admin.
+    expect(json.counts.total).toBe(6);
+    // Crítico: só o health vermelho — o lead de 48h saiu da regra de 24h.
+    expect(json.counts.critical).toBe(1);
+
+    const onboarding = json.items.find((i: { id: string }) => i.id === `notif:${ID.onboarding}`);
+    expect(onboarding.tratavel).toBe(true);
+  });
+
+  it("só lê notifications e perf_health_snapshot e não escreve nada", async () => {
+    mockGetSession.mockResolvedValue(sessao("admin"));
+    await get();
+    expect(new Set(chamadas().map((c) => c.table))).toEqual(new Set(["notifications", "perf_health_snapshot"]));
+    expect(chamadas().every((c) => c.op === "select")).toBe(true);
+  });
+});
+
+describe("PATCH /api/inbox-operacional — lead nunca é marcado como tratado", () => {
+  for (const role of ["admin", "closer", "sdr"] as const) {
+    it(`${role}: PATCH por id em lead_atribuido não processa`, async () => {
+      mockGetSession.mockResolvedValue(sessao(role));
+      const { status } = await patch({ id: `notif:${ID.leadAntigo}` });
+      expect(status).toBe(403);
+      expect(lida(ID.leadAntigo)).toBe(false);
+      expect(chamadas().some((c) => c.op === "update")).toBe(false);
+    });
+
+    it(`${role}: mark_all não toca lead_atribuido`, async () => {
+      mockGetSession.mockResolvedValue(sessao(role));
+      const { status } = await patch({ mark_all: true });
+      expect(status).toBe(200);
+
+      const update = chamadas().find((c) => c.op === "update");
+      expect(update && excluiLead(update)).toBe(true);
+      expect(lida(ID.leadAntigo)).toBe(false);
+      expect(lida(ID.leadNovo)).toBe(false);
+      expect(lida(ID.onboarding)).toBe(true);
+      expect(lida(ID.aviso)).toBe(true);
+      // Escopo de papel inalterado: admin marca o contrato de OUTRO, não-admin não.
+      expect(lida(ID.contratoOutro)).toBe(role === "admin");
+    });
+  }
+
+  it("não-admin marca por id um item que não é lead, como antes", async () => {
+    mockGetSession.mockResolvedValue(sessao("closer"));
+    const { status } = await patch({ id: `notif:${ID.onboarding}` });
+    expect(status).toBe(200);
+    expect(lida(ID.onboarding)).toBe(true);
+  });
+
+  it("falha ao ler o tipo devolve 500 e não grava nada", async () => {
+    mockGetSession.mockResolvedValue(sessao("admin"));
+    fake.falharLeitura.add("notifications");
+    const { status } = await patch({ id: `notif:${ID.onboarding}` });
+    expect(status).toBe(500);
+    expect(lida(ID.onboarding)).toBe(false);
+    expect(chamadas().some((c) => c.op === "update")).toBe(false);
+  });
+});
+
+describe("fiação e motor", () => {
+  const raiz = join(__dirname, "..");
+
+  it("a página do Inbox consome a rota real e não existe wrapper /api/inbox", () => {
+    const page = readFileSync(join(raiz, "src/app/dashboard/inbox/page.tsx"), "utf8");
+    expect(page).toContain('"/api/inbox-operacional"');
+    expect(() => readdirSync(join(raiz, "src/app/api/inbox"))).toThrow();
+  });
+
+  it("a rota não carrega constante de produtor desligado", () => {
+    const rota = readFileSync(join(raiz, "src/app/api/inbox-operacional/route.ts"), "utf8");
+    expect(rota).not.toMatch(/skipped/);
+  });
+
+  it("o motor de ações não registra fonte de inbox, lead ou notificação", () => {
+    const dir = join(raiz, "src/lib/hoje");
+    const fontes: string[] = [];
+    for (const f of readdirSync(dir).filter((n) => n.endsWith(".ts"))) {
+      const src = readFileSync(join(dir, f), "utf8");
+      const re = /registrarFonte\(\s*["'`]([^"'`]+)["'`]/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(src)) !== null) fontes.push(m[1]);
+      expect(src).not.toMatch(/lead_atribuido|inbox-operacional|\/api\/inbox/);
+      expect(src).not.toMatch(/from\(\s*["'`]notifications["'`]\s*\)/);
+    }
+    expect(fontes.length).toBeGreaterThan(0);
+    for (const nome of fontes) expect(nome).not.toMatch(/inbox|lead|notif/i);
+  });
+});

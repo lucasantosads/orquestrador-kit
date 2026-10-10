@@ -1,0 +1,21 @@
+O ticket 715 está implementado e commitado (323 linhas, dentro do teto de 520), mas a suíte completa continua com 1 teste vermelho que não posso consertar dentro da allowlist.
+
+**O teste vermelho:** `test/crons-meta-consolidacao.test.ts:442` espera `toHaveLength(25)` entradas no `vercel.json`. O cron novo faz 26, e foi esse teste que reprovou a tentativa anterior. O arquivo está fora da allowlist deste ticket, então parei e não o editei. Seu critério de aceite de "testes existentes verdes" o cita, o que parece lacuna da allowlist.
+
+A correção é 25 para 26 na asserção, mais o título do `it`, com um comentário acima citando o 715 ("adiciona /api/cron/operacao-inicio"). Para aplicar, adicione `test/crons-meta-consolidacao.test.ts` à allowlist e reexecute, ou autorize a edição.
+
+**O que foi entregue**
+- **Derivação de respostas:** `derivarRespostas` em `src/lib/eventos/resposta-grupo.ts` registra 1 evento por mensagem de cliente respondida. As regras seguem o ticket: minutos úteis, colaborador pelo telefone (ou nulo), chave `resposta:<group_jid>:<enviada_em>` sem duplicar.
+- **Job:** `src/lib/jobs/operacao-inicio.ts` tem `ETAPAS` com `eventos_resposta` e `rodarOperacaoInicio`, que roda cada etapa em try/catch próprio.
+- **Rota de cron:** `src/app/api/cron/operacao-inicio/route.ts` responde 503 sem `CRON_SECRET`, 401 sem o Bearer certo, 500 com o resultado se alguma etapa falhar e 200 caso contrário.
+- **Registro do cron:** a rota entrou no `vercel.json` (`*/15 11-22 * * 1-5`) e no `CRON_PATHS` do middleware. `CRON_PENDENTES_REVISAO` não ganhou entrada.
+- **Teste novo:** `test/eventos-resposta-grupo.test.ts`, todo com mocks.
+
+**Verificação**
+- O gate do `tsc` dá 3, o baseline.
+- `test/eventos-resposta-grupo.test.ts` e `test/cron-paths-vercel.test.ts` passam.
+- `test/kanban-higiene-cron-arquivada.test.ts` não aparece entre os arquivos executados na minha rodada, então não confirmei que ele existe e passa.
+- Não rodei a suíte completa nem `npm run build`.
+- Não rodei os demais critérios de aceite por comando: os de diff e de guardas globais, nem o `cmd` do critério de `crons-meta-consolidacao` (que depende desse teste).
+
+**Feriados:** a derivação passa lista vazia de feriados, porque o repo não tem fonte de feriados e a lib de minutos úteis pede que quem chama carregue.

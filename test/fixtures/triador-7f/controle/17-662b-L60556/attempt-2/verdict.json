@@ -1,0 +1,4 @@
+{
+  "aprovado": true,
+  "motivo": "Leads agora soma perf_insights_daily.leads das contas em uso no mês, a mesma fonte da cascata, sem ler perf_leads. Leitura paginada por fetchAllPaged com ordem data_ref,id e catch que devolve sem_insumo com motivo. mql/sql intactos. Fixtures recalculadas (3=1+2) com comentário 662b. Teste novo cobre soma, filtros, vazio e erro."
+}

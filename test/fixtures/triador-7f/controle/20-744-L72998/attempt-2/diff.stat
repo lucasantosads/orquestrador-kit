@@ -1,0 +1,7 @@
+ src/app/api/clientes/[id]/crm/etapas/route.ts      |  28 +++
+ src/app/api/clientes/[id]/crm/sincronizar/route.ts |  57 +++++
+ src/lib/perf/crm-conexao.ts                        |  34 ++-
+ src/lib/perf/crm-etapas.ts                         | 115 +++++++++
+ src/lib/perf/ghl-agencia.ts                        |  28 +++
+ test/crm-cliente-etapas-sync.test.ts               | 273 +++++++++++++++++++++
+ 6 files changed, 532 insertions(+), 3 deletions(-)

@@ -1,0 +1,110 @@
+{
+ "id": "654",
+ "slug": "conta-contrato-dedup",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "Na aba Conta da ficha, seções '1 · Contrato e entregas' e '2 · Resultados do escritório' (títulos montados em runtime por _components/secao-conta.tsx:10,25; linhas medidas na staging-auto cc0d3ce). RODA DEPOIS DO 636, que já unifica Entregáveis (linha fica, cartão vazio sai) e deixa UMA linha de vazio no contratual. (1) 'Observações do Closer' (src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx, CardTitle :100): um único 'Editar', o que fica ao lado de 'Sem observações' (:136, <button> inline com onClick={() => setEditingObs(true)}, fixado pelo mockup e por test/conta-aceite.test.tsx:120-121); sai o <Button>Editar</Button> do cabeçalho (:101-103). Com observação escrita, o Editar inline continua sendo o caminho de edição (mostre-o ao lado do texto também, com o mesmo onClick), para não perder a edição quando há conteúdo. (2) Contratual (src/app/dashboard/clientes/[id]/tabs/contratual.tsx): sobre a linha única que o 636 deixar, o texto do vazio passa a 'Nenhuma entrega registrada até DD/MM/AAAA · entregas aparecem conforme as etapas do onboarding são concluídas' (data do seletor de DisputaCliente, :88-94); o seletor de data + 'Consultar' (:96-98) ficam; 'Sem prova de entrega no período' (:105) não volta. (3) Fechamentos (src/app/dashboard/clientes/[id]/tabs/resultados-tab.tsx, título :560, chips de mês :562-571): o filtro de mês próprio fica e ganha o rótulo 'Mês do registro' antes dos chips. Regras: vazio é linha, sem borda, sem ícone, sem heading; nenhuma rota, cálculo ",
+ "cria_novo": [
+  "test/ficha-conta-contrato.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx",
+  "src/app/dashboard/clientes/[id]/tabs/contratual.tsx",
+  "src/app/dashboard/clientes/[id]/tabs/resultados-tab.tsx",
+  "test/aba-resultados-fechamentos.test.ts",
+  "test/churn-checklist-rota.test.ts",
+  "test/conta-aceite.test.tsx",
+  "test/conta-bugs-reais.test.ts",
+  "test/conta-contrato-e-entregas.test.ts",
+  "test/conta-resultados-campanha.test.ts",
+  "test/conta-resultados-escritorio.test.ts",
+  "test/conta-resultados-filtros.test.ts",
+  "test/contratual-disputa.test.ts",
+  "test/contratual-entregas.test.ts",
+  "test/contratual-prazo.test.ts",
+  "test/erro-string-carteira-perfil-disputa.test.ts",
+  "test/fechamentos.test.ts",
+  "test/ficha-abas-orfas.test.ts",
+  "test/indicadores-resultados.test.ts",
+  "test/metas.test.ts",
+  "test/retencao-saidas-checklist.test.tsx",
+  "test/visao-copy-ausencia.test.ts",
+  "test/ficha-conta-contrato.test.ts"
+ ],
+ "dependencias": [
+  "653"
+ ],
+ "recon_esperado": [
+  {
+   "descricao": "Observacoes com dois Editar (cabecalho e inline), sem rotulo 'Mês do registro'",
+   "cmd": "a=$(grep -c '>Editar</Button>' 'src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx'); b=$(grep -c 'setEditingObs(true)}>Editar</button>' 'src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx'); c=$(grep -c 'Mês do registro' 'src/app/dashboard/clientes/[id]/tabs/resultados-tab.tsx'); echo \"CABECALHO=$a INLINE=$b MES=$c\"",
+   "espera": "CABECALHO=1 INLINE=1 MES=0"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 em src/",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -c '^src/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "um unico Editar em Observacoes do Closer: sai o do cabecalho, fica o inline ao lado de 'Sem observações'",
+   "cmd": "a=$(grep -c '>Editar</Button>' 'src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx'); b=$(grep -c 'setEditingObs(true)}>Editar</button>' 'src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx'); c=$(grep -c 'Sem observações · ' 'src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx'); [ \"$a\" = 0 ] && [ \"$b\" -ge 1 ] && [ \"$c\" -ge 1 ] && echo UM_EDITAR || echo EDITAR_$a.$b.$c",
+   "espera": "UM_EDITAR"
+  },
+  {
+   "descricao": "escopo vazio intocado (decisao 26/09: mockup e testes fixam)",
+   "cmd": "n=$(grep -c 'Nenhum produto contratado · ' 'src/app/dashboard/clientes/[id]/tabs/escopo-bloco.tsx'); [ \"$n\" = 1 ] && echo ESCOPO_INTACTO || echo ESCOPO_$n",
+   "espera": "ESCOPO_INTACTO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "contratual com o vazio datado e sem 'Sem prova de entrega no período'",
+   "cmd": "a=$(grep -c 'Sem prova de entrega no per' 'src/app/dashboard/clientes/[id]/tabs/contratual.tsx'); b=$(grep -c 'Nenhuma entrega registrada até' 'src/app/dashboard/clientes/[id]/tabs/contratual.tsx'); [ \"$a\" = 0 ] && [ \"$b\" -ge 1 ] && echo CONTRATUAL_OK || echo CONTRATUAL_$a.$b",
+   "espera": "CONTRATUAL_OK"
+  },
+  {
+   "descricao": "filtro de fechamentos rotulado 'Mês do registro'",
+   "cmd": "n=$(grep -c 'Mês do registro' 'src/app/dashboard/clientes/[id]/tabs/resultados-tab.tsx'); [ \"$n\" -ge 1 ] && echo MES_OK || echo MES_FALTA",
+   "espera": "MES_OK"
+  },
+  {
+   "descricao": "teste novo verde",
+   "cmd": "test -f test/ficha-conta-contrato.test.ts && npx vitest run test/ficha-conta-contrato.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "testes existentes da allowlist nao encolhem (it/test >= contagem medida em main 26/09; igual na staging-auto)",
+   "cmd": "r=INTACTOS; for p in 'test/aba-resultados-fechamentos.test.ts:33' 'test/churn-checklist-rota.test.ts:15' 'test/conta-aceite.test.tsx:50' 'test/conta-bugs-reais.test.ts:9' 'test/conta-contrato-e-entregas.test.ts:10' 'test/conta-resultados-campanha.test.ts:7' 'test/conta-resultados-escritorio.test.ts:9' 'test/conta-resultados-filtros.test.ts:17' 'test/contratual-disputa.test.ts:8' 'test/contratual-entregas.test.ts:9' 'test/contratual-prazo.test.ts:8' 'test/erro-string-carteira-perfil-disputa.test.ts:3' 'test/fechamentos.test.ts:9' 'test/ficha-abas-orfas.test.ts:6' 'test/indicadores-resultados.test.ts:22' 'test/metas.test.ts:21' 'test/retencao-saidas-checklist.test.tsx:10' 'test/visao-copy-ausencia.test.ts:4'; do f=${p%:*}; n=${p##*:}; [ \"$(grep -cE '(^|[^A-Za-z_.])(it|test)\\(' \"$f\")\" -ge \"$n\" ] || r=\"ENCOLHEU:$f\"; done; echo $r",
+   "espera": "INTACTOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum skip/only/todo nos testes existentes da allowlist",
+   "cmd": "n=$(cat 'test/aba-resultados-fechamentos.test.ts' 'test/churn-checklist-rota.test.ts' 'test/conta-aceite.test.tsx' 'test/conta-bugs-reais.test.ts' 'test/conta-contrato-e-entregas.test.ts' 'test/conta-resultados-campanha.test.ts' 'test/conta-resultados-escritorio.test.ts' 'test/conta-resultados-filtros.test.ts' 'test/contratual-disputa.test.ts' 'test/contratual-entregas.test.ts' 'test/contratual-prazo.test.ts' 'test/erro-string-carteira-perfil-disputa.test.ts' 'test/fechamentos.test.ts' 'test/ficha-abas-orfas.test.ts' 'test/indicadores-resultados.test.ts' 'test/metas.test.ts' 'test/retencao-saidas-checklist.test.tsx' 'test/visao-copy-ausencia.test.ts' | grep -cE '[.](skip|only|todo)\\('); [ \"$n\" = 0 ] && echo SEM_SKIP || echo SKIP_$n",
+   "espera": "SEM_SKIP",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes da allowlist verdes (recalculados, nunca afrouxados)",
+   "cmd": "npx vitest run test/aba-resultados-fechamentos.test.ts test/churn-checklist-rota.test.ts test/conta-aceite.test.tsx test/conta-bugs-reais.test.ts test/conta-contrato-e-entregas.test.ts test/conta-resultados-campanha.test.ts test/conta-resultados-escritorio.test.ts test/conta-resultados-filtros.test.ts test/contratual-disputa.test.ts test/contratual-entregas.test.ts test/contratual-prazo.test.ts test/erro-string-carteira-perfil-disputa.test.ts test/fechamentos.test.ts test/ficha-abas-orfas.test.ts test/indicadores-resultados.test.ts test/metas.test.ts test/retencao-saidas-checklist.test.tsx test/visao-copy-ausencia.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais fora da allowlist seguem verdes (travessao mudo, nenhum title= novo no cartao, vazio em linha, abas montadas)",
+   "cmd": "npx vitest run test/travessao-mudo.test.ts test/cartao-topo-perfil.test.tsx test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "avaliador: um unico Editar em Observacoes do Closer (o inline, ao lado de 'Sem observações'; o do cabecalho saiu) e a edicao continua possivel com observacao escrita; escopo-bloco.tsx fora do diff; contratual com um unico estado vazio, datado; 'Mês do registro' antes dos chips; nenhum vazio em CardTitle/h*; comportamento com dado preservado. REPROVE se: comportamento com dado removido; rota ou calculo mudou; travessao em texto novo; entregaveis-tab.tsx no diff; teste recalculado perdeu assercao.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "RECON 26/09 (staging-auto cc0d3ce = main nestes arquivos). Renumerado de 628. Campo bloco removido. Mudancas: (a) ITEM REMOVIDO: o antigo (1) Entregaveis um bloco e identico ao item (1) do 636 (pendente, mesmos arquivos); o criterio 'Nenhum entregável cadastrado' = 1 ja passava em HEAD e contradizia o 636 (que zera). (b) o antigo (4) contratual tambem e do 636 (2): aqui ficou so o texto datado sobre a linha unica que o 636 entrega. COPY EM DISPUTA: o 636 sugere 'Prova de entrega · nenhuma entrega registrada', este pede 'Nenhuma entrega registrada até DD/MM/AAAA · ...'; roda depois, entao prevalece, confirmar com o dono da copy. (c) DECISAO 26/09 (Lucas): nas Observacoes fica o Editar inline ao lado de 'Sem observações' (mockup e conta-aceite.test.tsx:120-121) e sai o do cabecalho; o item do Escopo vazio saiu ('Nenhum produto contratado · Vincular pacote' e fixado pelo mockup, conta-aceite:385 e conta-bugs-reais:112,117). (d) recon_esperado evita de proposito contratual.tsx e as linhas de financeiro-tab que o 636 muda antes: afirmar o estado atual delas faria o 654 virar obsoleto no loop. (e) DEPENDE DO 636, que depende do 635 (bloqueado): o 654 nao roda antes de o 635 destravar. vitest por exit code; tsc ^src/ = 3.",
+ "_objetivo_cortado_na_fixture": 2589
+}

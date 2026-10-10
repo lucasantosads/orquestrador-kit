@@ -1,0 +1,338 @@
+/**
+ * Lote B3.2 — Carteira de Tráfego e funil do Comparativo no período padrão do OS,
+ * e o chip "variações fortes" do Desempenho diário como janela fixa até o fim da barra.
+ *
+ * Relógio simulado: 30/09/2026 às 22:30 na Bahia, que já é 01/10 às 01:30 em UTC.
+ * Nessa hora qualquer cálculo em UTC erra o dia. Na Carteira e no funil,
+ * "Este mês" = 01/09 a 30/09 e "Últimos 7 dias" = 23/09 a 29/09.
+ *
+ * As telas são carregadas por esbuild (o vitest do repo não transforma JSX) com um React
+ * falso: useEffect roda na hora e a busca só registra a URL. O hook de período é o real,
+ * com next/navigation trocado por uma URL fixa. As rotas rodam com Supabase e sessão
+ * mockados e o gasto diário real do AQUINO ADV como fixture (leitura de 30/09). Nada toca
+ * o banco.
+ */
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import React from "react";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { Module, createRequire } from "node:module";
+import vm from "node:vm";
+import { transformSync } from "esbuild";
+import { NextRequest } from "next/server";
+import * as presetsPeriodo from "@/lib/periodo/presets-periodo";
+import * as periodoPagina from "@/lib/periodo/periodo-pagina";
+import * as carteiraTela from "@/app/dashboard/performance/carteira/carteira-tela";
+
+const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/server") as {
+  renderToStaticMarkup: (element: unknown) => string;
+};
+
+// ─── Banco falso (só para as rotas) ─────────────────────────────────────────
+
+type Row = Record<string, unknown>;
+const h = vi.hoisted(() => ({ store: {} as Record<string, Row[]> }));
+
+vi.mock("@/lib/session", () => ({ getSession: async () => ({ id: "u" }) }));
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: () => ({
+    from: (tabela: string) => {
+      let rows: Row[] = [...(h.store[tabela] ?? [])];
+      let soContagem = false;
+      const b: Record<string, unknown> = {};
+      const filtro = (f: (r: Row) => boolean) => { rows = rows.filter(f); return b; };
+      b.select = (_c?: string, o?: { head?: boolean }) => { soContagem = !!o?.head; return b; };
+      b.order = () => b;
+      b.limit = (n: number) => { rows = rows.slice(0, n); return b; };
+      b.eq = (c: string, v: unknown) => filtro((r) => r[c] === v);
+      b.gte = (c: string, v: string) => filtro((r) => String(r[c]) >= v);
+      b.lte = (c: string, v: string) => filtro((r) => String(r[c]) <= v);
+      b.lt = (c: string, v: string) => filtro((r) => String(r[c]) < v);
+      b.in = (c: string, vs: unknown[]) => filtro((r) => vs.includes(r[c]));
+      b.range = (a: number, z: number) => { rows = rows.slice(a, z + 1); return b; };
+      b.then = (ok: (v: unknown) => unknown) =>
+        Promise.resolve({ data: soContagem ? null : rows, count: rows.length, error: null }).then(ok);
+      return b;
+    },
+  }),
+}));
+
+import { GET as getFunil } from "@/app/api/perf/dashboard/funil/route";
+import { GET as getOverview } from "@/app/api/perf/dashboard/overview/route";
+import { GET as getCarteira } from "@/app/api/perf/carteira/route";
+
+// 22:30 de 30/09 na Bahia (UTC-3) = 01:30 de 01/10 em UTC.
+const RELOGIO = new Date("2026-10-01T01:30:00Z");
+const MES = { from: "2026-09-01", to: "2026-09-30" };
+const SETE = { from: "2026-09-23", to: "2026-09-29" };
+
+const CLIENTE = "7837ac12-c6db-47e8-b4e8-6e043633eb6d";
+const CONTA = "00000000-0000-4000-8000-000000000001";
+// Gasto diário do AQUINO (perf_insights_daily, conta act_688512090810688, leitura de 30/09):
+// 23/09 a 30/09 dia a dia (30/09 parcial até 12:50); 01/09 a 22/09 concentrado em 10/09
+// (5.518,35), para fechar o mês em 6.816,77. Mesma fixture da B3.1.
+const AQUINO: [string, number][] = [
+  ["2026-09-10", 5518.35],
+  ["2026-09-23", 178.62], ["2026-09-24", 153.75], ["2026-09-25", 175.83], ["2026-09-26", 166.44],
+  ["2026-09-27", 237.96], ["2026-09-28", 212.84], ["2026-09-29", 114.1], ["2026-09-30", 58.88],
+];
+const reais = (v: number) => Math.round(v * 100) / 100;
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(RELOGIO);
+  h.store = {
+    perf_ad_accounts: [{ id: CONTA, act_id: "act_688512090810688", nome: "AQUINO", cliente_id: CLIENTE, nicho_id: null, ativo: true, em_uso: true }],
+    clientes: [{ id: CLIENTE, nome: "AQUINO ADV" }],
+    clientes_receita: [{ id: "00000000-0000-4000-8000-000000000002", nome: "AQUINO ADV", cliente_id: CLIENTE, status_financeiro: "ativo" }],
+    perf_insights_daily: AQUINO.map(([data_ref, gasto], i) => ({
+      id: i + 1, ad_account_id: CONTA, cliente_id: CLIENTE, campaign_id: "c1", data_ref, gasto, impressoes: 1000, cliques: 10, leads: 1,
+    })),
+    perf_leads: [],
+    perf_campanha_tese: [],
+  };
+});
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
+
+// ─── Carregador com React falso ─────────────────────────────────────────────
+
+const fakeReact = {
+  ...React,
+  useState: (ini: unknown) => [typeof ini === "function" ? (ini as () => unknown)() : ini, () => {}],
+  useEffect: (fn: () => void) => { fn(); },
+  useMemo: (fn: () => unknown) => fn(),
+  useCallback: (fn: unknown) => fn,
+  useRef: (v: unknown) => ({ current: v }),
+};
+
+/** Qualquer módulo do app não trocado vira um objeto cujos membros são componentes nulos. */
+const stubModulo = () => new Proxy({}, { get: (_t, k) => (k === "__esModule" ? true : () => null) });
+
+function carregar(arquivo: string, mocks: Record<string, unknown>): Record<string, (p?: Record<string, unknown>) => unknown> {
+  const caminho = resolve(arquivo);
+  const { code } = transformSync(readFileSync(caminho, "utf8"), {
+    loader: "tsx", jsx: "automatic", format: "cjs", target: "node18", sourcefile: caminho,
+  });
+  const mod = new Module(caminho, module);
+  mod.filename = caminho;
+  mod.paths = (Module as unknown as { _nodeModulePaths(d: string): string[] })._nodeModulePaths(dirname(caminho));
+  const req = (id: string) => {
+    if (id in mocks) return mocks[id];
+    if (id.startsWith("@/") || id.startsWith(".")) return stubModulo();
+    return mod.require(id);
+  };
+  vm.runInThisContext(Module.wrap(code), { filename: caminho })
+    .call(mod.exports, mod.exports, req, mod, caminho, dirname(caminho));
+  return mod.exports as Record<string, (p?: Record<string, unknown>) => unknown>;
+}
+
+/** next/navigation com a URL da página fixa em `busca`. */
+function navegacao(busca: string, trocas: string[]) {
+  return {
+    useSearchParams: () => new URLSearchParams(busca),
+    usePathname: () => "/dashboard/performance",
+    useRouter: () => ({ replace: (u: string) => trocas.push(u), push: (u: string) => trocas.push(u) }),
+  };
+}
+
+/** Os hooks de período reais (o padrão e o antigo), sobre a URL dada. */
+function hooksDePeriodo(busca: string, trocas: string[]) {
+  const base = { react: fakeReact, "next/navigation": navegacao(busca, trocas) };
+  return {
+    // Em main o hook novo não existe; sem ele a tela cai no que main tem, e o teste
+    // falha pelo intervalo, não por arquivo ausente (controle negativo legível).
+    ...(existsSync(resolve("src/lib/periodo/use-periodo-url.ts")) && {
+      "@/lib/periodo/use-periodo-url": carregar("src/lib/periodo/use-periodo-url.ts", {
+        ...base, "@/lib/periodo/presets-periodo": presetsPeriodo,
+      }),
+    }),
+    // Só para o controle negativo: em main a Carteira ainda usa o motor antigo.
+    "@/lib/periodo/use-periodo-pagina": carregar("src/lib/periodo/use-periodo-pagina.ts", {
+      ...base, "@/lib/periodo/periodo-pagina": periodoPagina,
+    }),
+  };
+}
+
+interface Montagem { urls: string[]; seletor: Record<string, unknown> | null; trocas: string[] }
+
+/** Monta a aba Carteira com a URL dada e devolve o que ela buscou e o que deu ao seletor. */
+function montarCarteira(busca: string): Montagem {
+  const m: Montagem = { urls: [], seletor: null, trocas: [] };
+  const exp = carregar("src/app/dashboard/performance/carteira/carteira-aba.tsx", {
+    react: fakeReact,
+    ...hooksDePeriodo(busca, m.trocas),
+    "@/lib/fetch-json": { fetchJson: (u: string) => { m.urls.push(u); return new Promise(() => {}); } },
+    "./carteira-tela": carteiraTela,
+    "@/components/periodo/seletor-periodo": { SeletorPeriodo: (p: Record<string, unknown>) => { m.seletor = p; return null; } },
+  });
+  renderToStaticMarkup(React.createElement(exp.CarteiraAba as React.FC));
+  return m;
+}
+
+/** Monta /dashboard/performance (aba Comparativo) com a URL dada. */
+function montarComparativo(busca: string): Montagem {
+  const m: Montagem = { urls: [], seletor: null, trocas: [] };
+  vi.stubGlobal("fetch", (u: string) => { m.urls.push(u); return new Promise(() => {}); });
+  const exp = carregar("src/app/dashboard/performance/page.tsx", {
+    react: fakeReact,
+    ...hooksDePeriodo(busca, m.trocas),
+    sonner: { toast: { success() {}, error() {} } },
+    // As abas renderizam os filhos, para o seletor do funil (dentro do Comparativo) montar.
+    "@/components/ui/tabs": Object.fromEntries(["Tabs", "TabsList", "TabsTrigger", "TabsContent"].map((k) =>
+      [k, ({ children }: { children?: React.ReactNode }) => React.createElement(React.Fragment, null, children)])),
+    "@/components/periodo/seletor-periodo": { SeletorPeriodo: (p: Record<string, unknown>) => { m.seletor = p; return null; } },
+  });
+  renderToStaticMarkup(React.createElement(exp.default as React.FC));
+  return m;
+}
+
+const parametros = (url: string) => Object.fromEntries(new URL(url, "http://x").searchParams);
+const urlOverview = (m: Montagem) => m.urls.find((u) => u.startsWith("/api/perf/dashboard/overview"))!;
+const urlFunil = (m: Montagem) => m.urls.find((u) => u.startsWith("/api/perf/dashboard/funil"))!;
+
+// ─── (a) Carteira de Tráfego ────────────────────────────────────────────────
+
+describe("(a) Carteira às 22:30 da Bahia de 30/09", () => {
+  it("sem período na URL abre em Este mês = 01/09 a 30/09", () => {
+    const m = montarCarteira("");
+    expect(m.seletor?.valor).toEqual({ preset: "mes", inicio: "", fim: "" });
+    expect(parametros(urlOverview(m))).toEqual(MES);
+  });
+
+  it("?periodo=7d = Últimos 7 dias = 23/09 a 29/09 (hoje fora, nada de 01/10)", () => {
+    const m = montarCarteira("periodo=7d");
+    expect(m.seletor?.valor).toEqual({ preset: "7d", inicio: "", fim: "" });
+    expect(parametros(urlOverview(m))).toEqual(SETE);
+  });
+
+  it("trocar o período grava ?periodo= na URL e mantém os outros parâmetros", () => {
+    const m = montarCarteira("aba=carteira");
+    (m.seletor?.onChange as (v: unknown) => void)({ preset: "7d", inicio: "", fim: "" });
+    expect(m.trocas).toEqual(["/dashboard/performance?aba=carteira&periodo=7d"]);
+  });
+
+  it("link antigo ?periodo=custom&desde&ate abre como Personalizado no mesmo intervalo", () => {
+    const m = montarCarteira("periodo=custom&desde=2026-09-10&ate=2026-09-20");
+    expect(m.seletor?.valor).toEqual({ preset: "personalizado", inicio: "2026-09-10", fim: "2026-09-20" });
+    expect(parametros(urlOverview(m))).toEqual({ from: "2026-09-10", to: "2026-09-20" });
+  });
+
+  it("o preset 30 dias saiu: ?periodo=30d cai no padrão Este mês, e a aba não tem mais a opção", () => {
+    expect(parametros(urlOverview(montarCarteira("periodo=30d")))).toEqual(MES);
+    // Sem comentários: o cabeçalho do arquivo cita o preset que saiu.
+    const aba = readFileSync(resolve("src/app/dashboard/performance/carteira/carteira-aba.tsx"), "utf8")
+      .replace(/\/\/.*$|\/\*[\s\S]*?\*\//gm, "");
+    expect(aba).not.toMatch(/30 dias|"30d"/);
+    expect(presetsPeriodo.PRESETS_PERIODO.map((p) => p.label)).not.toContain("30 dias");
+  });
+
+  it("tendência de 7d da rota ancora em hoje na Bahia (30/09), não em 01/10", async () => {
+    const j = await (await getCarteira()).json();
+    expect(j.hoje).toBe("2026-09-30");
+    // Janela da tendência (regra do 346b, inalterada): hoje-6..hoje = 24/09 a 30/09.
+    // 153,75 + 175,83 + 166,44 + 237,96 + 212,84 + 114,10 + 58,88 = 1.119,80.
+    expect(reais(j.linhas[0].tendencia_7d.gasto_atual_7d)).toBe(1119.8);
+  });
+});
+
+// ─── (b) Funil do Comparativo ───────────────────────────────────────────────
+
+describe("(b) funil do Comparativo às 22:30 da Bahia de 30/09", () => {
+  it("sem período na URL abre em Este mês = 01/09 a 30/09 (antes: 30 dias)", () => {
+    const m = montarComparativo("");
+    expect(m.seletor?.valor).toEqual({ preset: "mes", inicio: "", fim: "" });
+    expect(parametros(urlFunil(m))).toEqual(MES);
+  });
+
+  it("?periodo=7d = 23/09 a 29/09: 7 dias, não 8", () => {
+    const m = montarComparativo("periodo=7d");
+    expect(parametros(urlFunil(m))).toEqual(SETE);
+  });
+
+  it("a URL do funil leva exatamente o from/to do período", () => {
+    const m = montarComparativo("periodo=7d");
+    expect(urlFunil(m)).toBe("/api/perf/dashboard/funil?from=2026-09-23&to=2026-09-29");
+  });
+
+  it("a rota, sem from/to, usa hoje na Bahia: 30 dias até 30/09", async () => {
+    const j = await (await getFunil(new NextRequest("http://x/api/perf/dashboard/funil"))).json();
+    expect(j.period).toEqual({ from: "2026-09-01", to: "2026-09-30" });
+    expect(j.coleta).toBeDefined();
+  });
+
+  it("período anterior tem o mesmo tamanho: 23–29/09 compara com 16–22/09", async () => {
+    const j = await (await getFunil(new NextRequest(`http://x/api/perf/dashboard/funil?from=${SETE.from}&to=${SETE.to}`))).json();
+    expect(j.periodo_anterior).toEqual({ from: "2026-09-16", to: "2026-09-22" });
+  });
+
+  it("a página não calcula mais data em UTC", () => {
+    const src = readFileSync(resolve("src/app/dashboard/performance/page.tsx"), "utf8");
+    expect(src).not.toMatch(/toISOString|getUTC|86400000|"30d"/);
+    expect(src).toMatch(/usePeriodoUrl\(\)/);
+  });
+});
+
+// ─── (c) Chip de variações fortes ───────────────────────────────────────────
+
+type JanelaDoChip = (to: string, v: { data_ref: string }[]) => { de: string; ate: string; quantas: number };
+/** O componente é .tsx: vem pelo carregador esbuild, com presets-periodo real. */
+const janelaDoChip: JanelaDoChip = (to, v) =>
+  (carregar("src/app/dashboard/clientes/[id]/_components/metricas-diarias.tsx", {
+    react: fakeReact, "@/lib/periodo/presets-periodo": presetsPeriodo,
+  }).janelaDoChip as unknown as JanelaDoChip)(to, v);
+
+describe("(c) chip: 7 dias até o fim da barra, na Bahia", () => {
+  const variacoes = ["2026-09-22", "2026-09-23", "2026-09-24", "2026-09-29", "2026-09-30"].map((data_ref) => ({ data_ref }));
+
+  it("barra em Este mês às 22:30 (fim 30/09): 24/09 a 30/09 → 3 variações, até 30/09", () => {
+    const barra = presetsPeriodo.calcularPeriodo("mes")!;
+    expect(janelaDoChip(barra.until, variacoes)).toEqual({ de: "2026-09-24", ate: "30/09", quantas: 3 });
+  });
+
+  it("barra em Últimos 7 dias (fim 29/09): 23/09 a 29/09 → 3 variações, até 29/09 (30/09 fica fora)", () => {
+    const barra = presetsPeriodo.calcularPeriodo("7d")!;
+    expect(janelaDoChip(barra.until, variacoes)).toEqual({ de: "2026-09-23", ate: "29/09", quantas: 3 });
+  });
+
+  it("rótulo: \"variações fortes nos 7 dias até DD/MM\", sem \"últimos 7 dias\"", () => {
+    const src = readFileSync(resolve("src/app/dashboard/clientes/[id]/_components/metricas-diarias.tsx"), "utf8");
+    expect(src).toContain('" variações fortes nos 7 dias até "');
+    expect(src).toContain('" variação forte nos 7 dias até "');
+    expect(src).toContain("nenhuma variação forte nos 7 dias até ");
+    expect(src).not.toContain("últimos 7 dias");
+    expect(src).toContain("janelaDoChip(to, variacoes)");
+  });
+});
+
+// ─── (d) nada de UTC nas rotas dessas telas ─────────────────────────────────
+
+describe("(d) as rotas da Carteira e do funil usam presets-periodo.ts", () => {
+  for (const arq of ["src/app/api/perf/carteira/route.ts", "src/app/api/perf/dashboard/funil/route.ts", "src/lib/trafego/carteira.ts"]) {
+    it(arq, () => {
+      const src = readFileSync(resolve(arq), "utf8");
+      expect(src).not.toMatch(/toISOString|new Date\(\)/);
+      expect(src).toMatch(/from "@\/lib\/periodo\/presets-periodo"/);
+    });
+  }
+});
+
+// ─── Aceite: AQUINO, da URL da tela até o número da rota ────────────────────
+
+describe("aceite AQUINO: a linha da Carteira e o funil somam o mesmo que a ficha", () => {
+  const casos: [string, string, number][] = [
+    ["Últimos 7 dias", "periodo=7d", 1239.54],
+    ["Este mês", "", 6816.77],
+  ];
+  for (const [nome, busca, esperado] of casos) {
+    it(`${nome}: Carteira = funil = R$ ${esperado.toLocaleString("pt-BR")}`, async () => {
+      const carteira = await (await getOverview(new NextRequest(`http://x${urlOverview(montarCarteira(busca))}`))).json();
+      const linha = carteira.by_cliente.find((c: { cliente_id: string }) => c.cliente_id === CLIENTE);
+      const funil = await (await getFunil(new NextRequest(`http://x${urlFunil(montarComparativo(busca))}&cliente_id=${CLIENTE}`))).json();
+      expect(reais(linha.gasto)).toBe(esperado);
+      expect(reais(funil.atual.gasto)).toBe(esperado);
+    });
+  }
+});

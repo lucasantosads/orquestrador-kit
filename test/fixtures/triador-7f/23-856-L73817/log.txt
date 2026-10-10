@@ -1,0 +1,34 @@
+73784	[2026-10-06 13:43:37-0300] drenagem: ticket 856 (2 pendentes restantes)
+73785	[orq 16:43:37] orquestrador iniciando · modo: real · once
+73786	[orq 16:43:37] preflight: validando infra (scripts, fila, env, claude)...
+73787	[orq 16:43:40] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+73788	[orq 16:43:46] preflight: ok
+73789	[orq 16:44:07] === ticket 856 (remove-super-admin) — tentativa 1 · modo: real ===
+73790	[orq 16:44:09]   recon_esperado: ok (4 comando(s))
+73791	[orq 16:44:09] aviso allowlist: src/app/dashboard/super-admin/page.tsx já existe no worktree — o agente vai EDITAR, não criar
+73792	[orq 16:44:09] aviso allowlist: src/app/dashboard/super-admin/error.tsx já existe no worktree — o agente vai EDITAR, não criar
+73793	[orq 16:44:09] aviso allowlist: test/error-boundaries-rotas-lote6.test.ts já existe no worktree — o agente vai EDITAR, não criar
+73794	[orq 16:44:09] aviso allowlist: test/regra19.test.ts já existe no worktree — o agente vai EDITAR, não criar
+73795	[orq 16:44:09]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/856/attempt-1/prompt.txt
+73796	[orq 16:44:09]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+73797	[orq 16:45:11]   diff cru salvo (206 linhas alteradas) · HEAD julgado d394691d
+73798	[orq 16:45:12]   enforcement: ok
+73799	[orq 16:45:32]   gate tsc: ok (baseline)
+73800	[orq 16:46:14]   gate vitest: FALHA
+73801	[orq 16:46:14]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/856/attempt-1/gate-vitest.txt)
+73802	[orq 16:46:14] ticket 856: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/856/attempt-1/gate-vitest.txt)
+73803	[orq 16:46:14] === ticket 856 (remove-super-admin) — tentativa 2 · modo: real ===
+73804	[orq 16:46:17]   recon_esperado: ok (4 comando(s))
+73805	[orq 16:46:17] aviso allowlist: src/app/dashboard/super-admin/page.tsx já existe no worktree — o agente vai EDITAR, não criar
+73806	[orq 16:46:17] aviso allowlist: src/app/dashboard/super-admin/error.tsx já existe no worktree — o agente vai EDITAR, não criar
+73807	[orq 16:46:17] aviso allowlist: test/error-boundaries-rotas-lote6.test.ts já existe no worktree — o agente vai EDITAR, não criar
+73808	[orq 16:46:17] aviso allowlist: test/regra19.test.ts já existe no worktree — o agente vai EDITAR, não criar
+73809	[orq 16:46:17]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/856/attempt-2/prompt.txt
+73810	[orq 16:46:17]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+73811	[orq 16:47:37]   diff cru salvo (205 linhas alteradas) · HEAD julgado ddd51294
+73812	[orq 16:47:38]   enforcement: ok
+73813	[orq 16:48:13]   gate tsc: ok (baseline)
+73814	[orq 16:49:00]   gate vitest: FALHA
+73815	[orq 16:49:00]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/856/attempt-2/gate-vitest.txt)
+73816	[orq 16:49:00] ticket 856: motivo de reprova REPETIU — circuit breaker (por ticket)
+73817	[orq 16:49:00] ticket 856: BLOQUEADO sem gastar a próxima volta

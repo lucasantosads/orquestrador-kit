@@ -1,0 +1,42 @@
+83584	[2026-10-08 15:12:59-0300] drenagem: ticket 898 (4 pendentes restantes)
+83585	[orq 18:12:59] orquestrador iniciando · modo: real · once
+83586	[orq 18:12:59] preflight: validando infra (scripts, fila, env, claude)...
+83587	[orq 18:13:02] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+83588	[orq 18:13:08] preflight: ok
+83589	[orq 18:13:25]   evidência anterior preservada em attempt-1.prev1
+83590	[orq 18:13:25] === ticket 898 (alerta-saldo-meta) — tentativa 1 · modo: real ===
+83591	[orq 18:13:26]   recon_esperado: ok (4 comando(s))
+83592	[orq 18:13:26]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/898/attempt-1/prompt.txt
+83593	[orq 18:13:26]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+83594	[orq 18:14:22]   diff cru salvo (86 linhas alteradas) · HEAD julgado e2603b7b
+83595	[orq 18:14:22]   enforcement: ok
+83596	[orq 18:14:39]   gate tsc: ok (baseline)
+83597	[orq 18:15:09]   gate vitest: ok
+83598	[orq 18:15:11]   criterios mecânicos: FALHA — criterio[4] mecânico: esperado 'MIGRATION_OK', obteve 'ST_11111_2'
+83599	[orq 18:15:11]   REPROVA (mecânica, sem Opus): criterio[4] mecânico: esperado 'MIGRATION_OK', obteve 'ST_11111_2'
+83600	[orq 18:15:12] ticket 898: reprovado — retry 1/2. motivo: criterio[4] mecânico: esperado 'MIGRATION_OK', obteve 'ST_11111_2'
+83601	[orq 18:15:12]   evidência anterior preservada em attempt-2.prev1
+83602	[orq 18:15:12] === ticket 898 (alerta-saldo-meta) — tentativa 2 · modo: real ===
+83603	[orq 18:15:13]   recon_esperado: ok (4 comando(s))
+83604	[orq 18:15:13]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/898/attempt-2/prompt.txt
+83605	[orq 18:15:13]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+83606	[orq 18:16:05]   diff cru salvo (93 linhas alteradas) · HEAD julgado 17391bcf
+83607	[orq 18:16:05]   enforcement: ok
+83608	[orq 18:16:22]   gate tsc: ok (baseline)
+83609	[orq 18:16:50]   gate vitest: ok
+83610	[orq 18:16:53]   criterios mecânicos: ok
+83611	[orq 18:17:23]   gate build: ok
+83612	[orq 18:17:32] avaliador: REPROVADO — O corpo diverge do especificado: falta 'on delete cascade' em cliente_id e 'on delete set null' em definido_por. Sem isso, apagar um cliente ou employee falha por FK. O teste também não amarra essas cláusulas. RLS, guarda de pg_policies, revoke e C0 estão ok.
+83613	[orq 18:17:32] ticket 898: reprovado — retry 2/2. motivo: O corpo diverge do especificado: falta 'on delete cascade' em cliente_id e 'on delete set null' em definido_por. Sem isso, apagar um cliente ou employee falha por FK. O teste também não amarra essas cláusulas. RLS, guarda de pg_policies, revoke e C0 estão ok.
+83614	[orq 18:17:32] === ticket 898 (alerta-saldo-meta) — tentativa 3 · modo: real ===
+83615	[orq 18:17:33]   recon_esperado: ok (4 comando(s))
+83616	[orq 18:17:33]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/898/attempt-3/prompt.txt
+83617	[orq 18:17:33]   tentativa final: escalando modelo do executor para 'opus'
+83618	[orq 18:17:33]   chamando claude -p (headless, --model opus, timeout 1500s) no worktree...
+83619	[orq 18:20:44]   diff cru salvo (111 linhas alteradas) · HEAD julgado b516f4a5
+83620	[orq 18:20:45]   enforcement: ok
+83621	[orq 18:21:12]   gate tsc: ok (baseline)
+83622	[orq 18:22:02]   gate vitest: ok
+83623	[orq 18:22:05]   criterios mecânicos: FALHA — criterio[4] mecânico: esperado 'MIGRATION_OK', obteve 'ST_11111_2'
+83624	[orq 18:22:05]   REPROVA (mecânica, sem Opus): criterio[4] mecânico: esperado 'MIGRATION_OK', obteve 'ST_11111_2'
+83625	[orq 18:22:05] ticket 898: reprovado após 2 retries — BLOQUEADO

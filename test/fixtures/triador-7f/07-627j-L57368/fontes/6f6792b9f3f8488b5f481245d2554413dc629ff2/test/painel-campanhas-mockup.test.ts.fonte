@@ -1,0 +1,151 @@
+// Ticket 530b: painel da aba Campanhas no layout do mockup campanhas.dc.html:117-136.
+// O componente é carregado por esbuild (sem JSX no teste); UI, next/link e supabase são
+// stubs, então nada aqui lê ou escreve no banco.
+import { describe, it, expect, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { Module, createRequire } from "node:module";
+import vm from "node:vm";
+import { transformSync } from "esbuild";
+import React from "react";
+
+const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/server") as {
+  renderToStaticMarkup: (element: React.ReactElement) => string;
+};
+
+const ARQ = resolve(__dirname, "../src/app/dashboard/clientes/perf/_components/ClientePerfPanel.tsx");
+const fonte = readFileSync(ARQ, "utf-8");
+const h = React.createElement;
+const wrap = (tag: string) => (p: Record<string, unknown>) => h(tag, { className: p.className }, p.children as React.ReactNode);
+
+const STUBS: Record<string, unknown> = {
+  "next/link": { __esModule: true, default: (p: { href: string; className?: string; children?: React.ReactNode }) => h("a", { href: p.href, className: p.className }, p.children) },
+  "@/components/ui/card": { Card: wrap("section"), CardContent: wrap("div"), CardHeader: wrap("header"), CardTitle: wrap("h3") },
+  "@/components/ui/button": { Button: wrap("button") },
+  sonner: { toast: { error: vi.fn(), success: vi.fn() } },
+  "@/lib/clientes/badges": { SEVERIDADE_CLS: {} },
+  "@/lib/fetch-json": { fetchJson: vi.fn() },
+};
+
+function carregar(): Record<string, unknown> {
+  const { code } = transformSync(fonte, { loader: "tsx", jsx: "automatic", format: "cjs", target: "node18", sourcefile: ARQ });
+  const mod = new Module(ARQ, module);
+  mod.filename = ARQ;
+  mod.paths = (Module as unknown as { _nodeModulePaths(d: string): string[] })._nodeModulePaths(dirname(ARQ));
+  const wrapper = vm.runInThisContext(Module.wrap(code), { filename: ARQ });
+  const req = (id: string) => (id in STUBS ? STUBS[id] : mod.require(id));
+  wrapper.call(mod.exports, mod.exports, req, mod, ARQ, dirname(ARQ));
+  return mod.exports as Record<string, unknown>;
+}
+
+type C = React.ComponentType<Record<string, unknown>>;
+const { PacingPanel, CascataPanel, PorTipoPanel } = carregar() as { PacingPanel: C; CascataPanel: C; PorTipoPanel: C };
+
+const ID = "00000000-0000-4000-8000-000000000000";
+const bucket = (tipo: string, o: Record<string, unknown> = {}) => ({
+  tipo, investido: 100, leads: 10, msg: 5, form: 5, impressoes: 1, cliques: 1, alcance_aprox: 1,
+  cpl: 10, cpm: 1, ctr_pct: 1, cpc: 1, frequencia: 1, mql: null, pct_mql: null, cpmql: null, ...o,
+});
+const porTipo = (por_tipo: unknown[], extra: Record<string, unknown> = {}) => ({
+  cliente_id: ID, alcance_aproximado: false, por_tipo, consolidado: bucket("consolidado"), ...extra,
+});
+const cascata = () => ({
+  data: { cliente_id: ID, tipo: "leads", periodo_ref: "2026-09", meta: null, cascata: null },
+  tipo: "leads", onTipo: vi.fn(), view: "mes", onView: vi.fn(), loading: false,
+});
+const render = (c: C, p: Record<string, unknown>) => renderToStaticMarkup(h(c, p));
+
+describe("Pacing de verba sob compacto", () => {
+  it("sem conta com teto vira uma linha de sem base com Definir teto no setup", () => {
+    const html = render(PacingPanel, { pacing: { cliente_id: ID, contas: [], consolidado: null }, setupNotionId: "abc", compacto: true });
+    expect(html).toContain("Pacing de verba");
+    expect(html).toContain("Teto de verba · sem base, nenhum teto definido");
+    expect(html).toContain("/dashboard/clientes/abc/setup");
+    expect(html).toContain("Definir teto");
+  });
+
+  it("sem pacing (nulo) também mostra a linha, e sem compacto o bloco continua sumindo", () => {
+    expect(render(PacingPanel, { pacing: null, compacto: true })).toContain("nenhum teto definido");
+    expect(render(PacingPanel, { pacing: null })).toBe("");
+  });
+});
+
+describe("Metas do mês sob compacto", () => {
+  it("sem meta: título do mockup e uma linha com Cadastrar meta", () => {
+    const html = render(CascataPanel, { ...cascata(), compacto: true });
+    expect(html).toContain("Metas do mês");
+    expect(html).toContain("Meta de leads · sem base, nenhuma meta cadastrada");
+    expect(html).toContain("Cadastrar meta");
+    expect(html).not.toContain("Nenhuma meta de");
+  });
+
+  it("sem compacto mantém o título e o texto de hoje", () => {
+    const html = render(CascataPanel, cascata());
+    expect(html).not.toContain("Metas do mês");
+    expect(html).toContain("Nenhuma meta de Leads cadastrada para o mês.");
+  });
+});
+
+describe("Performance por tipo", () => {
+  const dados = porTipo([
+    bucket("mensagem", { investido: 782.48, leads: 130, cpl: 6.02 }),
+    bucket("formulario", { leads: 0, cpl: null }),
+    bucket("perfil", { investido: 285.73, leads: 0, cpl: null }),
+  ]);
+
+  it("compacto: Tipo, Invest., Leads e CPL, uma linha por tipo, sem card aninhado", () => {
+    const html = render(PorTipoPanel, { data: dados, compacto: true });
+    for (const c of ["Tipo", "Invest.", "Leads", "CPL"]) expect(html).toContain(`>${c}</th>`);
+    expect(html).toContain("Performance por tipo");
+    expect(html).not.toContain("Performance por tipo de campanha");
+    expect((html.match(/<tr/g) ?? []).length).toBe(1 + 3);
+    expect(html).toContain("Mensagem");
+    expect(html).toContain("Formulário");
+    expect(html).toContain("Perfil");
+    expect(html).not.toContain("Consolidado");
+    expect(html).toContain("font-mono");
+    expect(html).not.toContain("<header");
+  });
+
+  it("ausência é sem base em cinza, leads zero continua 0 e só o Perfil diz visitas: sem base", () => {
+    const html = render(PorTipoPanel, { data: dados, compacto: true });
+    expect((html.match(/visitas: sem base/g) ?? []).length).toBe(1);
+    expect(html).toContain("text-muted-foreground\">sem base</span>");
+    // formulario: leads 0 é medição e aparece como 0, não como sem base
+    expect(html).toContain("font-mono\">0</td>");
+    expect(html).not.toContain("—");
+  });
+
+  it("compacto com vínculo pendente ou sem tipos usa o título da ficha e nenhum Card próprio", () => {
+    for (const d of [porTipo([], { vinculo_pendente: true }), porTipo([])]) {
+      const html = render(PorTipoPanel, { data: d, compacto: true });
+      expect(html).toContain("Performance por tipo");
+      expect(html).not.toContain("Performance por tipo de campanha");
+      expect(html).not.toContain("<header");
+    }
+  });
+
+  it("sem compacto preserva o título antigo e a tabela por métrica", () => {
+    const html = render(PorTipoPanel, { data: dados });
+    expect(html).toContain("Performance por tipo de campanha");
+    expect(html).toContain("Metrica");
+  });
+});
+
+describe("fonte", () => {
+  it("nenhum termo antigo de ausência no arquivo", () => {
+    expect(fonte.includes("s/ dado")).toBe(false);
+  });
+
+  it("a grade de duas colunas só existe sob ocultarResumo e Analisar com IA segue abaixo", () => {
+    const ini = fonte.indexOf("{ocultarResumo ? (");
+    expect(ini).toBeGreaterThan(-1);
+    expect(fonte.indexOf("md:grid-cols-2", ini)).toBeGreaterThan(ini);
+    expect(fonte.indexOf("Analisar com IA")).toBeGreaterThan(ini);
+  });
+
+  it("a visão geral de performance não passa ocultarResumo", () => {
+    const perf = readFileSync(resolve(__dirname, "../src/app/dashboard/clientes/perf/perf-block.tsx"), "utf-8");
+    expect(perf.includes("ocultarResumo")).toBe(false);
+  });
+});

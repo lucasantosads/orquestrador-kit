@@ -1,0 +1,13 @@
+A rota de auditoria agora resolve o `[id]` com uma única chamada a `resolverCliente`, e o trabalho está commitado. Não rodei a suíte completa do vitest nem o `npm run build`. A reprovação anterior tinha 740 arquivos e 7617 testes passando. O que falhou foram 3 workers do vitest que deram timeout ao iniciar, e não um teste vermelho.
+
+- **Rota:** `src/app/api/clientes/[id]/auditoria/route.ts` consulta tudo pelo `cliente_id` do par.
+  - Cliente com `cliente_id` nulo e apelido conhecido mantém a resposta de hoje (200 com `sem_dados: true`).
+  - Par com os dois lados nulos devolve 404 `Cliente não encontrado`.
+  - Erro lançado pelo resolver vira 500 com a mensagem. Também passei a lançar erro nas leituras de status, tarefas e histórico de tarefas, que antes viravam lista vazia.
+- **Teste existente:** em `test/auditoria-cliente.test.ts`, só troquei o mock do resolver. Nenhuma asserção foi removida.
+- **Teste novo:** `test/resolver-cliente-rota-auditoria.test.ts` cobre uuid e notion_id chegando à mesma consulta, resolução uma vez por requisição, sem vínculo, 404 e 500.
+- **Verificações:**
+  - Os dois arquivos de teste passam (10 testes).
+  - O `tsc` deu 3 erros, igual ao baseline, mas não consegui rodar o `rm -rf .next` antes (o comando foi negado).
+  - O diff tem 128 linhas somando adições e remoções, dentro do teto de 200.
+  - Não rodei as outras verificações dos critérios (guardas globais, SO_ALLOWLIST, build).

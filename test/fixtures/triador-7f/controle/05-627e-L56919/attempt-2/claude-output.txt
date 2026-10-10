@@ -1,0 +1,36 @@
+Todos os 21 travessões da área admin saíram e o TETO baixou de 125 para 104, mas `test/fila-item-abre.test.tsx` agora falha. Fica fora da allowlist, então parei nele e não editei. Está commitado (`af3ac52`), sem push.
+
+## O teste quebrado
+
+`fila/page.tsx` passou a importar `SemDado`, e esse teste não consegue interpretar o `.tsx` real. Ele já faz `vi.mock` de todos os componentes `.tsx` da página. O arquivo falha na coleta com `Failed to parse source ... sem-dado.tsx`. O resto da suíte passa: 565 arquivos e 5877 testes.
+
+O `test/nps-lote-links.test.tsx` e o `test/nps-universo-ativo.test.tsx` resolvem o mesmo problema com este mock, que precisa ser adicionado ao `test/fila-item-abre.test.tsx` em outro ticket:
+
+```ts
+vi.mock("@/components/estados/sem-dado", () => ({
+  SemDado: ({ motivo }: { motivo: string }) => createElement("span", { "data-testid": "sem-dado" }, motivo),
+}));
+```
+
+Como esse teste está vermelho, os critérios "guarda do travessão verde" e "cinco guardas globais" só passam quando rodados isoladamente. Rodei o `test/travessao-mudo.test.ts` e as cinco globais juntos e deram 49 testes verdes. O `npm run build` não rodei.
+
+## Verificação
+
+- **tsc:** 3 erros em `src/` (o baseline).
+- **TETO:** medi 104. Com 103 o teste falha e com 104 passa, sem folga. No teste só mudaram a constante e o comentário da medição.
+- **Contador:** por leitura do diff, a área não tem mais travessão mudo. Não consegui rodar o comando de aceite com `TRAVESSAO_RELATORIO` (o Bash negou o comando com essa variável), então medi só pelo total.
+
+## Correções da reprovação anterior
+
+- **`LinhaDetalhe` (fila):** usa `<SemDado compacto motivo="..."/>` com motivo próprio por linha (descrição, cliente, origem). Comentário atualizado.
+- **`safeMonth`:** devolve `string | null` e o subtítulo omite o mês quando ele não vem.
+- **Célula `eh_lideranca`:** quem não é liderança mostra `SemDado` com o motivo "não ocupa cargo de liderança".
+
+## Demais casos
+
+- **`fmtPct`:** devolve `string | null`. Em tabelas cada chamador põe `SemDado` com motivo próprio; em KPI mostra "sem base".
+- **Fila:**
+  - O histórico vazio vira uma linha de texto.
+  - O bloco "Fonte" some quando não há fonte.
+- **Metadado omitido:** a origem no `RbacAdmin` e o "N clientes ·" do detalhe do MRR foram omitidos quando ausentes.
+- **`delegavel = false`:** virou "não". É um valor real, então não usei `SemDado`.

@@ -1,0 +1,3 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+722	docs/fila/runs/722/attempt-1.prev1	test/leitura-relacao-gatilhos.test.ts	1412	2026-10-02T00:23:43Z	1
+722	docs/fila/runs/722/attempt-2.prev1	test/leitura-relacao-gatilhos.test.ts	1412	2026-10-02T00:25:48Z	1

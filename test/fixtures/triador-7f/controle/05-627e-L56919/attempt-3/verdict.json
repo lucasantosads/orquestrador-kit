@@ -1,0 +1,4 @@
+{
+  "aprovado": true,
+  "motivo": "Todos os travessões caíram no caso certo: SemDado compacto com motivo específico nas células, 'sem base' nos KPIs, metadado omitido e bloco vazio em uma linha. Sentinelas trocadas com quem compara (origem, fmtPct, safeMonth). A mensagem da fonte vazia na fila bate com fontePainel. Nenhum teste afrouxado."
+}

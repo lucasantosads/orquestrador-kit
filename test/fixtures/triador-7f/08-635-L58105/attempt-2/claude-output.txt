@@ -1,0 +1,15 @@
+O ticket 635 está feito só em parte: a suíte vitest continua vermelha, por dois motivos que não consegui resolver daqui. Está commitado como `c1b985c`. Não rodei a suíte completa nem o `npm run build`, só os testes do ticket e o `tsc`.
+
+**O que foi feito**
+- **Aviso de pipelines:** o aviso saiu do bloco config de `page.tsx`. Virou uma linha cinza dentro do cartão CRM (`config-tab.tsx`), abaixo do seletor Pipeline principal, só quando `crmPipelines.length === 0`. Sem heading, sem card, sem `FonteIndisponivel`.
+- **Bloco config:** continua como key, com `{activeTab === "config" ? <ConfigTab /> : null}`.
+- **Bloco crm:** monta só `<ConexaoCrm />`; o import e a montagem do `CrmTab` foram removidos de `page.tsx`.
+- **Testes:** recalculei os 6 testes da allowlist, com comentário citando o ticket 635.
+- **Teste novo:** criei `test/conta-crm-sem-contradicao.test.ts`.
+- **`tsc`:** dá 3 erros em `src/`, dentro do baseline.
+
+**O que falta, e por quê**
+1. **`crm.tsx` não foi apagado.** `git rm` e `rm` foram negados pela permissão. Por isso o teste novo tem 2 falhas (`crm.tsx não existe` e o de `sub=config`) e `ghl-um-lugar-so` falha em 2 testes, todos porque o arquivo ainda existe. Falta alguém rodar `git rm "src/app/dashboard/clientes/[id]/tabs/crm.tsx"`; sem `crm.tsx` esses testes devem passar, mas eu não consegui conferir.
+2. **`test/cartao-topo-setup-e-closer.test.ts:62` quebra e está fora da allowlist.** Ele exige `campos="Pipelines e etapas do CRM"` em `page.tsx`, que este ticket remove por construção. Segui a regra do ticket e não mexi nele. Alguém precisa autorizar o recálculo dessa asserção. Isso também deixa o critério "testes existentes da allowlist" fora de VERDE até lá.
+
+Deixei a função `FonteIndisponivel` em `page.tsx` sem uso, para não quebrar as asserções de `rotas-fantasma-ficha`. Tirá-la fica como limpeza depois.

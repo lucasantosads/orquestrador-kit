@@ -1,0 +1,10 @@
+ .../api/clientes/entregaveis/historico/route.ts    |  2 +-
+ src/app/api/clientes/entregaveis/route.ts          |  2 +-
+ src/app/api/clientes/teses-metricas/route.ts       |  2 +-
+ .../penalizacoes/[id]/contestar/route.ts           |  4 +--
+ .../comarka-pro/penalizacoes/[id]/validar/route.ts |  8 ++---
+ src/app/api/comarka-pro/penalizacoes/route.ts      | 10 +++---
+ src/lib/comarka-pro.ts                             |  2 +-
+ src/lib/liga-conquistas.ts                         |  2 +-
+ test/comarka-pro-penalizacoes-tabela.test.ts       | 37 ++++++++++++++++++++++
+ 9 files changed, 53 insertions(+), 16 deletions(-)

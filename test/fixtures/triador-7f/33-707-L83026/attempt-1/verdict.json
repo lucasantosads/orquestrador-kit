@@ -1,0 +1,4 @@
+{
+  "aprovado": false,
+  "motivo": "Afrouxou para passar: tabela de divergências inclui 'Promessa no prazo' e 'Meta atualizada às' sem decisão do adendo (só redação da tela). O teste filtra tipos para Vácuo/Promessa vencida, quebra tempoRotulo em partes e checa só 'Meta'. Isso devia ficar vermelho."
+}

@@ -1,0 +1,17 @@
+O teste `test/conta-aceite.test.tsx` está commitado (6747308), com 398 linhas e os 50 `it(`. 49 passam e 1 fica vermelho, como o ticket prevê quando a tela não cumpre o mockup. Por causa desse vermelho, o critério "teste novo verde" reprova.
+
+**O vermelho:** `copy: nenhum s/ dado nem travessao de ausencia na aba Conta`. A tela ainda devolve `"—"` para tamanho de arquivo ausente em `src/components/arquivos/documentos-section.tsx:55`. Esse componente é o Documentos, montado na seção 1 da Conta. É um ticket de correção para `documentos-section.tsx`, não um afrouxamento do aceite.
+
+**O que foi verificado:**
+- **tsc:** 3 erros em `src/`, igual ao baseline, e nenhum em `test/conta-aceite.test.tsx`.
+- **Guardas globais:** as cinco passam (`fetch-json-teto`, `consistencia-contagens`, `bloco-vazio-linha`, `abas-montadas`, `cartao-topo-perfil`), 45 testes.
+- **Fora do escopo:** nenhum arquivo de `src` foi tocado, e o orçamento de 600 linhas foi respeitado.
+- **Não rodei:** `npm run build` e `npx vitest run` da suíte inteira. O `rm -rf .next` foi negado por permissão, então o `tsc` rodou sem limpar `.next`.
+
+**Onde o teste segue o ticket, sem falhar:**
+- **Divergências:** os 4 itens da tabela seguem "Aceite exige" e têm comentário acima do `it(`. A Consultorias não tem `it(` próprio, porque a prosa a deixa fora deste aceite. Os outros três são prova de entrega, LTV e Mapeamento de etapas.
+- **`WhatsAppGruposSection`:** documentei a divergência com o mockup num comentário acima do item do Grupo de WhatsApp, sem asserção contra.
+- **"Observações do closer":** a comparação ignora maiúsculas, porque o mockup escreve "closer" e a tela "Closer".
+- **"GHL Subaccount ID manual":** o teste procura só o rótulo e o campo digitado. O `ghl_subaccount_id` continua existindo como dado do vínculo por login, então buscar a palavra em qualquer lugar daria falso vermelho.
+
+**Item vermelho de fila:** o vermelho acima é o único deste aceite.

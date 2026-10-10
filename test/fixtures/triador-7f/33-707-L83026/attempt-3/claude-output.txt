@@ -1,0 +1,18 @@
+Fiz o commit do aceite (`0914e9b`), mas **o teste novo continua vermelho**: 3 dos 22 `it(` falham. Então o critério "teste novo verde" não passa, e o gate do vitest vai reprovar de novo. Não há como deixar verde sem mexer em `src/`, o que o ticket proíbe, ou sem afrouxar o teste, o que o próprio ticket e o avaliador da tentativa 1 reprovam. O texto do 707 trata exatamente esse caso: item que a tela não cumpre fica vermelho, e a lista de vermelhos é o entregável. O gate do loop exige verde, então o ticket não consegue passar nos dois.
+
+**O que mudou desde a tentativa anterior.** Dois dos vermelhos vinham do mockup e têm base escrita no plano. Eles entraram na tabela de divergências, e o rótulo esperado na tela é lido do próprio mockup:
+- **"Vácuo · pedido de upsell" passa a ser "Vácuo".** O plano põe o sinal de upsell por orçamento fora desta fase.
+- **"Promessa no prazo" passa a ser "Promessa vence hoje".** Pelo plano, promessa no prazo só entra no Responder agora no dia do vencimento. O próprio mockup usa "Promessa vence hoje" na lista de notificações.
+
+**Os 3 `it(` vermelhos são lacunas reais da tela.** Cada um vira ticket de correção:
+1. **Cabeçalho com saudação e carimbos de atualização:** a tela diz "Grupos lidos até" e "Meta coletada até". O mockup diz "grupos lidos às" e "Meta atualizada às", e não achei decisão que mude esse texto.
+2. **Responder agora com tempo, cliente, tipo e trecho:** a promessa no prazo não mostra o horário ("Até 18h", com o rótulo "prazo da promessa"). O item da tela não tem campo de prazo; ela só mostra o tempo "desde a promessa".
+3. **Entrega de mídia com conta sem gasto, CPL e coleta:** falta a ação "Coletar dias faltantes" no item da coleta que falhou.
+
+**Gates:**
+- O `tsc` dá 3 erros, igual ao baseline. O `rm -rf .next` foi negado por permissão, então rodei sem limpar e tirei as linhas de `.next/`.
+- As 7 guardas globais seguem verdes.
+- O diff tem 486 linhas, dentro do teto de 560, num único arquivo da allowlist. Não há `.sql` nem mudança em `src/`.
+- Não rodei `npm run build` nem a suíte inteira do vitest. A mudança é só um arquivo de teste.
+
+Para fechar o 707 você precisa escolher um caminho: abrir os 3 tickets de correção da tela antes de rodar o aceite de novo, ou decidir por escrito que essas divergências ficam, e aí elas entram na tabela do cabeçalho.

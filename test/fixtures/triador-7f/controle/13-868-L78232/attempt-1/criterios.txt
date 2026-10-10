@@ -1,0 +1,22 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> PASS
+### criterio[9] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-868
+sanear_tsc: nao
+cmd:    b="$(git merge-base HEAD origin/staging-auto)"; r=OK; for f in test/apolo-ferramentas-cliente.test.ts; do if [ -n "$(git diff "$b" HEAD -- "$f")" ]; then n=$(git diff "$b" HEAD -- "$f" | grep -E '^[+][^+]' | grep -c '867'); [ "$n" -ge 1 ] || r=SEM_CITAR_$f; fi; done; echo $r
+espera: OK
+-- saida --
+SEM_CITAR_test/apolo-ferramentas-cliente.test.ts
+
+### criterio[10] -> PASS
+### criterio[11] -> PASS
+### criterio[12] -> PASS
+### criterio[13] -> PASS
+### criterio[14] -> PASS

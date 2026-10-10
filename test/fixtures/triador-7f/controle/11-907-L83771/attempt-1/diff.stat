@@ -1,0 +1,3 @@
+ src/app/api/cron/operacao-inicio/route.ts |  37 ++++++++++-
+ test/operacao-inicio-registro.test.ts     | 100 ++++++++++++++++++++++++++++++
+ 2 files changed, 134 insertions(+), 3 deletions(-)

@@ -1,0 +1,180 @@
+stdout | test/leitura-relacao-gatilhos.test.ts > cron leitura-relacao > com o teto estourado, os de evento passam antes dos semanais
+[leitura-relacao cron] 5 cliente(s) ficaram de fora nesta execução (teto 40)
+
+ ✓ test/leitura-relacao-gatilhos.test.ts (13 tests) 29ms
+ ✓ test/aba-integracoes.test.ts (45 tests) 23ms
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes-extra/[id] > exceção do logAudit não muda o status da resposta
+[clientes-extra PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-559/test/audit-log-rotas.test.ts:258:36
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > POST: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-559/test/audit-log-rotas.test.ts:293:36
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > PATCH: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-559/test/audit-log-rotas.test.ts:309:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/[id]/crm-config PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-559/test/audit-log-rotas.test.ts:336:36
+
+stderr | test/audit-log-rotas.test.ts > PUT /api/clientes/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/crm-config PUT] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-559/test/audit-log-rotas.test.ts:363:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/perfil-obs > exceção do logAudit não muda o status da resposta
+[clientes/[id]/perfil-obs PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-559/test/audit-log-rotas.test.ts:392:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/registros/[registroId] > exceção do logAudit não muda o status da resposta
+[registros PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-559/test/audit-log-rotas.test.ts:432:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/tarefas-kanban > exceção do logAudit não muda o status da resposta
+[tarefas-kanban POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-559/test/audit-log-rotas.test.ts:459:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/clientes/relatorio-config (ativo=true) > exceção do logAudit não muda o status da resposta
+[clientes/relatorio-config POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-559/test/audit-log-rotas.test.ts:486:36
+ ✓ test/lente-comercial.test.ts (7 tests) 11ms
+ ✓ test/rotas-tarefas-kanban.test.ts (20 tests) 17ms
+ ✓ test/whatsapp-webhook.test.ts (5 tests) 15ms
+ ✓ test/alertas-avaliar.test.ts (14 tests) 11ms
+ ✓ test/apolo-contexto.test.ts (8 tests) 14ms
+stderr | test/ficha-resolucao-chave.test.ts > GET /api/perf/cockpit/[id] — adota o resolvedor do ticket 094 > falha na resolução da chave vira mensagem humana e acentuada, não o e.message cru
+[perf/cockpit] falha ao resolver chave do cliente: Error: connection terminated unexpectedly
+    at Object.maybeSingle (/Users/lucasantos/Projetos/_worktrees/orq-comarka-559/test/ficha-resolucao-chave.test.ts:48:28)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-559/test/ficha-resolucao-chave.test.ts:110:17
+ ✓ test/carteira-view.test.ts (3 tests) 2ms
+ ✓ test/deeplink-setup.test.ts (3 tests) 1ms
+ ✓ test/wpp-desvincular-grupo.test.ts (5 tests) 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/conta-aceite.test.tsx > aceite da aba Conta: contrato > contrato: Observacoes do closer
+AssertionError: tela sem "Observações do closer": expected '"use client";\n\n// Aba Financeiro (C…' to contain 'Observações do closer'
+
+- Expected
++ Received
+
+- Observações do closer
++ "use client";
++
++ // Aba Financeiro (Conta & Setup) — contrato colapsável + observações do closer.
++ // Extraída de page.tsx; estado/handlers via useFicha().
+     74|   for (const t of textos) {
+     75|     expect(mL(linhas[0], linhas[1] ?? linhas[0]), `mockup:${linhas[0]}…
+     76|     expect(fonte, `tela sem "${t}"`).toContain(t);
+       |                                      ^
+     77|   }
+     78| }
+ ❯ test/conta-aceite.test.tsx:162:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  test/conta-aceite.test.tsx > aceite da aba Conta: conexoes > conexoes: conta Meta com act_id Sync em dia e ultimo insight
+AssertionError: tela sem "último insight": expected '"use client";\n\nimport { useCallback…' to contain 'último insight'
+
+- Expected
++ Received
+
+- último insight
++ "use client";
++
++ import { useCallback, useEffect, useMemo, useState } from "react";
++ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+     74|   for (const t of textos) {
+     75|     expect(mL(linhas[0], linhas[1] ?? linhas[0]), `mockup:${linhas[0]}…
+     76|     expect(fonte, `tela sem "${t}"`).toContain(t);
+       |                                      ^
+     77|   }
+     78| }
+ ❯ test/conta-aceite.test.tsx:285:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  test/conta-aceite.test.tsx > aceite da aba Conta: conexoes > conexoes: Grupo de WhatsApp so link com Trocar
+AssertionError: expected '"use client";\n\n// Ticket 550 — conf…' not to contain '<WhatsAppGruposSection'
+
+- Expected
++ Received
+
+- <WhatsAppGruposSection
++ "use client";
++
++ // Ticket 550 — configuração da relação na aba Conta, seção Conexões
++ // (decisao-relacao-config-para-conta): grupo de WhatsApp e link público de coleta
++         </div>
++       </div>
++   </>);
++ }
++
+
+ ❯ test/conta-aceite.test.tsx:319:30
+    317|     expect(secao(3)).toContain("<ConexoesRelacao");
+    318|     expect(src.conexoes).toContain("<ConexaoWhatsAppLink />");
+    319|     expect(src.conexoes).not.toContain("<WhatsAppGruposSection");
+       |                              ^
+    320|   });
+    321|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  test/conta-aceite.test.tsx > aceite da aba Conta: operacao > operacao: Auditoria recolhida
+AssertionError: tela sem "nenhum evento": expected '"use client";\n\nimport { useEffect, …' to contain 'nenhum evento'
+
+- Expected
++ Received
+
+- nenhum evento
++ "use client";
++
++ import { useEffect, useState } from "react";
++ import { useParams } from "next/navigation";
+     74|   for (const t of textos) {
+     75|     expect(mL(linhas[0], linhas[1] ?? linhas[0]), `mockup:${linhas[0]}…
+     76|     expect(fonte, `tela sem "${t}"`).toContain(t);
+       |                                      ^
+     77|   }
+     78| }
+ ❯ test/conta-aceite.test.tsx:363:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  test/conta-aceite.test.tsx > aceite da aba Conta: copy > copy: nenhum s/ dado nem travessao de ausencia na aba Conta
+AssertionError: expected '{grupoAtivo === "conta" && (<>\n     …' not to match /["'>]\s*[—–]\s*["'<]/
+
+- Expected:
+/["'>]\s*[—–]\s*["'<]/
+
++ Received:
+"{grupoAtivo === \"conta\" && (<>
+              {}
+              <SecaoConta ordem={1}>
+                {}
+                <AnchorBlock id=\"financeiro\" label={CHILD_LABELS.financeiro} active={activeTab === \"financeiro\"}>
+                  <div className=\"space-y-3\">
+        setAguardando(false);
+      })
+      .catch((e) => {
+        if (!alive) return;
+        if (e instanceof FetchJsonError && e....
+
+ ❯ test/conta-aceite.test.tsx:457:25
+    455|     expect(alcance).toContain("Grupo de WhatsApp");
+    456|     expect(alcance).not.toContain("s/ dado");
+    457|     expect(alcance).not.toMatch(/["'>]\s*[—–]\s*["'<]/);
+       |                         ^
+    458|   });
+    459|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed | 549 passed (550)
+      Tests  5 failed | 5743 passed (5748)
+   Start at  10:22:30
+   Duration  10.92s (transform 8.97s, setup 0ms, import 31.38s, tests 11.07s, environment 36ms)
+

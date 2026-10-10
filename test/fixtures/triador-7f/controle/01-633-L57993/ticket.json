@@ -1,0 +1,126 @@
+{
+ "id": "633",
+ "slug": "ficha-rotulos-legados-e-moldura",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 250 linhas (~25 em anchor-block.tsx, ~15 em page.tsx, ~30 em testes existentes recalculados, ~120 no teste NOVO test/ficha-rotulo-moldura.test.ts). Se passar de 600, pare e reporte. O QUE ESTA ERRADO (recon em staging-auto 399a510): (a) src/app/dashboard/clientes/[id]/tabs/anchor-block.tsx:223 desenha um <h3> em caixa alta com o rotulo de CHILD_LABELS (ficha-types.ts:163-195, nomes das sub-abas antigas do ticket 063) em cima de TODO bloco das 4 abas (27 <AnchorBlock em page.tsx), e o componente de dentro ja traz o proprio titulo de cartao: FINANCEIRO sobre o cartao Contrato (financeiro-tab.tsx:53-56), ENTREGAVEIS sobre o cartao Entregaveis (entregaveis-tab.tsx:28-30), LEITURA DA RELACAO sobre o h3 Leitura da relacao (leitura-relacao-bloco.tsx:283), WHATSAPP sobre Resumo automatico da semana (resumo-grupo-bloco.tsx:109). Os mockups (docs/roadmap/mockups/ficha/conta.dc.html:152-195, visao.dc.html:90) so tem o rotulo de secao numerado e o titulo do cartao. (b) src/app/dashboard/clientes/[id]/tabs/anchor-block.tsx:207 poe ring-1 ring-primary/40 (moldura azul) no bloco ativo, e o clique numa aba (src/app/dashboard/clientes/[id]/page.tsx:1292, onClick={() => setActiveTab(primeiroFilhoVisivel(g.children, ...))}) ativa o 1o filho do grupo: sempre ha um bloco emoldurado (Visao: geral, default em page.tsx:128; Campanhas: metricas; Relacao: reunioes, na coluna lateral; Conta: meta-ads, na secao 3, entao clicar em Conta rola a tela para alem de 1 · Contrato e e",
+ "pathspec_allowlist": [
+  "src/app/dashboard/clientes/[id]/tabs/anchor-block.tsx",
+  "src/app/dashboard/clientes/[id]/page.tsx",
+  "test/anchor-block.test.ts",
+  "test/ficha-subsecoes-sequencia.test.ts",
+  "test/painel-estado-explicito.test.tsx",
+  "test/aba-na-url.test.ts",
+  "test/visao-geral-ordem.test.ts",
+  "test/metricas-filtros-periodo.test.ts",
+  "test/metricas-invalidacao.test.ts",
+  "test/registrar-verificacao-rotulo.test.ts",
+  "test/ficha-rotulo-moldura.test.ts"
+ ],
+ "cria_novo": [
+  "test/ficha-rotulo-moldura.test.ts"
+ ],
+ "dependencias": [
+  "634"
+ ],
+ "prioridade": 20,
+ "recon_esperado": [
+  {
+   "descricao": "o AnchorBlock ainda desenha o h3 do rotulo legado",
+   "cmd": "n=$(grep -c '<h3' 'src/app/dashboard/clientes/[id]/tabs/anchor-block.tsx'); echo \"H3=$n\"",
+   "espera": "H3=1"
+  },
+  {
+   "descricao": "o AnchorBlock ainda emoldura o bloco ativo",
+   "cmd": "n=$(grep -c 'ring-1 ring-primary/40' 'src/app/dashboard/clientes/[id]/tabs/anchor-block.tsx'); echo \"RING=$n\"",
+   "espera": "RING=1"
+  },
+  {
+   "descricao": "o botao da aba ainda ativa o 1o filho do grupo",
+   "cmd": "n=$(grep -cF 'onClick={() => setActiveTab(primeiroFilhoVisivel(g.children' 'src/app/dashboard/clientes/[id]/page.tsx'); echo \"CLIQUE_FILHO=$n\"",
+   "espera": "CLIQUE_FILHO=1"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 em src/",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -c '^src/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "o AnchorBlock nao desenha mais heading de rotulo",
+   "cmd": "n=$(grep -cE '<h[1-6]' 'src/app/dashboard/clientes/[id]/tabs/anchor-block.tsx'); [ \"$n\" = 0 ] && echo SEM_HEADING || echo HEADING_$n",
+   "espera": "SEM_HEADING"
+  },
+  {
+   "descricao": "o AnchorBlock nao tem moldura (ring) em nenhum estado",
+   "cmd": "n=$(grep -c 'ring-' 'src/app/dashboard/clientes/[id]/tabs/anchor-block.tsx'); [ \"$n\" = 0 ] && echo SEM_RING || echo RING_$n",
+   "espera": "SEM_RING"
+  },
+  {
+   "descricao": "o rotulo vira nome acessivel da section",
+   "cmd": "n=$(grep -c 'aria-label={label}' 'src/app/dashboard/clientes/[id]/tabs/anchor-block.tsx'); [ \"$n\" -ge 1 ] && echo ARIA_OK || echo SEM_ARIA",
+   "espera": "ARIA_OK"
+  },
+  {
+   "descricao": "a linha de estado continua com o rotulo (LinhaEstado recebe label)",
+   "cmd": "n=$(grep -c '<LinhaEstado label={label}' 'src/app/dashboard/clientes/[id]/tabs/anchor-block.tsx'); [ \"$n\" -ge 1 ] && echo LINHA_COM_ROTULO || echo LINHA_SEM_ROTULO",
+   "espera": "LINHA_COM_ROTULO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "o botao das abas nao ativa mais o 1o filho do grupo",
+   "cmd": "n=$(grep -cF 'onClick={() => setActiveTab(primeiroFilhoVisivel(g.children' 'src/app/dashboard/clientes/[id]/page.tsx'); [ \"$n\" = 0 ] && echo CLIQUE_TOPO || echo CLIQUE_FILHO_$n",
+   "espera": "CLIQUE_TOPO"
+  },
+  {
+   "descricao": "os 27 blocos seguem passando label={CHILD_LABELS e active={activeTab === (nenhum sumiu), contado contra o merge-base",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; for p in 'label={CHILD_LABELS' 'active={activeTab === '; do a=$(git show \"$b:src/app/dashboard/clientes/[id]/page.tsx\" | grep -cF \"$p\"); n=$(grep -cF \"$p\" 'src/app/dashboard/clientes/[id]/page.tsx'); [ \"$n\" = \"$a\" ] || { echo MUDOU_$p; exit 0; }; done; echo BLOCOS_IGUAIS",
+   "espera": "BLOCOS_IGUAIS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "o teste novo prova sem heading, aria-label, sem ring, linha de estado com rotulo e clique sem 1o filho",
+   "cmd": "npx vitest run test/ficha-rotulo-moldura.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "o teste da sequencia de subsecoes nao exige mais o h3 do rotulo nem o ring",
+   "cmd": "n=$(grep -cE '</h3>|ring-1' test/ficha-subsecoes-sequencia.test.ts); [ \"$n\" = 0 ] && echo REGRA_NOVA || echo REGRA_VELHA_$n",
+   "espera": "REGRA_NOVA"
+  },
+  {
+   "descricao": "testes existentes da allowlist e ficha-nav-colapsavel verdes",
+   "cmd": "npx vitest run test/anchor-block.test.ts test/ficha-subsecoes-sequencia.test.ts test/painel-estado-explicito.test.tsx test/aba-na-url.test.ts test/visao-geral-ordem.test.ts test/metricas-filtros-periodo.test.ts test/metricas-invalidacao.test.ts test/registrar-verificacao-rotulo.test.ts test/ficha-nav-colapsavel.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum teste existente da allowlist perdeu expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (medido contra o merge-base com staging-auto)",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; r=NAO_AFROUXOU; for f in test/anchor-block.test.ts test/ficha-subsecoes-sequencia.test.ts test/painel-estado-explicito.test.tsx test/aba-na-url.test.ts test/visao-geral-ordem.test.ts test/metricas-filtros-periodo.test.ts test/metricas-invalidacao.test.ts test/registrar-verificacao-rotulo.test.ts; do [ -f \"$f\" ] || { r=APAGOU_$f; continue; }; a=$(git show \"$b:$f\" 2>/dev/null | grep -c 'expect('); n=$(grep -c 'expect(' \"$f\"); [ \"${n:-0}\" -ge \"${a:-0}\" ] || r=EXPECT_CAIU_$f; s0=$(git show \"$b:$f\" 2>/dev/null | grep -cE '\\.(skip|only|todo)\\('); s1=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"${s1:-0}\" -le \"${s0:-0}\" ] || r=SKIP_NOVO_$f; d0=$(git show \"$b:$f\" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' \"$f\"); [ \"${d1:-0}\" -le \"${d0:-0}\" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r",
+   "espera": "NAO_AFROUXOU",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes e intocadas (fetch-json-teto.test.ts, consistencia-contagens.test.ts, bloco-vazio-linha.test.ts, abas-montadas.test.ts, cartao-topo-perfil.test.tsx, rotas-fantasma-ficha.test.ts, travessao-mudo.test.ts, ficha-nav-colapsavel.test.ts)",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/rotas-fantasma-ficha.test.ts test/travessao-mudo.test.ts test/ficha-nav-colapsavel.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/rotas-fantasma-ficha.test.ts test/travessao-mudo.test.ts test/ficha-nav-colapsavel.test.ts src/app/dashboard/clientes/[id]/_components/secao-conta.tsx src/app/dashboard/clientes/[id]/tabs/ficha-types.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "JUIZ: nas 4 abas nenhum bloco mostra o rotulo legado em caixa alta acima do cartao; ficam so os titulos numerados da Conta e os titulos dos cartoes; a linha de estado (carregando/sem base/erro) segue com 'Rotulo · texto'; nenhum bloco tem moldura azul; clicar numa aba mostra o topo da aba sem rolar ate um filho, e ?sub= e links cruzados ainda rolam ate o bloco; o rotulo virou aria-label da section. REPROVE: heading ou rotulo visivel novo no lugar do antigo (inclusive sr-only mal feito que continue visivel), ring/borda/sombra de destaque trocada por outra moldura, clique na aba que ainda rola para meta-ads na Conta, assercao existente afrouxada ou removida, mudanca em componente de dentro dos blocos.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 6571
+}

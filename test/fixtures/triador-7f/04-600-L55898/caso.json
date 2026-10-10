@@ -1,0 +1,12 @@
+{
+ "id": "600",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/600-aceite-visao-estrutura.md",
+ "ticket_sha": "ec83a5ef350f748f64ab9032ccd8e818d8d4939c",
+ "ticket_antes": true,
+ "linha_bloqueio": 55898,
+ "log_inicio": 55862,
+ "fim": "2026-09-25T16:52:06Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/600"
+}

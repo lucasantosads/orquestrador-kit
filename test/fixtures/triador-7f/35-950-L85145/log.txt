@@ -1,0 +1,30 @@
+85116	[2026-10-09 15:44:16-0300] drenagem: ticket 950 (16 pendentes restantes)
+85117	[orq 18:44:16] orquestrador iniciando · modo: real · once
+85118	[orq 18:44:16] preflight: validando infra (scripts, fila, env, claude)...
+85119	[orq 18:44:20] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+85120	[orq 18:44:27] preflight: ok
+85121	[orq 18:44:46] === ticket 950 (motor-cascata-marcos) — tentativa 1 · modo: real ===
+85122	[orq 18:44:48]   recon_esperado: ok (3 comando(s))
+85123	[orq 18:44:48] aviso allowlist: src/lib/qualificacao/motor.ts já existe no worktree — o agente vai EDITAR, não criar
+85124	[orq 18:44:48] aviso allowlist: test/etapa2-motor-fases.test.ts já existe no worktree — o agente vai EDITAR, não criar
+85125	[orq 18:44:48]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/950/attempt-1/prompt.txt
+85126	[orq 18:44:48]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+85127	[orq 18:46:04]   diff cru salvo (148 linhas alteradas) · HEAD julgado 03994f54
+85128	[orq 18:46:05]   enforcement: ok
+85129	[orq 18:46:22]   gate tsc: ok (baseline)
+85130	[orq 18:46:48]   gate vitest: FALHA
+85131	[orq 18:46:48]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/950/attempt-1/gate-vitest.txt)
+85132	[orq 18:46:48] ticket 950: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/950/attempt-1/gate-vitest.txt)
+85133	[orq 18:46:48] === ticket 950 (motor-cascata-marcos) — tentativa 2 · modo: real ===
+85134	[orq 18:46:50]   recon_esperado: ok (3 comando(s))
+85135	[orq 18:46:50] aviso allowlist: src/lib/qualificacao/motor.ts já existe no worktree — o agente vai EDITAR, não criar
+85136	[orq 18:46:50] aviso allowlist: test/etapa2-motor-fases.test.ts já existe no worktree — o agente vai EDITAR, não criar
+85137	[orq 18:46:50]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/950/attempt-2/prompt.txt
+85138	[orq 18:46:50]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+85139	[orq 18:48:05]   diff cru salvo (115 linhas alteradas) · HEAD julgado 6dae629f
+85140	[orq 18:48:06]   enforcement: ok
+85141	[orq 18:48:22]   gate tsc: ok (baseline)
+85142	[orq 18:48:44]   gate vitest: FALHA
+85143	[orq 18:48:44]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/950/attempt-2/gate-vitest.txt)
+85144	[orq 18:48:44] ticket 950: motivo de reprova REPETIU — circuit breaker (por ticket)
+85145	[orq 18:48:44] ticket 950: BLOQUEADO sem gastar a próxima volta

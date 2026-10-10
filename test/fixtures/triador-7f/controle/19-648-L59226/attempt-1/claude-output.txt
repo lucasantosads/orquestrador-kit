@@ -1,0 +1,14 @@
+O ticket 648 está implementado e commitado (`ff0d547`). O `vitest run test/` passou inteiro (5955 testes) e o `tsc` deu 3 erros em `src/`, o baseline. Não rodei `npm run build`, e o `rm -rf .next` foi negado por permissão junto com um comando composto, então o `tsc` correu sem limpar `.next`. Os greps dos critérios que rodei deram o esperado (`?` solto, texto antigo da Dica, `title=`, `Gestor: `, `"Regenerar"`).
+
+**Código (`geral-tab.tsx` e `perfil-chip.tsx`)**
+- **Perfil:** o chip mostra "Perfil · <valor>" ou "Perfil · sem base" em cinza; o `sr-only` redundante saiu.
+- **Gestor:** virou "Gestor · <nome>".
+- **NPS:** o botão passou a "Regenerar link NPS". Posição e `confirm()` não mudaram.
+- **Teses e Entregáveis:** o vazio agora diz "nenhuma" e "nenhum", e a ação Configurar continua.
+- **Ajuda do closer:** o "?" virou o ícone `HelpCircle`. A Dica explica que o closer vem do registro comercial do fechamento e que o tempo de casa conta a partir da data de fechamento do contrato.
+- **Atalhos:** "Editar atalhos" foi para o grupo de "Editar cadastro", à direita, com uma Dica sobre o que são atalhos. O painel de edição ficou onde estava.
+
+**Testes recalculados**
+Recalculei 8 arquivos com o comentário "RECALCULA (ticket 648)". Nenhuma asserção foi removida, afrouxada nem skipada, nenhum `it` foi apagado, e nenhum teste fora da allowlist quebrou.
+
+A linha de atalhos externos (Ads Manager, CRM) continua sendo renderizada mesmo quando não há link nenhum. Como o botão saiu dela, pode sobrar uma linha vazia com borda nesses casos; não tratei isso porque ficou fora do que o ticket pede.

@@ -1,0 +1,3 @@
+ .../migrations/20261001090000_portal_inicio.sql    | 157 +++++++++++++++++++++
+ test/portal-inicio-ddl.test.ts                     |  41 ++++++
+ 2 files changed, 198 insertions(+)

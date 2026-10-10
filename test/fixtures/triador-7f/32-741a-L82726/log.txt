@@ -1,0 +1,32 @@
+82695	[2026-10-08 11:32:57-0300] drenagem: ticket 741a (4 pendentes restantes)
+82696	[orq 14:32:57] orquestrador iniciando · modo: real · once
+82697	[orq 14:32:57] preflight: validando infra (scripts, fila, env, claude)...
+82698	[orq 14:33:00] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+82699	[orq 14:33:08] preflight: ok
+82700	[orq 14:33:23]   evidência anterior preservada em attempt-1.prev1
+82701	[orq 14:33:23] === ticket 741a (promessas-avaliar-pura) — tentativa 1 · modo: real ===
+82702	[orq 14:33:25]   recon_esperado: ok (4 comando(s))
+82703	[orq 14:33:25] aviso allowlist: src/lib/promessas/detectar.ts já existe no worktree — o agente vai EDITAR, não criar
+82704	[orq 14:33:25] aviso allowlist: test/promessa-par.test.ts já existe no worktree — o agente vai EDITAR, não criar
+82705	[orq 14:33:25]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/741a/attempt-1/prompt.txt
+82706	[orq 14:33:25]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+82707	[orq 14:36:32]   diff cru salvo (388 linhas alteradas) · HEAD julgado 30087ba6
+82708	[orq 14:36:32]   enforcement: ok
+82709	[orq 14:36:47]   gate tsc: ok (baseline)
+82710	[orq 14:37:06]   gate vitest: FALHA
+82711	[orq 14:37:06]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/741a/attempt-1/gate-vitest.txt)
+82712	[orq 14:37:06] ticket 741a: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/741a/attempt-1/gate-vitest.txt)
+82713	[orq 14:37:06]   evidência anterior preservada em attempt-2.prev1
+82714	[orq 14:37:06] === ticket 741a (promessas-avaliar-pura) — tentativa 2 · modo: real ===
+82715	[orq 14:37:07]   recon_esperado: ok (4 comando(s))
+82716	[orq 14:37:07] aviso allowlist: src/lib/promessas/detectar.ts já existe no worktree — o agente vai EDITAR, não criar
+82717	[orq 14:37:07] aviso allowlist: test/promessa-par.test.ts já existe no worktree — o agente vai EDITAR, não criar
+82718	[orq 14:37:07]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/741a/attempt-2/prompt.txt
+82719	[orq 14:37:07]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+82720	[orq 14:39:29]   diff cru salvo (368 linhas alteradas) · HEAD julgado a5ab00b5
+82721	[orq 14:39:29]   enforcement: ok
+82722	[orq 14:39:45]   gate tsc: ok (baseline)
+82723	[orq 14:40:05]   gate vitest: FALHA
+82724	[orq 14:40:05]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/741a/attempt-2/gate-vitest.txt)
+82725	[orq 14:40:06] ticket 741a: motivo de reprova REPETIU — circuit breaker (por ticket)
+82726	[orq 14:40:06] ticket 741a: BLOQUEADO sem gastar a próxima volta

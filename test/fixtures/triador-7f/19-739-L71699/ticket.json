@@ -1,0 +1,43 @@
+{
+ "id": "739",
+ "bloco": "BLOCO_AQUI",
+ "slug": "comarka-pro-penalizacoes-tabela",
+ "objetivo": "Trocar toda referência a comarka_pro_penalizacoes por penalizacoes nos 4 arquivos listados (src/app/api/comarka-pro/penalizacoes/route.ts, src/app/api/comarka-pro/penalizacoes/[id]/validar/route.ts, src/app/api/comarka-pro/penalizacoes/[id]/contestar/route.ts, src/lib/comarka-pro.ts). A tabela penalizacoes já existe com as colunas que o código usa; se alguma coluna usada pelo código não existir nela, NÃO criar migration: registrar a coluna em notas_status e parar. Criar test/comarka-pro-penalizacoes-tabela.test.ts que afirma: zero ocorrências de comarka_pro_penalizacoes em src/ e presença de .from(\"penalizacoes\") nos 4 arquivos. Fora de escopo: migration, UI, outras tabelas, outros arquivos.",
+ "pathspec_allowlist": [
+  "src/app/api/comarka-pro/penalizacoes/route.ts",
+  "src/app/api/comarka-pro/penalizacoes/[id]/validar/route.ts",
+  "src/app/api/comarka-pro/penalizacoes/[id]/contestar/route.ts",
+  "src/lib/comarka-pro.ts",
+  "test/comarka-pro-penalizacoes-tabela.test.ts"
+ ],
+ "dependencias": [],
+ "criterios_aceite": [
+  {
+   "descricao": "nenhuma referência ao nome antigo em src/",
+   "cmd": "grep -rc 'comarka_pro_penalizacoes' src --include='*.ts' --include='*.tsx' | awk -F: '{s+=$2} END {print s}'",
+   "espera": "0"
+  },
+  {
+   "descricao": "os 4 arquivos usam a tabela real",
+   "cmd": "grep -l '.from(\"penalizacoes\")' src/app/api/comarka-pro/penalizacoes/route.ts 'src/app/api/comarka-pro/penalizacoes/[id]/validar/route.ts' 'src/app/api/comarka-pro/penalizacoes/[id]/contestar/route.ts' src/lib/comarka-pro.ts | wc -l | tr -d ' '",
+   "espera": "4"
+  },
+  {
+   "descricao": "teste do ticket verde",
+   "cmd": "npx vitest run test/comarka-pro-penalizacoes-tabela.test.ts 2>&1 | grep -E 'passed|failed'",
+   "espera": "passed"
+  },
+  {
+   "descricao": "typecheck não regride além do baseline (qualificacao*)",
+   "cmd": "rm -f tsconfig.tsbuildinfo; npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc qualificacao",
+   "espera": "0"
+  },
+  {
+   "descricao": "avaliador: só o nome da tabela mudou nos 4 arquivos; nenhuma query, filtro ou tipo alterado; nenhum arquivo fora da allowlist; o teste lê os 4 arquivos de verdade e não é tautológico",
+   "cmd": "true",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "bloqueado",
+ "notas_status": "enforcement: fora_do_pathspec: src/app/api/clientes/entregaveis/historico/route.ts | fora_do_pathspec: src/app/api/clientes/entregaveis/route.ts | fora_do_pathspec: src/app/api/clientes/teses-metricas/route.ts | fora_do_pathspec: src/lib/liga-conquistas.ts"
+}

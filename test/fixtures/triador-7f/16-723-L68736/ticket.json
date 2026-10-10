@@ -1,0 +1,253 @@
+{
+ "id": "723",
+ "slug": "setup-cinco-passos-vinculo-comercial",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 800 linhas somando adicoes e remocoes (~250 em setup/page.tsx, contando o bloco de contas que muda de passo como removido + adicionado; ~70 na lib NOVA src/lib/setup/vinculo-comercial.ts; ~50 na lib NOVA src/lib/setup/p3-contas.ts; ~15 em p1-basico.ts; ~10 em cada uma das 3 rotas do setup; ~5 em calcular-setup.ts; ~2 em config-tab.tsx; ~260 no teste NOVO; ~50 nos tres testes existentes). Se passar do teto, pare e reporte. DECISAO DO LUCAS (01/10): o setup do cliente (/dashboard/clientes/[id]/setup) passa de 6 para 5 passos: 1. Cliente e contrato, 2. Contas de anuncio, 3. CRM, 4. Grupo WhatsApp, 5. Metas. O passo Financeiro deixa de existir. DECISAO DO LUCAS (01/10, segunda): o criterio de nicho sai do passo 1 e vai para o passo 2, junto com o seletor de nicho. Passo 1 (Cliente e contrato) = cliente vinculado E gestor principal ativo. Passo 2 (Contas de anuncio) = ao menos 1 conta ativa, em uso, COM nicho definido (perf_ad_accounts.nicho_id preenchido). CRM, Grupo WhatsApp e Metas: criterio de hoje, sem mudanca. A passagem para Ativo NAO fica mais frouxa: continua exigindo p1, p3, p5, p6 e p7, e o nicho continua exigido, agora pelo p3. PASSO 1: leia src/lib/setup/calcular-setup.ts (LISTA_SETUP e calcularSetup), src/app/dashboard/clientes/[id]/setup/page.tsx inteiro (STEPS, SLUGS_PASSO, saveCurrentStep, blocos passo === 1..6), src/app/api/perf/setup/[clienteId]/route.ts, src/lib/setup/p1-basico.ts (criterio do passo 1; a checagem de nicho e o temNicho",
+ "cria_novo": [
+  "src/lib/setup/vinculo-comercial.ts",
+  "src/lib/setup/p3-contas.ts",
+  "test/setup-cinco-passos.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/app/dashboard/clientes/[id]/setup/page.tsx",
+  "src/app/api/perf/setup/[clienteId]/route.ts",
+  "src/lib/setup/calcular-setup.ts",
+  "src/lib/setup/vinculo-comercial.ts",
+  "src/app/dashboard/clientes/[id]/tabs/config-tab.tsx",
+  "src/lib/setup/p1-basico.ts",
+  "src/lib/setup/p3-contas.ts",
+  "src/app/api/perf/setup/[clienteId]/passo/route.ts",
+  "src/app/api/perf/setup/route.ts",
+  "test/setup-cinco-passos.test.ts",
+  "test/setup-fonte-unica.test.ts",
+  "test/setup-assistente-lista-canonica.test.ts",
+  "test/quem-cuida.test.ts"
+ ],
+ "dependencias": [],
+ "prioridade": 50,
+ "recon_esperado": [
+  {
+   "descricao": "LISTA_SETUP ainda tem o item Financeiro (6 itens)",
+   "cmd": "grep -c '{ chave: \"p2_financeiro\"' src/lib/setup/calcular-setup.ts",
+   "espera": "1"
+  },
+  {
+   "descricao": "SLUGS_PASSO ainda tem os 6 slugs com financeiro",
+   "cmd": "grep -cF 'const SLUGS_PASSO = [\"basico\", \"financeiro\", \"contas\", \"crm\", \"whatsapp\", \"metas\"];' 'src/app/dashboard/clientes/[id]/setup/page.tsx'",
+   "espera": "1"
+  },
+  {
+   "descricao": "o link quebrado 'Preencher na ficha' para #bloco-financeiro existe no passo 2",
+   "cmd": "grep -c 'bloco-financeiro.*Preencher na ficha' 'src/app/dashboard/clientes/[id]/setup/page.tsx'",
+   "espera": "1"
+  },
+  {
+   "descricao": "o bloco ainda se chama 'Vínculo com domínio de performance'",
+   "cmd": "grep -c 'Vínculo com domínio de performance' 'src/app/dashboard/clientes/[id]/setup/page.tsx'",
+   "espera": "1"
+  },
+  {
+   "descricao": "o bloco de nicho por conta esta no passo 1 (antes do bloco passo === 2)",
+   "cmd": "a=$(grep -n 'Contas vinculadas — nicho por conta' 'src/app/dashboard/clientes/[id]/setup/page.tsx' | cut -d: -f1); p2=$(grep -n 'passo === 2 &&' 'src/app/dashboard/clientes/[id]/setup/page.tsx' | cut -d: -f1); [ -n \"$a\" ] && [ -n \"$p2\" ] && [ \"$a\" -lt \"$p2\" ] && echo NO_PASSO_1 || echo OUTRO_LUGAR",
+   "espera": "NO_PASSO_1"
+  },
+  {
+   "descricao": "o texto tecnico 'Critério do passo:' existe no passo de contas",
+   "cmd": "grep -c 'Critério do passo:' 'src/app/dashboard/clientes/[id]/setup/page.tsx'",
+   "espera": "1"
+  },
+  {
+   "descricao": "a view de setup decide p2_financeiro por clientes.mrr/contrato_id, nao por clientes_receita",
+   "cmd": "grep -c 'c.mrr > 0 OR c.contrato_id IS NOT NULL' supabase/migrations/20260614_vw_cliente_setup_sem_mrr.sql",
+   "espera": "1"
+  },
+  {
+   "descricao": "SETUP_ITEM_BLOCO do cartao aponta p2_financeiro para #bloco-financeiro",
+   "cmd": "sed -n '/const SETUP_ITEM_BLOCO/,/};/p' 'src/app/dashboard/clientes/[id]/tabs/config-tab.tsx' | grep -c 'p2_financeiro: \"#bloco-financeiro\"'",
+   "espera": "1"
+  },
+  {
+   "descricao": "a URL base do comercial ja existe como DASHBOARD_COMERCIAL_URL (lida no servidor do cockpit)",
+   "cmd": "grep -c 'process.env.DASHBOARD_COMERCIAL_URL' src/app/api/admin/cockpit/route.ts",
+   "espera": "1"
+  },
+  {
+   "descricao": "nem a pagina do setup nem a rota GET leem clientes_receita hoje",
+   "cmd": "n=$(cat 'src/app/dashboard/clientes/[id]/setup/page.tsx' 'src/app/api/perf/setup/[clienteId]/route.ts' | grep -c 'clientes_receita'); echo $n",
+   "espera": "0"
+  },
+  {
+   "descricao": "p1-basico.ts ainda exige nicho (temNicho)",
+   "cmd": "grep -c 'const temNicho' src/lib/setup/p1-basico.ts",
+   "espera": "1"
+  },
+  {
+   "descricao": "a rota de passo decide Ativo por p1 e p3 (obrigatoriosOk)",
+   "cmd": "grep -c 'setup.p1_basico && setup.p3_meta && setup.p5_crm && setup.p6_whatsapp && setup.p7_metas' 'src/app/api/perf/setup/[clienteId]/passo/route.ts'",
+   "espera": "1"
+  },
+  {
+   "descricao": "nenhuma rota do setup calcula o p3 no codigo hoje",
+   "cmd": "n=$(cat 'src/app/api/perf/setup/[clienteId]/route.ts' 'src/app/api/perf/setup/[clienteId]/passo/route.ts' src/app/api/perf/setup/route.ts | grep -c 'calcularP3Contas'); echo $n",
+   "espera": "0"
+  },
+  {
+   "descricao": "lib e teste novos ainda nao existem",
+   "cmd": "test -e src/lib/setup/vinculo-comercial.ts || test -e src/lib/setup/p3-contas.ts || test -e test/setup-cinco-passos.test.ts && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "C0: a unica operacao em clientes_receita nos arquivos do ticket e leitura (janela de 6 linhas sem insert/update/delete/upsert, molde de test/c0-guard.test.ts), nenhum fn_reativar_churn e nenhum c0-allow novo",
+   "cmd": "n=0; r=0; for f in src/lib/setup/vinculo-comercial.ts src/lib/setup/p3-contas.ts src/lib/setup/p1-basico.ts 'src/app/dashboard/clientes/[id]/setup/page.tsx' 'src/app/api/perf/setup/[clienteId]/route.ts' 'src/app/api/perf/setup/[clienteId]/passo/route.ts' src/app/api/perf/setup/route.ts src/lib/setup/calcular-setup.ts; do [ -f \"$f\" ] || continue; n=$((n + $(grep -A5 'clientes_receita' \"$f\" | grep -cE '[.](insert|update|delete|upsert)[[:space:]]*[(]'))); r=$((r + $(grep -c 'fn_reativar_churn' \"$f\"))); done; b=\"$(git merge-base HEAD origin/staging-auto)\"; c=$(git diff \"$b\" HEAD | grep -E '^[+][^+]' | grep -c 'c0-allow'); [ \"$n\" = 0 ] && [ \"$r\" = 0 ] && [ \"$c\" = 0 ] && echo ZERO_ESCRITA_C0 || echo C0_MUT${n}_RPC${r}_ALLOW${c}",
+   "espera": "ZERO_ESCRITA_C0",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes do setup e da ficha verdes (recalculados, nunca afrouxados)",
+   "cmd": "fs=\"\"; for f in test/setup-fonte-unica.test.ts test/setup-assistente-lista-canonica.test.ts test/setup-progresso-ficha.test.ts test/conta-aceite.test.tsx test/conta-bugs-reais.test.ts test/setup-assistente-crm-concluir.test.ts test/quem-cuida.test.ts test/a11y/app-dashboard-clientes-id-setup-page.test.ts test/deeplink-setup.test.ts test/vincular-contas-meta-ficha.test.ts test/ghl-agencia-2a.test.ts test/cartao-topo-setup-e-closer.test.ts; do [ -f \"$f\" ] && fs=\"$fs $f\"; done; npx vitest run $fs >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento dos testes existentes da allowlist contra o merge-base com origin/staging-auto: linhas com it( e expect( nao caem, nenhum .skip/.only/.todo novo, nenhum toBeDefined()/toBeTruthy() novo, arquivo nao apagado",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=NAO_AFROUXOU; for f in test/setup-fonte-unica.test.ts test/setup-assistente-lista-canonica.test.ts test/quem-cuida.test.ts; do [ -f \"$f\" ] || { r=APAGOU_$f; continue; }; a=$(git show \"$b:$f\" 2>/dev/null | grep -cE '(^|[^A-Za-z0-9_])it[(]'); n=$(grep -cE '(^|[^A-Za-z0-9_])it[(]' \"$f\"); [ \"${n:-0}\" -ge \"${a:-0}\" ] || r=CAIU_IT_$f; a=$(git show \"$b:$f\" 2>/dev/null | grep -cF 'expect('); n=$(grep -cF 'expect(' \"$f\"); [ \"${n:-0}\" -ge \"${a:-0}\" ] || r=CAIU_EXPECT_$f; s0=$(git show \"$b:$f\" 2>/dev/null | grep -cE '\\.(skip|only|todo)\\('); s1=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"${s1:-0}\" -le \"${s0:-0}\" ] || r=SKIP_NOVO_$f; d0=$(git show \"$b:$f\" 2>/dev/null | grep -cE 'toBeDefined\\(\\)|toBeTruthy\\(\\)'); d1=$(grep -cE 'toBeDefined\\(\\)|toBeTruthy\\(\\)' \"$f\"); [ \"${d1:-0}\" -le \"${d0:-0}\" ] || r=FROUXO_NOVO_$f; done; echo $r",
+   "espera": "NAO_AFROUXOU",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/app/dashboard/clientes/[[]id]/setup/page.tsx' 'src/app/api/perf/setup/[[]clienteId]/route.ts' 'src/lib/setup/calcular-setup.ts' 'src/lib/setup/vinculo-comercial.ts' 'src/app/dashboard/clientes/[[]id]/tabs/config-tab.tsx' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados (rota de passo, carteira, p1-basico, ficha, banners, contrato-pacote, cockpit)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/lib/perf/nicho-principal.ts' 'src/app/api/perf/ad-accounts/[[]id]/route.ts' 'src/app/dashboard/clientes/[[]id]/page.tsx' 'src/app/dashboard/clientes/[[]id]/tabs/ficha-banners.tsx' 'src/app/dashboard/clientes/[[]id]/setup/_components/contrato-pacote.tsx' 'src/app/api/admin/cockpit/route.ts' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/app/dashboard/clientes/[[]id]/setup/page.tsx' 'src/app/api/perf/setup/[[]clienteId]/route.ts' 'src/lib/setup/calcular-setup.ts' 'src/lib/setup/vinculo-comercial.ts' 'src/app/dashboard/clientes/[[]id]/tabs/config-tab.tsx' 'src/lib/setup/p1-basico.ts' 'src/lib/setup/p3-contas.ts' 'src/app/api/perf/setup/[[]clienteId]/passo/route.ts' 'src/app/api/perf/setup/route.ts' 'test/setup-cinco-passos.test.ts' 'test/setup-fonte-unica.test.ts' 'test/setup-assistente-lista-canonica.test.ts' 'test/quem-cuida.test.ts'; do case \"$f\" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 800 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 800 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "process.env nunca na pagina 'use client'; nenhuma URL literal na lib nova",
+   "cmd": "p=$(grep -c 'process[.]env' 'src/app/dashboard/clientes/[id]/setup/page.tsx'); u=$(cat src/lib/setup/vinculo-comercial.ts 2>/dev/null | grep -cE 'https?://'); [ \"$p\" = 0 ] && [ \"${u:-0}\" = 0 ] && echo SEM_ENV_NO_CLIENTE || echo ENV${p}_URL${u}",
+   "espera": "SEM_ENV_NO_CLIENTE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde (test/setup-cinco-passos.test.ts)",
+   "cmd": "test -f test/setup-cinco-passos.test.ts && npx vitest run test/setup-cinco-passos.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "LISTA_SETUP sem Financeiro e com os rotulos novos",
+   "cmd": "f=$(grep -c 'p2_financeiro' src/lib/setup/calcular-setup.ts); a=$(grep -c 'rotulo: \"Cliente e contrato\"' src/lib/setup/calcular-setup.ts); c=$(grep -c 'rotulo: \"Contas de anúncio\"' src/lib/setup/calcular-setup.ts); [ \"$f\" = 0 ] && [ \"$a\" = 1 ] && [ \"$c\" = 1 ] && echo CINCO_PASSOS || echo F${f}_A${a}_C${c}",
+   "espera": "CINCO_PASSOS"
+  },
+  {
+   "descricao": "deep-link com os 5 slugs na ordem nova",
+   "cmd": "grep -cF 'const SLUGS_PASSO = [\"basico\", \"contas\", \"crm\", \"whatsapp\", \"metas\"];' 'src/app/dashboard/clientes/[id]/setup/page.tsx'",
+   "espera": "1"
+  },
+  {
+   "descricao": "o passo Financeiro e o link quebrado sairam da tela do setup",
+   "cmd": "n=$(grep -cE 'Preencher na ficha|bloco-financeiro|Financeiro pendente|passo === 6|case 6:|domínio de performance|Critério do passo' 'src/app/dashboard/clientes/[id]/setup/page.tsx'); [ \"$n\" = 0 ] && echo SAIU || echo FICOU_$n",
+   "espera": "SAIU"
+  },
+  {
+   "descricao": "textos do vinculo com o comercial presentes no passo 1",
+   "cmd": "for t in '1. Cliente e contrato' 'Vínculo com o comercial' 'Cliente ainda não vinculado ao comercial' 'Ver no dashboard comercial' 'Não foi possível ler o comercial agora'; do grep -qF \"$t\" 'src/app/dashboard/clientes/[id]/setup/page.tsx' || { echo FALTA_$t; exit 0; }; done; echo TEXTOS_OK",
+   "espera": "TEXTOS_OK"
+  },
+  {
+   "descricao": "o bloco de nicho por conta e o Nicho principal (derivado) estao no passo 2 (entre passo === 2 e passo === 3)",
+   "cmd": "p2=$(grep -n 'passo === 2 &&' 'src/app/dashboard/clientes/[id]/setup/page.tsx' | head -1 | cut -d: -f1); p3=$(grep -n 'passo === 3 &&' 'src/app/dashboard/clientes/[id]/setup/page.tsx' | head -1 | cut -d: -f1); s=$(grep -n 'patchConta(c.ad_account_id, { nicho_id' 'src/app/dashboard/clientes/[id]/setup/page.tsx' | head -1 | cut -d: -f1); d=$(grep -n 'Nicho principal (derivado)' 'src/app/dashboard/clientes/[id]/setup/page.tsx' | head -1 | cut -d: -f1); h=$(grep -c '2. Contas de anúncio' 'src/app/dashboard/clientes/[id]/setup/page.tsx'); [ -n \"$p2\" ] && [ -n \"$p3\" ] && [ -n \"$s\" ] && [ -n \"$d\" ] && [ \"$s\" -gt \"$p2\" ] && [ \"$s\" -lt \"$p3\" ] && [ \"$d\" -gt \"$p2\" ] && [ \"$d\" -lt \"$p3\" ] && [ \"$h\" -ge 1 ] && echo NO_PASSO_2 || echo FORA_P2${p2}_P3${p3}_S${s}_D${d}_H${h}",
+   "espera": "NO_PASSO_2"
+  },
+  {
+   "descricao": "textos de tela apontam a numeracao nova (nenhum 'passos 3 e 6', 'vincule no passo 3' ou 'definir no passo 1')",
+   "cmd": "n=$(grep -cE 'passos 3 e 6|vincule no passo 3|definir no passo 1|passo 3 para' 'src/app/dashboard/clientes/[id]/setup/page.tsx'); [ \"$n\" = 0 ] && echo NUMERACAO_NOVA || echo VELHA_$n",
+   "espera": "NUMERACAO_NOVA"
+  },
+  {
+   "descricao": "a lib nova le clientes_receita com select das tres colunas e filtro por cliente_id",
+   "cmd": "test -f src/lib/setup/vinculo-comercial.ts && grep -q 'from(\"clientes_receita\")' src/lib/setup/vinculo-comercial.ts && grep -q 'valor_mensal, status_financeiro, mes_fechamento' src/lib/setup/vinculo-comercial.ts && grep -q 'eq(\"cliente_id\"' src/lib/setup/vinculo-comercial.ts && echo LE_RECEITA || echo SEM_LEITURA",
+   "espera": "LE_RECEITA"
+  },
+  {
+   "descricao": "a rota GET devolve o campo comercial lido pela lib, com a URL de DASHBOARD_COMERCIAL_URL",
+   "cmd": "grep -q 'lerVinculoComercial(supabase' 'src/app/api/perf/setup/[clienteId]/route.ts' && grep -q 'urlDashboardComercial(process.env.DASHBOARD_COMERCIAL_URL)' 'src/app/api/perf/setup/[clienteId]/route.ts' && grep -q 'comercial' 'src/app/api/perf/setup/[clienteId]/route.ts' && echo ROTA_LE_COMERCIAL || echo SEM_COMERCIAL",
+   "espera": "ROTA_LE_COMERCIAL"
+  },
+  {
+   "descricao": "o cartao Setup da ficha nao aponta mais p2_financeiro para #bloco-financeiro; SETUP_PASSO_LABELS fica como esta",
+   "cmd": "a=$(sed -n '/const SETUP_ITEM_BLOCO/,/};/p' 'src/app/dashboard/clientes/[id]/tabs/config-tab.tsx' | grep -c 'p2_financeiro'); l=$(sed -n '/const SETUP_PASSO_LABELS/,/};/p' 'src/app/dashboard/clientes/[id]/tabs/config-tab.tsx' | grep -c 'p2_financeiro: \"Financeiro\"'); [ \"$a\" = 0 ] && [ \"$l\" = 1 ] && echo BLOCO_MORTO_SAIU || echo BLOCO${a}_LABELS${l}",
+   "espera": "BLOCO_MORTO_SAIU"
+  },
+  {
+   "descricao": "p1-basico.ts nao referencia mais nicho (nem codigo nem comentario) e segue exigindo vinculo e gestor principal",
+   "cmd": "n=$(grep -ci 'nicho' src/lib/setup/p1-basico.ts); g=$(grep -c 'perf_cliente_gestor' src/lib/setup/p1-basico.ts); [ \"$n\" = 0 ] && [ \"$g\" -ge 1 ] && echo P1_SEM_NICHO || echo NICHO${n}_GESTOR${g}",
+   "espera": "P1_SEM_NICHO"
+  },
+  {
+   "descricao": "o criterio do passo 2 referencia nicho: p3-contas.ts le nicho_id das contas ativas em uso",
+   "cmd": "test -f src/lib/setup/p3-contas.ts && grep -q 'nicho_id' src/lib/setup/p3-contas.ts && grep -q 'perf_ad_accounts' src/lib/setup/p3-contas.ts && grep -q 'em_uso' src/lib/setup/p3-contas.ts && grep -q 'export async function calcularP3Contas' src/lib/setup/p3-contas.ts && grep -q 'export function aplicarP3' src/lib/setup/p3-contas.ts && echo P3_COM_NICHO || echo SEM_P3",
+   "espera": "P3_COM_NICHO"
+  },
+  {
+   "descricao": "as 3 rotas do setup aplicam o p3 calculado no codigo",
+   "cmd": "for f in 'src/app/api/perf/setup/[clienteId]/route.ts' 'src/app/api/perf/setup/[clienteId]/passo/route.ts' src/app/api/perf/setup/route.ts; do grep -q 'calcularP3Contas(supabase' \"$f\" && grep -q 'aplicarP3(' \"$f\" || { echo FALTA_$f; exit 0; }; done; echo TRES_ROTAS",
+   "espera": "TRES_ROTAS"
+  },
+  {
+   "descricao": "Ativo nao fica mais frouxo: na rota de passo o aplicarP3 vem antes do obrigatoriosOk, que segue exigindo p1, p3, p5, p6 e p7",
+   "cmd": "a=$(grep -n 'aplicarP3(' 'src/app/api/perf/setup/[clienteId]/passo/route.ts' | head -1 | cut -d: -f1); o=$(grep -n 'const obrigatoriosOk' 'src/app/api/perf/setup/[clienteId]/passo/route.ts' | head -1 | cut -d: -f1); r=$(grep -c 'setup.p1_basico && setup.p3_meta && setup.p5_crm && setup.p6_whatsapp && setup.p7_metas' 'src/app/api/perf/setup/[clienteId]/passo/route.ts'); [ -n \"$a\" ] && [ -n \"$o\" ] && [ \"$a\" -lt \"$o\" ] && [ \"$r\" = 1 ] && echo ATIVO_EXIGE_NICHO || echo A${a}_O${o}_R${r}",
+   "espera": "ATIVO_EXIGE_NICHO"
+  },
+  {
+   "descricao": "avaliador: o setup tem 5 passos (Cliente e contrato, Contas de anúncio, CRM, Grupo WhatsApp, Metas); o passo 1 mostra o vinculo com o comercial so leitura (valor, status, inicio, link; sem vinculo e erro com textos distintos; nada de formulario); o bloco de nicho por conta mudou para o passo 2 sem mudar comportamento; o passo 1 exige so vinculo e gestor principal; o passo 2 exige conta ativa em uso com nicho, calculado no codigo e aplicado nas 3 rotas; CRM, WhatsApp e Metas como antes; a transicao para Ativo segue exigindo nicho via p3; o chip e o cartao da ficha passam a contar sobre 5. REPROVE se: escreveu em clientes_receita ou chamou fn_reativar_churn; leu clientes_receita no cliente ou por outra rota; mostrou 'Cliente ainda não vinculado ao comercial' quando a leitura falhou; mostrou 0 ou valor cru do banco no lugar de 'sem base'; inventou URL ou querystring do comercial; deixou alguma das 3 rotas sem o p3 novo; deixou o Ativo sem exigir nicho; transformou falha de leitura de contas em p3 false; mexeu na view ou no criterio de CRM, WhatsApp ou Metas; afrouxou assercao.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 16582
+}

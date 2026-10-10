@@ -1,0 +1,12 @@
+{
+ "id": "760",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/760-ghl-oportunidades-gravacao-webhook.md",
+ "ticket_sha": "c9ba443cce8a024e353127c3b14e5afc121396c0",
+ "ticket_antes": true,
+ "linha_bloqueio": 72407,
+ "log_inicio": 72378,
+ "fim": "2026-10-05T15:15:17Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/760"
+}

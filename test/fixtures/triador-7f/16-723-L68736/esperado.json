@@ -1,0 +1,22 @@
+{
+ "classe": "R6",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/local-loop.log",
+   "linha": 68717,
+   "origem": "medicao"
+  },
+  {
+   "arquivo": "docs/fila/runs/723/attempt-1.prev1/diff.stat",
+   "linha": null,
+   "origem": "medicao"
+  },
+  {
+   "arquivo": "docs/fila/runs/723/attempt-2/diff.stat",
+   "linha": null,
+   "origem": "medicao"
+  }
+ ],
+ "requeue": "sim_apos:conserto_motor",
+ "fonte_da_verdade": "medicao-bloqueios-out.md:117"
+}

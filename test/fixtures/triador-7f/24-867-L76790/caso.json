@@ -1,0 +1,12 @@
+{
+ "id": "867",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/867-relacao-sem-escrita-reuniao.md",
+ "ticket_sha": "bbf183758470cb897fe30f0c6d8d30e8c5184f65",
+ "ticket_antes": true,
+ "linha_bloqueio": 76790,
+ "log_inicio": 76723,
+ "fim": "2026-10-07T16:04:16Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/867"
+}

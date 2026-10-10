@@ -1,0 +1,47 @@
+75255	[2026-10-06 19:39:47-0300] drenagem: ticket 808 (17 pendentes restantes)
+75256	[orq 22:39:47] orquestrador iniciando · modo: real · once
+75257	[orq 22:39:47] preflight: validando infra (scripts, fila, env, claude)...
+75258	[orq 22:39:50] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+75259	[orq 22:39:57] preflight: ok
+75260	[orq 22:40:19] === ticket 808 (resolver-cliente-rota-contratual) — tentativa 1 · modo: real ===
+75261	[orq 22:40:21]   recon_esperado: ok (5 comando(s))
+75262	[orq 22:40:21] aviso allowlist: src/app/api/clientes/[id]/contratual/comunicacoes/route.ts já existe no worktree — o agente vai EDITAR, não criar
+75263	[orq 22:40:21] aviso allowlist: src/app/api/clientes/[id]/contratual/disputa/route.ts já existe no worktree — o agente vai EDITAR, não criar
+75264	[orq 22:40:21] aviso allowlist: src/app/api/clientes/[id]/contratual/entregas/route.ts já existe no worktree — o agente vai EDITAR, não criar
+75265	[orq 22:40:21] aviso allowlist: test/contratual-disputa.test.ts já existe no worktree — o agente vai EDITAR, não criar
+75266	[orq 22:40:21] aviso allowlist: test/contratual-entregas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+75267	[orq 22:40:21]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/808/attempt-1/prompt.txt
+75268	[orq 22:40:21]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+75269	[orq 22:42:04]   diff cru salvo (190 linhas alteradas) · HEAD julgado afd7456e
+75270	[orq 22:42:05]   enforcement: ok
+75271	[orq 22:42:42]   gate tsc: ok (baseline)
+75272	[orq 22:43:24]   gate vitest: FALHA
+75273	[orq 22:43:24]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/808/attempt-1/gate-vitest.txt)
+75274	[orq 22:43:24] ticket 808: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/808/attempt-1/gate-vitest.txt)
+75275	[orq 22:43:24] === ticket 808 (resolver-cliente-rota-contratual) — tentativa 2 · modo: real ===
+75276	[orq 22:43:26]   recon_esperado: ok (5 comando(s))
+75277	[orq 22:43:26] aviso allowlist: src/app/api/clientes/[id]/contratual/comunicacoes/route.ts já existe no worktree — o agente vai EDITAR, não criar
+75278	[orq 22:43:26] aviso allowlist: src/app/api/clientes/[id]/contratual/disputa/route.ts já existe no worktree — o agente vai EDITAR, não criar
+75279	[orq 22:43:26] aviso allowlist: src/app/api/clientes/[id]/contratual/entregas/route.ts já existe no worktree — o agente vai EDITAR, não criar
+75280	[orq 22:43:26] aviso allowlist: test/contratual-disputa.test.ts já existe no worktree — o agente vai EDITAR, não criar
+75281	[orq 22:43:26] aviso allowlist: test/contratual-entregas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+75282	[orq 22:43:26]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/808/attempt-2/prompt.txt
+75283	[orq 22:43:26]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+75284	[orq 22:45:17]   diff cru salvo (188 linhas alteradas) · HEAD julgado c36003d0
+75285	[orq 22:45:17]   enforcement: ok
+75286	[orq 22:45:51]   gate tsc: ok (baseline)
+75287	[orq 22:46:32]   gate vitest: ok
+75288	[orq 22:47:01]   criterios mecânicos: ok
+75289	[orq 22:47:41]   gate build: ok
+75290	Merge made by the 'ort' strategy.
+75291	 .../clientes/[id]/contratual/comunicacoes/route.ts |  27 ++++--
+75292	 .../api/clientes/[id]/contratual/disputa/route.ts  |  17 ++--
+75293	 .../api/clientes/[id]/contratual/entregas/route.ts |  27 ++++--
+75294	 test/contratual-disputa.test.ts                    |   6 +-
+75295	 test/contratual-entregas.test.ts                   |   6 +-
+75296	 test/resolver-cliente-rota-contratual.test.ts      | 105 +++++++++++++++++++++
+75297	 6 files changed, 155 insertions(+), 33 deletions(-)
+75298	 create mode 100644 test/resolver-cliente-rota-contratual.test.ts
+75299	[orq 22:47:55] avaliador: merge --no-ff de frente/808 em staging-auto ok
+75300	[orq 22:47:55] avaliador: APROVADO e mergeado.
+75301	[orq 22:47:56] ticket 808: APROVADO e mergeado em staging-auto

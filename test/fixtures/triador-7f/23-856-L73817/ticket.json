@@ -1,0 +1,135 @@
+{
+ "id": "856",
+ "slug": "remove-super-admin",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 350 linhas (a remocao conta: o git diff conta linha apagada). Se passar do teto, pare e reporte. FONTE: docs/mapa/00-MAPA-GERAL.md (secao 6.1, D-h telas gemeas) e docs/mapa/01a-ui.md secao 1 e 4 (duplicacoes). Decisao humana pendente: humano:decisao-telas-gemeas. PASSO 1: leia os arquivos da pasta src/app/dashboard/super-admin, test/regra19.test.ts:41-45 (entrada D33 da tela) e test/error-boundaries-rotas-lote6.test.ts:9. FAZER: (1) apagar src/app/dashboard/super-admin/page.tsx e src/app/dashboard/super-admin/error.tsx; src/app/dashboard/super-admin/components.tsx FICA neste ticket (sem importador depois disto; sai no ticket seguinte). (2) tirar so a entrada da tela em regra19 e em error-boundaries-rotas-lote6. (3) /api/admin/metrics fica (sem chamador; divida 18). Testes existentes que citam a tela (test/error-boundaries-rotas-lote6.test.ts, test/regra19.test.ts): tirar SO a entrada da tela removida (lista de rotas, caminho lido); nenhuma outra assercao muda. NOVO test/remove-super-admin.test.ts: afirma que a rota removida nao existe e que nenhum href/redirect de src aponta para ela. REGRAS: zona C0 (clientes_receita, leads_crm, leads_crm_historico, ads_metadata, ads_performance, fn_mql_sql_by_month, prefixos trafego_* e vw_*) e leitura pura: nada de escrita, DDL, grant, RLS ou trigger nelas; zero migration e zero .sql; chave oficial do cliente e cliente_id (uuid), notion_id e so apelido aceito em URL legada (decisao-chave-oficial-cliente-id, 26/09",
+ "cria_novo": [
+  "test/remove-super-admin.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/app/dashboard/super-admin/page.tsx",
+  "src/app/dashboard/super-admin/error.tsx",
+  "test/error-boundaries-rotas-lote6.test.ts",
+  "test/regra19.test.ts",
+  "test/remove-super-admin.test.ts"
+ ],
+ "dependencias": [
+  "humano:decisao-telas-gemeas"
+ ],
+ "prioridade": 45,
+ "recon_esperado": [
+  {
+   "descricao": "src/app/dashboard/super-admin/page.tsx existe na arvore do loop",
+   "cmd": "test -e 'src/app/dashboard/super-admin/page.tsx' && echo EXISTE || echo AUSENTE",
+   "espera": "EXISTE"
+  },
+  {
+   "descricao": "src/app/dashboard/super-admin/error.tsx existe na arvore do loop",
+   "cmd": "test -e 'src/app/dashboard/super-admin/error.tsx' && echo EXISTE || echo AUSENTE",
+   "espera": "EXISTE"
+  },
+  {
+   "descricao": "test/remove-super-admin.test.ts ainda nao existe",
+   "cmd": "test -e 'test/remove-super-admin.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "arquivos fora da pasta que importam super-admin/components",
+   "cmd": "grep -rl 'super-admin/components' src | grep -v '^src/app/dashboard/super-admin/' | wc -l | tr -d ' '",
+   "espera": "0"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/app/dashboard/super-admin/page.tsx' 'src/app/dashboard/super-admin/error.tsx' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/app/dashboard/admin/super/page.tsx' 'test/c0-guard.test.ts' 'src/app/dashboard/super-admin/components.tsx' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/app/dashboard/super-admin/page.tsx' 'src/app/dashboard/super-admin/error.tsx' 'test/error-boundaries-rotas-lote6.test.ts' 'test/regra19.test.ts' 'test/remove-super-admin.test.ts'; do if [ \"$f\" = \"$p\" ]; then ok=1; fi; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 350 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 350 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos da tela removidos",
+   "cmd": "n=0; for f in 'src/app/dashboard/super-admin/page.tsx' 'src/app/dashboard/super-admin/error.tsx'; do [ -e \"$f\" ] && n=$((n+1)); done; [ \"$n\" = 0 ] && echo REMOVIDA || echo SOBRA_$n",
+   "espera": "REMOVIDA"
+  },
+  {
+   "descricao": "anti-afrouxamento de test/error-boundaries-rotas-lote6.test.ts: segue com pelo menos 1 it e sem .skip/.only; so sai a entrada da tela removida (o avaliador confere)",
+   "cmd": "[ -f test/error-boundaries-rotas-lote6.test.ts ] || { echo APAGOU; exit 0; }; a=$(grep -c 'it(' test/error-boundaries-rotas-lote6.test.ts); s=$(grep -cE '[.](skip|only|todo)[(]' test/error-boundaries-rotas-lote6.test.ts); [ \"$a\" -ge 1 ] && [ \"$s\" = 0 ] && echo NAO_AFROUXOU || echo ST_${a}_${s}",
+   "espera": "NAO_AFROUXOU",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento de test/regra19.test.ts: segue com pelo menos 1 it e sem .skip/.only; so sai a entrada da tela removida (o avaliador confere)",
+   "cmd": "[ -f test/regra19.test.ts ] || { echo APAGOU; exit 0; }; a=$(grep -c 'it(' test/regra19.test.ts); s=$(grep -cE '[.](skip|only|todo)[(]' test/regra19.test.ts); [ \"$a\" -ge 1 ] && [ \"$s\" = 0 ] && echo NAO_AFROUXOU || echo ST_${a}_${s}",
+   "espera": "NAO_AFROUXOU",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nada em src aponta para /dashboard/super-admin",
+   "cmd": "n=$(grep -rlF '\"/dashboard/super-admin\"' src | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo SEM_LINK || echo LINK_$n",
+   "espera": "SEM_LINK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde (test/remove-super-admin.test.ts)",
+   "cmd": "test -f test/remove-super-admin.test.ts && npx vitest run test/remove-super-admin.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "avaliador: a tela saiu inteira, nada aponta para ela, e nos testes so saiu a entrada dela. REPROVE se: outra tela mudou; assercao de outra rota caiu; link quebrado sobrou.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/c0-guard.test.ts",
+   "motivo": "guarda global: varre src/ inteiro e a mudanca deste ticket nao toca no que ela mede (C0, json, travessao, contagens); nao editavel"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 3328
+}

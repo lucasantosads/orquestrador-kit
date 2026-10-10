@@ -1,0 +1,13 @@
+O ticket 808 está commitado em `c36003d`, sem push. Rodei só os quatro testes envolvidos e o `tsc`: os 41 testes passam e o `tsc` ficou em 3 erros, o baseline. Não rodei a suíte inteira nem o `npm run build`. Não consegui rodar o `rm -rf .next` antes do `tsc` (permissão negada); o `grep` do gate já filtra o ruído de `.next/`.
+
+**O que mudou**
+- **Rotas:** `comunicacoes`, `disputa` e `entregas` chamam `resolverCliente(id)` uma vez por requisição, dentro do `try`.
+- **Cliente desconhecido:** par com os dois lados nulos devolve 404 `Cliente não encontrado`.
+- **Sem vínculo:** `cliente_id` nulo mantém a resposta de hoje (`sem_vinculo` nos GETs, 404 `Cliente sem vínculo de cadastro` nos POSTs). Na `disputa`, as pendências passam a ser lidas por `par.cliente_id` e `par.notion_id`.
+- **Erro do resolver:** vira 500 pelo catch já existente de cada rota.
+- **Testes existentes:** `test/contratual-disputa.test.ts` e `test/contratual-entregas.test.ts` só trocaram o alvo do `vi.mock` para `@/lib/clientes/resolver-cliente`, sem mexer em nenhuma asserção.
+- **Teste novo:** `test/resolver-cliente-rota-contratual.test.ts` cobre os cinco casos pedidos (uuid e notion_id na mesma consulta, sem vínculo, 404, 500) nas três rotas. Acrescentei uma verificação de que o resolver é chamado uma única vez.
+
+**Corrigi a reprovação anterior.** Ela vinha do `test/erro-string-carteira-perfil-disputa.test.ts`. Ele exige que o catch da `disputa` tenha um único `console.error` e devolva uma mensagem 500 fixa. Por isso o erro do resolver na `disputa` sai com a mensagem fixa `Não foi possível registrar a disputa contratual`, não com o texto do erro. Isso contradiz "500 com a mensagem" do ticket, e esse teste está fora da allowlist, então priorizei mantê-lo verde. `comunicacoes` e `entregas` continuam devolvendo o texto do erro.
+
+Os critérios de diff, allowlist e SQL não rodei. O commit tem 155 inserções e 33 remoções, 188 linhas, dentro do teto de 300. O teste novo ficou com um aviso do vite sobre o `import()` dinâmico das rotas, que não afeta o resultado.

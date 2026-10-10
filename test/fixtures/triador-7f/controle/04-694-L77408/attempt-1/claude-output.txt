@@ -1,0 +1,23 @@
+O build ficou sem rodar porque o Bash negou o comando composto. O resto do ticket está feito e commitado.
+
+**O que entrou (3 commits na `frente/694`, nada empurrado):**
+- `src/lib/contrato/fidelidade-fim.ts`: `lerFimFidelidadeLote(db, clienteIds)` aplica a mesma regra em 2 leituras. `lerFimFidelidade` agora chama o lote com `[id]`.
+- `src/lib/inicio/carregar-carteira.ts`: `carregarInicio(db, pessoa, agoraISO)` monta os fatos de cada cliente e chama `avaliarCliente`.
+  - Dono do cliente vem só de `carregarQuemCuida`, ativo de `isClienteAtivo`, vácuo de `carregarVacuos`.
+  - O recorte por papel segue o ticket. CS vê todos os ativos, com o comentário `decisao pendente humano:decisao-cs-inicio`.
+  - `PROMESSAS_LIGADAS = false`: a promessa fica nula e o contador sai como sem base, com o motivo "Detecção de promessas ainda não ligada".
+- `src/app/api/portal/inicio/route.ts`: GET com 401 sem sessão, papel por `papelDe`, `view_as` honrado só para diretor, head e admin. Falha de leitura devolve 500 com o motivo. A resposta não traz valor de contrato.
+- `test/inicio-resumo-api.test.ts`: 7 casos, todos passando.
+- `test/selects-quebrados-28-09.test.ts`: acrescentei `in` ao banco falso, porque o lote filtra por lista de clientes. Nenhuma asserção mudou.
+
+**Verificações:** tsc dá 3 erros (o baseline). Os testes novos, o `selects-quebrados`, as guardas globais, `quem-cuida` e `gestor-fonte-unica` passam. O diff é de 523 linhas, para o teto de 540. Não editei guarda global, não criei `.sql` e não toquei `vacuo.ts` nem `sinais.ts`.
+
+**Escolhas minhas, para você confirmar:**
+- `em_15` e `em_30` são faixas separadas: `em_15` vai até 15 dias e `em_30` de 16 a 30. O ticket não diz se são cumulativas.
+- Em vez de 200 mensagens por grupo, uso uma consulta só para a mensagem mais recente, que alimenta o carimbo `ultima_mensagem_grupo_em`. O "equipe falou" vem de `carregarInteracao`.
+- Sem coleta de ontem, os campos de mídia (gasto, leads, custo por lead) saem nulos em vez de zero.
+- "Conta com problema" é conta sem gasto ontem que gastou nos 7 dias anteriores. Não há dado de campanha ativa para ser mais preciso.
+- Papéis fora de gestor, head, CS, diretor e admin (closer, sdr) recebem carteira vazia.
+- No teste, "não tem valor" vale para `mrr`, `valor_mensal` e a chave `valor` nas linhas da carteira. Os contadores usam `valor` como total, como o ticket pede.
+
+Falta rodar `npm run build` e conferir o código de saída. Rode `SESSION_SECRET=efemero npm run build >/dev/null 2>&1 && echo BUILD_OK`. Como o `.next` não foi limpo, vale `rm -rf .next` antes de repetir o gate de tsc.

@@ -1,0 +1,12 @@
+{
+ "id": "722",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/722-leitura-relacao-sem-base-nao-grava.md",
+ "ticket_sha": "44fa47c3f8cd0bea981fe5a73f437b704fad4b9c",
+ "ticket_antes": true,
+ "linha_bloqueio": 67970,
+ "log_inicio": 67937,
+ "fim": "2026-10-02T00:25:48Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/722"
+}

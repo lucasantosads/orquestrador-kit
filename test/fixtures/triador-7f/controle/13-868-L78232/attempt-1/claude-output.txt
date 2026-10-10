@@ -1,0 +1,28 @@
+A Visão (atividade do período e linha do tempo) e o Apolo (`reunioes_recentes`) agora leem só a reunião operacional, e o trabalho está commitado em `d849793`. Não rodei `npm run build` nem a suíte `vitest run` inteira.
+
+Resultado do que rodei:
+- **tsc:** 3 erros, todos do baseline (rotas de qualificação e `qualificacao-block.tsx`), sem erro novo.
+- **Testes:** os dois arquivos do ticket passam (18 testes) e as 7 guardas globais passam (70 testes).
+- **Diff:** 101 linhas no total (85 adicionadas, 16 removidas), dentro do teto de 260.
+
+O que mudou:
+- **`atividade-periodo.tsx` e `timeline-visao.tsx`:** a carga `reunioes` vem de `urlReunioesOperacionais(clienteId)`, convertida por um conversor novo, `reunioesOperacionais`. Ele usa `listaParaRelacao` e foi definido em `timeline-visao.tsx`. Mantive a mesma chave e o mesmo tratamento de erro distinto do vazio.
+- **`ferramentas.ts`:**
+  - Resposta nula, com `error` ou sem lista devolve "não foi possível ler as reuniões".
+  - Lista vazia devolve "nenhuma reunião operacional recebida do tl;dv".
+  - O resumo vem do campo `notas` do adaptador.
+  - O texto "nenhuma reunião registrada para o cliente" saiu.
+- **`apolo-ferramentas-cliente.test.ts`:**
+  - Caminho e fixture viraram `perf_reuniao`.
+  - As asserções ficaram no mesmo alvo.
+  - Nenhuma asserção saiu.
+  - Cada troca tem comentário citando o 868.
+- **`visao-apolo-reuniao-operacional.test.ts` (novo):**
+  - A fonte das três não tem a rota antiga e usa `urlReunioesOperacionais`.
+  - Resposta nula e `error` dão falha explícita.
+  - Lista vazia dá o texto do vazio.
+  - Uma reunião mostra data e resumo.
+
+Os critérios de aceite pedem que os comentários citem o "867", mas o ticket é o 868. Citei o 868 e, se o avaliador procurar literalmente "867", esse critério vai falhar.
+
+Não rodei os demais critérios de aceite como comandos separados, só os equivalentes acima. Ficaram de fora `.sql` novo, `.json()` novo e teto de linhas, entre outros.

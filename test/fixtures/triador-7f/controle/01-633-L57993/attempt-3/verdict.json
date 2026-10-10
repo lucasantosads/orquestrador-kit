@@ -1,0 +1,4 @@
+{
+  "aprovado": true,
+  "motivo": "h3 do rótulo removido e virou aria-label da section; LinhaEstado mantém 'Rótulo · texto'; ring removido sem outra moldura; clique na aba zera a rolagem ao alvo via contexto; ?sub= e links cruzados seguem rolando. Testes recalculados e comentados, sem afrouxar nenhum; componentes internos intocados."
+}

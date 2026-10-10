@@ -1,0 +1,12 @@
+{
+ "id": "762",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/762-ghl-backfill-job-conexao.md",
+ "ticket_sha": "c9ba443cce8a024e353127c3b14e5afc121396c0",
+ "ticket_antes": true,
+ "linha_bloqueio": 72665,
+ "log_inicio": 72634,
+ "fim": "2026-10-05T18:20:36Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/762"
+}

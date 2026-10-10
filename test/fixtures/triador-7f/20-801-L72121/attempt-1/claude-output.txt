@@ -1,0 +1,22 @@
+A rota de auditoria agora resolve o `[id]` com uma chamada a `resolverCliente`, e o trabalho está commitado (sem push).
+
+- **Testes:** os 9 testes passam. São os 5 que já existiam em `test/auditoria-cliente.test.ts` e os 4 do arquivo novo.
+- **tsc:** deu 3 erros, que são os do baseline (`qualificacao-regras/[id]`, `qualificacao-regras/estagios` e `qualificacao-block.tsx`).
+- **Diff:** 122 linhas somando adições e remoções, dentro do teto de 200.
+
+**Rota (`src/app/api/clientes/[id]/auditoria/route.ts`):**
+- A chamada fica dentro do `try`, então um erro do resolver vira 500 com a mensagem.
+- Par com os dois lados null devolve 404 `{ error: "Cliente não encontrado" }`.
+- Par sem `cliente_id` mantém a resposta de hoje: 200 com `sem_dados: true` e `eventos: []`.
+- Com `cliente_id`, as consultas de histórico, tarefas e log de auditoria usam esse valor.
+- Os imports do resolver antigo e a consulta direta ao espelho do Notion foram removidos.
+
+**Testes existentes:** só adicionei o `vi.mock` de `@/lib/clientes/resolver-cliente`. O caso de "sem vínculo" ganhou um par sem `cliente_id`, e nenhuma asserção foi removida ou afrouxada.
+
+**Teste novo (`test/resolver-cliente-rota-auditoria.test.ts`):** cobre os casos pedidos:
+- uuid e notion_id chegam às mesmas consultas por `cliente_id`, com uma resolução por requisição;
+- par sem `cliente_id`;
+- par com os dois lados null (404);
+- resolver que lança (500).
+
+**Não rodei:** `npm run build`, a suíte inteira do vitest e as guardas globais. Tentei só o tsc e os dois arquivos de teste. Três comandos compostos foram negados por permissão, entre eles um com `rm -rf .next`. Por isso o `tsc` rodou sem limpar `.next`, e o resultado ainda deu os 3 erros esperados. Os comandos de aceite e as guardas globais ainda precisam ser rodados.

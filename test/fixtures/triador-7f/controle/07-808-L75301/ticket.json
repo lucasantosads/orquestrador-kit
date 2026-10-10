@@ -1,0 +1,142 @@
+{
+ "id": "808",
+ "slug": "resolver-cliente-rota-contratual",
+ "lane": "produto",
+ "perfil": "api",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 300 linhas (~35 por rota em 3 rota(s), ~130 no teste NOVO test/resolver-cliente-rota-contratual.test.ts, ~20 por teste existente ajustado). Se passar do teto, pare e reporte. FONTE: docs/mapa/00-MAPA-GERAL.md (divida 6), docs/mapa/04-notion.md secao 3 (chave dupla; tabela dos resolvers) e docs/mapa/ref-auditoria-26set.md:57 e :201 (resolver unico e prioridade 1 da auditoria de 26/09). PASSO 1: leia src/lib/clientes/resolver-cliente.ts (ticket 800: resolverCliente, filtroDoCliente, clienteDaLinha, clienteIdParaGravar) e cada rota da allowlist. Rotas desta familia e o que usam hoje: src/app/api/clientes/[id]/contratual/comunicacoes/route.ts (hoje: notion_id x1, resolveCockpitId x3); src/app/api/clientes/[id]/contratual/disputa/route.ts (hoje: notion_id x2, resolveCockpitId x2); src/app/api/clientes/[id]/contratual/entregas/route.ts (hoje: notion_id x1, resolveCockpitId x3). FAZER: (1) em cada rota, a resolucao do [id] vira UMA chamada a resolverCliente(id) no inicio do handler (uma vez por requisicao, nunca por consulta) e toda consulta usa o lado certo do par: tabela com coluna cliente_id filtra por par.cliente_id (ou filtroDoCliente(par, '<coluna ponte>') quando a rota ja lia linha antiga pela ponte); tabela so com coluna ponte (notion_id, cliente_notion_id) usa par.notion_id. Mapeamento: resolveCockpitId kind 'unlinked' <=> par.cliente_id === null (mantenha a resposta que a rota da hoje nesse caso, mesmo status e corpo); resolverChave {clienteId, n",
+ "cria_novo": [
+  "test/resolver-cliente-rota-contratual.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/app/api/clientes/[id]/contratual/comunicacoes/route.ts",
+  "src/app/api/clientes/[id]/contratual/disputa/route.ts",
+  "src/app/api/clientes/[id]/contratual/entregas/route.ts",
+  "test/contratual-disputa.test.ts",
+  "test/contratual-entregas.test.ts",
+  "test/resolver-cliente-rota-contratual.test.ts"
+ ],
+ "dependencias": [
+  "800",
+  "humano:decisao-chave-oficial-cliente-id",
+  "humano:f1-rotas-go"
+ ],
+ "prioridade": 41,
+ "recon_esperado": [
+  {
+   "descricao": "src/app/api/clientes/[id]/contratual/comunicacoes/route.ts existe na arvore do loop",
+   "cmd": "test -e 'src/app/api/clientes/[id]/contratual/comunicacoes/route.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "EXISTE"
+  },
+  {
+   "descricao": "src/app/api/clientes/[id]/contratual/disputa/route.ts existe na arvore do loop",
+   "cmd": "test -e 'src/app/api/clientes/[id]/contratual/disputa/route.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "EXISTE"
+  },
+  {
+   "descricao": "src/app/api/clientes/[id]/contratual/entregas/route.ts existe na arvore do loop",
+   "cmd": "test -e 'src/app/api/clientes/[id]/contratual/entregas/route.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "EXISTE"
+  },
+  {
+   "descricao": "test/resolver-cliente-rota-contratual.test.ts ainda nao existe",
+   "cmd": "test -e 'test/resolver-cliente-rota-contratual.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "uso de resolver antigo ou notion_id hoje nas rotas da familia (linhas)",
+   "cmd": "cat 'src/app/api/clientes/[id]/contratual/comunicacoes/route.ts' 'src/app/api/clientes/[id]/contratual/disputa/route.ts' 'src/app/api/clientes/[id]/contratual/entregas/route.ts' | grep -cE 'resolveCockpitId|resolverChave|filtroPelaChave|notion_id'",
+   "espera": "12"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/app/api/clientes/[id]/contratual/comunicacoes/route.ts' 'src/app/api/clientes/[id]/contratual/disputa/route.ts' 'src/app/api/clientes/[id]/contratual/entregas/route.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/lib/clientes/resolver-cliente.ts' 'src/lib/clientes/resolver-chave.ts' 'src/lib/perf/resolve-cockpit-id.ts' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/app/api/clientes/[id]/contratual/comunicacoes/route.ts' 'src/app/api/clientes/[id]/contratual/disputa/route.ts' 'src/app/api/clientes/[id]/contratual/entregas/route.ts' 'test/contratual-disputa.test.ts' 'test/contratual-entregas.test.ts' 'test/resolver-cliente-rota-contratual.test.ts'; do if [ \"$f\" = \"$p\" ]; then ok=1; fi; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 300 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 300 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum teste existente da allowlist perdeu it(/expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (contra o merge-base com staging-auto)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=NAO_AFROUXOU; for f in 'test/contratual-disputa.test.ts' 'test/contratual-entregas.test.ts'; do [ -f \"$f\" ] || { git cat-file -e \"$b:$f\" 2>/dev/null && r=APAGOU_$f; continue; }; for p in 'expect(' 'it('; do a=$(git show \"$b:$f\" 2>/dev/null | grep -cF \"$p\"); n=$(grep -cF \"$p\" \"$f\"); [ \"${n:-0}\" -ge \"${a:-0}\" ] || r=CAIU_$f; done; s0=$(git show \"$b:$f\" 2>/dev/null | grep -cE '\\.(skip|only|todo)\\('); s1=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"${s1:-0}\" -le \"${s0:-0}\" ] || r=SKIP_NOVO_$f; d0=$(git show \"$b:$f\" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' \"$f\"); [ \"${d1:-0}\" -le \"${d0:-0}\" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r",
+   "espera": "NAO_AFROUXOU",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes da allowlist verdes depois da mudanca",
+   "cmd": "npx vitest run 'test/contratual-disputa.test.ts' 'test/contratual-entregas.test.ts' >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "todas as rotas da familia importam o resolver unico",
+   "cmd": "n=0; for f in 'src/app/api/clientes/[id]/contratual/comunicacoes/route.ts' 'src/app/api/clientes/[id]/contratual/disputa/route.ts' 'src/app/api/clientes/[id]/contratual/entregas/route.ts'; do grep -qF '@/lib/clientes/resolver-cliente' \"$f\" && n=$((n+1)); done; echo IMPORTAM_$n",
+   "espera": "IMPORTAM_3"
+  },
+  {
+   "descricao": "nenhum resolver antigo sobra nas rotas da familia",
+   "cmd": "n=$(cat 'src/app/api/clientes/[id]/contratual/comunicacoes/route.ts' 'src/app/api/clientes/[id]/contratual/disputa/route.ts' 'src/app/api/clientes/[id]/contratual/entregas/route.ts' | grep -cE 'resolve-cockpit-id|clientes/resolver-chave|resolveCockpitId|resolverChave\\b|filtroPelaChave'); [ \"$n\" = 0 ] && echo SEM_ANTIGO || echo ANTIGO_$n",
+   "espera": "SEM_ANTIGO"
+  },
+  {
+   "descricao": "teste novo verde (test/resolver-cliente-rota-contratual.test.ts)",
+   "cmd": "test -f test/resolver-cliente-rota-contratual.test.ts && npx vitest run test/resolver-cliente-rota-contratual.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "avaliador: cada rota da familia resolve o [id] uma vez por requisicao com resolverCliente e consulta pelo lado certo; uuid e notion_id chegam ao mesmo dado; sem vinculo mantem a resposta de hoje; 404 para cliente desconhecido; 500 para erro de leitura. REPROVE se: erro vira lista vazia ou 200; resolver chamado por consulta; resposta de sem vinculo mudou; mock trocado de um jeito que deixa a assercao sem efeito; arquivo fora da allowlist.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/erro-string-carteira-perfil-disputa.test.ts",
+   "motivo": "afetado pelo grafo (importa ou cita comunicacoes, disputa, entregas) mas nao importa a rota direto nem cita resolver antigo (grep em 03/10 na arvore de origin/staging-auto): a troca do resolver nao muda o que ele afirma; se quebrar, PARE e descreva"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 4995
+}

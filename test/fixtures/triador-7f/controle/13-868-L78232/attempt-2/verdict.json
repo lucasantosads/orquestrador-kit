@@ -1,0 +1,4 @@
+{
+  "aprovado": true,
+  "motivo": "Visão (atividade e linha do tempo) e Apolo agora leem a URL operacional pelo adaptador do 865, com o mesmo tratamento de erro. No Apolo, resposta nula, com error ou exceção vira falha explícita, distinta do vazio. Rota e leitores fora da lista intocados, sem jargão na tela. Asserções mantidas e recalculadas com comentário."
+}

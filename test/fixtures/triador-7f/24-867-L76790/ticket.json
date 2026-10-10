@@ -1,0 +1,270 @@
+{
+ "id": "867",
+ "slug": "relacao-sem-escrita-reuniao",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 260 linhas (~70 removidas de reunioes-tab.tsx, ~15 em pulso-relacao.tsx, ~25 removidas de page.tsx, ~6 em ficha-context.tsx, ~25 nos testes existentes, ~110 no teste NOVO test/relacao-sem-escrita-reuniao.test.ts). Se passar do teto, pare e reporte. DECISAO DO LUCAS (07/10): call de venda e cadastrada e vinculada no dashboard comercial, o OS so le, nunca vincula nem grava; a aba Relacao mostra so reuniao operacional (perf_reuniao); a call de venda aparece na ficha como historico da venda, fora da Relacao. Recon de codigo em 07/10 (HEAD 70b2e14): o formulario 'Salvar Reunião' mora em src/app/dashboard/clientes/[id]/tabs/reunioes-tab.tsx:102-168 e chama criarReuniao do shell (useFicha); criarReuniao e src/app/dashboard/clientes/[id]/page.tsx:1007-1020 (useAcaoUnica, fetch('/api/clientes/reunioes', POST) -> src/app/api/clientes/reunioes/route.ts:46, que faz o insert na tabela das calls de venda). O Pulso (src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx:165 e :171) abre esse formulario: '+' (MaisGhost dica 'Registrar reunião') com abrirReuniao('realizada') e 'Agendar' com abrirReuniao('agendada'); abrirReuniao e definido em src/app/dashboard/clientes/[id]/tabs/reunioes-tab.tsx:80. Estado do formulario: showNovaReuniao/novaReuniao/criarReuniao em src/app/dashboard/clientes/[id]/page.tsx:624-625,1007,1159 e src/app/dashboard/clientes/[id]/tabs/ficha-context.tsx:96-100. OPCAO_ESCOLHIDA: 1 (decisao do Lucas em 07/10; token humano:867-botoes-reu",
+ "cria_novo": [
+  "test/relacao-sem-escrita-reuniao.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/app/dashboard/clientes/[id]/tabs/reunioes-tab.tsx",
+  "src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx",
+  "src/app/dashboard/clientes/[id]/page.tsx",
+  "src/app/dashboard/clientes/[id]/tabs/ficha-context.tsx",
+  "test/relacao-aceite.test.tsx",
+  "test/ficha-relacao-estados.test.tsx",
+  "test/timeline-relacao.test.tsx",
+  "test/acao-unica-ficha-controles.test.tsx",
+  "test/acao-unica-ficha-mutacoes.test.tsx",
+  "test/relacao-sem-escrita-reuniao.test.ts"
+ ],
+ "dependencias": [
+  "humano:867-botoes-reuniao-escolhidos"
+ ],
+ "prioridade": 41,
+ "recon_esperado": [
+  {
+   "descricao": "src/app/dashboard/clientes/[id]/tabs/reunioes-tab.tsx existe na arvore do loop",
+   "cmd": "test -e 'src/app/dashboard/clientes/[id]/tabs/reunioes-tab.tsx' && echo EXISTE || echo AUSENTE",
+   "espera": "EXISTE"
+  },
+  {
+   "descricao": "src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx existe na arvore do loop",
+   "cmd": "test -e 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx' && echo EXISTE || echo AUSENTE",
+   "espera": "EXISTE"
+  },
+  {
+   "descricao": "test/relacao-sem-escrita-reuniao.test.ts ainda nao existe",
+   "cmd": "test -e 'test/relacao-sem-escrita-reuniao.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "o formulario ainda esta na aba",
+   "cmd": "grep -c 'Salvar Reunião' 'src/app/dashboard/clientes/[id]/tabs/reunioes-tab.tsx'",
+   "espera": "1"
+  },
+  {
+   "descricao": "a ficha ainda faz o POST de reunioes_cliente",
+   "cmd": "grep -c '\"/api/clientes/reunioes\"' 'src/app/dashboard/clientes/[id]/page.tsx'",
+   "espera": "1"
+  },
+  {
+   "descricao": "o Pulso ainda abre o formulario nas duas linhas",
+   "cmd": "grep -c 'abrirReuniao(\"' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx'",
+   "espera": "2"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/app/dashboard/clientes/[id]/tabs/reunioes-tab.tsx' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx' 'src/app/dashboard/clientes/[id]/page.tsx' 'src/app/dashboard/clientes/[id]/tabs/ficha-context.tsx' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 260 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 260 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "zero escrita nova em banco nas linhas adicionadas de src (insert/update/upsert/delete/rpc)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/app/dashboard/clientes/[id]/tabs/reunioes-tab.tsx' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx' 'src/app/dashboard/clientes/[id]/page.tsx' 'src/app/dashboard/clientes/[id]/tabs/ficha-context.tsx' | grep -E '^[+][^+]' | grep -cE '[.](insert|update|upsert|delete|rpc)[(]'); [ \"$n\" = 0 ] && echo SEM_ESCRITA || echo ESCRITA_$n",
+   "espera": "SEM_ESCRITA",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum teste trocado perdeu expect( (contagem >= a do merge-base)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=OK; for f in test/relacao-aceite.test.tsx test/ficha-relacao-estados.test.tsx test/timeline-relacao.test.tsx test/acao-unica-ficha-controles.test.tsx test/acao-unica-ficha-mutacoes.test.tsx; do a=$(git show \"$b:$f\" | grep -c 'expect('); c=$(grep -c 'expect(' \"$f\"); [ \"$c\" -ge \"$a\" ] || r=PERDEU_$f; done; echo $r",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum .skip/.only/.todo nem toBeDefined/toBeTruthy novo nos testes trocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- test/relacao-aceite.test.tsx test/ficha-relacao-estados.test.tsx test/timeline-relacao.test.tsx test/acao-unica-ficha-controles.test.tsx test/acao-unica-ficha-mutacoes.test.tsx | grep -E '^[+][^+]' | grep -cE '[.](skip|only|todo)[(]|toBeDefined|toBeTruthy'); [ \"$n\" = 0 ] && echo FIRME || echo AFROUXOU_$n",
+   "espera": "FIRME",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "cada teste trocado cita o 867 nos comentarios novos",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=OK; for f in test/relacao-aceite.test.tsx test/ficha-relacao-estados.test.tsx test/timeline-relacao.test.tsx test/acao-unica-ficha-controles.test.tsx test/acao-unica-ficha-mutacoes.test.tsx; do if [ -n \"$(git diff \"$b\" HEAD -- \"$f\")\" ]; then n=$(git diff \"$b\" HEAD -- \"$f\" | grep -E '^[+][^+]' | grep -c '867'); [ \"$n\" -ge 1 ] || r=SEM_CITAR_$f; fi; done; echo $r",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/app/dashboard/clientes/[id]/tabs/reunioes-tab.tsx' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx' 'src/app/dashboard/clientes/[id]/page.tsx' 'src/app/dashboard/clientes/[id]/tabs/ficha-context.tsx' 'test/relacao-aceite.test.tsx' 'test/ficha-relacao-estados.test.tsx' 'test/timeline-relacao.test.tsx' 'test/acao-unica-ficha-controles.test.tsx' 'test/acao-unica-ficha-mutacoes.test.tsx' 'test/relacao-sem-escrita-reuniao.test.ts'; do if [ \"$f\" = \"$p\" ]; then ok=1; fi; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados (rotas de reuniao, lista da Relacao, Visao)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/app/api/clientes/reunioes/route.ts' 'src/app/api/clientes/[id]/reunioes/route.ts' 'src/app/api/perf/reunioes/route.ts' 'src/app/dashboard/clientes/[id]/_components/timeline-relacao.tsx' 'src/app/dashboard/clientes/[id]/_components/timeline-visao.tsx' 'src/app/dashboard/clientes/[id]/_components/atividade-periodo.tsx' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "a ficha nao chama mais o POST de reunioes_cliente",
+   "cmd": "a=$(grep -c '\"/api/clientes/reunioes\"' 'src/app/dashboard/clientes/[id]/page.tsx'); b=$(grep -c 'criarReuniao' 'src/app/dashboard/clientes/[id]/page.tsx' 'src/app/dashboard/clientes/[id]/tabs/reunioes-tab.tsx' 'src/app/dashboard/clientes/[id]/tabs/ficha-context.tsx' | awk -F: '{s+=$2} END {print s+0}'); [ \"$a\" = 0 ] && [ \"$b\" = 0 ] && echo SEM_INSERT || echo ST_${a}_${b}",
+   "espera": "SEM_INSERT"
+  },
+  {
+   "descricao": "formulario fora da aba e Pulso sem abrirReuniao",
+   "cmd": "a=$(grep -c 'Salvar Reunião' 'src/app/dashboard/clientes/[id]/tabs/reunioes-tab.tsx'); b=$(grep -c 'abrirReuniao' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx' 'src/app/dashboard/clientes/[id]/tabs/reunioes-tab.tsx' | awk -F: '{s+=$2} END {print s+0}'); [ \"$a\" = 0 ] && [ \"$b\" = 0 ] && echo FORA || echo ST_${a}_${b}",
+   "espera": "FORA"
+  },
+  {
+   "descricao": "testes trocados verdes",
+   "cmd": "npx vitest run test/relacao-aceite.test.tsx test/ficha-relacao-estados.test.tsx test/timeline-relacao.test.tsx test/acao-unica-ficha-controles.test.tsx test/acao-unica-ficha-mutacoes.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde (test/relacao-sem-escrita-reuniao.test.ts)",
+   "cmd": "test -f test/relacao-sem-escrita-reuniao.test.ts && npx vitest run test/relacao-sem-escrita-reuniao.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "opcao 1: Pulso sem o '+' de reuniao e sem Agendar, mantendo 'sem base' e 'nenhuma agendada'",
+   "cmd": "a=$(grep -c 'dica=\"Registrar reunião\"' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx'); b=$(grep -c '>Agendar<' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx'); c=$(grep -c 'nenhuma agendada' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx'); d=$(grep -c 'sem base' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx'); [ \"$a\" = 0 ] && [ \"$b\" = 0 ] && [ \"$c\" -ge 1 ] && [ \"$d\" -ge 1 ] && echo SO_LE || echo ST_${a}_${b}_${c}_${d}",
+   "espera": "SO_LE"
+  },
+  {
+   "descricao": "avaliador: nenhum caminho da Relacao insere em reunioes_cliente; o Pulso faz exatamente a OPCAO 1 (sem '+' nem 'Agendar', linhas em cinza); so as asserções da lista mudaram, cada uma com comentario citando o 867. REPROVE se: asserção fora da lista mudou; asserção apagada sem substituta; o Pulso ganhou qualquer botao ou escrita nas linhas de reuniao; a lista de reunioes mudou de fonte (isso e o 865).",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "assercoes_trocadas": [
+  {
+   "teste": "test/relacao-aceite.test.tsx",
+   "linha": 385,
+   "hoje": "expect(fonte.pulso).toContain('dica=\"Registrar reunião\" onClick={() => abrirReuniao(\"realizada\")}')",
+   "motivo": "fixa o '+' de Última reunião abrindo o formulário que insere na tabela das calls de venda",
+   "autorizado": true,
+   "vira": "expect(fonte.pulso).not.toContain('dica=\"Registrar reunião\"')"
+  },
+  {
+   "teste": "test/relacao-aceite.test.tsx",
+   "linha": 393,
+   "hoje": "expect(fonte.pulso).toMatch(/nenhuma agendada<\\/span><Button ... onClick={() => abrirReuniao(\"agendada\")}>Agendar<\\/Button>/)",
+   "motivo": "fixa o Agendar abrindo o mesmo formulário (status agendada), que insere na tabela das calls de venda",
+   "autorizado": true,
+   "vira": "expect(fonte.pulso).toMatch(/nenhuma agendada<\\/span>/) e expect(fonte.pulso).not.toContain('>Agendar<')"
+  },
+  {
+   "teste": "test/ficha-relacao-estados.test.tsx",
+   "linha": 201,
+   "hoje": "fixture de LinhasPulso com abrirReuniao: () => {}",
+   "motivo": "a prop abrirReuniao sai (opção 1); é fixture, não asserção, mas muda junto",
+   "autorizado": true,
+   "vira": "fixture de LinhasPulso sem abrirReuniao"
+  },
+  {
+   "teste": "test/ficha-relacao-estados.test.tsx",
+   "linha": 225,
+   "hoje": "expect(t).toContain(\"Próxima reunião nenhuma agendada Agendar\")",
+   "motivo": "o texto 'Agendar' é o botão que abre o formulário; vira 'Próxima reunião nenhuma agendada' sem o 'Agendar' (opção 1)",
+   "autorizado": true,
+   "vira": "expect(t).toContain(\"Próxima reunião nenhuma agendada\") e expect(t).not.toContain(\"Agendar\")"
+  },
+  {
+   "teste": "test/ficha-relacao-estados.test.tsx",
+   "linha": 227,
+   "hoje": "expect(h).toContain('aria-label=\"Registrar reunião\"')",
+   "motivo": "é o rótulo acessível do '+' que abre o formulário; vira not.toContain (opção 1: o '+' sai)",
+   "autorizado": true,
+   "vira": "expect(h).not.toContain('aria-label=\"Registrar reunião\"')"
+  },
+  {
+   "teste": "test/timeline-relacao.test.tsx",
+   "linha": 134,
+   "hoje": "expect(readFileSync(.../pulso-relacao.tsx)).toContain('dica=\"Registrar reunião\" onClick={() => abrirReuniao(\"realizada\")}')",
+   "motivo": "mesma fixação da linha 385 do relacao-aceite, por outro teste",
+   "autorizado": true,
+   "vira": "expect(readFileSync(.../pulso-relacao.tsx)).not.toContain('dica=\"Registrar reunião\"')"
+  },
+  {
+   "teste": "test/timeline-relacao.test.tsx",
+   "linha": 143,
+   "hoje": "expect(pulso).toContain(\"Agendar\")",
+   "motivo": "fixa o botão Agendar no Pulso",
+   "autorizado": true,
+   "vira": "expect(pulso).not.toContain(\"Agendar\")"
+  },
+  {
+   "teste": "test/acao-unica-ficha-controles.test.tsx",
+   "linha": 77,
+   "hoje": "[\"criarReuniao\", reunioes, \"disabled={executandoCriarReuniao}\"] em CONTROLES",
+   "motivo": "o botão 'Salvar Reunião' sai da aba; a entrada sai da lista",
+   "autorizado": true,
+   "vira": "a entrada [\"criarReuniao\", ...] sai de CONTROLES"
+  },
+  {
+   "teste": "test/acao-unica-ficha-controles.test.tsx",
+   "linha": 118,
+   "hoje": "expect(CONTROLES.length).toBe(22)",
+   "motivo": "recálculo: 22 - 1 (criarReuniao) = 21",
+   "autorizado": true,
+   "vira": "expect(CONTROLES.length).toBe(21)"
+  },
+  {
+   "teste": "test/acao-unica-ficha-mutacoes.test.tsx",
+   "linha": 240,
+   "hoje": "\"criarReuniao\" em BOOLEANAS",
+   "motivo": "criarReuniao (POST /api/clientes/reunioes) sai de page.tsx",
+   "autorizado": true,
+   "vira": "\"criarReuniao\" sai de BOOLEANAS"
+  },
+  {
+   "teste": "test/acao-unica-ficha-mutacoes.test.tsx",
+   "linha": 246,
+   "hoje": "expect(POR_CHAVE.length + BOOLEANAS.length).toBe(16)",
+   "motivo": "recálculo: 16 - 1 (criarReuniao) = 15; o título do it ('são 16: 3 por chave + 13 booleanas') vira 15 e 12",
+   "autorizado": true,
+   "vira": "expect(POR_CHAVE.length + BOOLEANAS.length).toBe(15), titulo 'são 15: 3 por chave + 12 booleanas'"
+  }
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/dossie-reuniao-bloco.test.ts",
+   "motivo": "exige DossieReuniaoBloco montado e 'Resumir IA' na aba (grep em 07/10); o 867 tira so o formulario; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/acao-unica-reunioes.test.tsx",
+   "motivo": "importa chaveCampo/useAcaoUnicaPorChave de ficha-context e le a pagina reunioes/page.tsx (410c); o 867 so tira os campos do formulario; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/onboarding-ficha-cliente-id.test.ts",
+   "motivo": "le ficha-context pelo import de useFicha (linha 81); o 867 nao mexe no export; se quebrar, PARE e descreva"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 8896
+}

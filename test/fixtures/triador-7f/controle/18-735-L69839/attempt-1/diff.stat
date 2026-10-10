@@ -1,0 +1,4 @@
+ src/app/api/relacao/responder/route.ts | 103 +++++++++++++++++++
+ src/lib/relacao/pode-agir.ts           |  33 ++++++
+ test/relacao-responder-api.test.ts     | 182 +++++++++++++++++++++++++++++++++
+ 3 files changed, 318 insertions(+)

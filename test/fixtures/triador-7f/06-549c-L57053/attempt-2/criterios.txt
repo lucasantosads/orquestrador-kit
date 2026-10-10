@@ -1,0 +1,13 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-549c
+sanear_tsc: nao
+cmd:    ( [ "$(grep -cF 'expect(vercel.crons).toHaveLength(20);' test/crons-meta-consolidacao.test.ts 2>/dev/null)" = 1 ] && [ "$(grep -cF 'expect(vercel.crons).toHaveLength(19);' test/crons-meta-consolidacao.test.ts 2>/dev/null)" = 0 ] ) && echo ALVO_20_CRONS || echo ALVO_ANTIGO
+espera: ALVO_20_CRONS
+-- saida --
+ALVO_ANTIGO
+
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS

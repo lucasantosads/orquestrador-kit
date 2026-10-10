@@ -1,0 +1,110 @@
+{
+ "id": "707",
+ "slug": "aceite-inicio-e-head",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 560 linhas (~520 em NOVO test/portal-inicio-aceite.test.tsx). Se passar do teto, pare e reporte. FONTE: docs/planos/plano-portal-gestor-30set.md (plano aprovado + adendo de decisoes de 30/09, que vale sobre o plano). PASSO 1: leia inteiros docs/roadmap/mockups/portal-gestor/inicio-gestor.dc.html e inicio-head.dc.html, src/app/portal/page.tsx e os componentes de src/components/portal/inicio/, os tickets 696, 697, 698 e 700 (docs/fila) e o adendo de docs/planos/plano-portal-gestor-30set.md. Este ticket NAO corrige tela: codifica o aceite; item que falhar porque a tela ainda nao cumpre deixa o teste vermelho e o ticket reprova (a lista de it( vermelhos e o entregavel, vira ticket de correcao, nunca afrouxamento). Padrao dos aceites 522, 559 e 568 (test/visao-aceite-mockup.test.tsx, test/conta-aceite.test.tsx, test/campanhas-aceite-mockup.test.tsx como molde): sem JSX; renderToStaticMarkup quando a peca renderiza pura, senao readFileSync e assercao sobre o fonte; O TESTE LE O MOCKUP (readFileSync) e extrai de la cada rotulo que o item cobre, nunca copia rotulo a mao; numeros, nomes e datas do mockup sao ilustrativos (prova estrutura e vazio honesto, nao dado); divergencia mockup x decisao do adendo segue a decisao e fica numa tabela no cabecalho do teste (ex.: saldo Pix, atalhos de teclado e rotinas agrupadas ficam fora da fase; 'Renovações' destaca 15 dias, nao 7). DIVERGENCIA DO MOCKUP / PLANO B6 (decisao do Lucas, 08/10): a acao 'Abrir grupo' do Resp",
+ "cria_novo": [
+  "test/portal-inicio-aceite.test.tsx"
+ ],
+ "pathspec_allowlist": [
+  "test/portal-inicio-aceite.test.tsx"
+ ],
+ "dependencias": [
+  "696",
+  "697",
+  "698",
+  "700",
+  "humano:mockups-portal-gestor-na-staging"
+ ],
+ "prioridade": 55,
+ "recon_esperado": [
+  {
+   "descricao": "docs/roadmap/mockups/portal-gestor/inicio-gestor.dc.html existe",
+   "cmd": "test -e 'docs/roadmap/mockups/portal-gestor/inicio-gestor.dc.html' && echo PRESENTE || echo SUMIU",
+   "espera": "PRESENTE"
+  },
+  {
+   "descricao": "docs/roadmap/mockups/portal-gestor/inicio-head.dc.html existe",
+   "cmd": "test -e 'docs/roadmap/mockups/portal-gestor/inicio-head.dc.html' && echo PRESENTE || echo SUMIU",
+   "espera": "PRESENTE"
+  },
+  {
+   "descricao": "test/portal-inicio-aceite.test.tsx ainda nao existe",
+   "cmd": "test -e 'test/portal-inicio-aceite.test.tsx' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'test/portal-inicio-aceite.test.tsx'; do case \"$f\" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 560 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 560 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde (test/portal-inicio-aceite.test.tsx)",
+   "cmd": "test -f test/portal-inicio-aceite.test.tsx && npx vitest run test/portal-inicio-aceite.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "um it( por item (22)",
+   "cmd": "test -f test/portal-inicio-aceite.test.tsx && [ \"$(grep -cE '^[[:space:]]*it[(]' test/portal-inicio-aceite.test.tsx)\" -ge 22 ] && echo CONTAGEM_OK || echo FALTA_IT",
+   "espera": "CONTAGEM_OK"
+  },
+  {
+   "descricao": "o aceite le os dois mockups",
+   "cmd": "f=test/portal-inicio-aceite.test.tsx; test -f $f && grep -q 'portal-gestor/inicio-gestor.dc.html' $f && grep -q 'portal-gestor/inicio-head.dc.html' $f && grep -q readFileSync $f && echo MOCKUP_LIDO || echo MOCKUP_IGNORADO",
+   "espera": "MOCKUP_LIDO"
+  },
+  {
+   "descricao": "nenhuma assercao vazia",
+   "cmd": "test -f test/portal-inicio-aceite.test.tsx && [ \"$(grep -c 'expect(true)' test/portal-inicio-aceite.test.tsx)\" = 0 ] && echo ASSERCOES_REAIS || echo ASSERCAO_VAZIA",
+   "espera": "ASSERCOES_REAIS"
+  },
+  {
+   "descricao": "avaliador: o aceite tem um it( por item, le os dois mockups para os rotulos, cobre ordem, contadores, colunas, filtros e a visao do head, e registra as divergencias com o adendo, incluindo 'Abrir grupo' fora da fase (Evolution, piloto so AQUINO, 08/10) e 'Criar tarefa' do mockup como 'Subir tarefa' (697/736). REPROVE se: rotulo copiado a mao existindo no mockup; assercao vazia; alterou src; ancora em classe; afrouxou item para passar; removeu o it( das acoes; exigiu 'Abrir grupo' ou 'Criar tarefa' na tela.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "pausa cross-ticket: gate 'vitest' reprovou tickets 741a,707 seguidos — suspeito é o gate, não o código (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/.orq-pause)",
+ "_objetivo_cortado_na_fixture": 6044
+}

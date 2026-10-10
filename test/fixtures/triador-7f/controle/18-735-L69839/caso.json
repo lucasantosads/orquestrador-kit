@@ -1,0 +1,13 @@
+{
+ "id": "735",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/735-api-responder-agora.md",
+ "ticket_sha": "8c9605b09b2fe13db96a593b06d55fdc3811e468",
+ "ticket_antes": true,
+ "linha_bloqueio": null,
+ "linha_fim": 69839,
+ "log_inicio": 69803,
+ "fim": "2026-10-02T18:41:55Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/735"
+}

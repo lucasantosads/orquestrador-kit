@@ -1,0 +1,13 @@
+{
+ "id": "650",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/650-visao-blocos-inferiores-linha.md",
+ "ticket_sha": "64c6b2240b0c128f6c7d1340f84163cacaba039f",
+ "ticket_antes": true,
+ "linha_bloqueio": null,
+ "linha_fim": 59553,
+ "log_inicio": 59405,
+ "fim": "2026-09-26T16:19:05Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/650"
+}

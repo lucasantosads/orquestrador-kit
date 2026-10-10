@@ -1,0 +1,15 @@
+A ficha não reescreve mais a URL: ela abre pelo uuid ou pelo notion_id e fica como chegou. As leituras legadas passam a usar o `notionId` resolvido. O commit é `cea4737`, sem push.
+
+A tentativa anterior falhou em dois testes: `resumo-grupo-wpp-tela` e `rotas-fantasma-ficha`. A branch estava limpa, sem o trabalho dela, então refiz tudo desta vez.
+
+Rodei o `tsc` e o `vitest` completo. O `tsc` deu 3 erros, que é o baseline. O vitest passou em 825 arquivos e 8313 testes. Não rodei o `npm run build`. Também não rodei um a um os outros critérios do ticket, como `SO_ALLOWLIST`, `NO_TETO` e `NAO_AFROUXOU`. O diff tem 57 linhas em `page.tsx` e 13 nos testes ajustados, mais o teste novo (aprox. 40 linhas), dentro do teto de 300. Nenhuma guarda global e nenhuma rota de API foi editada.
+
+- **Leitura do cliente:** `load()` lê `/api/notion/clientes/${id}` e `/api/clientes-extra/${id}` em paralelo. Se a resposta de erro trouxer outro `notion_id`, a ficha repete só a leitura do cliente com ele. Sem `notion_id` (cliente sem espelho), `notionId` fica nulo.
+- **Leituras legadas:** teses, NPS, reuniões, resumos e onboarding usam o `notionId` e só disparam se ele existir. Eu incluí o onboarding (`/api/onboarding/tracking?notion_id=`) porque o critério "nenhuma leitura legada usa o id cru" casaria nele.
+- **Props:** `ContaNovaSugestao` só renderiza com `notionId`, e `setupNotionId` do `ClientePerfPanel` passa a ser `notionId ?? undefined`. O `ResumoGrupoBloco` recebe `notionId`; sem ele, aparece "Sem base: este cliente não tem cadastro no Notion…".
+- **Bloco do WhatsApp sem `notionId`:** o aviso é um `<p id="whatsapp">`, não um segundo `AnchorBlock`. Um segundo `AnchorBlock` fazia a contagem de `ficha-nav-colapsavel` passar de 6 para 7, e esse teste está fora da allowlist.
+- **Teste novo:** `test/ficha-sem-reescrita-notion.test.ts` tem 5 casos de leitura da fonte.
+- **Testes existentes recalculados:** `link-setup-notion-id` e `painel-em-campanhas` agora esperam `notionId ?? undefined`. `ficha-por-uuid` agora afirma a ausência do `router.replace` e a presença de `nid = res1Url.notion_id`. Cada um tem comentário citando o ticket 826.
+
+- **Reuniões:** o bloco de reuniões, que vem de outro componente, mostra lista vazia quando o cliente não tem `notionId`, e não "sem base". Não mexi nisso, e o avaliador pode cobrar.
+- **Erro na releitura:** qualquer erro na leitura do cliente que venha sem `notion_id` (falha transitória, por exemplo) também deixa `notionId` nulo, e o bloco mostra "sem base".

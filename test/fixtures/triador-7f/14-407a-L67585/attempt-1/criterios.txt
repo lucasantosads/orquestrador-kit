@@ -1,0 +1,220 @@
+### criterio[0] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    test -f supabase/migrations/20261001000000_fn_reativar_churn.sql && echo EXISTE || echo AUSENTE
+espera: EXISTE
+-- saida --
+AUSENTE
+
+### criterio[1] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then B="$(grep -v '^[[:space:]]*--' "$F" | awk 'tolower($0) ~ /function[[:space:]]+(public\.)?fn_reativar_churn/{f=1} f; f&&/\$\$;/{exit}')"; [ -n "$B" ] && { printf '%s\n' "$B" | grep -ciE 'security definer'; true; } || echo SEM_FN_REATIVAR; else echo ARQUIVO_AUSENTE; fi
+espera: 1
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[2] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then B="$(grep -v '^[[:space:]]*--' "$F" | awk 'tolower($0) ~ /function[[:space:]]+(public\.)?fn_reativar_churn/{f=1} f; f&&/\$\$;/{exit}')"; [ -n "$B" ] && { printf '%s\n' "$B" | grep -ciE 'set search_path'; true; } || echo SEM_FN_REATIVAR; else echo ARQUIVO_AUSENTE; fi
+espera: 1
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[3] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then grep -v '^[[:space:]]*--' "$F" | grep -ciE 'delete from'; true; else echo ARQUIVO_AUSENTE; fi
+espera: 0
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[4] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then grep -v '^[[:space:]]*--' "$F" | grep -c 'app.reativacao_direta'; true; else echo ARQUIVO_AUSENTE; fi
+espera: 2
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[5] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then grep -v '^[[:space:]]*--' "$F" | grep -ci 'reverter_para_nao_iniciado'; true; else echo ARQUIVO_AUSENTE; fi
+espera: 1
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[6] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then B="$(grep -v '^[[:space:]]*--' "$F" | awk 'tolower($0) ~ /function[[:space:]]+(public\.)?fn_reativar_churn/{f=1} f; f&&/\$\$;/{exit}')"; [ -n "$B" ] && { printf '%s\n' "$B" | grep -ciE '(insert into|update)[[:space:]]+(public\.)?churn_monthly_summary'; true; } || echo SEM_FN_REATIVAR; else echo ARQUIVO_AUSENTE; fi
+espera: 0
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[7] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then [ "$(grep -v '^[[:space:]]*--' "$F" | grep -ciw 'cliente_id')" -ge 3 ] && echo OK || echo FAIL; else echo ARQUIVO_AUSENTE; fi
+espera: OK
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[8] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then grep -v '^[[:space:]]*--' "$F" | grep -ci 'cliente_receita_id'; true; else echo ARQUIVO_AUSENTE; fi
+espera: 0
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[9] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then grep -v '^[[:space:]]*--' "$F" | grep -ci 'ilike'; true; else echo ARQUIVO_AUSENTE; fi
+espera: 0
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[10] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then [ "$(grep -v '^[[:space:]]*--' "$F" | grep -ci 'data_cancelamento')" -ge 1 ] && echo OK || echo FAIL; else echo ARQUIVO_AUSENTE; fi
+espera: OK
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[11] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then [ "$(grep -v '^[[:space:]]*--' "$F" | grep -ci 'sync_churn_summary_num_saidas')" -ge 1 ] && echo OK || echo FAIL; else echo ARQUIVO_AUSENTE; fi
+espera: OK
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[12] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then grep -v '^[[:space:]]*--' "$F" | grep -ci 'nullif'; true; else echo ARQUIVO_AUSENTE; fi
+espera: 1
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[13] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then [ "$(grep -v '^[[:space:]]*--' "$F" | grep -ciE 'revertido')" -ge 1 ] && echo OK || echo FAIL; else echo ARQUIVO_AUSENTE; fi
+espera: OK
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[14] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then grep -v '^[[:space:]]*--' "$F" | grep -oE "'[0-9]{4}-[0-9]{2}'" | wc -l | tr -d ' '; else echo ARQUIVO_AUSENTE; fi
+espera: 0
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[15] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then grep -v '^[[:space:]]*--' "$F" | grep -ci 'cliente_notion_id'; true; else echo ARQUIVO_AUSENTE; fi
+espera: 0
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[16] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then grep -v '^[[:space:]]*--' "$F" | grep -ciE 'db push|supabase db|psql|apply_migration'; true; else echo ARQUIVO_AUSENTE; fi
+espera: 0
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[17] (qualitativo — julgado pelo Opus)
+descricao: nenhum join entre churn_log, churn_aprovacoes, clientes e clientes_receita usa coluna que pode ser NULL sem tratamento explicito de NULL; o cabecalho nomeia a chave real escolhida
+
+### criterio[18] (qualitativo — julgado pelo Opus)
+descricao: a unica escrita em clientes_receita e o UPDATE de status dentro desta funcao, e ela esta declarada no cabecalho como a excecao C0 autorizada
+
+### criterio[19] (qualitativo — julgado pelo Opus)
+descricao: os DOIS caminhos do nao_iniciado estao provados: com app.reativacao_direta='on' o cliente termina 'ativo'; sem a flag, a reativacao pelo fluxo normal de venda continua caindo em 'nao_iniciado' como hoje
+
+### criterio[20] (qualitativo — julgado pelo Opus)
+descricao: reverter_para_nao_iniciado deixa de inserir historico proprio (hoje saem duas linhas por reativacao, porque trg_registrar_historico_status ja registra)
+
+### criterio[21] (qualitativo — julgado pelo Opus)
+descricao: nenhuma escrita direta em churn_monthly_summary na funcao de reativacao: quem recalcula e trg_sync_churn_summary, que ja cobre o UPDATE de revertido
+
+### criterio[22] (qualitativo — julgado pelo Opus)
+descricao: ensaio de reversao: ao marcar um churn_log como revertido, num_saidas E churn_rate do mes mudam JUNTOS e batem com round(num_saidas/nullif(total_clientes,0)*100, 4). Hoje churn_rate nao muda, e esse e o furo que este ticket fecha
+
+### criterio[23] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then grep -v '^[[:space:]]*--' "$F" | grep -cF 'cliente sem vínculo na receita: vincule antes de reverter'; true; else echo ARQUIVO_AUSENTE; fi
+espera: 1
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[24] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    grep -c '\.from("churn_log")\.delete()' src/app/api/churn-log/route.ts
+espera: 0
+-- saida --
+1
+
+### criterio[25] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    grep -c 'revertido: true' src/app/api/churn-log/route.ts | awk '{print ($1>=1)?"OK":"FAIL"}'
+espera: OK
+-- saida --
+FAIL
+
+### criterio[26] -> PASS
+### criterio[28] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then B="$(grep -v '^[[:space:]]*--' "$F" | awk 'tolower($0) ~ /function[[:space:]]+(public\.)?fn_reativar_churn/{f=1} f; f&&/\$\$;/{exit}')"; if [ -z "$B" ]; then echo SEM_FN_REATIVAR; else M="$(printf '%s\n' "$B" | grep -ciE 'motivo_cancelamento[[:space:]]*=[[:space:]]*null')"; E="$(printf '%s\n' "$B" | grep -ciE 'etapa_churn[[:space:]]*=[[:space:]]*null')"; [ "$M" -ge 1 ] && [ "$E" -ge 1 ] && echo OK || echo FAIL; fi; else echo ARQUIVO_AUSENTE; fi
+espera: OK
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[29] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    R=src/app/api/churn-log/route.ts; if test -f "$R"; then [ "$(grep -v '^[[:space:]]*//' "$R" | grep -cF '.not("revertido", "is", true)')" -ge 1 ] && echo OK || echo FAIL; else echo ARQUIVO_AUSENTE; fi
+espera: OK
+-- saida --
+FAIL
+
+### criterio[30] -> PASS
+### criterio[31] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then grep -v '^[[:space:]]*--' "$F" | grep -ci 'status_financeiro'; true; else echo ARQUIVO_AUSENTE; fi
+espera: 0
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[32] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then N="$(basename "$F")"; T="$(printf '%s' "$N" | cut -c1-14)"; M="$(ls supabase/migrations/ | grep -E '^[0-9]{14}_' | grep -vxF "$N" | cut -c1-14 | sort | tail -1)"; [ "$T" \> "$M" ] && echo OK || echo FAIL; else echo ARQUIVO_AUSENTE; fi
+espera: OK
+-- saida --
+ARQUIVO_AUSENTE
+
+### criterio[33] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-407a
+sanear_tsc: nao
+cmd:    F=supabase/migrations/20261001000000_fn_reativar_churn.sql; if test -f "$F"; then [ "$(grep -v '^[[:space:]]*--' "$F" | tr '\n' ' ' | tr -s '[:space:]' ' ' | grep -oiE 'alter table (only )?(public\.)?churn_aprovacoes[^;]*add column if not exists revertido[ ,;]' | wc -l | tr -d ' ')" -ge 1 ] && echo OK || echo FAIL; else echo ARQUIVO_AUSENTE; fi
+espera: OK
+-- saida --
+ARQUIVO_AUSENTE
+

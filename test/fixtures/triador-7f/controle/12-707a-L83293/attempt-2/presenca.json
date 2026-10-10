@@ -1,0 +1,16 @@
+[
+ "avaliador-claude.txt",
+ "avaliador-prompt.txt",
+ "claude-output.txt",
+ "criterios.txt",
+ "diff.raw",
+ "diff.stat",
+ "enforcement.json",
+ "gate-build.txt",
+ "gate-tsc.txt",
+ "gate-vitest.txt",
+ "head.txt",
+ "prompt.txt",
+ "recon.txt",
+ "verdict.json"
+]

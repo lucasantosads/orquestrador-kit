@@ -1,0 +1,16 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-662b
+sanear_tsc: nao
+cmd:    a=$(grep -c 'fetchAllPaged' 'src/app/api/metas/_realizado.ts'); b=$(grep -cE 'select\("[^"]*leads' 'src/app/api/metas/_realizado.ts'); [ "$a" -ge 1 ] && [ "$b" -ge 1 ] && echo PAGINADO || echo PAG_$a.$b
+espera: PAGINADO
+-- saida --
+PAG_2.0
+
+### criterio[8] -> PASS

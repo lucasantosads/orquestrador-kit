@@ -1,0 +1,24 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-654
+sanear_tsc: nao
+cmd:    a=$(grep -c 'Sem prova de entrega no per' 'src/app/dashboard/clientes/[id]/tabs/contratual.tsx'); b=$(grep -c 'Nenhuma entrega registrada até' 'src/app/dashboard/clientes/[id]/tabs/contratual.tsx'); [ "$a" = 0 ] && [ "$b" -ge 1 ] && echo CONTRATUAL_OK || echo CONTRATUAL_$a.$b
+espera: CONTRATUAL_OK
+-- saida --
+CONTRATUAL_1.0
+
+### criterio[4] -> PASS
+### criterio[5] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-654
+sanear_tsc: nao
+cmd:    test -f test/ficha-conta-contrato.test.ts && npx vitest run test/ficha-conta-contrato.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO
+espera: VERDE
+-- saida --
+VERMELHO
+
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> PASS
+### criterio[9] -> PASS

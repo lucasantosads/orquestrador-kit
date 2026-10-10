@@ -1,0 +1,90 @@
+{
+ "id": "624",
+ "slug": "automacoes-cadastro-unico",
+ "lane": "produto",
+ "perfil": "fullstack",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 380 linhas. DEPENDE do 623 aplicado (tabela ops_automacoes ja existe no banco vivo quando este ticket rodar). O QUE FAZER: (1) NOVA rota src/app/api/config/automacoes/route.ts: GET retorna todas as linhas de ops_automacoes (sem filtro de ativo, ordenadas por escopo depois nome), gate getSession()->401, session.role !== 'admin'->403 (copie o padrao de src/app/api/automacoes/route.ts, mesmas duas linhas de guarda). POST cria uma linha nova: body {slug, nome, gatilho_tipo, gatilho_detalhe, acao, escopo, ativo}, valida gatilho_tipo em ('cron','webhook','evento') e escopo em ('por_cliente','global'), slug obrigatorio e unico (409 se duplicado), devolve a linha criada com criado_por = session.employeeId quando existir. Zero DELETE, zero PUT/PATCH neste ticket (fora de escopo: editar ou desativar automacao existente vem depois). (2) NOVA tela src/app/dashboard/config/automacoes/page.tsx + src/app/dashboard/config/automacoes/automacoes-cadastro.tsx (client component): tabela com Nome, Gatilho (tipo + detalhe), Ação, Escopo, Ativo (badge verde/cinza) das automações cadastradas, e um formulário '+ Nova automação' (os mesmos campos do POST) que recarrega a lista ao salvar. Mesmo padrao de admin-only sem link no menu que /dashboard/automacoes e /dashboard/financeiro (acesso por URL direta; a API que barra com 403, a tela so mostra estado de acesso negado). Erro do POST vira mensagem inline, nunca alert(). (3) src/lib/clientes/automacoes.ts: troque a constante f",
+ "pathspec_allowlist": [
+  "src/app/api/config/automacoes/route.ts",
+  "src/app/dashboard/config/automacoes/page.tsx",
+  "src/app/dashboard/config/automacoes/automacoes-cadastro.tsx",
+  "src/lib/clientes/automacoes.ts",
+  "src/app/api/clientes/automacoes-status/route.ts",
+  "test/ops-automacoes-cadastro.test.ts"
+ ],
+ "cria_novo": [
+  "src/app/api/config/automacoes/route.ts",
+  "src/app/dashboard/config/automacoes/page.tsx",
+  "src/app/dashboard/config/automacoes/automacoes-cadastro.tsx",
+  "test/ops-automacoes-cadastro.test.ts"
+ ],
+ "dependencias": [
+  "623",
+  "humano:ddl-ops-automacoes"
+ ],
+ "prioridade": 31,
+ "recon_esperado": [
+  {
+   "descricao": "AUTOMACAO_CHAVES ainda e constante fixa, sem leitura de banco",
+   "cmd": "grep -c 'export const AUTOMACAO_CHAVES' src/lib/clientes/automacoes.ts",
+   "espera": "1"
+  },
+  {
+   "descricao": "rota de cadastro ainda nao existe",
+   "cmd": "test -f src/app/api/config/automacoes/route.ts && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 em src/",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -c '^src/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "rota GET/POST com gate admin (401/403) igual ao padrao de src/app/api/automacoes/route.ts",
+   "cmd": "f=src/app/api/config/automacoes/route.ts; grep -q 'getSession' \"$f\" && grep -q \"role !== .admin.\" \"$f\" && grep -q 'export async function GET' \"$f\" && grep -q 'export async function POST' \"$f\" && echo OK || echo FALTA",
+   "espera": "OK"
+  },
+  {
+   "descricao": "matriz filtra por SLUGS_COM_CALCULO, nunca fabrica ligado/desligado pra slug sem calculo",
+   "cmd": "grep -q 'SLUGS_COM_CALCULO' src/lib/clientes/automacoes.ts && echo OK || echo FALTA",
+   "espera": "OK"
+  },
+  {
+   "descricao": "automacoes-block.tsx nao foi tocado (visualizacao da matriz intacta)",
+   "cmd": "git diff --name-only HEAD -- 'src/app/dashboard/clientes/**/automacoes-block.tsx' 'src/app/dashboard/clientes/**/config/automacoes-block.tsx' | wc -l | tr -d ' '",
+   "espera": "0",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "teste novo verde (test/ops-automacoes-cadastro.test.ts)",
+   "cmd": "test -f test/ops-automacoes-cadastro.test.ts && npx vitest run test/ops-automacoes-cadastro.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "teste novo sem .skip/.only/.todo e sem JSX",
+   "cmd": "f=test/ops-automacoes-cadastro.test.ts; [ -f $f ] && [ \"$(grep -cE '[.](skip|only|todo)[(]' $f)\" = 0 ] && ! grep -qE 'return <|\\(<[A-Z]|= <[A-Z]' $f && echo LIMPO || echo SUJO_OU_AUSENTE",
+   "espera": "LIMPO"
+  },
+  {
+   "descricao": "rotulos das 3 automacoes de hoje continuam intactos na resposta (leem da tabela, mas com o mesmo texto)",
+   "cmd": "grep -q 'Relatório semanal' src/lib/clientes/automacoes.ts 2>/dev/null; grep -rq \"Relatório semanal\\|listarAutomacoesPorCliente\" src/lib/clientes/automacoes.ts && echo OK || echo FALTA",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "estrutura da tela, mensagens e coerencia com o mockup implicito revisadas pelo avaliador",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "_objetivo_cortado_na_fixture": 3269
+}

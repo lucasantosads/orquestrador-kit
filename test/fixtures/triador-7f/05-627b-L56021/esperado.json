@@ -1,0 +1,17 @@
+{
+ "classe": "R2",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/627b/attempt-3/criterios.txt",
+   "linha": 17,
+   "origem": "medicao"
+  },
+  {
+   "arquivo": "docs/fila/runs/local-loop.log",
+   "linha": 55993,
+   "origem": "medicao"
+  }
+ ],
+ "requeue": "nao",
+ "fonte_da_verdade": "medicao-bloqueios-out.md:106"
+}

@@ -1,0 +1,28 @@
+## Ticket 627b: área ficha-cliente sem travessão mudo, TETO de 278 para 234
+
+O trabalho está pronto e commitado, mas **o critério [2] vai reprovar de novo, com o código certo**. O problema está no critério.
+
+**Por que o critério [2] falha:** ele compara o TETO com `git show HEAD:test/travessao-mudo.test.ts`. O executor roda os critérios depois dos meus commits (`scripts/orquestrador/executor.sh:626`), então o HEAD já tem o TETO novo. Com isso, `t < h` nunca é verdade, e a reprovação anterior `TETO_ERRADO_234_234_234` veio exatamente daí. A comparação deveria ser com a base (`git merge-base staging-auto HEAD`). Não tentei contornar deixando o TETO fora do commit: a mudança sumiria do diff e do merge. Esse ajuste precisa ser feito no ticket (fila), que está fora da minha allowlist.
+
+**Resultado da verificação:**
+- **Contagem:** a área tinha 44 ocorrências e agora tem 0. O total geral foi de 278 para 234, e o TETO ficou em 234, igual à contagem.
+- **Teste da guarda:** só mudaram o comentário da medição e a constante TETO.
+- **tsc:** 3 erros em `src/`, igual ao baseline.
+- **`npx vitest run`:** 564 arquivos e 5841 testes passaram, incluindo as cinco guardas globais.
+- **Build:** `npm run build` terminou com `BUILD_OK`.
+
+**Como cada caso foi tratado:**
+- **Células e valores de linha:** `<SemDado compacto>` com motivo específico, como "responsável não atribuído", "campanha sem leads no período" ou "alerta não ligado a uma tese".
+- **KPIs sem base de cálculo:** texto "sem base" (CPL, ROAS, % meta, score, investido, fechou, ROI e CTR). Nenhum 0 foi inventado.
+- **Metadados secundários:** o elemento some quando não há dado. Isso vale para categoria, subtítulo e status da tese, participantes da reunião, tempo de casa, delta sem período anterior e parêntese do risco.
+- **Listas vazias da leitura comercial:** uma linha de texto, sem card.
+- **Funções de formatação:** `fmtDate`, `fmtNumero`, `fmtData`, `formatMetrica` e `tempoDeCasa` agora devolvem `null`, e quem chama decide o que mostrar.
+- **Campo de verba teto:** o placeholder agora é "sem teto".
+
+**Dois desvios da regra 2, ambos para não quebrar testes fora da allowlist:**
+- **`performance/page.tsx`:** usei o motivo escrito em cinza neutro, sem travessão e sem `SemDado`. Importar `sem-dado.tsx` quebrava `test/perf-cliente-438.test.tsx`, porque essa página compila com um tsconfig próprio e o teste não trata `.tsx` de fora desse diretório.
+- **`relatorio-tab.tsx`:** não importei nada novo, porque `test/delta-sem-base.test.ts` carrega o arquivo com um conjunto fixo de mocks. O CPL de campanha sem valor é omitido, e a linha já mostra "0 leads".
+
+Os commits são `587468e`, `68c9f94`, `250bd5c` e `ac6afc3`. Não fiz push.
+
+Também salvei na memória as duas armadilhas deste ticket: o critério comparado com o HEAD e o import em `performance/page.tsx`.

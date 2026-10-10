@@ -1,0 +1,248 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { NextRequest } from "next/server";
+
+const h = vi.hoisted(() => ({
+  db: null as unknown,
+  gerar: vi.fn(),
+  chamar: vi.fn(),
+}));
+
+vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ from: (t: string) => (h.db as { from: (t: string) => unknown }).from(t) }) }));
+vi.mock("@/lib/ia/provider", () => ({ chamarProvider: h.chamar, IAProviderError: class extends Error {} }));
+vi.mock("@/lib/ia/leitura-relacao", async (orig) => {
+  const real = await orig<typeof import("@/lib/ia/leitura-relacao")>();
+  return { ...real, gerarLeituraRelacao: (...a: unknown[]) => h.gerar(...a) };
+});
+
+import { detectarGatilhos, esfriou, type EntradaGatilhos } from "@/lib/ia/leitura-relacao-gatilhos";
+import { GET } from "@/app/api/cron/leitura-relacao/route";
+
+const HOJE = "2026-09-23";
+const base = (o: Partial<EntradaGatilhos> = {}): EntradaGatilhos => ({
+  ultimaLeituraEm: "2026-09-20T00:00:00Z",
+  npsRespostas: [],
+  registros: [],
+  insightsDiarios: [],
+  fimFidelidade: null,
+  hoje: HOJE,
+  ...o,
+});
+/** 7 dias anteriores a ontem: 100 de gasto e 5 leads por dia (CPL 20), mais o dia de ontem. */
+const insights = (gastoOntem: number, leadsOntem: number) => [
+  ...[15, 16, 17, 18, 19, 20, 21].map((d) => ({ data: `2026-09-${d}`, gasto: 100, leads: 5 })),
+  { data: "2026-09-22", gasto: gastoOntem, leads: leadsOntem },
+];
+
+describe("detectarGatilhos", () => {
+  it("nps_baixo: nota 6 dispara, 7 não, e resposta antes da última leitura não conta", () => {
+    expect(detectarGatilhos(base({ npsRespostas: [{ nota: 6, em: "2026-09-21T10:00:00Z" }] }))).toEqual(["nps_baixo"]);
+    expect(detectarGatilhos(base({ npsRespostas: [{ nota: 7, em: "2026-09-21T10:00:00Z" }] }))).toEqual([]);
+    expect(detectarGatilhos(base({ npsRespostas: [{ nota: 3, em: "2026-09-19T10:00:00Z" }] }))).toEqual([]);
+  });
+
+  it("reclamacao: só registro desse tipo depois da última leitura", () => {
+    expect(detectarGatilhos(base({ registros: [{ tipo: "reclamacao", em: "2026-09-21T10:00:00Z" }] }))).toEqual(["reclamacao"]);
+    expect(detectarGatilhos(base({ registros: [{ tipo: "contato", em: "2026-09-21T10:00:00Z" }] }))).toEqual([]);
+    expect(detectarGatilhos(base({ registros: [{ tipo: "reclamacao", em: "2026-09-19T10:00:00Z" }] }))).toEqual([]);
+  });
+
+  it("cpl_alto: 1,31x com volume dispara; 1,3x exato, sem volume e sem base não", () => {
+    // Base: 700 de gasto / 35 leads = CPL 20. Ontem 131/5 = 26,2 = 1,31x.
+    expect(detectarGatilhos(base({ insightsDiarios: insights(131, 5) }))).toEqual(["cpl_alto"]);
+    expect(detectarGatilhos(base({ insightsDiarios: insights(130, 5) }))).toEqual([]);
+    expect(detectarGatilhos(base({ insightsDiarios: insights(131, 2) }))).toEqual([]); // leads < 3
+    expect(detectarGatilhos(base({ insightsDiarios: insights(29, 3) }))).toEqual([]); // gasto < 30
+    expect(detectarGatilhos(base({ insightsDiarios: [{ data: "2026-09-22", gasto: 131, leads: 5 }] }))).toEqual([]); // sem base
+  });
+
+  it("renovacao: a 30 dias dispara, a 31 não, e só uma vez por ciclo", () => {
+    expect(detectarGatilhos(base({ fimFidelidade: "2026-10-23" }))).toEqual(["renovacao"]);
+    expect(detectarGatilhos(base({ fimFidelidade: "2026-10-24" }))).toEqual([]);
+    // Leitura já feita dentro da janela (depois de 23/09): não repete no mesmo ciclo.
+    expect(detectarGatilhos(base({ hoje: "2026-10-01", ultimaLeituraEm: "2026-09-25T10:00:00Z", fimFidelidade: "2026-10-23" }))).toEqual([]);
+  });
+
+  it("semanal: só sem outro gatilho e com 7 dias ou mais (ou sem leitura)", () => {
+    expect(detectarGatilhos(base({ ultimaLeituraEm: "2026-09-16T10:00:00Z" }))).toEqual(["semanal"]);
+    expect(detectarGatilhos(base({ ultimaLeituraEm: "2026-09-17T10:00:00Z" }))).toEqual([]);
+    expect(detectarGatilhos(base({ ultimaLeituraEm: null }))).toEqual(["semanal"]);
+    const comEvento = base({ ultimaLeituraEm: "2026-09-01T00:00:00Z", npsRespostas: [{ nota: 2, em: "2026-09-21T10:00:00Z" }] });
+    expect(detectarGatilhos(comEvento)).toEqual(["nps_baixo"]);
+  });
+
+  it("esfriou: só quando passa a fria", () => {
+    expect(esfriou("morna", "fria")).toBe(true);
+    expect(esfriou("fria", "fria")).toBe(false);
+    expect(esfriou("quente", "morna")).toBe(false);
+    expect(esfriou(null, "fria")).toBe(true);
+  });
+});
+
+/** Fake do supabase: cadeia thenable; tabela = linhas fixas ou função dos filtros `eq`. */
+type Tabela = Record<string, unknown>[] | ((f: Record<string, unknown>) => Record<string, unknown>[]);
+/** `falha(t, filtros)` devolvendo mensagem simula erro de leitura do PostgREST ({ data: null, error }). */
+function fakeDb(tabelas: Record<string, Tabela>, falha?: (t: string, f: Record<string, unknown>) => string | null) {
+  const inserts: Record<string, Record<string, unknown>[]> = {};
+  return {
+    inserts,
+    from(t: string) {
+      const filtros: Record<string, unknown> = {};
+      let inserida: Record<string, unknown> | null = null;
+      const linhas = () => {
+        const x = tabelas[t] ?? [];
+        return typeof x === "function" ? x(filtros) : x;
+      };
+      const q: Record<string, unknown> = {
+        eq: (c: string, v: unknown) => ((filtros[c] = v), q),
+        // T4b: .or(filtroPelaChave(...)) — registra cada "coluna.eq.valor" como um eq
+        or: (expr: string) => {
+          for (const m of Array.from(expr.matchAll(/([a-z_]+)\.eq\."?([^",)]+)"?/g))) filtros[m[1]] ??= m[2];
+          return q;
+        },
+        insert: (row: Record<string, unknown>) => ((inserida = row), (inserts[t] ??= []).push(row), q),
+        single: () => Promise.resolve({ data: inserida ? { id: "L1", gerado_em: "2026-09-23T10:00:00Z", ...inserida } : linhas()[0], error: null }),
+        then: (ok: (v: unknown) => unknown) => {
+          const erro = inserida ? null : (falha?.(t, filtros) ?? null);
+          const r = erro ? { data: null, error: { message: erro } } : { data: inserida ? null : linhas(), error: null };
+          return Promise.resolve(r).then(ok);
+        },
+      };
+      for (const m of ["select", "in", "gte", "order", "limit", "is", "neq", "not"]) q[m] = () => q;
+      return q;
+    },
+  };
+}
+
+describe("alerta de relação fria (motor)", () => {
+  const saidaFria = (temperatura: string) =>
+    JSON.stringify({
+      temperatura,
+      confianca: 0.8,
+      riscos: [{ texto: "NPS caiu para 3", severidade: "alta", evidencia_id: "nps:2026-09" }],
+      upsell: [],
+      pendencias: { cliente: [], comarka: [] },
+      proximos_passos: [],
+      perguntas_proxima_reuniao: [],
+      faltando: [],
+    });
+  const rodar = async (anterior: string | null, nova: string, gestorId: string | null) => {
+    const { gerarLeituraRelacao } = await vi.importActual<typeof import("@/lib/ia/leitura-relacao")>("@/lib/ia/leitura-relacao");
+    const db = fakeDb({
+      client_interaction_records: [{ id: "r1", cliente_id: "c", tipo: "contato", texto: "ligou", data_interacao: new Date().toISOString().slice(0, 10), status: null, deleted_at: null }],
+      perf_nps_respostas: [{ nps_score: 3, comentario: null, mes_referencia: "2026-09-01" }],
+      perf_leituras_relacao: (f) => (f.entrada_hash || anterior === null ? [] : [{ temperatura: anterior }]),
+    });
+    h.chamar.mockResolvedValue({ texto: saidaFria(nova), modelo: { modelo: "m" } });
+    const r = await gerarLeituraRelacao({ db, clienteId: "c", notionId: "n", gatilho: "nps_baixo", chamar: h.chamar, alertar: { gestorId, clienteNome: "Acme" } });
+    return { r, inserts: db.inserts.notifications ?? [] };
+  };
+
+  it("insere uma linha quando esfria (morna -> fria)", async () => {
+    const { r, inserts } = await rodar("morna", "fria", "g1");
+    expect(r.alerta).toBe("criado");
+    expect(inserts).toEqual([{ employee_id: "g1", tipo: "leitura_relacao_fria", titulo: "Relação esfriou · Acme", mensagem: "NPS caiu para 3", lida: false }]);
+  });
+  it("não insere quando já era fria ou quando não é fria", async () => {
+    expect((await rodar("fria", "fria", "g1")).inserts).toHaveLength(0);
+    expect((await rodar("quente", "morna", "g1")).inserts).toHaveLength(0);
+  });
+  it("sem gestor não insere e devolve o motivo", async () => {
+    const { r, inserts } = await rodar("morna", "fria", null);
+    expect(r.alerta).toBe("sem_gestor");
+    expect(inserts).toHaveLength(0);
+  });
+});
+
+describe("cron leitura-relacao", () => {
+  const req = (auth?: string) => ({ headers: new Headers(auth ? { authorization: auth } : {}) }) as unknown as NextRequest;
+  /** n clientes ativos; os índices em `evento` têm NPS baixo, os demais caem no semanal (sem leitura). */
+  const monta = (n: number, evento: number[] = [], falha?: Parameters<typeof fakeDb>[1]) => {
+    const ids = Array.from({ length: n }, (_, i) => i);
+    // Universo vem de clientes (OS, 29/09); notion_id só para NPS, via clientes_receita.cliente_id.
+    const receita = ids.map((i) => ({ id: `r${i}`, cliente_id: `c${i}`, notion_id: `n${i}`, fidelidade_fim: null }));
+    h.db = fakeDb({
+      clientes: ids.map((i) => ({ id: `c${i}`, nome: `Cli ${i}`, status: "ativo", gestor_id: null })),
+      clientes_receita: (f) => (f.cliente_id ? receita.filter((r) => r.cliente_id === f.cliente_id) : receita),
+      perf_cliente_gestor: ids.map((i) => ({ cliente_id: `c${i}`, gestor_id: "g1" })),
+      perf_nps_respostas: (f) => (evento.some((i) => f.cliente_notion_id === `n${i}`) ? [{ nps_score: 3, created_at: new Date().toISOString() }] : []),
+    }, falha);
+  };
+  beforeEach(() => {
+    process.env.CRON_SECRET = "segredo";
+    h.gerar.mockReset();
+    h.gerar.mockResolvedValue({ atual: {}, reaproveitada: false });
+  });
+
+  it("sem Bearer devolve 401 e não chama o motor", async () => {
+    monta(1);
+    expect((await GET(req())).status).toBe(401);
+    expect((await GET(req("Bearer errado"))).status).toBe(401);
+    expect(h.gerar).not.toHaveBeenCalled();
+  });
+
+  it("falha de um cliente não derruba o outro: 1 falha e 1 gerada", async () => {
+    monta(2);
+    h.gerar.mockRejectedValueOnce(new Error("boom"));
+    const res = await GET(req("Bearer segredo"));
+    expect(await res.json()).toEqual({ clientes: 2, geradas: 1, puladas: 0, falhas: 1, restantes: 0 });
+  });
+
+  it("erro ao ler a fidelidade de um cliente vira null logado: ele e os demais seguem", async () => {
+    // Só a leitura da fidelidade filtra clientes_receita por cliente_id; a lista de ativos não.
+    monta(2, [], (t, f) => (t === "clientes_receita" && f.cliente_id === "c0" ? "timeout" : null));
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+    const body = await (await GET(req("Bearer segredo"))).json();
+    expect(body).toEqual({ clientes: 2, geradas: 2, puladas: 0, falhas: 0, restantes: 0 });
+    expect(h.gerar.mock.calls.map((c) => (c[0] as { clienteId: string }).clienteId).sort()).toEqual(["c0", "c1"]);
+    expect(erro.mock.calls.some((c) => String(c[0]).includes("fidelidade") && c[1] === "c0")).toBe(true);
+    erro.mockRestore();
+  });
+
+  it("cliente ativo do OS sem linha no espelho do Notion entra no gatilho de renovação", async () => {
+    const em10dias = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
+    const receita = [{ id: "r1", cliente_id: "c1", notion_id: null, fidelidade_fim: em10dias }];
+    h.db = fakeDb({
+      clientes: [
+        { id: "c1", nome: "Sem Espelho", status: "ativo", gestor_id: "g1" },
+        { id: "c2", nome: "Cancelado", status: "cancelado", gestor_id: null },
+      ],
+      clientes_receita: (f) => (f.cliente_id ? receita.filter((r) => r.cliente_id === f.cliente_id) : receita),
+      clientes_notion_mirror: [], // espelho vazio: não pode tirar ninguém do universo
+      // Leitura antiga, anterior à janela de 30 dias: a renovação dispara.
+      perf_leituras_relacao: [{ gerado_em: "2026-01-01T00:00:00Z" }],
+    });
+    const body = await (await GET(req("Bearer segredo"))).json();
+    expect(body).toMatchObject({ clientes: 1, geradas: 1, falhas: 0 });
+    expect(h.gerar).toHaveBeenCalledTimes(1);
+    expect(h.gerar.mock.calls[0][0]).toMatchObject({ clienteId: "c1", gatilho: "renovacao", notionId: null, alertar: { gestorId: "g1" } });
+  });
+
+  it("falha ao ler clientes é 500, não um lote vazio", async () => {
+    monta(2, [], (t) => (t === "clientes" ? "timeout" : null));
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+    const res = await GET(req("Bearer segredo"));
+    expect(res.status).toBe(500);
+    expect(h.gerar).not.toHaveBeenCalled();
+    erro.mockRestore();
+  });
+
+  it("com 41 clientes com gatilho chama o motor 40 vezes e restantes = 1", async () => {
+    monta(41);
+    const body = await (await GET(req("Bearer segredo"))).json();
+    expect(h.gerar).toHaveBeenCalledTimes(40);
+    expect(body).toMatchObject({ clientes: 41, geradas: 40, restantes: 1 });
+  });
+
+  it("com o teto estourado, os de evento passam antes dos semanais", async () => {
+    monta(45, [43, 44]);
+    const body = await (await GET(req("Bearer segredo"))).json();
+    expect(h.gerar).toHaveBeenCalledTimes(40);
+    expect(body.restantes).toBe(5);
+    const chamadas = h.gerar.mock.calls.map((c) => c[0] as { clienteId: string; gatilho: string });
+    expect(chamadas.slice(0, 2).map((c) => [c.clienteId, c.gatilho])).toEqual([
+      ["c43", "nps_baixo"],
+      ["c44", "nps_baixo"],
+    ]);
+    expect(chamadas.slice(2).every((c) => c.gatilho === "semanal")).toBe(true);
+  });
+});

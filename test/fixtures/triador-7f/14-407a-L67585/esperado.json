@@ -1,0 +1,12 @@
+{
+ "classe": "R2",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/407a/attempt-3/criterios.txt",
+   "linha": 222,
+   "origem": "medicao"
+  }
+ ],
+ "requeue": "nao",
+ "fonte_da_verdade": "medicao-bloqueios-out.md:115"
+}

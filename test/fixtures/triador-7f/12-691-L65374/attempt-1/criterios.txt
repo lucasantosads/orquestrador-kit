@@ -1,0 +1,19 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-691
+sanear_tsc: nao
+cmd:    b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff --name-only "$b" HEAD | grep -c '[.]sql$'); f=supabase/migrations/20261001090000_portal_inicio.sql; m=$( [ -f $f ] && grep -ciE 'notifications|comunicados' $f || echo 0); [ "$n" = 1 ] && [ "$m" = 0 ] && echo UM_SQL || echo SQL_${n}_${m}
+espera: UM_SQL
+-- saida --
+SQL_1_0 0
+
+### criterio[9] (qualitativo — julgado pelo Opus)
+descricao: avaliador: um arquivo de migration com as 4 tabelas perf_, RLS, policy so service role, revoke de anon e authenticated, chaves unicas de idempotencia e reversao no cabecalho; nada aplicado. REPROVE se: aplicou; tocou C0, notifications ou comunicados; tabela sem RLS; sem chave unica de idempotencia.
+

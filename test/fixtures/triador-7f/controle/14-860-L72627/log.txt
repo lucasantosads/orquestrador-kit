@@ -1,0 +1,55 @@
+72573	[2026-10-05 14:50:12-0300] drenagem: ticket 860 (9 pendentes restantes)
+72574	[orq 17:50:12] orquestrador iniciando · modo: real · once
+72575	[orq 17:50:12] preflight: validando infra (scripts, fila, env, claude)...
+72576	[orq 17:50:15] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+72577	[orq 17:50:21] preflight: ok
+72578	[orq 17:50:43] === ticket 860 (evolution-credencial-erro-nunca-sem-nome) — tentativa 1 · modo: real ===
+72579	[orq 17:50:44]   recon_esperado: ok (5 comando(s))
+72580	[orq 17:50:44] aviso allowlist: src/lib/whatsapp/grupos.ts já existe no worktree — o agente vai EDITAR, não criar
+72581	[orq 17:50:44] aviso allowlist: src/lib/whatsapp/nome-grupo-cache.ts já existe no worktree — o agente vai EDITAR, não criar
+72582	[orq 17:50:44] aviso allowlist: src/lib/whatsapp/backfill-grupo-nome.ts já existe no worktree — o agente vai EDITAR, não criar
+72583	[orq 17:50:44] aviso allowlist: scripts/backfill-grupo-nome.ts já existe no worktree — o agente vai EDITAR, não criar
+72584	[orq 17:50:44] aviso allowlist: test/wpp-nome-grupo-cache.test.ts já existe no worktree — o agente vai EDITAR, não criar
+72585	[orq 17:50:44] aviso allowlist: test/wpp-backfill-grupo-nome.test.ts já existe no worktree — o agente vai EDITAR, não criar
+72586	[orq 17:50:44] aviso allowlist: test/whatsapp-grupos.test.ts já existe no worktree — o agente vai EDITAR, não criar
+72587	[orq 17:50:44] aviso allowlist: $f (criterio[16]) está FORA da pathspec_allowlist — o agente será bloqueado
+72588	[orq 17:50:44]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/860/attempt-1/prompt.txt
+72589	[orq 17:50:44]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+72590	[orq 17:54:58]   diff cru salvo (315 linhas alteradas) · HEAD julgado 4e2c500b
+72591	[orq 17:54:58]   enforcement: ok
+72592	[orq 17:55:25]   gate tsc: ok (baseline)
+72593	[orq 17:56:08]   gate vitest: ok
+72594	[orq 17:56:43]   criterios mecânicos: FALHA — criterio[17] mecânico: esperado 'COBRE', obteve 'FALTA_console.error'
+72595	[orq 17:56:43]   REPROVA (mecânica, sem Opus): criterio[17] mecânico: esperado 'COBRE', obteve 'FALTA_console.error'
+72596	[orq 17:56:44] ticket 860: reprovado — retry 1/2. motivo: criterio[17] mecânico: esperado 'COBRE', obteve 'FALTA_console.error'
+72597	[orq 17:56:44] === ticket 860 (evolution-credencial-erro-nunca-sem-nome) — tentativa 2 · modo: real ===
+72598	[orq 17:56:45]   recon_esperado: ok (5 comando(s))
+72599	[orq 17:56:45] aviso allowlist: src/lib/whatsapp/grupos.ts já existe no worktree — o agente vai EDITAR, não criar
+72600	[orq 17:56:45] aviso allowlist: src/lib/whatsapp/nome-grupo-cache.ts já existe no worktree — o agente vai EDITAR, não criar
+72601	[orq 17:56:45] aviso allowlist: src/lib/whatsapp/backfill-grupo-nome.ts já existe no worktree — o agente vai EDITAR, não criar
+72602	[orq 17:56:45] aviso allowlist: scripts/backfill-grupo-nome.ts já existe no worktree — o agente vai EDITAR, não criar
+72603	[orq 17:56:45] aviso allowlist: test/wpp-nome-grupo-cache.test.ts já existe no worktree — o agente vai EDITAR, não criar
+72604	[orq 17:56:45] aviso allowlist: test/wpp-backfill-grupo-nome.test.ts já existe no worktree — o agente vai EDITAR, não criar
+72605	[orq 17:56:45] aviso allowlist: test/whatsapp-grupos.test.ts já existe no worktree — o agente vai EDITAR, não criar
+72606	[orq 17:56:45] aviso allowlist: $f (criterio[16]) está FORA da pathspec_allowlist — o agente será bloqueado
+72607	[orq 17:56:45]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/860/attempt-2/prompt.txt
+72608	[orq 17:56:45]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+72609	[orq 17:59:46]   diff cru salvo (314 linhas alteradas) · HEAD julgado 8f1e7625
+72610	[orq 17:59:46]   enforcement: ok
+72611	[orq 18:00:13]   gate tsc: ok (baseline)
+72612	[orq 18:00:53]   gate vitest: ok
+72613	[orq 18:01:25]   criterios mecânicos: ok
+72614	[orq 18:02:09]   gate build: ok
+72615	Merge made by the 'ort' strategy.
+72616	 scripts/backfill-grupo-nome.ts          |  69 +++++++++++--
+72617	 src/lib/whatsapp/backfill-grupo-nome.ts |  13 ++-
+72618	 src/lib/whatsapp/grupos.ts              |   3 +-
+72619	 src/lib/whatsapp/nome-grupo-cache.ts    |  49 ++++++---
+72620	 test/wpp-backfill-grupo-nome.test.ts    |   3 +-
+72621	 test/wpp-evolution-credencial.test.ts   | 173 ++++++++++++++++++++++++++++++++
+72622	 test/wpp-nome-grupo-cache.test.ts       |   4 +
+72623	 7 files changed, 286 insertions(+), 28 deletions(-)
+72624	 create mode 100644 test/wpp-evolution-credencial.test.ts
+72625	[orq 18:02:22] avaliador: merge --no-ff de frente/860 em staging-auto ok
+72626	[orq 18:02:22] avaliador: APROVADO e mergeado.
+72627	[orq 18:02:23] ticket 860: APROVADO e mergeado em staging-auto

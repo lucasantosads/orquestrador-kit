@@ -1,0 +1,4 @@
+ src/app/dashboard/clientes/[id]/page.tsx   |   2 +
+ src/components/relacao/responder-agora.tsx | 189 +++++++++++++++++++++++++++++
+ test/relacao-responder-tela.test.ts        | 157 ++++++++++++++++++++++++
+ 3 files changed, 348 insertions(+)

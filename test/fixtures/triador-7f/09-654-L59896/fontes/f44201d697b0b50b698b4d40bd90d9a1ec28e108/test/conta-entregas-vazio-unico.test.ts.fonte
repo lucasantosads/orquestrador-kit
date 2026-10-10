@@ -1,0 +1,41 @@
+// Ticket 636: cliente sem entregáveis / sem entregas vê UMA linha de vazio.
+import { readFileSync } from "node:fs";
+import { describe, it, expect } from "vitest";
+
+const dir = "src/app/dashboard/clientes/[id]/tabs/";
+const entregaveis = readFileSync(dir + "entregaveis-tab.tsx", "utf8");
+const financeiro = readFileSync(dir + "financeiro-tab.tsx", "utf8");
+const contratual = readFileSync(dir + "contratual.tsx", "utf8");
+
+describe("636: vazio único em Contrato e entregas", () => {
+  it("entregaveis-tab não tem mensagem de vazio própria e não desenha cartão sem lista", () => {
+    expect(entregaveis).not.toContain("Nenhum entregável cadastrado");
+    const vazio = entregaveis.indexOf("entregaveis.length === 0");
+    const cartao = entregaveis.indexOf("<Card>");
+    expect(vazio).toBeGreaterThan(-1);
+    expect(vazio).toBeLessThan(cartao);
+    expect(entregaveis.slice(vazio, cartao)).not.toContain("<Card");
+  });
+  it("a escolha de tipo e o gatilho do topo seguem em entregaveis-tab", () => {
+    expect(entregaveis).toContain('id="entregavel-add-menu"');
+    expect(entregaveis).toContain("ficha:configurar:entregaveis");
+  });
+  it("a linha do Escopo continua e Adicionar abre a escolha", () => {
+    expect(financeiro).toContain('"nenhum cadastrado"');
+    expect(financeiro).toContain('classList.remove("hidden")');
+  });
+  it("contratual tem no máximo uma das duas frases antigas de vazio", () => {
+    const a = contratual.split("Sem prova de entrega").length - 1;
+    const b = contratual.split("Nenhuma entrega contratual").length - 1;
+    expect(a + b).toBeLessThanOrEqual(1);
+  });
+  it("contratual não tem caixa vazia centralizada nem heading no vazio", () => {
+    expect(contratual).not.toMatch(/py-(6|10) text-center/);
+    expect(contratual).not.toMatch(/<h\d[^>]*>[^<]*nenhuma entrega registrada/);
+    expect(contratual).toContain("Prova de entrega · nenhuma entrega registrada");
+  });
+  it("a consulta de disputa continua e o vazio dela exige consulta manual ou entregas", () => {
+    expect(contratual).toContain("Consultar");
+    expect(contratual).toContain("(consultouManual || temEntregas)");
+  });
+});

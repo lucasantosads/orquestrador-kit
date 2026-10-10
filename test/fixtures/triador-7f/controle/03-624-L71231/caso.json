@@ -1,0 +1,13 @@
+{
+ "id": "624",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/624-automacoes-cadastro-unico.md",
+ "ticket_sha": "e6a143ccafbae42cf5ffc3aa7ebb7c3ec66a1382",
+ "ticket_antes": true,
+ "linha_bloqueio": null,
+ "linha_fim": 71231,
+ "log_inicio": 71184,
+ "fim": "2026-10-03T04:24:41Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/624"
+}

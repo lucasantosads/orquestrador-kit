@@ -1,0 +1,10 @@
+Commitei a migration e o teste, mas o critério "a migration cria a tabela com check > 0, RLS, policy guardada e revoke, sem nada destrutivo" vai falhar. O corpo que o ticket manda escrever contradiz o grep desse critério, e segui o corpo do ticket.
+
+**O conflito:** o corpo exige `on delete cascade` e `on delete set null`. O grep do critério procura `delete` em linha que não seja comentário, então acha as duas linhas e dá `ST_11111_2` em vez de `MIGRATION_OK`. Só dá para passar tirando as duas cláusulas `on delete`, o que muda o comportamento das chaves estrangeiras. Sem elas, apagar um cliente ou funcionário com linha em `perf_cliente_verba` seria bloqueado. Não tomei essa decisão sozinho. Quem escreveu o ticket precisa escolher entre afrouxar o grep para ignorar `on delete` ou aceitar a mudança de comportamento. No teste novo, a checagem de `DELETE` ignora as cláusulas `on delete (cascade|set null)`.
+
+**O que entregou:**
+- `supabase/migrations/20261008121000_perf_cliente_verba.sql` (37 linhas) segue a ordem pedida. Tem o cabeçalho com "APLICAR E HUMANO", `humano:ddl-898` e a reversão. Depois vêm a tabela, o RLS, a policy `only_service_role` guardada por `pg_policies` e o revoke de `anon` e `authenticated`.
+- `test/perf-cliente-verba-migration.test.ts` (49 linhas) cobre os itens (a) a (f) do ticket.
+- O diff soma 86 linhas, dentro do teto de 130. Só os dois arquivos da allowlist foram tocados, nada em `src/`, e a migration não foi aplicada.
+
+Rodei o teste novo e as 5 guardas globais (`c0-guard`, `migration-security-definer-anon`, `migrations-cabecalho-aplicada`, `migrations-policy-idempotente`, `sync-log-status`) e deram 53 testes verdes. Não rodei `tsc`, a suíte completa nem o build.

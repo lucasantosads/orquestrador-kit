@@ -1,0 +1,7 @@
+ src/app/dashboard/performance/page.tsx | 181 +++++++++------------------------
+ test/estados-crm-fin-perf.test.ts      |  16 +--
+ test/lote-b3-2-periodo.test.ts         |  30 ++++--
+ test/performance-coleta-ui.test.ts     |  22 ++--
+ test/performance-seletores.test.ts     |  58 ++++++-----
+ test/trafego-carteira.test.tsx         |   7 +-
+ 6 files changed, 120 insertions(+), 194 deletions(-)

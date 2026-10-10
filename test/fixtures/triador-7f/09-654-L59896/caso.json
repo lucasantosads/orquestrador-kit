@@ -1,0 +1,12 @@
+{
+ "id": "654",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/654-conta-contrato-dedup.md",
+ "ticket_sha": "64c6b2240b0c128f6c7d1340f84163cacaba039f",
+ "ticket_antes": true,
+ "linha_bloqueio": 59896,
+ "log_inicio": 59795,
+ "fim": "2026-09-26T16:54:42Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/654.pre-requeue-26set"
+}

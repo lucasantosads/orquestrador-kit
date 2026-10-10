@@ -1,0 +1,33 @@
+O ticket 860 está implementado e commitado (`4e2c500`), sem push. Falha da Evolution não vira mais "(sem nome na Evolução)": o script sai com código 1 e o webhook grava a mensagem com `grupo_nome` null.
+
+**O que mudou**
+- **`grupos.ts`:** `ListarGruposResult` ganhou `status?: number`, preenchido no ramo `!res.ok`. Nada mais mudou no arquivo.
+- **`nome-grupo-cache.ts`:**
+  - `resolverNomeDoGrupo` devolve `{ok:true, nome}` só quando a Evolution respondeu 200, e `{ok:false, status, motivo}` em qualquer falha.
+  - `nomeDoGrupo` mantém a assinatura e nunca lança. Em falha, faz `console.error('[nome-grupo-cache] ...')` com o código HTTP (ou "sem status" e o motivo), devolve null e não grava nada no cache.
+  - O cache negativo de 10 min vale só para 200 sem o jid.
+- **`backfill-grupo-nome.ts`:** o `nomeDoGrupo` injetado devolve o resultado discriminado. No primeiro `{ok:false}` o backfill lança erro antes de qualquer update.
+- **`scripts/backfill-grupo-nome.ts`:**
+  - `credenciaisEvolutionFaltando(env)` devolve só os nomes das envs vazias, só com espaço ou com "SENSITIVE".
+  - `rodarBackfill(argv, env, deps)` checa as credenciais antes de `criarDb` e devolve 1 se faltar alguma.
+  - Em falha, imprime "Evolution respondeu <status>" (com dica de credencial ou instância para 401, 403 e 404) ou "Evolution indisponivel: <motivo>", e devolve 1.
+  - `main()` só chama `process.exit(await rodarBackfill(...))`.
+- **Testes:**
+  - `test/wpp-evolution-credencial.test.ts` é novo, com 8 testes e a Evolution e o supabase mockados.
+  - `test/wpp-backfill-grupo-nome.test.ts`: o mock do `nomeDoGrupo` agora devolve o resultado discriminado, com comentário citando o ticket 860.
+  - `test/wpp-nome-grupo-cache.test.ts`: só ganhou um `console.error` silenciado no teste de erro HTTP, sem nova asserção.
+
+**Verificação**
+- `tsc` não tem erro fora do baseline de `qualificacao`.
+- Os 4 testes da allowlist e os testes de webhook, `c0-guard` e `fetch-json-teto` passam: 68 testes, 8 arquivos.
+- O diff soma 315 linhas, dentro do teto de 320.
+- A rota do webhook não foi editada, e não rodei o backfill nem chamei a Evolution real.
+
+**O que não rodei**
+- Não rodei a lista completa de consumidores nem todas as guardas globais, e também não rodei `npm run build`.
+- Os comandos de critério com awk ou prettier em pipe foram negados pelo ambiente, então não rodei o anti-afrouxamento nem a checagem de `SO_ALLOWLIST`.
+- Não apaguei `.next` antes do `tsc`, porque o `rm -rf` foi barrado.
+
+**Dois pontos**
+- O teste novo cobre o aborto com status 401, 403 e 404 e as envs vazias ou com "[SENSITIVE]", mas não a falha de rede nem `EVOLUTION_INSTANCE` vazia.
+- Para caber no teto, tirei do teste de item 1 a asserção de que a saída não contém "sem nome". Ela segue nos testes de 401, 403 e 404.

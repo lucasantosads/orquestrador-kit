@@ -1,0 +1,98 @@
+{
+ "id": "741",
+ "slug": "backtest-promessas-aquino",
+ "lane": "dados",
+ "perfil": "api",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 240 linhas (~110 em scripts/dados/741-backtest-promessas.ts NOVO, ~120 no teste NOVO test/backtest-promessas.test.ts). Se passar do teto, pare e reporte. FONTE: docs/planos/plano-vacuo-promessa-02out.md (plano aprovado em 02/10; as decisoes de 02/10 escritas la valem sobre o plano). Piloto so AQUINO ADV. PASSO 1: leia src/lib/promessas/detectar.ts (861) e scripts/dados/685-dono-dry-run.ts (molde de script de dados dry-run: como cria o client e le env). FAZER: (1) src/lib/promessas/detectar.ts NAO muda; se a deteccao nao tiver uma funcao pura que recebe as mensagens e devolve os candidatos, PARE e reporte (o backtest reaproveita a deteccao, nunca copia). (2) NOVO scripts/dados/741-backtest-promessas.ts: npx tsx scripts/dados/741-backtest-promessas.ts --cliente <uuid> [--dias 30]: le o vinculo vigente do cliente (SO SELECT), as mensagens do periodo, roda a mesma deteccao com chamarProvider e IMPRIME, por candidato: data, trecho do pedido, trecho da promessa, prazo, evidencia e se seria gravada ou descartada (e o motivo). Zero escrita: o client do script e embrulhado num leitor que lanca em insert/update/upsert/delete/rpc. Sem --cliente = erro de uso. (3) NOVO test/backtest-promessas.test.ts (mocks): com um db espiao, o backtest roda sobre 3 pares e faz ZERO chamada de escrita; o leitor lanca se alguem tentar escrever; a saida lista os 3 candidatos com o motivo de descarte quando houver. FORA DE ESCOPO: qualquer escrita, rodar contra producao no ticket",
+ "cria_novo": [
+  "scripts/dados/741-backtest-promessas.ts",
+  "test/backtest-promessas.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "scripts/dados/741-backtest-promessas.ts",
+  "test/backtest-promessas.test.ts"
+ ],
+ "dependencias": [
+  "861"
+ ],
+ "prioridade": 42,
+ "recon_esperado": [
+  {
+   "descricao": "scripts/dados/741-backtest-promessas.ts ainda nao existe",
+   "cmd": "test -e 'scripts/dados/741-backtest-promessas.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "test/backtest-promessas.test.ts ainda nao existe",
+   "cmd": "test -e 'test/backtest-promessas.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/lib/promessas/detectar.ts' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'scripts/dados/741-backtest-promessas.ts' 'test/backtest-promessas.test.ts'; do case \"$f\" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 240 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 240 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "piloto preservado: nenhuma linha nova escreve em wpp_grupo",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- src scripts | grep -E '^[+][^+]' | grep -cE 'wpp_grupo.*[.](insert|update|upsert)[(]|[.](insert|update|upsert)[(].*wpp_grupo'); [ \"$n\" = 0 ] && echo SEM_ESCRITA_GRUPO || echo ESCREVE_GRUPO_$n",
+   "espera": "SEM_ESCRITA_GRUPO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde (test/backtest-promessas.test.ts)",
+   "cmd": "test -f test/backtest-promessas.test.ts && npx vitest run test/backtest-promessas.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "backtest nao escreve: nenhuma chamada de escrita no script",
+   "cmd": "f=scripts/dados/741-backtest-promessas.ts; [ -f $f ] || { echo AUSENTE; exit 0; }; w=$(grep -E '[.](insert|update|upsert|delete|rpc)[(]' $f | grep -vc 'throw\\|lanca\\|bloque'); [ \"$w\" = 0 ] && echo SO_LEITURA || echo ESCREVE_$w",
+   "espera": "SO_LEITURA"
+  },
+  {
+   "descricao": "avaliador: o backtest roda a mesma deteccao do 861 sobre o historico do cliente pedido, imprime cada candidato com prazo, evidencia e motivo de descarte, e nao escreve nada (espiao confirma). REPROVE se: copia a regra de deteccao; escreve em qualquer tabela; roda sem --cliente.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "_objetivo_cortado_na_fixture": 4603
+}

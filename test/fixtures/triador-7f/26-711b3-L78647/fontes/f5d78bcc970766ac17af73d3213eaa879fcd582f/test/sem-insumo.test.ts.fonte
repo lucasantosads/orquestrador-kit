@@ -1,0 +1,360 @@
+import { describe, it, expect } from 'vitest'
+import { readFileSync, existsSync } from 'node:fs'
+import { join } from 'node:path'
+import {
+  estadoScoreSaude,
+  corScoreSaude,
+  estadoEmRisco,
+  corEmRisco,
+  contarAvaliadosRisco,
+  estadoNps,
+  corNps,
+  corVariacaoNps,
+  serieTemPonto,
+  temValor,
+  COR_NEUTRA,
+  MOTIVO_SEM_CALCULO,
+  MOTIVO_NAO_AVALIADO,
+  MOTIVO_SEM_RESPOSTAS,
+} from '@/components/estados/sem-insumo'
+
+// ============================================================================
+// Ticket 096 — "sem insumo → travessão com motivo" em três superfícies.
+//
+// Duas metades, de propósito:
+//
+//   (A) COMPORTAMENTO — as funções puras decidem certo, inclusive nos cenários
+//       exatos que estavam quebrados (score default 50, "0 em risco" sobre base
+//       não avaliada, NPS 0 pintado de detrator).
+//
+//   (B) FIAÇÃO — as superfícies REALMENTE consomem essas funções, e o insumo
+//       que elas exigem realmente chega até lá. A reprovação anterior deste
+//       ticket foi exatamente isso: a lógica pura estava certa, mas o campo
+//       `risco_churn` era lido por cast de uma lista que não o carrega, então
+//       na tela nada funcionava. Teste de função pura não pega esse defeito;
+//       varredura de origem pega. Molde: test/ui-guard.test.ts.
+// ============================================================================
+
+const SRC = 'src'
+const CLIENTES = join(SRC, 'app', 'dashboard', 'clientes')
+
+function ler(...partes: string[]): string {
+  return readFileSync(join(...partes), 'utf8')
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// (A) COMPORTAMENTO
+// ────────────────────────────────────────────────────────────────────────────
+
+describe('superfície 1 — score de saúde', () => {
+  it('score medido atravessa intacto (cálculo com dado real não muda)', () => {
+    for (const n of [0, 12, 39, 40, 69, 70, 100]) {
+      const e = estadoScoreSaude(n)
+      expect(temValor(e)).toBe(true)
+      expect(e).toEqual({ tipo: 'valor', valor: n })
+    }
+  })
+
+  it('score ausente vira sem_insumo com motivo — nunca 50, 60 ou 40', () => {
+    for (const vazio of [null, undefined, NaN]) {
+      const e = estadoScoreSaude(vazio)
+      expect(e).toEqual({ tipo: 'sem_insumo', motivo: MOTIVO_SEM_CALCULO })
+    }
+  })
+
+  it('score 0 é um score, não uma ausência', () => {
+    // Regressão: `?? 50` e `|| 50` tratariam 0 como vazio. 0 é uma medição
+    // legítima (cliente com saúde péssima) e tem que aparecer como 0 vermelho.
+    expect(estadoScoreSaude(0)).toEqual({ tipo: 'valor', valor: 0 })
+    expect(corScoreSaude(0)).toBe('text-red-400')
+  })
+
+  it('faixas de cor idênticas às anteriores quando há score', () => {
+    // Valores de fronteira das faixas que já existiam em scoreClasse():
+    // >= 70 verde, >= 40 amarelo, resto vermelho.
+    expect(corScoreSaude(70)).toBe('text-green-400')
+    expect(corScoreSaude(69)).toBe('text-yellow-400')
+    expect(corScoreSaude(40)).toBe('text-yellow-400')
+    expect(corScoreSaude(39)).toBe('text-red-400')
+  })
+
+  it('score ausente não recebe classe de cor de status', () => {
+    for (const vazio of [null, undefined, NaN]) {
+      expect(corScoreSaude(vazio)).toBe(COR_NEUTRA)
+    }
+  })
+})
+
+describe('superfície 2 — KPI "Em Risco"', () => {
+  const avaliada = { avaliados: 12, total: 30 }
+  const naoAvaliada = { avaliados: 0, total: 30 }
+
+  it('contagem real aparece — e NUNCA é sobreposta por "Não avaliado"', () => {
+    // Núcleo da reprovação anterior: o wiring conseguia fixar "Não avaliado"
+    // por cima de uma contagem > 0. Aqui isso é impossível por construção —
+    // valor > 0 retorna antes de qualquer guarda de avaliação, inclusive com
+    // avaliação desconhecida (null) e até com sem_dados marcado.
+    expect(estadoEmRisco({ valor: 7, sem_dados: false }, null)).toEqual({ tipo: 'valor', valor: 7 })
+    expect(estadoEmRisco({ valor: 7, sem_dados: false }, naoAvaliada)).toEqual({ tipo: 'valor', valor: 7 })
+    expect(estadoEmRisco({ valor: 1, sem_dados: true }, naoAvaliada)).toEqual({ tipo: 'valor', valor: 1 })
+  })
+
+  it('risco_churn null em toda a base → "Não avaliado", nunca 0', () => {
+    const e = estadoEmRisco({ valor: 0, sem_dados: false }, naoAvaliada)
+    expect(e).toEqual({ tipo: 'sem_insumo', motivo: MOTIVO_NAO_AVALIADO })
+  })
+
+  it('zero medido sobre base avaliada é 0 de verdade, em cinza', () => {
+    const e = estadoEmRisco({ valor: 0, sem_dados: false }, avaliada)
+    expect(e).toEqual({ tipo: 'valor', valor: 0 })
+    // "nunca 0 verde": zero não ganha cor de alerta nem de saudável.
+    expect(corEmRisco(e)).toBe(COR_NEUTRA)
+  })
+
+  it('avaliação desconhecida (leitura não resolveu) não vira "zero avaliados"', () => {
+    // null = ainda não sei. Afirmar "ninguém em risco" aqui seria inventar.
+    const e = estadoEmRisco({ valor: 0, sem_dados: false }, null)
+    expect(e).toEqual({ tipo: 'sem_insumo', motivo: MOTIVO_SEM_CALCULO })
+    expect(estadoEmRisco({ valor: 0, sem_dados: false }, undefined).tipo).toBe('sem_insumo')
+  })
+
+  it('base vazia e KPI ausente também são sem_insumo', () => {
+    expect(estadoEmRisco({ valor: 0, sem_dados: true }, avaliada).tipo).toBe('sem_insumo')
+    expect(estadoEmRisco(null, avaliada)).toEqual({ tipo: 'sem_insumo', motivo: MOTIVO_SEM_CALCULO })
+  })
+
+  it('só contagem > 0 recebe cor de alerta', () => {
+    expect(corEmRisco({ tipo: 'valor', valor: 3 })).toBe('text-orange-400')
+    expect(corEmRisco({ tipo: 'valor', valor: 0 })).toBe(COR_NEUTRA)
+    expect(corEmRisco({ tipo: 'sem_insumo', motivo: MOTIVO_NAO_AVALIADO })).toBe(COR_NEUTRA)
+  })
+
+  it('contarAvaliadosRisco conta só risco de fato classificado', () => {
+    const linhas = [
+      { risco_churn: 'alto' },
+      { risco_churn: 'baixo' },
+      { risco_churn: null },
+      { risco_churn: '' }, // registro antigo grava string vazia: não é classificação
+    ]
+    // 2 de 4: 'alto' e 'baixo'. null e '' não são avaliação.
+    expect(contarAvaliadosRisco(linhas)).toEqual({ avaliados: 2, total: 4 })
+    expect(contarAvaliadosRisco([])).toEqual({ avaliados: 0, total: 0 })
+    expect(contarAvaliadosRisco([{ risco_churn: null }, { risco_churn: null }]))
+      .toEqual({ avaliados: 0, total: 2 })
+  })
+})
+
+describe('superfície 3 — NPS', () => {
+  it('0 respostas → sem_insumo, mesmo com a rota devolvendo 0', () => {
+    // /api/team/nps calcula `total > 0 ? media : 0`. Esse 0 é neutro de
+    // divisão, não uma nota — e antes caía na faixa "< 7" = vermelho.
+    expect(estadoNps(0, 0)).toEqual({ tipo: 'sem_insumo', motivo: MOTIVO_SEM_RESPOSTAS })
+    expect(corNps(0, 0)).toBe(COR_NEUTRA)
+  })
+
+  it('nota real com amostra > 0 atravessa intacta e mantém as faixas', () => {
+    expect(estadoNps(8.4, 12)).toEqual({ tipo: 'valor', valor: 8.4 })
+    // Faixas idênticas às do corScore() anterior: >= 9 verde, >= 7 amarelo.
+    expect(corNps(9, 1)).toBe('text-green-400')
+    expect(corNps(8.9, 1)).toBe('text-yellow-400')
+    expect(corNps(7, 1)).toBe('text-yellow-400')
+    expect(corNps(6.9, 1)).toBe('text-red-400')
+  })
+
+  it('nota 0 com respondente real continua sendo detrator vermelho', () => {
+    // O que se corrigiu foi o 0 SEM amostra. Com 1 resposta nota 0, o
+    // vermelho é a leitura correta e não pode ter sido perdido.
+    expect(estadoNps(0, 1)).toEqual({ tipo: 'valor', valor: 0 })
+    expect(corNps(0, 1)).toBe('text-red-400')
+  })
+
+  it('amostra negativa ou valor não-finito também são sem_insumo', () => {
+    expect(estadoNps(5, -1).tipo).toBe('sem_insumo')
+    expect(estadoNps(null, 3).tipo).toBe('sem_insumo')
+    expect(estadoNps(NaN, 3).tipo).toBe('sem_insumo')
+    expect(corNps(null, 3)).toBe(COR_NEUTRA)
+  })
+
+  it('variação sem período anterior fica neutra', () => {
+    expect(corVariacaoNps(null)).toBe(COR_NEUTRA)
+    expect(corVariacaoNps(0)).toBe(COR_NEUTRA)
+    expect(corVariacaoNps(2)).toBe('text-green-400')
+    expect(corVariacaoNps(-2)).toBe('text-red-400')
+  })
+
+  it('série sem nenhum ponto medido não tem eixo para desenhar', () => {
+    expect(serieTemPonto([{ media: null }, { media: null }])).toBe(false)
+    expect(serieTemPonto([])).toBe(false)
+    expect(serieTemPonto([{ media: null }, { media: 8.1 }])).toBe(true)
+    // 0 é uma média medida, não ausência de ponto.
+    expect(serieTemPonto([{ media: 0 }])).toBe(true)
+  })
+})
+
+// ────────────────────────────────────────────────────────────────────────────
+// (B) FIAÇÃO — as superfícies consomem mesmo, e o insumo chega mesmo
+// ────────────────────────────────────────────────────────────────────────────
+
+describe('fiação — superfície 1 na ficha e em /clientes/risco', () => {
+  const fichaTypes = ler(CLIENTES, '[id]', 'tabs', 'ficha-types.ts')
+  const ficha = ler(CLIENTES, '[id]', 'page.tsx')
+  const risco = ler(CLIENTES, 'risco', 'page.tsx')
+
+  it('ClienteExtra.saude_score é nulável — a origem do default 50', () => {
+    // O default nascia AQUI: tipado `number`, o campo obrigava quem montasse
+    // um ClienteExtra sem linha na fonte a inventar um número.
+    expect(fichaTypes).toMatch(/saude_score:\s*number\s*\|\s*null/)
+  })
+
+  it('a ficha não inventa mais score ao montar o extra sintético', () => {
+    expect(ficha).not.toMatch(/saude_score:\s*(40|50|60)\b/)
+    expect(ficha).toMatch(/saude_score:\s*null/)
+  })
+
+  it('o prompt da IA não recebe mais score fabricado', () => {
+    expect(ficha).not.toMatch(/saude_score\s*\?\?\s*(40|50|60)\b/)
+    // ticket 296 RECALCULA esta asserção: a fonte do prompt deixou de ser
+    // clientes_extra.saude_score — é o mesmo health do cockpit, resolvido uma
+    // única vez no shell (mesmo valor que alimenta o cabeçalho).
+    expect(ficha).toContain('estadoScoreSaude(health?.score ?? null)')
+  })
+
+  it('o header recebe estado resolvido, não um número cru', () => {
+    // ticket 296 RECALCULA este literal: o cartão de identidade (que
+    // substituiu este header, ver ticket 268) passou a receber o health
+    // resolvido uma única vez no shell, não mais clientes_extra.saude_score
+    // lido isolado por esta tela.
+    expect(ficha).toContain('score={estadoScoreSaude(health?.score ?? null)}')
+    // ticket 390 RECALCULA: header-cliente.tsx foi excluído (sem importador
+    // desde o ticket 268 — IdentidadeCliente, em geral-tab.tsx, é quem
+    // recebe o score/corScoreSaude/SemDado hoje). O objeto desta asserção
+    // deixou de existir; a prova agora é a ausência do arquivo no disco.
+    expect(existsSync(join(CLIENTES, '[id]', 'tabs', 'header-cliente.tsx'))).toBe(false)
+  })
+
+  it('/clientes/risco renderiza score e risco ausentes com motivo', () => {
+    expect(risco).toContain('estadoScoreSaude(c.score_saude)')
+    // ticket 711a RECALCULA: o score antigo na tela de risco perdeu a cor (o sinal de cor
+    // agora vem so da regra do Inicio); a asserção passa a exigir a AUSENCIA de corScoreSaude.
+    expect(risco).not.toContain('corScoreSaude')
+    expect(risco).toContain('MOTIVO_NAO_AVALIADO')
+    // O travessão solto (sem motivo, sem cinza garantido) saiu das colunas
+    // de score e de risco.
+    expect(risco).not.toContain('{c.score_saude ?? "—"}')
+    expect(risco).not.toContain('{c.risco_churn ?? "—"}')
+  })
+})
+
+describe('fiação — superfície 2: o insumo de "Em Risco" existe de verdade', () => {
+  const carteira = ler(CLIENTES, 'page.tsx')
+  const rotaRisco = ler(SRC, 'app', 'api', 'clientes', 'risco', 'route.ts')
+  const libRisco = ler(SRC, 'lib', 'clientes', 'risco.ts')
+  const rotaLista = ler(SRC, 'app', 'api', 'dashboard', 'clientes', 'route.ts')
+
+  it('a carteira busca a avaliação de risco numa rota própria', () => {
+    expect(carteira).toContain('fetch("/api/clientes/risco")')
+    expect(carteira).toContain('contarAvaliadosRisco(d.clientes)')
+  })
+
+  it('essa rota REALMENTE lê e devolve risco_churn', () => {
+    // Sem esta asserção o wiring volta a ser fé: a reprovação anterior leu o
+    // campo de uma lista que não o carrega. Aqui se prova a cadeia inteira —
+    // a query seleciona, a lib tipa, e o item devolvido expõe.
+    expect(rotaRisco).toMatch(/\.select\([^)]*risco_churn/)
+    expect(libRisco).toMatch(/interface ClienteRiscoItem[\s\S]*?risco_churn:\s*string\s*\|\s*null/)
+    expect(libRisco).toMatch(/risco_churn:\s*riscoChurn/)
+  })
+
+  it('a lista da própria tela NÃO traz risco_churn — por isso a outra rota', () => {
+    // /api/dashboard/clientes seleciona só campos de cadastro. Derivar
+    // avaliação de risco daqui (com ou sem cast) devolveria undefined em
+    // todas as linhas e fixaria "Não avaliado" para sempre.
+    const select = rotaLista.match(/from\("clientes_receita"\)\.select\("([^"]*)"\)/)
+    expect(select, 'o select de clientes_receita mudou de forma').not.toBeNull()
+    expect(select![1]).not.toContain('risco_churn')
+  })
+
+  it('o caminho do KPI não passa por cast de tipo', () => {
+    // A reprovação anterior lia risco_churn por `as unknown as` de uma linha
+    // da lista da tela. Todo símbolo do caminho novo tem que estar tipado de
+    // ponta a ponta — se um cast reaparecer aqui, isto quebra.
+    const suspeitas = carteira
+      .split('\n')
+      .filter((l) => /riscoAvaliacao|contarAvaliadosRisco|estadoEmRisco|RespostaListaRisco/.test(l))
+      .filter((l) => l.includes('as unknown as') || /\bas\s+(LinhaRiscoChurn|AvaliacaoRisco)\b/.test(l))
+    expect(suspeitas, `cast no caminho do KPI:\n${suspeitas.join('\n')}`).toEqual([])
+  })
+
+  it('o badge de risco por linha nunca inventa classificação', () => {
+    // Caso pré-existente, deliberadamente NÃO reescrito: o badge por linha lê
+    // risco_churn do snapshot solto de raw_properties (que a rota espalha com
+    // `...raw`), não da coluna canônica. Não dá pra provar estaticamente se o
+    // campo vem ou não, e trocar a fonte exigiria mexer na rota, que está fora
+    // da allowlist deste ticket.
+    //
+    // O que SIM se garante: ele já é honesto — ausente vira "Sem análise" em
+    // badge neutro, e a cor de status só é aplicada depois do early return,
+    // portanto nunca sobre um valor possivelmente nulo.
+    expect(carteira).toContain('if (!risco) return <Badge variant="outline"')
+    const linhaCor = carteira
+      .split('\n')
+      .find((l) => l.includes('RISCO_CHURN_COLORS[risco]'))
+    expect(linhaCor, 'a linha que colore o badge de risco sumiu').toBeDefined()
+    // A cor é indexada por `risco` já estreitado para string não-vazia.
+    expect(linhaCor!).not.toContain('as unknown as')
+  })
+
+  it('o card "Em Risco" renderiza pelo estado, com a contagem real preservada', () => {
+    expect(carteira).toContain('estadoEmRisco(healthKpis.em_risco, riscoAvaliacao)')
+    expect(carteira).toContain('corEmRisco(')
+    // O ternário antigo pintava direto de `valor > 0` sem saber se houve
+    // avaliação; ele não pode ter sobrevivido.
+    expect(carteira).not.toContain('healthKpis.em_risco.valor > 0 ? "text-orange-400" : ""')
+  })
+
+  it('o KPI ainda é a única fonte da contagem — a avaliação só desempata o 0', () => {
+    // Blindagem contra a regressão inversa da reprovação: se alguém trocar a
+    // contagem exibida pela contagem de avaliados, isto quebra.
+    expect(carteira).not.toMatch(/valor:\s*riscoAvaliacao/)
+    expect(carteira).not.toContain('riscoAvaliacao.avaliados}')
+  })
+})
+
+describe('fiação — superfície 3: NPS', () => {
+  const nps = ler(CLIENTES, 'nps', 'page.tsx')
+
+  it('o helper de cor que recebia number cru saiu', () => {
+    expect(nps).not.toMatch(/function corScore\s*\(/)
+    expect(nps).not.toMatch(/function corVariacao\s*\(/)
+    expect(nps).toContain('corNps(')
+    expect(nps).toContain('corVariacaoNps(')
+  })
+
+  it('toda chamada de corNps passa a amostra junto do valor', () => {
+    const chamadas = nps.match(/corNps\(([^)]*)\)/g) ?? []
+    expect(chamadas.length, 'nenhuma chamada de corNps encontrada').toBeGreaterThan(0)
+    for (const c of chamadas) {
+      expect(c.split(',').length, `corNps sem amostra: ${c}`).toBe(2)
+    }
+  })
+
+  it('0 respostas troca cards e distribuição por EmptyState', () => {
+    expect(nps).toContain('const semRespostas = respostas <= 0')
+    expect(nps).toContain('MOTIVO_SEM_RESPOSTAS')
+    // Duas trocas: bloco dos 4 cards da Visão Geral e o gráfico de pizza.
+    const trocas = nps.match(/semRespostas \? \(\s*<EmptyState/g) ?? []
+    expect(trocas.length).toBe(2)
+  })
+
+  it('a evolução só desenha eixo se houver ponto medido', () => {
+    expect(nps).toContain('serieTemPonto(data.visaoGeral.evolucao)')
+    expect(nps).toContain('evolucaoTemPonto ? (')
+  })
+
+  it('a média geral passa pelo estado antes de ser formatada', () => {
+    expect(nps).toContain('estadoNps(data.visaoGeral.mediaGeral, respostas)')
+    expect(nps).toContain('estadoNps(data.visaoGeral.npsClassico, respostas)')
+    // `.toFixed` direto no valor da rota era o que imprimia "0.0" vermelho.
+    expect(nps).not.toContain('data.visaoGeral.mediaGeral.toFixed(1)')
+  })
+})

@@ -1,0 +1,116 @@
+{
+ "id": "346d",
+ "slug": "trafego-carteira-consolida",
+ "onda": 4,
+ "frente": "F4",
+ "camada": "UI",
+ "serie": null,
+ "tam": "M",
+ "objetivo": "CONTEXTO: o 346c montou a aba Carteira AO LADO do Comparativo, sem remover nada. Agora Trafego > Carteira vira UMA tela. Os 4 testes pre-existentes que travam o estado antigo de page.tsx estao NESTA allowlist porque esta fatia invalida assercao deles: test/performance-seletores.test.ts (14 expect desde o a4941bb: exige 1 role=\"group\" literal + 1 <SeletorPeriodo do funil, e os handlers mudarPeriodoFunil/setNumSemanas), test/performance-titulo.test.ts (5 expect), test/performance-coleta-ui.test.ts (48 expect, usa indexOf('<HistoricoSemanal')) e test/estados-crm-fin-perf.test.ts (34 expect, exige os 2 fetches e os 3 blocos do comparativo) — 101 expect somados, verdes hoje. FAZER: remover de page.tsx a aba Comparativo, os 3 blocos redundantes (FunilCard, HistoricoSemanal, MatrizSemanal) e os 2 seletores de periodo (o role=\"group\" do historico e o <SeletorPeriodo do funil), deixando UM periodo so, o usePeriodoUrl (motor padrao desde o 9ad7a3f, B3.2, que a CarteiraAba ja usa), e a Carteira como a tela. RECALCULO OBRIGATORIO, NUNCA AFROUXAMENTO: cada assercao invalidada pela saida do comparativo tem que ser RECALCULADA sob a regra nova, com um comentario acima dela explicando de onde veio o valor novo. PROIBIDO remover assercao, trocar toBe/toMatch por toBeDefined/toBeTruthy, usar skip/only, deletar teste ou deletar arquivo de teste. O piso de 88 expect nos 4 arquivos vem de 101 hoje menos no maximo 13 assercoes que perdem o SUJEITO com a saida do comparativo (9 anteriores + 4 do a4",
+ "pathspec_allowlist": [
+  "src/app/dashboard/performance/page.tsx",
+  "test/trafego-carteira.test.tsx",
+  "test/performance-seletores.test.ts",
+  "test/performance-titulo.test.ts",
+  "test/performance-coleta-ui.test.ts",
+  "test/estados-crm-fin-perf.test.ts",
+  "test/fetch-json-teto.test.ts",
+  "test/ui-guard.test.ts"
+ ],
+ "dependencias": [
+  "346c",
+  "humano:contas-meta-vinculadas"
+ ],
+ "recon_esperado": [
+  {
+   "descricao": "o comparativo ainda esta de pe na page (estado que esta fatia remove)",
+   "cmd": "( grep -q '<FunilCard' 'src/app/dashboard/performance/page.tsx' && grep -q '<MatrizSemanal' 'src/app/dashboard/performance/page.tsx' ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  },
+  {
+   "descricao": "a page tem hoje 1 role=\"group\" literal (historico) + 1 <SeletorPeriodo (funil), efeito do 9ad7a3f (B3.2)",
+   "cmd": "( test $(grep -c 'role=\"group\"' 'src/app/dashboard/performance/page.tsx') -eq 1 && test $(grep -c '<SeletorPeriodo' 'src/app/dashboard/performance/page.tsx') -eq 1 ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  },
+  {
+   "descricao": "os 4 testes da allowlist travam mesmo o estado antigo por inspecao de fonte",
+   "cmd": "( grep -q 'FunilCard data=' test/estados-crm-fin-perf.test.ts && grep -q 'setNumSemanas' test/performance-seletores.test.ts ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  },
+  {
+   "descricao": "os 4 testes somam 101 expect hoje (97 + 4 do a4941bb) — base do piso de 88 recalculado",
+   "cmd": "( test $(cat test/performance-seletores.test.ts test/performance-titulo.test.ts test/performance-coleta-ui.test.ts test/estados-crm-fin-perf.test.ts | grep -c 'expect(') -eq 101 ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  },
+  {
+   "descricao": "a page gasta hoje 3 chamadas cruas de .json(), que saem junto com o comparativo",
+   "cmd": "( test $(grep -c '\\.json()' 'src/app/dashboard/performance/page.tsx') -eq 3 ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "os 3 blocos redundantes do comparativo sairam da page",
+   "cmd": "( ! grep -q '<FunilCard' 'src/app/dashboard/performance/page.tsx' && ! grep -q '<HistoricoSemanal' 'src/app/dashboard/performance/page.tsx' && ! grep -q '<MatrizSemanal' 'src/app/dashboard/performance/page.tsx' ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  },
+  {
+   "descricao": "um periodo so: a page nao monta mais seletor proprio (0 role=\"group\" e 0 <SeletorPeriodo; o periodo da Carteira vive na CarteiraAba)",
+   "cmd": "( test $(grep -c 'role=\"group\"' 'src/app/dashboard/performance/page.tsx') -eq 0 && test $(grep -c '<SeletorPeriodo' 'src/app/dashboard/performance/page.tsx') -eq 0 ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  },
+  {
+   "descricao": "a aba do comparativo sumiu",
+   "cmd": "( ! grep -q 'value=\"analytics\"' 'src/app/dashboard/performance/page.tsx' ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  },
+  {
+   "descricao": "zero chamada crua de .json() na page (as 3 sairam; o teto ganha folga)",
+   "cmd": "( test $(grep -c '\\.json()' 'src/app/dashboard/performance/page.tsx') -eq 0 && grep -q 'fetchJson' 'src/app/dashboard/performance/page.tsx' ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  },
+  {
+   "descricao": "test/trafego-carteira.test.tsx (do 346c) segue verde depois da consolidacao",
+   "cmd": "( npx vitest run 'test/trafego-carteira.test.tsx' ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK"
+  },
+  {
+   "descricao": "GUARDA: os 4 testes acoplados verdes com as assercoes RECALCULADAS",
+   "cmd": "( npx vitest run test/performance-seletores.test.ts test/performance-titulo.test.ts test/performance-coleta-ui.test.ts test/estados-crm-fin-perf.test.ts ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "GUARDA: piso de 88 expect nos 4 (101 − 13 que perdem o sujeito (9 anteriores + 4 do a4941bb)) e zero skip/only",
+   "cmd": "( test $(cat test/performance-seletores.test.ts test/performance-titulo.test.ts test/performance-coleta-ui.test.ts test/estados-crm-fin-perf.test.ts | grep -c 'expect(') -ge 88 && ! grep -Eq '(it|test|describe)\\.(skip|only)' test/performance-seletores.test.ts test/performance-titulo.test.ts test/performance-coleta-ui.test.ts test/estados-crm-fin-perf.test.ts ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "GUARDA: os 4 seguem provando por inspecao de fonte (8+ readFileSync), nao viraram casca",
+   "cmd": "( test $(cat test/performance-seletores.test.ts test/performance-titulo.test.ts test/performance-coleta-ui.test.ts test/estados-crm-fin-perf.test.ts | grep -c 'readFileSync') -ge 8 ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "GUARDA: nenhuma assercao dos 4 foi rebaixada para toBeDefined/toBeTruthy",
+   "cmd": "( ! grep -Eq 'toBeDefined|toBeTruthy' test/performance-seletores.test.ts test/performance-titulo.test.ts test/performance-coleta-ui.test.ts test/estados-crm-fin-perf.test.ts ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "GUARDA: teto de .json() e ui-guard verdes, com as constantes cravadas (nenhuma foi afrouxada)",
+   "cmd": "( grep -q 'TETO_JSON_CRU = 682' test/fetch-json-teto.test.ts && test $(grep -cE '^const REGRA_(FONT_SIZE|EMOJI|NAV_COUNT|DADO|TIPO) = true$' test/ui-guard.test.ts) -eq 5 && npx vitest run test/fetch-json-teto.test.ts test/ui-guard.test.ts ) >/dev/null 2>&1 && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "avaliador: Trafego > Carteira e UMA tela — um periodo, uma lista, sem o comparativo redundante; os travessoes deram lugar a 'sem base'/'sem coleta' com denominador nomeado; zero cifra de MRR/mensalidade/LTV da agencia. ANTI-AFROUXAMENTO: compare o diff dos 4 testes acoplados e REPROVE se alguma assercao foi REMOVIDA em vez de RECALCULADA, se um toBe/toMatch virou toBeDefined/toBeTruthy, se um teste ou arquivo foi deletado, ou se um valor esperado mudou SEM comentario explicando de onde veio o numero novo sob a regra nova. REPROVE tambem se LoadingState/ErrorState, o timeout de 15s acionavel ou o console.error foram perdidos na reescrita",
+   "cmd": "true",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "desbloqueado 30/09 pelo Lucas: aceita trocar Comparativo pela Carteira com poucas contas vinculadas; spec refeita contra 9ad7a3f (usePeriodoUrl) e a4941bb (piso 101−13=88) | anterior: bloqueado a mao em 15/09: humano:contas-meta-vinculadas foi liberado (so a conta do Aquino, provisorio), mas esta fatia REMOVE a aba Comparativo que funciona hoje e substitui pela Carteira, que com 1 conta so mostra \"sem coleta\" para quase todo cliente. Diferente de 318a/318b (que degradam bem com poucos dados), aqui a troca e uma piora funcional no curto prazo. Nao recandidatar ate ter mais contas vinculadas -- decisao registrada apos mockup comparativo.",
+ "_objetivo_cortado_na_fixture": 4695
+}

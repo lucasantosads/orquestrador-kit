@@ -1,0 +1,40 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-744
+sanear_tsc: nao
+cmd:    b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- 'src/lib/perf/ghl-agencia.ts' 'src/lib/perf/crm-conexao.ts' 'src/lib/perf/crm-etapas.ts' 'src/app/api/clientes/[id]/crm/etapas/route.ts' 'src/app/api/clientes/[id]/crm/sincronizar/route.ts' | grep -E '^[+][^+]' | grep -cE '[?][?] *\[\]|[|][|] *\[\]'); [ "$n" = 0 ] && echo SEM_VAZIO_SILENCIOSO || echo VAZIO_SILENCIOSO_$n
+espera: SEM_VAZIO_SILENCIOSO
+-- saida --
+VAZIO_SILENCIOSO_1
+
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> PASS
+### criterio[9] -> PASS
+### criterio[10] -> PASS
+### criterio[11] -> PASS
+### criterio[12] -> PASS
+### criterio[13] -> PASS
+### criterio[14] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-744
+sanear_tsc: nao
+cmd:    a=$(grep -c 'export async function nomeDaConta' 'src/lib/perf/ghl-agencia.ts'); b=$(grep -c 'nomeDaConta' 'src/lib/perf/crm-conexao.ts'); c=$(grep -c 'location_nome: p.locationNome' 'src/lib/perf/crm-conexao.ts'); [ "$a" = 1 ] && [ "$b" -ge 1 ] && [ "$c" = 0 ] && echo NOME_OK || echo NOME_${a}_${b}_${c}
+espera: NOME_OK
+-- saida --
+NOME_1_2_1
+
+### criterio[15] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-744
+sanear_tsc: nao
+cmd:    f='src/lib/perf/crm-etapas.ts'; [ -f "$f" ] || { echo AUSENTE; exit 0; }; n=$(grep -oE "'(nao_iniciado|iniciado|concluido|erro)'" "$f" | sort -u | wc -l | tr -d ' '); [ "$n" = 4 ] && echo QUATRO_ESTADOS || echo ESTADOS_$n
+espera: QUATRO_ESTADOS
+-- saida --
+ESTADOS_0
+
+### criterio[16] (qualitativo — julgado pelo Opus)
+descricao: avaliador: GET devolve conta (nome, status, ultimo sync, backfill derivado das colunas) e pipelines com etapas na ordem do GHL; POST sincronizar roda o mesmo sync da conexao e devolve o estado novo, 502 com o motivo em erro; o sync preenche location_nome so quando nulo e reconectar sem nome nao apaga. REPROVE se: erro de leitura vira lista vazia ou totais 0; totais vem de outra consulta; nomeDaConta lanca ou derruba o sync; grava backfill_concluido_em ou inventa conclusao; escreve no GHL; le token fora de obterTokenLocation; copia a escolha de conexao em vez de conexaoViva.
+

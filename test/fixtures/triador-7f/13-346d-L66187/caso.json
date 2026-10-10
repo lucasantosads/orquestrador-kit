@@ -1,0 +1,12 @@
+{
+ "id": "346d",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/346d-trafego-carteira-consolida.md",
+ "ticket_sha": "8da96a22f6efbf26470182627b6e6a66e19ede6e",
+ "ticket_antes": true,
+ "linha_bloqueio": 66187,
+ "log_inicio": 66148,
+ "fim": "2026-10-01T16:31:58Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/346d"
+}

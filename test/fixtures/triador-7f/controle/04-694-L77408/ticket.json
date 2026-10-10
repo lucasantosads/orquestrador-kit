@@ -1,0 +1,131 @@
+{
+ "id": "694",
+ "slug": "api-inicio-resumo",
+ "lane": "produto",
+ "perfil": "api",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 540 linhas (~260 no loader NOVO src/lib/inicio/carregar-carteira.ts, ~50 na rota NOVA, ~30 em src/lib/contrato/fidelidade-fim.ts, ~190 no teste NOVO). Se passar do teto, pare e reporte. FONTE: docs/planos/plano-portal-gestor-30set.md (plano aprovado + adendo de decisoes de 30/09, que vale sobre o plano). PASSO 1: leia docs/roadmap/mockups/portal-gestor/inicio-gestor.dc.html (kpis e colunas da carteira), src/lib/inicio/sinais.ts (693), src/lib/clientes/quem-cuida.ts, src/lib/clientes/ativo.ts, src/lib/contrato/fidelidade-fim.ts, src/lib/wpp/interacao.ts (686), src/lib/whatsapp/equipe.ts, src/lib/tempo/minutos-uteis.ts, src/app/api/admin/organizacao/papel/route.ts (papelDe da sessao) e src/app/api/portal/meus-clientes/route.ts (o que NAO repetir: espelho do Notion). FAZER: (1) src/lib/contrato/fidelidade-fim.ts: NOVO export lerFimFidelidadeLote(db, clienteIds) com a MESMA regra (receita: data mais distante por cliente_id; sem ela, contrato mais recente por data_fechamento) em 2 leituras; lerFimFidelidade passa a chamar o lote com [id] (uma regra so). (2) vacuo (ajuste 02/10, plano docs/planos/plano-vacuo-promessa-02out.md): NAO crie nem mude src/lib/inicio/vacuo.ts; ele vem do 734 (carregarVacuos: regra unica de vacuo, com classificador de autor, feriados do banco e Tratado). contadores.grupos_esperando.valor = numero de vacuos de carregarVacuos(db, agoraISO, { clienteIds: <carteira> }) e mais_antigo_min = o maior minutos_uteis. (3) NOVO src/lib/inici",
+ "cria_novo": [
+  "src/lib/inicio/carregar-carteira.ts",
+  "src/app/api/portal/inicio/route.ts",
+  "test/inicio-resumo-api.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/lib/inicio/carregar-carteira.ts",
+  "src/app/api/portal/inicio/route.ts",
+  "src/lib/contrato/fidelidade-fim.ts",
+  "test/inicio-resumo-api.test.ts",
+  "test/selects-quebrados-28-09.test.ts"
+ ],
+ "dependencias": [
+  "693",
+  "686",
+  "691",
+  "humano:ddl-portal-inicio",
+  "humano:carteira-distribuida",
+  "734"
+ ],
+ "prioridade": 45,
+ "recon_esperado": [
+  {
+   "descricao": "src/app/api/portal/inicio/route.ts ainda nao existe",
+   "cmd": "test -e 'src/app/api/portal/inicio/route.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "lerFimFidelidade existe",
+   "cmd": "grep -c 'export async function lerFimFidelidade' src/lib/contrato/fidelidade-fim.ts",
+   "espera": "1"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes da allowlist verdes (recalculados, nunca afrouxados)",
+   "cmd": "fs=\"\"; for f in test/selects-quebrados-28-09.test.ts test/quem-cuida.test.ts test/gestor-fonte-unica.test.ts; do [ -f \"$f\" ] && fs=\"$fs $f\"; done; [ -z \"$fs\" ] && echo VERDE || { npx vitest run $fs >/dev/null 2>&1 && echo VERDE || echo VERMELHO; }",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum teste existente da allowlist perdeu it(/expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (contra o merge-base com staging-auto)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=NAO_AFROUXOU; for f in test/selects-quebrados-28-09.test.ts test/quem-cuida.test.ts test/gestor-fonte-unica.test.ts; do [ -f \"$f\" ] || { git cat-file -e \"$b:$f\" 2>/dev/null && r=APAGOU_$f; continue; }; for p in 'expect(' 'it('; do a=$(git show \"$b:$f\" 2>/dev/null | grep -cF \"$p\"); n=$(grep -cF \"$p\" \"$f\"); [ \"${n:-0}\" -ge \"${a:-0}\" ] || r=CAIU_$f; done; s0=$(git show \"$b:$f\" 2>/dev/null | grep -cE '\\.(skip|only|todo)\\('); s1=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"${s1:-0}\" -le \"${s0:-0}\" ] || r=SKIP_NOVO_$f; d0=$(git show \"$b:$f\" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' \"$f\"); [ \"${d1:-0}\" -le \"${d0:-0}\" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r",
+   "espera": "NAO_AFROUXOU",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/lib/inicio/carregar-carteira.ts' 'src/lib/inicio/vacuo.ts' 'src/app/api/portal/inicio/route.ts' 'src/lib/contrato/fidelidade-fim.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/app/api/portal/meus-clientes/route.ts' 'src/lib/clientes/quem-cuida.ts' 'src/lib/inicio/sinais.ts' 'src/lib/inicio/vacuo.ts' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/lib/inicio/carregar-carteira.ts' 'src/app/api/portal/inicio/route.ts' 'src/lib/contrato/fidelidade-fim.ts' 'test/inicio-resumo-api.test.ts' 'test/selects-quebrados-28-09.test.ts'; do case \"$f\" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 540 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 540 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde (test/inicio-resumo-api.test.ts)",
+   "cmd": "test -f test/inicio-resumo-api.test.ts && npx vitest run test/inicio-resumo-api.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "rota nao le o espelho do Notion nem clientes.gestor_id",
+   "cmd": "a=0; for f in src/app/api/portal/inicio/route.ts src/lib/inicio/carregar-carteira.ts; do [ -f $f ] || continue; a=$((a+$(grep -cE 'clientes_notion_mirror|meus-clientes' $f))); done; [ \"$a\" = 0 ] && echo SEM_ESPELHO || echo ESPELHO_$a",
+   "espera": "SEM_ESPELHO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "renovacao em lote pela mesma regra",
+   "cmd": "f=src/lib/contrato/fidelidade-fim.ts; grep -q 'export async function lerFimFidelidadeLote' $f && echo LOTE_EXPORTADO || echo NAO_TEM",
+   "espera": "LOTE_EXPORTADO"
+  },
+  {
+   "descricao": "loader usa carregarQuemCuida, isClienteAtivo, carregarVacuos (734) e avaliarCliente",
+   "cmd": "f=src/lib/inicio/carregar-carteira.ts; test -f $f || { echo AUSENTE; exit 0; }; n=0; for p in carregarQuemCuida isClienteAtivo avaliarCliente lerFimFidelidadeLote; do grep -q $p $f && n=$((n+1)); done; grep -q carregarVacuos $f && n=$((n+1)); [ $n = 5 ] && echo FONTES_UNICAS || echo FONTES_$n",
+   "espera": "FONTES_UNICAS"
+  },
+  {
+   "descricao": "avaliador: GET /api/portal/inicio devolve carimbos, Seu dia, 5 contadores e a carteira de quem pede com cor e motivo da regra do 693, renovacao da decisao 4, sem valor de contrato e sem espelho do Notion; CS ve todos os ativos. REPROVE se: segunda regra de dono, ativo ou equipe; falha vira lista vazia; promessa aparece como 0 antes do 716; mexeu na janela do radar.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "ajuste 02/10 (plano vacuo e promessa): o vacuo vem do 734 (src/lib/inicio/vacuo.ts sai da allowlist e de cria_novo); dependencia 734; teto de 600 para 540; promessas ligam com 739 a 742 (o 716 ficou obsoleto).",
+ "_objetivo_cortado_na_fixture": 6592
+}

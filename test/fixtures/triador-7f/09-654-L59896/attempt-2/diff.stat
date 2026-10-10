@@ -1,0 +1,5 @@
+ .../dashboard/clientes/[id]/tabs/contratual.tsx    | 27 ++++++++-----------
+ .../clientes/[id]/tabs/financeiro-tab.tsx          |  9 ++-----
+ .../clientes/[id]/tabs/resultados-tab.tsx          |  1 +
+ test/ficha-conta-contrato.test.ts                  | 30 ++++++++++++++++++++++
+ 4 files changed, 43 insertions(+), 24 deletions(-)

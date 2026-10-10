@@ -1,0 +1,116 @@
+{
+ "id": "898",
+ "slug": "alerta-saldo-meta",
+ "lane": "dados",
+ "perfil": "sql-proposta",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 130 linhas (~40 no .sql NOVO supabase/migrations/20261008121000_perf_cliente_verba.sql, ~80 no teste NOVO test/perf-cliente-verba-migration.test.ts). Se passar do teto, pare e reporte. DECISAO DO LUCAS (07/10, 19h): a referencia do alerta de verba e a verba cadastrada no Setup do OS em dois niveis: limite por conta de anuncio (perf_conta_metas.verba_teto_mes, ja existe) e limite total do cliente por mes (NAO existe). Este ticket e a PARTE 1 de 3 (898 migration, 898b Setup, 898c alerta): so escreve a migration da tabela do limite total; o loop nunca aplica DDL, quem aplica e o Lucas e depois libera humano:ddl-898. POR QUE TABELA NOVA e nao perf_cliente_meta_mensal.investimento_alvo: aquela linha e da Calculadora, por competencia (onConflict cliente_id,competencia_mes; teria de ser recadastrada todo mes), exige metrica_ancora e meta_valor, congela quando a meta e travada (409 em edicao) e significa investimento planejado, nao limite; hoje 0 preenchidos. O limite total e um valor fixo do cliente, como o verba_teto_mes da conta. PASSO 1: leia supabase/migrations/20260612_perf_conta_metas_verba_teto.sql, supabase/migrations/20260909000000_335b_nps_disparo_fila.sql (molde de RLS, policy idempotente e revoke), test/migrations-cabecalho-aplicada.test.ts (proibe 'nao aplicada' em qualquer grafia nas 5 primeiras linhas) e test/migrations-policy-idempotente.test.ts. FAZER: (1) NOVO supabase/migrations/20261008121000_perf_cliente_verba.sql. Cabecalho de comenta",
+ "cria_novo": [
+  "supabase/migrations/20261008121000_perf_cliente_verba.sql",
+  "test/perf-cliente-verba-migration.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "supabase/migrations/20261008121000_perf_cliente_verba.sql",
+  "test/perf-cliente-verba-migration.test.ts"
+ ],
+ "colunas_escritas": [
+  "perf_cliente_verba.cliente_id",
+  "perf_cliente_verba.verba_teto_mes",
+  "perf_cliente_verba.definido_por",
+  "perf_cliente_verba.updated_at"
+ ],
+ "dependencias": [],
+ "prioridade": 60,
+ "recon_esperado": [
+  {
+   "descricao": "nenhuma migration cria limite total de verba do cliente",
+   "cmd": "n=$(cat supabase/migrations/*.sql | grep -c 'perf_cliente_verba'); [ \"$n\" = 0 ] && echo SEM_TABELA || echo ST_$n",
+   "espera": "SEM_TABELA"
+  },
+  {
+   "descricao": "o limite por conta ja existe (verba_teto_mes em perf_conta_metas)",
+   "cmd": "grep -c 'alter table public.perf_conta_metas add column verba_teto_mes numeric' supabase/migrations/20260612_perf_conta_metas_verba_teto.sql",
+   "espera": "1"
+  },
+  {
+   "descricao": "investimento_alvo e por competencia da Calculadora (nao serve de limite fixo)",
+   "cmd": "grep -c 'onConflict: \"cliente_id,competencia_mes\"' src/app/api/perf/calculadora/meta/route.ts",
+   "espera": "1"
+  },
+  {
+   "descricao": "a migration e o teste novos ainda nao existem",
+   "cmd": "n=0; for f in supabase/migrations/20261008121000_perf_cliente_verba.sql test/perf-cliente-verba-migration.test.ts; do [ -e $f ] && n=$((n+1)); done; echo N$n",
+   "espera": "N0"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do printf '%s\\n' supabase/migrations/20261008121000_perf_cliente_verba.sql test/perf-cliente-verba-migration.test.ts | grep -Fxq \"$f\" || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum arquivo de src foi tocado (Setup e alerta sao 898b e 898c)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD -- src | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 130 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 130 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes que varrem supabase/migrations seguem verdes sem edicao",
+   "cmd": "npx vitest run test/c0-guard.test.ts test/migration-security-definer-anon.test.ts test/migrations-cabecalho-aplicada.test.ts test/migrations-policy-idempotente.test.ts test/sync-log-status.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "a migration cria a tabela com check > 0, RLS, policy guardada e revoke, sem nada destrutivo",
+   "cmd": "f=supabase/migrations/20261008121000_perf_cliente_verba.sql; [ -f $f ] || { echo AUSENTE; exit 0; }; c=$(grep -c 'create table if not exists public.perf_cliente_verba' $f); k=$(grep -cF 'check (verba_teto_mes > 0)' $f); r=$(grep -c 'alter table public.perf_cliente_verba enable row level security' $f); p=$(grep -c \"tablename = 'perf_cliente_verba'\" $f); v=$(grep -c 'revoke all on public.perf_cliente_verba from anon, authenticated' $f); x=$(grep -vE '^[[:space:]]*--' $f | grep -ciE 'drop |delete|truncate|grant|security definer|insert'); [ \"$c$k$r$p$v\" = 11111 ] && [ \"$x\" = 0 ] && echo MIGRATION_OK || echo ST_${c}${k}${r}${p}${v}_${x}",
+   "espera": "MIGRATION_OK"
+  },
+  {
+   "descricao": "cabecalho de proposta: APLICAR E HUMANO e token humano:ddl-898",
+   "cmd": "f=supabase/migrations/20261008121000_perf_cliente_verba.sql; [ -f $f ] || { echo AUSENTE; exit 0; }; a=$(grep -E '^--' $f | grep -ci 'APLICAR E HUMANO'); t=$(grep -E '^--' $f | grep -c 'humano:ddl-898'); [ \"$a\" -ge 1 ] && [ \"$t\" -ge 1 ] && echo CABECALHO_OK || echo ST_${a}_${t}",
+   "espera": "CABECALHO_OK"
+  },
+  {
+   "descricao": "teste novo verde (test/perf-cliente-verba-migration.test.ts)",
+   "cmd": "test -f test/perf-cliente-verba-migration.test.ts && npx vitest run test/perf-cliente-verba-migration.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "avaliador: o .sql so cria a tabela do limite total do cliente (cliente_id chave, verba_teto_mes > 0), com RLS only_service_role idempotente e revoke de anon e authenticated; o teste amarra isso. REPROVE se: tocou src/; usou perf_cliente_meta_mensal; policy sem guarda de pg_policies; DROP/DELETE/GRANT fora de comentario; cita tabela da C0; o ticket aplicou a migration.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/migrations-cabecalho-aplicada.test.ts",
+   "motivo": "le todo .sql de supabase/migrations; o cabecalho do novo nao pode dizer 'nao aplicada'; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/migrations-policy-idempotente.test.ts",
+   "motivo": "le todo .sql; o create policy novo vai dentro do bloco que consulta pg_policies com o mesmo nome e tabela; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/migration-security-definer-anon.test.ts",
+   "motivo": "le todo .sql; a migration nao cria funcao; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/c0-guard.test.ts",
+   "motivo": "varre migrations atras de tabela da C0; a migration nao cita nenhuma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/sync-log-status.test.ts",
+   "motivo": "le migrations para conferir o CHECK de perf_sync_logs; a migration nova nao toca perf_sync_logs; se quebrar, PARE e descreva"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 5781
+}

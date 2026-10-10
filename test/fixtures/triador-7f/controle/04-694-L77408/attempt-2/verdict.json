@@ -1,0 +1,4 @@
+{
+  "aprovado": false,
+  "motivo": "Recorte de head ausente: o objetivo pede que o head veja os clientes sem gestor (via responsaveisDoCliente), mas o filtro só usa cuidaDoCliente, que trata head como gestor. Além disso, ultima_mensagem_grupo_em usa ultima_equipe_em (última fala da equipe) em vez da última mensagem do grupo."
+}

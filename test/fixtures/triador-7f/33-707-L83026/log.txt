@@ -1,0 +1,41 @@
+82986	[2026-10-08 12:51:36-0300] drenagem: ticket 707 (5 pendentes restantes)
+82987	[orq 15:51:36] orquestrador iniciando · modo: real · once
+82988	[orq 15:51:36] preflight: validando infra (scripts, fila, env, claude)...
+82989	[orq 15:51:40] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+82990	[orq 15:51:46] preflight: ok
+82991	[orq 15:52:04]   evidência anterior preservada em attempt-1.prev2
+82992	[orq 15:52:04] === ticket 707 (aceite-inicio-e-head) — tentativa 1 · modo: real ===
+82993	[orq 15:52:06]   recon_esperado: ok (3 comando(s))
+82994	[orq 15:52:06]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/707/attempt-1/prompt.txt
+82995	[orq 15:52:06]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+82996	[orq 15:56:18]   diff cru salvo (320 linhas alteradas) · HEAD julgado 207a653d
+82997	[orq 15:56:19]   enforcement: ok
+82998	[orq 15:56:35]   gate tsc: ok (baseline)
+82999	[orq 15:57:05]   gate vitest: ok
+83000	[orq 15:57:29]   criterios mecânicos: ok
+83001	[orq 15:58:08]   gate build: ok
+83002	[orq 15:58:23] avaliador: REPROVADO — Afrouxou para passar: tabela de divergências inclui 'Promessa no prazo' e 'Meta atualizada às' sem decisão do adendo (só redação da tela). O teste filtra tipos para Vácuo/Promessa vencida, quebra tempoRotulo em partes e checa só 'Meta'. Isso devia ficar vermelho.
+83003	[orq 15:58:24] ticket 707: reprovado — retry 1/2. motivo: Afrouxou para passar: tabela de divergências inclui 'Promessa no prazo' e 'Meta atualizada às' sem decisão do adendo (só redação da tela). O teste filtra tipos para Vácuo/Promessa vencida, quebra tempoRotulo em partes e checa só 'Meta'. Isso devia ficar vermelho.
+83004	[orq 15:58:24]   evidência anterior preservada em attempt-2.prev2
+83005	[orq 15:58:24] === ticket 707 (aceite-inicio-e-head) — tentativa 2 · modo: real ===
+83006	[orq 15:58:24]   recon_esperado: ok (3 comando(s))
+83007	[orq 15:58:25]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/707/attempt-2/prompt.txt
+83008	[orq 15:58:25]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+83009	[orq 16:03:53]   diff cru salvo (476 linhas alteradas) · HEAD julgado f7bbebd5
+83010	[orq 16:03:53]   enforcement: ok
+83011	[orq 16:04:10]   gate tsc: ok (baseline)
+83012	[orq 16:04:29]   gate vitest: FALHA
+83013	[orq 16:04:29]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/707/attempt-2/gate-vitest.txt)
+83014	[orq 16:04:30] ticket 707: reprovado — retry 2/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/707/attempt-2/gate-vitest.txt)
+83015	[orq 16:04:30] === ticket 707 (aceite-inicio-e-head) — tentativa 3 · modo: real ===
+83016	[orq 16:04:31]   recon_esperado: ok (3 comando(s))
+83017	[orq 16:04:31]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/707/attempt-3/prompt.txt
+83018	[orq 16:04:31]   tentativa final: escalando modelo do executor para 'opus'
+83019	[orq 16:04:31]   chamando claude -p (headless, --model opus, timeout 1500s) no worktree...
+83020	[orq 16:07:03]   diff cru salvo (486 linhas alteradas) · HEAD julgado 0914e9b6
+83021	[orq 16:07:04]   enforcement: ok
+83022	[orq 16:07:20]   gate tsc: ok (baseline)
+83023	[orq 16:07:41]   gate vitest: FALHA
+83024	[orq 16:07:41]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/707/attempt-3/gate-vitest.txt)
+83025	[orq 16:07:41] ticket 707: motivo de reprova REPETIU — circuit breaker (por ticket)
+83026	[orq 16:07:41] ticket 707: BLOQUEADO sem gastar a próxima volta

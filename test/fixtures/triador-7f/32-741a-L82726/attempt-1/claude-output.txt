@@ -1,0 +1,22 @@
+`src/lib/promessas/detectar.ts` agora tem as três camadas, e o commit `30087ba` está em `frente/741a` (sem push). O ticket pede também `npm run build` e `vitest run` completo; eu não rodei nenhum dos dois.
+
+O que rodei, tudo verde:
+- `tsc` deu 3 erros, o mesmo baseline de antes.
+- `test/promessa-par.test.ts` passou sem nenhuma edição.
+- Os 5 testes dos chamadores (`avisos-operacao`, `avisos-renovacao-nps`, `aviso-comarka-pro`, `eventos-resposta-grupo`, `avisos-vacuo`) e as 7 guardas globais passaram, junto com o teste novo.
+- O arquivo tem um único `.upsert(` e nenhum `insert`, `update`, `delete` ou `rpc`.
+- `avaliarCandidatos` não recebe `db`, e `detectarPromessas` mantém a assinatura e a janela de 24h.
+
+Não rodei os critérios que comparam com o merge-base de `origin/staging-auto` (sem SQL, só allowlist, orçamento de diff, nenhuma escrita em `wpp_grupo`). O diff soma 388 linhas (195 em `detectar.ts` e 193 no teste), dentro do teto de 400.
+
+**As camadas**
+- **`carregarInsumoPromessas(db, janela)`:** só faz SELECT. Com `clienteId` filtra os grupos desse cliente, e sem grupo vinculado devolve insumo vazio sem ler mensagens.
+- **`avaliarCandidatos(insumo, chamar, teto)`:** é pura. Devolve uma `AvaliacaoPromessa` por candidato, com decisão `gravar`, `descartar`, `falha` ou `fora_do_teto` e o motivo. A decisão `gravar` leva a linha pronta de `perf_promessas`, com as mesmas colunas de antes.
+- **`gravarPromessas(db, avaliacoes)`:** é a única escrita, um upsert por avaliação `gravar`, com try/catch.
+- **`detectarPromessas`:** só compõe as três. O resumo sai igual: `fora_do_teto` conta em `candidatos` e não em `chamadas`, e a exceção do modelo conta em `falhas`.
+
+**Teste novo, `test/promessas-avaliar-pura.test.ts`:** tem um `it` por item (a) a (d).
+- **Valores do resumo no (c):** medi os quatro cenários no código antigo antes de refatorar e fixei os valores no teste, cada um com comentário citando 741a. Os cenários são promessa válida, evidência fora do texto, exceção do modelo e 5 candidatos com teto 3.
+- **Item (b):** um banco espião que registra `insert`, `update`, `upsert`, `delete` e `rpc` mostra zero escrita em carregar e avaliar.
+
+Um detalhe do teste: `beforeEach(() => chamar.mockReset())` devolve o próprio mock, e o vitest o chama como limpeza, o que quebrava o item (a). Por isso o teste novo usa chaves nesse `beforeEach`. O teste antigo tem o mesmo padrão, mas não quebra.

@@ -1,0 +1,12 @@
+{
+ "id": "932",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/932-ranking-foto-mensal-ddl.md",
+ "ticket_sha": "75c684742f7fdc61a7f424819aa43c2179cb8865",
+ "ticket_antes": true,
+ "linha_bloqueio": 85272,
+ "log_inicio": 85237,
+ "fim": "2026-10-09T20:29:43Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/932"
+}

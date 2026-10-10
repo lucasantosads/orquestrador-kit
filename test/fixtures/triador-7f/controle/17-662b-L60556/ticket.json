@@ -1,0 +1,87 @@
+{
+ "id": "662b",
+ "slug": "metas-realizado-leads-do-perf",
+ "lane": "produto",
+ "perfil": "api",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 150 linhas (~40 em src/app/api/metas/_realizado.ts, ~30 em testes existentes, ~80 no teste NOVO test/metas-realizado-leads-perf.test.ts). Se passar de 450, pare e reporte. O QUE ESTA ERRADO (recon 26/09; main e staging-auto 43dd751 iguais): calcularRealizado case leads -> realizadoContagemLeads(p, \"created_at\") (src/app/api/metas/_realizado.ts:116-117 e :64-79), que conta perf_leads ativo por created_at, sem paginacao. A cascata ja soma perf_insights_daily.leads (src/app/api/perf/metas/cascata/route.ts:120-130). realizadoInvestimento (src/app/api/metas/_realizado.ts:81-111) ja resolve as contas (perf_ad_accounts ativo e em_uso, por cliente_id) e soma perf_insights_daily.gasto no mes, sem paginacao. Consumidores: src/app/api/metas/route.ts e src/app/api/metas/por-gestor/route.ts:153. PASSO 1: leia src/app/api/metas/_realizado.ts inteiro, src/lib/list/fetchAll.ts:40-75 (fetchAllPaged lanca em erro), src/app/api/perf/metas/cascata/route.ts:110-135, test/metas.test.ts:130-160 e :360-380, test/metas-por-gestor.test.tsx:180-210. FAZER: (1) leads passa a somar perf_insights_daily.leads nas mesmas contas e no mesmo mes que realizadoInvestimento (extraia a resolucao de contas numa funcao local usada pelos dois); sem contas -> sem_insumo com MOTIVO_SEM_CONTA_ADS; sem linha no mes -> sem_insumo com MOTIVO_SEM_SYNC_ADS; clienteIds vazio -> sem_insumo MOTIVO_SEM_CLIENTES como hoje; (2) as duas leituras de perf_insights_daily (gasto e leads) passam por fetchAllPa",
+ "cria_novo": [
+  "test/metas-realizado-leads-perf.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/app/api/metas/_realizado.ts",
+  "test/metas.test.ts",
+  "test/metas-por-gestor.test.tsx",
+  "test/metas-cascata.test.ts",
+  "test/metas-realizado-leads-perf.test.ts"
+ ],
+ "dependencias": [],
+ "prioridade": 30,
+ "recon_esperado": [
+  {
+   "descricao": "leads conta perf_leads por created_at",
+   "cmd": "grep -c 'return realizadoContagemLeads(p, \"created_at\")' 'src/app/api/metas/_realizado.ts'",
+   "espera": "1"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 em src/",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -c '^src/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes da allowlist verdes (recalculados, nunca afrouxados)",
+   "cmd": "fs=\"\"; for f in test/metas.test.ts test/metas-por-gestor.test.tsx test/metas-cascata.test.ts; do [ -f \"$f\" ] && fs=\"$fs $f\"; done; [ -z \"$fs\" ] && echo VERDE || { npx vitest run $fs >/dev/null 2>&1 && echo VERDE || echo VERMELHO; }",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum teste existente da allowlist perdeu it(/expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (contra o merge-base com staging-auto)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=NAO_AFROUXOU; for f in test/metas.test.ts test/metas-por-gestor.test.tsx test/metas-cascata.test.ts; do [ -f \"$f\" ] || { git cat-file -e \"$b:$f\" 2>/dev/null && r=APAGOU_$f; continue; }; for p in 'expect(' 'it('; do a=$(git show \"$b:$f\" 2>/dev/null | grep -cF \"$p\"); n=$(grep -cF \"$p\" \"$f\"); [ \"${n:-0}\" -ge \"${a:-0}\" ] || r=CAIU_$f; done; s0=$(git show \"$b:$f\" 2>/dev/null | grep -cE '\\.(skip|only|todo)\\('); s1=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"${s1:-0}\" -le \"${s0:-0}\" ] || r=SKIP_NOVO_$f; d0=$(git show \"$b:$f\" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' \"$f\"); [ \"${d1:-0}\" -le \"${d0:-0}\" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r",
+   "espera": "NAO_AFROUXOU",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "leads nao conta mais perf_leads por created_at",
+   "cmd": "n=$(grep -c 'realizadoContagemLeads(p, \"created_at\")' 'src/app/api/metas/_realizado.ts'); [ \"$n\" = 0 ] && echo LEADS_PERF || echo LEADS_CRM",
+   "espera": "LEADS_PERF"
+  },
+  {
+   "descricao": "leitura de insights paginada",
+   "cmd": "a=$(grep -c 'fetchAllPaged' 'src/app/api/metas/_realizado.ts'); b=$(grep -cE 'select\\(\"[^\"]*leads' 'src/app/api/metas/_realizado.ts'); [ \"$a\" -ge 1 ] && [ \"$b\" -ge 1 ] && echo PAGINADO || echo PAG_$a.$b",
+   "espera": "PAGINADO"
+  },
+  {
+   "descricao": "teste novo verde",
+   "cmd": "test -f test/metas-realizado-leads-perf.test.ts && npx vitest run test/metas-realizado-leads-perf.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "avaliador: o realizado de leads da tela Metas bate com a soma de leads da coleta das contas do escopo no mes (mesma fonte da cascata); sem coleta aparece sem base com motivo; mql/sql inalterados. REPROVE se: le perf_leads para leads; soma sem paginacao; valor esperado de teste trocado sem recalculo explicado; assercao removida.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "RECON 26/09 (auditoria de producao, achado 5b). Nenhum ticket cobre. Testes que citam o modulo: metas 21 (:145/:155 quebram por construcao), metas-por-gestor 6 (:189/:207), metas-cascata 13. pauta-1a1 casou por substring meta_vs_realizado: fora. Nenhuma tabela C0.",
+ "_objetivo_cortado_na_fixture": 3127
+}

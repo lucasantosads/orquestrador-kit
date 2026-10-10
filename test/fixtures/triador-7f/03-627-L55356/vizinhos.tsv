@@ -1,0 +1,3 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+627	docs/fila/runs/627/attempt-1.prev1	test/travessao-mudo.test.ts	936	2026-09-25T14:36:04Z	1
+627	docs/fila/runs/627/attempt-2	test/travessao-mudo.test.ts	936	2026-09-25T14:38:07Z	1

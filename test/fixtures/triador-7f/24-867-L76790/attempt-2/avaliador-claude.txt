@@ -1,0 +1,1 @@
+{"aprovado": false, "motivo": "Pulso cumpre a opcao 1 e nao sobrou escrita, mas acao-unica-ficha-controles mudou duas assercoes fora da lista fechada: PUBLICADOS.length de 16 para 15 (~:87) e o Set size de 13 para 12 (:121). O recalculo esta certo e comentado, mas o criterio reprova assercao fora da lista; precisa autorizacao do Lucas."}

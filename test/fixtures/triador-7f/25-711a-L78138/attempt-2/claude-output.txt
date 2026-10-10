@@ -1,0 +1,23 @@
+Parei sem escrever código, porque o ticket 711a tem uma contradição que não consigo resolver dentro da allowlist.
+
+**O conflito**
+- O critério "score antigo sem cor na tela de risco e na lista de risco" falha se `corScoreSaude` aparecer em `risco/page.tsx` ou `lista-risco-bloco.tsx`.
+- O teste `test/sem-insumo.test.ts:237` exige `expect(risco).toContain('corScoreSaude(c.score_saude)')` sobre `src/app/dashboard/clientes/risco/page.tsx`. Ele está dentro de "/clientes/risco renderiza score e risco ausentes com motivo".
+- Esse teste está fora da allowlist, e o ticket diz para parar se um teste fora dela quebrar.
+
+**Evidência**
+- O `gate-vitest.txt` da tentativa 1 mostra exatamente essa falha: 1 teste vermelho em 8136, `test/sem-insumo.test.ts:237`. O resto da suíte passou, com 802 arquivos verdes.
+- A tentativa 1 cumpriu o critério e removeu `corScoreSaude` da página de risco. Isso reprovou o gate do vitest.
+- Não dá para cumprir os dois lados. A string literal ou existe no arquivo ou não existe.
+
+**Estado do worktree**
+O worktree `orq-comarka-711a` está limpo em `550faf5`, sem nenhum commit do 711a. O trabalho da tentativa 1 não está aqui.
+
+**Decisão para você**
+A saída mais simples é incluir `test/sem-insumo.test.ts` na allowlist do 711a. Eu recalcularia a asserção da linha 237 com um comentário citando o 711a, por exemplo `expect(risco).not.toContain('corScoreSaude')`. Isso respeita a regra de recalcular sob a regra nova, sem remover nem afrouxar.
+
+Há uma segunda opção: relaxar o critério "score antigo sem cor" para aceitar o import sem uso. Eu não recomendo, porque contradiz o objetivo do ticket.
+
+Também há outros testes que citam `corScoreSaude`: `resumo-score-fonte-unica`, `cartao-topo-renovacao`, `visao-sem-cockpit-antigo` e `cadastro-colapsavel`. Pelo log da tentativa 1 eles passaram, porque leem a ficha, que é do 711b.
+
+Com a allowlist ajustada, refaço o 711a do zero: a rota de sinais, a coluna da carteira, a tela e a lista de risco, e o teste novo.

@@ -1,0 +1,3 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+671d	docs/fila/runs/671d/attempt-1	test/cadastro-colapsavel.test.ts	996	2026-09-26T23:19:58Z	1
+671d	docs/fila/runs/671d/attempt-1	test/cartao-topo-renovacao.test.ts	1014	2026-09-26T23:19:58Z	1

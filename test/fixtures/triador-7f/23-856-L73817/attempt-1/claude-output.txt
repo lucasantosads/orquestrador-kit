@@ -1,0 +1,19 @@
+Parei: a remoção da tela está commitada (`d394691`), mas `test/rotas-orfas.test.ts` quebrou e ele não está na allowlist.
+
+**O que o commit contém**
+- `page.tsx` e `error.tsx` de `super-admin` apagados. `components.tsx` ficou, como o ticket pede.
+- `test/regra19.test.ts` perdeu só a entrada D33 da tela.
+- `test/error-boundaries-rotas-lote6.test.ts` perdeu só a linha do `error.tsx` removido.
+- `test/remove-super-admin.test.ts` é novo e afirma que a rota não existe e que nenhum href ou redirect de `src` aponta para ela. Passou.
+- O diff soma 206 linhas (35 adicionadas, 171 removidas), dentro do teto de 350.
+- O `tsc` dá 3 erros, igual ao baseline.
+
+**O que quebrou**
+- `test/rotas-orfas.test.ts:257`, no teste "prova de vermelho: rota fora da allowlist e sem href aparece como órfã": `/dashboard/super-admin: expected [...] to include '/dashboard/super-admin'`.
+- A linha 157 desse arquivo ainda lista `/dashboard/super-admin` em `RESTRICTED_ROUTES`. Com a rota apagada, ela não aparece mais entre as órfãs e o teste falha.
+- Não toquei nesse arquivo, porque o ticket manda parar quando um teste fora da allowlist quebra.
+- Para destravar, o ticket precisa incluir `test/rotas-orfas.test.ts` na allowlist. A correção seria tirar a rota da lista restrita e recalcular a contagem esperada, com comentário citando o 856.
+
+**Fora do escopo, para ciência**
+- `test/c0-guard.test.ts:241` ainda exclui o diretório `super-admin` da varredura de receita. Como `components.tsx` ainda está lá, o guard segue verde. Isso muda quando o ticket seguinte apagar o `components.tsx`.
+- Não rodei `npm run build`, nem a suíte completa do `vitest`, nem o `rm -rf .next` (o comando foi negado por permissão). Rodei só 13 arquivos de teste: o novo, os dois editados, os sete guardas globais e três arquivos que citam `super-admin`. Dos 13, só o `rotas-orfas` falhou.

@@ -1,0 +1,21 @@
+O bloco "Responder agora" está implementado e commitado (`4339519`), com `tsc` de volta no baseline de 3 erros. Não rodei `npm run build` nem a suíte completa do vitest. Rodei só o teste novo, as guardas globais e as guardas de tela da ficha: 12 arquivos, 120 testes verdes.
+
+**Correção da reprovação:** o erro fora do baseline era `TS7016` no teste, por falta de tipos para `react-dom/server`. Passei a carregar o módulo com `createRequire`, como o `test/carteira-sort.test.ts` já faz. Isso criou um segundo problema. O vitest não lê JSX ao importar um `.tsx`, então o teste compila o componente real com esbuild (mesmo truque do `carteira-sort`) e usa um `fetchJson` de mentira, sem rede.
+
+**O que entrou (3 arquivos, +294 linhas, dentro do teto de 400):**
+- **`src/components/relacao/responder-agora.tsx` (novo):**
+  - O bloco não aparece sem itens e sem autores não identificados.
+  - Cada linha tem tempo em `font-mono`, "úteis sem resposta", rótulo "Vácuo", trecho, autor e as 3 ações.
+  - Sem `clienteId`, a linha também mostra o nome do cliente com link para a ficha.
+  - Sucesso em qualquer ação tira só aquela linha, via `removerItem`.
+  - O erro do 422 aparece na própria linha sem sumir com ela.
+  - Falha de leitura mostra "Não foi possível carregar a fila de resposta" com o motivo.
+  - Autores não identificados viram uma linha discreta com o link "Identificar" para `/portal/equipe`.
+- **`page.tsx` da ficha:** 2 linhas adicionadas, nenhuma removida. O import e a montagem de `<ResponderAgora clienteId={String(id)} />` ficam depois de `IdentidadeCliente` e antes de `ContaNovaSugestao`.
+- **`test/relacao-responder-tela.test.ts` (novo):** 8 testes, sem JSX, cobrindo os pontos pedidos no ticket.
+
+**Desvio do ticket:** as ações usam `fetch` direto em vez de `fetchJson`, porque `fetchJson` descarta o corpo do erro. Sem isso, o 422 "Cliente sem gestor principal" não chegaria à tela. O corpo é lido com `JSON.parse(await res.text())`, então não entra nenhum `.json()` novo.
+
+**Gate:** não consegui rodar `rm -rf .next` (negado por permissão). O `tsc` rodou numa worktree sem `.next` e deu 3 erros, os de `qualificacao`.
+
+Não fiz push.

@@ -1,0 +1,174 @@
+ ✓ test/retencao-rota.test.ts (9 tests) 38ms
+ ✓ test/cliente-nichos-rota.test.ts (9 tests) 33ms
+ ✓ test/orquestrador-enforcement.test.ts (27 tests) 22ms
+ ✓ test/equipe-scorecard.test.tsx (4 tests) 11ms
+ ✓ test/ingest-ghl.test.ts (7 tests) 31ms
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes-extra/[id] > exceção do logAudit não muda o status da resposta
+[clientes-extra PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-635/test/audit-log-rotas.test.ts:258:36
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > POST: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-635/test/audit-log-rotas.test.ts:293:36
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > PATCH: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-635/test/audit-log-rotas.test.ts:309:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/[id]/crm-config PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-635/test/audit-log-rotas.test.ts:336:36
+
+stderr | test/audit-log-rotas.test.ts > PUT /api/clientes/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/crm-config PUT] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-635/test/audit-log-rotas.test.ts:363:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/perfil-obs > exceção do logAudit não muda o status da resposta
+[clientes/[id]/perfil-obs PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-635/test/audit-log-rotas.test.ts:392:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/registros/[registroId] > exceção do logAudit não muda o status da resposta
+[registros PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-635/test/audit-log-rotas.test.ts:432:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/tarefas-kanban > exceção do logAudit não muda o status da resposta
+[tarefas-kanban POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-635/test/audit-log-rotas.test.ts:459:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/clientes/relatorio-config (ativo=true) > exceção do logAudit não muda o status da resposta
+[clientes/relatorio-config POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-635/test/audit-log-rotas.test.ts:486:36
+ ✓ test/jobs-status.test.ts (13 tests) 20ms
+ ✓ test/portal-perfil-servidor.test.ts (11 tests) 17ms
+ ✓ test/registros-timeline.test.ts (8 tests) 31ms
+ ✓ test/nps-links-lote.test.ts (13 tests) 51ms
+ ✓ test/churn-motivo-obrigatorio.test.ts (14 tests) 22ms
+stderr | test/ficha-resolucao-chave.test.ts > GET /api/perf/cockpit/[id] — adota o resolvedor do ticket 094 > falha na resolução da chave vira mensagem humana e acentuada, não o e.message cru
+[perf/cockpit] falha ao resolver chave do cliente: Error: connection terminated unexpectedly
+    at Object.maybeSingle (/Users/lucasantos/Projetos/_worktrees/orq-comarka-635/test/ficha-resolucao-chave.test.ts:48:28)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-635/test/ficha-resolucao-chave.test.ts:110:17
+ ✓ test/abas-montadas.test.ts (3 tests) 4ms
+ ✓ test/carteira-view.test.ts (3 tests) 4ms
+ ✓ test/wpp-desvincular-grupo.test.ts (5 tests) 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/cartao-topo-setup-e-closer.test.ts > aviso de Closer e Tempo de casa vira uma linha (488d) > o aviso do CRM segue como FonteIndisponivel
+AssertionError: expected '"use client";\n\n\nexport function li…' to contain 'campos="Pipelines e etapas do CRM"'
+
+- Expected
++ Received
+
+- campos="Pipelines e etapas do CRM"
++ "use client";
++
++
++ export function linhaEstadoPainel(
++       </div>
++     </FichaProvider>
++   );
++ }
++
+
+ ❯ test/cartao-topo-setup-e-closer.test.ts:63:21
+     61|
+     62|   it("o aviso do CRM segue como FonteIndisponivel", () => {
+     63|     expect(jsxPage).toContain('campos="Pipelines e etapas do CRM"');
+       |                     ^
+     64|   });
+     65| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  test/conta-crm-sem-contradicao.test.ts > Conta: CRM sem contradição (ticket 635) > crm.tsx não existe
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/conta-crm-sem-contradicao.test.ts:36:53
+     34|
+     35|   it("crm.tsx não existe", () => {
+     36|     expect(existsSync(join(FICHA, "tabs/crm.tsx"))).toBe(false);
+       |                                                     ^
+     37|   });
+     38|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  test/conta-crm-sem-contradicao.test.ts > Conta: CRM sem contradição (ticket 635) > nenhum href ?aba=conta&sub=config na ficha
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "/Users/lucasantos/Projetos/_worktrees/orq-comarka-635/src/app/dashboard/clientes/[id]/tabs/crm.tsx",
++ ]
+
+ ❯ test/conta-crm-sem-contradicao.test.ts:53:21
+     51|   it("nenhum href ?aba=conta&sub=config na ficha", () => {
+     52|     const achados = arquivos(FICHA).filter((f) => readFileSync(f, "utf…
+     53|     expect(achados).toEqual([]);
+       |                     ^
+     54|   });
+     55|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  test/ghl-um-lugar-so.test.ts > GHL configurado em um lugar só (ticket 262) > crm.tsx não existe mais: o estado da conexão mora no badge do cartão
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/ghl-um-lugar-so.test.ts:61:38
+     59|   it('crm.tsx não existe mais: o estado da conexão mora no badge do ca…
+     60|     // Ticket 635: o estado conectado/desconectado já está no badge de…
+     61|     expect(existsSync(CRM_TAB_PATH)).toBe(false)
+       |                                      ^
+     62|     expect(pageSrc).not.toMatch(/<CrmTab/)
+     63|     expect(configTabSrc).toContain('Desconectado')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  test/ghl-um-lugar-so.test.ts > GHL configurado em um lugar só (ticket 262) > nenhum link encaminha para a aba Configurações: a configuração vive no cartão do CRM
+AssertionError: expected '"use client";\n\n// Ticket 262: o for…' not to contain 'crm-config-forward-link'
+
+- Expected
++ Received
+
+- crm-config-forward-link
++ "use client";
++
++ // Ticket 262: o formulário de vínculo GHL (location + ID manual) foi removido
++ // daqui — duplicava o bloco "Conexão CRM (GoHighLevel)" da aba Configurações,
++       </a>
++     </div>
++   );
++ }
++
+
+ ❯ test/ghl-um-lugar-so.test.ts:68:27
+     66|   it('nenhum link encaminha para a aba Configurações: a configuração v…
+     67|     // Ticket 635: o link apontava para o bloco config, hoje vazio; a …
+     68|     expect(crmTabSrc).not.toContain('crm-config-forward-link')
+       |                           ^
+     69|     expect(crmTabSrc).not.toMatch(/sub=config/)
+     70|     expect(configTabSrc).toContain('CRM (GoHighLevel)')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  3 failed | 568 passed (571)
+      Tests  5 failed | 5924 passed (5929)
+   Start at  23:09:33
+   Duration  25.88s (transform 36.04s, setup 0ms, import 89.91s, tests 21.05s, environment 55ms)
+

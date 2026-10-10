@@ -1,0 +1,4 @@
+{
+  "aprovado": false,
+  "motivo": "fmt/fmtInt (ClientePerfPanel, perf-block) devolvem SEM_BASE em vez de null, e quem chama não decide o caso. Células da ScoreBreakdown e do CPMQL usam 'sem base' em vez de SemDado compacto. previewValor sem status cai no motivo de orçamento."
+}

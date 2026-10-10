@@ -1,0 +1,113 @@
+{
+ "id": "559",
+ "slug": "aceite-aba-conta",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "ORCAMENTO DE DIFF: teto declarado de 600 linhas, todas no teste NOVO test/conta-aceite.test.tsx (50 it( de ~10 linhas cada, mais cabecalho e leitura das fontes e do mockup). Se passar de 600, pare e reporte em vez de entregar. MOCKUP DA ABA: docs/roadmap/mockups/ficha/conta.dc.html (leia antes de mexer; o que o ticket entrega segue o mockup; divergencia com decisao registrada em liberacoes.json segue a decisao e fica anotada no teste). Escreva test/conta-aceite.test.tsx (NOVO test/conta-aceite.test.tsx), o teste de ACEITE da aba Conta da ficha do cliente contra o MOCKUP OFICIAL docs/roadmap/mockups/ficha/conta.dc.html e a decisao-conta-estrutura (5 secoes nesta ordem: Contrato e entregas; Resultados do escritório; Conexões; Cadastro; Operação, recolhida). Este ticket NAO corrige tela: se um item falhar porque a tela ainda nao cumpre, o teste fica vermelho, o ticket reprova e a lista de it( vermelhos e o entregavel. PASSO 1: leia o mockup inteiro; leia src/app/dashboard/clientes/[id]/page.tsx (ramo grupoAtivo === \"conta\" e os marcadores de secao do 531), _components/secao-conta.tsx, tabs/config-tab.tsx, tabs/financeiro-tab.tsx, tabs/escopo-bloco.tsx, tabs/resultados-tab.tsx, tabs/qualificacao-cliente-bloco.tsx, tabs/onboarding-tab.tsx, tabs/contratual.tsx, _components/conexoes-relacao.tsx (do 550), _components/kpis-visao.tsx e os testes que ja fazem o mesmo tipo de verificacao: test/visao-aceite-mockup.test.tsx (522), test/conta-bugs-reais.test.ts (553), test/conta-contrato-e-",
+ "pathspec_allowlist": [
+  "test/conta-aceite.test.tsx"
+ ],
+ "cria_novo": [
+  "test/conta-aceite.test.tsx"
+ ],
+ "dependencias": [
+  "558",
+  "625",
+  "626",
+  "humano:mockups-ficha-na-staging"
+ ],
+ "prioridade": 20,
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 em src/",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -c '^src/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "o teste de aceite le o mockup oficial e a fonte real da aba Conta",
+   "cmd": "grep -q 'readFileSync' test/conta-aceite.test.tsx 2>/dev/null && grep -qF 'conta.dc.html' test/conta-aceite.test.tsx && grep -q 'page.tsx' test/conta-aceite.test.tsx && echo MOCKUP_E_FONTE_LIDOS || echo SEM_LEITURA",
+   "espera": "MOCKUP_E_FONTE_LIDOS"
+  },
+  {
+   "descricao": "teste novo sem JSX (vitest do repo nao transforma JSX)",
+   "cmd": "test -f test/conta-aceite.test.tsx && ! grep -qE 'return <|\\(<[A-Z]|= <[A-Z]' test/conta-aceite.test.tsx && echo SEM_JSX || echo JSX_OU_AUSENTE",
+   "espera": "SEM_JSX"
+  },
+  {
+   "descricao": "cada nome do grupo secoes (7) aparece no arquivo",
+   "cmd": "m=0; for n in 'secoes: Contrato e entregas' 'secoes: Resultados do escritorio' 'secoes: Conexoes' 'secoes: Cadastro' 'secoes: Operacao recolhida' 'secoes: ordem das cinco' 'secoes: titulo numerado com ponto medio'; do grep -qF \"$n\" test/conta-aceite.test.tsx 2>/dev/null || m=$((m+1)); done; [ $m = 0 ] && echo NOMES_OK || echo FALTAM_$m",
+   "espera": "NOMES_OK"
+  },
+  {
+   "descricao": "cada nome do grupo contrato (8) aparece no arquivo",
+   "cmd": "m=0; for n in 'contrato: quadro Contrato Inicio START Vigencia Pacote Renovacao' 'contrato: Escopo e entregaveis com Vincular pacote' 'contrato: Entregaveis nenhum cadastrado com Adicionar' 'contrato: Observacoes do closer' 'contrato: Documentos com Enviar documento' 'contrato: Escopo e Documentos lado a lado' 'contrato: vincular pacote sem passar pelo onboarding' 'contrato: prova de entrega depois da grade'; do grep -qF \"$n\" test/conta-aceite.test.tsx 2>/dev/null || m=$((m+1)); done; [ $m = 0 ] && echo NOMES_OK || echo FALTAM_$m",
+   "espera": "NOMES_OK"
+  },
+  {
+   "descricao": "cada nome do grupo resultados (9) aparece no arquivo",
+   "cmd": "m=0; for n in 'resultados: filtro com os tres ultimos meses e o atual marcado' 'resultados: Ultimos 3 meses Desde o inicio Personalizado' 'resultados: filtros Tese e Origem' 'resultados: Registrar fechamento no cabecalho' 'resultados: Registrar fechamento em painel lateral' 'resultados: cartoes Contratos fechados Faturamento em contrato Caixa previsto' 'resultados: LTV e Vincular receita' 'resultados: tabela com as sete colunas' 'resultados: Estes numeros alimentam com os seis destinos e a nota'; do grep -qF \"$n\" test/conta-aceite.test.tsx 2>/dev/null || m=$((m+1)); done; [ $m = 0 ] && echo NOMES_OK || echo FALTAM_$m",
+   "espera": "NOMES_OK"
+  },
+  {
+   "descricao": "cada nome do grupo conexoes (7) aparece no arquivo",
+   "cmd": "m=0; for n in 'conexoes: Meta Ads com Sincronizar agora' 'conexoes: conta Meta com act_id Sync em dia e ultimo insight' 'conexoes: Vincular outra conta e Google Ads so com conta' 'conexoes: CRM GoHighLevel com Conectar com o GoHighLevel' 'conexoes: Mapeamento de etapas do pipeline com Conta como' 'conexoes: Grupo de WhatsApp so link com Trocar' 'conexoes: Link de coleta do NPS com Copiar link e Regenerar'; do grep -qF \"$n\" test/conta-aceite.test.tsx 2>/dev/null || m=$((m+1)); done; [ $m = 0 ] && echo NOMES_OK || echo FALTAM_$m",
+   "espera": "NOMES_OK"
+  },
+  {
+   "descricao": "cada nome do grupo cadastro (3) aparece no arquivo",
+   "cmd": "m=0; for n in 'cadastro: Contatos com Novo contato' 'cadastro: Setup com percentual e Abrir setup' 'cadastro: seis passos com os rotulos do mockup'; do grep -qF \"$n\" test/conta-aceite.test.tsx 2>/dev/null || m=$((m+1)); done; [ $m = 0 ] && echo NOMES_OK || echo FALTAM_$m",
+   "espera": "NOMES_OK"
+  },
+  {
+   "descricao": "cada nome do grupo operacao (2) aparece no arquivo",
+   "cmd": "m=0; for n in 'operacao: Onboarding recolhido so leitura para ativo' 'operacao: Auditoria recolhida'; do grep -qF \"$n\" test/conta-aceite.test.tsx 2>/dev/null || m=$((m+1)); done; [ $m = 0 ] && echo NOMES_OK || echo FALTAM_$m",
+   "espera": "NOMES_OK"
+  },
+  {
+   "descricao": "cada nome do grupo ausentes (10) aparece no arquivo",
+   "cmd": "m=0; for n in 'ausente: Contas de Midia legado' 'ausente: GHL Subaccount ID manual' 'ausente: Resumo das ultimas conversas' 'ausente: Satisfacao percebida' 'ausente: formulario de fechamento aberto' 'ausente: mapeamento para status interno' 'ausente: Tarefas na aba Conta' 'ausente: Iniciar Onboarding para cliente ativo' 'ausente: caminho circular Escopo para Onboarding' 'ausente: indicadores da view mensal duplicando os cartoes'; do grep -qF \"$n\" test/conta-aceite.test.tsx 2>/dev/null || m=$((m+1)); done; [ $m = 0 ] && echo NOMES_OK || echo FALTAM_$m",
+   "espera": "NOMES_OK"
+  },
+  {
+   "descricao": "cada nome do grupo copy (4) aparece no arquivo",
+   "cmd": "m=0; for n in 'copy: sem base no lugar de zero nos cartoes' 'copy: Nenhum produto contratado sem travessao' 'copy: nenhum s/ dado nem travessao de ausencia na aba Conta' 'copy: Nenhum fechamento no periodo com Registrar fechamento'; do grep -qF \"$n\" test/conta-aceite.test.tsx 2>/dev/null || m=$((m+1)); done; [ $m = 0 ] && echo NOMES_OK || echo FALTAM_$m",
+   "espera": "NOMES_OK"
+  },
+  {
+   "descricao": "o arquivo tem pelo menos 50 it(",
+   "cmd": "n=$(grep -cE '^[[:space:]]*it\\(' test/conta-aceite.test.tsx 2>/dev/null); [ \"${n:-0}\" -ge 50 ] && echo ITENS_COMPLETOS || echo ITENS_FALTANDO",
+   "espera": "ITENS_COMPLETOS"
+  },
+  {
+   "descricao": "o aceite nao tem .skip/.only/.todo nem it.fails",
+   "cmd": "test -f test/conta-aceite.test.tsx && [ \"$(grep -cE '[.](skip|only|todo|fails)\\(' test/conta-aceite.test.tsx)\" = 0 ] && echo SEM_SKIP || echo TEM_SKIP_OU_AUSENTE",
+   "espera": "SEM_SKIP"
+  },
+  {
+   "descricao": "teste novo verde (test/conta-aceite.test.tsx): aceite da aba Conta: 5 secoes na ordem, presentes, ausentes e copy",
+   "cmd": "test -f test/conta-aceite.test.tsx && npx vitest run test/conta-aceite.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "nenhum arquivo de src mudou (ticket so de teste)",
+   "cmd": "[ \"$(git diff --name-only HEAD -- src | wc -l | tr -d ' ')\" = 0 ] && echo SO_TESTE || echo MEXEU_EM_SRC",
+   "espera": "SO_TESTE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "as cinco guardas globais seguem verdes (fetch-json-teto, consistencia-contagens, bloco-vazio-linha, abas-montadas, cartao-topo-perfil)",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "O teste de aceite da aba Conta tem um it( por item listado (50), cada um conferindo o texto no mockup oficial e depois na tela (nao so a existencia de uma string solta); as 5 secoes aparecem na ordem Contrato e entregas, Resultados do escritorio, Conexoes, Cadastro, Operacao (recolhida), com titulo numerado; as 4 divergencias da tabela seguem a coluna 'Aceite exige' com comentario; nenhum item foi afrouxado para passar.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "segunda rodada: 3 de 5 fechadas pelo 625 (ordem, vincular outra conta, cadastro 6 passos). Auditoria nenhum evento e mais 2 travessoes vao no 626 (dependencia nova). WhatsAppGruposSection nao e gap, ver nota na prosa. Reposto pendente 25/09.",
+ "_objetivo_cortado_na_fixture": 4298
+}

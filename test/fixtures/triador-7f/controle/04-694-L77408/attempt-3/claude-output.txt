@@ -1,0 +1,28 @@
+O ticket 694 está implementado e commitado em `frente/694`: 7 commits, nenhum push. Corrigi os dois pontos da reprovação anterior.
+
+**Correções da reprovação**
+- **Recorte do head:** agora o head recebe os clientes que não têm gestor principal, decidido por `responsaveisDoCliente` (`origem === "head"`), mais os clientes em que ele mesmo é o gestor principal. Isso fica em `src/lib/inicio/carregar-carteira.ts:59`. O teste cobre o caso: o head vê "Sem Gestor" e não vê os clientes do Gestor 1.
+- **`ultima_mensagem_grupo_em`:** passou a ser a mensagem mais recente dos grupos da carteira, de qualquer autor (uma leitura ordenada por data, limite 1). Antes era a última fala da equipe. O teste fixa isso com uma mensagem mais nova no grupo do que a da equipe.
+
+**O que foi entregue**
+- **`lerFimFidelidadeLote`** (`src/lib/contrato/fidelidade-fim.ts`): mesma regra de antes, em 2 leituras. `lerFimFidelidade` agora só chama o lote com `[id]`. Com um id só, o lote mantém a consulta por igualdade de antes e trata toda linha devolvida como daquele cliente. Sem isso, dois testes fora da allowlist (`leitura-relacao-gatilhos`, `leitura-relacao-motor`) quebravam, porque os dublês deles só reconhecem o filtro por igualdade.
+- **`carregarInicio`**: lê os clientes ativos, dono por `carregarQuemCuida`, vácuo por `carregarVacuos` do 734 (sem tocar em `vacuo.ts`), contato da equipe por `carregarInteracao`, e a cor por `avaliarCliente`.
+  - Promessas ficam desligadas (`PROMESSAS_LIGADAS = false`) e o contador sai "sem base" com o motivo, nunca zero.
+  - Tom fica `null`.
+  - A resposta média só aparece com 5 ou mais respostas registradas.
+  - Toda leitura que falha lança erro.
+- **`GET /api/portal/inicio`**: responde 401 sem sessão, deriva o papel por `papelDe`, e honra `view_as` só para diretor, head e admin. Falha de leitura vira 500 com o motivo. A resposta não traz valor de contrato.
+- **`test/inicio-resumo-api.test.ts`**: 9 testes, cobrindo tudo o que o ticket pede, mais o head e o CS.
+
+**Verificação**
+- tsc: 3 erros, o baseline, todos em `qualificacao*`.
+- `npx vitest run`: 793 arquivos e 8063 testes verdes, incluindo as 7 guardas globais.
+- `npm run build`: passou, e `/api/portal/inicio` aparece na lista de rotas.
+- Diff: 535 linhas, dentro do teto de 540.
+- Nenhum `.sql`, nenhum `.json()` novo, nenhum arquivo fora da allowlist. `test/selects-quebrados-28-09.test.ts` voltou a ficar idêntico à base.
+
+**Decisões que tomei e que vale conferir**
+- **Faixas de renovação:** `em_15` conta de 0 a 15 dias e `em_30` de 16 a 30, sem sobreposição, seguindo as faixas `d15`/`d30` do 693. Isso bate com a medição do plano ("5 em até 15, 4 entre 16 e 30"). Se a intenção era o `em_30` incluir os de 15, é uma linha para trocar.
+- **Conta com problema e "sem gasto ontem":** contei a conta que gastou nos 6 dias anteriores e zerou ontem, como sinal de campanha ativa sem entrega. Conta sem nenhum gasto na semana não entra.
+- **Diretor e admin** veem todos os ativos, como o CS. O CS segue com o comentário `decisao pendente humano:decisao-cs-inicio`.
+- **Mensagens dos grupos:** não li as "últimas 200 mensagens por grupo" que o ticket listava. O vácuo agora vem inteiro do 734, então a única mensagem que a rota precisa é a mais recente, para o carimbo.

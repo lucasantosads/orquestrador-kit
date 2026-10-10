@@ -1,0 +1,19 @@
+O ticket 744 está implementado e commitado (`2eea3ba`, sem push). A reprovação anterior (`VAZIO_SILENCIOSO_1`) estava num diff que não existia: a worktree não tinha nenhum arquivo do ticket, então escrevi tudo do zero.
+
+Verificações que rodei:
+- **tsc:** 3 erros, o baseline (dois em `src/app/api/perf/qualificacao-regras/`, um em `qualificacao-block.tsx`). Não rodei `rm -rf .next` porque o comando foi negado, e o filtro já descarta erros de `.next/`.
+- **Testes:** o teste novo passa (25 testes). As guardas globais e os testes existentes de GHL e conexão também passam (20 arquivos, 220 testes), sem edição.
+- **Critério reprovado:** nenhuma linha nova com `?? []`, `|| []` ou `.json()` em `src/`.
+- **Orçamento:** 535 linhas somando adições e remoções, dentro do teto de 600.
+- **Arquivos tocados:** só os 6 da allowlist.
+
+Não rodei `npm run build` nem a suíte `vitest run` completa.
+
+**O que mudou**
+- **`ghl-agencia.ts`:** `nomeDaConta` faz GET em `/locations/{id}`, devolve o nome aparado e nunca lança. Em resposta não-ok, corpo sem nome ou exceção, loga o status e devolve `null`.
+- **`crm-conexao.ts`:**
+  - `conectarContaCliente` só manda `location_nome` nos dois upserts quando há nome, então reconectar sem nome não apaga um nome bom.
+  - `sincronizarConexao` busca o nome no GHL só quando a leitura deu certo e o nome está nulo. O nome vai no mesmo update final de `ativa`, que continua sendo a última escrita em `perf_crm_conexoes`, e no mapa conta/cliente só se estiver nulo. Erro ao ler o nome loga e segue sem nome.
+- **`crm-etapas.ts` (novo):** `conexaoViva`, `estadoBackfill` (quatro estados, usando `PREFIXO_ERRO_BACKFILL` do backfill) e `carregarEtapasCrm`. Os totais vêm das listas devolvidas e qualquer erro de leitura lança com o motivo.
+- **Rota GET `/crm/etapas`:** 401 sem sessão, 404 para cliente inválido ou sem conexão, 200 com o objeto, 500 com o motivo.
+- **Rota POST `/crm/sincronizar`:** 401 e 404 iguais ao GET. Roda `sincronizarConexao` e enfileira o backfill se ele não terminou. Responde 200 com o estado novo, ou 502 com o motivo quando o sync ou o enfileiramento falha.

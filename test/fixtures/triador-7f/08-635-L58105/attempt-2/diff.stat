@@ -1,0 +1,10 @@
+ src/app/dashboard/clientes/[id]/page.tsx           | 17 ++----
+ .../dashboard/clientes/[id]/tabs/config-tab.tsx    |  5 ++
+ test/conta-aceite.test.tsx                         |  4 +-
+ test/conta-conexoes.test.ts                        |  7 ++-
+ test/conta-crm-sem-contradicao.test.ts             | 68 ++++++++++++++++++++++
+ test/ficha-abas-orfas.test.ts                      |  8 ++-
+ test/ghl-um-lugar-so.test.ts                       | 27 ++++++---
+ test/relacao-config-para-conta.test.ts             |  3 +-
+ test/rotas-fantasma-ficha.test.ts                  | 40 ++++++++-----
+ 9 files changed, 135 insertions(+), 44 deletions(-)

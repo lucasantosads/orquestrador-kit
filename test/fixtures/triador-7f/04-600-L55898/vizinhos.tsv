@@ -1,0 +1,3 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+600	docs/fila/runs/600/attempt-1.prev1	test/visao-aceite-estrutura.test.tsx	983	2026-09-25T16:40:31Z	1
+600	docs/fila/runs/600/attempt-3	test/visao-aceite-estrutura.test.tsx	983	2026-09-25T16:52:06Z	1

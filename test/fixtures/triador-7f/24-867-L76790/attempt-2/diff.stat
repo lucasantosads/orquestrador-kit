@@ -1,0 +1,11 @@
+ .../clientes/[id]/_components/pulso-relacao.tsx    | 13 ++--
+ src/app/dashboard/clientes/[id]/page.tsx           | 22 +-----
+ .../dashboard/clientes/[id]/tabs/ficha-context.tsx |  8 +-
+ .../dashboard/clientes/[id]/tabs/reunioes-tab.tsx  | 90 +---------------------
+ test/acao-unica-ficha-controles.test.tsx           | 10 ++-
+ test/acao-unica-ficha-mutacoes.test.tsx            |  7 +-
+ test/ficha-relacao-estados.test.tsx                |  9 ++-
+ test/relacao-aceite.test.tsx                       |  7 +-
+ test/relacao-sem-escrita-reuniao.test.ts           | 57 ++++++++++++++
+ test/timeline-relacao.test.tsx                     |  7 +-
+ 10 files changed, 95 insertions(+), 135 deletions(-)

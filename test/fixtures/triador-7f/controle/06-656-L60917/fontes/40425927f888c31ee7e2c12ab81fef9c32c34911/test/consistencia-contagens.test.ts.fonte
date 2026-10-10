@@ -1,0 +1,108 @@
+/**
+ * Gate de varredura — Ticket 090 (padrão de varredura do Ticket 055/c0-guard).
+ *
+ * Módulo canônico de "cliente ativo" (Ticket 037): src/lib/clientes/ativo.ts,
+ * export isClienteAtivo(status). Ticket 092 adotou o predicado em todas as
+ * superfícies que de fato contam "cliente ativo" (ver test/adocao-predicado.test.ts)
+ * e renomeou/documentou como constante local as ocorrências que casavam com o
+ * regex mas eram de outra entidade (status de desafio/temporada da Liga
+ * Comarka, status de contrato) — nenhuma delas é "cliente ativo".
+ *
+ * Este teste varre src/ atrás de definições AD-HOC de "ativo" fora do módulo
+ * canônico — cada rota que compara status na mão reintroduz o risco de
+ * divergência que o Ticket 037 resolveu (contagens diferentes pro mesmo
+ * universo de clientes). Ocorrência NOVA fora da allowlist = falha do gate.
+ * Allowlist deve ficar vazia — surgir uma entrada nova aqui é reincidência.
+ */
+import { describe, it, expect } from 'vitest'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join, extname } from 'node:path'
+
+const CANONICAL_MODULE = join('src', 'lib', 'clientes', 'ativo.ts')
+
+const ROOT = 'src'
+const EXT = new Set(['.ts', '.tsx', '.js', '.jsx'])
+const IGNORE_DIRS = new Set(['node_modules', '.next', '.git', 'dist', 'build', 'coverage', 'test', 'tests', '__tests__'])
+
+function walk(dir: string): string[] {
+  let out: string[] = []
+  let entries: string[]
+  try { entries = readdirSync(dir) } catch { return out }
+  for (const entry of entries) {
+    if (IGNORE_DIRS.has(entry)) continue
+    const full = join(dir, entry)
+    const st = statSync(full)
+    if (st.isDirectory()) out = out.concat(walk(full))
+    else if (EXT.has(extname(full))) out.push(full)
+  }
+  return out
+}
+
+// Padrões ad-hoc de "cliente ativo" encontrados no recon do Ticket 090:
+// - .ilike('status', 'ativo') / .eq('status', 'ativo') em query Supabase
+// - comparação direta status === / !== 'Ativo' | 'ativo' em filtro/predicado
+const AD_HOC_ATIVO_PATTERNS = [
+  /\.ilike\(\s*["']status["']\s*,\s*["']ativo["']\s*\)/i,
+  /\.eq\(\s*["']status["']\s*,\s*["']ativo["']\s*\)/i,
+  /\bstatus\s*[!=]==\s*["'][Aa]tivo["']/,
+]
+
+// Ticket 092: todas as ocorrências pinadas pelo recon do Ticket 090 foram
+// resolvidas — adoção real de isClienteAtivo onde a comparação era de fato
+// "cliente ativo", ou constante nomeada + comentário onde a comparação era
+// de outra entidade (status de desafio/temporada, status de contrato).
+// Allowlist fica vazia: qualquer entrada nova aqui é reincidência.
+const AD_HOC_ATIVO_ALLOWLIST = new Set<string>([])
+
+function findAdHocHits(file: string): string[] {
+  const hits: string[] = []
+  const lines = readFileSync(file, 'utf8').split('\n')
+  lines.forEach((line, i) => {
+    for (const re of AD_HOC_ATIVO_PATTERNS) {
+      if (re.test(line)) hits.push(`${file}:${i + 1}  ${line.trim()}`)
+    }
+  })
+  return hits
+}
+
+describe('Consistência de contagens — definição única de "cliente ativo" (Ticket 037 / gate Ticket 090)', () => {
+  const files = walk(ROOT).filter((f) => f !== CANONICAL_MODULE)
+
+  it('encontra arquivos em src/ pra escanear (anti no-op)', () => {
+    expect(files.length).toBeGreaterThan(0)
+  })
+
+  it('módulo canônico isClienteAtivo existe no disco (src/lib/clientes/ativo.ts, Ticket 037)', () => {
+    const content = readFileSync(CANONICAL_MODULE, 'utf8')
+    expect(content).toContain('export function isClienteAtivo')
+  })
+
+  it('allowlist de ocorrências ad-hoc pendentes está vazia — Ticket 092 adotou o predicado único em toda superfície pinada pelo Ticket 090', () => {
+    expect(AD_HOC_ATIVO_ALLOWLIST.size).toBe(0)
+  })
+
+  it('o detector reconhece os padrões ad-hoc conhecidos (prova real, não tautológica — allowlist vazia não pode virar teste vazio)', () => {
+    const amostras = [
+      '.ilike("status", "ativo")',
+      ".eq('status', 'ativo')",
+      'c.status === "Ativo"',
+      'c.status !== "ativo"',
+    ]
+    for (const linha of amostras) {
+      const bateu = AD_HOC_ATIVO_PATTERNS.some((re) => re.test(linha))
+      expect(bateu, `detector não reconheceu padrão ad-hoc na amostra: ${linha}`).toBe(true)
+    }
+  })
+
+  it('nenhum arquivo NOVO (fora da allowlist) define "ativo" ad-hoc — adoção do predicado único é obrigatória', () => {
+    const hits: string[] = []
+    for (const file of files) {
+      if (AD_HOC_ATIVO_ALLOWLIST.has(file)) continue
+      hits.push(...findAdHocHits(file))
+    }
+    expect(
+      hits,
+      `Definição ad-hoc de "cliente ativo" fora do módulo canônico e fora da allowlist:\n${hits.join('\n')}\n\nUse isClienteAtivo de src/lib/clientes/ativo.ts (Ticket 037), ou pine em AD_HOC_ATIVO_ALLOWLIST com justificativa se a adoção ficar pra outro ticket.`
+    ).toEqual([])
+  })
+})

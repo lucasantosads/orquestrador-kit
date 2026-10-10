@@ -1,0 +1,26 @@
+55184	[2026-09-25 10:52:12-0300] drenagem: ticket 559 (1 pendentes restantes)
+55185	[orq 13:52:12] orquestrador iniciando · modo: real · once
+55186	[orq 13:52:12] preflight: validando infra (scripts, fila, env, claude)...
+55187	[orq 13:52:15] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+55188	[orq 13:52:20] preflight: ok
+55189	[orq 13:52:30]   evidência anterior preservada em attempt-1.prev2
+55190	[orq 13:52:30] === ticket 559 (aceite-aba-conta) — tentativa 1 · modo: real ===
+55191	[orq 13:52:31]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/559/attempt-1/prompt.txt
+55192	[orq 13:52:31]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+55193	[orq 13:57:04]   diff cru salvo (404 linhas) · HEAD julgado 67473082
+55194	[orq 13:57:05]   enforcement: ok
+55195	[orq 13:57:17]   gate tsc: ok (baseline)
+55196	[orq 13:57:28]   gate vitest: FALHA
+55197	[orq 13:57:28]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/559/attempt-1/gate-vitest.txt)
+55198	[orq 13:57:29] ticket 559: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/559/attempt-1/gate-vitest.txt)
+55199	[orq 13:57:29]   evidência anterior preservada em attempt-2.prev2
+55200	[orq 13:57:29] === ticket 559 (aceite-aba-conta) — tentativa 2 · modo: real ===
+55201	[orq 13:57:29]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/559/attempt-2/prompt.txt
+55202	[orq 13:57:29]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+55203	[orq 13:59:31]   diff cru salvo (404 linhas) · HEAD julgado 8c128bc3
+55204	[orq 13:59:31]   enforcement: ok
+55205	[orq 13:59:44]   gate tsc: ok (baseline)
+55206	[orq 13:59:56]   gate vitest: FALHA
+55207	[orq 13:59:56]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/559/attempt-2/gate-vitest.txt)
+55208	[orq 13:59:56] ticket 559: motivo de reprova REPETIU — circuit breaker (por ticket)
+55209	[orq 13:59:56] ticket 559: BLOQUEADO sem gastar a próxima volta

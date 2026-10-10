@@ -1,0 +1,20 @@
+Fiz a refatoração do 741a e commitei em `a5ab00b`. A suíte inteira ainda não ficou verde por causa de `test/saude-chip-ficha.test.ts`, que quebra nesta árvore antes de qualquer mudança minha.
+
+**O que mudou**
+- `src/lib/promessas/detectar.ts` agora tem as três camadas pedidas (`carregarInsumoPromessas`, `avaliarCandidatos`, `gravarPromessas`) e os tipos `InsumoPromessas` e `AvaliacaoPromessa`.
+- `detectarPromessas` mantém a assinatura, a janela de 24h e o `ResumoPromessas`, só compondo as três camadas.
+- `test/promessas-avaliar-pura.test.ts` é novo, com um `it(` para cada item pedido (a, b, c, d).
+- Nenhuma regra de detecção, prompt, schema da resposta ou coluna gravada foi alterada.
+
+**Verificação**
+- No teste (c), os valores do resumo foram medidos no código antigo antes de refatorar: 4 candidatos, 3 chamadas, 1 gravada, 1 descartada, 1 falha. Depois da refatoração dão os mesmos números.
+- `test/promessa-par.test.ts` segue verde sem edição.
+- Os cinco testes dos chamadores de `detectarPromessas`, mais `travessao-mudo`, `c0-guard`, `consistencia-contagens` e `fetch-json-teto`, passam. Dos sete testes de guarda, rodei só esses três; `bloco-vazio-linha`, `abas-montadas` e `cartao-topo-perfil` ficaram de fora.
+- `tsc` dá 3 erros (o baseline), todos em `qualificacao*`.
+- O diff soma 368 linhas contra o teto de 400, e só os dois arquivos da allowlist mudaram.
+- Não rodei a suíte completa nem `npm run build`.
+
+**O que reprovou antes**
+- O gate reprovou a tentativa anterior por `test/saude-chip-ficha.test.ts`: `Cannot find module '@/hooks/useAcaoUnica'`, vindo de `geral-tab.tsx`. Esse teste está fora da allowlist e falha do mesmo jeito nesta árvore sem a minha mudança, então não mexi nele. Quem destravar isso precisa ajustar o mock do teste ou o import em `geral-tab.tsx`.
+- O worktree estava limpo no início, sem commit do 741a. O código foi refeito do zero nesta sessão.
+- Tentei rodar `rm -rf .next` antes do `tsc` e o comando foi negado. Rodei o `tsc` mesmo assim, filtrando o ruído de `.next/`.

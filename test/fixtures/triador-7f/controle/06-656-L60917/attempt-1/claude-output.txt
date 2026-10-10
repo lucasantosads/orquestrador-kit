@@ -1,0 +1,19 @@
+O chip e o cartão de Setup agora leem o mesmo objeto de `calcularSetup`. Fiz o commit `4042592` e não publiquei nada. Não rodei `npm run build` nem a suíte completa do vitest.
+
+**Verificação**
+- `tsc`: 3 erros em `src/`, o baseline. Não consegui limpar o `.next` antes (o `rm -rf` foi negado), mas o escopo `grep -c '^src/'` já exclui esse ruído.
+- Testes: rodei os 23 arquivos da allowlist e o teste novo. O `c0-guard` e as guardas globais (travessão mudo, cartão do topo, bloco vazio, abas montadas) estão verdes.
+- Ainda não rodei os critérios de shell do ticket (contagem de `it(`, ausência de skip/only, `SEM_SQL`, `FONTE_UNICA`, `LISTA_6`). Nenhum `.sql` foi criado.
+
+**Mudanças**
+- **Lista e função:** `src/lib/setup/calcular-setup.ts` traz `LISTA_SETUP` com 6 itens (total 6, `p2_financeiro` conta no numerador). `calcularSetup(linha, grupoAtivo)` devolve `{feitos, total, pct, itens}`. O Grupo WhatsApp usa só o `grupoAtivo`; o arquivo não cita `p6_whatsapp`.
+- **Rota:** lê `wpp_grupo` com `status="ativo"` e `deleted_at` nulo, só quando há `cliente_id`. Devolve o campo `setup` junto dos campos antigos. A view continua só leitura.
+- **Chip:** `SetupChip` renderiza `{setup.feitos}/{setup.total}` e some com `pct >= 100`.
+- **Cartão:** `SetupProgresso` usa `itens` e `pct` do mesmo objeto. Cada item pendente vira link:
+  - `#bloco-financeiro`, `#bloco-meta-ads`, `#bloco-crm` e `#bloco-whatsapp` (id novo em `conexoes-relacao.tsx`);
+  - dados básicos e metas vão para `/setup?passo=<chave>`.
+- **Testes recalculados, com comentário citando 656 e sem perder asserção:** `cartao-topo-setup-e-closer` (2 asserções) e `setup-progresso-ficha` (1). O teste novo é `test/setup-fonte-unica.test.ts`.
+
+**Pontos de atenção**
+- Deixei `buildSetupPassos` no arquivo, porque `setup-progresso-ficha.test.ts` extrai esse bloco pelos marcadores de comentário. O cartão não o usa mais para contar.
+- `page.tsx:549` também faz fetch em `/api/perf/setup/`, mas está fora da allowlist e não foi tocado.

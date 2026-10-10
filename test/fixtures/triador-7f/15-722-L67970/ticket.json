@@ -1,0 +1,154 @@
+{
+ "id": "722",
+ "slug": "leitura-relacao-sem-base-nao-grava",
+ "lane": "produto",
+ "perfil": "api",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 300 linhas (~35 na rota do cron, ~3 em src/middleware.ts, ~6 em test/cron-paths-vercel.test.ts, ~220 no teste NOVO). Se passar do teto, pare e reporte. DECISAO DO LUCAS (30/09): o cron da leitura da relacao so liga depois de parar de gravar leitura vazia. Hoje, para cliente sem as fontes minimas, gerarLeituraRelacao (src/lib/ia/leitura-relacao.ts) grava em perf_leituras_relacao uma linha com temperatura sem_base (regra semBase = entrada.fontes_com_dado < 2). Pela ficha isso e o esperado; pelo cron, vira uma linha por cliente sem base por dia. PASSO 1: leia src/app/api/cron/leitura-relacao/route.ts, src/lib/ia/leitura-relacao.ts (carregarFontes, montarEntrada, a regra semBase e gerarLeituraRelacao), src/app/api/clientes/[id]/leitura-relacao/route.ts (leitura manual da ficha, so leitura), src/middleware.ts (CRON_PATHS), vercel.json e test/cron-paths-vercel.test.ts (CRON_PENDENTES_REVISAO). FAZER: (1) src/app/api/cron/leitura-relacao/route.ts: antes de gerar, para cada cliente elegivel (com gatilho) o cron monta a entrada com carregarFontes + montarEntrada (importadas de @/lib/ia/leitura-relacao, nunca copiadas) e, se fontes_com_dado < 2 (o MESMO limiar da regra semBase da lib; cite src/lib/ia/leitura-relacao.ts num comentario), PULA o cliente: nao chama gerarLeituraRelacao e nao grava nada em perf_leituras_relacao. O teste de fontes acontece ANTES do teto de 40 por execucao, para cliente sem base nao ocupar vaga. Falha ao carregar fontes conta em falh",
+ "cria_novo": [
+  "test/leitura-relacao-cron-sem-base.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/app/api/cron/leitura-relacao/route.ts",
+  "src/middleware.ts",
+  "test/cron-paths-vercel.test.ts",
+  "test/leitura-relacao-cron-sem-base.test.ts"
+ ],
+ "dependencias": [
+  "689",
+  "humano:fix-cron-paths-na-main"
+ ],
+ "prioridade": 41,
+ "recon_esperado": [
+  {
+   "descricao": "leitura-relacao esta no vercel.json",
+   "cmd": "grep -c '/api/cron/leitura-relacao' vercel.json",
+   "espera": "1"
+  },
+  {
+   "descricao": "leitura-relacao ainda fora do CRON_PATHS",
+   "cmd": "grep -c '/api/cron/leitura-relacao' src/middleware.ts",
+   "espera": "0"
+  },
+  {
+   "descricao": "leitura-relacao ainda na lista de pendencias do teste de crons",
+   "cmd": "sed -n '/const CRON_PENDENTES_REVISAO/,/];/p' test/cron-paths-vercel.test.ts | grep -c '\"/api/cron/leitura-relacao\"'",
+   "espera": "1"
+  },
+  {
+   "descricao": "a rota do cron ainda nao pula cliente sem base",
+   "cmd": "grep -c 'pulado_sem_base' src/app/api/cron/leitura-relacao/route.ts",
+   "espera": "0"
+  },
+  {
+   "descricao": "a lib grava sem_base quando fontes_com_dado < 2 (a regra que o cron vai reusar)",
+   "cmd": "grep -c 'semBase = entrada.fontes_com_dado < 2' src/lib/ia/leitura-relacao.ts",
+   "espera": "1"
+  },
+  {
+   "descricao": "test/leitura-relacao-cron-sem-base.test.ts ainda nao existe",
+   "cmd": "test -e 'test/leitura-relacao-cron-sem-base.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes verdes (recalculados, nunca afrouxados)",
+   "cmd": "fs=\"\"; for f in test/cron-paths-vercel.test.ts test/middleware-bypass-ponto.test.ts test/leitura-relacao-gatilhos.test.ts test/leitura-relacao-motor.test.ts test/crons-meta-consolidacao.test.ts; do [ -f \"$f\" ] && fs=\"$fs $f\"; done; [ -z \"$fs\" ] && echo VERDE || { npx vitest run $fs >/dev/null 2>&1 && echo VERDE || echo VERMELHO; }",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum teste existente da allowlist perdeu it(/expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (contra o merge-base com staging-auto)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=NAO_AFROUXOU; for f in test/cron-paths-vercel.test.ts; do [ -f \"$f\" ] || { git cat-file -e \"$b:$f\" 2>/dev/null && r=APAGOU_$f; continue; }; for p in 'expect(' 'it('; do a=$(git show \"$b:$f\" 2>/dev/null | grep -cF \"$p\"); n=$(grep -cF \"$p\" \"$f\"); [ \"${n:-0}\" -ge \"${a:-0}\" ] || r=CAIU_$f; done; s0=$(git show \"$b:$f\" 2>/dev/null | grep -cE '\\.(skip|only|todo)\\('); s1=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"${s1:-0}\" -le \"${s0:-0}\" ] || r=SKIP_NOVO_$f; d0=$(git show \"$b:$f\" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' \"$f\"); [ \"${d1:-0}\" -le \"${d0:-0}\" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r",
+   "espera": "NAO_AFROUXOU",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/app/api/cron/leitura-relacao/route.ts' 'src/middleware.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados (lib da leitura, leitura manual da ficha, vercel.json)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/lib/ia/leitura-relacao.ts' 'src/app/api/clientes/[[]id]/leitura-relacao/route.ts' 'vercel.json' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/app/api/cron/leitura-relacao/route.ts' 'src/middleware.ts' 'test/cron-paths-vercel.test.ts' 'test/leitura-relacao-cron-sem-base.test.ts'; do case \"$f\" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 300 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 300 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "sync-clientes segue fora do CRON_PATHS e na lista de pendencias",
+   "cmd": "m=$(grep -c '\"/api/cron/sync-clientes\"' src/middleware.ts); l=$(sed -n '/const CRON_PENDENTES_REVISAO/,/];/p' test/cron-paths-vercel.test.ts | grep -c '\"/api/cron/sync-clientes\"'); [ \"$m\" = 0 ] && [ \"$l\" = 1 ] && echo SYNC_BARRADO || echo SYNC_M${m}_L${l}",
+   "espera": "SYNC_BARRADO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde (test/leitura-relacao-cron-sem-base.test.ts)",
+   "cmd": "test -f test/leitura-relacao-cron-sem-base.test.ts && npx vitest run test/leitura-relacao-cron-sem-base.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "leitura-relacao no CRON_PATHS",
+   "cmd": "grep -c '\"/api/cron/leitura-relacao\"' src/middleware.ts",
+   "espera": "1"
+  },
+  {
+   "descricao": "leitura-relacao saiu da lista de pendencias",
+   "cmd": "n=$(sed -n '/const CRON_PENDENTES_REVISAO/,/];/p' test/cron-paths-vercel.test.ts | grep -c '\"/api/cron/leitura-relacao\"'); [ \"$n\" = 0 ] && echo SAIU || echo FICOU_$n",
+   "espera": "SAIU"
+  },
+  {
+   "descricao": "resumo do cron conta pulado_sem_base e reusa montarEntrada da lib",
+   "cmd": "grep -q 'pulado_sem_base' src/app/api/cron/leitura-relacao/route.ts && grep -q 'montarEntrada' src/app/api/cron/leitura-relacao/route.ts && echo CONTA_SEM_BASE || echo SEM_CONTAGEM",
+   "espera": "CONTA_SEM_BASE"
+  },
+  {
+   "descricao": "test/cron-paths-vercel.test.ts verde com leitura-relacao liberada",
+   "cmd": "npx vitest run test/cron-paths-vercel.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "avaliador: pelo cron, cliente com menos de 2 fontes nao gera nem grava leitura e aparece em pulado_sem_base; cliente com fontes segue como hoje; a leitura manual da ficha nao mudou; a rota passa no middleware com o Bearer do cron. REPROVE se: copiou a regra de fontes em vez de importar montarEntrada/carregarFontes; mudou a lib ou a rota da ficha; testou fontes depois do teto de 40 (cliente sem base ocupando vaga); liberou sync-clientes; afrouxou assercao.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 5865
+}

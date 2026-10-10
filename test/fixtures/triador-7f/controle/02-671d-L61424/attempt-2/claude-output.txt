@@ -1,0 +1,15 @@
+A linha do Comercial entrou na Visão, entre a tabela de campanhas e o trio, e o trabalho está commitado (sem push). A suíte vitest completa passa: 613 arquivos, 6183 testes. O `tsc` fica em 3 erros em `src/`, o baseline. O `.next` não foi limpo antes do `tsc` porque o `rm -rf` foi negado. O `npm run build` não foi rodado, e os critérios de guarda dos tickets (anti-afrouxamento, guardas globais, sem `.sql`) foram cobertos só pela suíte, não rodados um a um.
+
+A reprovação anterior vinha de `test/cadastro-colapsavel.test.ts` e `test/cartao-topo-renovacao.test.ts`. Eles carregam o `geral-tab.tsx` num loader que só resolve módulos dublados, e o import da nova linha não estava entre eles. Importei a `LinhaComercial` com `dynamic(() => import(...))`, como os outros blocos da Visão, e a suíte voltou a passar sem tocar nesses testes.
+
+- **`linha-comercial.tsx`** (novo, 57 linhas): busca a rota `/api/clientes/[id]/comercial` com `fetchJson` e mostra uma linha só, sem cartão nem heading.
+  - Com dados: mostra leads, MQL, vendas, CPMQL e CAC, números em `font-mono`, mais o botão "Ver comercial".
+  - Sem leads: "Comercial · nenhum lead do escritório no período".
+  - CRM desconectado (erro 404 da rota): "Comercial · CRM do cliente não conectado".
+  - CPMQL ou CAC nulos aparecem como "sem base" em cinza.
+- **`geral-tab.tsx`** (+3 linhas): o import tardio e a montagem logo antes do trio, com `onAbrir` chamando `setActiveTab("comercial" as ActiveTab)`. A linha só aparece quando há conta de performance vinculada (`perfClienteId`), o mesmo critério da tabela de campanhas.
+- **`test/visao-linha-comercial.test.tsx`** (novo, 6 testes): render com resposta fixa, com CPMQL e CAC nulos, com `sem_leads` e com CRM desconectado. Também confere na fonte a ordem `<TabelaCampanhas` < `<LinhaComercial` < `visao-trio` e a ausência de cartão, heading e imports proibidos.
+
+Um caso além do pedido: qualquer erro que não seja 404 mostra "Comercial · sem base agora". Se preferir outro texto para essa falha, é uma linha para trocar.
+
+O diff total é 142 linhas, dentro do teto de 170.

@@ -1,0 +1,237 @@
+import { describe, it, expect } from 'vitest'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+
+// Ticket 249: reaplicar uma migration com 'create policy' sem guarda falha com
+// "policy already exists", mesmo o resto do arquivo sendo idempotente
+// (create table/index if not exists). Este teste prova, por leitura de texto,
+// que todo 'create policy' em supabase/migrations/ está protegido por um
+// bloco que consulta pg_policies com o MESMO schemaname/tablename/policyname
+// do create policy que ele guarda — uma guarda apontando para tabela/nome
+// errado é pior que nenhuma (nunca dispara e mascara o erro).
+
+const MIGRATIONS_DIR = join(__dirname, '..', 'supabase', 'migrations')
+
+function stripSqlComments(sql: string): string {
+  return sql
+    .split('\n')
+    .map((line) => {
+      const idx = line.indexOf('--')
+      return idx === -1 ? line : line.slice(0, idx)
+    })
+    .join('\n')
+}
+
+interface PolicyMatch {
+  index: number
+  policyName: string
+  schema: string
+  table: string
+}
+
+// Casa 'create policy <nome> on <schema>.<tabela>' — nome pode vir entre aspas
+// duplas; tabela pode ser um placeholder dinâmico de execute format ('%I').
+// Case-sensitive de propósito: o recon do ticket 249 e o critério de aceite
+// usam grep sem -i (minúsculo). Migrations com 'CREATE POLICY' maiúsculo
+// (ex.: 20260531211910_perf_fase1a_modelo_dados.sql) são de OUTRO ticket e
+// não fazem parte da allowlist deste — não podem entrar neste teste.
+const CREATE_POLICY_RE =
+  /create policy\s+("(?:[^"]+)"|[a-z_][a-z0-9_]*)\s+on\s+([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_%]*)/g
+
+function findCreatePolicies(sql: string): PolicyMatch[] {
+  const matches: PolicyMatch[] = []
+  const re = new RegExp(CREATE_POLICY_RE)
+  let m: RegExpExecArray | null
+  while ((m = re.exec(sql))) {
+    matches.push({
+      index: m.index,
+      policyName: m[1].replace(/^"|"$/g, ''),
+      schema: m[2],
+      table: m[3],
+    })
+  }
+  return matches
+}
+
+// Para cada 'create policy' encontrado, retorna uma mensagem de problema se
+// ele não estiver protegido por um guard pg_policies que bate schemaname,
+// tablename e policyname — ou [] se todos estiverem corretamente protegidos.
+function checkGuards(sql: string): string[] {
+  const clean = stripSqlComments(sql)
+  const problems: string[] = []
+
+  for (const policy of findCreatePolicies(clean)) {
+    const label = `create policy ${policy.policyName} on ${policy.schema}.${policy.table}`
+    const before = clean.slice(0, policy.index)
+    const pgIdx = before.lastIndexOf('pg_policies')
+
+    if (pgIdx === -1) {
+      problems.push(`${label}: nenhum guard pg_policies antes dele no arquivo`)
+      continue
+    }
+
+    const condition = clean.slice(pgIdx, policy.index)
+
+    // O guard mais próximo tem que ser DESTE statement: se outro 'create
+    // policy' ou um 'end if' aparece entre o guard e o statement, o guard
+    // pertence a outra coisa e este ficou sem proteção própria.
+    if (/create policy/i.test(condition) || /end\s+if/i.test(condition)) {
+      problems.push(`${label}: guard pg_policies mais próximo pertence a outro statement`)
+      continue
+    }
+
+    if (!/\bthen\b/i.test(condition)) {
+      problems.push(`${label}: pg_policies não está dentro de um if/then guardando este create policy`)
+      continue
+    }
+
+    const schemaOk = new RegExp(`schemaname\\s*=\\s*'${policy.schema}'`, 'i').test(condition)
+
+    const isDynamicTable = policy.table.includes('%')
+    const tableOk = isDynamicTable
+      ? /tablename\s*=\s*(?!')[A-Za-z_][A-Za-z0-9_]*/i.test(condition)
+      : new RegExp(`tablename\\s*=\\s*'${policy.table}'`, 'i').test(condition)
+
+    const policyOk = new RegExp(`policyname\\s*=\\s*'${policy.policyName}'`, 'i').test(condition)
+
+    if (!schemaOk || !tableOk || !policyOk) {
+      problems.push(
+        `${label}: guard pg_policies não bate schemaname/tablename/policyname ` +
+          `(schemaOk=${schemaOk} tableOk=${tableOk} policyOk=${policyOk})`
+      )
+    }
+  }
+
+  return problems
+}
+
+describe('checkGuards (auto-teste do verificador)', () => {
+  it('reprova create policy sem nenhum guard', () => {
+    const sql = `create policy only_service_role on public.foo for all to ‹segredo› using (true) with check (true);`
+    expect(checkGuards(sql)).toHaveLength(1)
+  })
+
+  it('reprova guard pg_policies apontando para tabela errada (guarda que nunca dispara)', () => {
+    const sql = `
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'tabela_errada'
+      and policyname = 'only_service_role'
+  ) then
+    create policy only_service_role on public.foo
+      for all to ‹segredo› using (true) with check (true);
+  end if;
+end $$;`
+    expect(checkGuards(sql)).toHaveLength(1)
+  })
+
+  it('reprova guard pg_policies apontando para policyname errado', () => {
+    const sql = `
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'foo'
+      and policyname = 'nome_errado'
+  ) then
+    create policy only_service_role on public.foo
+      for all to ‹segredo› using (true) with check (true);
+  end if;
+end $$;`
+    expect(checkGuards(sql)).toHaveLength(1)
+  })
+
+  it('aceita guard pg_policies com schema/tabela/nome batendo', () => {
+    const sql = `
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'foo'
+      and policyname = 'only_service_role'
+  ) then
+    create policy only_service_role on public.foo
+      for all to ‹segredo› using (true) with check (true);
+  end if;
+end $$;`
+    expect(checkGuards(sql)).toHaveLength(0)
+  })
+
+  it('aceita guard dinâmico (tablename = variável de loop, sem aspas)', () => {
+    const sql = `
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['a', 'b'] loop
+    if not exists (
+      select 1 from pg_policies
+      where schemaname = 'public'
+        and tablename = t
+        and policyname = 'only_service_role'
+    ) then
+      execute format('create policy only_service_role on public.%I for all to ‹segredo› using (true) with check (true)', t);
+    end if;
+  end loop;
+end $$;`
+    expect(checkGuards(sql)).toHaveLength(0)
+  })
+
+  it('ignora create policy dentro de comentário SQL (não exige guard)', () => {
+    const sql = `
+-- template, não é SQL executável:
+--   create policy only_service_role on public.<TABELA>
+--     for all to ‹segredo› using (true) with check (true);
+select 1;`
+    expect(checkGuards(sql)).toHaveLength(0)
+  })
+})
+
+describe('migrations: create policy é idempotente', () => {
+  // Case-sensitive (minúsculo), igual ao grep do critério de aceite do ticket
+  // 249 — arquivos com 'CREATE POLICY' maiúsculo são de outro ticket e não
+  // entram na allowlist deste.
+  const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql'))
+  const withCreatePolicy = files.filter((f) =>
+    readFileSync(join(MIGRATIONS_DIR, f), 'utf8').includes('create policy')
+  )
+
+  it('encontrou arquivos de migration para verificar', () => {
+    expect(files.length).toBeGreaterThan(0)
+  })
+
+  it('todo arquivo com create policy tem pelo menos uma menção a pg_policies', () => {
+    const semGuardNenhuma = withCreatePolicy.filter(
+      (f) => !readFileSync(join(MIGRATIONS_DIR, f), 'utf8').includes('pg_policies')
+    )
+    expect(semGuardNenhuma).toEqual([])
+  })
+
+  // Piso, não igualdade (01/09): o nome do teste é "nada foi DELETADO" — a
+  // asserção era toBe(15) e reprovava toda migration nova com create policy.
+  // Quebrou em 20260901000000_ops_cliente_perfil.sql e deixou a suíte inteira
+  // vermelha, bloqueando o ticket 271 por dano colateral. Qualidade das
+  // migrations novas é do teste acima (guard de pg_policies), não deste.
+  it('o número de arquivos com create policy não mudou (nada foi deletado)', () => {
+    expect(withCreatePolicy.length).toBeGreaterThanOrEqual(15)
+  })
+
+  it('todo create policy está dentro de um bloco guardado por pg_policies com schema/tabela/nome corretos', () => {
+    const problemasPorArquivo: string[] = []
+
+    for (const file of withCreatePolicy) {
+      const sql = readFileSync(join(MIGRATIONS_DIR, file), 'utf8')
+      const problems = checkGuards(sql)
+      for (const problem of problems) {
+        problemasPorArquivo.push(`${file}: ${problem}`)
+      }
+    }
+
+    expect(problemasPorArquivo).toEqual([])
+  })
+})

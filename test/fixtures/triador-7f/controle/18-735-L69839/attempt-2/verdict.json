@@ -1,0 +1,4 @@
+{
+  "aprovado": true,
+  "motivo": "GET usa carregarVacuos e podeAgirNoCliente, ordena do mais antigo e soma desconhecidos só dos grupos devolvidos; falha de leitura dá 500 com motivo. POST: só SELECT em wpp_grupo, motivo em enum, upsert com chave fixa. Dono por cuidaDoCliente, papel por papelDe. Testes cobrem os casos pedidos."
+}

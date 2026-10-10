@@ -1,0 +1,238 @@
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+// ============================================================================
+// TICKET 291 — o card "Contas de anúncio" de ClientePerfPanel.tsx
+//
+// O bug: os quatro níveis (conta, campanha, conjunto, anúncio) repetiam a
+// mesma sequência de métricas com larguras DIVERGENTES (impressões w-16 na
+// conta e w-14 na campanha, gasto w-16/w-14), então as colunas não caíam na
+// mesma vertical; e a coluna de gasto em w-14 (56px) não comportava
+// 'R$ 1.170,62' (11 caracteres ≈ 77px em fonte mono a 12px), colidindo com a
+// coluna vizinha. Não havia cabeçalho: os números não tinham rótulo.
+//
+// O teste é estático (lê o .tsx), no molde de test/ui-guard.test.ts: o que ele
+// precisa travar é ESTRUTURAL — que exista UMA constante de largura e que ela
+// seja usada pelo cabeçalho E pelos quatro níveis. Um teste que só verificasse
+// "existe a string COLS_CONTAS" seria tautológico e deixaria o bug voltar num
+// nível esquecido.
+// ============================================================================
+
+const ARQ = join('src', 'app', 'dashboard', 'clientes', 'perf', '_components', 'ClientePerfPanel.tsx')
+const SRC = readFileSync(ARQ, 'utf8')
+const LINHAS = SRC.split('\n')
+
+/** Recorte do card "Contas de anúncio" — do CardTitle até o fim do arquivo. */
+function blocoContas(): string {
+  // Ancorado no CardTitle (e não na string solta, que também aparece no
+  // comentário de COLS_CONTAS lá no topo) para o recorte não pegar o resto
+  // do painel, que está fora do escopo deste ticket.
+  const i = SRC.indexOf('<CardTitle className="text-sm">Contas de anúncio</CardTitle>')
+  expect(i, 'card "Contas de anúncio" não encontrado').toBeGreaterThan(-1)
+  return SRC.slice(i)
+}
+
+/** `w-24` → 96 (escala Tailwind: 1 unidade = 0.25rem = 4px). */
+function larguraPx(classe: string): number {
+  const m = /^w-(\d+)$/.exec(classe)
+  expect(m, `largura "${classe}" não é uma classe w-<n> da escala Tailwind`).not.toBeNull()
+  return Number(m![1]) * 4
+}
+
+/** As chaves de COLS_CONTAS e seus valores, lidos da declaração no fonte. */
+function lerColsContas(): Record<string, string> {
+  const m = /const COLS_CONTAS = \{([\s\S]*?)\}/.exec(SRC)
+  expect(m, 'COLS_CONTAS não declarado').not.toBeNull()
+  const cols: Record<string, string> = {}
+  const par = /(\w+)\s*:\s*"([^"]+)"/g
+  let p: RegExpExecArray | null
+  while ((p = par.exec(m![1]))) cols[p[1]] = p[2]
+  return cols
+}
+
+// As seis métricas por nível + a coluna de CTR (só a conta exibe valor; os
+// níveis aninhados reservam o vão para não sair da vertical).
+const CHAVES = ['impr', 'cliques', 'leads', 'gasto', 'cpl', 'ctr', 'cpmql']
+
+// Uma expressão de valor por nível, na ordem conta → campanha → conjunto → anúncio.
+const NIVEIS = [
+  { nome: 'conta', gasto: 'acc.gasto', impr: 'acc.impressoes' },
+  { nome: 'campanha', gasto: 'c.gasto', impr: 'c.impressoes' },
+  { nome: 'conjunto', gasto: 'adset.gasto', impr: 'adset.impressoes' },
+  { nome: 'anúncio', gasto: 'ad.gasto', impr: 'ad.impressoes' },
+]
+
+describe('contas de anúncio — escala de coluna única (COLS_CONTAS)', () => {
+  it('declara COLS_CONTAS uma única vez, com uma largura para cada coluna', () => {
+    const decls = SRC.match(/const COLS_CONTAS\b/g) ?? []
+    expect(decls.length, 'a escala tem que ter UMA fonte só').toBe(1)
+
+    const cols = lerColsContas()
+    expect(Object.keys(cols).sort()).toEqual([...CHAVES].sort())
+  })
+
+  it('dimensiona cada coluna pelo pior caso do formatador', () => {
+    const cols = lerColsContas()
+
+    // fmt(v, "R$") do pior caso real de gasto/CPL é 'R$ 1.170,62' — 11
+    // caracteres. Em fonte mono a 12px cada caractere ocupa ~7px → ~77px. A
+    // coluna antiga era w-14 (56px) e o valor transbordava.
+    expect(larguraPx(cols.gasto)).toBeGreaterThanOrEqual(77)
+    // CPL carrega o mesmo valor MAIS o CplBadge (ícone de 10px + gap).
+    expect(larguraPx(cols.cpl)).toBeGreaterThanOrEqual(77 + 14)
+    // fmtInt de impressões chega a '1.234.567' — 9 caracteres ≈ 63px.
+    expect(larguraPx(cols.impr)).toBeGreaterThanOrEqual(63)
+    // A célula de CPMQL imprime DOIS valores: 'R$ 123,45 / R$ 1.170,62',
+    // 23 caracteres ≈ 161px.
+    expect(larguraPx(cols.cpmql)).toBeGreaterThanOrEqual(161)
+  })
+
+  it('aplica a MESMA escala ao cabeçalho e aos quatro níveis', () => {
+    const bloco = blocoContas()
+    for (const chave of CHAVES) {
+      const usos = bloco.match(new RegExp(`COLS_CONTAS\\.${chave}\\b`, 'g')) ?? []
+      // 1 cabeçalho + 4 níveis. Menos que isso significa que algum nível
+      // ficou com a largura antiga e a coluna volta a desalinhar.
+      expect(usos.length, `COLS_CONTAS.${chave} usado ${usos.length}×`).toBeGreaterThanOrEqual(5)
+    }
+  })
+
+  it('nenhum nível declara largura própria para uma célula numérica', () => {
+    const bloco = blocoContas()
+    // Uma célula que formate número não pode fixar w-<n> literal: a largura
+    // vem de COLS_CONTAS. (Era exatamente assim que conta e campanha
+    // divergiam.)
+    const celulas = bloco.match(/<span className="[^"]*\bw-\d+\b[^"]*">\{fmt/g) ?? []
+    expect(celulas, `célula numérica com largura literal: ${celulas.join(' | ')}`).toEqual([])
+    // A largura que colidia com o valor de gasto não pode voltar.
+    expect(bloco).not.toContain('font-mono w-14 text-right">{fmt(c.gasto')
+  })
+
+  it('cada nível usa a largura compartilhada nas suas células de gasto e impressões', () => {
+    for (const nivel of NIVEIS) {
+      const linhaGasto = LINHAS.find((l) => l.includes(`{fmt(${nivel.gasto}, "R$")}`))
+      expect(linhaGasto, `célula de gasto do nível ${nivel.nome} não encontrada`).toBeDefined()
+      expect(linhaGasto, `nível ${nivel.nome} não usa COLS_CONTAS.gasto`).toContain('COLS_CONTAS.gasto')
+
+      const linhaImpr = LINHAS.find((l) => l.includes(`{fmtInt(${nivel.impr})}`))
+      expect(linhaImpr, `célula de impressões do nível ${nivel.nome} não encontrada`).toBeDefined()
+      expect(linhaImpr, `nível ${nivel.nome} não usa COLS_CONTAS.impr`).toContain('COLS_CONTAS.impr')
+    }
+  })
+})
+
+describe('contas de anúncio — cabeçalho de coluna', () => {
+  const ROTULOS = ['Impr.', 'Cliques', 'Leads', 'Investido', 'CPL', 'CPMQL rast./total']
+
+  it('renderiza os rótulos de coluna', () => {
+    const bloco = blocoContas()
+    for (const rotulo of ROTULOS) {
+      expect(bloco, `rótulo "${rotulo}" ausente`).toContain(`>${rotulo}<`)
+    }
+  })
+
+  it('cada rótulo fica sobre a coluna certa, com a largura da própria coluna', () => {
+    const cols = lerColsContas()
+    const esperado: Array<[string, string]> = [
+      ['Impr.', 'impr'],
+      ['Cliques', 'cliques'],
+      ['Leads', 'leads'],
+      ['Investido', 'gasto'],
+      ['CPL', 'cpl'],
+      ['CTR', 'ctr'],
+      ['CPMQL rast./total', 'cpmql'],
+    ]
+    for (const [rotulo, chave] of esperado) {
+      const linha = LINHAS.find((l) => l.includes(`>${rotulo}</span>`))
+      expect(linha, `rótulo "${rotulo}" não encontrado`).toBeDefined()
+      // Rótulo desalinhado do número é pior que rótulo nenhum: o cabeçalho
+      // tem que sair da MESMA constante das linhas...
+      expect(linha, `"${rotulo}" não usa COLS_CONTAS.${chave}`).toContain(`COLS_CONTAS.${chave}`)
+      // ...e não repetir a largura como literal.
+      expect(linha).not.toMatch(/\bw-\d+\b/)
+      // ...alinhado à direita, sobre o número.
+      expect(linha, `"${rotulo}" não está alinhado à direita`).toContain('text-right')
+    }
+    // A ordem dos rótulos é a ordem das colunas na linha.
+    const posicoes = esperado.map(([r]) => SRC.indexOf(`>${r}</span>`))
+    expect(posicoes).toEqual([...posicoes].sort((a, b) => a - b))
+    // O cabeçalho cobre todas as colunas declaradas.
+    expect(esperado.map(([, c]) => c).sort()).toEqual(Object.keys(cols).sort())
+  })
+
+  it('mantém CTR: a métrica da conta continua sendo exibida', () => {
+    // O ticket é de alinhamento — nenhuma métrica pode sumir do caminho.
+    expect(blocoContas()).toContain('{fmt(acc.ctr, "", "%")}')
+  })
+})
+
+describe('contas de anúncio — números e rolagem', () => {
+  it('usa tabular-nums em toda célula numérica dos quatro níveis', () => {
+    const bloco = blocoContas()
+    const celulas = bloco.split('\n').filter((l) => /\{fmt\(|\{fmtInt\(/.test(l) && /<span/.test(l))
+    // 4 níveis × 6 métricas = 24 células numéricas, no mínimo.
+    expect(celulas.length).toBeGreaterThanOrEqual(24)
+    const semTabular = celulas.filter((l) => !l.includes('tabular-nums'))
+    expect(semTabular, `célula sem tabular-nums: ${semTabular.join(' | ')}`).toEqual([])
+  })
+
+  it('rola no container do card, não no body, e sem truncar valor monetário', () => {
+    const bloco = blocoContas()
+    // overflow-x-auto no CardContent + min-w no conteúdo: a largura mínima é
+    // o que força a barra a aparecer DENTRO do card.
+    const conteudo = bloco.slice(0, bloco.indexOf('clienteDetail.accounts.map'))
+    expect(conteudo, 'card sem overflow-x-auto').toContain('overflow-x-auto')
+    expect(conteudo, 'card sem largura mínima').toMatch(/min-w-\[\d+px\]/)
+    // Número cortado é pior que número apertado.
+    const celulasMonetarias = bloco.split('\n').filter((l) => /\{fmt\([\w.]+\.(gasto|cpl|cpmql)/.test(l))
+    expect(celulasMonetarias.length).toBeGreaterThan(0)
+    for (const l of celulasMonetarias) {
+      expect(l, `valor monetário truncado: ${l.trim()}`).not.toMatch(/\btruncate\b|\btext-ellipsis\b/)
+    }
+  })
+})
+
+describe('contas de anúncio — comportamento preservado', () => {
+  it('os selects de nicho, tese e tipo continuam parando a propagação do clique', () => {
+    const bloco = blocoContas()
+    // Sem stopPropagation, escolher nicho/tese/tipo expande ou colapsa a linha.
+    const stops = bloco.match(/onClick=\{\(e\) => e\.stopPropagation\(\)\}/g) ?? []
+    expect(stops.length, 'faltou stopPropagation em algum select').toBeGreaterThanOrEqual(3)
+    for (const campo of ['nicho_id: e.target.value', 'saveCampTese(', 'saveCampTipo(']) {
+      expect(bloco, `select de ${campo} sumiu`).toContain(campo)
+    }
+  })
+
+  it('expandir/colapsar continua ligado nos níveis que expandem', () => {
+    const bloco = blocoContas()
+    for (const gatilho of ['toggleAcc(acc.ad_account_id)', 'toggleCamp(c.campaign_id)', 'toggleAdset(adset.adset_id)']) {
+      expect(bloco, `gatilho ${gatilho} sumiu`).toContain(gatilho)
+    }
+    for (const estado of ['expandedAccs.has(', 'expandedCamps.has(', 'expandedAdsets.has(']) {
+      expect(bloco, `estado ${estado} sumiu`).toContain(estado)
+    }
+  })
+
+  it('conta sem gasto no período continua com o texto no lugar dos números', () => {
+    const bloco = blocoContas()
+    expect(bloco).toContain('sem gasto no período')
+    expect(bloco).toContain('const hasData = acc.gasto > 0 || acc.leads > 0')
+  })
+
+  it('o CplBadge da conta continua ao lado do CPL', () => {
+    const bloco = blocoContas()
+    expect(bloco).toContain('<CplBadge cpl={acc.cpl} benchCpl={benchCpl} />')
+    // O badge mora DENTRO da célula de CPL (a que usa COLS_CONTAS.cpl).
+    const i = bloco.indexOf('<CplBadge')
+    const abertura = bloco.lastIndexOf('<span', i)
+    expect(bloco.slice(abertura, i)).toContain('COLS_CONTAS.cpl')
+  })
+
+  it('mantém os tokens de tipografia (nada de literal de font-size)', () => {
+    const bloco = blocoContas()
+    expect(bloco).toContain('text-fs-label')
+    // test/ui-guard.test.ts reprova font-size abaixo de 11.5px.
+    expect(bloco).not.toMatch(/text-\[\d+(?:\.\d+)?px\]/)
+  })
+})

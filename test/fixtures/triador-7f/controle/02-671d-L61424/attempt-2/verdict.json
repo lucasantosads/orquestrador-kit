@@ -1,0 +1,4 @@
+{
+  "aprovado": true,
+  "motivo": "LinhaComercial é um <p> de uma linha, sem cartão nem heading, com números em font-mono e botão Ver comercial que chama setActiveTab(comercial). Fica entre TabelaCampanhas e visao-trio. Sem imports proibidos, sem travessão; null vira sem base; sem_leads e desconectado dão uma frase. geral-tab +3. Asserções intactas."
+}

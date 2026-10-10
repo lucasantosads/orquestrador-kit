@@ -1,0 +1,170 @@
+{
+ "id": "741a",
+ "slug": "promessas-avaliar-pura",
+ "lane": "dados",
+ "perfil": "api",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 400 linhas (~210 em src/lib/promessas/detectar.ts somando adicoes e remocoes, ~180 no teste NOVO test/promessas-avaliar-pura.test.ts). Se passar do teto, pare e reporte. FONTE: docs/planos/plano-vacuo-promessa-02out.md; destrava o 741 (backtest), que reaproveita a deteccao do 861 sem copiar. REFATORACAO SEM MUDANCA DE COMPORTAMENTO. PASSO 1: leia inteiros src/lib/promessas/detectar.ts (861), test/promessa-par.test.ts e src/lib/jobs/operacao-inicio.ts (unico chamador de detectarPromessas; nao muda). FAZER em src/lib/promessas/detectar.ts, tres camadas: (1) CARREGAR: export async function carregarInsumoPromessas(db: Db, janela: { desdeISO: string; ateISO: string; clienteId?: string }): Promise<InsumoPromessas>. SO SELECT. Le os grupos vinculados (mesmo filtro de hoje em wpp_grupo: deleted_at nulo e status diferente de inativo; com clienteId, so os grupos desse cliente), as mensagens da janela (mesma query, ordem e LIMITE_MENSAGENS de hoje, entre desdeISO e ateISO), a equipe (carregarTelefonesPorColaborador), os contatos efetivos de cada cliente (contatosEfetivosDoCliente), os feriados (carregarFeriados) e jaTem (wpp_message_id que ja estao em perf_promessas, so select). Devolve o tipo exportado InsumoPromessas com esses dados ja carregados. Sem grupo vinculado devolve insumo vazio sem ler mensagens (hoje detectarPromessas retorna antes da query). (2) AVALIAR: export async function avaliarCandidatos(insumo: InsumoPromessas, chamar: typeof chamarProvide",
+ "cria_novo": [
+  "test/promessas-avaliar-pura.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/lib/promessas/detectar.ts",
+  "test/promessa-par.test.ts",
+  "test/promessas-avaliar-pura.test.ts"
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/avisos-operacao.test.ts",
+   "motivo": "importa detectar.ts so pelo src/lib/jobs/operacao-inicio.ts, que fica intocado; o 741a mantem assinatura, janela e ResumoPromessas de detectarPromessas, e o criterio dos chamadores roda este teste verde"
+  },
+  {
+   "teste": "test/avisos-renovacao-nps.test.ts",
+   "motivo": "importa detectar.ts so pelo src/lib/jobs/operacao-inicio.ts, que fica intocado; o 741a mantem assinatura, janela e ResumoPromessas de detectarPromessas, e o criterio dos chamadores roda este teste verde"
+  },
+  {
+   "teste": "test/aviso-comarka-pro.test.ts",
+   "motivo": "importa detectar.ts so pelo src/lib/jobs/operacao-inicio.ts, que fica intocado; o 741a mantem assinatura, janela e ResumoPromessas de detectarPromessas, e o criterio dos chamadores roda este teste verde"
+  },
+  {
+   "teste": "test/eventos-resposta-grupo.test.ts",
+   "motivo": "importa detectar.ts so pelo src/lib/jobs/operacao-inicio.ts, que fica intocado; o 741a mantem assinatura, janela e ResumoPromessas de detectarPromessas, e o criterio dos chamadores roda este teste verde"
+  },
+  {
+   "teste": "test/avisos-vacuo.test.ts",
+   "motivo": "importa detectar.ts so pelo src/lib/jobs/operacao-inicio.ts, que fica intocado; o 741a mantem assinatura, janela e ResumoPromessas de detectarPromessas, e o criterio dos chamadores roda este teste verde"
+  }
+ ],
+ "dependencias": [
+  "861"
+ ],
+ "prioridade": 41,
+ "recon_esperado": [
+  {
+   "descricao": "test/promessas-avaliar-pura.test.ts ainda nao existe",
+   "cmd": "test -e 'test/promessas-avaliar-pura.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "detectarPromessas existe com a assinatura atual",
+   "cmd": "grep -qF 'export async function detectarPromessas(db: Db, agoraISO: string, teto: number = TETO_CHAMADAS): Promise<ResumoPromessas>' src/lib/promessas/detectar.ts && echo PRESENTE || echo SUMIU",
+   "espera": "PRESENTE"
+  },
+  {
+   "descricao": "avaliarCandidatos ainda nao existe (a deteccao nao tem funcao pura)",
+   "cmd": "grep -q 'avaliarCandidatos' src/lib/promessas/detectar.ts && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "operacao-inicio e o unico chamador de detectarPromessas em src",
+   "cmd": "n=$(grep -rl 'detectarPromessas' src | grep -v 'src/lib/promessas/detectar.ts' | tr '\\n' ' '); [ \"$n\" = 'src/lib/jobs/operacao-inicio.ts ' ] && echo UNICO || echo OUTROS_$n",
+   "espera": "UNICO"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes (saida em ${TMPDIR:-/tmp}/741a-guardas.txt)",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts > \"${TMPDIR:-/tmp}/741a-guardas.txt\" 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados (chamador de detectarPromessas)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/lib/jobs/operacao-inicio.ts' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do printf '%s\\n' 'src/lib/promessas/detectar.ts' 'test/promessa-par.test.ts' 'test/promessas-avaliar-pura.test.ts' | grep -Fxq \"$f\" || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 400 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 400 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "piloto preservado: nenhuma linha nova escreve em wpp_grupo",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- src scripts | grep -E '^[+][^+]' | grep -cE 'wpp_grupo.*[.](insert|update|upsert)[(]|[.](insert|update|upsert)[(].*wpp_grupo'); [ \"$n\" = 0 ] && echo SEM_ESCRITA_GRUPO || echo ESCREVE_GRUPO_$n",
+   "espera": "SEM_ESCRITA_GRUPO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "detectarPromessas mantem a assinatura e a janela de 24h",
+   "cmd": "a=$(grep -cF 'export async function detectarPromessas(db: Db, agoraISO: string, teto: number = TETO_CHAMADAS): Promise<ResumoPromessas>' src/lib/promessas/detectar.ts); j=$(grep -c '^const JANELA_HORAS = 24;' src/lib/promessas/detectar.ts); [ \"$a\" = 1 ] && [ \"$j\" = 1 ] && echo ASSINATURA_MANTIDA || echo MUDOU_${a}_${j}",
+   "espera": "ASSINATURA_MANTIDA",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "unica escrita do arquivo segue sendo um upsert (nenhum insert/update/delete/rpc)",
+   "cmd": "u=$(grep -c '[.]upsert[(]' src/lib/promessas/detectar.ts); o=$(grep -cE '[.](insert|update|delete|rpc)[(]' src/lib/promessas/detectar.ts); [ \"$u\" = 1 ] && [ \"$o\" = 0 ] && echo UMA_ESCRITA || echo ESCRITAS_${u}_${o}",
+   "espera": "UMA_ESCRITA",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: test/promessa-par.test.ts com 10 it( ou mais, 25 expect( ou mais, sem .skip/.only/.todo (saida em ${TMPDIR:-/tmp}/741a-par.txt)",
+   "cmd": "f=test/promessa-par.test.ts; i=$(grep -cE '^[[:space:]]*it[(]' $f); e=$(grep -c 'expect(' $f); s=$(grep -cE '[.](skip|only|todo)[(]' $f); [ \"$i\" -ge 10 ] && [ \"$e\" -ge 25 ] && [ \"$s\" = 0 ] && npx vitest run $f > \"${TMPDIR:-/tmp}/741a-par.txt\" 2>&1 && echo INTEGRO || echo AFROUXOU_${i}_${e}_${s}",
+   "espera": "INTEGRO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "chamadores de detectarPromessas via operacao-inicio seguem verdes (saida em ${TMPDIR:-/tmp}/741a-chamadores.txt)",
+   "cmd": "npx vitest run test/avisos-operacao.test.ts test/avisos-renovacao-nps.test.ts test/aviso-comarka-pro.test.ts test/eventos-resposta-grupo.test.ts test/avisos-vacuo.test.ts > \"${TMPDIR:-/tmp}/741a-chamadores.txt\" 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "tres camadas exportadas: carregarInsumoPromessas, avaliarCandidatos e gravarPromessas",
+   "cmd": "n=$(grep -cE '^export async function (carregarInsumoPromessas|avaliarCandidatos|gravarPromessas)[(<]' src/lib/promessas/detectar.ts); [ \"$n\" = 3 ] && echo TRES_CAMADAS || echo CAMADAS_$n",
+   "espera": "TRES_CAMADAS"
+  },
+  {
+   "descricao": "avaliarCandidatos nao recebe db",
+   "cmd": "l=$(grep -E '^export async function avaliarCandidatos[(<]' src/lib/promessas/detectar.ts); [ -n \"$l\" ] || { echo AUSENTE; exit 0; }; printf '%s' \"$l\" | grep -qE 'Db|SupabaseClient|db:' && echo RECEBE_BANCO || echo PURA_SEM_DB",
+   "espera": "PURA_SEM_DB"
+  },
+  {
+   "descricao": "detectarPromessas compoe as tres camadas",
+   "cmd": "n=$(awk '/^export async function detectarPromessas/,/^}/' src/lib/promessas/detectar.ts | grep -cE 'carregarInsumoPromessas[(]|avaliarCandidatos[(]|gravarPromessas[(]'); [ \"$n\" -ge 3 ] && echo COMPOE_AS_TRES || echo FALTAM_$n",
+   "espera": "COMPOE_AS_TRES"
+  },
+  {
+   "descricao": "teste novo verde (saida em ${TMPDIR:-/tmp}/741a-novo.txt)",
+   "cmd": "test -f test/promessas-avaliar-pura.test.ts && npx vitest run test/promessas-avaliar-pura.test.ts > \"${TMPDIR:-/tmp}/741a-novo.txt\" 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "teste novo cobre os quatro itens e cita o ticket",
+   "cmd": "f=test/promessas-avaliar-pura.test.ts; test -f $f || { echo AUSENTE; exit 0; }; i=$(grep -cE '^[[:space:]]*it[(]' $f); k=$(grep -c '741a' $f); a=$(grep -c 'avaliarCandidatos' $f); d=$(grep -c 'detectarPromessas' $f); [ \"$i\" -ge 4 ] && [ \"$k\" -ge 1 ] && [ \"$a\" -ge 1 ] && [ \"$d\" -ge 1 ] && echo COBERTO || echo FALTA_${i}_${k}_${a}_${d}",
+   "espera": "COBERTO"
+  },
+  {
+   "descricao": "avaliador: detectar.ts virou carregar -> avaliarCandidatos (pura, chamar injetado, sem db) -> gravar, e detectarPromessas so compoe as tres com o mesmo resumo. REPROVE se: mudou regra de deteccao, prompt, schema da resposta, colunas ou valores gravados; avaliarCandidatos escreve ou recebe db; o teste novo nao prova zero escrita nem compara o resumo com valores medidos antes; editou test/promessa-par.test.ts para passar.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "pausa cross-ticket: gate 'vitest' reprovou tickets 898,741a seguidos — suspeito é o gate, não o código (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/.orq-pause)",
+ "_objetivo_cortado_na_fixture": 7538
+}

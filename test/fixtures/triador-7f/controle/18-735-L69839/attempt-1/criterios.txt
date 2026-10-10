@@ -1,0 +1,22 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> PASS
+### criterio[9] -> PASS
+### criterio[10] -> PASS
+### criterio[11] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-735
+sanear_tsc: nao
+cmd:    f='src/lib/relacao/pode-agir.ts'; [ -f "$f" ] || { echo AUSENTE; exit 0; }; a=$(grep -c 'cuidaDoCliente' "$f"); b=$(grep -c 'papelDe' "$f"); g=$(grep -c 'gestor_id\|is_gestor_trafego' "$f"); [ "$a" -ge 1 ] && [ "$b" -ge 1 ] && [ "$g" = 0 ] && echo FONTE_UNICA || echo PA_${a}_${b}_${g}
+espera: FONTE_UNICA
+-- saida --
+PA_2_2_1
+
+### criterio[12] (qualitativo — julgado pelo Opus)
+descricao: avaliador: GET lista os vacuos do cliente ou da carteira de quem pede, do mais antigo, com a contagem de desconhecidos; POST Tratado grava com motivo e sem duplicar; so quem cuida, diretoria e admin. REPROVE se: regra de vacuo copiada na rota; dono por gestor_id ou is_gestor_trafego; falha de leitura vira lista vazia; escreve em wpp_grupo; aceita motivo livre.
+

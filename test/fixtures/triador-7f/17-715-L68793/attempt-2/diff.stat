@@ -1,0 +1,7 @@
+ src/app/api/cron/operacao-inicio/route.ts |  29 ++++++
+ src/lib/eventos/resposta-grupo.ts         |  89 ++++++++++++++++++
+ src/lib/jobs/operacao-inicio.ts           |  49 ++++++++++
+ src/middleware.ts                         |   2 +
+ test/eventos-resposta-grupo.test.ts       | 150 ++++++++++++++++++++++++++++++
+ vercel.json                               |   4 +
+ 6 files changed, 323 insertions(+)

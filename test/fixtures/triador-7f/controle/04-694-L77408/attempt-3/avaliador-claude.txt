@@ -1,0 +1,1 @@
+{"aprovado": true, "motivo": "Rota devolve carimbos, Seu dia, 5 contadores e carteira com cor e motivo vindos de avaliarCliente. Dono só por quem-cuida, ativo por isClienteAtivo, equipe delegada a vácuo/interação. Falha de leitura dá 500, promessa sai sem_base, sem mrr/valor, CS vê todos e o radar não foi tocado."}

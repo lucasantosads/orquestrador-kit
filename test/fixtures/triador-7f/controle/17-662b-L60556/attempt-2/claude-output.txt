@@ -1,0 +1,8 @@
+O realizado de leads agora soma `perf_insights_daily.leads` das contas em uso do escopo no mês, e o critério que reprovou (`PAG_2.0`) passa. Deixei o `select` com `leads` como literal: `grep -c fetchAllPaged` dá 3 e `grep -cE 'select\("[^"]*leads'` dá 1. O commit é `48e1a3d` (146 linhas inseridas, 26 removidas nos 4 arquivos); não fiz push.
+
+- **Verificado:** `tsc` em `src/` dá 3 erros, o baseline. Os 4 arquivos de `metas` e as 7 guardas globais rodaram juntos: 11 arquivos, 109 testes, todos verdes.
+- **Não rodei:** `npm run build`, nem o restante do `npx vitest run`. Não rodei `rm -rf .next` antes do `tsc` porque o comando foi negado; o resultado 3 saiu mesmo assim.
+- **Fonte:** as leituras de gasto e leads passam por `fetchAllPaged`, ordenadas por `data_ref` e `id`. Um erro de página devolve `sem_insumo` com o motivo de sincronização, sem lançar. A resolução das contas foi extraída numa função usada pelos dois. Sem conta, o motivo é o de conta de anúncios. `mql` e `sql_` continuam contando `perf_leads`.
+- **Testes existentes:** em `test/metas.test.ts` e `test/metas-por-gestor.test.tsx` o valor esperado continua 3, agora vindo de `perf_insights_daily` com comentário citando 662b. Também adicionei `range` ao mock encadeável nos dois arquivos. Nenhuma asserção foi removida ou afrouxada.
+- **Teste novo:** `test/metas-realizado-leads-perf.test.ts` tem 4 casos. Cobre a soma nas contas do escopo sem ler `perf_leads`, mês sem linhas, escopo sem conta e erro na página.
+- **Fragilidade no `metas.test.ts`:** o teste de leads da agência troca `perf_ad_accounts` por uma fila. A 1ª leitura, de investimento, vem sem conta; a 2ª, de leads, acha a conta. Isso depende da ordem de `METRICAS` (`mql`, `sql_`, `investimento`, `leads`).

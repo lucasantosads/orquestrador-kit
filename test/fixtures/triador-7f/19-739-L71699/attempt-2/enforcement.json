@@ -1,0 +1,21 @@
+{
+  "ok": false,
+  "violations": [
+    {
+      "tipo": "fora_do_pathspec",
+      "detalhe": "src/app/api/clientes/entregaveis/historico/route.ts"
+    },
+    {
+      "tipo": "fora_do_pathspec",
+      "detalhe": "src/app/api/clientes/entregaveis/route.ts"
+    },
+    {
+      "tipo": "fora_do_pathspec",
+      "detalhe": "src/app/api/clientes/teses-metricas/route.ts"
+    },
+    {
+      "tipo": "fora_do_pathspec",
+      "detalhe": "src/lib/liga-conquistas.ts"
+    }
+  ]
+}

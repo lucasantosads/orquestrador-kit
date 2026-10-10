@@ -1,0 +1,4 @@
+{
+  "aprovado": false,
+  "motivo": "URL mantida e leituras legadas usam nid: ok. Mas sem notionId reuniões e resumos viram [[],[]] e setam lista vazia, e NPS e tracking somem sem 'sem base'. Só teses e WhatsApp mostram o motivo, contra o critério 'lista vazia no lugar de sem base'."
+}

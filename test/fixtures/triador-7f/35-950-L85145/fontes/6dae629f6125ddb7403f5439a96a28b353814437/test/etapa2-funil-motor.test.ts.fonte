@@ -1,0 +1,94 @@
+/**
+ * Etapa 2 do mapeamento de etapas: com regra crm_ghl o funil do cliente não avalia
+ * regra nenhuma, só lê as marcas gravadas pelo motor (is_mql, is_sql, rm_em, rr_em,
+ * venda_em). Sem crm_ghl, o fallback estagio_pipeline segue igual.
+ */
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ from: vi.fn() }) }));
+
+import { montarFunilCliente, marcasDoLead, funilPeloMotor, type LeadFunil, type RegraFunil } from "@/lib/comercial/funil-cliente";
+import { qualificarLead, type RegraQualificacao, type LeadParaQualificar, type ClassificaComo } from "@/lib/qualificacao/motor";
+
+const PERIODO = { from: "2026-09-01", to: "2026-09-30" };
+const CLIENTE = "00000000-0000-4000-8000-000000000001";
+const E_NOVO = "00000000-0000-4000-8000-0000000000a1";
+const E_RM = "00000000-0000-4000-8000-0000000000a2";
+const E_RR = "00000000-0000-4000-8000-0000000000a3";
+const E_VENDA = "00000000-0000-4000-8000-0000000000a4";
+
+const lead = (id: string, extra: Partial<LeadFunil> = {}): LeadFunil => ({
+  id, nome: `Lead ${id}`, etapa: null, is_mql: false, is_sql: false, campaign_id: null,
+  created_at: "2026-09-10T10:00:00Z", ...extra,
+});
+
+function regraCrm(classe: ClassificaComo, etapaIds: string[]): RegraQualificacao {
+  return {
+    id: `regra-${classe}`, escopo: "cliente", tese_id: null, cliente_id: CLIENTE,
+    tipo_regra: "crm_ghl", config: { etapa_ids: etapaIds }, classifica_como: classe,
+  };
+}
+const REGRAS_CRM = [regraCrm("MQL", [E_NOVO]), regraCrm("RM", [E_RM]), regraCrm("RR", [E_RR]), regraCrm("VENDA", [E_VENDA])];
+
+describe("funil pelo motor (cliente com crm_ghl)", () => {
+  it("uma linha por classe mapeada, contando as marcas gravadas; lead sem marca vai para Sem classificação", () => {
+    const leads = [
+      lead("1", { is_mql: true, rm_em: "2026-09-03T00:00:00Z" }),
+      lead("2", { is_mql: true }),
+      lead("3", { venda_em: "2026-09-09T00:00:00Z" }),
+      lead("4"),
+    ];
+    const f = montarFunilCliente(leads, REGRAS_CRM, [], null, PERIODO);
+    expect(f.etapas.map((e) => e.nome)).toEqual(["MQL", "Reunião marcada", "Reunião realizada", "Venda", "Sem classificação"]);
+    // MQL: leads 1 e 2; RM: lead 1; RR: nenhum; Venda: lead 3 (fase pulada não é inferida); sem marca: lead 4.
+    expect(f.etapas.map((e) => e.quantidade)).toEqual([2, 1, 0, 1, 1]);
+    // 2 de 4 = 50%; 1 de 4 = 25%.
+    expect(f.etapas.map((e) => e.pct)).toEqual([50, 25, 0, 25, 25]);
+  });
+
+  it("não lê a etapa do lead: etapa batendo com estagio_pipeline não conta sem marca do motor", () => {
+    const regras: RegraFunil[] = [
+      ...REGRAS_CRM,
+      { tipo_regra: "estagio_pipeline", config: { valor: "Reunião" }, classifica_como: "RM" },
+    ];
+    const f = montarFunilCliente([lead("1", { etapa: "Reunião" })], regras, [], null, PERIODO);
+    expect(f.etapas.find((e) => e.classifica_como === "RM")?.quantidade).toBe(0);
+    expect(f.etapas.at(-1)).toMatchObject({ nome: "Sem classificação", quantidade: 1 });
+  });
+
+  it("fallback estagio_pipeline só sem crm_ghl", () => {
+    const estagio: RegraFunil[] = [{ tipo_regra: "estagio_pipeline", config: { valor: "Novo" }, classifica_como: "MQL" }];
+    expect(funilPeloMotor(estagio)).toBe(false);
+    expect(funilPeloMotor([...estagio, REGRAS_CRM[0]])).toBe(true);
+    const f = montarFunilCliente([lead("1", { etapa: "novo" })], estagio, [], null, PERIODO);
+    expect(f.etapas.map((e) => [e.nome, e.quantidade])).toEqual([["Novo", 1]]);
+  });
+});
+
+describe("funil e motor dão o mesmo número para o mesmo lead", () => {
+  const base = (id: string, over: Partial<LeadParaQualificar>): LeadParaQualificar => ({
+    id, cliente_id: CLIENTE, tese_id: null, is_mql: false, is_sql: false, mql_em: null, sql_em: null, ...over,
+  });
+  const entradas: LeadParaQualificar[] = [
+    base("a", { etapas_atingidas: [E_NOVO, E_RM, E_RR] }),
+    base("b", { etapas_atingidas: [E_NOVO] }),
+    base("c", { etapas_atingidas: [E_VENDA] }),
+    base("d", { etapas_atingidas: [] }),
+  ];
+
+  it("cada classe do funil conta exatamente os leads que o motor marcou", () => {
+    const gravados: LeadFunil[] = entradas.map((l) => {
+      const r = qualificarLead(l, REGRAS_CRM);
+      return lead(l.id, { is_mql: r.is_mql, is_sql: r.is_sql, rm_em: r.rm_em, rr_em: r.rr_em, venda_em: r.venda_em });
+    });
+    const f = montarFunilCliente(gravados, REGRAS_CRM, [], null, PERIODO);
+    for (const classe of ["MQL", "RM", "RR", "VENDA"]) {
+      const peloMotor = gravados.filter((g) => marcasDoLead(g).includes(classe)).map((g) => g.id).sort();
+      const linha = f.etapas.find((e) => e.classifica_como === classe);
+      expect(linha?.quantidade).toBe(peloMotor.length);
+      expect(linha?.leads.map((x) => x.id).sort()).toEqual(peloMotor);
+    }
+    // Lead a: MQL, RM, RR. Lead b: MQL. Lead c: VENDA só. Lead d: nada.
+    expect(gravados.map((g) => marcasDoLead(g))).toEqual([["MQL", "RM", "RR"], ["MQL"], ["VENDA"], []]);
+  });
+});

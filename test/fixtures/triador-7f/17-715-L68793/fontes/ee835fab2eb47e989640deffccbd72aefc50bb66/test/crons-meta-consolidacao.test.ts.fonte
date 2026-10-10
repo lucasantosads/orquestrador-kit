@@ -1,0 +1,469 @@
+/**
+ * Testes obrigatórios — Ticket 082 (consolidação dos crons Meta/insights/alertas)
+ *
+ * Cada bloco abaixo rastreia a uma linha do veredito de
+ * docs/recon/recon-crons-meta.md — nada aqui é iniciativa própria:
+ *
+ *  - §4.1 (linhas 320-329) + §5 (linha 402): "dono único recomendado:
+ *    meta-sync-scheduler.ts (lib), com as 3 rotas chamando-o" → as 3 rotas
+ *    continuam vivas e agendadas, e todas delegam ao scheduler.
+ *  - §4.2 (linhas 360-363) + §5 (linha 403): "dono único =
+ *    /api/perf/alertas/avaliar + alertas-engine.ts ... portar
+ *    pix_sem_investimento e remover a rota/motor não agendados" → o tipo foi
+ *    portado e /api/cron/alertas-avaliar responde 410 com substituta.
+ *  - §4.2 linha 367: "Não cadastrar a rota 'como está' sem resolver a
+ *    sobreposição" → nenhuma entrada nova em vercel.json para essa rota.
+ *  - §3.2 (linhas 273-275): "Nenhuma" entrada órfã → segue nenhuma.
+ */
+import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
+import { NextRequest } from "next/server";
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+
+const ROOT = process.cwd();
+const CLIENTE_PIX = "aaaaaaaa-1111-1111-1111-111111111111";
+
+// ─── Mock do Supabase (compartilhado pelos blocos de rota e de motor) ──────
+
+interface Row {
+  [k: string]: unknown;
+}
+
+const store: Record<string, Row[]> = {};
+const writes: string[] = [];
+let idCounter = 1;
+
+function resetStore() {
+  for (const k of Object.keys(store)) delete store[k];
+  writes.length = 0;
+  idCounter = 1;
+}
+
+vi.mock("@supabase/supabase-js", () => {
+  function makeBuilder(table: string) {
+    let rows: Row[] = store[table] ? [...store[table]] : [];
+    let mode: "select" | "insert" | "update" | "delete" = "select";
+    let payload: Row | null = null;
+
+    async function exec(): Promise<{ data: unknown; error: { message: string } | null }> {
+      if (mode === "insert" && payload) {
+        const row: Row = { id: `${table}-${idCounter++}`, ...payload };
+        store[table] = store[table] ? [...store[table], row] : [row];
+        writes.push(table);
+        return { data: row, error: null };
+      }
+      if (mode === "update" || mode === "delete") {
+        writes.push(table);
+        return { data: null, error: null };
+      }
+      return { data: rows, error: null };
+    }
+
+    const builder: Record<string, unknown> = {
+      select: () => builder,
+      order: () => builder,
+      limit: () => builder,
+      insert(row: Row) {
+        mode = "insert";
+        payload = row;
+        return builder;
+      },
+      update(row: Row) {
+        mode = "update";
+        payload = row;
+        return builder;
+      },
+      delete() {
+        mode = "delete";
+        return builder;
+      },
+      eq(field: string, value: unknown) {
+        rows = rows.filter((r) => r[field] === value);
+        return builder;
+      },
+      in(field: string, values: unknown[]) {
+        rows = rows.filter((r) => values.includes(r[field]));
+        return builder;
+      },
+      gte(field: string, value: string) {
+        rows = rows.filter((r) => String(r[field]) >= value);
+        return builder;
+      },
+      lte(field: string, value: string) {
+        rows = rows.filter((r) => String(r[field]) <= value);
+        return builder;
+      },
+      is(field: string, value: unknown) {
+        if (value === null) rows = rows.filter((r) => r[field] === null || r[field] === undefined);
+        return builder;
+      },
+      not(field: string, _op: string, value: unknown) {
+        if (value === null) rows = rows.filter((r) => r[field] !== null && r[field] !== undefined);
+        return builder;
+      },
+      async maybeSingle() {
+        const res = await exec();
+        if (mode !== "select") return res;
+        return { data: (res.data as Row[])[0] ?? null, error: null };
+      },
+      async single() {
+        const res = await exec();
+        if (mode !== "select") return res;
+        return { data: (res.data as Row[])[0] ?? null, error: null };
+      },
+      then(resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) {
+        return exec().then(resolve, reject);
+      },
+    };
+
+    return builder;
+  }
+
+  return {
+    createClient: () => ({
+      from: (table: string) => makeBuilder(table),
+      rpc: async () => ({ data: "token-decrypted", error: null }),
+    }),
+  };
+});
+
+// ─── Mock do scheduler (para provar delegação) e da Graph API ──────────────
+
+vi.mock("@/lib/meta-sync-scheduler", () => ({
+  syncDailyInsights: vi.fn(async () => ({
+    job: "syncDailyInsights",
+    accounts_processed: 1,
+    accounts_success: 1,
+    accounts_error: 0,
+    total_records: 1,
+    errors: [],
+  })),
+  syncRecentInsights: vi.fn(async () => ({
+    job: "syncRecentInsights",
+    accounts_processed: 1,
+    accounts_success: 1,
+    accounts_error: 0,
+    total_records: 1,
+    errors: [],
+  })),
+  upsertAccountInsights: vi.fn(async (_id: string, rows: unknown[]) => rows.length),
+  checkTokenExpiry: vi.fn(async () => ({ checked: 0, expiring: 0, expired: 0, alerts_created: 0 })),
+}));
+
+vi.mock("@/lib/meta-api-service", () => ({
+  getAccountInsights: vi.fn(async () => [
+    {
+      date: "2026-08-18",
+      spend: 100,
+      leads: 5,
+      conversions: 5,
+      conversion_type: "lead_form",
+      impressions: 1000,
+      clicks: 50,
+      raw_data: {},
+    },
+  ]),
+}));
+
+import * as scheduler from "@/lib/meta-sync-scheduler";
+import { GET as GET_META_SYNC } from "@/app/api/cron/meta-sync/route";
+import { GET as GET_META_DAILY } from "@/app/api/cron/meta-daily-insights/route";
+import { GET as GET_META_RECENT } from "@/app/api/cron/meta-recent-insights/route";
+import { GET as GET_ALERTAS_AVALIAR } from "@/app/api/cron/alertas-avaliar/route";
+import { avaliarRegras } from "@/lib/perf/alertas-engine";
+
+const SECRET = "test-cron-secret";
+
+function req(path: string, comAuth = true) {
+  return new NextRequest(`http://localhost${path}`, {
+    headers: comAuth ? { Authorization: `Bearer ${SECRET}` } : {},
+  });
+}
+
+// ─── §4.1 — meta_insights_cache: dono único é o scheduler ─────────────────
+
+// 523: o recon §4.1 recomendava as 3 rotas delegando ao scheduler — o ticket
+// 523 foi além e aposentou as 3 (410 estático), porque a coleta real já
+// tinha migrado de vez para a família perf_* (perf-insights-sync).
+describe("523 — as 3 rotas de insights legadas (antes delegavam ao scheduler) foram aposentadas", () => {
+  const originalCron = process.env.CRON_SECRET;
+  const originalPerf = process.env.PERF_CRON_SECRET;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetStore();
+    process.env.CRON_SECRET = SECRET;
+    delete process.env.PERF_CRON_SECRET;
+  });
+
+  afterAll(() => {
+    process.env.CRON_SECRET = originalCron;
+    process.env.PERF_CRON_SECRET = originalPerf;
+  });
+
+  // Recalculado no 523: a rota não chama mais syncDailyInsights — responde
+  // 410 estático e o scheduler nunca é invocado.
+  it("523: meta-daily-insights aposentada — 410 com segredo, scheduler não chamado", async () => {
+    const res = await GET_META_DAILY(req("/api/cron/meta-daily-insights"));
+    expect(res.status).toBe(410);
+    const body = await res.json();
+    expect(String(body.error)).toContain("cron legado aposentado");
+    expect(scheduler.syncDailyInsights).not.toHaveBeenCalled();
+  });
+
+  // Recalculado no 523: idem, para syncRecentInsights.
+  it("523: meta-recent-insights aposentada — 410 com segredo, scheduler não chamado", async () => {
+    const res = await GET_META_RECENT(req("/api/cron/meta-recent-insights"));
+    expect(res.status).toBe(410);
+    const body = await res.json();
+    expect(String(body.error)).toContain("cron legado aposentado");
+    expect(scheduler.syncRecentInsights).not.toHaveBeenCalled();
+  });
+
+  // Recalculado no 523: a rota não chama mais upsertAccountInsights — responde
+  // 410 estático e não escreve em meta_insights_cache nem em tabela alguma.
+  it("523: meta-sync aposentada — 410 com segredo, upsertAccountInsights não chamado", async () => {
+    const res = await GET_META_SYNC(req("/api/cron/meta-sync"));
+    expect(res.status).toBe(410);
+    const body = await res.json();
+    expect(String(body.error)).toContain("cron legado aposentado");
+    expect(scheduler.upsertAccountInsights).not.toHaveBeenCalled();
+    expect(writes).not.toContain("meta_insights_cache");
+  });
+
+  it("meta-sync mantém a auth Bearer com CRON_SECRET (401 sem segredo)", async () => {
+    const res = await GET_META_SYNC(req("/api/cron/meta-sync", false));
+    expect(res.status).toBe(401);
+    expect(scheduler.upsertAccountInsights).not.toHaveBeenCalled();
+  });
+
+  // Recalculado no 523: antes a rota delegava ao scheduler (upsertAccountInsights)
+  // e ainda tinha .from("meta_sync_logs"). Agora ela está aposentada: nenhuma
+  // query a banco e nenhuma chamada ao scheduler sobrevivem no fonte.
+  it("523: meta-sync/route.ts virou 410 estático — sem .from( nem upsertAccountInsights", () => {
+    const src = readFileSync(join(ROOT, "src/app/api/cron/meta-sync/route.ts"), "utf8");
+    expect(src).not.toContain(".from(");
+    expect(src).not.toContain("upsertAccountInsights");
+  });
+});
+
+// ─── §4.2 — perf_alerta_ocorrencias: dono único é alertas-engine ──────────
+
+describe("recon §4.2/§5:403 — /api/cron/alertas-avaliar aposentada com substituta", () => {
+  const originalCron = process.env.CRON_SECRET;
+  const originalPerf = process.env.PERF_CRON_SECRET;
+
+  beforeEach(() => {
+    resetStore();
+    process.env.CRON_SECRET = SECRET;
+    delete process.env.PERF_CRON_SECRET;
+  });
+
+  afterAll(() => {
+    process.env.CRON_SECRET = originalCron;
+    process.env.PERF_CRON_SECRET = originalPerf;
+  });
+
+  it("sem Bearer válido responde 401 — auth preservada, 410 não é superfície aberta", async () => {
+    const res = await GET_ALERTAS_AVALIAR(req("/api/cron/alertas-avaliar", false));
+    expect(res.status).toBe(401);
+  });
+
+  it("com Bearer válido responde 410 apontando /api/perf/alertas/avaliar", async () => {
+    const res = await GET_ALERTAS_AVALIAR(req("/api/cron/alertas-avaliar"));
+    expect(res.status).toBe(410);
+    const body = await res.json();
+    expect(body.aposentada).toBe(true);
+    expect(body.substituta).toBe("/api/perf/alertas/avaliar");
+    expect(res.headers.get("Link")).toContain("/api/perf/alertas/avaliar");
+  });
+
+  it("a substituta existe no disco e continua agendada", () => {
+    expect(existsSync(join(ROOT, "src/app/api/perf/alertas/avaliar/route.ts"))).toBe(true);
+    const vercel = JSON.parse(readFileSync(join(ROOT, "vercel.json"), "utf8")) as {
+      crons: { path: string; schedule: string }[];
+    };
+    const entrada = vercel.crons.find((c) => c.path === "/api/perf/alertas/avaliar");
+    expect(entrada?.schedule).toBe("0 1,7,13,19 * * *");
+  });
+
+  it("nenhuma rota de cron foi deletada do disco", () => {
+    const rotas = [
+      "alertas-avaliar",
+      "meta-daily-insights",
+      "meta-recent-insights",
+      "meta-sync",
+      "meta-token-check",
+      "onboarding-sync",
+      "perf-insights-sync",
+    ];
+    for (const r of rotas) {
+      expect(existsSync(join(ROOT, `src/app/api/cron/${r}/route.ts`))).toBe(true);
+    }
+  });
+});
+
+describe("recon §4.2:362 — pix_sem_investimento portado para alertas-engine", () => {
+  beforeEach(() => {
+    resetStore();
+  });
+
+  function regraPix() {
+    store.perf_alerta_regras = [
+      {
+        id: "regra-pix-1",
+        escopo: "cliente",
+        nicho_id: null,
+        tese_id: null,
+        cliente_id: CLIENTE_PIX,
+        tipo_regra: "pix_sem_investimento",
+        config: { janela_dias: 7 },
+        severidade: "P2",
+        ativo: true,
+      },
+    ];
+  }
+
+  it("pix + gasto zero na janela → abre ocorrência em perf_alerta_ocorrencias", async () => {
+    regraPix();
+    store.clientes_receita = [{ cliente_id: CLIENTE_PIX, forma_pagamento: "pix" }];
+    store.perf_insights_daily = [];
+
+    const resultado = await avaliarRegras({ now: new Date("2026-08-18T12:00:00Z") });
+
+    expect(resultado.regras_avaliadas).toBe(1);
+    expect(resultado.ocorrencias_abertas).toBe(1);
+    expect(resultado.ocorrencias_atualizadas).toBe(0);
+    expect(store.perf_alerta_ocorrencias).toHaveLength(1);
+    expect(store.perf_alerta_ocorrencias[0]).toMatchObject({
+      regra_id: "regra-pix-1",
+      cliente_id: CLIENTE_PIX,
+      severidade: "P2",
+      status: "novo",
+      valor_observado: 0,
+      valor_limite: 0,
+    });
+    expect((store.perf_alerta_ocorrencias[0].evidencia as { metrica: string }).metrica).toBe("gasto");
+    // o motor mais completo também registra o evento — capacidade que o motor
+    // aposentado não tinha (recon linha 349)
+    expect(writes).toContain("perf_alerta_eventos");
+  });
+
+  it("pix com gasto > 0 na janela → não dispara", async () => {
+    regraPix();
+    store.clientes_receita = [{ cliente_id: CLIENTE_PIX, forma_pagamento: "pix" }];
+    store.perf_insights_daily = [
+      { cliente_id: CLIENTE_PIX, data_ref: "2026-08-17", gasto: 250, impressoes: 10, cliques: 2, leads: 0 },
+    ];
+
+    const resultado = await avaliarRegras({ now: new Date("2026-08-18T12:00:00Z") });
+
+    expect(resultado.ocorrencias_abertas).toBe(0);
+    expect(store.perf_alerta_ocorrencias).toBeUndefined();
+  });
+
+  it("forma de pagamento diferente de pix → não dispara mesmo sem gasto", async () => {
+    regraPix();
+    store.clientes_receita = [{ cliente_id: CLIENTE_PIX, forma_pagamento: "cartao" }];
+    store.perf_insights_daily = [];
+
+    const resultado = await avaliarRegras({ now: new Date("2026-08-18T12:00:00Z") });
+
+    expect(resultado.ocorrencias_abertas).toBe(0);
+    expect(store.perf_alerta_ocorrencias).toBeUndefined();
+  });
+
+  it("cliente sem linha de contrato → não dispara (fonte ausente nunca alerta)", async () => {
+    regraPix();
+    store.clientes_receita = [];
+    store.perf_insights_daily = [];
+
+    const resultado = await avaliarRegras({ now: new Date("2026-08-18T12:00:00Z") });
+
+    expect(resultado.ocorrencias_abertas).toBe(0);
+    expect(store.perf_alerta_ocorrencias).toBeUndefined();
+  });
+
+  it("clientes_receita é lida, nunca escrita (zona C0)", async () => {
+    regraPix();
+    store.clientes_receita = [{ cliente_id: CLIENTE_PIX, forma_pagamento: "pix" }];
+    store.perf_insights_daily = [];
+
+    await avaliarRegras({ now: new Date("2026-08-18T12:00:00Z") });
+
+    expect(writes).not.toContain("clientes_receita");
+  });
+});
+
+// ─── §3.1 / §3.2 / §4.2:367 — vercel.json ─────────────────────────────────
+
+describe("vercel.json — só o que o recon pede", () => {
+  const vercel = JSON.parse(readFileSync(join(ROOT, "vercel.json"), "utf8")) as {
+    crons: { path: string; schedule: string }[];
+  };
+
+  // Pino recalculado 15->16->17->18->21: ticket 108 (T5.1 fase 1) cadastrou
+  // /api/cron/relatorio-semanal (docs/recon/recon-n8n-migracao.md:180),
+  // substituto do workflow n8n "Relatório Semanal" — 16ª entrada, desde a
+  // contagem de 15 fixada pelo teste do 082. Ticket 117 (T5.1 fase 2)
+  // cadastrou /api/cron/onboarding-sla (docs/recon/recon-n8n-migracao.md:181,
+  // :195), substituto do workflow n8n proposto "Monitor Onboarding SLA" —
+  // 17ª entrada, única nova desde a contagem de 16 fixada pelo teste do 108.
+  // Ticket 216 (docs/fila/216-temperatura-comercial-cron.md) cadastrou
+  // /api/clientes/temperatura-comercial (cron semanal do novo lote de
+  // leitura comercial) — 18ª entrada. 18 do eixo 1 do recon + 2 rotas que
+  // existiam e nunca disparavam (/api/cron/sync-clientes do 371 e
+  // /api/cron/kanban-higiene do 365b) + /api/jobs/worker do 402 = 21,
+  // contagem fixada pelo teste do 402.
+  // Recalculado 21->18 (ticket 523): meta-daily-insights, meta-recent-insights
+  // e meta-sync aposentaram (410 estático) e saíram do agendamento — a coleta
+  // real já não passa por eles, é /api/cron/perf-insights-sync. 21 - 3 = 18.
+  // Recalculado 18->19 (ticket 543): cadastrou /api/cron/meta-otimizacoes
+  // (importação diária das atividades humanas da Meta para perf_otimizacoes,
+  // pedido O1) — 19ª entrada, única nova desde a contagem de 18 fixada pelo
+  // teste do 523.
+  // Recalculado 19->20 (ticket 619): cadastrou /api/cron/resumo-grupos-semanal
+  // (resumo automático dos grupos de WhatsApp, segunda a cada 10 min) — 20ª
+  // entrada, única nova desde a contagem de 19 fixada pelo teste do 543.
+  // Recalculado 20->21 (ticket 549c): agendou /api/cron/leitura-relacao
+  // (Leitura da relação, diário 10h UTC) — 21ª entrada, única nova desde a
+  // contagem de 20 fixada pelo 619 (20 de hoje + leitura-relacao).
+  // Recalculado 21->22 (Entrega 2A, modo agência do GHL): agendou
+  // /api/cron/ghl-agencia-refresh (renovação do token da agência, 0 */12 * * *) —
+  // 22ª entrada, única nova desde as 21 do 549c.
+  // Recalculado 22->23 (frente do contrato, lote 4): agendou /api/cron/aprovacao-tacita
+  // (aprovação tácita de copy e criativo, diário 11h UTC = 08h America/Bahia).
+  // Recalculado 23->24 (ticket a, 29/09): agendou /api/cron/relatorio-mensal
+  // (prévia do mês fechado, dia 1 às 11h UTC = 08h America/Bahia).
+  // Recalculado 24->25 (6(a), 29/09): agendou /api/cron/churn-resumo (resumo de churn do
+  // mês, diário 03:15 UTC = 00:15 America/Sao_Paulo); a tela /churn deixou de gravar no load.
+  it("é JSON válido com as 25 entradas: as 24 anteriores + churn-resumo (6(a))", () => {
+    expect(Array.isArray(vercel.crons)).toBe(true);
+    expect(vercel.crons).toHaveLength(25);
+    expect(vercel.crons.find((c) => c.path === "/api/cron/relatorio-mensal")?.schedule).toBe("0 11 1 * *");
+    expect(vercel.crons.find((c) => c.path === "/api/cron/aprovacao-tacita")?.schedule).toBe("0 11 * * *");
+    expect(vercel.crons.find((c) => c.path === "/api/cron/ghl-agencia-refresh")?.schedule).toBe("0 */12 * * *");
+  });
+
+  it("nenhuma entrada órfã: toda entrada aponta para um route.ts existente (recon §3.2)", () => {
+    const orfas = vercel.crons.filter(
+      (c) => !existsSync(join(ROOT, `src/app${c.path}/route.ts`)),
+    );
+    expect(orfas).toEqual([]);
+  });
+
+  // Recalculado no 523: o recon §4.1 mandava manter os 3 agendados; o ticket
+  // 523 aposentou as 3 rotas (410 estático) e removeu as entradas — a coleta
+  // real é /api/cron/perf-insights-sync (30 3 * * *), que segue agendado.
+  it("523: os 3 crons legados de insights foram removidos do vercel.json", () => {
+    const porPath = new Map(vercel.crons.map((c) => [c.path, c.schedule]));
+    expect(porPath.has("/api/cron/meta-daily-insights")).toBe(false);
+    expect(porPath.has("/api/cron/meta-recent-insights")).toBe(false);
+    expect(porPath.has("/api/cron/meta-sync")).toBe(false);
+    expect(porPath.get("/api/cron/perf-insights-sync")).toBe("30 3 * * *");
+  });
+
+  it("a rota aposentada NÃO foi cadastrada (recon §4.2 linha 367)", () => {
+    expect(vercel.crons.some((c) => c.path === "/api/cron/alertas-avaliar")).toBe(false);
+  });
+});

@@ -1,0 +1,16 @@
+Parei sem implementar nada, porque o ticket manda parar nesse caso. Não há commit e não alterei arquivo.
+
+**O que impede o backtest.** O passo 1 do ticket exige que `src/lib/promessas/detectar.ts` já tenha uma função pura. Ela receberia as mensagens e devolveria os candidatos. Não existe, e o ticket proíbe mexer nesse arquivo.
+
+- **`montarCandidatos`:** é a parte pura da deteccao, mas não é exportada. Ela só monta os pares de pedido e equipe, e não decide o que é promessa.
+- **`detectarPromessas(db, agoraISO, teto)`:** é a única exportada além de `resolverPrazo`. Ela faz tudo de uma vez e só devolve contagens (`ResumoPromessas`), sem a lista de candidatos. Isso impede de imprimir data, trecho do pedido, trecho da promessa, prazo, evidência e motivo de descarte por candidato.
+- **Janela e escopo:**
+  - Ela busca todos os grupos vinculados, sem filtro por cliente.
+  - A janela é fixa em 24 horas, então não há como aplicar `--cliente` nem `--dias`.
+- **Escrita:** a gravação é um `upsert` em `perf_promessas` dentro da própria função. Com o leitor que lança em escrita, o `upsert` seria engolido pelo `catch` e contado como falha. O backtest não mostraria nenhum candidato.
+
+Reescrever ou copiar essa lógica no script violaria a regra de que o backtest reaproveita a detecção. Por isso não fiz.
+
+**Sobre a reprovação anterior.** O critério 8 deu VERMELHO porque `test/backtest-promessas.test.ts` não existe. Também não existe `scripts/dados/741-backtest-promessas.ts`. O teste não chega a rodar, e a causa é o bloqueio acima.
+
+**O que destrava.** Falta um ticket anterior que extraia de `detectar.ts` uma função pura. Ela receberia as mensagens já carregadas, mais equipe, contatos, feriados, `jaTem` e a janela, e devolveria os candidatos. A chamada ao modelo e a decisão de gravar ou descartar também precisam ficar separadas da escrita. Esse ticket precisa incluir `detectar.ts` e `test/promessa-par.test.ts` na allowlist. Depois dele, o 741 cabe no teto de 240 linhas.

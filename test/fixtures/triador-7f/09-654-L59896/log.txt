@@ -1,0 +1,102 @@
+59795	[2026-09-26 13:46:17-0300] drenagem: ticket 654 (1 pendentes restantes)
+59796	[orq 16:46:17] orquestrador iniciando · modo: real · once
+59797	[orq 16:46:17] preflight: validando infra (scripts, fila, env, claude)...
+59798	[orq 16:46:20] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+59799	[orq 16:46:25] preflight: ok
+59800	[orq 16:46:35] === ticket 654 (conta-contrato-dedup) — tentativa 1 · modo: real ===
+59801	[orq 16:46:36]   recon_esperado: ok (1 comando(s))
+59802	[orq 16:46:36] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx já existe no worktree — o agente vai EDITAR, não criar
+59803	[orq 16:46:36] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/contratual.tsx já existe no worktree — o agente vai EDITAR, não criar
+59804	[orq 16:46:36] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/resultados-tab.tsx já existe no worktree — o agente vai EDITAR, não criar
+59805	[orq 16:46:36] aviso allowlist: test/aba-resultados-fechamentos.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59806	[orq 16:46:36] aviso allowlist: test/churn-checklist-rota.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59807	[orq 16:46:36] aviso allowlist: test/conta-aceite.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59808	[orq 16:46:36] aviso allowlist: test/conta-bugs-reais.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59809	[orq 16:46:36] aviso allowlist: test/conta-contrato-e-entregas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59810	[orq 16:46:36] aviso allowlist: test/conta-resultados-campanha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59811	[orq 16:46:36] aviso allowlist: test/conta-resultados-escritorio.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59812	[orq 16:46:36] aviso allowlist: test/conta-resultados-filtros.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59813	[orq 16:46:36] aviso allowlist: test/contratual-disputa.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59814	[orq 16:46:36] aviso allowlist: test/contratual-entregas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59815	[orq 16:46:36] aviso allowlist: test/contratual-prazo.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59816	[orq 16:46:36] aviso allowlist: test/erro-string-carteira-perfil-disputa.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59817	[orq 16:46:36] aviso allowlist: test/fechamentos.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59818	[orq 16:46:36] aviso allowlist: test/ficha-abas-orfas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59819	[orq 16:46:36] aviso allowlist: test/indicadores-resultados.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59820	[orq 16:46:36] aviso allowlist: test/metas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59821	[orq 16:46:36] aviso allowlist: test/retencao-saidas-checklist.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59822	[orq 16:46:36] aviso allowlist: test/visao-copy-ausencia.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59823	[orq 16:46:37]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/654/attempt-1/prompt.txt
+59824	[orq 16:46:37]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+59825	[orq 16:47:49]   diff cru salvo (83 linhas) · HEAD julgado 6f205961
+59826	[orq 16:47:49]   enforcement: ok
+59827	[orq 16:48:06]   gate tsc: ok (baseline)
+59828	[orq 16:48:34]   gate vitest: ok
+59829	[orq 16:48:58]   criterios mecânicos: ok
+59830	[orq 16:49:34]   gate build: ok
+59831	[orq 16:49:54] avaliador: REPROVADO — Contratual: o texto datado foi para a linha da consulta (:109), que o ticket mandava tirar, e não para a linha única do 636. A :187 segue sem data no mount vazio e, após Consultar, aparecem 2 vazios. Com entregas e período sem dado, a frase datada engana. O resto está ok.
+59832	[orq 16:49:54] ticket 654: reprovado — retry 1/2. motivo: Contratual: o texto datado foi para a linha da consulta (:109), que o ticket mandava tirar, e não para a linha única do 636. A :187 segue sem data no mount vazio e, após Consultar, aparecem 2 vazios. Com entregas e período sem dado, a frase datada engana. O resto está ok.
+59833	[orq 16:49:54] === ticket 654 (conta-contrato-dedup) — tentativa 2 · modo: real ===
+59834	[orq 16:49:55]   recon_esperado: ok (1 comando(s))
+59835	[orq 16:49:55] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx já existe no worktree — o agente vai EDITAR, não criar
+59836	[orq 16:49:55] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/contratual.tsx já existe no worktree — o agente vai EDITAR, não criar
+59837	[orq 16:49:55] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/resultados-tab.tsx já existe no worktree — o agente vai EDITAR, não criar
+59838	[orq 16:49:55] aviso allowlist: test/aba-resultados-fechamentos.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59839	[orq 16:49:55] aviso allowlist: test/churn-checklist-rota.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59840	[orq 16:49:55] aviso allowlist: test/conta-aceite.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59841	[orq 16:49:55] aviso allowlist: test/conta-bugs-reais.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59842	[orq 16:49:55] aviso allowlist: test/conta-contrato-e-entregas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59843	[orq 16:49:55] aviso allowlist: test/conta-resultados-campanha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59844	[orq 16:49:55] aviso allowlist: test/conta-resultados-escritorio.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59845	[orq 16:49:55] aviso allowlist: test/conta-resultados-filtros.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59846	[orq 16:49:55] aviso allowlist: test/contratual-disputa.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59847	[orq 16:49:55] aviso allowlist: test/contratual-entregas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59848	[orq 16:49:55] aviso allowlist: test/contratual-prazo.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59849	[orq 16:49:55] aviso allowlist: test/erro-string-carteira-perfil-disputa.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59850	[orq 16:49:55] aviso allowlist: test/fechamentos.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59851	[orq 16:49:55] aviso allowlist: test/ficha-abas-orfas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59852	[orq 16:49:55] aviso allowlist: test/indicadores-resultados.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59853	[orq 16:49:55] aviso allowlist: test/metas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59854	[orq 16:49:55] aviso allowlist: test/retencao-saidas-checklist.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59855	[orq 16:49:55] aviso allowlist: test/visao-copy-ausencia.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59856	[orq 16:49:55]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/654/attempt-2/prompt.txt
+59857	[orq 16:49:55]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+59858	[orq 16:51:49]   diff cru salvo (153 linhas) · HEAD julgado f44201d6
+59859	[orq 16:51:49]   enforcement: ok
+59860	[orq 16:52:03]   gate tsc: ok (baseline)
+59861	[orq 16:52:21]   gate vitest: FALHA
+59862	[orq 16:52:21]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/654/attempt-2/gate-vitest.txt)
+59863	[orq 16:52:21] ticket 654: reprovado — retry 2/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/654/attempt-2/gate-vitest.txt)
+59864	[orq 16:52:21] === ticket 654 (conta-contrato-dedup) — tentativa 3 · modo: real ===
+59865	[orq 16:52:22]   recon_esperado: ok (1 comando(s))
+59866	[orq 16:52:22] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx já existe no worktree — o agente vai EDITAR, não criar
+59867	[orq 16:52:22] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/contratual.tsx já existe no worktree — o agente vai EDITAR, não criar
+59868	[orq 16:52:22] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/resultados-tab.tsx já existe no worktree — o agente vai EDITAR, não criar
+59869	[orq 16:52:22] aviso allowlist: test/aba-resultados-fechamentos.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59870	[orq 16:52:22] aviso allowlist: test/churn-checklist-rota.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59871	[orq 16:52:22] aviso allowlist: test/conta-aceite.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59872	[orq 16:52:22] aviso allowlist: test/conta-bugs-reais.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59873	[orq 16:52:22] aviso allowlist: test/conta-contrato-e-entregas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59874	[orq 16:52:22] aviso allowlist: test/conta-resultados-campanha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59875	[orq 16:52:22] aviso allowlist: test/conta-resultados-escritorio.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59876	[orq 16:52:22] aviso allowlist: test/conta-resultados-filtros.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59877	[orq 16:52:22] aviso allowlist: test/contratual-disputa.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59878	[orq 16:52:22] aviso allowlist: test/contratual-entregas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59879	[orq 16:52:22] aviso allowlist: test/contratual-prazo.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59880	[orq 16:52:22] aviso allowlist: test/erro-string-carteira-perfil-disputa.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59881	[orq 16:52:22] aviso allowlist: test/fechamentos.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59882	[orq 16:52:22] aviso allowlist: test/ficha-abas-orfas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59883	[orq 16:52:22] aviso allowlist: test/indicadores-resultados.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59884	[orq 16:52:22] aviso allowlist: test/metas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59885	[orq 16:52:22] aviso allowlist: test/retencao-saidas-checklist.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+59886	[orq 16:52:22] aviso allowlist: test/visao-copy-ausencia.test.ts já existe no worktree — o agente vai EDITAR, não criar
+59887	[orq 16:52:22]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/654/attempt-3/prompt.txt
+59888	[orq 16:52:22]   tentativa final: escalando modelo do executor para 'opus'
+59889	[orq 16:52:22]   chamando claude -p (headless, --model opus, timeout 1500s) no worktree...
+59890	[orq 16:53:53]   diff cru salvo (44 linhas) · HEAD julgado b0a41a3a
+59891	[orq 16:53:53]   enforcement: ok
+59892	[orq 16:54:07]   gate tsc: ok (baseline)
+59893	[orq 16:54:25]   gate vitest: ok
+59894	[orq 16:54:42]   criterios mecânicos: FALHA — criterio[3] mecânico: esperado 'CONTRATUAL_OK', obteve 'CONTRATUAL_1.0'
+59895	[orq 16:54:42]   REPROVA (mecânica, sem Opus): criterio[3] mecânico: esperado 'CONTRATUAL_OK', obteve 'CONTRATUAL_1.0'
+59896	[orq 16:54:42] ticket 654: reprovado após 2 retries — BLOQUEADO

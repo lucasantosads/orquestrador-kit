@@ -1,0 +1,18 @@
+[
+ {
+  "attempt": 1,
+  "model": "sonnet",
+  "claude_dur_secs": 158,
+  "diff_lines": 812,
+  "resultado": "reprovado",
+  "ts": "2026-10-08T04:48:58Z"
+ },
+ {
+  "attempt": 2,
+  "model": "sonnet",
+  "claude_dur_secs": 148,
+  "diff_lines": 817,
+  "resultado": "done",
+  "ts": "2026-10-08T04:52:51Z"
+ }
+]

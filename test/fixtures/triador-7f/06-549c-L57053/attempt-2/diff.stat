@@ -1,0 +1,3 @@
+ test/crons-meta-consolidacao.test.ts | 5 ++++-
+ vercel.json                          | 4 ++++
+ 2 files changed, 8 insertions(+), 1 deletion(-)

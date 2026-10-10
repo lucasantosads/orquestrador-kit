@@ -1,0 +1,20 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-826
+sanear_tsc: nao
+cmd:    b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- 'src/app/dashboard/clientes/[id]/page.tsx' | grep -cE '^[+][^+].*[.]json[(][)]'); [ "$n" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n
+espera: ZERO_JSON_NOVO
+-- saida --
+JSON_NOVO_6
+
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> PASS
+### criterio[9] -> PASS
+### criterio[10] -> PASS
+### criterio[11] -> PASS
+### criterio[12] -> PASS

@@ -1,0 +1,24 @@
+O ticket 633 está implementado e commitado (`8da34f9`). O critério que reprovou (`REGRA_VELHA_1`) agora dá 0 linhas com `</h3>` ou `ring-1` em `test/ficha-subsecoes-sequencia.test.ts`.
+
+Verificado:
+- **tsc:** 3 erros em `src/`, o baseline. Um quarto erro que apareceu no meio (tipo do `setActiveTab` no contexto) foi corrigido antes do commit.
+- **Vitest:** 17 arquivos, 193 testes verdes. Cobre o teste novo `test/ficha-rotulo-moldura.test.ts`, os existentes da allowlist e as guardas globais.
+
+Não rodei `npm run build` nem os critérios de shell contra o merge-base (`git merge-base` com `staging-auto`). O `rm -rf .next` foi negado por permissão, então o tsc rodou com a pasta `.next` que já estava lá; o `grep '^src/'` do gate já escopa esse ruído.
+
+**O que mudou**
+- **`anchor-block.tsx`:**
+  - O `<h3>` do rótulo saiu e o rótulo virou `aria-label={label}` na `<section>`.
+  - Nenhum `ring-*` em nenhum estado; `scroll-mt-4` ficou.
+  - `LinhaEstado` continua com "Rótulo · texto".
+  - Um contexto novo, `RolagemAoAlvoContext` (default `true`), decide se o bloco ativo rola a tela.
+- **`page.tsx`:**
+  - Novo estado `rolarAoAlvo`. Ele nasce `true` só com `?sub=` na URL e é religado pelos links cruzados (`irParaBloco`).
+  - Clicar numa das 4 abas chama `selecionarAba`: desliga a rolagem, ativa o primeiro filho visível e rola para o topo.
+  - A URL `?aba=` e o `?sub=` seguem como antes.
+  - Os 27 `active={activeTab === ...}` e os `label={CHILD_LABELS...}` não foram tocados.
+- **Testes existentes:**
+  - **`ficha-subsecoes-sequencia`:** duas asserções recalculadas, sem ring e `aria-label="${titulo}"`.
+  - **`anchor-block.test.ts`:** a asserção do ring foi trocada por "nenhum ring em nenhum estado".
+  - Cada uma tem comentário citando o ticket 633.
+- **Teste novo:** `test/ficha-rotulo-moldura.test.ts` cobre sem heading, `aria-label`, sem ring, linha `sem-base` com " · " e o botão da aba sem `setActiveTab(primeiroFilhoVisivel(g.children`.

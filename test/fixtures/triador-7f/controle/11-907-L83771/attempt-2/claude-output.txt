@@ -1,0 +1,9 @@
+O ticket 907 está pronto e commitado em `a95abc3`. Corrigi o critério que reprovou: o literal `registrarExecucaoCron("operacao-inicio"` agora fica numa linha só na rota, e o grep dá `REGISTRA`.
+
+- **Rota:** `src/app/api/cron/operacao-inicio/route.ts` chama `registrarExecucaoCron("operacao-inicio", "cron", …)` depois do segredo e do `createClient`. Se alguma etapa vier com `ok: false`, lança `EtapasComFalha` com a mensagem `etapas com falha: <nome> (<erro>); …`. A rota captura, faz `console.error("[operacao-inicio]", …)` e responde 500 com o resultado. Qualquer outro erro vira `{ error: "falha no job da operação" }` com 500. Sem falha, responde 200 com o resultado. O 401 e o 503 continuam antes do registro.
+- **Teste novo:** `test/operacao-inicio-registro.test.ts` cobre os quatro casos pedidos: tudo ok, etapas com falha, rejeição de `rodarOperacaoInicio` e 401 sem registro.
+- **Verificação:**
+  - O teste novo e os cinco testes existentes do job e do registro de cron passam (36 testes).
+  - O `tsc` fecha no baseline de 3 erros.
+  - O diff soma 122 linhas (119 adições e 3 remoções), dentro do teto de 220.
+- **Não rodei:** o `npm run build`, as quatro guardas globais e os demais critérios mecânicos. Também não consegui rodar o `rm -rf .next` antes do `tsc`, porque o comando foi negado por permissão. O `.next` já estava sem build na árvore, então o resultado deve valer, mas não confirmei.

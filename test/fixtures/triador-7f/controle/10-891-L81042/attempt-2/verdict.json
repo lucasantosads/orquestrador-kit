@@ -1,0 +1,4 @@
+{
+  "aprovado": true,
+  "motivo": "Atende ao objetivo: GET traz de_cliente_que_saiu usando a leitura de clientes que já existia, e o jid já desvinculado não volta para a lista sem cliente. DELETE guardado, com 409 para cliente ativo, só soft delete e audit. Confirmação fica na linha, sem fetch novo. Teste falha contra HEAD. Ressalva menor: a query de apagados lê wpp_grupo inteiro e filtra no JS."
+}

@@ -1,0 +1,32 @@
+O ticket 826 está pronto e commitado em `frente/826` (4 commits, sem push). A ficha não reescreve mais a URL para o notion_id: ela fica como chegou, por uuid ou por notion_id.
+
+**O que mudou em `src/app/dashboard/clientes/[id]/page.tsx`:**
+- **URL:** saiu o `router.replace`. Quando a ficha é aberta pelo uuid e a rota responde 404 com um `notion_id`, a ficha repete só a leitura `/api/notion/clientes/${nid}` com esse id.
+- **Estado `notionId`:**
+  - id da URL é o notion_id e a leitura deu certo: `notionId` é o próprio id.
+  - veio `notion_id` no 404: `notionId` é esse valor.
+  - cliente sem cadastro no Notion (a resposta traz `cliente_id`) ou a leitura falhou: fica `null`.
+- **Leituras legadas:** teses, NPS, reuniões, resumos e o tracking de onboarding usam o `notionId` e só disparam quando ele existe. O tracking também usava o id cru, e o critério de "id cru" acusaria ele, por isso entrou junto. As props de `ContaNovaSugestao`, `ResumoGrupoBloco` e o `setupNotionId` do `ClientePerfPanel` também usam o `notionId`.
+- **Sem `notionId`:**
+  - Teses mostra "Sem base: este cliente não tem cadastro no Notion"; se a leitura falhar, mostra "Não foi possível carregar as teses".
+  - O bloco WhatsApp vira a linha de estado "sem base" do próprio `AnchorBlock`, e o resumo nem monta.
+  - O banner de conta nova não aparece.
+- **Reprovação anterior (6 linhas novas com `.json()`):** toda linha nova usa `fetchJson`, e as linhas antigas com `.json()` não foram alteradas. O critério agora dá zero.
+
+**Testes:**
+- **Novo:** `test/ficha-sem-reescrita-notion.test.ts`, com 8 casos lidos direto da fonte.
+- **Recalculados com comentário:** `ficha-por-uuid` (agora afirma a nova leitura pelo notion_id e a ausência da reescrita), `link-setup-notion-id` e `painel-em-campanhas`. Nenhuma asserção foi removida.
+
+**Verificação:**
+- tsc dá 3 erros, igual ao baseline.
+- `npx vitest run` completo: 825 arquivos e 8316 testes, todos verdes, incluindo as guardas globais.
+- `npm run build` termina com BUILD_OK.
+- Diff total de 133 linhas (teto de 300), só arquivos da allowlist e nenhum `.sql`.
+
+**Decisão a revisar:** dois testes fora da allowlist têm exigências que se chocam, e não editei nenhum deles. `resumo-grupo-wpp-tela` exige `<ResumoGrupoBloco` logo dentro do `AnchorBlock id="whatsapp"`, e `ficha-nav-colapsavel` exige exatamente 6 `AnchorBlock` em Relação. Por isso o bloco WhatsApp usa a prop `estado` do `AnchorBlock` e o resumo recebe `notionId={notionId ?? ""}`. Esse `""` nunca chega a montar, porque com `estado` o bloco ignora o que tem dentro, mas vale o avaliador conferir.
+
+**Fica igual:**
+- A leitura `/api/clientes-extra/${id}` continua com o id da URL; ela não estava na lista do ticket.
+- O NPS sem `notionId` fica sem cartão, como já acontecia quando não havia nota. Reuniões e resumos sem `notionId` também continuam como listas vazias, que é o comportamento que já existia quando a leitura falhava.
+
+Não rodei os critérios de pausa nem o `publicar.sh`. Isso fica com você.

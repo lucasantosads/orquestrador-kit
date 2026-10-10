@@ -1,0 +1,17 @@
+{
+ "classe": "R1",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/346d/attempt-2/enforcement.json",
+   "linha": null,
+   "origem": "medicao"
+  },
+  {
+   "arquivo": "docs/fila/runs/local-loop.log",
+   "linha": 66186,
+   "origem": "medicao"
+  }
+ ],
+ "requeue": "nao",
+ "fonte_da_verdade": "medicao-bloqueios-out.md:114"
+}

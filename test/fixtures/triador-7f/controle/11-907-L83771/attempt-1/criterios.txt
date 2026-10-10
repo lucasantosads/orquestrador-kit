@@ -1,0 +1,16 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-907
+sanear_tsc: nao
+cmd:    r=$(grep -c 'registrarExecucaoCron("operacao-inicio"' src/app/api/cron/operacao-inicio/route.ts || true); c=$(grep -c 'console.error' src/app/api/cron/operacao-inicio/route.ts || true); e=$(grep -c 'etapas com falha' src/app/api/cron/operacao-inicio/route.ts || true); [ "$r" = 1 ] && [ "$c" -ge 1 ] && [ "$e" -ge 1 ] && echo REGISTRA || echo ST_${r}_${c}_${e}
+espera: REGISTRA
+-- saida --
+ST_0_1_1
+
+### criterio[8] -> PASS

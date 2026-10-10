@@ -1,0 +1,11 @@
+O teste de aceite de estrutura está commitado (`0b6a5e5`) e os 39 `it(` passam. O `tsc` dá 3 erros em `src/`, o baseline. Não rodei `rm -rf .next` porque o comando foi negado. Também não rodei a suíte inteira nem o `npm run build` depois da correção.
+
+**A reprovação anterior.** O `gate-vitest` falhou em um único item, `copy: titulos de secao do mockup`. O teste procurava um `<h1>` a `<h6>` "Campanhas" no fonte de `tabela-campanhas.tsx`. Na tela esse título só existe como `<span>Campanhas</span>` dentro de `LinhaVazia`, que é o estado vazio "Campanhas · sem base" do mockup.
+
+**A correção.** Só o teste mudou: o item agora renderiza `LinhaVazia` e confere o `<span>Campanhas</span>` no HTML. Não alterei nada em `src/`. Na tela com dado não há título "Campanhas" fora da linha vazia. O mockup só mostra o título no estado vazio, então não tratei isso como falha.
+
+**O que não rodei.** Só rodei o arquivo novo. As cinco guardas globais e o `test/visao-aceite-mockup.test.tsx` (522) não foram executados aqui. Na tentativa anterior a suíte completa passou tudo, menos esse item, e não mexi em nenhum arquivo além do teste novo.
+
+O arquivo tem 600 linhas de diff, dentro do teto de 600 da leva.
+
+O arquivo da tentativa anterior tinha sumido da worktree, então recriei o conteúdo a partir do `diff.raw` da tentativa 1 e apliquei a correção.

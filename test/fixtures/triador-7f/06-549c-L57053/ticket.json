@@ -1,0 +1,62 @@
+{
+ "id": "549c",
+ "slug": "leitura-relacao-agendar",
+ "lane": "produto",
+ "perfil": "api",
+ "objetivo": "ORCAMENTO DE DIFF: teto declarado de 30 linhas (diff_cap_linhas da fila e 900), repartido em ~5 em vercel.json e ~4 em test/crons-meta-consolidacao.test.ts (~9 somados). Se passar de 30, pare e reporte em vez de entregar. Agende o cron da Leitura da relacao que o 549 entregou sem agendar. POR QUE ESTE TICKET EXISTE: o cron chama provedor de IA todo dia sem ninguem apertar botao; gasto real recorrente e fronteira dura fora da autonomia do loop (regra 7 da doutrina, docs/orquestrador/skill/SKILL.md:68), entao ligar e decisao do Lucas: este ticket depende de humano:ligar-cron-ia (o mesmo token do 386) e so roda depois que ele for liberado. PASSO 1: leia vercel.json, src/app/api/cron/leitura-relacao/route.ts (entregue pelo 549: GET com Bearer CRON_SECRET e teto CAP_POR_EXECUCAO = 40) e test/crons-meta-consolidacao.test.ts. PRE-CONDICAO: se src/app/api/cron/leitura-relacao/route.ts nao tiver CAP_POR_EXECUCAO = 40 com elegiveis.slice(0, CAP_POR_EXECUCAO), PARE e reporte: sem teto o agendamento nao pode entrar. O QUE FAZER: (1) em vercel.json acrescente, no fim da lista crons, exatamente { \"path\": \"/api/cron/leitura-relacao\", \"schedule\": \"0 10 * * *\" } (diario: o semanal e decidido pela data da ultima leitura), no mesmo formato de indentacao das outras entradas; nenhuma outra entrada muda. (2) test/crons-meta-consolidacao.test.ts:427 fixa expect(vercel.crons).toHaveLength(19). EXCECAO RESTRITA: so essa linha muda, com comentario acima citando este ticket e de onde veio o numero (19 ",
+ "pathspec_allowlist": [
+  "vercel.json",
+  "test/crons-meta-consolidacao.test.ts"
+ ],
+ "cria_novo": [],
+ "dependencias": [
+  "549",
+  "386",
+  "humano:ligar-cron-ia",
+  "619",
+  "621"
+ ],
+ "prioridade": 16,
+ "recon_esperado": [
+  {
+   "descricao": "o cron da leitura ainda nao esta agendado",
+   "cmd": "[ \"$(grep -c '/api/cron/leitura-relacao' vercel.json)\" = 0 ] && echo NAO_AGENDADO || echo JA_AGENDADO",
+   "espera": "NAO_AGENDADO"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "a rota do 549 tem o teto de 40 chamadas de IA por execucao (pre-condicao do agendamento)",
+   "cmd": "f='src/app/api/cron/leitura-relacao/route.ts'; grep -q 'CAP_POR_EXECUCAO = 40' \"$f\" 2>/dev/null && grep -q 'slice(0, CAP_POR_EXECUCAO)' \"$f\" && echo TETO_40 || echo SEM_TETO",
+   "espera": "TETO_40"
+  },
+  {
+   "descricao": "cron registrado uma vez no vercel.json, diario as 10h UTC",
+   "cmd": "python3 -c \"import json;c=[x for x in json.load(open('vercel.json'))['crons'] if x['path']=='/api/cron/leitura-relacao'];print('CRON_REGISTRADO' if len(c)==1 and c[0]['schedule']=='0 10 * * *' else 'SEM_CRON')\"",
+   "espera": "CRON_REGISTRADO"
+  },
+  {
+   "descricao": "test/crons-meta-consolidacao.test.ts: contagem de crons 19 -> 20 (alvo exato; hoje na staging-auto 1b200fc vercel.json tem 19)",
+   "cmd": "( [ \"$(grep -cF 'expect(vercel.crons).toHaveLength(20);' test/crons-meta-consolidacao.test.ts 2>/dev/null)\" = 1 ] && [ \"$(grep -cF 'expect(vercel.crons).toHaveLength(19);' test/crons-meta-consolidacao.test.ts 2>/dev/null)\" = 0 ] ) && echo ALVO_20_CRONS || echo ALVO_ANTIGO",
+   "espera": "ALVO_20_CRONS"
+  },
+  {
+   "descricao": "test/crons-meta-consolidacao.test.ts nao encolhe: pelo menos 18 it( e 44 expect(, sem .skip/.only/.todo [estado-alvo: medido em 23/09 na staging-auto 1b200fc, base do executor]",
+   "cmd": "f=test/crons-meta-consolidacao.test.ts; ( [ \"$(grep -cE '^[[:space:]]*it(\\.each)?\\(' $f 2>/dev/null)\" -ge 18 ] && [ \"$(grep -o 'expect(' $f 2>/dev/null | wc -l | tr -d ' ')\" -ge 44 ] && [ \"$(grep -cE '[.](skip|only|todo)\\(' $f 2>/dev/null)\" = 0 ] ) && echo MANTEM || echo CAIU",
+   "espera": "MANTEM"
+  },
+  {
+   "descricao": "test/crons-meta-consolidacao.test.ts verde depois do recalculo",
+   "cmd": "npx vitest run test/crons-meta-consolidacao.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "vercel.json segue JSON valido",
+   "cmd": "python3 -c \"import json;json.load(open('vercel.json'))\" 2>/dev/null && echo JSON_OK || echo JSON_QUEBRADO",
+   "espera": "JSON_OK",
+   "tipo": "guarda"
+  }
+ ],
+ "status": "pendente",
+ "_objetivo_cortado_na_fixture": 1968
+}

@@ -1,0 +1,13 @@
+{
+ "id": "367",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/367-briefing-criativo-etapa-onboarding.md",
+ "ticket_sha": "f5c235c9bed685908241039219f47c1c7373ed72",
+ "ticket_antes": true,
+ "linha_bloqueio": null,
+ "linha_fim": 80446,
+ "log_inicio": 80400,
+ "fim": "2026-10-08T04:52:51Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/367"
+}

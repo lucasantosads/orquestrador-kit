@@ -1,0 +1,15 @@
+A área ficha-cliente está sem travessão mudo e o `TETO` baixou de 278 para 234, sem folga. Está no commit `6120e4e`.
+
+A suíte inteira passa (564 arquivos, 5841 testes) e o `tsc` fica nos 3 erros de baseline em `src/`. Não rodei o `npm run build`. Também não rodei os critérios de aceite exatamente como escritos: o contador precisa do `TRAVESSAO_RELATORIO`, e o ambiente pede aprovação para comandos com variável de ambiente. Para medir, troquei o `TETO` para 0 e li o total na mensagem de falha (234). O comentário da constante ganhou data e referência ao 627b, e só as linhas do `TETO` mudaram no teste. Uma última busca na área por `"—"` só achou um comentário em `resultados-tab.tsx`, que fica fora da allowlist e o contador não conta.
+
+**Causa da reprovação anterior:** eu tinha importado `SemDado` em `relatorio-tab.tsx` e `performance/page.tsx`. Isso quebrava `test/delta-sem-base.test.ts` e `test/perf-cliente-438.test.tsx`, que carregam esses arquivos sem resolver `@/components/estados/sem-dado`. Os dois testes estão fora da allowlist, então tirei o `SemDado` desses dois arquivos.
+
+**Como cada caso foi resolvido:**
+- **`SemDado` compacto com motivo específico**, nas células de tabela e valores de linha em `alertas-cliente-tab`, `entregaveis-tab`, `entregavel-sheet`, `leitura-comercial-bloco`, `calculadora-tab` (meta) e nas linhas de campanha de `tabs/performance.tsx`. Exemplos: "responsável não atribuído", "campanha sem leads no período", "alerta sem tese vinculada".
+- **Texto "sem base"** nos cartões e KPIs sem base de cálculo, sem nenhum 0 fabricado. Isso vale para `calculadora-tab`, `relatorio-tab`, `tabs/performance.tsx` e `performance/page.tsx`. Em `performance/page.tsx` criei um `SemValor` local, porque essa página não pode importar o `SemDado` (motivo acima). Nesse arquivo, as células de tabela também usam `SemValor` com texto específico ("telefone não informado", "lead sem nome"), em vez do `SemDado` que a regra pede.
+- **Elemento omitido:** "Tempo de casa" em `resumo-tab`, a linha de participantes em `reunioes` e a data da linha do tempo em `performance/page.tsx`.
+- **Funções de formatação** (`tempoDeCasa`, `fmtNumero`, `fmtData`, `formatMetrica`, `fmtDate`) agora devolvem `string | null`, e quem chama escolhe o caso.
+- **Placeholder:** o de verba no `setup` virou "sem teto".
+- **Textos simples** no lugar de "—" em alguns campos de `performance/page.tsx`: "sem categoria", "sem etapa" e "status não informado".
+
+Não alterei nenhuma asserção existente.

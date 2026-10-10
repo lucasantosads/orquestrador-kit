@@ -1,0 +1,4 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+407a	docs/fila/runs/407a/attempt-2.prev2	test/migration-security-definer-anon.test.ts	1410	2026-10-01T23:20:44Z	1
+407a	docs/fila/runs/407a/attempt-2.prev2	test/migrations-cabecalho-aplicada.test.ts	1431	2026-10-01T23:20:44Z	1
+407a	docs/fila/runs/407a/attempt-1	test/migration-security-definer-anon.test.ts	1416	2026-10-02T02:05:03Z	0

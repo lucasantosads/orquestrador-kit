@@ -1,0 +1,114 @@
+{
+ "id": "706",
+ "slug": "override-cor-tela",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 380 linhas (~150 em carteira-hoje.tsx, ~200 no teste NOVO). Se passar do teto, pare e reporte. FONTE: docs/planos/plano-portal-gestor-30set.md (plano aprovado + adendo de decisoes de 30/09, que vale sobre o plano). PASSO 1: leia src/components/portal/inicio/carteira-hoje.tsx (698), a rota do 705 e a linha 'Ajustado por você' do mockup docs/roadmap/mockups/portal-gestor/inicio-gestor.dc.html. FAZER: (1) carteira-hoje.tsx: na linha, botao 'Ajustar cor' abre um popover acessivel (role='dialog') com as 3 cores (rotulo + cor), campo 'Motivo' obrigatorio e 'Salvar'; linha com override mostra a marca 'Ajustado por <nome>' (ou 'Ajustado por você') com a data e o motivo, e o botao 'Voltar à regra' que chama DELETE e volta a cor da regra sem recarregar; o clique no controle nao abre a ficha. data-testid 'cor-override', 'cor-override-salvar', 'cor-override-remover'. (2) NOVO test/override-cor-tela.test.tsx: linha com override mostra a marca e o motivo; Salvar sem motivo fica desabilitado; remover (funcao pura) volta a cor_regra; clique no controle nao propaga para a linha (leitura de fonte: stopPropagation). Mantenha verde test/inicio-carteira-tela.test.tsx. FORA DE ESCOPO: a rota (705), outros blocos. REGRAS: zona C0 (clientes_receita, leads_crm, leads_crm_historico, ads_metadata, ads_performance, fn_mql_sql_by_month, prefixos trafego_* e vw_*) e leitura pura: nada de escrita, DDL, grant, RLS ou trigger nelas; zero migration e zero .sql (so o 691 escreve .sql",
+ "cria_novo": [
+  "test/override-cor-tela.test.tsx"
+ ],
+ "pathspec_allowlist": [
+  "src/components/portal/inicio/carteira-hoje.tsx",
+  "test/override-cor-tela.test.tsx",
+  "test/inicio-carteira-tela.test.tsx"
+ ],
+ "dependencias": [
+  "705",
+  "698",
+  "humano:mockups-portal-gestor-na-staging"
+ ],
+ "prioridade": 48,
+ "recon_esperado": [
+  {
+   "descricao": "docs/roadmap/mockups/portal-gestor/inicio-gestor.dc.html existe",
+   "cmd": "test -e 'docs/roadmap/mockups/portal-gestor/inicio-gestor.dc.html' && echo PRESENTE || echo SUMIU",
+   "espera": "PRESENTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes da allowlist verdes (recalculados, nunca afrouxados)",
+   "cmd": "fs=\"\"; for f in test/inicio-carteira-tela.test.tsx; do [ -f \"$f\" ] && fs=\"$fs $f\"; done; [ -z \"$fs\" ] && echo VERDE || { npx vitest run $fs >/dev/null 2>&1 && echo VERDE || echo VERMELHO; }",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum teste existente da allowlist perdeu it(/expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (contra o merge-base com staging-auto)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=NAO_AFROUXOU; for f in test/inicio-carteira-tela.test.tsx; do [ -f \"$f\" ] || { git cat-file -e \"$b:$f\" 2>/dev/null && r=APAGOU_$f; continue; }; for p in 'expect(' 'it('; do a=$(git show \"$b:$f\" 2>/dev/null | grep -cF \"$p\"); n=$(grep -cF \"$p\" \"$f\"); [ \"${n:-0}\" -ge \"${a:-0}\" ] || r=CAIU_$f; done; s0=$(git show \"$b:$f\" 2>/dev/null | grep -cE '\\.(skip|only|todo)\\('); s1=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"${s1:-0}\" -le \"${s0:-0}\" ] || r=SKIP_NOVO_$f; d0=$(git show \"$b:$f\" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' \"$f\"); [ \"${d1:-0}\" -le \"${d0:-0}\" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r",
+   "espera": "NAO_AFROUXOU",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/components/portal/inicio/carteira-hoje.tsx' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/app/api/clientes/[id]/cor/route.ts' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/components/portal/inicio/carteira-hoje.tsx' 'test/override-cor-tela.test.tsx' 'test/inicio-carteira-tela.test.tsx'; do case \"$f\" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum travessao (U+2014) novo nos arquivos de tela do ticket (contagem por arquivo nao sobe contra o merge-base)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SEM_TRAVESSAO_NOVO; for f in 'src/components/portal/inicio/carteira-hoje.tsx'; do [ -f \"$f\" ] || continue; a=$(git show \"$b:$f\" 2>/dev/null | grep -c $'\\xe2\\x80\\x94'); n=$(grep -c $'\\xe2\\x80\\x94' \"$f\"); [ \"${n:-0}\" -le \"${a:-0}\" ] || r=TRAVESSAO_NOVO_$f; done; echo $r",
+   "espera": "SEM_TRAVESSAO_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 380 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 380 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde (test/override-cor-tela.test.tsx)",
+   "cmd": "test -f test/override-cor-tela.test.tsx && npx vitest run test/override-cor-tela.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "controle de override com motivo e volta a regra",
+   "cmd": "f=src/components/portal/inicio/carteira-hoje.tsx; test -f $f || { echo AUSENTE; exit 0; }; n=0; for p in 'Ajustar cor' 'Motivo' 'Voltar à regra'; do grep -q \"$p\" $f && n=$((n+1)); done; [ $n = 3 ] && echo CONTROLE_OK || echo FALTA_$n",
+   "espera": "CONTROLE_OK"
+  },
+  {
+   "descricao": "avaliador: a linha fixa e remove a cor com motivo obrigatorio, mostra a marca e o motivo, e volta a regra sem recarregar. REPROVE se: motivo opcional; recarrega a pagina; controle abre a ficha; cor sem rotulo.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 3815
+}

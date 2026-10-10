@@ -1,0 +1,19 @@
+Escrevi `test/conta-aceite.test.tsx` e commitei (`274fdff`), mas o ticket reprova: 5 dos 50 `it(` ficam vermelhos, porque a tela ainda não cumpre esses itens. Isso derruba o critério "teste novo verde", o que é o resultado que o ticket prevê.
+
+O arquivo tem 467 linhas (teto de 600), um `it(` por nome da prosa, sem JSX e sem `.skip`/`.only`/`.todo`/`.fails`. Não toquei em `src`. Passaram o tsc (3 erros em `src/`, os mesmos do baseline, nenhum no meu arquivo) e as cinco guardas globais (45 testes). Não rodei `npm run build` nem a suíte inteira do vitest; só o teste novo e as cinco guardas.
+
+O `rm -rf .next` foi negado por permissão, então o tsc rodou sem limpar `.next`. Filtrei só `src/` e o meu arquivo, e o resultado bateu com o baseline.
+
+Os 5 vermelhos:
+
+1. **`contrato: Observacoes do closer`**: o mockup (`:114`) diz "Observações do closer" e `financeiro-tab.tsx` diz "Observações do Closer".
+2. **`conexoes: conta Meta com act_id Sync em dia e ultimo insight`**: o mockup (`:156`) diz "último insight" e `meta-sync-section.tsx` diz "Último insight em".
+3. **`conexoes: Grupo de WhatsApp so link com Trocar`**: `conexoes-relacao.tsx` ainda monta `WhatsAppGruposSection` ao lado do link, e o mockup mostra só o link.
+4. **`operacao: Auditoria recolhida`**: o mockup (`:200`) mostra "Auditoria · nenhum evento", mas a linha recolhida da tela mostra "histórico de alterações da conta".
+5. **`copy: nenhum s/ dado nem travessao de ausencia na aba Conta`**: ainda há `"—"` de ausência em `documentos-section.tsx` (tamanho), `onboarding-tab.tsx` (data e etapa atual) e `entregaveis-tab.tsx` (responsável).
+
+Os itens 1 e 2 são diferença só de capitalização. Mantive a comparação exata, porque comparar sem distinguir maiúsculas seria afrouxar o aceite.
+
+**Divergências:** as 4 da tabela têm comentário acima do `it(`. Consultorias (563b) ficou fora do aceite, como a prosa manda. Duas leituras minhas ficam registradas nos comentários do arquivo:
+- **Operação recolhida:** entendi como as duas linhas ▸ nascendo fechadas. A seção em si passa `recolhida={false}` (558).
+- **Tarefas:** entendi como "só monta por link direto", nunca dentro de uma seção.

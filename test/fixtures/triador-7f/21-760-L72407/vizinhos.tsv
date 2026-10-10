@@ -1,0 +1,5 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+760	docs/fila/runs/760/attempt-1.prev1	test/migrations-policy-idempotente.test.ts	1553	2026-10-05T15:10:42Z	1
+760	docs/fila/runs/760/attempt-2	test/migrations-policy-idempotente.test.ts	1557	2026-10-05T15:15:17Z	1
+761	docs/fila/runs/761/attempt-1.prev1	test/migrations-policy-idempotente.test.ts	1549	2026-10-05T15:27:09Z	0
+761	docs/fila/runs/761/attempt-2	test/migrations-policy-idempotente.test.ts	1549	2026-10-05T15:32:17Z	0

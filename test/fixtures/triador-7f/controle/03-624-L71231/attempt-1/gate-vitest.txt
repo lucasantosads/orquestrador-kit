@@ -1,0 +1,156 @@
+ ✓ test/erro-string-settings-ia-admin.test.ts (7 tests) 53ms
+ ✓ test/erro-string-clientes-kpis.test.ts (12 tests) 40ms
+ ✓ test/lote-b3-3-r2.test.ts (6 tests) 33ms
+ ✓ test/visao-cpl-por-objetivo.test.tsx (9 tests) 47ms
+ ✓ test/visao-estrutura-tabela.test.tsx (12 tests) 34ms
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura do resumo existente falha → 500 e nada gravado
+[churn-summary PATCH] Error: resumo do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/churn-summary-patch-leitura-falha.test.ts:59:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura de clientes_receita falha → 500 e nada gravado
+[churn-summary PATCH] Error: base de clientes: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/churn-summary-patch-leitura-falha.test.ts:66:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura das saídas falha → 500 e nada gravado
+[churn-summary PATCH] Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/churn-summary-patch-leitura-falha.test.ts:73:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > recalcularAposSaida — não lança, devolve aviso > falha de leitura vira aviso por mês, sem gravar
+[churn/resumo-mensal] 2026/09 Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/churn-summary-patch-leitura-falha.test.ts:123:20
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > recalcularAposSaida — não lança, devolve aviso > falha de leitura vira aviso por mês, sem gravar
+[churn/resumo-mensal] 2026/08 Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/churn-summary-patch-leitura-falha.test.ts:123:20
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > GET /api/cron/churn-resumo > falha visível: 500 com o mês que falhou
+[cron/churn-resumo] 2026/09 Error: base de clientes: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/churn-summary-patch-leitura-falha.test.ts:150:17
+
+ ✓ test/sync-persistencia.test.ts (9 tests) 15ms
+ ✓ test/pacote-etapas-contratuais.test.ts (13 tests) 21ms
+ ✓ test/hoje-acoes.test.tsx (13 tests) 28ms
+ ✓ test/dono-dry-run.test.ts (5 tests) 8ms
+ ✓ test/relatorio-rascunho-ia.test.ts (6 tests) 21ms
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes-extra/[id] > exceção do logAudit não muda o status da resposta
+[clientes-extra PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/audit-log-rotas.test.ts:258:36
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > POST: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/audit-log-rotas.test.ts:293:36
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > PATCH: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/audit-log-rotas.test.ts:309:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/[id]/crm-config PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/audit-log-rotas.test.ts:336:36
+
+stderr | test/audit-log-rotas.test.ts > PUT /api/clientes/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/crm-config PUT] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/audit-log-rotas.test.ts:363:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/perfil-obs > exceção do logAudit não muda o status da resposta
+[clientes/[id]/perfil-obs PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/audit-log-rotas.test.ts:392:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/registros/[registroId] > exceção do logAudit não muda o status da resposta
+[registros PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/audit-log-rotas.test.ts:432:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/tarefas-kanban > exceção do logAudit não muda o status da resposta
+[tarefas-kanban POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/audit-log-rotas.test.ts:459:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/clientes/relatorio-config (ativo=true) > exceção do logAudit não muda o status da resposta
+[clientes/relatorio-config POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/audit-log-rotas.test.ts:486:36
+stderr | test/perfil-obs.test.ts > PUT /api/clientes/[id]/perfil-obs (RBAC) > CS grava perfil do catálogo com 200
+[logAudit] supabaseAudit.from(...).insert is not a function
+
+ ✓ test/estados-padrao.test.ts (8 tests) 14ms
+ ✓ test/perfil-obs.test.ts (13 tests) 20ms
+stderr | test/ficha-resolucao-chave.test.ts > GET /api/perf/cockpit/[id] — adota o resolvedor do ticket 094 > falha na resolução da chave vira mensagem humana e acentuada, não o e.message cru
+[perf/cockpit] falha ao resolver chave do cliente: Error: connection terminated unexpectedly
+    at Object.maybeSingle (/Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/ficha-resolucao-chave.test.ts:49:28)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/ficha-resolucao-chave.test.ts:111:17
+ ✓ test/retencao-centro-tela.test.tsx (13 tests) 13ms
+ ✓ test/middleware-bypass-ponto.test.ts (7 tests) 13ms
+ ✓ test/wpp-resumo-semanal-tela.test.ts (7 tests) 11ms
+ ✓ test/meta-horas-fallback.test.ts (3 tests) 8ms
+ ✓ test/contratual-entregas.test.ts (9 tests) 13ms
+stderr | test/ficha-por-uuid.test.ts > uuid resolvido primeiro como id do cliente (29/09) > leitura de clientes que falha: 500, nunca 'não encontrado'
+[/api/notion/clientes/[id]] Error: cliente: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-624/test/ficha-por-uuid.test.ts:79:15
+
+ ✓ test/abas-montadas.test.ts (3 tests) 2ms
+ ✓ test/cartao-topo-nps.test.ts (6 tests) 2ms
+ ✓ test/cartao-topo-status-popover.test.ts (5 tests) 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/rotas-orfas.test.ts > rotas órfãs em src/app/dashboard > prova de vermelho: rota fora da allowlist e sem href aparece como órfã
+AssertionError: expected 22 to be 21 // Object.is equality
+
+- Expected
++ Received
+
+- 21
++ 22
+
+ ❯ test/rotas-orfas.test.ts:266:40
+    264|     // descontar LEGAL_CONFIG.length do total da allowlist pra continu…
+    265|     expect(orphansSemAllowlist).not.toContain(LEGAL_CONFIG[0])
+    266|     expect(orphansSemAllowlist.length).toBe(Object.keys(ALLOWLIST).len…
+       |                                        ^
+    267|   }, 60000)
+    268|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/rotas-orfas.test.ts > rotas órfãs em src/app/dashboard > toda página de dashboard tem href real ou está na allowlist com motivo
+AssertionError: expected [ '/dashboard/config/automacoes' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "/dashboard/config/automacoes",
++ ]
+
+ ❯ test/rotas-orfas.test.ts:296:21
+    294|   it('toda página de dashboard tem href real ou está na allowlist com …
+    295|     const orphans = findOrphanRoutes(new Set(Object.keys(ALLOWLIST)))
+    296|     expect(orphans).toEqual([])
+       |                     ^
+    297|   })
+    298| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/travessao-mudo.test.ts > travessao mudo em tela > travessao mudo nao passa do teto
+AssertionError: travessao mudo: 5 > teto 4. Ocorrencias:
+src/app/dashboard/config/automacoes/automacoes-cadastro.tsx:242
+src/components/analytics/delta-badge.tsx:11
+src/components/analytics/funil-card.tsx:121
+src/components/analytics/historico-semanal.tsx:91
+src/components/analytics/matriz-semanal.tsx:38: expected 5 to be less than or equal to 4
+ ❯ test/travessao-mudo.test.ts:102:7
+    100|       total,
+    101|       `travessao mudo: ${total} > teto ${TETO}. Ocorrencias:\n${locais…
+    102|     ).toBeLessThanOrEqual(TETO);
+       |       ^
+    103|   });
+    104|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  2 failed | 738 passed (740)
+      Tests  3 failed | 7591 passed (7594)
+   Start at  01:19:31
+   Duration  15.68s (transform 12.66s, setup 0ms, import 50.33s, tests 16.68s, environment 45ms)
+

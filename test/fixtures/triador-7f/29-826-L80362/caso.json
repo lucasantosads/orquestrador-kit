@@ -1,0 +1,12 @@
+{
+ "id": "826",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/826-ficha-sem-reescrita-notion.md",
+ "ticket_sha": "f5c235c9bed685908241039219f47c1c7373ed72",
+ "ticket_antes": true,
+ "linha_bloqueio": 80362,
+ "log_inicio": 80306,
+ "fim": "2026-10-08T04:37:47Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/826"
+}

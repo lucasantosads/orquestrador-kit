@@ -1,0 +1,168 @@
+/**
+ * Ticket 299 — DeltaPill (comparativo do relatório) não pode pintar de verde
+ * um crescimento que não existe. Bug real de auditoria: quando o período
+ * anterior não tem base (delta.anterior === null OU === 0), delta_pct sai
+ * null e o componente caía no fallback que imprimia o valor ABSOLUTO do
+ * período atual com seta de alta e cor verde — ex.: "INVESTIMENTO R$
+ * 2.312,31" com badge "+ R$ 2.312,31" — lido pela operação como melhora.
+ *
+ * Mesma técnica de test/cockpit-blocos-null.test.ts: o tsconfig.json usa
+ * `jsx: "preserve"` e vitest não registra plugin React, então importar um
+ * .tsx direto quebra o parse. A saída: ler relatorio-tab.tsx do disco,
+ * compilar com esbuild (jsx: "automatic", explícito, ignora o tsconfig) e
+ * executar o CJS resultante num `Module` do Node — testa o código real do
+ * arquivo, não uma reimplementação em paralelo. Os módulos aliasados (`@/…`)
+ * são injetados via customRequire; `@/lib/format` usa as funções reais
+ * (mesmo padrão do teste do 252) e `calculo.ts` (sem JSX) é importado direto
+ * para gerar os Deltas de teste com `calcularDelta` de verdade.
+ */
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { Module, createRequire } from "node:module";
+import vm from "node:vm";
+import { transformSync } from "esbuild";
+import React from "react";
+import { formatCurrency, formatNumber } from "../src/lib/format";
+import {
+  calcularDelta,
+  METRICAS_COMPARADAS,
+  type Delta,
+  type MetricaKey,
+} from "../src/app/api/clientes/[id]/relatorio-periodo/calculo";
+
+const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/server") as {
+  renderToStaticMarkup: (element: React.ReactElement) => string;
+};
+
+function loadComponent(
+  filePath: string,
+  exportName: string,
+  mocks: Record<string, unknown>,
+): React.ComponentType<Record<string, unknown>> {
+  const source = readFileSync(filePath, "utf-8");
+  const { code } = transformSync(source, {
+    loader: "tsx",
+    jsx: "automatic",
+    format: "cjs",
+    target: "node18",
+    sourcefile: filePath,
+  });
+
+  const mod = new Module(filePath, module);
+  mod.filename = filePath;
+  mod.paths = (Module as unknown as { _nodeModulePaths(dir: string): string[] })._nodeModulePaths(
+    dirname(filePath),
+  );
+  const wrapper = vm.runInThisContext(Module.wrap(code), { filename: filePath });
+  const customRequire = (id: string) => (id in mocks ? mocks[id] : mod.require(id));
+  wrapper.call(mod.exports, mod.exports, customRequire, mod, filePath, dirname(filePath));
+
+  return (mod.exports as Record<string, unknown>)[exportName] as React.ComponentType<Record<string, unknown>>;
+}
+
+// Stubs mínimos só para satisfazer os imports do topo do arquivo — DeltaPill
+// não usa Card/Button/next-navigation/sonner, mas o módulo inteiro precisa
+// resolver para ser executado.
+function stubTag(tag: string) {
+  return function Stub(props: Record<string, unknown>) {
+    const { children, ...rest } = props;
+    return React.createElement(tag, rest, children as React.ReactNode);
+  };
+}
+function iconStub(nome: string) {
+  return function Icone(props: Record<string, unknown>) {
+    return React.createElement("i", { ...props, "data-icon": nome });
+  };
+}
+function DicaStub({ texto, children }: { texto: string; children: React.ReactNode }) {
+  return React.createElement("span", { "data-dica-texto": texto }, children);
+}
+
+const mocks = {
+  "@/lib/format": { formatCurrency, formatNumber },
+  "@/components/dica": { Dica: DicaStub },
+  "@/components/ui/card": {
+    Card: stubTag("div"),
+    CardContent: stubTag("div"),
+    CardHeader: stubTag("div"),
+    CardTitle: stubTag("div"),
+  },
+  "@/components/ui/button": { Button: stubTag("button") },
+  "@/lib/fetch-json": { fetchJson: async () => ({}) },
+  "next/navigation": { useParams: () => ({}) },
+  sonner: { toast: { success: () => {}, error: () => {} } },
+  "lucide-react": {
+    ArrowDownRight: iconStub("down"),
+    ArrowUpRight: iconStub("up"),
+    Minus: iconStub("minus"),
+    Link2: iconStub("link"),
+  },
+  "@/app/api/clientes/[id]/relatorio-periodo/calculo": { METRICAS_COMPARADAS },
+};
+
+const componentPath = resolve(
+  __dirname,
+  "../src/app/dashboard/clientes/[id]/tabs/relatorio-tab.tsx",
+);
+const DeltaPill = loadComponent(componentPath, "DeltaPill", mocks);
+
+function render(chave: MetricaKey, delta: Delta): string {
+  return renderToStaticMarkup(React.createElement(DeltaPill, { chave, delta }));
+}
+
+describe("DeltaPill — sem base comparável não pode parecer crescimento (ticket 299)", () => {
+  it("anterior === null: mostra 'sem base', sem número, sem seta de tendência, sem cor de alta/baixa", () => {
+    // Mesmo caso que o valor absoluto (2312.31) apareceria hoje se não fosse tratado.
+    const delta = calcularDelta(2312.31, null);
+    const html = render("investimento", delta);
+
+    expect(html).toContain("sem base");
+    expect(html).not.toContain(formatCurrency(2312.31));
+    expect(html).not.toContain("R$");
+    expect(html).not.toMatch(/data-icon="up"|data-icon="down"/);
+    expect(html).not.toMatch(/text-emerald-400|text-red-400/);
+    // Sem base também não mostra a dica de hover do período anterior (não existe período anterior).
+    expect(html).not.toContain("data-dica-texto");
+  });
+
+  it("anterior === 0: caso real da auditoria — tratado igual a 'sem base', não vira badge verde de crescimento", () => {
+    // Reproduz o incidente: investimento atual R$ 2.312,31, período anterior zerado.
+    const delta = calcularDelta(2312.31, 0);
+    expect(delta.anterior).toBe(0);
+    expect(delta.delta_pct).toBeNull();
+    // Sem o fix, delta.delta seria 2312.31 e o fallback pintaria isso de verde.
+    expect(delta.delta).toBe(2312.31);
+
+    const html = render("investimento", delta);
+
+    expect(html).toContain("sem base");
+    expect(html).not.toContain(formatCurrency(2312.31));
+    expect(html).not.toContain("R$");
+    expect(html).not.toMatch(/data-icon="up"|data-icon="down"/);
+    expect(html).not.toMatch(/text-emerald-400|text-red-400/);
+    expect(html).not.toContain("data-dica-texto");
+  });
+
+  it("anterior positivo, com alta: continua igual a hoje — percentual, seta de alta, verde e dica de hover", () => {
+    const delta = calcularDelta(61, 40); // leads: 40 -> 61, delta_pct = +52,5%
+    const html = render("leads", delta);
+
+    expect(html).toContain("+52,5%");
+    expect(html).toContain('data-icon="up"');
+    expect(html).toContain("text-emerald-400");
+    expect(html).not.toContain("text-red-400");
+    expect(html).toContain(`data-dica-texto="Período anterior: ${formatNumber(40)}"`);
+  });
+
+  it("anterior positivo, com baixa: continua igual a hoje — percentual, seta de baixa, vermelho e dica de hover", () => {
+    const delta = calcularDelta(30, 50); // leads: 50 -> 30, delta_pct = -40%
+    const html = render("leads", delta);
+
+    expect(html).toContain("-40%");
+    expect(html).toContain('data-icon="down"');
+    expect(html).toContain("text-red-400");
+    expect(html).not.toContain("text-emerald-400");
+    expect(html).toContain(`data-dica-texto="Período anterior: ${formatNumber(50)}"`);
+  });
+});

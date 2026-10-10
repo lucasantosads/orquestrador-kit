@@ -1,0 +1,17 @@
+Implementei o ticket 891 e commitei em `frente/891` (0ac4370 e 8449b35, sem push). O diff soma exatamente 320 linhas, no limite do teto.
+
+Rodei só os cinco arquivos de teste e o `tsc`, sem `npm run build` nem a suíte completa do vitest:
+- **Testes:** passam os cinco, ou seja, os dois da lista (`grupos-sem-vinculo-api` e `grupos-sem-vinculo-tela`, sem edição), o novo `grupos-cliente-que-saiu`, `c0-guard` e `fetch-json-teto`.
+- **`tsc`:** deu 3 erros, o baseline. Não consegui rodar `rm -rf .next` antes, porque o Bash negou o comando. Rodei sem limpar, e o filtro de `.next/` já tira esse ruído.
+- **Não rodei** os outros critérios do ticket: o teto de diff, a allowlist, "sem `.sql`", "só um update" e os greps da rota e do bloco. Pelo que escrevi, a rota tem uma DELETE com `await guardHeadAdmin()` e um único `update`, e o bloco tem os textos e não usa `window.confirm`.
+- **Contra HEAD:** não rodei o teste novo contra o código antigo para confirmar que falha. Ele depende da DELETE e de `de_cliente_que_saiu`, que não existiam antes.
+
+O que mudou:
+- **`route.ts`, GET:** devolve `de_cliente_que_saiu` com os vínculos vigentes de cliente que não passa em `isClienteAtivo`. Um jid que só tem vínculo apagado de cliente que saiu deixa de aparecer em `grupos`. Falha em qualquer leitura devolve 500.
+- **`route.ts`, DELETE:** usa o mesmo guard e valida `{ grupo_id }` com zod (422). Devolve 404 se o grupo não existe e 409 se o cliente é ativo. Senão faz um único `update` de `deleted_at` e grava o `logAudit`.
+- **`grupos-sem-vinculo-bloco.tsx`:** a seção "Grupos de clientes que saíram" usa o mesmo fetch de antes. O botão "Desvincular" vira "Confirmar" e "Cancelar" na própria linha, o erro aparece na linha e a seção some quando está vazia.
+- **`test/grupos-cliente-que-saiu.test.ts`:** 6 casos, com o status do cliente como "Cancelado".
+
+Dois desvios do que o ticket pedia:
+- **Linhas apagadas sem `.not(...)`:** a query extra de `wpp_grupo` não usa `.not('deleted_at','is',null)`. O mock do `test/grupos-sem-vinculo-api.test.ts` não tem `.not` e esse teste não pode ser editado, então a query traz todas as linhas e eu filtro `deleted_at` no código.
+- **Cortes no teste novo:** para caber nas 320 linhas, tirei o caso do 422 por corpo inválido e a verificação "sem update" do 403. O 401 e o 403 seguem cobertos, e o teste novo tem só uma verificação de 500 (leitura de `wpp_grupo`).

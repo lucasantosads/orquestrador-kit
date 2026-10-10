@@ -1,0 +1,4 @@
+{
+  "aprovado": true,
+  "motivo": "Atende ao objetivo. GET e POST usam conexaoViva e carregarEtapasCrm, com a ordem por posição e os totais contados das listas. Erros de leitura sobem e o POST devolve 502 com o motivo. nomeDaConta nunca lança. O nome só entra quando falta, e reconectar sem nome não apaga. O backfill só é enfileirado e o token vem de obterTokenLocation."
+}

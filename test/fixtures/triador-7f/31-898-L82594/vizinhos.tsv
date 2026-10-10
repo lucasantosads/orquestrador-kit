@@ -1,0 +1,9 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+898	docs/fila/runs/898/attempt-1.prev1	test/saude-chip-ficha.test.ts	1904	2026-10-08T13:47:28Z	1
+898	docs/fila/runs/898/attempt-2.prev1	test/saude-chip-ficha.test.ts	1903	2026-10-08T13:49:46Z	1
+741a	docs/fila/runs/741a/attempt-1.prev1	test/saude-chip-ficha.test.ts	1901	2026-10-08T14:08:53Z	0
+741a	docs/fila/runs/741a/attempt-2.prev1	test/saude-chip-ficha.test.ts	1897	2026-10-08T14:14:21Z	0
+741a	docs/fila/runs/741a/attempt-1.prev2	test/saude-chip-ficha.test.ts	1898	2026-10-08T14:37:06Z	0
+741a	docs/fila/runs/741a/attempt-2	test/saude-chip-ficha.test.ts	1897	2026-10-08T14:40:05Z	0
+707	docs/fila/runs/707/attempt-1.prev2	test/saude-chip-ficha.test.ts	1897	2026-10-08T14:53:34Z	0
+707	docs/fila/runs/707/attempt-2.prev2	test/saude-chip-ficha.test.ts	1897	2026-10-08T14:58:13Z	0

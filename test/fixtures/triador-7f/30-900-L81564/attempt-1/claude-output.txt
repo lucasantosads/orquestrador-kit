@@ -1,0 +1,12 @@
+A migration `.sql` e o teste novo estão commitados em `frente/900`. O `tsc` dá 3 erros, igual ao baseline. Os sete testes que rodei passam: o novo, os cinco que varrem `supabase/migrations`, e o de 29/09. A suíte inteira, o `npm run build` e as guardas globais eu não rodei. Também não rodei a checagem de orçamento de diff, que deve ficar em torno de 80 linhas contra o teto de 160.
+
+- **Migration:** `supabase/migrations/20261007190900_churn_fecha_leitura_anon.sql` só está escrita, nada foi aplicado.
+  - Dentro de `begin; … commit;` ela faz dois `drop policy if exists` e dois `revoke all … from anon, authenticated`.
+  - Não tem `create policy`, `grant`, `only_service_role` nem outra tabela.
+  - O cabeçalho traz "APLICAR E HUMANO", a instrução de ensaio com o GET anon, e a reversão com os 2 `create policy` e os 2 `grant select`.
+- **Teste:** `test/churn-fecha-leitura-anon-ddl.test.ts` lê o `.sql` e afirma o conteúdo conforme o ticket.
+- **Segundo commit:** o `test/migrations-policy-idempotente.test.ts` reprovou o primeiro commit, porque o texto `create policy` na reversão exige uma menção a `pg_policies`. Acrescentei essa menção ao cabeçalho, no passo de verificação depois de aplicar.
+
+**Critério `APLICAR .(1, 2) HUMANO`:** na cópia que recebi, o `(1, 2)` parece um `{1,2}` que perdeu as chaves. Lido literalmente, em `grep -E`, esse padrão não casa com "APLICAR E HUMANO", então o critério de cabeçalho daria `ST_0_2`. Com `.{1,2}` ele casa. Não executei esse critério, então não sei qual forma o avaliador usa de fato.
+
+Três comandos foram negados por permissão: o compound com `rm -rf .next`, o `rm -rf .next && tsc` e a verificação por `grep` do corpo do `.sql`. Por isso rodei o `tsc` sem limpar `.next`. O filtro `grep -v '^\.next/'` já tira esse ruído e o resultado foi 3.

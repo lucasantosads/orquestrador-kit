@@ -1,0 +1,48 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> PASS
+### criterio[9] -> PASS
+### criterio[10] -> PASS
+### criterio[11] -> PASS
+### criterio[12] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-867
+sanear_tsc: nao
+cmd:    a=$(grep -c '"/api/clientes/reunioes"' 'src/app/dashboard/clientes/[id]/page.tsx'); b=$(grep -c 'criarReuniao' 'src/app/dashboard/clientes/[id]/page.tsx' 'src/app/dashboard/clientes/[id]/tabs/reunioes-tab.tsx' 'src/app/dashboard/clientes/[id]/tabs/ficha-context.tsx' | awk -F: '{s+=$2} END {print s+0}'); [ "$a" = 0 ] && [ "$b" = 0 ] && echo SEM_INSERT || echo ST_${a}_${b}
+espera: SEM_INSERT
+-- saida --
+ST_1_5
+
+### criterio[13] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-867
+sanear_tsc: nao
+cmd:    a=$(grep -c 'Salvar Reunião' 'src/app/dashboard/clientes/[id]/tabs/reunioes-tab.tsx'); b=$(grep -c 'abrirReuniao' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx' 'src/app/dashboard/clientes/[id]/tabs/reunioes-tab.tsx' | awk -F: '{s+=$2} END {print s+0}'); [ "$a" = 0 ] && [ "$b" = 0 ] && echo FORA || echo ST_${a}_${b}
+espera: FORA
+-- saida --
+ST_1_9
+
+### criterio[14] -> PASS
+### criterio[15] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-867
+sanear_tsc: nao
+cmd:    test -f test/relacao-sem-escrita-reuniao.test.ts && npx vitest run test/relacao-sem-escrita-reuniao.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO
+espera: VERDE
+-- saida --
+VERMELHO
+
+### criterio[16] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-867
+sanear_tsc: nao
+cmd:    a=$(grep -c 'dica="Registrar reunião"' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx'); b=$(grep -c '>Agendar<' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx'); c=$(grep -c 'nenhuma agendada' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx'); d=$(grep -c 'sem base' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx'); [ "$a" = 0 ] && [ "$b" = 0 ] && [ "$c" -ge 1 ] && [ "$d" -ge 1 ] && echo SO_LE || echo ST_${a}_${b}_${c}_${d}
+espera: SO_LE
+-- saida --
+ST_1_1_1_3
+
+### criterio[17] (qualitativo — julgado pelo Opus)
+descricao: avaliador: nenhum caminho da Relacao insere em reunioes_cliente; o Pulso faz exatamente a OPCAO 1 (sem '+' nem 'Agendar', linhas em cinza); so as asserções da lista mudaram, cada uma com comentario citando o 867. REPROVE se: asserção fora da lista mudou; asserção apagada sem substituta; o Pulso ganhou qualquer botao ou escrita nas linhas de reuniao; a lista de reunioes mudou de fonte (isso e o 865).
+

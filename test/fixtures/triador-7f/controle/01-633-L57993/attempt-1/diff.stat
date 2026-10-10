@@ -1,0 +1,6 @@
+ src/app/dashboard/clientes/[id]/page.tsx           | 16 +++--
+ .../dashboard/clientes/[id]/tabs/anchor-block.tsx  | 17 +++--
+ test/anchor-block.test.ts                          |  6 +-
+ test/ficha-rotulo-moldura.test.ts                  | 81 ++++++++++++++++++++++
+ test/ficha-subsecoes-sequencia.test.ts             |  6 +-
+ 5 files changed, 112 insertions(+), 14 deletions(-)

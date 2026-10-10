@@ -1,0 +1,5 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+559	docs/fila/runs/559/attempt-1.prev2	test/conta-aceite.test.tsx	979	2026-09-25T13:22:41Z	1
+559	docs/fila/runs/559/attempt-2.prev2	test/conta-aceite.test.tsx	980	2026-09-25T13:24:49Z	1
+559	docs/fila/runs/559/attempt-1.prev3	test/conta-aceite.test.tsx	979	2026-09-25T13:57:28Z	0
+559	docs/fila/runs/559/attempt-2	test/conta-aceite.test.tsx	979	2026-09-25T13:59:56Z	0

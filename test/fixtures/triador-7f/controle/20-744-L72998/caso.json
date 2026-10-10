@@ -1,0 +1,13 @@
+{
+ "id": "744",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/744-crm-cliente-etapas-sync.md",
+ "ticket_sha": "c9ba443cce8a024e353127c3b14e5afc121396c0",
+ "ticket_antes": true,
+ "linha_bloqueio": null,
+ "linha_fim": 72998,
+ "log_inicio": 72940,
+ "fim": "2026-10-05T22:18:27Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/744"
+}

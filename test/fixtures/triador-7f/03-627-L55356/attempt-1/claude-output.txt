@@ -1,0 +1,19 @@
+Parei sem commitar: o contador conta 278 travessões mudos, e o ticket manda parar quando a contagem passa de 273.
+
+**O que medi**
+- O `src/` do worktree é idêntico ao de `2f58e67`. O `git diff 2f58e67 HEAD -- src` sai vazio, e o único arquivo novo desde então é `test/conta-aceite.test.tsx`.
+- Com o contador do ticket, o worktree dá **278**. São os dois regex, aplicados linha a linha depois de remover os comentários, excluindo só `sem-dado.tsx`.
+- Sem remover comentários, o mesmo regex dá 282, então nenhuma versão do contador chega a 273.
+- Ninguém adicionou travessão depois da medição. Com o mesmo `src/`, a diferença de 5 vem da definição de contagem, não do código de tela. O 273 do ticket deve ter saído de um contador com outro detalhe, como o tratamento de comentários ou de aspas, ou de outra fonte.
+
+**Estado**
+- `test/travessao-mudo.test.ts` está escrito e **não commitado**. Os 3 testes do contador e da exceção passam. O teste "travessao mudo nao passa do teto" falha (278 > 273), e a mensagem já lista `arquivo:linha` de cada ocorrência.
+- Não subi o teto para 278 para o teste passar, porque o critério exige `TETO <= 273` e o ticket manda descrever quando passa.
+- Também não commitei com 273, porque o teste ficaria vermelho e travaria a fila.
+- Nenhum arquivo de `src/` foi tocado.
+
+**Decisão sua**
+1. Confirmar que 278 é a contagem correta e reemitir o ticket com esse teto, incluindo a mudança no critério `-le 273`.
+2. Me passar o contador que produziu 273, ou o ajuste que falta na definição, para eu alinhar.
+
+Depois de qualquer uma das duas, é só editar `TETO` e o comentário, e commitar.

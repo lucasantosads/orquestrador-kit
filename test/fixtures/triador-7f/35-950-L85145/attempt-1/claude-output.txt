@@ -1,0 +1,17 @@
+O ticket 950 não está fechado: um dos seis testes que o critério exige continua vermelho, e consertá-lo exige editar um arquivo fora da allowlist. A cascata está implementada e commitada (`03994f5`), sem push.
+
+**Entregue**
+- Em `motor.ts`, `aplicarCascata` é exportada e `qualificarLead` a chama depois do laço das fases, antes de montar o motivo. Os comentários antigos foram trocados e a frase "fase pulada não é inferida" saiu.
+- O novo `test/qualificacao-cascata-marcos.test.ts` cobre os casos da spec.
+- Em `test/etapa2-motor-fases.test.ts`, o teste que fixava "não infere fase pulada" foi recalculado: VENDA sozinha agora preenche `rm_em`, `rr_em`, `mql_em` e `is_mql`. O comentário citando o ticket 950 está acima das asserções, e nenhuma asserção foi removida ou afrouxada.
+- O diff soma 148 linhas, abaixo do teto de 260. A contagem de erros do `tsc` ficou em 3 (baseline).
+
+**Testes**
+- `test/qualificacao-cascata-marcos.test.ts` e `test/etapa2-motor-fases.test.ts`: 26 testes verdes.
+- `test/qualificacao-motor.test.ts`, `test/mql-cliente-regra-etapas.test.ts`, `test/mql-cliente-tags-regra.test.ts`, `test/c0-guard.test.ts`, `test/fetch-json-teto.test.ts` e `test/travessao-mudo.test.ts`: verdes.
+- **Falha:** `test/etapa2-funil-motor.test.ts` ("cada classe do funil conta exatamente os leads que o motor marcou"). Ele espera que o lead "c", só com VENDA, tenha as marcas `["VENDA"]`. Pela regra nova o motor devolve `["MQL","RM","RR","VENDA"]`.
+- Esse arquivo não está na allowlist. Pela regra do repo o valor esperado teria que ser recalculado com um comentário explicando, o que exige incluir o arquivo na allowlist. Não toquei nele.
+
+**Não rodei:** o `rm -rf .next` e o `npm run build` (o `rm -rf .next && npx vitest run …` foi negado por permissão, então rodei o vitest e o `tsc` separados). Também não rodei os critérios de diff e de allowlist contra `origin/staging-auto`.
+
+**Decisão sua:** ampliar a allowlist com `test/etapa2-funil-motor.test.ts` para eu recalcular a linha do lead c (`["MQL","RM","RR","VENDA"]`)? Ou o ticket deve ser refeito com esse arquivo na allowlist?

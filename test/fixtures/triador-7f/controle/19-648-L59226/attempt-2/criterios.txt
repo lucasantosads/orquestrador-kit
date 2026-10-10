@@ -1,0 +1,18 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-648
+sanear_tsc: nao
+cmd:    r=INTACTOS; for p in 'test/acao-unica-ficha-controles.test.tsx:9' 'test/analise-ia-visao.test.tsx:6' 'test/atalhos-externos.test.ts:17' 'test/barra-visao.test.tsx:9' 'test/bloco-alertas-visao.test.tsx:6' 'test/bloco-relacao.test.tsx:6' 'test/bloco-tarefas-visao.test.tsx:5' 'test/bloco-vazio-linha.test.ts:13' 'test/cadastro-colapsavel.test.ts:14' 'test/cartao-copy-sem-travessao.test.ts:11' 'test/cartao-topo-nps.test.ts:6' 'test/cartao-topo-perfil.test.tsx:19' 'test/cartao-topo-renovacao.test.ts:8' 'test/cartao-topo-setup-e-closer.test.ts:8' 'test/cartao-topo-status-popover.test.ts:5' 'test/cartao-topo-teses.test.tsx:8' 'test/cockpit-blocos-null.test.ts:7' 'test/conta-resultados-escritorio.test.ts:9' 'test/ficha-perfil-operacional.test.ts:16' 'test/header-cliente-consolidado.test.ts:21' 'test/historico-status-compacto.test.ts:13' 'test/kpis-visao.test.tsx:16' 'test/orquestrador-enforcement.test.ts:27' 'test/relacao-aceite.test.tsx:47' 'test/rotas-fantasma-ficha.test.ts:18' 'test/saude-motivo-sem-base.test.ts:8' 'test/score-saude-fonte-unica.test.ts:9' 'test/sem-insumo.test.ts:35' 'test/tabela-campanhas-expansao.test.tsx:12' 'test/tabela-funil-tese.test.tsx:17' 'test/timeline-visao.test.tsx:7' 'test/tooltip-acessivel.test.ts:24' 'test/visao-aceite-estrutura.test.tsx:39' 'test/visao-aceite-mockup.test.tsx:58' 'test/visao-dado-parado-e-link.test.ts:5' 'test/visao-estrutura-cabecalho.test.tsx:8' 'test/visao-estrutura-timeline.test.tsx:9' 'test/visao-estrutura-trio.test.tsx:5' 'test/visao-limpeza-final.test.tsx:4' 'test/visao-sem-cockpit-antigo.test.ts:8'; do f=${p%:*}; n=${p##*:}; [ "$(grep -cE '(^|[^A-Za-z_.])(it|test)\(' "$f")" -ge "$n" ] || r="ENCOLHEU:$f"; done; echo $r
+espera: INTACTOS
+-- saida --
+ENCOLHEU:test/tooltip-acessivel.test.ts
+
+### criterio[8] -> PASS
+### criterio[9] -> PASS
+### criterio[10] -> PASS

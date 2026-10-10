@@ -1,0 +1,8 @@
+O ticket 689 está implementado e commitado (`04b9369`), com 99 linhas de diff contra o teto de 260. Os três arquivos de kanban-higiene passam (35 testes) e o `tsc` fica nos 3 erros do baseline. Não rodei o `vitest` completo, o `npm run build` nem as guardas globais, e não medi os critérios de aceite um a um.
+
+- **`src/middleware.ts`:** `/api/cron/kanban-higiene` entra no `CRON_PATHS`, com comentário citando o 689. Nenhuma outra rota mudou.
+- **`scripts/dados/365-kanban-higiene.ts`:** `calcularTotalSegundosEncerramento` soma no máximo `LIMITE_HORAS_CRONOMETRO` (12h) do tempo decorrido desde `ultimo_inicio`. O seletor já não filtrava tarefa arquivada, então não precisou mudar.
+- **`test/kanban-higiene-cron-arquivada.test.ts` (novo):** confere que o `CRON_PATHS` contém a rota, por leitura de fonte. Com client falso, uma tarefa arquivada com cronômetro ligado há 60 dias sai com `em_andamento=false`, `cronometro_encerrado=true` e `total_segundos` igual ao anterior mais 43200. Um cronômetro ligado há 2h não é tocado.
+- **Testes existentes:** recalculei as três asserções que o teto mudou, com comentário citando o 689. O valor passou de 1257h para 12h (43200s) em `test/kanban-higiene-regras.test.ts` (duas asserções) e em `test/kanban-higiene-job.test.ts` (uma). Nenhuma foi removida nem afrouxada.
+
+Um `rm -rf .next` foi negado na primeira tentativa, então rodei o `tsc` sem limpar. Mesmo assim o resultado deu 3.

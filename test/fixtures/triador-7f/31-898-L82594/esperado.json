@@ -1,0 +1,19 @@
+{
+ "classe": "R5",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/898/attempt-1.prev1/gate-vitest.txt",
+   "linha": 1905,
+   "origem": "trecho",
+   "trecho": "Cannot find module '@/hooks/useAcaoUnica'"
+  },
+  {
+   "arquivo": "docs/fila/runs/898/attempt-2.prev1/gate-vitest.txt",
+   "linha": 1904,
+   "origem": "trecho",
+   "trecho": "Cannot find module '@/hooks/useAcaoUnica'"
+  }
+ ],
+ "requeue": "sim_apos:base_verde",
+ "fonte_da_verdade": "medicao-bloqueios-out.md:132"
+}

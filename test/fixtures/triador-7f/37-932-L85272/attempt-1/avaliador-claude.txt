@@ -1,0 +1,1 @@
+{"aprovado": true, "motivo": "SQL cria só perf_ranking_foto_mensal com as 10 colunas, checks, unique e índice; RLS, policy only_service_role guardada por pg_policies, revoke anon/authenticated. Cabeçalho tem APLICAR E HUMANO, token e reversão, sem 'nao aplicada'. Sem grant, função ou trigger. Teste lê o .sql e cobre o pedido."}

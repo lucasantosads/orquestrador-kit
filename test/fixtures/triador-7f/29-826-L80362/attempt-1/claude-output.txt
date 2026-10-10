@@ -1,0 +1,12 @@
+A ficha não reescreve mais a URL: ela abre pelo uuid ou pelo notion_id e fica como chegou. Está commitado em `fed8fe7`, com 69 linhas adicionadas e 20 removidas, bem dentro do teto de 300.
+
+- **Verificação:** o tsc ficou nos 3 erros do baseline. Rodei os 5 testes existentes da allowlist, o teste novo e as 7 guardas globais, e os 13 arquivos passaram (151 testes).
+- **Não rodei:** o `rm -rf .next` foi negado por permissão, então o tsc rodou sem limpar `.next`. Não rodei `npm run build` nem a suíte completa do vitest, nem os comandos de critério um a um.
+- **Estado novo:** `notionId` (string ou null) é preenchido no `load()`. Se o id da URL já é o notion_id, `notionId` é o próprio id. Se a rota responde erro com outro notion_id, a ficha repete só a leitura `/api/notion/clientes/${nid}` e usa esse valor.
+- **Leituras legadas:** teses, NPS, reuniões e resumos agora usam `notionId`. O acompanhamento de onboarding (`/api/onboarding/tracking?notion_id=`) também passou a usá-lo, porque o critério de aceite barra qualquer `notion_id=${id}` na página. Sem `notionId` essas leituras não disparam.
+- **Cliente sem espelho:** a rota devolve 200 com o próprio uuid como notion_id. Tratei esse caso como sem notion_id real (`notion_id === cliente_id`), então `notionId` fica nulo.
+- **Sem notionId:** `ContaNovaSugestao` não renderiza. O `ResumoGrupoBloco` mostra "Sem base: este cliente não tem cadastro no Notion, então o resumo do grupo não tem de onde ler.". O `ClientePerfPanel` recebe `setupNotionId` indefinido, e o link de setup some, como o teste existente já previa.
+- **Testes ajustados:** em `test/ficha-por-uuid.test.ts`, `test/painel-em-campanhas.test.ts` e `test/link-setup-notion-id.test.ts`, só as asserções que afirmavam a reescrita ou o `String(id)` foram recalculadas, com comentário citando o ticket 826.
+- **Teste novo:** `test/ficha-sem-reescrita-notion.test.ts` tem 5 casos de leitura da fonte.
+
+Para as leituras de teses, NPS, reuniões e resumos, só "sem notionId, não dispara" é coberto; o "sem base" visível existe apenas no bloco do WhatsApp. Teses, NPS, reuniões e resumos não ganharam mensagem própria porque as telas deles não estão na allowlist.

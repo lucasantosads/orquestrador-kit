@@ -1,0 +1,19 @@
+O ticket 694 está implementado e commitado, sem push. O `tsc` dá 3 erros (o baseline), o vitest completo passa (793 arquivos, 8061 testes) e o `npm run build` termina com sucesso.
+
+**O que falhou no attempt anterior.** A worktree estava vazia, sem nenhum código do ticket. Os dois testes que quebraram eram `leitura-relacao-gatilhos` e `leitura-relacao-motor`. Eles usam bancos falsos que não conhecem `.in()` nem linhas com `cliente_id`. Por isso `lerFimFidelidadeLote` usa `.eq("cliente_id", id)` quando recebe um id só, e atribui a linha ao cliente quando há um único id. Com mais de um id usa `.in()`. Nenhum teste fora da allowlist foi editado.
+
+**Arquivos**
+- **`src/lib/contrato/fidelidade-fim.ts`**: `lerFimFidelidadeLote` aplica a mesma regra em 2 leituras, e `lerFimFidelidade` passa a chamá-lo com `[id]`.
+- **`test/selects-quebrados-28-09.test.ts`**: só uma linha a mais, o método `in` no banco falso. Nenhuma asserção mudou.
+- **`src/lib/inicio/carregar-carteira.ts`**: `carregarInicio` usa as fontes únicas pedidas (dono, ativo, equipe, fidelidade em lote) e `avaliarCliente`.
+  - `PROMESSAS_LIGADAS = false` deixa a promessa como `null`, e o contador sai "sem base" com o motivo.
+  - A decisão do CS (todos os ativos) está marcada com o comentário `decisao pendente humano:decisao-cs-inicio`.
+- **`src/app/api/portal/inicio/route.ts`**: GET com 401 sem sessão, papel por `papelDe`, `view_as` só para diretor, head e admin, e 500 com o motivo quando uma leitura falha.
+- **`test/inicio-resumo-api.test.ts`**: 7 testes cobrindo os casos pedidos.
+
+**Diferenças em relação ao enunciado**
+- **Vácuo:** `vacuo.ts` não foi tocado. Os contadores de grupos esperando vêm de `carregarVacuos`, filtrado pela carteira.
+- **Últimas 200 mensagens por grupo:** não fiz essa leitura à parte, porque `carregarInteracao` e `carregarVacuos` já leem as mensagens. Se o avaliador exigir as 200 por grupo, é um acréscimo de poucas linhas.
+- **`cpl_referencia`:** saiu como número, com `cpl_referencia_origem` ao lado. Assim nenhuma linha da carteira tem chave `valor`.
+- **Tarefas arquivadas:** não achei coluna de arquivamento em `tarefas_kanban`. O Seu dia ignora as com `deleted_at` preenchido e as com status `arquivado`.
+- **Orçamento de diff:** 272 linhas, abaixo do teto de 540.

@@ -1,0 +1,13 @@
+{
+ "id": "656",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/656-setup-fonte-unica.md",
+ "ticket_sha": "c7697f4b837d9caa5cd464b0f202978ff2ed38cf",
+ "ticket_antes": true,
+ "linha_bloqueio": null,
+ "linha_fim": 60917,
+ "log_inicio": 60824,
+ "fim": "2026-09-26T22:04:21Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/656"
+}

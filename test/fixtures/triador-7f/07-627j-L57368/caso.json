@@ -1,0 +1,12 @@
+{
+ "id": "627j",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/627j-travessao-mudo-clientes-perf.md",
+ "ticket_sha": "d35dd4141672535bb518f74f3369049e0e5e65ce",
+ "ticket_antes": true,
+ "linha_bloqueio": 57368,
+ "log_inicio": 57310,
+ "fim": "2026-09-25T22:50:59Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/627j"
+}

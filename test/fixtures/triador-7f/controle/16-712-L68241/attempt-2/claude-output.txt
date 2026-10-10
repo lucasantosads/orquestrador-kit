@@ -1,0 +1,21 @@
+Atribuir uma tarefa a outra pessoa agora gera um aviso para ela, e o critério que reprovou (`FALTA_2_0`) está corrigido. O commit é `3b7bda3`, sem push.
+
+A tentativa anterior não tinha entregue nada: a árvore estava limpa, sem `gravarAviso` na rota e sem o teste. Refiz o trabalho do zero.
+
+**Rota** (`src/app/api/tarefas-kanban/route.ts`, +32 linhas):
+- Uma função `avisarAtribuicao` chama `gravarAviso` com `categoria: 'tarefa'` (com aspas simples, como o critério exige) e `link: '/portal#tarefas'`.
+- O título do aviso é o título da tarefa. A mensagem é `<cliente> · por <quem atribuiu>`, mais ` · prazo dd/mm/aaaa` quando há prazo.
+- A chave é `tarefa:<id>:atribuida:<responsavel_id>`.
+- No POST avisa o responsável final, e no PATCH avisa o novo responsável quando ele muda. Não avisa quem atribui a si mesmo.
+- Se o aviso falhar, a rota faz `console.error` com o id da tarefa e responde normalmente.
+
+**Teste novo** (`test/aviso-tarefa-atribuida.test.ts`, 103 linhas, `gravarAviso` mockado) cobre:
+- criar para si não avisa;
+- criar para outro avisa o outro, com link, chave e mensagem corretos;
+- reatribuir avisa o novo responsável e repetir não avisa de novo;
+- reatribuir para si mesmo não avisa;
+- erro do aviso mantém a resposta 200.
+
+Os testes existentes da allowlist passaram sem nenhuma alteração. Rodei o `tsc` (3 erros, o baseline), os 7 testes da allowlist (61 testes) e as 7 guardas globais (70 testes). O diff é de 135 linhas, dentro do teto de 320.
+
+Não rodei `npm run build` nem a suíte completa do vitest.

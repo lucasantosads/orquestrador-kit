@@ -1,0 +1,12 @@
+{
+ "id": "950",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/950-motor-cascata-marcos.md",
+ "ticket_sha": "378e359ef88961a3054cc82a8170675764ab9266",
+ "ticket_antes": true,
+ "linha_bloqueio": 85145,
+ "log_inicio": 85116,
+ "fim": "2026-10-09T18:48:44Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/950"
+}

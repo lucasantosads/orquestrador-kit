@@ -1,0 +1,3 @@
+ .../20261009200000_perf_ranking_foto_mensal.sql    | 43 +++++++++++++
+ test/perf-ranking-foto-mensal-ddl.test.ts          | 73 ++++++++++++++++++++++
+ 2 files changed, 116 insertions(+)

@@ -1,0 +1,140 @@
+{
+ "id": "711a",
+ "slug": "saude-carteira-e-risco-mesma-regra",
+ "lane": "produto",
+ "perfil": "fullstack",
+ "objetivo": "FATIA 1 DE 2 DO 711 (recorte de 01/10, auditoria preventiva: o 711 inteiro mexia em ~45 testes de leitura da ficha fora da allowlist). Esta fatia faz a rota de sinais, a carteira e a lista de risco; o chip Saude da ficha e o 711b. ORCAMENTO DE DIFF: teto de 600 linhas (~80 na rota NOVA src/app/api/clientes/sinais/route.ts, ~30 no loader, ~70 em src/app/dashboard/clientes/page.tsx, ~40 em risco/page.tsx e lista-risco-bloco.tsx, ~250 no teste NOVO test/saude-mesma-regra.test.ts). Se passar do teto, pare e reporte. FONTE: docs/planos/plano-portal-gestor-30set.md (plano aprovado + adendo de decisoes de 30/09, que vale sobre o plano). PASSO 1: leia src/lib/inicio/sinais.ts e src/lib/inicio/carregar-carteira.ts (693/694), src/app/dashboard/clientes/page.tsx (coluna 'Temperatura', ~755), src/app/dashboard/clientes/risco/page.tsx, src/app/dashboard/clientes/_components/lista-risco-bloco.tsx e src/components/estados/sem-insumo.ts. FAZER: (1) NOVA rota src/app/api/clientes/sinais/route.ts GET ?ids=<uuid,...> (ate 300; sem ids = 422): 401; devolve { [cliente_id]: { cor, sinal, motivo, faltando, override } } pela funcao do loader do 694 que monta os fatos e chama avaliarCliente (exporte do loader uma funcao por lista de ids, sem copiar regra); falha = 500. Esta rota e o contrato que o 711b vai consumir na ficha: nao mude o formato depois. (2) Carteira: a coluna 'Temperatura' passa a mostrar a cor e o motivo de /api/clientes/sinais (uma chamada com os ids da pagina), com SemDado e motivo ",
+ "cria_novo": [
+  "src/app/api/clientes/sinais/route.ts",
+  "test/saude-mesma-regra.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/app/api/clientes/sinais/route.ts",
+  "src/lib/inicio/carregar-carteira.ts",
+  "src/app/dashboard/clientes/page.tsx",
+  "src/app/dashboard/clientes/risco/page.tsx",
+  "src/app/dashboard/clientes/_components/lista-risco-bloco.tsx",
+  "test/saude-mesma-regra.test.ts",
+  "test/carteira-lista-risco.test.ts",
+  "test/data-view-renovacoes-risco.test.ts"
+ ],
+ "dependencias": [
+  "693",
+  "694",
+  "705"
+ ],
+ "prioridade": 50,
+ "recon_esperado": [
+  {
+   "descricao": "coluna Temperatura ainda le a leitura comercial",
+   "cmd": "grep -c 'classificarTemperatura(t.temperatura_comercial' src/app/dashboard/clientes/page.tsx",
+   "espera": "1"
+  },
+  {
+   "descricao": "src/app/api/clientes/sinais/route.ts ainda nao existe",
+   "cmd": "test -e 'src/app/api/clientes/sinais/route.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "risco/page.tsx e lista-risco-bloco.tsx ainda usam a cor do score antigo",
+   "cmd": "n=0; for f in 'src/app/dashboard/clientes/risco/page.tsx' 'src/app/dashboard/clientes/_components/lista-risco-bloco.tsx'; do grep -q 'corScoreSaude' \"$f\" && n=$((n+1)); done; echo COR_ANTIGA_EM_$n",
+   "espera": "COR_ANTIGA_EM_2"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes que leem os arquivos do ticket seguem verdes (recalculados, nunca afrouxados)",
+   "cmd": "fs=\"\"; for f in test/carteira-lista-risco.test.ts test/data-view-renovacoes-risco.test.ts test/quem-cuida.test.ts test/carteira-gestor-principal.test.ts test/carteira-radar-renovacao.test.ts test/carteira-ranking-gestor.test.ts test/estados-padrao.test.ts test/a11y/app-dashboard-clientes-risco-page.test.ts test/tooltip-acessivel.test.ts test/adocao-predicado.test.ts; do [ -f \"$f\" ] && fs=\"$fs $f\"; done; [ -z \"$fs\" ] && echo VERDE || { npx vitest run $fs >/dev/null 2>&1 && echo VERDE || echo VERMELHO; }",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum teste existente da allowlist perdeu it(/expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (contra o merge-base com staging-auto)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=NAO_AFROUXOU; for f in test/carteira-lista-risco.test.ts test/data-view-renovacoes-risco.test.ts test/quem-cuida.test.ts; do [ -f \"$f\" ] || { git cat-file -e \"$b:$f\" 2>/dev/null && r=APAGOU_$f; continue; }; for p in 'expect(' 'it('; do a=$(git show \"$b:$f\" 2>/dev/null | grep -cF \"$p\"); n=$(grep -cF \"$p\" \"$f\"); [ \"${n:-0}\" -ge \"${a:-0}\" ] || r=CAIU_$f; done; s0=$(git show \"$b:$f\" 2>/dev/null | grep -cE '\\.(skip|only|todo)\\('); s1=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"${s1:-0}\" -le \"${s0:-0}\" ] || r=SKIP_NOVO_$f; d0=$(git show \"$b:$f\" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' \"$f\"); [ \"${d1:-0}\" -le \"${d0:-0}\" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r",
+   "espera": "NAO_AFROUXOU",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/app/api/clientes/sinais/route.ts' 'src/lib/inicio/carregar-carteira.ts' 'src/app/dashboard/clientes/page.tsx' 'src/app/dashboard/clientes/risco/page.tsx' 'src/app/dashboard/clientes/_components/lista-risco-bloco.tsx' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo (inclusive os da outra fatia do 711) intocados",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/app/dashboard/clientes/[id]/_components/cartao-topo.tsx' 'src/lib/inicio/sinais.ts' 'src/lib/clientes/badges.ts' 'src/app/api/clientes/calcular-score' 'src/app/dashboard/clientes/[id]/page.tsx' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx' 'src/app/dashboard/clientes/[id]/tabs/resumo-tab.tsx' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/app/api/clientes/sinais/route.ts' 'src/lib/inicio/carregar-carteira.ts' 'src/app/dashboard/clientes/page.tsx' 'src/app/dashboard/clientes/risco/page.tsx' 'src/app/dashboard/clientes/_components/lista-risco-bloco.tsx' 'test/saude-mesma-regra.test.ts' 'test/carteira-lista-risco.test.ts' 'test/data-view-renovacoes-risco.test.ts'; do [ \"$f\" = \"$p\" ] && ok=1; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum travessao (U+2014) novo nos arquivos de tela do ticket (contagem por arquivo nao sobe contra o merge-base)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SEM_TRAVESSAO_NOVO; for f in 'src/app/dashboard/clientes/page.tsx' 'src/app/dashboard/clientes/risco/page.tsx' 'src/app/dashboard/clientes/_components/lista-risco-bloco.tsx'; do [ -f \"$f\" ] || continue; a=$(git show \"$b:$f\" 2>/dev/null | grep -c $'\\xe2\\x80\\x94'); n=$(grep -c $'\\xe2\\x80\\x94' \"$f\"); [ \"${n:-0}\" -le \"${a:-0}\" ] || r=TRAVESSAO_NOVO_$f; done; echo $r",
+   "espera": "SEM_TRAVESSAO_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 600 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 600 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde (test/saude-mesma-regra.test.ts)",
+   "cmd": "test -f test/saude-mesma-regra.test.ts && npx vitest run test/saude-mesma-regra.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "a coluna da carteira le a regra do Inicio pela rota de sinais",
+   "cmd": "b=$(grep -c 'classificarTemperatura(' 'src/app/dashboard/clientes/page.tsx'); c=$(grep -c '/api/clientes/sinais' 'src/app/dashboard/clientes/page.tsx'); [ \"$b\" = 0 ] && [ \"$c\" -ge 1 ] && echo MESMA_REGRA || echo REGRA_${b}_${c}",
+   "espera": "MESMA_REGRA"
+  },
+  {
+   "descricao": "a rota de sinais existe, exporta GET e chama avaliarCliente pelo loader (sem copiar regra)",
+   "cmd": "f='src/app/api/clientes/sinais/route.ts'; test -f \"$f\" || { echo AUSENTE; exit 0; }; a=$(grep -c 'export async function GET' \"$f\"); c=$(grep -cE 'avaliarCliente|carregar-carteira' \"$f\"); [ \"$a\" -ge 1 ] && [ \"$c\" -ge 1 ] && echo ROTA_OK || echo ROTA_${a}_${c}",
+   "espera": "ROTA_OK"
+  },
+  {
+   "descricao": "score antigo sem cor na tela de risco e na lista de risco",
+   "cmd": "n=0; for f in 'src/app/dashboard/clientes/risco/page.tsx' 'src/app/dashboard/clientes/_components/lista-risco-bloco.tsx'; do grep -q 'corScoreSaude' \"$f\" && n=$((n+1)); done; [ \"$n\" = 0 ] && echo SEM_COR_ANTIGA || echo COR_ANTIGA_$n",
+   "espera": "SEM_COR_ANTIGA"
+  },
+  {
+   "descricao": "avaliador: a rota devolve cor, sinal, motivo e faltando pela funcao do loader (avaliarCliente); a coluna Temperatura da carteira mostra a mesma cor e o mesmo motivo do Inicio, com sem base explicito; o score antigo nao tem cor na tela de risco nem na lista de risco; testes recalculados e comentados. REPROVE se: segunda regra de cor; copiou regra do 693 na rota; mexeu em arquivo da ficha (e do 711b); assercao removida; diff acima de 600 sem parar.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "criado 01/10 (auditoria preventiva): fatia 1 de 2 do 711 (rota de sinais, carteira, risco). Deps = as do 711 original.",
+ "_objetivo_cortado_na_fixture": 5631
+}

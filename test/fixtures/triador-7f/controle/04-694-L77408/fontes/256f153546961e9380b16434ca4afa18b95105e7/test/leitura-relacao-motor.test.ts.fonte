@@ -1,0 +1,186 @@
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("@/lib/ia/provider", () => ({
+  chamarProvider: vi.fn(),
+  IAProviderError: class extends Error {},
+}));
+
+import {
+  gerarLeituraRelacao,
+  montarEntrada,
+  montarTexto,
+  validarEvidencias,
+  hashEntrada,
+  type Fontes,
+  type LeituraSaida,
+} from "@/lib/ia/leitura-relacao";
+
+const CLIENTE = "00000000-0000-4000-8000-000000000001";
+
+const REG = (id: string) => ({
+  id,
+  cliente_id: CLIENTE,
+  tipo: "contato",
+  texto: "cliente pediu ajuste",
+  data_interacao: new Date().toISOString().slice(0, 10),
+  status: null,
+  deleted_at: null,
+});
+
+interface Opcoes {
+  registros?: unknown[];
+  nps?: unknown[];
+  fim?: string | null;
+  insertError?: { code: string } | null;
+}
+
+/** Fake mínimo do supabase: tabelas em memória, cadeia thenable, contadores de insert. */
+function fakeDb(o: Opcoes = {}) {
+  const leituras: Record<string, unknown>[] = [];
+  const contadores = { inserts: 0 };
+  const from = (tabela: string) => {
+    const filtros: Record<string, unknown> = {};
+    let insercao: Record<string, unknown> | null = null;
+    const dados = () => {
+      if (tabela === "client_interaction_records") return o.registros ?? [];
+      if (tabela === "perf_nps_respostas") return o.nps ?? [];
+      // Fim da fidelidade vem de clientes_receita (clientes não tem a coluna: 400 nos logs de 28/09).
+      if (tabela === "clientes_receita") return [{ fidelidade_fim: o.fim ?? null }];
+      if (tabela === "perf_leituras_relacao") {
+        return leituras.filter((l) => Object.entries(filtros).every(([k, v]) => l[k] === v));
+      }
+      return [];
+    };
+    const b: Record<string, unknown> = {};
+    for (const m of ["select", "in", "is", "not", "order", "gte", "limit", "or"]) b[m] = () => b;
+    b.eq = (k: string, v: unknown) => ((filtros[k] = v), b);
+    b.insert = (row: Record<string, unknown>) => ((insercao = row), b);
+    b.single = async () => {
+      if (o.insertError) return { data: null, error: o.insertError };
+      contadores.inserts++;
+      const linha = { id: `id-${contadores.inserts}`, gerado_em: "2026-09-23", ...insercao };
+      leituras.push(linha);
+      return { data: linha, error: null };
+    };
+    b.then = (ok: (v: unknown) => unknown) => ok({ data: dados(), error: null });
+    return b;
+  };
+  return { db: { from }, leituras, contadores };
+}
+
+const SAIDA: LeituraSaida = {
+  temperatura: "morna",
+  confianca: 0.7,
+  riscos: [{ texto: "Demora", severidade: "alta", evidencia_id: "reg:a" }],
+  upsell: [],
+  pendencias: { cliente: [], comarka: [] },
+  proximos_passos: [{ acao: "Ligar", dono: "gestor", prazo: "2026-10-01", evidencia_id: "reg:a" }],
+  perguntas_proxima_reuniao: [],
+  faltando: [],
+};
+const modeloResp = (saida: unknown) => ({
+  texto: JSON.stringify(saida),
+  uso: { tokens_in: 1, tokens_out: 1, custo_total: 0 },
+  modelo: { id: "m", provedor: "claude", modelo: "claude-haiku-4-5", label: "x", preco_in: 0, preco_out: 0 },
+  credencial_origem: "env" as const,
+});
+const tresFontes = (): Opcoes => ({
+  registros: [REG("a")],
+  nps: [{ nps_score: 6, comentario: null, mes_referencia: "2026-09-01" }],
+  fim: "2026-12-01",
+});
+
+describe("motor da leitura da relação (547)", () => {
+  it("3 fontes fazem exatamente 1 chamada, sem modeloId, e gravam", async () => {
+    const { db, contadores } = fakeDb(tresFontes());
+    const chamar = vi.fn().mockResolvedValue(modeloResp(SAIDA));
+    const r = await gerarLeituraRelacao({ db, clienteId: CLIENTE, gatilho: "manual", notionId: "n-1", chamar });
+    expect(chamar).toHaveBeenCalledTimes(1);
+    expect(chamar.mock.calls[0][0]).not.toHaveProperty("modeloId");
+    expect(chamar.mock.calls[0][0].funcao).toBe("leitura_relacao_cliente");
+    expect(contadores.inserts).toBe(1);
+    expect(r.reaproveitada).toBe(false);
+    expect(r.atual.modelo).toBe("claude-haiku-4-5");
+  });
+
+  it("mesma entrada de novo: 0 chamadas, 0 inserts, mesma leitura reaproveitada", async () => {
+    const { db, contadores } = fakeDb(tresFontes());
+    const chamar = vi.fn().mockResolvedValue(modeloResp(SAIDA));
+    const primeira = await gerarLeituraRelacao({ db, clienteId: CLIENTE, gatilho: "manual", notionId: "n-1", chamar });
+    const segunda = await gerarLeituraRelacao({ db, clienteId: CLIENTE, gatilho: "manual", notionId: "n-1", chamar });
+    expect(chamar).toHaveBeenCalledTimes(1);
+    expect(contadores.inserts).toBe(1);
+    expect(segunda.atual.id).toBe(primeira.atual.id);
+    expect(segunda.reaproveitada).toBe(true);
+  });
+
+  it("corrida 23505 no insert: rele a existente e devolve sem erro", async () => {
+    const { db, leituras } = fakeDb({ ...tresFontes(), insertError: { code: "23505" } });
+    const chamar = vi.fn().mockResolvedValue(modeloResp(SAIDA));
+    const entrada = montarEntrada({
+      registros: [REG("a")],
+      reunioes: [],
+      nps: [{ mes: "2026-09-01", nota: 6, comentario: null }],
+      renovacaoFim: "2026-12-01",
+    });
+    // a outra geração gravou entre a checagem e o insert
+    const original = db.from;
+    let lidas = 0;
+    db.from = (t: string) => {
+      const b = original(t) as Record<string, unknown>;
+      if (t === "perf_leituras_relacao" && lidas++ === 1) {
+        leituras.push({ id: "id-corrida", cliente_id: CLIENTE, entrada_hash: hashEntrada(entrada) });
+      }
+      return b;
+    };
+    const r = await gerarLeituraRelacao({ db, clienteId: CLIENTE, gatilho: "manual", notionId: "n-1", chamar });
+    expect(r.atual.id).toBe("id-corrida");
+    expect(r.reaproveitada).toBe(true);
+  });
+
+  it("1 fonte só: 0 chamadas e grava sem_base com o que falta", async () => {
+    const { db, leituras } = fakeDb({ registros: [REG("a")] });
+    const chamar = vi.fn();
+    const r = await gerarLeituraRelacao({ db, clienteId: CLIENTE, gatilho: "manual", notionId: "n-1", chamar });
+    expect(chamar).not.toHaveBeenCalled();
+    expect(r.atual.temperatura).toBe("sem_base");
+    expect(r.atual.confianca).toBeNull();
+    expect(r.atual.modelo).toBe("nenhum");
+    // 722: sem grupo recente, fontes_ausentes ganha "conversa recente no grupo" (o fake devolve [] em wpp_grupo); as 3 de antes seguem.
+    expect((leituras[0].saida as LeituraSaida).faltando).toEqual(["reuniões", "NPS", "renovação", "conversa recente no grupo"]);
+  });
+
+  it("item sem evidencia_id ou com id inexistente é descartado", () => {
+    const fontes: Fontes = { registros: [REG("a")], reunioes: [], nps: [], renovacaoFim: null };
+    const suja = {
+      ...SAIDA,
+      riscos: [...SAIDA.riscos, { texto: "Inventado", severidade: "baixa" as const, evidencia_id: "reg:zzz" }],
+      upsell: [{ texto: "Sem id", evidencia_id: "" }],
+    };
+    const limpa = validarEvidencias(suja, montarEntrada(fontes));
+    expect(limpa.riscos.map((r) => r.texto)).toEqual(["Demora"]);
+    expect(limpa.upsell).toEqual([]);
+  });
+
+  it("saída fora do schema erra 502 e não grava", async () => {
+    const { db, contadores } = fakeDb(tresFontes());
+    const chamar = vi.fn().mockResolvedValue(modeloResp({ temperatura: "gelada" }));
+    await expect(gerarLeituraRelacao({ db, clienteId: CLIENTE, gatilho: "manual", notionId: "n-1", chamar })).rejects.toMatchObject({ status: 502 });
+    expect(contadores.inserts).toBe(0);
+  });
+
+  it("montarTexto é template puro e ordena riscos por severidade", async () => {
+    const provider = await import("@/lib/ia/provider");
+    const saida = {
+      ...SAIDA,
+      riscos: [
+        { texto: "leve", severidade: "baixa" as const, evidencia_id: "reg:a" },
+        { texto: "grave", severidade: "alta" as const, evidencia_id: "reg:a" },
+      ],
+    };
+    const texto = montarTexto(saida);
+    expect(provider.chamarProvider).not.toHaveBeenCalled();
+    expect(texto.indexOf("grave")).toBeLessThan(texto.indexOf("leve"));
+    expect(texto).toContain("Próximo passo · gestor · até 2026-10-01: Ligar");
+  });
+});

@@ -1,0 +1,28 @@
+81537	[2026-10-08 04:37:57-0300] drenagem: ticket 900 (4 pendentes restantes)
+81538	[orq 07:37:57] orquestrador iniciando · modo: real · once
+81539	[orq 07:37:57] preflight: validando infra (scripts, fila, env, claude)...
+81540	[orq 07:38:00] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+81541	[orq 07:38:07] preflight: ok
+81542	[orq 07:38:24] === ticket 900 (churn-fecha-leitura-anon) — tentativa 1 · modo: real ===
+81543	[orq 07:38:25]   recon_esperado: ok (5 comando(s))
+81544	[orq 07:38:25]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/900/attempt-1/prompt.txt
+81545	[orq 07:38:25]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+81546	[orq 07:39:49]   diff cru salvo (76 linhas alteradas) · HEAD julgado 70911f07
+81547	[orq 07:39:49]   enforcement: ok
+81548	[orq 07:40:05]   gate tsc: ok (baseline)
+81549	[orq 07:40:33]   gate vitest: ok
+81550	[orq 07:41:02]   criterios mecânicos: FALHA — criterio[7] mecânico: esperado 'CABECALHO_OK', obteve 'ST_0_2'
+81551	[orq 07:41:02]   REPROVA (mecânica, sem Opus): criterio[7] mecânico: esperado 'CABECALHO_OK', obteve 'ST_0_2'
+81552	[orq 07:41:02] ticket 900: reprovado — retry 1/2. motivo: criterio[7] mecânico: esperado 'CABECALHO_OK', obteve 'ST_0_2'
+81553	[orq 07:41:02] === ticket 900 (churn-fecha-leitura-anon) — tentativa 2 · modo: real ===
+81554	[orq 07:41:03]   recon_esperado: ok (5 comando(s))
+81555	[orq 07:41:03]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/900/attempt-2/prompt.txt
+81556	[orq 07:41:03]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+81557	[orq 07:42:49]   diff cru salvo (70 linhas alteradas) · HEAD julgado 7095822a
+81558	[orq 07:42:50]   enforcement: ok
+81559	[orq 07:43:07]   gate tsc: ok (baseline)
+81560	[orq 07:43:46]   gate vitest: ok
+81561	[orq 07:44:12]   criterios mecânicos: FALHA — criterio[7] mecânico: esperado 'CABECALHO_OK', obteve 'ST_0_2'
+81562	[orq 07:44:12]   REPROVA (mecânica, sem Opus): criterio[7] mecânico: esperado 'CABECALHO_OK', obteve 'ST_0_2'
+81563	[orq 07:44:13] ticket 900: motivo de reprova REPETIU — circuit breaker (por ticket)
+81564	[orq 07:44:13] ticket 900: BLOQUEADO sem gastar a próxima volta

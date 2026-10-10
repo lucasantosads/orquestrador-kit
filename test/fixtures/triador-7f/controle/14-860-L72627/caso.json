@@ -1,0 +1,13 @@
+{
+ "id": "860",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/860-evolution-credencial-erro-nunca-sem-nome.md",
+ "ticket_sha": "baddd5d8ed1431e85db6e1e34a2ff991c044df64",
+ "ticket_antes": false,
+ "linha_bloqueio": null,
+ "linha_fim": 72627,
+ "log_inicio": 72573,
+ "fim": "2026-10-05T18:02:22Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/860"
+}

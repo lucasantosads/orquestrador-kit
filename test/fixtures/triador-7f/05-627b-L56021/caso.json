@@ -1,0 +1,12 @@
+{
+ "id": "627b",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/627b-travessao-mudo-ficha-cliente.md",
+ "ticket_sha": "d01396af4a0dcc5ad124d372bcd4c690c5cd85d8",
+ "ticket_antes": true,
+ "linha_bloqueio": 56021,
+ "log_inicio": 55938,
+ "fim": "2026-09-25T17:17:05Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/627b"
+}

@@ -1,0 +1,180 @@
+/**
+ * Ticket 711b3: o chip Saúde do cabeçalho da ficha mostra a regra do Início.
+ * page.tsx resolve o chip por lerSinalCliente (711b2) e o IdentidadeCliente só o pinta.
+ * Renderiza o IdentidadeCliente real (mesmo carregador de test/cartao-topo-renovacao.test.ts)
+ * para verde, amarelo, vermelho, sem base e erro; o erro nasce de lerSinalCliente com a rota falhando.
+ */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { Module, createRequire } from "node:module";
+import vm from "node:vm";
+import { transformSync } from "esbuild";
+import React from "react";
+import { chipSaude, type ChipSaude } from "../src/lib/clientes/chip-saude";
+
+const fetchJsonMock = vi.fn();
+vi.mock("@/lib/fetch-json", () => ({
+  fetchJson: (...args: unknown[]) => fetchJsonMock(...args),
+  FetchJsonError: class FetchJsonError extends Error {},
+}));
+import { lerSinalCliente } from "../src/lib/clientes/ler-sinal-cliente";
+
+const GERAL_TAB_PATH = resolve(__dirname, "../src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx");
+const PAGE_PATH = resolve(__dirname, "../src/app/dashboard/clientes/[id]/page.tsx");
+const PAGE = readFileSync(PAGE_PATH, "utf-8");
+const ID = "00000000-0000-4000-8000-000000000711";
+
+const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/server") as {
+  renderToStaticMarkup: (element: React.ReactElement) => string;
+};
+
+const FICHA = {
+  id: ID,
+  cliente: { nome: "Cliente Teste", status: "Ativo", analista: "Fulano", situacao: "Em dia", atencao: "Verde" },
+  update: async () => {}, setCliente: () => {}, gestores: [], extra: null, fechamento: null,
+  perfClienteId: "p1", editingPlataforma: false, setEditingPlataforma: () => {}, editingNicho: false,
+  setEditingNicho: () => {}, nichoOpts: [], salvarExtra: async () => {}, contratoData: null,
+};
+
+function carregarIdentidadeCliente(): React.ComponentType<{ chip: ChipSaude; risco: string | null; perfResolved: boolean }> {
+  const { code } = transformSync(readFileSync(GERAL_TAB_PATH, "utf-8"), {
+    loader: "tsx", jsx: "automatic", format: "cjs", target: "node18", sourcefile: GERAL_TAB_PATH,
+  });
+  const icone = () => function Icone() { return null; };
+  const div = (props: React.HTMLAttributes<HTMLDivElement>) => React.createElement("div", props);
+  const mocks: Record<string, unknown> = {
+    react: React,
+    // A Dica é importada com next/dynamic (não renderiza em markup estático); o dublê a mostra como data-dica.
+    "next/dynamic": {
+      __esModule: true,
+      default: () => function Dinamico(props: { texto?: string; children?: React.ReactNode }) {
+        return React.createElement("span", { "data-dica": typeof props.texto === "string" ? props.texto : undefined }, props.children);
+      },
+    },
+    sonner: { toast: { error: () => {}, success: () => {} } },
+    "lucide-react": new Proxy({}, { get: () => icone() }),
+    "@/lib/format": { formatCurrency: (n: number) => `R$ ${n}` },
+    "@/lib/fetch-json": { fetchJson: async () => { throw new Error("sem rede neste teste"); }, FetchJsonError: class extends Error {} },
+    "@/components/ui/card": { Card: div, CardContent: div, CardHeader: div, CardTitle: div },
+    "@/components/ui/badge": { Badge: (props: React.HTMLAttributes<HTMLSpanElement>) => React.createElement("span", props) },
+    "@/components/ui/button": { Button: (props: React.ButtonHTMLAttributes<HTMLButtonElement>) => React.createElement("button", props) },
+    "@/components/ui/input": { Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => React.createElement("input", props) },
+    "@/components/ui/label": { Label: (props: React.LabelHTMLAttributes<HTMLLabelElement>) => React.createElement("label", props) },
+    "@/components/estados/sem-insumo": { MOTIVO_NAO_AVALIADO: "ainda não avaliado" },
+    "@/components/estados/sem-dado": { SemDado: ({ motivo }: { motivo: string }) => React.createElement("span", null, motivo) },
+    "@/components/estados/bloco-vazio-linha": {
+      BlocoVazioLinha: ({ rotulo, texto }: { rotulo: string; texto: string }) => React.createElement("p", null, `${rotulo} ${texto}`),
+    },
+    "../_components/cockpit-visao-geral": { CockpitVisaoGeral: () => null },
+    "./ficha-types": {
+      STATUS_OPTS: ["Ativo"], CHURN_BLOCKED_FROM: [], STATUS_COLORS: {}, SITUACAO_COLORS: {}, RESULTADOS_COLORS: {},
+      ATENCAO_OPTS: ["Verde"], ATENCAO_COLORS: {}, DIA_OPTS: ["Segunda"], PLATAFORMA_OPTS: ["Meta"],
+      TESE_STATUS_COLORS: {}, ENTREGAVEL_STATUS_COLORS: {},
+    },
+    "../_components/gestor-principal": {
+      useGestorPrincipal: () => ({ gestorPrincipal: { estado: "carregando" }, recarregarGestor: async () => {} }),
+      nomeDoGestor: (_g: unknown, espelho: string | null | undefined) => espelho || "sem base",
+      gravarGestorPrincipal: async () => {},
+    },
+    "@/lib/perf/recorte-campanhas": {
+      FILTRO_STATUS_PADRAO: "todas", filtrarPorStatus: <T,>(l: T[]) => l,
+      recorteKpis: () => ({ gasto: 0, captacao: { campanhas: 0, gasto: 0, qtd: 0 } }),
+    },
+    "../_components/use-crm-estado": { useCrmEstado: () => ({ estado: "carregando", recarregar: () => {} }) },
+    "./ficha-context": { useFicha: () => FICHA },
+    "./nps-token": { pedirTokenNps: async () => ({}) },
+  };
+  const mod = new Module(GERAL_TAB_PATH, module);
+  mod.filename = GERAL_TAB_PATH;
+  mod.paths = (Module as unknown as { _nodeModulePaths(dir: string): string[] })._nodeModulePaths(dirname(GERAL_TAB_PATH));
+  const wrapper = vm.runInThisContext(Module.wrap(code), { filename: GERAL_TAB_PATH });
+  wrapper.call(mod.exports, mod.exports, (id: string) => (id in mocks ? mocks[id] : mod.require(id)), mod, GERAL_TAB_PATH, dirname(GERAL_TAB_PATH));
+  return mod.exports.IdentidadeCliente;
+}
+
+const IdentidadeCliente = carregarIdentidadeCliente();
+
+function cartao(chip: ChipSaude): string {
+  return renderToStaticMarkup(React.createElement(IdentidadeCliente, { chip, risco: "Baixo", perfResolved: true }));
+}
+
+// Texto visível do nó data-testid="chip-saude" e dica (data-dica) do envoltório.
+function chipNoHtml(html: string): { texto: string; dica: string | null } {
+  const m = /<span[^>]*data-testid="chip-saude"[^>]*>([^<]*)<\/span>/.exec(html);
+  expect(m, "chip-saude não renderizado").not.toBeNull();
+  const d = /data-dica="([^"]*)"[^>]*>(?:(?!<\/span>)[^])*data-testid="chip-saude"/.exec(html);
+  return { texto: m![1], dica: d ? d[1].replace(/&#x27;/g, "'") : null };
+}
+
+describe("ticket 711b3 — page.tsx lê a regra do Início", () => {
+  it("importa lerSinalCliente do módulo e não chama mais estadoScoreSaude(health?.score", () => {
+    expect(PAGE).toMatch(/from ["']@\/lib\/clientes\/ler-sinal-cliente["']/);
+    expect(PAGE).not.toContain("estadoScoreSaude(health?.score");
+    expect(PAGE).toContain("chip={chipSaude}");
+  });
+
+  it("a URL da rota mora no módulo, não na página, e a falha da leitura vira chip de erro", () => {
+    expect(PAGE).not.toContain("/api/clientes/sinais");
+    const i = PAGE.indexOf("lerSinalCliente(String(id))");
+    expect(i).toBeGreaterThan(-1);
+    expect(PAGE.slice(i, i + 300)).toContain(".catch(");
+  });
+});
+
+describe("ticket 711b3 — IdentidadeCliente mostra rótulo e dica de chipSaude", () => {
+  const casos: Array<[string, ChipSaude]> = [
+    ["verde", chipSaude({ cor: "verde", sinal: "ok", motivo: "Tudo dentro da meta", faltando: [] })],
+    ["amarelo", chipSaude({ cor: "amarelo", sinal: "atencao", motivo: "Resposta lenta há 3 dias", faltando: [] })],
+    ["vermelho", chipSaude({ cor: "vermelho", sinal: "risco", motivo: "Sem retorno há 20 dias", faltando: [] })],
+    ["sem base", chipSaude({ cor: "sem_base", sinal: null, motivo: "x", faltando: ["conta de anúncios"] } as never)],
+  ];
+
+  for (const [nome, chip] of casos) {
+    it(`${nome}: rótulo e dica do chip aparecem no cabeçalho`, () => {
+      const { texto, dica } = chipNoHtml(cartao(chip));
+      expect(texto).toBe(chip.rotulo);
+      expect(dica).toBe(chip.dica);
+    });
+  }
+
+  it("verde, amarelo e vermelho trazem o rótulo da cor; sem base diz sem base", () => {
+    expect(casos[0][1].rotulo).toBe("Saúde · Verde");
+    expect(casos[1][1].rotulo).toBe("Saúde · Amarelo");
+    expect(casos[2][1].rotulo).toBe("Saúde · Vermelho");
+    expect(casos[3][1].rotulo).toBe("Saúde · sem base");
+    expect(casos[3][1].dica).toContain("conta de anúncios");
+  });
+
+  it("o número do score antigo não aparece mais no chip", () => {
+    const { texto } = chipNoHtml(cartao(casos[0][1]));
+    expect(texto).not.toMatch(/\d+\s*\/\s*100/);
+  });
+
+  it("erro: a rota de sinais falha, lerSinalCliente devolve o chip de erro e o cartão o mostra", async () => {
+    fetchJsonMock.mockRejectedValueOnce(new Error("falhou"));
+    const chip = await lerSinalCliente(ID);
+    const { texto, dica } = chipNoHtml(cartao(chip));
+    expect(texto).toBe("Saúde · erro ao carregar");
+    expect(dica).toContain("Não foi possível carregar");
+    expect(texto).not.toContain("sem base");
+    expect(texto).not.toContain("Verde");
+  });
+});
+
+describe("ticket 711b3 — lerSinalCliente alimenta o cartão", () => {
+  beforeEach(() => fetchJsonMock.mockReset());
+
+  it("id ausente na resposta vira sem base, nunca verde", async () => {
+    fetchJsonMock.mockResolvedValueOnce({});
+    const { texto } = chipNoHtml(cartao(await lerSinalCliente(ID)));
+    expect(texto).toBe("Saúde · sem base");
+  });
+
+  it("cor vermelha da rota chega ao cartão como vermelho", async () => {
+    fetchJsonMock.mockResolvedValueOnce({ [ID]: { cor: "vermelho", sinal: "risco", motivo: "Sem retorno há 20 dias", faltando: [] } });
+    const { texto, dica } = chipNoHtml(cartao(await lerSinalCliente(ID)));
+    expect(texto).toBe("Saúde · Vermelho");
+    expect(dica).toBe("Sem retorno há 20 dias");
+  });
+});

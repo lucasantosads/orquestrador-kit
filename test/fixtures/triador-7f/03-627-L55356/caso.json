@@ -1,0 +1,12 @@
+{
+ "id": "627",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/627-guarda-travessao-mudo.md",
+ "ticket_sha": "9efdf46fb94913b2084f491a3976873a6110e0f1",
+ "ticket_antes": true,
+ "linha_bloqueio": 55356,
+ "log_inicio": 55331,
+ "fim": "2026-09-25T14:38:07Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/627"
+}

@@ -1,0 +1,3 @@
+ .../20261008121000_perf_cliente_verba.sql          | 34 ++++++++++++++
+ test/perf-cliente-verba-migration.test.ts          | 52 ++++++++++++++++++++++
+ 2 files changed, 86 insertions(+)

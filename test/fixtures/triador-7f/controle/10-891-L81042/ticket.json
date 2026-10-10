@@ -1,0 +1,116 @@
+{
+ "id": "891",
+ "slug": "grupos-sem-vinculo",
+ "lane": "produto",
+ "perfil": "",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 320 linhas (~90 em src/app/api/whatsapp/grupos-sem-vinculo/route.ts, ~70 em src/app/dashboard/clientes/config/integracoes/grupos-sem-vinculo-bloco.tsx, ~150 no teste NOVO test/grupos-cliente-que-saiu.test.ts). Se passar do teto, pare e reporte. CONTEXTO (recon 07/10, staging-auto 8a235c7): a lista de grupos sem cliente com vincular em lote JA EXISTE (tickets 687 e 688, ja em producao): GET/POST src/app/api/whatsapp/grupos-sem-vinculo/route.ts e o bloco src/app/dashboard/clientes/config/integracoes/grupos-sem-vinculo-bloco.tsx montado na aba Integracoes (integracoes-block.tsx:39 e :58). No banco hoje: 49 grupos com mensagem, 25 com vinculo vigente, 24 sem vinculo (exatamente o que a lista mostra), e 2 vinculos vigentes de cliente cancelado (Thiago Araujo e Joyce campodonio). O que FALTA e o que este ticket faz: desvincular grupo de cliente que saiu, no mesmo bloco. PASSO 1: leia src/app/api/whatsapp/grupos-sem-vinculo/route.ts inteiro (260 linhas), src/app/dashboard/clientes/config/integracoes/grupos-sem-vinculo-bloco.tsx inteiro (189 linhas), src/lib/clientes/ativo.ts (isClienteAtivo) e a DELETE de src/app/api/clientes/[id]/whatsapp-grupos/route.ts:207-229 (molde do soft delete). FAZER: (1) src/app/api/whatsapp/grupos-sem-vinculo/route.ts, GET: lerVinculosVigentes passa a selecionar tambem id e nome do wpp_grupo; a resposta ganha a chave de_cliente_que_saiu: lista de { grupo_id, group_jid, nome, cliente_id, cliente_nome, cliente_status } para cada v",
+ "cria_novo": [
+  "test/grupos-cliente-que-saiu.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/app/api/whatsapp/grupos-sem-vinculo/route.ts",
+  "src/app/dashboard/clientes/config/integracoes/grupos-sem-vinculo-bloco.tsx",
+  "test/grupos-cliente-que-saiu.test.ts"
+ ],
+ "dependencias": [],
+ "prioridade": 60,
+ "recon_esperado": [
+  {
+   "descricao": "a rota da lista de grupos sem vinculo existe e ainda nao tem DELETE",
+   "cmd": "g=$(grep -c '^export async function GET' src/app/api/whatsapp/grupos-sem-vinculo/route.ts); p=$(grep -c '^export async function POST' src/app/api/whatsapp/grupos-sem-vinculo/route.ts); d=$(grep -c '^export async function DELETE' src/app/api/whatsapp/grupos-sem-vinculo/route.ts); [ \"$g$p$d\" = 110 ] && echo SO_GET_POST || echo ST_$g$p$d",
+   "espera": "SO_GET_POST"
+  },
+  {
+   "descricao": "o bloco esta montado na aba Integracoes",
+   "cmd": "n=$(grep -cF '<GruposSemVinculoBloco />' src/app/dashboard/clientes/config/integracoes/integracoes-block.tsx); [ \"$n\" = 1 ] && echo MONTADO || echo ST_$n",
+   "espera": "MONTADO"
+  },
+  {
+   "descricao": "nenhum dos dois arquivos fala de cliente que saiu",
+   "cmd": "a=$(grep -cF 'de_cliente_que_saiu' src/app/api/whatsapp/grupos-sem-vinculo/route.ts); b=$(grep -cF 'clientes que saíram' src/app/dashboard/clientes/config/integracoes/grupos-sem-vinculo-bloco.tsx); [ \"$a$b\" = 00 ] && echo AUSENTE || echo ST_$a$b",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "test/grupos-cliente-que-saiu.test.ts ainda nao existe",
+   "cmd": "test -e test/grupos-cliente-que-saiu.test.ts && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do printf '%s\\n' src/app/api/whatsapp/grupos-sem-vinculo/route.ts src/app/dashboard/clientes/config/integracoes/grupos-sem-vinculo-bloco.tsx test/grupos-cliente-que-saiu.test.ts | grep -Fxq \"$f\" || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes da lista, DELETE da ficha e aba Integracoes intocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD -- test/grupos-sem-vinculo-api.test.ts test/grupos-sem-vinculo-tela.test.tsx 'src/app/api/clientes/[id]/whatsapp-grupos/route.ts' src/app/dashboard/clientes/config/integracoes/integracoes-block.tsx | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "no maximo um update novo (o soft delete); nenhum delete, insert, upsert ou rpc novo",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; a=$(git diff \"$b\" HEAD -- src | grep -E '^[+][^+]'); u=$(printf '%s\\n' \"$a\" | grep -cE '[.]update[(]'); o=$(printf '%s\\n' \"$a\" | grep -cE '[.](insert|upsert|delete|rpc)[(]'); [ \"$u\" -le 1 ] && [ \"$o\" = 0 ] && echo SO_SOFT_DELETE || echo ST_${u}_${o}",
+   "espera": "SO_SOFT_DELETE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 320 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 320 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/c0-guard.test.ts test/fetch-json-teto.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "a rota ganhou DELETE com o mesmo guard (3 chamadas de guardHeadAdmin) e devolve de_cliente_que_saiu",
+   "cmd": "d=$(grep -c '^export async function DELETE' src/app/api/whatsapp/grupos-sem-vinculo/route.ts); g=$(grep -c 'await guardHeadAdmin()' src/app/api/whatsapp/grupos-sem-vinculo/route.ts); s=$(grep -cF 'de_cliente_que_saiu' src/app/api/whatsapp/grupos-sem-vinculo/route.ts); [ \"$d\" = 1 ] && [ \"$g\" = 3 ] && [ \"$s\" -ge 1 ] && echo DELETE_GUARDADO || echo ST_${d}_${g}_${s}",
+   "espera": "DELETE_GUARDADO"
+  },
+  {
+   "descricao": "o bloco mostra a secao dos clientes que sairam com desvincular em dois passos, sem dialogo do navegador",
+   "cmd": "a=$(grep -cF 'Grupos de clientes que saíram' src/app/dashboard/clientes/config/integracoes/grupos-sem-vinculo-bloco.tsx); b=$(grep -cF 'Desvincular' src/app/dashboard/clientes/config/integracoes/grupos-sem-vinculo-bloco.tsx); c=$(grep -cF 'Confirmar' src/app/dashboard/clientes/config/integracoes/grupos-sem-vinculo-bloco.tsx); w=$(grep -cE 'window[.](confirm|alert)|[^.a-zA-Z]confirm[(]' src/app/dashboard/clientes/config/integracoes/grupos-sem-vinculo-bloco.tsx); [ \"$a\" -ge 1 ] && [ \"$b\" -ge 1 ] && [ \"$c\" -ge 1 ] && [ \"$w\" = 0 ] && echo SECAO_OK || echo ST_${a}_${b}_${c}_${w}",
+   "espera": "SECAO_OK"
+  },
+  {
+   "descricao": "testes verdes (test/grupos-cliente-que-saiu.test.ts, test/grupos-sem-vinculo-api.test.ts, test/grupos-sem-vinculo-tela.test.tsx)",
+   "cmd": "test -f test/grupos-cliente-que-saiu.test.ts && npx vitest run test/grupos-cliente-que-saiu.test.ts test/grupos-sem-vinculo-api.test.ts test/grupos-sem-vinculo-tela.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "avaliador: na aba Integracoes, a lista de grupos sem cliente segue igual e ganha a secao 'Grupos de clientes que saíram' com os vinculos vigentes de cliente nao ativo; Desvincular pede confirmacao na propria linha e faz soft delete pela rota nova, guardada por head ou admin, que recusa (409) cliente ativo; grupo de cliente que saiu ja desvinculado nao volta como 'sem cliente'. REPROVE se: hard delete ou toque em mensagens; cliente ativo desvinculavel por esta rota; erro de leitura vira lista vazia; window.confirm; fetch novo no bloco; mexeu na DELETE da ficha; teste novo passaria contra HEAD; testes 687/688 editados.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/grupos-sem-vinculo-api.test.ts",
+   "motivo": "importa GET/POST desta rota; a chave grupos e o POST nao mudam; as linhas 176-177 (nunca update/delete) rodam so sobre o POST; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/grupos-sem-vinculo-tela.test.tsx",
+   "motivo": "le a fonte do bloco (linhas 99-115) e exige seis textos que o ticket manda preservar; se quebrar, PARE e descreva"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 6335
+}

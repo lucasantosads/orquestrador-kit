@@ -1,0 +1,8 @@
+Escrevi a proposta de migration e o teste, e commitei os dois (`61f6b68`). Rodei só os 5 testes que varrem a pasta de migrations e o teste novo, e os 6 arquivos passaram (54 testes). Não rodei o `tsc`, o `npm run build`, a suíte inteira nem os outros critérios de aceite.
+
+- **Migration:** `supabase/migrations/20261009200000_perf_ranking_foto_mensal.sql` tem 44 linhas, no molde do `perf_cliente_verba`. Cria só `public.perf_ranking_foto_mensal`, com as 10 colunas, o `unique (escopo, escopo_id, mes)` e o índice `(mes, escopo)`. A RLS fica habilitada, com a policy `only_service_role` guardada por `pg_policies` e o `revoke` de `anon` e `authenticated`. O cabeçalho traz "APLICAR E HUMANO", o token `humano:ddl-ranking-foto-aplicada` e a reversão. Não usei "não aplicada" em nenhuma grafia.
+- **Teste:** `test/perf-ranking-foto-mensal-ddl.test.ts` tem 66 linhas e lê o `.sql` com `readFileSync`. Confere as colunas, o check do escopo com os 3 valores, o `unique`, a RLS, a policy só para `‹segredo›`, o `revoke`, o cabeçalho com token e a ausência de tabela C0 e de `vw_`.
+- **Orçamento:** o diff total é de 110 linhas, dentro do teto de 170.
+- **Aplicação:** não apliquei nada no banco. O Lucas aplica e registra o token em `docs/fila/liberacoes.json`, o que destrava o 933 e o 934.
+
+Não fiz push.

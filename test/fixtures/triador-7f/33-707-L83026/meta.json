@@ -1,0 +1,58 @@
+[
+ {
+  "attempt": 1,
+  "model": "sonnet",
+  "claude_dur_secs": 322,
+  "diff_lines": 454,
+  "resultado": "reprovado",
+  "ts": "2026-10-08T01:08:43Z"
+ },
+ {
+  "attempt": 2,
+  "model": "sonnet",
+  "claude_dur_secs": 119,
+  "diff_lines": 455,
+  "resultado": "reprovado",
+  "ts": "2026-10-08T01:11:16Z"
+ },
+ {
+  "attempt": 1,
+  "model": "sonnet",
+  "claude_dur_secs": 320,
+  "diff_lines": 357,
+  "resultado": "reprovado",
+  "ts": "2026-10-08T14:53:34Z"
+ },
+ {
+  "attempt": 2,
+  "model": "sonnet",
+  "claude_dur_secs": 239,
+  "diff_lines": 483,
+  "resultado": "reprovado",
+  "ts": "2026-10-08T14:58:13Z"
+ },
+ {
+  "attempt": 1,
+  "model": "sonnet",
+  "claude_dur_secs": 252,
+  "diff_lines": 320,
+  "resultado": "reprovado",
+  "ts": "2026-10-08T15:58:23Z"
+ },
+ {
+  "attempt": 2,
+  "model": "sonnet",
+  "claude_dur_secs": 327,
+  "diff_lines": 476,
+  "resultado": "reprovado",
+  "ts": "2026-10-08T16:04:29Z"
+ },
+ {
+  "attempt": 3,
+  "model": "opus",
+  "claude_dur_secs": 152,
+  "diff_lines": 486,
+  "resultado": "reprovado",
+  "ts": "2026-10-08T16:07:41Z"
+ }
+]

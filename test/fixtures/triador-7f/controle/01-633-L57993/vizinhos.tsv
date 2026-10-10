@@ -1,0 +1,3 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+633	docs/fila/runs/633/attempt-2	test/ficha-nps.test.tsx	970	2026-09-26T01:53:14Z	1
+633	docs/fila/runs/633/attempt-2	test/ltv-na-conta.test.ts	2509	2026-09-26T01:53:14Z	1

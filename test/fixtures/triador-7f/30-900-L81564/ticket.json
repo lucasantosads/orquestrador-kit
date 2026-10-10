@@ -1,0 +1,141 @@
+{
+ "id": "900",
+ "slug": "churn-fecha-leitura-anon",
+ "lane": "dados",
+ "perfil": "sql-proposta",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 160 linhas (~40 no .sql NOVO supabase/migrations/20261007190900_churn_fecha_leitura_anon.sql, ~90 no teste NOVO test/churn-fecha-leitura-anon-ddl.test.ts). Se passar do teto, pare e reporte. FONTE: item E8 de 07/10 (policies USING(true)). Recon 07/10 (so leitura): churn_aprovacoes e churn_monthly_summary tem policy de leitura for select to anon, authenticated using (true) (churn_aprovacoes_leitura e churn_monthly_summary_leitura, criadas em supabase/migrations/20260929130000_churn_fecha_escrita_anon.sql) e grant SELECT, REFERENCES, TRIGGER para anon e authenticated; nenhum leitor com a chave anon nos dois repos (OS e comercial leem por rota com service role). PASSO 1: leia supabase/migrations/20260929130000_churn_fecha_escrita_anon.sql inteiro (molde e reversao), supabase/migrations/20261005135437_leitura_relacao_gatilho_cron_diario.sql (cabecalho 'APLICAR E HUMANO') e test/migrations-cabecalho-aplicada.test.ts (proibe o marcador de nao aplicada nas 5 primeiras linhas). FAZER: (1) NOVO supabase/migrations/20261007190900_churn_fecha_leitura_anon.sql, so escrito, NUNCA aplicado. Cabecalho de comentario '--' no padrao dos vizinhos: o que faz (tira a leitura anon e authenticated de churn_aprovacoes e churn_monthly_summary), por que (cliente_nome, valor_mensal, closer e motivo legiveis com a chave publica do navegador; nenhum leitor anon nos dois repos, recon 07/10), a frase 'APLICAR E HUMANO. Este arquivo e so a proposta versionada.', que antes de aplic",
+ "cria_novo": [
+  "supabase/migrations/20261007190900_churn_fecha_leitura_anon.sql",
+  "test/churn-fecha-leitura-anon-ddl.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "supabase/migrations/20261007190900_churn_fecha_leitura_anon.sql",
+  "test/churn-fecha-leitura-anon-ddl.test.ts"
+ ],
+ "colunas_escritas": [
+  "churn_aprovacoes.id",
+  "churn_monthly_summary.id"
+ ],
+ "dependencias": [],
+ "prioridade": 60,
+ "recon_esperado": [
+  {
+   "descricao": "a migration de 29/09 cria as duas policies de leitura anon",
+   "cmd": "grep -cE 'create policy churn_(aprovacoes|monthly_summary)_leitura on public[.]churn_' supabase/migrations/20260929130000_churn_fecha_escrita_anon.sql",
+   "espera": "2"
+  },
+  {
+   "descricao": "nenhuma migration derruba hoje essas policies de leitura",
+   "cmd": "cat supabase/migrations/*.sql | grep -ciE 'drop policy if exists churn_(aprovacoes|monthly_summary)_leitura'",
+   "espera": "0"
+  },
+  {
+   "descricao": "no OS nenhum arquivo com o client anon cita as duas tabelas",
+   "cmd": "n=0; for f in $(grep -rlE \"from ['\\\"]@/lib/supabase['\\\"]\" src); do grep -qE 'churn_aprovacoes|churn_monthly_summary|vw_admin_churn_mensal' \"$f\" && n=$((n+1)); done; echo ANON_LEITORES_$n",
+   "espera": "ANON_LEITORES_0"
+  },
+  {
+   "descricao": "supabase/migrations/20261007190900_churn_fecha_leitura_anon.sql ainda nao existe",
+   "cmd": "test -e 'supabase/migrations/20261007190900_churn_fecha_leitura_anon.sql' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "test/churn-fecha-leitura-anon-ddl.test.ts ainda nao existe",
+   "cmd": "test -e 'test/churn-fecha-leitura-anon-ddl.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'supabase/migrations/20261007190900_churn_fecha_leitura_anon.sql' 'test/churn-fecha-leitura-anon-ddl.test.ts'; do if [ \"$f\" = \"$p\" ]; then ok=1; fi; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 160 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 160 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes que varrem supabase/migrations seguem verdes sem edicao (c0-guard, security-definer-anon, cabecalho-aplicada, policy-idempotente, sync-log-status)",
+   "cmd": "npx vitest run test/c0-guard.test.ts test/migration-security-definer-anon.test.ts test/migrations-cabecalho-aplicada.test.ts test/migrations-policy-idempotente.test.ts test/sync-log-status.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "o .sql derruba as 2 policies de leitura e revoga anon e authenticated nas 2 tabelas, e nada mais",
+   "cmd": "f=supabase/migrations/20261007190900_churn_fecha_leitura_anon.sql; [ -f $f ] || { echo AUSENTE; exit 0; }; c=$(grep -v '^ *--' $f); d=$(printf '%s\\n' \"$c\" | grep -ciE '^drop policy if exists churn_(aprovacoes_leitura on public[.]churn_aprovacoes|monthly_summary_leitura on public[.]churn_monthly_summary);'); r=$(printf '%s\\n' \"$c\" | grep -ciE '^revoke all on table public[.]churn_(aprovacoes|monthly_summary) from anon, authenticated;'); x=$(printf '%s\\n' \"$c\" | grep -ciE 'create policy|grant |only_service_role|alter table|create (or replace )?view'); [ \"$d\" = 2 ] && [ \"$r\" = 2 ] && [ \"$x\" = 0 ] && echo CORPO_EXATO || echo ST_${d}_${r}_${x}",
+   "espera": "CORPO_EXATO"
+  },
+  {
+   "descricao": "cabecalho de proposta: APLICAR E HUMANO e reversao com os 2 create policy",
+   "cmd": "f=supabase/migrations/20261007190900_churn_fecha_leitura_anon.sql; [ -f $f ] || { echo AUSENTE; exit 0; }; h=$(grep -E '^ *--' $f); a=$(printf '%s\\n' \"$h\" | grep -ciE 'APLICAR .(1, 2) HUMANO'); p=$(printf '%s\\n' \"$h\" | grep -ciE 'create policy churn_(aprovacoes|monthly_summary)_leitura'); [ \"$a\" -ge 1 ] && [ \"$p\" = 2 ] && echo CABECALHO_OK || echo ST_${a}_${p}",
+   "espera": "CABECALHO_OK"
+  },
+  {
+   "descricao": "teste novo verde (test/churn-fecha-leitura-anon-ddl.test.ts)",
+   "cmd": "test -f test/churn-fecha-leitura-anon-ddl.test.ts && npx vitest run test/churn-fecha-leitura-anon-ddl.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "o teste de 29/09 (churn-fecha-escrita-anon) segue verde e intocado",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/churn-fecha-escrita-anon.test.ts supabase/migrations/20260929130000_churn_fecha_escrita_anon.sql | wc -l | tr -d ' '); [ \"$n\" = 0 ] && npx vitest run test/churn-fecha-escrita-anon.test.ts >/dev/null 2>&1 && echo VERDE_INTOCADO || echo ST_$n",
+   "espera": "VERDE_INTOCADO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "avaliador: o .sql so tira as 2 policies de leitura anon/authenticated e revoga os grants de anon e authenticated em churn_aprovacoes e churn_monthly_summary, dentro de begin/commit, com cabecalho 'APLICAR E HUMANO', instrucao de ensaio e reversao exata; o teste afirma o conteudo. REPROVE se: toca outra tabela (ondas 2a/2b/2c, comercial ou C0); mexe na only_service_role; cria policy ou grant; aplica algo; altera codigo de src ou o .sql de 29/09.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/c0-guard.test.ts",
+   "motivo": "varre todos os .sql de supabase/migrations; conferido em 07/10 (staging 8a235c7, 6 suites e 50 testes verdes) que o .sql proposto nao toca tabela C0, nao cria funcao, policy nem grant, e o cabecalho usa 'APLICAR E HUMANO' (nunca o marcador de nao aplicada). O criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/migration-security-definer-anon.test.ts",
+   "motivo": "varre todos os .sql de supabase/migrations; conferido em 07/10 (staging 8a235c7, 6 suites e 50 testes verdes) que o .sql proposto nao toca tabela C0, nao cria funcao, policy nem grant, e o cabecalho usa 'APLICAR E HUMANO' (nunca o marcador de nao aplicada). O criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/migrations-cabecalho-aplicada.test.ts",
+   "motivo": "varre todos os .sql de supabase/migrations; conferido em 07/10 (staging 8a235c7, 6 suites e 50 testes verdes) que o .sql proposto nao toca tabela C0, nao cria funcao, policy nem grant, e o cabecalho usa 'APLICAR E HUMANO' (nunca o marcador de nao aplicada). O criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/migrations-policy-idempotente.test.ts",
+   "motivo": "varre todos os .sql de supabase/migrations; conferido em 07/10 (staging 8a235c7, 6 suites e 50 testes verdes) que o .sql proposto nao toca tabela C0, nao cria funcao, policy nem grant, e o cabecalho usa 'APLICAR E HUMANO' (nunca o marcador de nao aplicada). O criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/sync-log-status.test.ts",
+   "motivo": "varre todos os .sql de supabase/migrations; conferido em 07/10 (staging 8a235c7, 6 suites e 50 testes verdes) que o .sql proposto nao toca tabela C0, nao cria funcao, policy nem grant, e o cabecalho usa 'APLICAR E HUMANO' (nunca o marcador de nao aplicada). O criterio roda todos sem edicao"
+  },
+  {
+   "teste": "test/churn-fecha-escrita-anon.test.ts",
+   "motivo": "le so supabase/migrations/20260929130000_churn_fecha_escrita_anon.sql (nao este .sql); a assercao 'mantem a leitura' e sobre aquele arquivo e segue verdadeira; criterio exige verde e intocado"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 4969
+}

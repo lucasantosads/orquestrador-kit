@@ -1,0 +1,13 @@
+### criterio[0] -> PASS
+### criterio[1] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-549c
+sanear_tsc: nao
+cmd:    python3 -c "import json;c=[x for x in json.load(open('vercel.json'))['crons'] if x['path']=='/api/cron/leitura-relacao'];print('CRON_REGISTRADO' if len(c)==1 and c[0]['schedule']=='0 10 * * *' else 'SEM_CRON')"
+espera: CRON_REGISTRADO
+-- saida --
+SEM_CRON
+
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS

@@ -1,0 +1,17 @@
+Os três arquivos estão commitados, mas nada foi verificado. O `tsc`, o `vitest` e o `build` foram negados por permissão, então não rodei nenhum gate nem os testes.
+
+O commit tem 266 linhas adicionadas e nenhuma removida, dentro do teto de 400. Os pontos que eu esperaria que passassem, mas não conferi:
+
+- **Componente:** `src/components/relacao/responder-agora.tsx` implementa o que o ticket pede: o bloco só aparece com item ou autor não identificado, cada linha tem as 3 ações, e sucesso tira só aquela linha, sem recarregar. O erro de leitura mostra "Não foi possível carregar a fila de resposta" com o motivo. O 422 de "Cliente sem gestor principal" aparece na linha sem removê-la.
+- **Ficha:** `page.tsx` ganhou só 2 linhas, o import e `<ResponderAgora clienteId={String(id)} />` entre `IdentidadeCliente` e `ContaNovaSugestao`.
+- **Teste:** `test/relacao-responder-tela.test.ts` cobre linha, 3 ações, `removerItem`, bloco vazio, link de autor não identificado e a ordem na fonte.
+
+Não sei se o `tsc` mantém o baseline de 3 erros, nem se as guardas globais e o teste novo passam. Alguma asserção pode precisar de ajuste, como a do texto do tempo ou a da contagem de ações.
+
+Para fechar o ticket, falta rodar na worktree, nesta ordem:
+- `rm -rf .next`
+- `npx tsc --noEmit`
+- `npx vitest run test/relacao-responder-tela.test.ts` mais as guardas globais e as de tela da ficha
+- `npm run build`
+
+Não fiz push.

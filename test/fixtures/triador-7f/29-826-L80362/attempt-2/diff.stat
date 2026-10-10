@@ -1,0 +1,6 @@
+ src/app/dashboard/clientes/[id]/page.tsx | 51 ++++++++++++++++++++------------
+ test/ficha-por-uuid.test.ts              |  7 +++--
+ test/ficha-sem-reescrita-notion.test.ts  | 42 ++++++++++++++++++++++++++
+ test/link-setup-notion-id.test.ts        |  3 +-
+ test/painel-em-campanhas.test.ts         |  3 +-
+ 5 files changed, 83 insertions(+), 23 deletions(-)

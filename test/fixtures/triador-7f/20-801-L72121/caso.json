@@ -1,0 +1,12 @@
+{
+ "id": "801",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/801-resolver-cliente-rota-auditoria.md",
+ "ticket_sha": "00b8ef701836f9142c75e75aa499eef2ca8215e6",
+ "ticket_antes": true,
+ "linha_bloqueio": 72121,
+ "log_inicio": 72092,
+ "fim": "2026-10-04T07:45:44Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/801"
+}

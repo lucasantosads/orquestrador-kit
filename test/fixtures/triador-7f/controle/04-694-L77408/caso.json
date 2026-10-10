@@ -1,0 +1,13 @@
+{
+ "id": "694",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/694-api-inicio-resumo.md",
+ "ticket_sha": "8c9605b09b2fe13db96a593b06d55fdc3811e468",
+ "ticket_antes": true,
+ "linha_bloqueio": null,
+ "linha_fim": 77408,
+ "log_inicio": 77353,
+ "fim": "2026-10-07T18:16:05Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/694"
+}

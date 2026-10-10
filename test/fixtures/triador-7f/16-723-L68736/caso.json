@@ -1,0 +1,12 @@
+{
+ "id": "723",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/723-setup-cinco-passos-vinculo-comercial.md",
+ "ticket_sha": "fc3bbf765fea5606b974119069bb8c8921b1edc2",
+ "ticket_antes": true,
+ "linha_bloqueio": 68736,
+ "log_inicio": 68695,
+ "fim": "2026-10-02T03:10:22Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/723"
+}

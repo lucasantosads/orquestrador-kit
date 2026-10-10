@@ -1,0 +1,3 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+715	docs/fila/runs/715/attempt-1.prev1	test/crons-meta-consolidacao.test.ts	1444	2026-10-02T03:16:55Z	1
+715	docs/fila/runs/715/attempt-2	test/crons-meta-consolidacao.test.ts	1443	2026-10-02T03:20:14Z	1

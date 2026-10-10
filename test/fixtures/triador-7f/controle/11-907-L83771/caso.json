@@ -1,0 +1,13 @@
+{
+ "id": "907",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/907-operacao-inicio-registra-falha.md",
+ "ticket_sha": "ed359f57b2665dfe3e264b65fa3d469c4bbf5e4a",
+ "ticket_antes": true,
+ "linha_bloqueio": null,
+ "linha_fim": 83771,
+ "log_inicio": 83736,
+ "fim": "2026-10-08T18:46:07Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/907"
+}

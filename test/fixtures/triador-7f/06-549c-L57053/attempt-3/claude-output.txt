@@ -1,0 +1,20 @@
+Parei sem commitar. A especificação do ticket está desatualizada: os critérios 2 e 5 não conseguem passar juntos, e escrever qualquer coisa agora só repetiria a reprovação anterior.
+
+**O que encontrei nesta base (7f347e3, não é a 1b200fc que o ticket mediu):**
+- **Pré-condição atendida:** `src/app/api/cron/leitura-relacao/route.ts:24` tem `CAP_POR_EXECUCAO = 40` e a linha 114 tem `elegiveis.slice(0, CAP_POR_EXECUCAO)`.
+- **O `vercel.json` já tem 20 crons, não 19.** O ticket 619 (commit 66fc77a) acrescentou `/api/cron/resumo-grupos-semanal` depois da medição do ticket.
+- **O teste já diz 20.** `test/crons-meta-consolidacao.test.ts:430` já é `expect(vercel.crons).toHaveLength(20);`, recalculado pelo 619 com comentário próprio.
+
+**A contradição:**
+- Com `leitura-relacao` no `vercel.json`, passam a ser **21** crons.
+- O critério 2 exige que o teste diga exatamente `toHaveLength(20)`. Com 20 no teste e 21 no arquivo, o vitest falha e o critério 5 vem VERMELHO.
+- Se eu ajustar o teste para 21, o critério 2 vem ALVO_ANTIGO. Deve ter sido isso na tentativa anterior, e o ticket também proíbe esse ajuste: diz que a linha vira exatamente `toHaveLength(20)`.
+- Deixar uma linha `toHaveLength(20)` sobrando só para o grep casar seria fraudar o critério, então não fiz.
+
+**O que precisa mudar no ticket 549c (é trabalho humano ou de quem escreve a fila):**
+- **Objetivo:** a contagem passa a ser "20 → 21 (20 de hoje, com o resumo-grupos-semanal do 619, mais o leitura-relacao)", e a linha vira `expect(vercel.crons).toHaveLength(21);`.
+- **Critério 2:** passa a checar `toHaveLength(21);` = 1 e `toHaveLength(20);` = 0.
+- **Base declarada:** 7f347e3, ou uma base posterior ao 619.
+- **O texto do `it(`:** hoje ele cita "as 20 entradas". A troca de uma linha só deixaria esse texto errado. Convém a exceção permitir também atualizar esse nome.
+
+Com esse ajuste, a mudança é pequena: 4 linhas no `vercel.json` e umas 5 no teste (a asserção mais o comentário do recálculo), bem dentro do teto de 30. Não rodei `tsc`, `vitest` nem `build`, porque não mudei nada.

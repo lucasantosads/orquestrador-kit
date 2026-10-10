@@ -1,0 +1,45 @@
+61380	[2026-09-26 20:17:22-0300] drenagem: ticket 671d (4 pendentes restantes)
+61381	[orq 23:17:23] orquestrador iniciando · modo: real · once
+61382	[orq 23:17:23] preflight: validando infra (scripts, fila, env, claude)...
+61383	[orq 23:17:25] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+61384	[orq 23:17:30] preflight: ok
+61385	[orq 23:17:42] === ticket 671d (visao-linha-resumo-comercial) — tentativa 1 · modo: real ===
+61386	[orq 23:17:44]   recon_esperado: ok (1 comando(s))
+61387	[orq 23:17:44] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx já existe no worktree — o agente vai EDITAR, não criar
+61388	[orq 23:17:44] aviso allowlist: test/visao-aceite-estrutura.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+61389	[orq 23:17:44] aviso allowlist: test/visao-estrutura-trio.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+61390	[orq 23:17:44] aviso allowlist: test/visao-dado-parado-e-link.test.ts já existe no worktree — o agente vai EDITAR, não criar
+61391	[orq 23:17:44] aviso allowlist: test/visao-aceite-mockup.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+61392	[orq 23:17:44]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/671d/attempt-1/prompt.txt
+61393	[orq 23:17:44]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+61394	[orq 23:19:20]   diff cru salvo (168 linhas) · HEAD julgado ffc8dde1
+61395	[orq 23:19:21]   enforcement: ok
+61396	[orq 23:19:35]   gate tsc: ok (baseline)
+61397	[orq 23:19:58]   gate vitest: FALHA
+61398	[orq 23:19:58]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/671d/attempt-1/gate-vitest.txt)
+61399	[orq 23:19:59] ticket 671d: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/671d/attempt-1/gate-vitest.txt)
+61400	[orq 23:19:59] === ticket 671d (visao-linha-resumo-comercial) — tentativa 2 · modo: real ===
+61401	[orq 23:20:00]   recon_esperado: ok (1 comando(s))
+61402	[orq 23:20:00] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx já existe no worktree — o agente vai EDITAR, não criar
+61403	[orq 23:20:00] aviso allowlist: test/visao-aceite-estrutura.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+61404	[orq 23:20:00] aviso allowlist: test/visao-estrutura-trio.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+61405	[orq 23:20:00] aviso allowlist: test/visao-dado-parado-e-link.test.ts já existe no worktree — o agente vai EDITAR, não criar
+61406	[orq 23:20:00] aviso allowlist: test/visao-aceite-mockup.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+61407	[orq 23:20:00]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/671d/attempt-2/prompt.txt
+61408	[orq 23:20:00]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+61409	[orq 23:22:19]   diff cru salvo (172 linhas) · HEAD julgado bd06fd55
+61410	[orq 23:22:19]   enforcement: ok
+61411	[orq 23:22:34]   gate tsc: ok (baseline)
+61412	[orq 23:23:00]   gate vitest: ok
+61413	[orq 23:23:22]   criterios mecânicos: ok
+61414	[orq 23:23:58]   gate build: ok
+61415	Merge made by the 'ort' strategy.
+61416	 .../clientes/[id]/_components/linha-comercial.tsx  | 57 +++++++++++++++
+61417	 src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx |  3 +
+61418	 test/visao-linha-comercial.test.tsx                | 82 ++++++++++++++++++++++
+61419	 3 files changed, 142 insertions(+)
+61420	 create mode 100644 src/app/dashboard/clientes/[id]/_components/linha-comercial.tsx
+61421	 create mode 100644 test/visao-linha-comercial.test.tsx
+61422	[orq 23:24:11] avaliador: merge --no-ff de frente/671d em staging-auto ok
+61423	[orq 23:24:11] avaliador: APROVADO e mergeado.
+61424	[orq 23:24:12] ticket 671d: APROVADO e mergeado em staging-auto

@@ -1,0 +1,4 @@
+{
+  "aprovado": false,
+  "motivo": "Contratual: o texto datado foi para a linha da consulta (:109), que o ticket mandava tirar, e não para a linha única do 636. A :187 segue sem data no mount vazio e, após Consultar, aparecem 2 vazios. Com entregas e período sem dado, a frase datada engana. O resto está ok."
+}

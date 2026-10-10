@@ -1,0 +1,20 @@
+O realizado de leads da tela Metas agora soma `perf_insights_daily.leads` nas contas em uso do escopo, no mês, e não lê mais `perf_leads`. O trabalho está commitado (`5e2fac8`), sem push.
+
+**Verificação**
+- `tsc`: 3 erros em `src/`, igual ao baseline.
+- Testes da allowlist (`metas`, `metas-por-gestor`, `metas-cascata` e o teste novo): 44 passando.
+- Guardas globais: 7 arquivos, 65 testes passando, nenhuma editada.
+- Não rodei `npm run build`.
+- Não rodei `rm -rf .next` (a permissão foi negada), então o `tsc` foi feito sem limpar a pasta.
+- Não rodei os critérios de diff contra `origin/staging-auto`, mas não há `.sql` novo e nenhuma asserção foi removida ou afrouxada.
+
+**O que mudou**
+- **Resolução de contas:** a busca de contas (`ativo` e `em_uso`, por cliente) virou uma função local usada por leads e investimento.
+- **Paginação:** as duas leituras de `perf_insights_daily` passam por `fetchAllPaged`, ordenadas por `(data_ref, id)`.
+- **Sem base:** sem contas devolve o motivo de conta, sem linha no mês devolve o motivo de sincronização, e `clienteIds` vazio segue como antes. Erro em qualquer página devolve o motivo de sincronização e não lança.
+- **Truncamento:** se a leitura estourar o teto de 50 mil linhas, devolvo sem base em vez de uma soma parcial. Isso não estava no ticket; foi uma decisão minha.
+- **MQL e SQL:** continuam contando `perf_leads`.
+- **Testes existentes:** as fixtures de leads em `test/metas.test.ts` e `test/metas-por-gestor.test.tsx` passaram para `perf_insights_daily` e `perf_ad_accounts`, com o mesmo valor esperado (3) e comentário citando o 662b. Também adicionei `range` ao mock de encadeamento nos dois arquivos, porque a paginação chama `.range()`.
+- **Teste novo:** `test/metas-realizado-leads-perf.test.ts` cobre a soma nas contas do escopo, sem ler `perf_leads`, sem linhas, sem contas e erro na página.
+
+**Uma asserção recalculada:** em `test/metas.test.ts`, o caso "investimento sem conta conectada" agora espera `"valor"` em vez de `"sem_insumo"`. O mock devolve a mesma resposta em toda leitura de uma tabela, então a conta que passei para leads também vale para investimento, e a soma de gasto (sem `gasto` nas linhas) dá 0 medido. O comentário acima da asserção explica isso. A cobertura de "sem conta" ficou no teste novo.

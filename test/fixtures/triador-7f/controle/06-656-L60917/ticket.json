@@ -1,0 +1,141 @@
+{
+ "id": "656",
+ "slug": "setup-fonte-unica",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "Setup do cliente com UMA função de cálculo e uma lista canônica de itens, lida pelos dois pontos da ficha. CAMINHOS DE HOJE (recon 26/09, staging-auto cc0d3ce = main): (a) chip 'Setup N/5' do cartão do topo: <SetupChip notionId={notionId} /> em geral-tab.tsx:546 (import dinâmico :41) -> SetupChip em src/app/dashboard/clientes/[id]/tabs/ficha-banners.tsx:16-38 -> fetch /api/perf/setup/${notionId} (:19) -> lê passos_concluidos e setup_pct, some com setup_pct >= 100, rende 'Setup {passos_concluidos}/5' com o /5 FIXO no JSX (:34). (b) cartão 'Setup · X%' da aba Conta › Cadastro: SetupProgresso({notionId}) em src/app/dashboard/clientes/[id]/tabs/config-tab.tsx:81-146 (montado em page.tsx:1477) -> o MESMO fetch /api/perf/setup/${notionId} (:88) -> título com setup_pct (:109) e lista de itens de buildSetupPassos (:58-72: toda chave booleana p\\d+_ menos p4_, ordenada = 6 itens p1_basico, p2_financeiro, p3_meta, p5_crm, p6_whatsapp, p7_metas; rótulos SETUP_PASSO_LABELS :31-38), itens em <li> sem link (:134-140). (c) os dois terminam em src/app/api/perf/setup/[clienteId]/route.ts: resolveCockpitId (src/lib/perf/resolve-cockpit-id.ts, lê clientes_notion_mirror), .from(\"vw_cliente_setup\").select(\"*\") (:44, LEITURA), perf_ad_accounts (:65) e perf_insights_daily (:72), todos leitura. A view (supabase/migrations/20260614_vw_cliente_setup_sem_mrr.sql) calcula passos_concluidos = p1+p3+p5+p6+p7 (5) e setup_pct = isso*100/5: p2_financeiro e p4_google ficam fora da conta. p6_whatsapp = clientes",
+ "cria_novo": [
+  "src/lib/setup/calcular-setup.ts",
+  "test/setup-fonte-unica.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/lib/setup/calcular-setup.ts",
+  "src/app/api/perf/setup/[clienteId]/route.ts",
+  "src/app/dashboard/clientes/[id]/tabs/ficha-banners.tsx",
+  "src/app/dashboard/clientes/[id]/tabs/config-tab.tsx",
+  "src/app/dashboard/clientes/[id]/_components/conexoes-relacao.tsx",
+  "test/acao-unica-ficha-controles.test.tsx",
+  "test/cartao-topo-setup-e-closer.test.ts",
+  "test/conta-aceite.test.tsx",
+  "test/conta-bugs-reais.test.ts",
+  "test/conta-cadastro-operacao.test.ts",
+  "test/conta-conexoes.test.ts",
+  "test/deeplink-setup.test.ts",
+  "test/ficha-performance-chave.test.ts",
+  "test/ficha-qualificacao.test.tsx",
+  "test/ghl-conectar-ficha.test.ts",
+  "test/ghl-um-lugar-so.test.ts",
+  "test/link-setup-notion-id.test.ts",
+  "test/mapeamento-etapas-crm.test.ts",
+  "test/relacao-config-para-conta.test.ts",
+  "test/resolve-cockpit-id.test.ts",
+  "test/resolver-chave-uma-vez.test.ts",
+  "test/setup-progresso-ficha.test.ts",
+  "test/vincular-contas-meta-ficha.test.ts",
+  "test/whatsapp-grupos-ui.test.ts",
+  "test/setup-fonte-unica.test.ts",
+  "test/conta-crm-sem-contradicao.test.ts",
+  "test/conta-whatsapp-um-cartao.test.ts",
+  "test/ficha-abas-orfas.test.ts",
+  "test/rotas-fantasma-ficha.test.ts"
+ ],
+ "dependencias": [
+  "655",
+  "humano:decisao-setup-lista-canonica"
+ ],
+ "recon_esperado": [
+  {
+   "descricao": "denominador fixo no chip, rota sem wpp_grupo, nenhuma funcao calcularSetup",
+   "cmd": "a=$(grep -c '/5</span>' 'src/app/dashboard/clientes/[id]/tabs/ficha-banners.tsx'); b=$(grep -c 'wpp_grupo' 'src/app/api/perf/setup/[clienteId]/route.ts'); c=$(grep -rl 'calcularSetup' src | wc -l | tr -d ' '); echo \"FIXO=$a WPP=$b FUNCAO=$c\"",
+   "espera": "FIXO=1 WPP=0 FUNCAO=0"
+  },
+  {
+   "descricao": "a rota le a view vw_cliente_setup so com select",
+   "cmd": "grep -c 'from(\"vw_cliente_setup\")' 'src/app/api/perf/setup/[clienteId]/route.ts'",
+   "espera": "1"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 em src/",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -c '^src/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (view vw_* e C0; zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guarda C0 continua verde",
+   "cmd": "npx vitest run test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "a funcao unica existe e e usada pelo chip, pelo cartao e pela rota",
+   "cmd": "a=$(grep -c 'export function calcularSetup' src/lib/setup/calcular-setup.ts 2>/dev/null); b=$(grep -l 'calcularSetup' 'src/app/dashboard/clientes/[id]/tabs/ficha-banners.tsx' 'src/app/dashboard/clientes/[id]/tabs/config-tab.tsx' 'src/app/api/perf/setup/[clienteId]/route.ts' 2>/dev/null | wc -l | tr -d ' '); [ \"$a\" = 1 ] && [ \"$b\" -ge 2 ] && echo FONTE_UNICA || echo FONTE_$a.$b",
+   "espera": "FONTE_UNICA"
+  },
+  {
+   "descricao": "lista canonica com 6 itens e WhatsApp fora de p6_whatsapp",
+   "cmd": "a=$(grep -oE 'p(1_basico|2_financeiro|3_meta|5_crm|7_metas)' src/lib/setup/calcular-setup.ts 2>/dev/null | sort -u | wc -l | tr -d ' '); b=$(grep -c 'p6_whatsapp' src/lib/setup/calcular-setup.ts 2>/dev/null); [ \"$a\" = 5 ] && [ \"$b\" = 0 ] && echo LISTA_6 || echo LISTA_$a.$b",
+   "espera": "LISTA_6"
+  },
+  {
+   "descricao": "chip sem denominador fixo /5",
+   "cmd": "n=$(grep -c '/5</span>' 'src/app/dashboard/clientes/[id]/tabs/ficha-banners.tsx'); [ \"$n\" = 0 ] && echo SEM_FIXO || echo FIXO_$n",
+   "espera": "SEM_FIXO"
+  },
+  {
+   "descricao": "a rota le o grupo ativo em wpp_grupo",
+   "cmd": "a=$(grep -c 'wpp_grupo' 'src/app/api/perf/setup/[clienteId]/route.ts'); b=$(grep -c 'deleted_at' 'src/app/api/perf/setup/[clienteId]/route.ts'); c=$(grep -c '\"ativo\"' 'src/app/api/perf/setup/[clienteId]/route.ts'); [ \"$a\" -ge 1 ] && [ \"$b\" -ge 1 ] && [ \"$c\" -ge 1 ] && echo LE_GRUPO || echo GRUPO_$a.$b.$c",
+   "espera": "LE_GRUPO"
+  },
+  {
+   "descricao": "a view continua so lida (nenhuma escrita nova nela)",
+   "cmd": "n=$(grep -cE 'vw_cliente_setup\"[)][.](insert|update|upsert|delete)' 'src/app/api/perf/setup/[clienteId]/route.ts'); [ \"$n\" = 0 ] && echo VIEW_SO_LEITURA || echo VIEW_ESCRITA",
+   "espera": "VIEW_SO_LEITURA",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde",
+   "cmd": "test -f test/setup-fonte-unica.test.ts && npx vitest run test/setup-fonte-unica.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "testes existentes da allowlist nao encolhem (it/test >= contagem medida em main 26/09; igual na staging-auto)",
+   "cmd": "r=INTACTOS; for p in 'test/acao-unica-ficha-controles.test.tsx:9' 'test/cartao-topo-setup-e-closer.test.ts:8' 'test/conta-aceite.test.tsx:50' 'test/conta-bugs-reais.test.ts:9' 'test/conta-cadastro-operacao.test.ts:11' 'test/conta-conexoes.test.ts:11' 'test/deeplink-setup.test.ts:3' 'test/ficha-performance-chave.test.ts:6' 'test/ficha-qualificacao.test.tsx:21' 'test/ghl-conectar-ficha.test.ts:8' 'test/ghl-um-lugar-so.test.ts:6' 'test/link-setup-notion-id.test.ts:6' 'test/mapeamento-etapas-crm.test.ts:13' 'test/relacao-config-para-conta.test.ts:9' 'test/resolve-cockpit-id.test.ts:7' 'test/resolver-chave-uma-vez.test.ts:3' 'test/setup-progresso-ficha.test.ts:13' 'test/vincular-contas-meta-ficha.test.ts:18' 'test/whatsapp-grupos-ui.test.ts:5'; do f=${p%:*}; n=${p##*:}; [ \"$(grep -cE '(^|[^A-Za-z_.])(it|test)\\(' \"$f\")\" -ge \"$n\" ] || r=\"ENCOLHEU:$f\"; done; echo $r",
+   "espera": "INTACTOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum skip/only/todo nos testes existentes da allowlist",
+   "cmd": "n=$(cat 'test/acao-unica-ficha-controles.test.tsx' 'test/cartao-topo-setup-e-closer.test.ts' 'test/conta-aceite.test.tsx' 'test/conta-bugs-reais.test.ts' 'test/conta-cadastro-operacao.test.ts' 'test/conta-conexoes.test.ts' 'test/deeplink-setup.test.ts' 'test/ficha-performance-chave.test.ts' 'test/ficha-qualificacao.test.tsx' 'test/ghl-conectar-ficha.test.ts' 'test/ghl-um-lugar-so.test.ts' 'test/link-setup-notion-id.test.ts' 'test/mapeamento-etapas-crm.test.ts' 'test/relacao-config-para-conta.test.ts' 'test/resolve-cockpit-id.test.ts' 'test/resolver-chave-uma-vez.test.ts' 'test/setup-progresso-ficha.test.ts' 'test/vincular-contas-meta-ficha.test.ts' 'test/whatsapp-grupos-ui.test.ts' | grep -cE '[.](skip|only|todo)\\('); [ \"$n\" = 0 ] && echo SEM_SKIP || echo SKIP_$n",
+   "espera": "SEM_SKIP",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes da allowlist verdes (recalculados, nunca afrouxados)",
+   "cmd": "npx vitest run test/acao-unica-ficha-controles.test.tsx test/cartao-topo-setup-e-closer.test.ts test/conta-aceite.test.tsx test/conta-bugs-reais.test.ts test/conta-cadastro-operacao.test.ts test/conta-conexoes.test.ts test/deeplink-setup.test.ts test/ficha-performance-chave.test.ts test/ficha-qualificacao.test.tsx test/ghl-conectar-ficha.test.ts test/ghl-um-lugar-so.test.ts test/link-setup-notion-id.test.ts test/mapeamento-etapas-crm.test.ts test/relacao-config-para-conta.test.ts test/resolve-cockpit-id.test.ts test/resolver-chave-uma-vez.test.ts test/setup-progresso-ficha.test.ts test/vincular-contas-meta-ficha.test.ts test/whatsapp-grupos-ui.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais fora da allowlist seguem verdes (travessao mudo, nenhum title= novo no cartao, vazio em linha, abas montadas)",
+   "cmd": "npx vitest run test/travessao-mudo.test.ts test/cartao-topo-perfil.test.tsx test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "avaliador: UMA funcao calcularSetup com LISTA_SETUP unica; chip e cartao exibem o mesmo feitos/total (importada E chamada, ou o mesmo campo da rota que a chama); grupo ativo em wpp_grupo marca o item e p6_whatsapp/clientes_extra nao; total 6; nenhuma segunda contagem sobrevive na ficha; cada pendente do cartao e link. REPROVE se: denominadores diferentes; .sql novo; escrita em tabela C0 ou na view; item pendente sem link; teste recalculado perdeu assercao. Testes incluidos em 26/09 (criados por tickets anteriores da cadeia): test/conta-crm-sem-contradicao.test.ts, test/conta-whatsapp-um-cartao.test.ts, test/ficha-abas-orfas.test.ts, test/rotas-fantasma-ficha.test.ts. Assercoes deles que quebrarem sao recalculadas para o comportamento novo com comentario citando o ticket 656; REPROVE se alguma foi removida ou skipada.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "RECON 26/09 (staging-auto cc0d3ce = main nestes arquivos). Renumerado de 630. Campo bloco removido. CAMINHOS registrados no objetivo: chip -> ficha-banners.tsx SetupChip -> /api/perf/setup/[id]; cartao -> config-tab.tsx SetupProgresso -> mesma rota; rota -> vw_cliente_setup + perf_ad_accounts + perf_insights_daily + clientes_notion_mirror, todos leitura. C0: nenhuma leitura ou escrita em clientes_receita, leads_crm*, ads_metadata, ads_performance, fn_mql_sql_by_month, trafego_*. UNICO toque em zona C0: LEITURA de vw_cliente_setup (prefixo vw_), select em route.ts:44; o ticket nao escreve nem muda a view (por isso o grupo entra no calculo em TS, nao na view). c0-guard 16 passed nas duas arvores. Mudancas: (a) calcularSetup nao existe; allowlist estreitada de src/lib/** e src/app/api/perf/setup/** para o arquivo novo e a rota [clienteId]. (b) DECISAO 26/09 (Lucas, token decisao-setup-lista-canonica em liberacoes.json): 6 itens, os do cartao e do mockup de aceite (conta.dc.html:193, conta-aceite.test.tsx:293-299); o chip le o total da lista; Grupo WhatsApp por wpp_grupo status ativo, nao por clientes_extra; vw_cliente_setup nao muda (sem DDL). A view e o assistente seguem contando 5. (c) a lista de clientes (clientes/page.tsx:361, 'Setup %') e a virada para Ativo na rota de passo (passo/route.ts:315) seguem a view e vao divergir da ficha: fora de escopo, precisam de ticket. (d) WhatsApp 'Vinculado' na UI e origem='vinculado'; o ticket usa status='ativo' e deleted_at null (a rota de grupos nao filtra status). (e) criterio '.sql' com origin/staging-auto...HEAD virou merge-base (mesma medida, legivel nos dois lados). vitest por exit code; tsc ^src/ = 3. | 26/09: allowlist ganhou testes de tickets anteriores da cadeia (licao do 654)",
+ "_objetivo_cortado_na_fixture": 5186
+}

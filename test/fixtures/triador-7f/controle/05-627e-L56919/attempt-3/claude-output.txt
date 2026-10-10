@@ -1,0 +1,26 @@
+Ticket 627e pronto e commitado em dois commits (`f0ce115`, `3915ea9`), sem push.
+
+**A reprovação anterior.** A suíte caiu em `test/fila-item-abre.test.tsx`. O teste carrega `fila/page.tsx`, e a tentativa anterior tinha feito essa página importar `SemDado`. A pasta da fila tem um `tsconfig.json` próprio que deixa o vitest ler o JSX da página, mas `sem-dado.tsx` segue a configuração da raiz, que o vitest não consegue ler. O teste está fora da allowlist e não podia receber um mock. Por isso `fila/page.tsx` agora resolve os três casos sem `SemDado`:
+- **Descrição, cliente e origem vazios:** a linha some do painel.
+- **Histórico vazio:** vira uma linha só, "Nenhuma movimentação registrada no histórico desta tarefa.", sem título.
+- **Sem link de fonte:** vira uma linha só, "Fonte: onboarding sem cliente vinculado, nada para abrir." Esse é o único caso em que a função que monta o link devolve null.
+
+**Área admin (21 → 0).**
+- **Células de tabela:** passam a usar `<SemDado compacto>` com motivo específico, por exemplo "gestor não atribuído", "autor da rotina não identificado", "sem MRR do mês anterior para comparar" e "score de saúde não calculado no snapshot".
+- **KPIs sem base:** mostram "sem base". Vale para a capacidade do time no comando, NRR, churn, margem e a concentração no super-admin.
+- **Meta agência ausente em `metas/page.tsx`:** usa `SemDado` com o motivo "sem meta de agência no mês".
+- **Funções de formatação:** `fmtPct`, `safeMonth` e `descreverRecorrencia` agora devolvem `string | null`, e quem chama escolhe entre célula, "sem base" ou omitir.
+- **Valores sim/não:** "Delegável" e "Liderança" em falso mostram "não". Não era dado faltando, era um booleano.
+- **Metadado ausente:** é omitido. Isso vale para a origem do grant no RBAC, o cargo na frase de "herdado", o mês no subtítulo do cockpit e as partes do detalhe do KPI de MRR.
+
+**TETO:** baixou de 125 para 104 (125 − 21), igual à contagem do contador. No teste mudaram só a constante e o comentário da medição. Para medir, baixei o TETO para 0 por um momento e li o total no erro do teste, porque a execução com `TRAVESSAO_RELATORIO=...` foi negada por permissão.
+
+**Verificação:**
+- **Vitest completo:** 566/566 arquivos e 5884 testes passando, incluindo `fila-item-abre`.
+- **Guarda do travessão e as cinco guardas globais:** verdes.
+- **tsc:** 3 erros em `src/`, o baseline.
+- **Build:** `BUILD_OK`.
+
+Não consegui rodar o `rm -rf .next` do gate (permissão negada). A contagem de 3 veio do grep `'^src/'`, que deixa de fora os erros de `.next/types`.
+
+**Fora do escopo, sem mexer:** no `super-admin/page.tsx`, o detalhe do KPI de churn ainda mostra `saidas ?? 0`. É um zero fabricado que já existia e não tem travessão.

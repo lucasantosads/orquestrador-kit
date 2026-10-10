@@ -1,0 +1,131 @@
+{
+ "id": "635",
+ "slug": "conta-crm-aviso-e-link",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 300 linhas (~20 em page.tsx, ~15 em config-tab.tsx, -61 da remocao de crm.tsx, ~80 em testes existentes recalculados, ~100 no teste NOVO test/conta-crm-sem-contradicao.test.ts). Se passar de 600, pare e reporte. O QUE ESTA ERRADO (recon em staging-auto 399a510, aba Conta): (a) CONTRADICAO: o cartao CRM (GoHighLevel) em Conexoes (ConexaoCrm, src/app/dashboard/clientes/[id]/tabs/config-tab.tsx:197-316) mostra o mapeamento de etapas do pipeline (QualificacaoClienteBloco, :297-305, entregue pelo 557 e lido de /api/perf/qualificacao-regras/estagios), mas o bloco Configuracoes da mesma aba (src/app/dashboard/clientes/[id]/page.tsx:1464-1476) mostra o aviso FonteIndisponivel campos=\"Pipelines e etapas do CRM\" dizendo que \"o mapeamento de etapas nao e exibido\". O que e verdade hoje (medido): a lista de ETAPAS existe (rota src/app/api/perf/qualificacao-regras/estagios/route.ts); a lista de PIPELINES nao existe (nenhuma rota lista pipelines do GHL; crmPipelines e sempre [] no contexto, page.tsx:1169 e test/rotas-fantasma-ficha.test.ts:179), entao o seletor Pipeline principal (src/app/dashboard/clientes/[id]/tabs/config-tab.tsx:227-241) fica sem opcoes. Metade do aviso e falsa, e ele mora longe do seletor a que se refere. (b) LINK DESATUALIZADO: logo abaixo do cartao, CrmTab (src/app/dashboard/clientes/[id]/tabs/crm.tsx, montado em src/app/dashboard/clientes/[id]/page.tsx:1450) repete o estado da conexao (\"conectado\"/\"desconectado\", que o cartao ja mostra no b",
+ "pathspec_allowlist": [
+  "src/app/dashboard/clientes/[id]/page.tsx",
+  "src/app/dashboard/clientes/[id]/tabs/config-tab.tsx",
+  "src/app/dashboard/clientes/[id]/tabs/crm.tsx",
+  "test/rotas-fantasma-ficha.test.ts",
+  "test/ghl-um-lugar-so.test.ts",
+  "test/ficha-abas-orfas.test.ts",
+  "test/conta-conexoes.test.ts",
+  "test/conta-aceite.test.tsx",
+  "test/relacao-config-para-conta.test.ts",
+  "test/aba-na-url.test.ts",
+  "test/visao-geral-ordem.test.ts",
+  "test/metricas-filtros-periodo.test.ts",
+  "test/metricas-invalidacao.test.ts",
+  "test/registrar-verificacao-rotulo.test.ts",
+  "test/painel-estado-explicito.test.tsx",
+  "test/ficha-subsecoes-sequencia.test.ts",
+  "test/conta-crm-sem-contradicao.test.ts"
+ ],
+ "cria_novo": [
+  "test/conta-crm-sem-contradicao.test.ts"
+ ],
+ "dependencias": [
+  "633"
+ ],
+ "prioridade": 21,
+ "recon_esperado": [
+  {
+   "descricao": "o aviso contraditorio ainda esta em page.tsx",
+   "cmd": "n=$(grep -cF 'mapeamento de etapas não é exibido' 'src/app/dashboard/clientes/[id]/page.tsx'); echo \"AVISO=$n\"",
+   "espera": "AVISO=1"
+  },
+  {
+   "descricao": "o cartao do CRM ja mostra o mapeamento de etapas (557)",
+   "cmd": "n=$(grep -c '<QualificacaoClienteBloco' 'src/app/dashboard/clientes/[id]/tabs/config-tab.tsx'); echo \"MAPEAMENTO=$n\"",
+   "espera": "MAPEAMENTO=1"
+  },
+  {
+   "descricao": "CrmTab ainda aponta para a aba Configuracoes (bloco vazio)",
+   "cmd": "n=$(grep -cF 'href=\"?aba=conta&sub=config\"' 'src/app/dashboard/clientes/[id]/tabs/crm.tsx'); echo \"LINK=$n\"",
+   "espera": "LINK=1"
+  },
+  {
+   "descricao": "ConfigTab ainda devolve null (o destino do link e vazio)",
+   "cmd": "n=$(grep -A2 'export function ConfigTab' 'src/app/dashboard/clientes/[id]/tabs/config-tab.tsx' | grep -c 'return null'); echo \"CONFIG_VAZIO=$n\"",
+   "espera": "CONFIG_VAZIO=1"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 em src/",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -c '^src/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum arquivo da ficha diz que o mapeamento de etapas nao e exibido",
+   "cmd": "n=$(grep -rlF 'mapeamento de etapas não é exibido' 'src/app/dashboard/clientes/[id]' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo SEM_CONTRADICAO || echo CONTRADICAO_$n",
+   "espera": "SEM_CONTRADICAO"
+  },
+  {
+   "descricao": "page.tsx sem FonteIndisponivel e sem CrmTab no JSX (linhas de comentario fora da conta, ex. page.tsx:748)",
+   "cmd": "n=$(grep -vE '^[[:space:]]*(//|\\*|/\\*|\\{/\\*)' 'src/app/dashboard/clientes/[id]/page.tsx' | grep -cE '<FonteIndisponivel|<CrmTab'); [ \"$n\" = 0 ] && echo PAGE_LIMPA || echo PAGE_$n",
+   "espera": "PAGE_LIMPA"
+  },
+  {
+   "descricao": "crm.tsx apagado",
+   "cmd": "[ -e 'src/app/dashboard/clientes/[id]/tabs/crm.tsx' ] && echo AINDA_EXISTE || echo APAGADO",
+   "espera": "APAGADO"
+  },
+  {
+   "descricao": "nenhum link da ficha para ?aba=conta&sub=config",
+   "cmd": "n=$(grep -rlF 'sub=config' 'src/app/dashboard/clientes/[id]' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo SEM_LINK_VELHO || echo LINK_VELHO_$n",
+   "espera": "SEM_LINK_VELHO"
+  },
+  {
+   "descricao": "a linha dos pipelines mora no cartao do CRM, condicionada a lista vazia",
+   "cmd": "n=$(grep -cF 'crmPipelines.length === 0' 'src/app/dashboard/clientes/[id]/tabs/config-tab.tsx'); m=$(grep -cF 'lista de pipelines do CRM' 'src/app/dashboard/clientes/[id]/tabs/config-tab.tsx'); [ \"$n\" -ge 1 ] && [ \"$m\" -ge 1 ] && echo LINHA_NO_CARTAO || echo SEM_LINHA",
+   "espera": "LINHA_NO_CARTAO"
+  },
+  {
+   "descricao": "a key config continua com branch activeTab === \"config\" e o bloco crm monta ConexaoCrm",
+   "cmd": "a=$(grep -cF 'activeTab === \"config\"' 'src/app/dashboard/clientes/[id]/page.tsx'); b=$(grep -c '<ConexaoCrm' 'src/app/dashboard/clientes/[id]/page.tsx'); [ \"$a\" -ge 1 ] && [ \"$b\" -ge 1 ] && echo KEYS_OK || echo KEYS_${a}_${b}",
+   "espera": "KEYS_OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "o teste novo prova sem contradicao, sem link velho e linha no cartao",
+   "cmd": "npx vitest run test/conta-crm-sem-contradicao.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "testes existentes da allowlist, mapeamento-etapas-crm e ghl-conectar-ficha verdes",
+   "cmd": "npx vitest run test/rotas-fantasma-ficha.test.ts test/ghl-um-lugar-so.test.ts test/ficha-abas-orfas.test.ts test/conta-conexoes.test.ts test/conta-aceite.test.tsx test/relacao-config-para-conta.test.ts test/aba-na-url.test.ts test/visao-geral-ordem.test.ts test/metricas-filtros-periodo.test.ts test/metricas-invalidacao.test.ts test/registrar-verificacao-rotulo.test.ts test/painel-estado-explicito.test.tsx test/ficha-subsecoes-sequencia.test.ts test/mapeamento-etapas-crm.test.ts test/ghl-conectar-ficha.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum teste existente da allowlist perdeu expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (medido contra o merge-base com staging-auto)",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; r=NAO_AFROUXOU; for f in test/rotas-fantasma-ficha.test.ts test/ghl-um-lugar-so.test.ts test/ficha-abas-orfas.test.ts test/conta-conexoes.test.ts test/conta-aceite.test.tsx test/relacao-config-para-conta.test.ts test/aba-na-url.test.ts test/visao-geral-ordem.test.ts test/metricas-filtros-periodo.test.ts test/metricas-invalidacao.test.ts test/registrar-verificacao-rotulo.test.ts test/painel-estado-explicito.test.tsx test/ficha-subsecoes-sequencia.test.ts; do [ -f \"$f\" ] || { r=APAGOU_$f; continue; }; a=$(git show \"$b:$f\" 2>/dev/null | grep -c 'expect('); n=$(grep -c 'expect(' \"$f\"); [ \"${n:-0}\" -ge \"${a:-0}\" ] || r=EXPECT_CAIU_$f; s0=$(git show \"$b:$f\" 2>/dev/null | grep -cE '\\.(skip|only|todo)\\('); s1=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"${s1:-0}\" -le \"${s0:-0}\" ] || r=SKIP_NOVO_$f; d0=$(git show \"$b:$f\" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' \"$f\"); [ \"${d1:-0}\" -le \"${d0:-0}\" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r",
+   "espera": "NAO_AFROUXOU",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes e intocadas (fetch-json-teto.test.ts, consistencia-contagens.test.ts, bloco-vazio-linha.test.ts, abas-montadas.test.ts, cartao-topo-perfil.test.tsx, travessao-mudo.test.ts, mapeamento-etapas-crm.test.ts, ghl-conectar-ficha.test.ts)",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/mapeamento-etapas-crm.test.ts test/ghl-conectar-ficha.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/mapeamento-etapas-crm.test.ts test/ghl-conectar-ficha.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "JUIZ: na Conta, o cartao CRM (GoHighLevel) e o unico lugar do CRM: badge de estado, conectar, pipeline principal (com UMA linha cinza dizendo que a lista de pipelines ainda nao esta disponivel, so quando vazia) e mapeamento de etapas; nenhum aviso em outro bloco contradiz o mapeamento; o CrmTab e seu link para a aba Configuracoes sumiram; a key config segue no union e no branch. REPROVE: aviso que ainda diga que etapas ou mapeamento nao estao disponiveis; aviso como heading, CardTitle ou cartao; link novo para um bloco vazio; estado da conexao repetido fora do badge; asserção de rota fantasma (rotas requisitadas/citadas, crmPipelines: []) alterada; assercao afrouxada; teste apagado.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 7163
+}

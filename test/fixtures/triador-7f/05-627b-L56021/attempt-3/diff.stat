@@ -1,0 +1,13 @@
+ .../dashboard/clientes/[id]/performance/page.tsx   | 132 ++++++++++++++-------
+ src/app/dashboard/clientes/[id]/reunioes/page.tsx  |  23 ++--
+ src/app/dashboard/clientes/[id]/setup/page.tsx     |   2 +-
+ .../clientes/[id]/tabs/alertas-cliente-tab.tsx     |  37 ++++--
+ .../clientes/[id]/tabs/calculadora-tab.tsx         |  14 ++-
+ .../clientes/[id]/tabs/entregaveis-tab.tsx         |   5 +-
+ .../clientes/[id]/tabs/entregavel-sheet.tsx        |   5 +-
+ .../clientes/[id]/tabs/leitura-comercial-bloco.tsx |   7 +-
+ .../dashboard/clientes/[id]/tabs/performance.tsx   |  25 +++-
+ .../dashboard/clientes/[id]/tabs/relatorio-tab.tsx |  16 ++-
+ .../dashboard/clientes/[id]/tabs/resumo-tab.tsx    |   9 +-
+ test/travessao-mudo.test.ts                        |   4 +-
+ 12 files changed, 192 insertions(+), 87 deletions(-)

@@ -1,0 +1,4 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+711a	docs/fila/runs/711a/attempt-1.prev1	test/sem-insumo.test.ts	1831	2026-10-07T21:19:25Z	1
+711b3	docs/fila/runs/711b3/attempt-2.prev1	test/sem-insumo.test.ts	4654	2026-10-07T23:09:59Z	0
+711b3	docs/fila/runs/711b3/attempt-3	test/sem-insumo.test.ts	4654	2026-10-07T23:13:32Z	0

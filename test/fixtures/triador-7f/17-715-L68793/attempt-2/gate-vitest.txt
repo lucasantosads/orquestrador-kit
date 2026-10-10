@@ -1,0 +1,128 @@
+ ✓ test/situacao-gate.test.ts (30 tests) 30ms
+ ✓ test/ficha-visao-vazios.test.ts (13 tests) 97ms
+ ✓ test/estados-portal.test.ts (86 tests) 76ms
+ ✓ test/relatorio-rascunho-paginado.test.ts (3 tests) 53ms
+ ✓ test/coleta-meta-falha-alto.test.ts (6 tests) 179ms
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura do resumo existente falha → 500 e nada gravado
+[churn-summary PATCH] Error: resumo do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/churn-summary-patch-leitura-falha.test.ts:59:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura de clientes_receita falha → 500 e nada gravado
+[churn-summary PATCH] Error: base de clientes: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/churn-summary-patch-leitura-falha.test.ts:66:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura das saídas falha → 500 e nada gravado
+[churn-summary PATCH] Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/churn-summary-patch-leitura-falha.test.ts:73:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > recalcularAposSaida — não lança, devolve aviso > falha de leitura vira aviso por mês, sem gravar
+[churn/resumo-mensal] 2026/09 Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/churn-summary-patch-leitura-falha.test.ts:123:20
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > recalcularAposSaida — não lança, devolve aviso > falha de leitura vira aviso por mês, sem gravar
+[churn/resumo-mensal] 2026/08 Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/churn-summary-patch-leitura-falha.test.ts:123:20
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > GET /api/cron/churn-resumo > falha visível: 500 com o mês que falhou
+[cron/churn-resumo] 2026/09 Error: base de clientes: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/churn-summary-patch-leitura-falha.test.ts:150:17
+
+stderr | test/relatorio-config.test.ts > POST reflete na matriz do 011 (GET /api/clientes/automacoes-status) > liga → relatorio_semanal/mensal viram 'ligado' na matriz; desliga → voltam a 'desligado'
+[logAudit] supabaseAudit.from(...).insert is not a function
+
+ ✓ test/relatorio-config.test.ts (10 tests) 44ms
+ ✓ test/kpis-visao.test.tsx (19 tests) 74ms
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes-extra/[id] > exceção do logAudit não muda o status da resposta
+[clientes-extra PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/audit-log-rotas.test.ts:258:36
+
+stderr | test/perfil-obs.test.ts > PATCH /api/clientes/[id]/perfil-obs > retorna 200 com satisfacao válida (1-5)
+[logAudit] supabaseAudit.from(...).insert is not a function
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > POST: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/audit-log-rotas.test.ts:293:36
+
+stderr | test/perfil-obs.test.ts > PUT /api/clientes/[id]/perfil-obs (RBAC) > gestor grava perfil do catálogo com 200
+[logAudit] supabaseAudit.from(...).insert is not a function
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > PATCH: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/audit-log-rotas.test.ts:309:36
+
+stderr | test/perfil-obs.test.ts > PUT /api/clientes/[id]/perfil-obs (RBAC) > CS grava perfil do catálogo com 200
+[logAudit] supabaseAudit.from(...).insert is not a function
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/[id]/crm-config PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/audit-log-rotas.test.ts:336:36
+
+ ✓ test/perfil-obs.test.ts (13 tests) 64ms
+stderr | test/audit-log-rotas.test.ts > PUT /api/clientes/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/crm-config PUT] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/audit-log-rotas.test.ts:363:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/perfil-obs > exceção do logAudit não muda o status da resposta
+[clientes/[id]/perfil-obs PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/audit-log-rotas.test.ts:392:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/registros/[registroId] > exceção do logAudit não muda o status da resposta
+[registros PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/audit-log-rotas.test.ts:432:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/tarefas-kanban > exceção do logAudit não muda o status da resposta
+[tarefas-kanban POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/audit-log-rotas.test.ts:459:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/clientes/relatorio-config (ativo=true) > exceção do logAudit não muda o status da resposta
+[clientes/relatorio-config POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/audit-log-rotas.test.ts:486:36
+ ✓ test/automacoes-cliente.test.ts (17 tests) 44ms
+ ✓ test/nps-coleta.test.ts (11 tests) 34ms
+ ✓ test/getsession-team-situacao-nps.test.ts (8 tests) 16ms
+ ✓ test/whatsapp-webhook.test.ts (5 tests) 22ms
+ ✓ test/clientes-getsession-lote1.test.ts (16 tests) 21ms
+stderr | test/ficha-resolucao-chave.test.ts > GET /api/perf/cockpit/[id] — adota o resolvedor do ticket 094 > falha na resolução da chave vira mensagem humana e acentuada, não o e.message cru
+[perf/cockpit] falha ao resolver chave do cliente: Error: connection terminated unexpectedly
+    at Object.maybeSingle (/Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/ficha-resolucao-chave.test.ts:49:28)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/ficha-resolucao-chave.test.ts:111:17
+ ✓ test/meta-otimizacoes-import.test.ts (8 tests) 43ms
+ ✓ test/leitura-relacao-cron-sem-base.test.ts (5 tests) 25ms
+ ✓ test/retencao-centro.test.ts (12 tests) 28ms
+ ✓ test/conta-resultados-campanha.test.ts (7 tests) 70ms
+ ✓ test/checklist-documentos.test.ts (10 tests) 24ms
+stderr | test/ficha-por-uuid.test.ts > uuid resolvido primeiro como id do cliente (29/09) > leitura de clientes que falha: 500, nunca 'não encontrado'
+[/api/notion/clientes/[id]] Error: cliente: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-715/test/ficha-por-uuid.test.ts:79:15
+
+ ✓ test/carteira-view.test.ts (3 tests) 3ms
+ ✓ test/abas-montadas.test.ts (3 tests) 3ms
+ ✓ test/health-snapshot-compose.test.ts (7 tests) 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/crons-meta-consolidacao.test.ts > vercel.json — só o que o recon pede > é JSON válido com as 25 entradas: as 24 anteriores + churn-resumo (6(a))
+AssertionError: expected [ { …(2) }, { …(2) }, { …(2) }, …(23) ] to have a length of 25 but got 26
+
+- Expected
++ Received
+
+- 25
++ 26
+
+ ❯ test/crons-meta-consolidacao.test.ts:442:26
+    440|   it("é JSON válido com as 25 entradas: as 24 anteriores + churn-resum…
+    441|     expect(Array.isArray(vercel.crons)).toBe(true);
+    442|     expect(vercel.crons).toHaveLength(25);
+       |                          ^
+    443|     expect(vercel.crons.find((c) => c.path === "/api/cron/relatorio-me…
+    444|     expect(vercel.crons.find((c) => c.path === "/api/cron/aprovacao-ta…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 723 passed (724)
+      Tests  1 failed | 7449 passed (7450)
+   Start at  00:19:34
+   Duration  39.97s (transform 53.78s, setup 0ms, import 149.60s, tests 33.57s, environment 96ms)
+

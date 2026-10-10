@@ -1,0 +1,13 @@
+Os quatro blocos vazios da aba Visão agora são uma linha cada, e o trabalho está commitado em dois commits (`5383ce8` código, `2d324fe` testes). Não rodei `rm -rf .next` antes do tsc: o comando foi negado e segui sem ele, mas o resultado deu 3 erros em `src/`, igual ao baseline. O build passou (`BUILD_OK`), e as suítes da allowlist, as guardas globais (`travessao-mudo`, `abas-montadas`, `c0-guard`) e o teste novo passaram (rodei só arquivos de teste, não o `vitest run` inteiro). Não rodei os comandos dos critérios um a um.
+
+- **Relação:** o vazio é uma linha com os três campos em "sem base", um `Registrar` (o `+ Registrar` do `RegistrarRelacao`) e um `Ver relação`. Leitura com temperatura `sem_base` conta como sem leitura, então a frase gravada pelo motor não é impressa. Com dado, o cartão de antes continua.
+- **Linha do tempo:** os chips e o `<h3>` só aparecem com evento. Sem evento vem `Linha do tempo · nenhum evento entre DD/MM e DD/MM`. O período chega por uma prop nova, que o `geral-tab.tsx` preenche com `metricasData?.period`.
+- **Otimizações:** vazio é `Otimizações · nenhuma no período · Registrar em Campanhas`, sem `<h3>`. O `Ver histórico completo` só existe com dado.
+- **Análise IA:** sem análise é uma linha `Análise IA · nenhuma · Gerar análise`, sem cartão. Se houver bloqueio, a linha mostra o motivo no lugar de "nenhuma". Com análise gerada, o cartão colapsado que expande fica como estava.
+- **Motor e blocos fora do escopo:** o motor de leitura (`src/lib/ia/leitura-relacao.ts`) não foi tocado, nem Tarefas e Alertas.
+
+Uma decisão minha: o bloco Relação só vira linha se o risco de churn também estiver sem nível. Se o contrato tiver um nível de risco (mesmo sem registro), o cartão aparece.
+
+Recalculei 8 testes existentes com comentário citando o 650, sem remover asserção nem `it(`, e a contagem de `it(` não encolheu nos que conferi. Os testes de estrutura passaram a medir o cartão com um combinado presente e a Análise IA com uma análise gerada. Os vazios têm asserções novas para os casos em que o bloco vira linha. Nenhum teste fora da allowlist quebrou.
+
+O teste novo `test/ficha-visao-blocos-vazios.test.ts` passou com 7 casos, sem JSX nem DOM. Ele cobre 1 `Registrar` e 1 `Ver relação` no vazio, leitura `sem_base` sem texto impresso, 0 chips sem evento, chips com 1 evento e a linha com o período.

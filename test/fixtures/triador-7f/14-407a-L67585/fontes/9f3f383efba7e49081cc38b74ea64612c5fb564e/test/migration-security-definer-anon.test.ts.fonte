@@ -1,0 +1,159 @@
+// 30/09 (decisão do Lucas, depois do recon docs/recon/funcoes-security-definer-30set.md): o
+// padrão do schema public ainda dá EXECUTE a anon e authenticated em toda função nova. Função
+// SECURITY DEFINER roda como o dono e ignora RLS e grants de tabela: com o EXECUTE padrão, quem
+// tem a chave anon chama e lê ou escreve o que ela alcança, inclusive tabela já fechada nas
+// ondas de revoke. Regra: migration nova em supabase/migrations/ que cria (ou vira) função
+// SECURITY DEFINER revoga o EXECUTE de anon E de authenticated na MESMA migration, ou traz
+// o comentário "-- anon-execute-justificado: <motivo>" (motivo não vazio).
+//
+// Arquivos anteriores à regra que a violam ficam em LEGADO. A lista só diminui: arquivo
+// consertado tem de sair dela (o último teste reprova item que já passa).
+import { describe, it, expect } from "vitest";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+
+const DIR = join("supabase", "migrations");
+
+const LEGADO: string[] = [
+  // ops_esta_na_subarvore: único chamador usa service role (src/lib/rbac/server.ts). O revoke
+  // (public, anon, authenticated) foi aplicado em 30/09 por outra migration,
+  // 20260930222522_secdef_higiene_revoke.sql. Este arquivo continua violando porque migration
+  // aplicada não se edita; fica na lista congelada de propósito, e o banco já está corrigido.
+  "supabase/migrations/20260626_ops_esta_na_subarvore.sql",
+];
+
+const JUSTIFICADO = /--[ \t]*anon-execute-justificado:[ \t]*\S/i;
+
+function sqls(dir: string): string[] {
+  return readdirSync(dir).flatMap((nome) => {
+    const caminho = join(dir, nome);
+    if (statSync(caminho).isDirectory()) return sqls(caminho);
+    return nome.endsWith(".sql") ? [caminho] : [];
+  });
+}
+
+/** Tira comentários de linha e de bloco para "security definer" citado em texto não contar. */
+function semComentarios(sql: string): string {
+  return sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
+}
+
+/** public."Nome" -> nome */
+function normalizar(nome: string): string {
+  return nome.replace(/"/g, "").toLowerCase().replace(/^public\./, "");
+}
+
+/** Nomes das funções que a migration cria ou altera como SECURITY DEFINER. */
+export function funcoesSecurityDefiner(sql: string): string[] {
+  const limpo = semComentarios(sql);
+  const nomes = new Set<string>();
+  const criacao = /create\s+(?:or\s+replace\s+)?function\s+((?:"?\w+"?\.)?"?\w+"?)\s*\(/gi;
+  const inicios: { nome: string; pos: number }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = criacao.exec(limpo)) !== null) inicios.push({ nome: normalizar(m[1]), pos: m.index });
+  inicios.forEach((f, i) => {
+    const trecho = limpo.slice(f.pos, i + 1 < inicios.length ? inicios[i + 1].pos : limpo.length);
+    if (/\bsecurity\s+definer\b/i.test(trecho)) nomes.add(f.nome);
+  });
+  const alter = /alter\s+function\s+((?:"?\w+"?\.)?"?\w+"?)\s*(?:\([^)]*\))?[^;]*?\bsecurity\s+definer\b/gi;
+  while ((m = alter.exec(limpo)) !== null) nomes.add(normalizar(m[1]));
+  return Array.from(nomes);
+}
+
+/** Papéis de quem a migration revoga o EXECUTE, por função ("*" = todas as funções do schema). */
+function revogados(sql: string): Map<string, Set<string>> {
+  const limpo = semComentarios(sql);
+  const mapa = new Map<string, Set<string>>();
+  const somar = (nome: string, papeis: string) => {
+    const set = mapa.get(nome) ?? new Set<string>();
+    papeis.split(",").forEach((p) => set.add(p.replace(/"/g, "").trim().toLowerCase()));
+    mapa.set(nome, set);
+  };
+  const porFuncao =
+    /revoke\s+(?:all(?:\s+privileges)?|execute)\s+on\s+function\s+((?:"?\w+"?\.)?"?\w+"?)\s*(?:\([^)]*\))?\s+from\s+([^;]+);/gi;
+  let m: RegExpExecArray | null;
+  while ((m = porFuncao.exec(limpo)) !== null) somar(normalizar(m[1]), m[2]);
+  const todas = /revoke\s+(?:all(?:\s+privileges)?|execute)\s+on\s+all\s+functions\s+in\s+schema\s+public\s+from\s+([^;]+);/gi;
+  while ((m = todas.exec(limpo)) !== null) somar("*", m[1]);
+  return mapa;
+}
+
+/** Funções SECURITY DEFINER da migration que ainda deixam EXECUTE para anon ou authenticated. */
+export function funcoesSemRevoke(sql: string): string[] {
+  if (JUSTIFICADO.test(sql)) return [];
+  const rev = revogados(sql);
+  const todas = rev.get("*") ?? new Set<string>();
+  return funcoesSecurityDefiner(sql).filter((nome) => {
+    const set = rev.get(nome) ?? new Set<string>();
+    return !["anon", "authenticated"].every((p) => set.has(p) || todas.has(p));
+  });
+}
+
+function violacoes(): string[] {
+  return sqls(DIR)
+    .filter((a) => funcoesSemRevoke(readFileSync(a, "utf8")).length > 0)
+    .map((a) => a.split("\\").join("/"))
+    .sort();
+}
+
+describe("migration nova com SECURITY DEFINER revoga o EXECUTE de anon e authenticated", () => {
+  it("o detector pega função sem revoke e aceita a que revoga dos dois papéis", () => {
+    const corpo = "as $$ begin return 1; end $$ language plpgsql";
+    expect(funcoesSemRevoke(`create function public.f() returns int security definer ${corpo};`)).toEqual(["f"]);
+    expect(
+      funcoesSemRevoke(
+        `create or replace function public."f"(uuid) returns int ${corpo} security definer;\n` +
+          `revoke execute on function f(uuid) from anon, authenticated;`,
+      ),
+    ).toEqual([]);
+    // dois revokes separados também servem
+    expect(
+      funcoesSemRevoke(
+        `create function f() returns int security definer ${corpo};\n` +
+          `revoke all on function public.f() from anon;\nrevoke execute on function public.f() from authenticated;`,
+      ),
+    ).toEqual([]);
+    // revoke de todas as funções do schema cobre a migration inteira
+    expect(
+      funcoesSemRevoke(
+        `create function f() returns int security definer ${corpo};\n` +
+          `revoke execute on all functions in schema public from anon, authenticated;`,
+      ),
+    ).toEqual([]);
+  });
+
+  it("revoke só de public, ou de um papel só, não basta", () => {
+    const corpo = "as $$ select 1 $$ language sql";
+    expect(
+      funcoesSemRevoke(`create function f() returns int security definer ${corpo};\nrevoke execute on function f() from public;`),
+    ).toEqual(["f"]);
+    expect(
+      funcoesSemRevoke(`create function f() returns int security definer ${corpo};\nrevoke execute on function f() from anon;`),
+    ).toEqual(["f"]);
+  });
+
+  it("função invoker não conta; 'security definer' em comentário não conta; alter function conta", () => {
+    const corpo = "as $$ select 1 $$ language sql";
+    expect(funcoesSemRevoke(`create function f() returns int ${corpo};`)).toEqual([]);
+    expect(funcoesSemRevoke(`-- não é security definer\ncreate function f() returns int ${corpo};`)).toEqual([]);
+    expect(funcoesSemRevoke(`alter function public.f(uuid) security definer;`)).toEqual(["f"]);
+  });
+
+  it("comentário anon-execute-justificado com motivo libera; sem motivo, não", () => {
+    const base = "create function f() returns int security definer as $$ select 1 $$ language sql;";
+    expect(funcoesSemRevoke(`-- anon-execute-justificado: RPC pública do formulário de lead\n${base}`)).toEqual([]);
+    expect(funcoesSemRevoke(`-- anon-execute-justificado:\n${base}`)).toEqual(["f"]);
+  });
+
+  it("nenhuma migration fora do LEGADO cria SECURITY DEFINER sem revogar anon e authenticated", () => {
+    const arquivos = sqls(DIR);
+    expect(arquivos.length).toBeGreaterThan(0);
+    const novas = violacoes().filter((a) => !LEGADO.includes(a));
+    expect(novas).toEqual([]);
+  });
+
+  it("LEGADO só diminui: todo item ainda existe e ainda viola (consertou, tire da lista)", () => {
+    const atuais = violacoes();
+    const sobrando = LEGADO.filter((a) => !atuais.includes(a));
+    expect(sobrando).toEqual([]);
+  });
+});

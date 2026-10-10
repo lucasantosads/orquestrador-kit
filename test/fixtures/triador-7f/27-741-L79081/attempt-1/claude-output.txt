@@ -1,0 +1,15 @@
+Parei sem escrever nada. O ticket manda parar se `src/lib/promessas/detectar.ts` não tiver uma função pura que receba as mensagens e devolva os candidatos, e ele não tem. Não há diff e não fiz commit, porque a allowlist não deixa consertar isso.
+
+**O que o 861 expõe**
+- `montarCandidatos` (`detectar.ts:77`) é a regra de pareamento (pedido do cliente seguido de resposta da equipe, janela de dia útil, máximo de 6 respostas). Ela não é exportada. Ela também recebe mensagens já classificadas (`Msg[]`, com `classe`) e o conjunto `jaTem` vindo de `perf_promessas`.
+- `detectarPromessas(db, agoraISO, teto)` (`detectar.ts:100`) é a única função exportada que roda a detecção inteira, e ela mistura leitura, modelo e escrita:
+  - Ela lê todos os grupos vinculados de `wpp_grupo`, sem filtro por cliente, e a janela é fixa em 24h (`JANELA_HORAS`). Isso não atende a `--cliente` nem a `--dias`.
+  - Ela chama `perf_promessas.upsert` no meio do fluxo (`detectar.ts:171`).
+  - Ela não devolve os candidatos, só contadores (`ResumoPromessas`). O backtest precisa imprimir data, trecho do pedido, trecho da promessa, prazo, evidência e motivo de descarte, e nada disso sai dela.
+
+**Por que não dá para contornar dentro da allowlist**
+- Se eu chamar `detectarPromessas` com o leitor que lança em escrita, o `upsert` lança, a função captura como `falhas++` e eu perco o resultado de cada candidato.
+- Se eu reimplementar o pareamento, as constantes e o `SYSTEM` no script, copio a regra de detecção, e o ticket reprova isso expressamente.
+
+**O que desbloqueia**
+Um ticket anterior ao 741 que mexa em `detectar.ts` (fora da allowlist deste). Ele separaria a detecção em uma função que não escreve, algo como `detectarCandidatos(db, { clienteId, desde, ate })`. Essa função devolveria os candidatos com o veredito (aceito ou descartado, e o motivo). A gravação ficaria numa etapa à parte, que `detectarPromessas` continuaria chamando. Com isso o 741 vira só o script e o teste, como o orçamento de 240 linhas prevê.

@@ -1,0 +1,5 @@
+ src/app/api/metas/_realizado.ts         | 61 ++++++++++++++++++++-----------
+ test/metas-por-gestor.test.tsx          |  8 +++--
+ test/metas-realizado-leads-perf.test.ts | 63 +++++++++++++++++++++++++++++++++
+ test/metas.test.ts                      | 11 +++---
+ 4 files changed, 116 insertions(+), 27 deletions(-)

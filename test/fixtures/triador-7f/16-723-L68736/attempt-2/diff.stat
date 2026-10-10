@@ -1,0 +1,14 @@
+ src/app/api/perf/setup/[clienteId]/passo/route.ts  |   9 +-
+ src/app/api/perf/setup/[clienteId]/route.ts        |  13 +-
+ src/app/api/perf/setup/route.ts                    |  10 +-
+ src/app/dashboard/clientes/[id]/setup/page.tsx     | 241 +++++++++++----------
+ .../dashboard/clientes/[id]/tabs/config-tab.tsx    |   1 -
+ src/lib/setup/calcular-setup.ts                    |  11 +-
+ src/lib/setup/p1-basico.ts                         |  23 +-
+ src/lib/setup/p3-contas.ts                         |  37 ++++
+ src/lib/setup/vinculo-comercial.ts                 |  57 +++++
+ test/quem-cuida.test.ts                            |   3 +
+ test/setup-assistente-lista-canonica.test.ts       |  19 +-
+ test/setup-cinco-passos.test.ts                    | 209 ++++++++++++++++++
+ test/setup-fonte-unica.test.ts                     |  17 +-
+ 13 files changed, 491 insertions(+), 159 deletions(-)

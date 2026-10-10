@@ -1,0 +1,48 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> PASS
+### criterio[9] -> PASS
+### criterio[10] -> PASS
+### criterio[11] -> PASS
+### criterio[12] -> PASS
+### criterio[13] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-711b3
+sanear_tsc: nao
+cmd:    a=$(grep -c 'estadoScoreSaude(health?.score' 'src/app/dashboard/clientes/[id]/page.tsx'); c=$(grep -cE "from ['\"]@/lib/clientes/ler-sinal-cliente['\"]" 'src/app/dashboard/clientes/[id]/page.tsx'); [ "$a" = 0 ] && [ "$c" -ge 1 ] && echo MESMA_REGRA || echo REGRA_${a}_${c}
+espera: MESMA_REGRA
+-- saida --
+REGRA_2_0
+
+### criterio[14] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-711b3
+sanear_tsc: nao
+cmd:    n=$(grep -c 'corScoreSaude' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'); [ "$n" = 0 ] && echo CARTAO_SEM_COR_ANTIGA || echo COR_ANTIGA_NO_CARTAO_$n
+espera: CARTAO_SEM_COR_ANTIGA
+-- saida --
+COR_ANTIGA_NO_CARTAO_2
+
+### criterio[15] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-711b3
+sanear_tsc: nao
+cmd:    if grep -qF 'toContain("score={estadoScoreSaude(health?.score ?? null)}")' test/header-cliente-consolidado.test.ts test/score-saude-fonte-unica.test.ts || grep -qF 'toContain("corScoreSaude(score.valor)")' test/visao-sem-cockpit-antigo.test.ts; then echo EXIGEM_REGRA_ANTIGA; else grep -qE 'ler-sinal-cliente|chipSaude' test/header-cliente-consolidado.test.ts && grep -qE 'ler-sinal-cliente|chipSaude' test/visao-sem-cockpit-antigo.test.ts && echo EXIGEM_REGRA_NOVA || echo SEM_REGRA_NOVA; fi
+espera: EXIGEM_REGRA_NOVA
+-- saida --
+EXIGEM_REGRA_ANTIGA
+
+### criterio[16] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-711b3
+sanear_tsc: nao
+cmd:    test -f test/saude-chip-ficha.test.ts && npx vitest run test/saude-chip-ficha.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO
+espera: VERDE
+-- saida --
+VERMELHO
+
+### criterio[17] (qualitativo — julgado pelo Opus)
+descricao: avaliador: o chip Saude da ficha mostra rotulo e dica de chipSaude via lerSinalCliente (mesma regra do Inicio), com sem base e erro visiveis; o cabecalho tem a mesma estrutura; as assercoes de header-cliente-consolidado e visao-sem-cockpit-antigo que exigiam estadoScoreSaude/corScoreSaude passaram a exigir a regra nova, com comentario citando 711b3. REPROVE se: segunda regra de cor; URL da rota em page.tsx em vez do modulo; mexeu em resumo-tab.tsx, na rota, em chip-saude.ts ou ler-sinal-cliente.ts; mudou ordem, rotulo de bloco, data-testid ou secao; recalculou assercao de estrutura; assercao removida ou trocada por toBeDefined/toBeTruthy; it( apagado; mexeu em lote-d-colunas; diff acima de 500 sem parar.
+

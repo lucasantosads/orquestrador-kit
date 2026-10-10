@@ -1,0 +1,1 @@
+{"aprovado": true, "motivo": "Credencial checada antes de criarDb, só nomes, exit 1. Erro 401/403/404/rede aborta o plano antes de qualquer update, sai 1, sem 'sem nome'. Falha não entra no cache; log com prefixo e código; cache negativo só para resposta 200. Rota intocada, testes mockados, asserções preservadas."}

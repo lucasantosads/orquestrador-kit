@@ -1,0 +1,1 @@
+{"aprovado": true, "motivo": "Perfil e Gestor com rótulo visível 'X · valor'; botão diz 'Regenerar link NPS'; closer com HelpCircle na Dica e texto com as duas fontes (registro comercial, data de fechamento); Editar atalhos no grupo de Editar cadastro, com Dica; Teses/Entregáveis seguem no cartão; asserções recalculadas citando 648, nenhuma removida."}

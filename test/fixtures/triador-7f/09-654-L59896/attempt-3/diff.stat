@@ -1,0 +1,3 @@
+ src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx | 14 +++++++-------
+ src/app/dashboard/clientes/[id]/tabs/resultados-tab.tsx |  1 +
+ 2 files changed, 8 insertions(+), 7 deletions(-)

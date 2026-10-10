@@ -1,0 +1,13 @@
+{
+ "id": "868",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/868-visao-apolo-sem-call-de-venda.md",
+ "ticket_sha": "bbf183758470cb897fe30f0c6d8d30e8c5184f65",
+ "ticket_antes": true,
+ "linha_bloqueio": null,
+ "linha_fim": 78232,
+ "log_inicio": 78188,
+ "fim": "2026-10-07T21:55:07Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/868"
+}

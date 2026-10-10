@@ -1,0 +1,10 @@
+ .../admin/organizacao/OrganizacaoAdmin.tsx         | 17 ++++++--------
+ src/app/dashboard/admin/rbac/RbacAdmin.tsx         |  8 +++----
+ src/app/dashboard/admin/super/SuperAdminPanel.tsx  |  2 +-
+ src/app/dashboard/comando/page.tsx                 |  4 ++--
+ src/app/dashboard/fila/page.tsx                    | 14 +++++------
+ src/app/dashboard/metas/page.tsx                   |  4 ++--
+ src/app/dashboard/super-admin/components.tsx       | 27 ++++++++++++++--------
+ src/app/dashboard/super-admin/page.tsx             | 10 ++++----
+ test/travessao-mudo.test.ts                        |  4 ++--
+ 9 files changed, 47 insertions(+), 43 deletions(-)

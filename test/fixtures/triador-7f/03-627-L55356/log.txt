@@ -1,0 +1,26 @@
+55331	[2026-09-25 11:34:06-0300] drenagem: ticket 627 (2 pendentes restantes)
+55332	[orq 14:34:06] orquestrador iniciando · modo: real · once
+55333	[orq 14:34:06] preflight: validando infra (scripts, fila, env, claude)...
+55334	[orq 14:34:09] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+55335	[orq 14:34:14] preflight: ok
+55336	[orq 14:34:28] === ticket 627 (guarda-travessao-mudo) — tentativa 1 · modo: real ===
+55337	[orq 14:34:29]   recon_esperado: ok (1 comando(s))
+55338	[orq 14:34:29]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/627/attempt-1/prompt.txt
+55339	[orq 14:34:29]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+55340	[orq 14:35:18]   diff cru salvo (0 linhas) · HEAD julgado dec47c23
+55341	[orq 14:35:18]   enforcement: ok
+55342	[orq 14:35:35]   gate tsc: ok (baseline)
+55343	[orq 14:36:04]   gate vitest: FALHA
+55344	[orq 14:36:04]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/627/attempt-1/gate-vitest.txt)
+55345	[orq 14:36:05] ticket 627: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/627/attempt-1/gate-vitest.txt)
+55346	[orq 14:36:05] === ticket 627 (guarda-travessao-mudo) — tentativa 2 · modo: real ===
+55347	[orq 14:36:06]   recon_esperado: ok (1 comando(s))
+55348	[orq 14:36:06]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/627/attempt-2/prompt.txt
+55349	[orq 14:36:06]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+55350	[orq 14:37:22]   diff cru salvo (0 linhas) · HEAD julgado dec47c23
+55351	[orq 14:37:23]   enforcement: ok
+55352	[orq 14:37:40]   gate tsc: ok (baseline)
+55353	[orq 14:38:07]   gate vitest: FALHA
+55354	[orq 14:38:07]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/627/attempt-2/gate-vitest.txt)
+55355	[orq 14:38:07] ticket 627: motivo de reprova REPETIU — circuit breaker (por ticket)
+55356	[orq 14:38:07] ticket 627: BLOQUEADO sem gastar a próxima volta

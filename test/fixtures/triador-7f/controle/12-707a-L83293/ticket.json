@@ -1,0 +1,129 @@
+{
+ "id": "707a",
+ "slug": "responder-prazo-da-promessa",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 200 linhas (~30 em src/components/relacao/responder-agora.tsx, ~150 no NOVO test/inicio-responder-prazo.test.ts). Se passar do teto, pare e reporte. ORIGEM: run 3 do 707 (docs/fila/runs/707/attempt-3), it( 'presente: Responder agora com tempo, cliente, tipo e trecho' vermelho: a linha de promessa que vence hoje nao mostra o prazo. Decisao do Lucas (08/10): vira este ticket. O mockup docs/roadmap/mockups/portal-gestor/inicio-gestor.dc.html (linha da promessa no Responder agora) mostra tempo 'Até 18h' com o rotulo 'prazo da promessa'. Hoje a tela mostra '<minutos_uteis> úteis desde a promessa', e para promessa que ainda nao venceu minutos_uteis e 0, entao a linha diz '0 min úteis desde a promessa', que e falso. PASSO 1: leia inteiros src/components/relacao/responder-agora.tsx, src/app/api/relacao/responder/route.ts (carregarPromessas: o item de promessa JA traz o campo prazo, timestamp ISO; a rota NAO muda), test/relacao-responder-tela.test.ts, test/relacao-promessa-lista.test.ts e test/inicio-responder-tela.test.tsx (o molde de carregar o componente sem JSX). FAZER: (1) src/components/relacao/responder-agora.tsx: ItemResponder ganha prazo?: string. Exporte a funcao pura formatarPrazo(iso: string): string que devolve 'Até HHh' quando os minutos sao zero e 'Até HHhMM' quando nao (hora de America/Sao_Paulo, dois digitos na hora so quando o relogio der, ex.: 'Até 18h', 'Até 9h30'; sem travessao). Na linha com tipo 'promessa_hoje' E prazo presente, o prim",
+ "cria_novo": [
+  "test/inicio-responder-prazo.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/components/relacao/responder-agora.tsx",
+  "test/inicio-responder-prazo.test.ts"
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/relacao-responder-tela.test.ts",
+   "motivo": "renderiza vacuo (sem tipo e sem prazo): o ramo do vacuo nao muda; conta 3 acoes por linha (6 em 2 itens) e nenhum botao novo entra"
+  },
+  {
+   "teste": "test/relacao-promessa-lista.test.ts",
+   "motivo": "le a fonte e exige 'Promessa vence hoje', 'Promessa vencida', 'desde a promessa' e 5 data-testid=\"responder-acao\": os quatro ficam (vencida segue com 'úteis desde a promessa'); criterio 'o componente tem o rotulo do prazo e segue com 5 acoes na fonte' amarra isso"
+  }
+ ],
+ "dependencias": [
+  "737",
+  "742"
+ ],
+ "prioridade": 55,
+ "recon_esperado": [
+  {
+   "descricao": "test/inicio-responder-prazo.test.ts ainda nao existe",
+   "cmd": "test -e 'test/inicio-responder-prazo.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "o Responder agora ainda nao mostra o prazo da promessa",
+   "cmd": "n=$(grep -c 'prazo da promessa' 'src/components/relacao/responder-agora.tsx'); [ \"$n\" = 0 ] && echo SEM_PRAZO || echo ST_$n",
+   "espera": "SEM_PRAZO"
+  },
+  {
+   "descricao": "a rota do Responder ja devolve o prazo da promessa",
+   "cmd": "n=$(grep -c 'prazo: p.prazo,' src/app/api/relacao/responder/route.ts); [ \"$n\" = 1 ] && echo ROTA_TEM_PRAZO || echo ST_$n",
+   "espera": "ROTA_TEM_PRAZO"
+  },
+  {
+   "descricao": "o mockup tem a linha da promessa com o prazo",
+   "cmd": "grep -q \"tempoRotulo: 'prazo da promessa'\" docs/roadmap/mockups/portal-gestor/inicio-gestor.dc.html && echo MOCKUP_OK || echo MOCKUP_MUDOU",
+   "espera": "MOCKUP_OK"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/components/relacao/responder-agora.tsx' 'test/inicio-responder-prazo.test.ts'; do case \"$f\" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 200 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 200 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "rota e lib intocadas",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/app' 'src/lib' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde",
+   "cmd": "test -f test/inicio-responder-prazo.test.ts && npx vitest run test/inicio-responder-prazo.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "testes vizinhos do Responder seguem verdes sem edicao",
+   "cmd": "npx vitest run test/relacao-responder-tela.test.ts test/relacao-promessa-lista.test.ts test/inicio-responder-tela.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "o teste novo le o mockup",
+   "cmd": "f=test/inicio-responder-prazo.test.ts; test -f $f && grep -q 'portal-gestor/inicio-gestor.dc.html' $f && grep -q readFileSync $f && echo MOCKUP_LIDO || echo MOCKUP_IGNORADO",
+   "espera": "MOCKUP_LIDO"
+  },
+  {
+   "descricao": "o rotulo do prazo nao foi copiado a mao no teste",
+   "cmd": "f=test/inicio-responder-prazo.test.ts; test -f $f && [ \"$(grep -c 'prazo da promessa' $f)\" = 0 ] && echo DO_MOCKUP || echo COPIADO",
+   "espera": "DO_MOCKUP"
+  },
+  {
+   "descricao": "o componente tem o rotulo do prazo e segue com 5 acoes na fonte",
+   "cmd": "f=src/components/relacao/responder-agora.tsx; [ \"$(grep -c 'prazo da promessa' $f)\" -ge 1 ] && [ \"$(grep -o 'data-testid=\"responder-acao\"' $f | wc -l | tr -d ' ')\" = 5 ] && echo PRAZO_OK || echo ST_FALHA",
+   "espera": "PRAZO_OK"
+  },
+  {
+   "descricao": "avaliador: a promessa que vence hoje mostra 'Até HHh' em font-mono com 'prazo da promessa'; vencida e vacuo como antes; sem prazo nao inventa hora; teste le o mockup. REPROVE se: alterou rota ou lib; inventou hora sem prazo; copiou o rotulo do mockup a mao no teste; editou teste vizinho; ancorou em classe de cor.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 6018
+}

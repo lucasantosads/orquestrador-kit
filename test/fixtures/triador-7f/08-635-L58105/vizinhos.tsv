@@ -1,0 +1,7 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+635	docs/fila/runs/635.pre-requeue-26set/attempt-1	test/cartao-topo-setup-e-closer.test.ts	974	2026-09-26T02:09:59Z	1
+635	docs/fila/runs/635.pre-requeue-26set/attempt-1	test/conta-crm-sem-contradicao.test.ts	2239	2026-09-26T02:09:59Z	1
+635	docs/fila/runs/635.pre-requeue-26set/attempt-1	test/ghl-um-lugar-so.test.ts	2279	2026-09-26T02:09:59Z	1
+635	docs/fila/runs/635.pre-requeue-26set/attempt-2	test/cartao-topo-setup-e-closer.test.ts	974	2026-09-26T02:12:39Z	1
+635	docs/fila/runs/635.pre-requeue-26set/attempt-2	test/conta-crm-sem-contradicao.test.ts	2239	2026-09-26T02:12:39Z	1
+635	docs/fila/runs/635.pre-requeue-26set/attempt-2	test/ghl-um-lugar-so.test.ts	2279	2026-09-26T02:12:39Z	1

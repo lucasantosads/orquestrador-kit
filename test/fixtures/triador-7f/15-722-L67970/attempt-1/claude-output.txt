@@ -1,0 +1,19 @@
+O ticket 722 está commitado (`94a251c`), mas deixa 5 testes quebrados em `test/leitura-relacao-gatilhos.test.ts`, que está fora da allowlist. Por isso parei ali. Esse arquivo está na lista de testes existentes que precisam ficar VERDE no critério de aceite, então esse critério vai dar VERMELHO como o ticket está escrito.
+
+**O que mudou**
+- **`route.ts`:** antes do teto de 40, cada cliente elegível passa por `carregarFontes` e `montarEntrada`, importadas da lib. Se `fontes_com_dado < 2`, o cliente é pulado: não chama `gerarLeituraRelacao` e não grava nada. O comentário cita `src/lib/ia/leitura-relacao.ts` como origem do limiar.
+- **Falhas e resumo:** falha ao carregar fontes conta em `falhas`. O JSON de resumo ganhou `pulado_sem_base`, e o comentário do topo foi atualizado.
+- **`middleware.ts`:** `/api/cron/leitura-relacao` entrou no `CRON_PATHS`, com comentário citando o 722.
+- **`test/cron-paths-vercel.test.ts`:** a rota saiu de `CRON_PENDENTES_REVISAO`, com comentário citando o 722. `sync-clientes` continua na lista, e nenhum `it(` nem `expect(` saiu.
+- **Teste novo `test/leitura-relacao-cron-sem-base.test.ts`:** cobre os casos (a), (b) e (c) pedidos no ticket.
+
+**Verificação**
+- `tsc` dá 3, o baseline.
+- O teste novo e `test/cron-paths-vercel.test.ts` passam (10 de 10).
+- Não rodei `rm -rf .next` nem a suíte completa, o build e as guardas globais, porque o comando foi negado ou parei antes. Os critérios do `.sql`, do diff (117 adições e 9 remoções, bem abaixo de 300) e dos arquivos tocados não foram executados.
+
+**Testes quebrados**
+- Eles usam o `fakeDb` da própria suíte, que não devolve nenhuma fonte para os clientes. Com a regra nova, todos esses clientes são pulados.
+- Falham: "falha de um cliente…", "erro ao ler a fidelidade…", "cliente ativo do OS sem linha no espelho…", "com 41 clientes…" e "com o teto estourado…". Todos esperavam `geradas > 0`.
+- Corrigir exige editar esse arquivo: alimentar o `fakeDb` com 2 ou mais fontes (por exemplo `client_interaction_records` e `perf_nps_respostas`) ou mockar `carregarFontes`. Os valores esperados continuam os mesmos.
+- Preciso que `test/leitura-relacao-gatilhos.test.ts` entre na allowlist do 722 para eu fazer isso.

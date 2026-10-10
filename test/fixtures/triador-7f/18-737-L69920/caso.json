@@ -1,0 +1,12 @@
+{
+ "id": "737",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/737-tela-responder-agora-ficha.md",
+ "ticket_sha": "8c9605b09b2fe13db96a593b06d55fdc3811e468",
+ "ticket_antes": true,
+ "linha_bloqueio": 69920,
+ "log_inicio": 69880,
+ "fim": "2026-10-02T19:05:12Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/737"
+}

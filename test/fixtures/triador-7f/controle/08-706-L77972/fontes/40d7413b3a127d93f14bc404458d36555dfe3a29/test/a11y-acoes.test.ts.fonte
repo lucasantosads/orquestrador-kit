@@ -1,0 +1,55 @@
+import { describe, it, expect } from "vitest";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+
+/**
+ * Gate de ambiguidade de acoes.
+ *
+ * Nao julga estetica: roda o auditor mecanico e compara com o baseline
+ * commitado. Qualquer botao novo sem nome acessivel, div clicavel sem
+ * teclado ou acao destrutiva sem confirmacao derruba o teste.
+ *
+ * Regra do baseline: ele so desce. Todo ticket que corrige achados
+ * atualiza docs/auditoria/a11y-baseline.json com a contagem nova, no
+ * mesmo commit do fix. Subir numero exige justificativa no ticket.
+ */
+
+const SCRIPT = "scripts/auditoria/auditar-acoes.py";
+const BASELINE = "docs/auditoria/a11y-baseline.json";
+
+describe("acessibilidade de botoes e acoes", () => {
+  it("baseline existe e esta versionado", () => {
+    expect(existsSync(SCRIPT)).toBe(true);
+    expect(existsSync(BASELINE)).toBe(true);
+  });
+
+  // Roda subprocess (python3); o timeout padrao de 5s estoura sob carga do loop (incidente 393a).
+  it("nenhuma regra de ambiguidade regrediu contra o baseline", () => {
+    let saida = "";
+    let codigo = 0;
+    try {
+      saida = execFileSync(
+        "python3",
+        [SCRIPT, "--root", "src", "--check", BASELINE, "--so", "P0"],
+        { encoding: "utf-8" },
+      );
+    } catch (e: any) {
+      saida = `${e.stdout ?? ""}${e.stderr ?? ""}`;
+      codigo = e.status ?? 1;
+    }
+    if (codigo !== 0) {
+      throw new Error(
+        `Regressao de acessibilidade em acoes.\n${saida}\n` +
+          `Corrija o controle ou, se o achado for falso positivo, ` +
+          `documente no ticket antes de mexer no baseline.`,
+      );
+    }
+    expect(codigo).toBe(0);
+  }, 60000);
+
+  it("P0 do baseline nao pode crescer nem empatar em novo ticket de UI", () => {
+    const base = JSON.parse(readFileSync(BASELINE, "utf-8"));
+    // trava de intencao: P0 e divida, nao estado permanente.
+    expect(base.por_severidade.P0).toBeLessThanOrEqual(base.meta_p0 ?? base.por_severidade.P0);
+  });
+});

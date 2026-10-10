@@ -1,0 +1,1 @@
+{"aprovado": true, "motivo": "Seed lê docs/briefing/MODELO.md e aborta se não existir, com ajuda 'Seção: <título>', texto longo e obrigatoriedade pela marcação. Bloco na ficha usa a página /briefing/[token], que existe. Fonte registrada com isClienteAtivo. Página pública intocada. Ressalva: import em fontes.ts pendente e documentado."}

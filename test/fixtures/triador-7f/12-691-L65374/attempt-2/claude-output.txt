@@ -1,0 +1,12 @@
+A migration e o teste estão commitados (`698ec69`, 161 linhas, dentro do teto de 220). Não consegui rodar o gate de tsc nem o build, porque a permissão foi negada ao comando que encadeava `rm -rf .next` e `tsc`. Também não rodei as guardas globais. O único arquivo `.ts` que adicionei é o teste, e ele passa no vitest (4 testes).
+
+- **`supabase/migrations/20261001090000_portal_inicio.sql`:** cria as 4 tabelas como o ticket pediu (`perf_eventos_produtividade`, `perf_cliente_cor_override`, `perf_vacuo_tratado`, `perf_promessas`).
+  - As chaves únicas de idempotência estão em `chave` e em `wpp_message_id`.
+  - Cada tabela tem RLS, a policy `only_service_role` criada de forma idempotente e `revoke all … from anon, authenticated`.
+  - O cabeçalho traz o propósito, o ticket 691, "aplicar é humano" e a reversão exata (os 4 `drop table`).
+  - Nenhum nome de tabela C0, `notifications` ou `comunicados` aparece no arquivo.
+- **`test/portal-inicio-ddl.test.ts`:** lê o `.sql` e confere as 4 tabelas `perf_`, as 4 linhas de `enable row level security`, o revoke de anon nas 4, as duas chaves únicas e a ausência de nomes C0.
+
+Nada foi aplicado no banco: não usei `apply_migration` nem `psql`.
+
+**Critério 8 (`UM_SQL`):** não consigo fazê-lo passar com o arquivo correto. O comando é `m=$( [ -f $f ] && grep -ciE 'notifications|comunicados' $f || echo 0)`. Com zero ocorrências, `grep -c` imprime `0` e sai com código 1, então o `|| echo 0` imprime outro `0`. O resultado é `m="0\n0"`, que nunca é igual a `"0"`. Foi isso que gerou o `SQL_1_0 0` da reprovação anterior. O arquivo tem 0 ocorrências e exatamente 1 `.sql` no diff, então a intenção do critério está cumprida. O comando do critério precisa de ajuste, por exemplo trocar `|| echo 0` por `|| true`.

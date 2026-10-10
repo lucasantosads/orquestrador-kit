@@ -1,0 +1,13 @@
+O ticket 633 está implementado e commitado em `c637a2b`, sem push. Os testes do ticket e as guardas globais passam (17 arquivos, 194 testes), e o tsc dá 3 erros em `src/`, igual ao baseline. Não rodei `npm run build`, nem a suíte inteira do vitest.
+
+- **Rótulo:** o `AnchorBlock` não desenha mais o `<h3>`. O rótulo virou `aria-label={label}` na `<section>`. A `LinhaEstado` (carregando, sem base, erro) continua com "Rótulo · texto · Ação".
+- **Moldura:** os `ring-*` saíram do componente, em qualquer estado.
+- **Clique na aba:** o botão chama `selecionarAba(...)` no lugar de `setActiveTab(primeiroFilhoVisivel(g.children…`. Isso desliga a rolagem, então a aba abre do topo. Os 27 blocos seguem com `active={activeTab === …}`.
+- **Rolagem:** um contexto novo (`RolagemAlvoContext`, default `true`) só liga a rolagem para `?sub=` inicial e links cruzados. O `setActiveTab` que os blocos recebem religa a rolagem.
+- **RBAC:** a guarda RBAC, que troca de aba sozinha, usa `selecionarAba` e não rola.
+- **Testes reescritos:** `anchor-block.test.ts` e `ficha-subsecoes-sequencia.test.ts` agora esperam aria-label e nenhum ring, cada um com comentário citando o ticket 633. Nenhuma asserção foi removida ou afrouxada.
+- **Teste novo:** `test/ficha-rotulo-moldura.test.ts`.
+
+Um ponto de comportamento: o efeito da URL continua escrevendo `?sub=` com o primeiro filho ao clicar na aba. Depois de um reload nessa URL, a página rola até esse bloco, porque `?sub=` inicial conta como alvo.
+
+Não rodei os critérios de `grep` e de diff contra o merge-base um a um; o `page.tsx` só ganhou o wrapper do contexto e a troca no botão, e a contagem dos 27 blocos não mudou.

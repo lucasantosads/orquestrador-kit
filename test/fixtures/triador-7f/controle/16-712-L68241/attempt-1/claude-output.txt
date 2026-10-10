@@ -1,0 +1,9 @@
+Atribuir uma tarefa a outra pessoa, na criação ou na reatribuição, agora grava um aviso para o novo responsável. O commit é `cddf0da`, sem push.
+
+- **Verificações:** `tsc` deu 3 erros (o baseline). Os 7 arquivos de teste da allowlist passaram, junto com as guardas `travessao-mudo`, `c0-guard` e `fetch-json-teto`. Não rodei o conjunto completo do `vitest`, nem o `npm run build`, nem as outras 4 guardas globais (`consistencia-contagens`, `bloco-vazio-linha`, `abas-montadas`, `cartao-topo-perfil`). Não rodei `rm -rf .next` antes do `tsc`, porque o comando foi negado; o `grep -v '^\.next/'` já tira esse ruído da contagem.
+- **Rota:** `src/app/api/tarefas-kanban/route.ts` ganhou o helper `avisarAtribuicao`, chamado no POST e no PATCH. O aviso tem categoria `tarefa`, o título da tarefa, a mensagem `<cliente> · por <quem atribuiu>` (com ` · prazo dd/mm/aaaa` quando há prazo) e link `/portal#tarefas`. A chave é `tarefa:<id>:atribuida:<responsavel_id>`, então repetir a atribuição não duplica.
+- **Quando não avisa:** se o novo responsável é quem está pedindo, ou se o PATCH não troca o responsável.
+- **Falha do aviso:** o helper faz `console.error` com o id da tarefa e segue, então a tarefa grava e a resposta não muda de status.
+- **Teste novo:** `test/aviso-tarefa-atribuida.test.ts` tem 6 casos, todos com mocks e UUIDs válidos. Cobre criar para si, criar para outro, reatribuir, não avisar quando nada muda, erro do aviso sem afetar o status e o link.
+- **Testes existentes:** nenhum foi alterado nem precisou de recálculo.
+- **Orçamento:** o diff tem 144 linhas, contra o teto de 320.

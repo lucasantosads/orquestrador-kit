@@ -1,0 +1,133 @@
+{
+ "id": "907",
+ "slug": "operacao-inicio-registra-falha",
+ "lane": "produto",
+ "perfil": "backend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 220 linhas (~30 em src/app/api/cron/operacao-inicio/route.ts, ~170 no teste NOVO test/operacao-inicio-registro.test.ts). Se passar do teto, pare e reporte. PROBLEMA (08/10): o cron /api/cron/operacao-inicio roda vacuo, eventos de resposta e promessas, que desde 80a212f lancam em falha de leitura; rodarOperacaoInicio engole o erro por etapa e a rota so responde 500, sem console.error, sem linha em tabela, sem aviso. PASSO 1: leia src/app/api/cron/operacao-inicio/route.ts (inteiro), src/lib/jobs/operacao-inicio.ts linhas 16-27 e 92-106, src/lib/jobs/core/cron-registro.ts (inteiro), src/app/api/cron/aprovacao-tacita/route.ts (molde de uso) e test/cron-registro-rotas.test.ts linhas 1-70 (molde do teste). FAZER: (1) src/app/api/cron/operacao-inicio/route.ts: depois da checagem de segredo e do createClient, rode `registrarExecucaoCron(\"operacao-inicio\", \"cron\", fn, { db: db as unknown as JobsDb })` (import de @/lib/jobs/core/cron-registro e o tipo JobsDb de @/lib/jobs/core/types), onde fn chama rodarOperacaoInicio(db, agoraISO) e, se alguma etapa tem ok false, LANCA um erro cuja mensagem lista cada etapa com falha no formato `etapas com falha: <nome> (<erro>); <nome> (<erro>)` e que carrega o resultado (classe local, ex. `class EtapasComFalha extends Error { constructor(readonly resultado: ...) }`). Sem falha, fn devolve o resultado. A rota captura: EtapasComFalha -> console.error(\"[operacao-inicio]\", mensagem) e responde NextResponse.json(e.resultado, { ",
+ "cria_novo": [
+  "test/operacao-inicio-registro.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/app/api/cron/operacao-inicio/route.ts",
+  "test/operacao-inicio-registro.test.ts"
+ ],
+ "colunas_escritas": [
+  "ops_jobs.tipo",
+  "ops_jobs.chave_idempotencia",
+  "ops_jobs.payload",
+  "ops_jobs.status",
+  "ops_jobs.tentativas",
+  "ops_jobs.iniciado_em",
+  "ops_jobs.finalizado_em",
+  "ops_jobs.duracao_ms",
+  "ops_jobs.resultado",
+  "ops_jobs.erro_classe",
+  "ops_jobs.erro_msg",
+  "ops_job_eventos.job_id",
+  "ops_job_eventos.evento",
+  "ops_job_eventos.dados"
+ ],
+ "dependencias": [],
+ "prioridade": 60,
+ "recon_esperado": [
+  {
+   "descricao": "a rota do operacao-inicio ainda nao usa registrarExecucaoCron",
+   "cmd": "n=$(grep -c 'registrarExecucaoCron' src/app/api/cron/operacao-inicio/route.ts || true); [ \"$n\" = 0 ] && echo SEM_REGISTRO || echo ST_$n",
+   "espera": "SEM_REGISTRO"
+  },
+  {
+   "descricao": "registrarExecucaoCron existe e relanca o erro",
+   "cmd": "e=$(grep -c 'export async function registrarExecucaoCron' src/lib/jobs/core/cron-registro.ts || true); t=$(grep -c '    throw err;' src/lib/jobs/core/cron-registro.ts || true); [ \"$e\" = 1 ] && [ \"$t\" -ge 1 ] && echo REGISTRO_OK || echo ST_${e}_${t}",
+   "espera": "REGISTRO_OK"
+  },
+  {
+   "descricao": "test/operacao-inicio-registro.test.ts ainda nao existe",
+   "cmd": "test -e test/operacao-inicio-registro.test.ts && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$' || true); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in src/app/api/cron/operacao-inicio/route.ts test/operacao-inicio-registro.test.ts; do if [ \"$f\" = \"$p\" ]; then ok=1; fi; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "zero escrita direta nova em banco nas linhas adicionadas da rota",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- src | grep -E '^[+][^+]' | grep -cE '[.](insert|update|upsert|delete|rpc)[(]' || true); [ \"$n\" = 0 ] && echo SEM_ESCRITA || echo ESCRITA_$n",
+   "espera": "SEM_ESCRITA",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 220 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 220 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/c0-guard.test.ts test/fetch-json-teto.test.ts test/senha-visivel-regressao.test.ts test/funcao-escondida-sem-papel.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes do job e do registro de cron seguem verdes",
+   "cmd": "npx vitest run test/eventos-resposta-grupo.test.ts test/cron-registro.test.ts test/cron-registro-rotas.test.ts test/avisos-operacao.test.ts test/avisos-vacuo.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "a rota registra a execucao com o tipo operacao-inicio e loga a falha",
+   "cmd": "r=$(grep -c 'registrarExecucaoCron(\"operacao-inicio\"' src/app/api/cron/operacao-inicio/route.ts || true); c=$(grep -c 'console.error' src/app/api/cron/operacao-inicio/route.ts || true); e=$(grep -c 'etapas com falha' src/app/api/cron/operacao-inicio/route.ts || true); [ \"$r\" = 1 ] && [ \"$c\" -ge 1 ] && [ \"$e\" -ge 1 ] && echo REGISTRA || echo ST_${r}_${c}_${e}",
+   "espera": "REGISTRA"
+  },
+  {
+   "descricao": "teste novo verde (test/operacao-inicio-registro.test.ts)",
+   "cmd": "test -f test/operacao-inicio-registro.test.ts && npx vitest run test/operacao-inicio-registro.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "avaliador: etapa com falha no operacao-inicio vira execucao 'falhou' via registrarExecucaoCron, com o nome e o erro de cada etapa na mensagem, e console.error; status e corpo da resposta iguais aos de hoje (200 com resultado, 500 com resultado, 401, 503). REPROVE se: src/lib/jobs/** mudou; a rota grava direto em ops_jobs ou em outra tabela; o resultado com falha deixou de ir no corpo do 500; 401/503 passaram a registrar; teste existente afrouxado; qualquer .sql ou tela.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/eventos-resposta-grupo.test.ts",
+   "motivo": "importa GET da rota e checa 401 sem segredo e 503 sem env, que continuam antes do registro; fora da allowlist; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/cron-registro-rotas.test.ts",
+   "motivo": "molde do teste novo; cobre outras rotas; fora da allowlist; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/cron-registro.test.ts",
+   "motivo": "cobre registrarExecucaoCron, que nao muda; fora da allowlist"
+  },
+  {
+   "teste": "test/avisos-operacao.test.ts",
+   "motivo": "importa ETAPAS de src/lib/jobs/operacao-inicio.ts, que nao muda; fora da allowlist"
+  },
+  {
+   "teste": "test/avisos-vacuo.test.ts",
+   "motivo": "importa ETAPAS de src/lib/jobs/operacao-inicio.ts, que nao muda; fora da allowlist"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 4143
+}

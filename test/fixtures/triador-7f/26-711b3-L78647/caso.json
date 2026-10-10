@@ -1,0 +1,12 @@
+{
+ "id": "711b3",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/711b3-saude-chip-ficha-tela.md",
+ "ticket_sha": "f5c235c9bed685908241039219f47c1c7373ed72",
+ "ticket_antes": true,
+ "linha_bloqueio": 78647,
+ "log_inicio": 78583,
+ "fim": "2026-10-07T23:13:32Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/711b3"
+}

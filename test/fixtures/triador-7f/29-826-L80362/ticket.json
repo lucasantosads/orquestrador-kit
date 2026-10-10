@@ -1,0 +1,395 @@
+{
+ "id": "826",
+ "slug": "ficha-sem-reescrita-notion",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 300 linhas (~120 em src/app/dashboard/clientes/[id]/page.tsx, ~150 no teste NOVO test/ficha-sem-reescrita-notion.test.ts, ajustes em testes existentes). Se passar do teto, pare e reporte. FONTE: docs/mapa/00-MAPA-GERAL.md (divida 6), docs/mapa/04-notion.md secao 3 (chave dupla; tabela dos resolvers) e docs/mapa/ref-auditoria-26set.md:57 e :201 (resolver unico e prioridade 1 da auditoria de 26/09). PASSO 1: leia src/app/dashboard/clientes/[id]/page.tsx (load() perto da linha 698: Promise.all com /api/notion/clientes/${id}, /api/clientes-extra/${id}, /api/clientes/teses?notion_id=${id}; o router.replace da linha 708; e cada uso de String(id) ou id as string passado como notionId/setupNotionId) e src/app/api/notion/clientes/[id]/route.ts (o que ele devolve quando o id e cliente_id). FAZER: (1) remover o router.replace para `/dashboard/clientes/${res1.notion_id}`: a URL fica como chegou (uuid ou notion_id). (2) novo estado notionId (string | null): quando o id da URL ja e o notion_id, notionId = id; quando /api/notion/clientes/${id} responde erro com notion_id diferente, notionId = res1.notion_id e a ficha repete SO a leitura /api/notion/clientes/${notionId} para carregar o cliente. (3) as leituras legadas que pedem notion_id passam a usar notionId (nunca o id cru): /api/clientes/teses?notion_id=, /api/team/nps?cliente_notion_id=, /api/clientes/reunioes?notion_id=, /api/clientes/resumos?notion_id=, as props notionId de ContaNovaSugestao e ResumoGrupoBlo",
+ "cria_novo": [
+  "test/ficha-sem-reescrita-notion.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/app/dashboard/clientes/[id]/page.tsx",
+  "test/campanhas-aceite-mockup.test.tsx",
+  "test/cartao-topo-setup-e-closer.test.ts",
+  "test/ficha-por-uuid.test.ts",
+  "test/link-setup-notion-id.test.ts",
+  "test/painel-em-campanhas.test.ts",
+  "test/ficha-sem-reescrita-notion.test.ts"
+ ],
+ "dependencias": [
+  "801",
+  "802",
+  "803",
+  "804",
+  "805",
+  "806",
+  "807",
+  "808",
+  "809",
+  "810",
+  "811",
+  "812",
+  "813",
+  "814",
+  "815",
+  "816",
+  "817",
+  "818",
+  "819",
+  "820",
+  "821",
+  "822",
+  "823",
+  "824",
+  "825",
+  "800",
+  "humano:decisao-chave-oficial-cliente-id",
+  "711b4"
+ ],
+ "prioridade": 42,
+ "recon_esperado": [
+  {
+   "descricao": "src/app/dashboard/clientes/[id]/page.tsx existe na arvore do loop",
+   "cmd": "test -e 'src/app/dashboard/clientes/[id]/page.tsx' && echo EXISTE || echo AUSENTE",
+   "espera": "EXISTE"
+  },
+  {
+   "descricao": "test/ficha-sem-reescrita-notion.test.ts ainda nao existe",
+   "cmd": "test -e 'test/ficha-sem-reescrita-notion.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "a ficha reescreve a URL para notion_id hoje",
+   "cmd": "grep -cF 'router.replace(`/dashboard/clientes/${res1.notion_id}' 'src/app/dashboard/clientes/[id]/page.tsx'",
+   "espera": "1"
+  },
+  {
+   "descricao": "leituras legadas com notion_id cru na ficha (linhas)",
+   "cmd": "grep -cE 'notion_id=\\$\\{id\\}|cliente_notion_id=\\$\\{id\\}' 'src/app/dashboard/clientes/[id]/page.tsx'",
+   "espera": "5"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/app/dashboard/clientes/[id]/page.tsx' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/app/api/notion/clientes/[id]/route.ts' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/app/dashboard/clientes/[id]/page.tsx' 'test/campanhas-aceite-mockup.test.tsx' 'test/cartao-topo-setup-e-closer.test.ts' 'test/ficha-por-uuid.test.ts' 'test/link-setup-notion-id.test.ts' 'test/painel-em-campanhas.test.ts' 'test/ficha-sem-reescrita-notion.test.ts'; do if [ \"$f\" = \"$p\" ]; then ok=1; fi; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 300 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 300 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum teste existente da allowlist perdeu it(/expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (contra o merge-base com staging-auto)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=NAO_AFROUXOU; for f in 'test/campanhas-aceite-mockup.test.tsx' 'test/cartao-topo-setup-e-closer.test.ts' 'test/ficha-por-uuid.test.ts' 'test/link-setup-notion-id.test.ts' 'test/painel-em-campanhas.test.ts'; do [ -f \"$f\" ] || { git cat-file -e \"$b:$f\" 2>/dev/null && r=APAGOU_$f; continue; }; for p in 'expect(' 'it('; do a=$(git show \"$b:$f\" 2>/dev/null | grep -cF \"$p\"); n=$(grep -cF \"$p\" \"$f\"); [ \"${n:-0}\" -ge \"${a:-0}\" ] || r=CAIU_$f; done; s0=$(git show \"$b:$f\" 2>/dev/null | grep -cE '\\.(skip|only|todo)\\('); s1=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"${s1:-0}\" -le \"${s0:-0}\" ] || r=SKIP_NOVO_$f; d0=$(git show \"$b:$f\" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' \"$f\"); [ \"${d1:-0}\" -le \"${d0:-0}\" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r",
+   "espera": "NAO_AFROUXOU",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes da allowlist verdes depois da mudanca",
+   "cmd": "npx vitest run 'test/campanhas-aceite-mockup.test.tsx' 'test/cartao-topo-setup-e-closer.test.ts' 'test/ficha-por-uuid.test.ts' 'test/link-setup-notion-id.test.ts' 'test/painel-em-campanhas.test.ts' >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "a ficha nao reescreve mais a URL para notion_id",
+   "cmd": "n=$(grep -cF 'router.replace(`/dashboard/clientes/${res1.notion_id}' 'src/app/dashboard/clientes/[id]/page.tsx'); [ \"$n\" = 0 ] && echo SEM_REESCRITA || echo REESCREVE_$n",
+   "espera": "SEM_REESCRITA"
+  },
+  {
+   "descricao": "nenhuma leitura legada usa o id cru como notion_id",
+   "cmd": "n=$(grep -cE 'notion_id=\\$\\{id\\}|cliente_notion_id=\\$\\{id\\}' 'src/app/dashboard/clientes/[id]/page.tsx'); [ \"$n\" = 0 ] && echo SEM_ID_CRU || echo ID_CRU_$n",
+   "espera": "SEM_ID_CRU"
+  },
+  {
+   "descricao": "teste novo verde (test/ficha-sem-reescrita-notion.test.ts)",
+   "cmd": "test -f test/ficha-sem-reescrita-notion.test.ts && npx vitest run test/ficha-sem-reescrita-notion.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "avaliador: abrir a ficha por uuid mantem a URL; o cliente carrega pelo notion_id resolvido; leituras legadas usam notionId e, sem ele, mostram 'sem base' com motivo. REPROVE se: ainda reescreve a URL; leitura legada recebe uuid; lista vazia no lugar de 'sem base'; rota de API alterada.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/a11y/app-dashboard-clientes-id-page.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/aba-na-url.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/aba-resultados-fechamentos.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/abas-montadas.test.ts",
+   "motivo": "guarda global: varre src/ inteiro e a mudanca deste ticket nao toca no que ela mede (C0, json, travessao, contagens); nao editavel"
+  },
+  {
+   "teste": "test/acao-unica-ficha-mutacoes.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/ativo-pela-receita.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/barra-visao.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/bloco-tarefas-visao.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/cartao-copy-sem-travessao.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/conta-cadastro-operacao.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/conta-conexoes-entregaveis.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/conta-conexoes.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/conta-crm-sem-contradicao.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/conta-quadro-contrato-aberto.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/conta-resultados-escritorio.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/erro-objeto-nao-quebra.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/ficha-aba-comercial.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/ficha-abas-orfas.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/ficha-nav-colapsavel.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/ficha-nps.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/ficha-obs-contrato.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/ficha-relacao-estados.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/ficha-relacao-leitura.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/ficha-rotulo-moldura.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/ficha-subsecoes-sequencia.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/ghl-um-lugar-so.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/header-cliente-consolidado.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/kpis-visao-buraco-coleta.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/leitura-relacao-tela.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/lote-b3-1-periodo.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/lote-d-colunas.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/ltv-na-conta.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/metricas-filtros-periodo.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/metricas-invalidacao.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/observacoes-notas-fora.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/orquestrador-enforcement.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/otimizacoes-tela.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/painel-estado-explicito.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/perf-cliente-438.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/rbac-visual.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/registrar-verificacao-rotulo.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/registro-unico-relacao.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/relacao-aceite.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/relacao-config-para-conta.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/relacao-responder-tela.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/resumo-grupo-wpp-tela.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/resumo-score-fonte-unica.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/rotas-fantasma-ficha.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/saude-motivo-sem-base.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/score-saude-fonte-unica.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/timeline-relacao.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/visao-aceite-estrutura.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/visao-aceite-mockup.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/visao-copy-ausencia.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/visao-dado-parado-e-link.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/visao-geral-ordem.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/visao-limpeza-final.test.tsx",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/visao-sem-cockpit-antigo.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/whatsapp-grupos-ui.test.ts",
+   "motivo": "le a fonte de page.tsx da ficha e nao cita router.replace nem notion_id (grep em 03/10 na arvore de origin/staging-auto): a troca do load nao muda o que ele afirma; se quebrar, PARE e descreva"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 4380
+}

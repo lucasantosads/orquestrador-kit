@@ -1,0 +1,14 @@
+Parei o ticket 867 sem implementar e sem commitar. Do jeito que a lista fechada está, ele não tem como passar, e uma terceira tentativa reprovaria pelo mesmo motivo da anterior.
+
+**O bloqueio.** Tirar o `criarReuniao` da ficha quebra obrigatoriamente duas asserções de `test/acao-unica-ficha-controles.test.tsx` que a autorização de 07/10 (`liberacoes.json`, token `867-botoes-reuniao-escolhidos`) não cobre. Ela cobre só as linhas `:77` e `:118` (de 22 para 21):
+
+- **`:119`**: `expect(new Set(CONTROLES.map(([r]) => r.split(" — ")[0])).size).toBe(13)` passaria a 12. Esse conjunto conta as mutações diferentes que os botões das abas disparam. Quando a entrada `criarReuniao` sai (linha `:77`, que já está autorizada), sobram 12 de verdade. Não existe forma honesta de manter 13.
+- **`:87`**: `expect(PUBLICADOS.length).toBe(16)` passaria a 15. A lista sai dos campos `executando*` da interface do contexto. O `executandoCriarReuniao` (`ficha-context.tsx:174`) só existe porque o `useAcaoUnica` do `criarReuniao` existe, e esse hook sai de `page.tsx` por ordem do ticket. A única saída para manter 16 seria publicar um `executandoCriarReuniao: false` fixo no contexto, um campo morto só para bater a contagem. Não fiz isso porque seria maquiar o teste.
+
+Não tem mais nada travando. A outra menção fora da allowlist (`bloco-relacao.tsx:160`) é só um comentário, e nenhum outro teste fora da lista cita os nomes que saem.
+
+**Para destravar, uma de duas:**
+1. **Recomendo esta:** você acrescenta à nota do token `867-botoes-reuniao-escolhidos` (e à lista do ticket `docs/fila/867-relacao-sem-escrita-reuniao.md`) as linhas `acao-unica-ficha-controles.test.tsx:87` (16 para 15, sai `executandoCriarReuniao`) e `:119` (13 para 12, sai `criarReuniao`). Aí refaço o ticket com as duas trocas comentadas citando o 867.
+2. Você decide que `executandoCriarReuniao` fica publicado mesmo sem a mutação. Isso resolve a `:87`, mas a `:119` continua precisando de autorização.
+
+Guardei essa armadilha na memória do projeto: a lista fechada cita as asserções com o nome literal e esquece as contagens que o mesmo nome alimenta.

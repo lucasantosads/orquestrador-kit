@@ -1,0 +1,12 @@
+{
+ "id": "691",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/691-inicio-ddl.md",
+ "ticket_sha": "94a46ba83c97bfe253f369a065559e7271d5f969",
+ "ticket_antes": false,
+ "linha_bloqueio": 65374,
+ "log_inicio": 65347,
+ "fim": "2026-09-30T20:10:52Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/691"
+}

@@ -1,0 +1,13 @@
+{
+ "id": "707a",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/707a-responder-prazo-da-promessa.md",
+ "ticket_sha": "f2c3cef0da051d892227037074acbd2d52747599",
+ "ticket_antes": false,
+ "linha_bloqueio": null,
+ "linha_fim": 83293,
+ "log_inicio": 83258,
+ "fim": "2026-10-08T17:15:04Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/707a"
+}

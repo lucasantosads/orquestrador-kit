@@ -1,0 +1,15 @@
+Reescrevi o ticket 940 do zero e commitei como `06b2f15`. Não rodei `npm run build`, e não fiz merge nem push.
+
+A reprovação anterior foi por conflito de merge em `staging-auto`. A branch estava limpa, igual ao HEAD da staging, e os 5 arquivos do ticket não existiam, então não havia conflito a resolver. Recriei o trabalho sobre o HEAD atual (`1159317`), que já inclui o 952a, para o merge não conflitar.
+
+- **Arquivos:** `constantes.ts`, `agregar.ts`, `score.ts`, `desvio.ts` e `test/perf-nicho-tese-agregar.test.ts`, todos na allowlist.
+- **Orçamento de diff:** 653 linhas adicionadas, abaixo do teto de 780.
+- **Testes novos:** 17 de 17 passam.
+- **tsc:** 3 erros, todos do baseline (`qualificacao-regras/[id]/route.ts`, `qualificacao-regras/estagios/route.ts`, `qualificacao-block.tsx`), nenhum novo. O `rm -rf .next` foi negado por permissão, então o tsc rodou sem limpar a pasta. Nenhum erro apareceu com caminho `.next/`.
+- **Guardas globais:** as 8 ficaram verdes e não editei nenhuma.
+
+Rodei só essas verificações; os demais critérios do ticket não foram executados. Os cinco do código são: nenhum `.sql`, `vercel.json` intocado, lib sem I/O, nenhum `.json()` novo e o 50 do gatilho só em `DESVIO_TESE`.
+
+Duas escolhas minhas onde o ticket não definia:
+- **Lacunas do enunciado:** `gerado` fica `null` quando não há contrato ou falta ticket em algum contrato. Um MQL ou fechamento sem campanha, só com `tese_id`, só conta quando o filtro de tipo é "todos".
+- **Assinatura de `calcularScore`:** aceita um campo opcional `nome`, usado só no desempate depois do CPMQL.

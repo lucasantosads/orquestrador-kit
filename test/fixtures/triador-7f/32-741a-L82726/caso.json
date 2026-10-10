@@ -1,0 +1,12 @@
+{
+ "id": "741a",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/741a-promessas-avaliar-pura.md",
+ "ticket_sha": "a911fb9c933c5075a2a487a335c394204d33a57d",
+ "ticket_antes": true,
+ "linha_bloqueio": 82726,
+ "log_inicio": 82695,
+ "fim": "2026-10-08T14:40:06Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/741a"
+}

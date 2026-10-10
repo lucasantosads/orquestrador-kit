@@ -1,0 +1,89 @@
+{
+ "id": "691",
+ "slug": "inicio-ddl",
+ "lane": "produto",
+ "perfil": "api",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 220 linhas (~180 no .sql NOVO, ~40 no teste NOVO). Se passar do teto, pare e reporte. FONTE: docs/planos/plano-portal-gestor-30set.md (plano aprovado + adendo de decisoes de 30/09, que vale sobre o plano). PASSO 1: leia supabase/migrations/20260909000000_335b_nps_disparo_fila.sql e supabase/migrations/20260922100001_d1_metricas_por_tipo.sql (molde: create table if not exists, RLS, policy only_service_role idempotente em DO, revoke all from anon, authenticated). FAZER: NOVO supabase/migrations/20261001090000_portal_inicio.sql com 4 tabelas: (a) perf_eventos_produtividade: id uuid pk default gen_random_uuid(), colaborador_id uuid null references employees(id), cliente_id uuid null references clientes(id), tipo text not null, valor numeric null, origem text not null, chave text not null UNIQUE (idempotencia), ocorrido_em timestamptz not null, metadata jsonb not null default '{}', criado_em timestamptz not null default now(); indice (colaborador_id, ocorrido_em desc). (b) perf_cliente_cor_override: id uuid pk, cliente_id uuid not null references clientes(id), cor text not null check (cor in ('verde','amarelo','vermelho')), motivo text not null check (length(trim(motivo)) > 0), autor_id uuid not null references employees(id), criado_em timestamptz default now(), removido_em timestamptz null, removido_por uuid null references employees(id); UNIQUE parcial (cliente_id) where removido_em is null. (c) perf_vacuo_tratado: id uuid pk, group_jid text not null, ",
+ "cria_novo": [
+  "supabase/migrations/20261001090000_portal_inicio.sql",
+  "test/portal-inicio-ddl.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "supabase/migrations/20261001090000_portal_inicio.sql",
+  "test/portal-inicio-ddl.test.ts"
+ ],
+ "dependencias": [],
+ "prioridade": 40,
+ "recon_esperado": [
+  {
+   "descricao": "supabase/migrations/20261001090000_portal_inicio.sql ainda nao existe",
+   "cmd": "test -e 'supabase/migrations/20261001090000_portal_inicio.sql' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "molde de RLS only_service_role existe",
+   "cmd": "test -e 'supabase/migrations/20260909000000_335b_nps_disparo_fila.sql' && echo PRESENTE || echo SUMIU",
+   "espera": "PRESENTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'supabase/migrations/20261001090000_portal_inicio.sql' 'test/portal-inicio-ddl.test.ts'; do case \"$f\" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 220 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 220 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde (test/portal-inicio-ddl.test.ts)",
+   "cmd": "test -f test/portal-inicio-ddl.test.ts && npx vitest run test/portal-inicio-ddl.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "as 4 tabelas com RLS e sem anon",
+   "cmd": "f=supabase/migrations/20261001090000_portal_inicio.sql; test -f $f || { echo AUSENTE; exit 0; }; t=0; for n in perf_eventos_produtividade perf_cliente_cor_override perf_vacuo_tratado perf_promessas; do grep -qi \"create table if not exists public[.]$n\" $f && t=$((t+1)); done; r=$(grep -ci 'enable row level security' $f); a=$(grep -ciE 'revoke all on public[.]perf_[a-z_]+ from anon' $f); [ $t = 4 ] && [ $r -ge 4 ] && [ $a -ge 4 ] && echo DDL_OK || echo DDL_${t}_${r}_${a}",
+   "espera": "DDL_OK"
+  },
+  {
+   "descricao": "nenhum nome da zona C0 no .sql",
+   "cmd": "f=supabase/migrations/20261001090000_portal_inicio.sql; test -f $f || { echo AUSENTE; exit 0; }; n=$(grep -ciE 'clientes_receita|leads_crm|ads_metadata|ads_performance|fn_mql_sql_by_month|trafego_|vw_' $f); [ \"$n\" = 0 ] && echo SEM_C0 || echo C0_$n",
+   "espera": "SEM_C0"
+  },
+  {
+   "descricao": "so um .sql novo, sem tocar notifications nem comunicados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); f=supabase/migrations/20261001090000_portal_inicio.sql; m=$( [ -f $f ] && grep -ciE 'notifications|comunicados' $f || echo 0); [ \"$n\" = 1 ] && [ \"$m\" = 0 ] && echo UM_SQL || echo SQL_${n}_${m}",
+   "espera": "UM_SQL"
+  },
+  {
+   "descricao": "avaliador: um arquivo de migration com as 4 tabelas perf_, RLS, policy so service role, revoke de anon e authenticated, chaves unicas de idempotencia e reversao no cabecalho; nada aplicado. REPROVE se: aplicou; tocou C0, notifications ou comunicados; tabela sem RLS; sem chave unica de idempotencia.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 5387
+}

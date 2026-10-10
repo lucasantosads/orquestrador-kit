@@ -1,0 +1,17 @@
+A Visão (atividade do período e linha do tempo) e o Apolo (`reunioes_recentes`) agora leem só as reuniões operacionais, e o trabalho está commitado em `frente/868` (e375755). Não fiz push.
+
+O que mudou:
+- **Visão:** `atividade-periodo.tsx` e `timeline-visao.tsx` carregam `reunioes` de `urlReunioesOperacionais(clienteId)`, convertido com `listaParaRelacao`. A chave e o estado "falhou" (distinto de vazio) continuam os mesmos.
+- **Apolo:** `reunioesRecentes` usa a mesma URL e lê o resumo do tl;dv pelo campo `notas`. Resposta nula, com `error` ou rota que lança devolve "não foi possível ler as reuniões". Lista vazia devolve "nenhuma reunião operacional recebida do tl;dv".
+- **Teste existente:** em `test/apolo-ferramentas-cliente.test.ts` o caminho e a fixture agora são de `perf_reuniao`. As asserções ficaram com o mesmo alvo e todas continuam lá. Cada troca tem comentário.
+- **Reprovação anterior:** os comentários novos citam o 867, como o critério mecânico cobra, junto com o 868 do ticket.
+- **Teste novo:** `test/visao-apolo-reuniao-operacional.test.ts` cobre a fonte das três sem a rota antiga, mais resposta nula, erro, vazio e uma reunião.
+
+O que rodei:
+- Os dois testes da mudança passam (15 testes). As 7 guardas globais passam (70 testes).
+- O `tsc` dá 3 erros, igual ao baseline.
+- O diff soma 107 linhas, dentro do teto de 260.
+- Não rodei `npm run build` nem o `vitest run` completo.
+- O `rm -rf .next` foi negado por permissão, então medi o `tsc` sem limpar o `.next`. O filtro do gate já tira o ruído de `.next/`.
+
+Mudei só os 5 arquivos da allowlist. Nenhuma rota, o adaptador, nem os outros leitores de `reunioes_cliente` foram tocados.

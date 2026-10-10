@@ -1,0 +1,9 @@
+Commitei a migration e o teste novo (ab7a285, 102 linhas, dentro do teto de 130). Dois problemas continuam abertos: a suíte completa segue vermelha por um teste fora da allowlist, e um critério do ticket contradiz o `.sql` que o próprio ticket manda escrever.
+
+Os 6 testes novos e as 5 guardas de migration que o critério manda rodar passam. Não rodei a suíte completa nem `tsc` nem `npm run build`.
+
+**Suíte vermelha, reprovação anterior.** `test/saude-chip-ficha.test.ts` falha com `Cannot find module '@/hooks/useAcaoUnica'`, vindo de `geral-tab.tsx`. Ele falha também isolado neste HEAD, sem relação com meus dois arquivos. Está fora da allowlist, então parei nele conforme a regra do ticket. Provável causa: o mock de módulos do teste não cobre o hook, que `geral-tab.tsx` passou a importar. A correção cabe a um ticket que tenha esse teste ou `geral-tab.tsx` na allowlist.
+
+**Contradição no critério "MIGRATION_OK".** O corpo mandado pelo ticket tem `on delete cascade` e `on delete set null` nas chaves estrangeiras. O critério conta linhas fora de comentário que casam `delete`, e esperaria 0. Com o `.sql` do ticket, o resultado sai `ST_11111_2` em vez de `MIGRATION_OK`. Mantive o DDL como o Lucas especificou. Tirar os `on delete` mudaria o comportamento: apagar um cliente passaria a ser barrado pela chave estrangeira. No teste, a barreira é só contra o comando `delete from`. O Lucas precisa decidir: relaxar o critério para `delete from`, ou aceitar as chaves estrangeiras sem `on delete`.
+
+Não apliquei a migration. Não toquei em `src/`.

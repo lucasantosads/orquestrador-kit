@@ -1,0 +1,9 @@
+ src/app/api/perf/setup/[clienteId]/route.ts        | 17 +++++-
+ .../clientes/[id]/_components/conexoes-relacao.tsx |  2 +-
+ .../dashboard/clientes/[id]/tabs/config-tab.tsx    | 32 ++++++----
+ .../dashboard/clientes/[id]/tabs/ficha-banners.tsx | 14 +++--
+ src/lib/setup/calcular-setup.ts                    | 43 ++++++++++++++
+ test/cartao-topo-setup-e-closer.test.ts            |  7 ++-
+ test/setup-fonte-unica.test.ts                     | 69 ++++++++++++++++++++++
+ test/setup-progresso-ficha.test.ts                 |  4 +-
+ 8 files changed, 167 insertions(+), 21 deletions(-)

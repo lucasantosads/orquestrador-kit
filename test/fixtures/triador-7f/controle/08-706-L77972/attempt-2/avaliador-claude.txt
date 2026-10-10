@@ -1,0 +1,1 @@
+{"aprovado": true, "motivo": "Motivo obrigatório (Salvar desabilitado com trim vazio), 3 cores com rótulo em dialog, marca com autor, data e motivo, DELETE via setL sem recarregar, controles z-10 com stopPropagation. Ressalva: após voltar à regra, o motivo pede para atualizar a página; comentário do teste diz 4 e lista 5."}

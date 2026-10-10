@@ -1,0 +1,22 @@
+A mudança está feita e commitada (f44201d), mas o ticket trava em um teste fora da allowlist, `test/conta-entregas-vazio-unico.test.ts` (ticket 636), que passa a falhar. Não mexi nele. Preciso de uma decisão sua sobre esse teste.
+
+O `tsc` continua em 3 erros em `src/` e o teste novo `test/ficha-conta-contrato.test.ts` passa (4 testes). Não rodei o `npm run build` nem a suíte completa do `vitest`. Nos testes que rodei antes do commit, só esses dois do 636 e o meu (já corrigido) falharam.
+
+**O que mudou**
+- **Observações do Closer** (`financeiro-tab.tsx`): saiu o botão Editar do cabeçalho. Ficou só o Editar inline, que aparece ao lado de "Sem observações ·" e agora também ao lado do texto quando há observação, ambos ligados a `setEditingObs(true)`.
+- **Contratual** (`contratual.tsx`): corrigi o ponto da reprovação anterior.
+  - A data da consulta subiu para `ContratualTab`, e `DisputaCliente` recebe `ate` e `onAteChange`.
+  - O vazio agora é uma linha só, a das entregas, com o texto "Nenhuma entrega registrada até DD/MM/AAAA · entregas aparecem conforme as etapas do onboarding são concluídas".
+  - O vazio da consulta ("Sem prova de entrega no período") saiu. Depois de Consultar não aparecem mais dois vazios, e com entregas presentes nenhuma frase datada engana.
+  - O seletor de data e o botão Consultar ficaram.
+- **Fechamentos** (`resultados-tab.tsx`): o rótulo "Mês do registro" veio antes dos chips.
+- **`escopo-bloco.tsx`, `entregaveis-tab.tsx` e o contrato de escopo vazio:** não foram tocados.
+
+**O conflito**
+Duas asserções do 636 fixam justamente o que o 654 manda mudar:
+- `toContain("Prova de entrega · nenhuma entrega registrada")`, mas o texto do vazio agora é o datado.
+- `toContain("(consultouManual || temEntregas)")`, mas o vazio da consulta e essa condição saíram, como o critério exige.
+
+Para liberar, o `test/conta-entregas-vazio-unico.test.ts` precisa entrar na allowlist, para eu recalcular as duas asserções citando o 654. Alternativa: aceitar que o 636 fique vermelho até alguém ajustá-lo.
+
+Não usei o truque de deixar essas frases num comentário só para o teste passar.

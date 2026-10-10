@@ -1,0 +1,18 @@
+O ticket 707 não passa no gate de vitest: 21 dos 22 `it(` passam e 1 fica vermelho de propósito, igual à tentativa anterior. Está commitado em `c73f19d`, sem push.
+
+**O que o arquivo faz**
+- `test/portal-inicio-aceite.test.tsx` tem 455 linhas, dentro do teto de 560. É o único arquivo tocado, e `src/` está intocado.
+- Há um `it(` por item, com os nomes exatos do ticket.
+- Os rótulos, colunas, filtros e opções saem dos dois mockups via `readFileSync`, não foram copiados à mão.
+- As divergências com o adendo estão na tabela do cabeçalho do teste.
+- `tsc` deu 3 erros, que é o baseline.
+
+**O `it(` vermelho**
+- É `presente: ações Abrir grupo, Criar tarefa e Tratado`. O mockup e a linha B6 do plano exigem "Abrir grupo" no Responder agora, mas `src/components/relacao/responder-agora.tsx` só tem "Subir tarefa", "Tratado" e, para promessas, "Cumprida" e "Descartar". "Criar tarefa" virou "Subir tarefa" por decisão do 697/736.
+- Não achei decisão que tire "Abrir grupo" da fase, então não o pus como divergência.
+- Pelo ticket, afrouxar esse item para passar seria reprovação. Esse `it(` vermelho é o entregável e vira ticket de correção.
+- O ticket manda deixar vermelho e o critério "teste novo verde" exige verde; os dois não fecham enquanto a tela não tiver "Abrir grupo". Preferi respeitar o ticket.
+
+**O que não rodei**
+- Não rodei `npm run build`, nem a suíte vitest inteira, nem as guardas globais de novo.
+- Não consegui rodar o `rm -rf .next` do gate: o comando foi negado. O `tsc` rodou sem limpar `.next` e mesmo assim deu 3.

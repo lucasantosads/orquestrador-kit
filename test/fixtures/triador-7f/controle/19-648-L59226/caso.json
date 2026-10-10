@@ -1,0 +1,13 @@
+{
+ "id": "648",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/648-cabecalho-ficha-chips-rotulados.md",
+ "ticket_sha": "64c6b2240b0c128f6c7d1340f84163cacaba039f",
+ "ticket_antes": false,
+ "linha_bloqueio": null,
+ "linha_fim": 59226,
+ "log_inicio": 59048,
+ "fim": "2026-09-26T15:50:35Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/648"
+}

@@ -1,0 +1,15 @@
+ .../clientes/[id]/_components/analise-ia.tsx       |  19 +++
+ .../[id]/_components/bloco-otimizacoes.tsx         |  29 ++---
+ .../clientes/[id]/_components/bloco-relacao.tsx    |  31 ++++-
+ .../clientes/[id]/_components/timeline-visao.tsx   |  23 ++--
+ src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx |   2 +-
+ test/analise-ia-visao.test.tsx                     |   6 +-
+ test/ficha-visao-blocos-vazios.test.ts             | 127 +++++++++++++++++++++
+ test/otimizacoes-tela.test.ts                      |   4 +-
+ test/timeline-estado-vazio-unico.test.tsx          |  35 ++++--
+ test/timeline-visao.test.tsx                       |   3 +-
+ test/visao-aceite-estrutura.test.tsx               |  68 ++++++++---
+ test/visao-aceite-mockup.test.tsx                  |  16 ++-
+ test/visao-estrutura-relacao.test.tsx              |  26 +++--
+ test/visao-estrutura-timeline.test.tsx             |   5 +-
+ 14 files changed, 321 insertions(+), 73 deletions(-)

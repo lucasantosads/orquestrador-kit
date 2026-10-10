@@ -1,0 +1,21 @@
+Criei `test/portal-inicio-aceite.test.tsx` (454 linhas, dentro do teto de 560) e commitei como `6c064cc`. 21 dos 22 `it(` passam e 1 está vermelho, o que reprova o critério "teste novo verde". Esse item é o entregável do ticket: o vermelho vira ticket de correção.
+
+**Vermelho: `presente: ações Abrir grupo, Criar tarefa e Tratado`.** O Responder agora do Início usa o componente `ResponderAgora` do 737 (`src/components/relacao/responder-agora.tsx`). Ele não tem o botão "Abrir grupo" que o mockup mostra em cada linha. Só tem "Subir tarefa", "Tratado · …", "Cumprida" e "Descartar", e o nome do cliente como link para a ficha.
+
+O teste não afrouxa nada: "Criar tarefa" do mockup é lido como "Subir tarefa" (decisão do 697/736), e "Tratado" casa por substring. O que falta de verdade é só "Abrir grupo".
+
+**Como o teste foi montado:**
+- **Rótulos do mockup:** o teste lê os dois mockups com `readFileSync` e extrai de lá cada rótulo coberto (contadores, colunas, filtros, títulos, botões, opções do "Ver como"). Nenhum rótulo é copiado à mão.
+- **Divergências:** as divergências entre mockup e decisão estão numa tabela no cabeçalho do teste.
+  - Carimbos "até" e data da Meta, pelo 696.
+  - Destaque em 15 dias e "vencidas", pelo adendo.
+  - "Subir tarefa".
+  - "Promessa vence hoje".
+  - "s/ dado" virando "sem base".
+  - Saldo Pix, atalhos de teclado e rotinas agrupadas fora da fase.
+- **Peças puras:** foram renderizadas com `renderToStaticMarkup`; o resto, por leitura de fonte.
+
+**Gate e verificação:**
+- **tsc:** deu os 3 erros do baseline (`qualificacao`), nenhum em `test/`. Não consegui rodar o `rm -rf .next` (negado), então filtrei `.next/` no `grep`.
+- **Não rodei:** as guardas globais, o `npm run build` e os outros critérios de diff (`SO_ALLOWLIST`, `SEM_SQL`).
+- **Escopo:** `src/` não foi tocado, e o commit só contém o arquivo da allowlist.

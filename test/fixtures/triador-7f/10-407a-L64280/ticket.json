@@ -1,0 +1,190 @@
+{
+ "id": "407a",
+ "slug": "fn-reativar-churn-migration",
+ "lane": "produto",
+ "perfil": "sql-proposta",
+ "objetivo": "Escreva a migration `supabase/migrations/20260920000000_fn_reativar_churn.sql`\ncriando `fn_reativar_churn(p_cliente_id uuid)` (`p_cliente_id` = `clientes.id`), `SECURITY DEFINER` com\n`search_path` fixo. NAO aplique a migration: escrever o arquivo e todo o trabalho.\nTudo numa transacao unica; qualquer erro desfaz tudo.\n(a) `clientes_receita.status` volta para ativo. Esta e a UNICA escrita em\n`clientes_receita` autorizada em todo o OS, e ela vive so aqui. Declare isso no\ncabecalho do `.sql` como a excecao C0 autorizada pelo Lucas em 19/09.\n(b) `clientes.status` volta para ativo DE VERDADE. A decisao ja esta tomada, e e\nesta: antes do UPDATE em `clientes`, a funcao chama\n`set_config('app.reativacao_direta', 'on', true)` (o terceiro argumento true\nescopa no transaction). A MESMA migration altera `reverter_para_nao_iniciado()`\npara NAO converter quando essa configuracao estiver 'on'. Reativacao pelo fluxo\nnormal de venda, que nao seta a configuracao, continua passando por\n`nao_iniciado` exatamente como hoje.\n(c) A mesma alteracao de `reverter_para_nao_iniciado()` remove a insercao de\nhistorico propria dela: `trg_registrar_historico_status` ja registra, e hoje saem\nDUAS linhas de historico por reativacao.\n(d) `clientes.data_cancelamento` recebe NULL explicitamente ao reativar. Explicito\nporque o trigger `sincronizar_churn_campos` carimba `CURRENT_DATE` quando encontra\nNULL no caminho de cancelamento; ao reativar, o valor tem que ser gravado pela\nfuncao, nunca deixado para trigger d",
+ "pathspec_allowlist": [
+  "supabase/migrations/20260920000000_fn_reativar_churn.sql",
+  "src/app/api/churn-log/route.ts",
+  "test/churn-log-auth.test.ts",
+  "test/espelho-fase-churn.test.ts"
+ ],
+ "dependencias": [
+  "407a0",
+  "humano:ddl-407a",
+  "humano:ddl-407a0",
+  "humano:excecao-c0-churn-reativar"
+ ],
+ "prioridade": 2,
+ "recon_esperado": [
+  {
+   "descricao": "a migration ainda nao existe",
+   "cmd": "test -e supabase/migrations/20260920000000_fn_reativar_churn.sql && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "pos-d77ab1e (29/09): a tela /churn nao escreve mais do navegador; so le clientes_receita (1 select)",
+   "cmd": "grep -c 'from(\"clientes_receita\")' src/app/churn/page.tsx",
+   "espera": "1"
+  },
+  {
+   "descricao": "pos-d77ab1e (29/09): a reversao vive no DELETE de src/app/api/churn-log/route.ts e hoje APAGA a linha de churn_log",
+   "cmd": "grep -c '\\.from(\"churn_log\")\\.delete()' src/app/api/churn-log/route.ts",
+   "espera": "1"
+  },
+  {
+   "descricao": "o diagnostico que embasa este ticket esta no repo",
+   "cmd": "test -f docs/diagnosticos/2026-09-19-reconciliacao-status.md && echo EXISTE",
+   "espera": "EXISTE"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "a migration existe",
+   "cmd": "test -f supabase/migrations/20260920000000_fn_reativar_churn.sql && echo EXISTE || echo AUSENTE",
+   "espera": "EXISTE"
+  },
+  {
+   "descricao": "fn_reativar_churn e SECURITY DEFINER (so o corpo dela, so codigo: outra funcao da migration pode ter o seu proprio)",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { B=\"$(grep -v '^[[:space:]]*--' \"$F\" | awk 'tolower($0) ~ /function[[:space:]]+(public\\.)?fn_reativar_churn/{f=1} f; f&&/\\$\\$;/{exit}')\"; [ -n \"$B\" ] && { printf '%s\\n' \"$B\" | grep -ciE 'security definer'; true; } || echo SEM_FN_REATIVAR; } || echo ARQUIVO_AUSENTE",
+   "espera": "1"
+  },
+  {
+   "descricao": "fn_reativar_churn declara search_path fixo (so o corpo dela, so codigo)",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { B=\"$(grep -v '^[[:space:]]*--' \"$F\" | awk 'tolower($0) ~ /function[[:space:]]+(public\\.)?fn_reativar_churn/{f=1} f; f&&/\\$\\$;/{exit}')\"; [ -n \"$B\" ] && { printf '%s\\n' \"$B\" | grep -ciE 'set search_path'; true; } || echo SEM_FN_REATIVAR; } || echo ARQUIVO_AUSENTE",
+   "espera": "1"
+  },
+  {
+   "descricao": "nenhum DELETE: reversao e por marcacao (so linhas de codigo, fora de comentario --)",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { grep -v '^[[:space:]]*--' \"$F\" | grep -ciE 'delete from'; true; } || echo ARQUIVO_AUSENTE",
+   "espera": "0"
+  },
+  {
+   "descricao": "a funcao seta a flag de transacao antes do UPDATE em clientes (so linhas de codigo, fora de comentario --)",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { grep -v '^[[:space:]]*--' \"$F\" | grep -c 'app.reativacao_direta'; true; } || echo ARQUIVO_AUSENTE",
+   "espera": "2"
+  },
+  {
+   "descricao": "a mesma migration altera reverter_para_nao_iniciado (so linhas de codigo, fora de comentario --)",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { grep -v '^[[:space:]]*--' \"$F\" | grep -ci 'reverter_para_nao_iniciado'; true; } || echo ARQUIVO_AUSENTE",
+   "espera": "1"
+  },
+  {
+   "descricao": "a funcao fn_reativar_churn NAO escreve em churn_monthly_summary (so o corpo dela, so codigo: o UPDATE de summary dentro de sync_churn_summary_num_saidas e exigido pelo item (g))",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { B=\"$(grep -v '^[[:space:]]*--' \"$F\" | awk 'tolower($0) ~ /function[[:space:]]+(public\\.)?fn_reativar_churn/{f=1} f; f&&/\\$\\$;/{exit}')\"; [ -n \"$B\" ] && { printf '%s\\n' \"$B\" | grep -ciE '(insert into|update)[[:space:]]+(public\\.)?churn_monthly_summary'; true; } || echo SEM_FN_REATIVAR; } || echo ARQUIVO_AUSENTE",
+   "espera": "0"
+  },
+  {
+   "descricao": "localiza pela chave oficial cliente_id (palavra inteira, em pelo menos 3 linhas de codigo: receita, aprovacoes, churn_log), nao por nome (so linhas de codigo, fora de comentario --)",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { [ \"$(grep -v '^[[:space:]]*--' \"$F\" | grep -ciw 'cliente_id')\" -ge 3 ] && echo OK || echo FAIL; } || echo ARQUIVO_AUSENTE",
+   "espera": "OK"
+  },
+  {
+   "descricao": "nenhuma linha de codigo usa cliente_receita_id (chave abandonada em 29/09; fora de comentario --)",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { grep -v '^[[:space:]]*--' \"$F\" | grep -ci 'cliente_receita_id'; true; } || echo ARQUIVO_AUSENTE",
+   "espera": "0"
+  },
+  {
+   "descricao": "nenhum ilike de nome na funcao (so linhas de codigo, fora de comentario --)",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { grep -v '^[[:space:]]*--' \"$F\" | grep -ci 'ilike'; true; } || echo ARQUIVO_AUSENTE",
+   "espera": "0"
+  },
+  {
+   "descricao": "data_cancelamento e gravado explicitamente ao reativar (so linhas de codigo, fora de comentario --)",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { [ \"$(grep -v '^[[:space:]]*--' \"$F\" | grep -ci 'data_cancelamento')\" -ge 1 ] && echo OK || echo FAIL; } || echo ARQUIVO_AUSENTE",
+   "espera": "OK"
+  },
+  {
+   "descricao": "a migration faz CREATE OR REPLACE da funcao de summary (so linhas de codigo, fora de comentario --)",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { [ \"$(grep -v '^[[:space:]]*--' \"$F\" | grep -ci 'sync_churn_summary_num_saidas')\" -ge 1 ] && echo OK || echo FAIL; } || echo ARQUIVO_AUSENTE",
+   "espera": "OK"
+  },
+  {
+   "descricao": "churn_rate e recalculado com nullif (total_clientes 0 vira NULL, nunca 0) (so linhas de codigo, fora de comentario --)",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { grep -v '^[[:space:]]*--' \"$F\" | grep -ci 'nullif'; true; } || echo ARQUIVO_AUSENTE",
+   "espera": "1"
+  },
+  {
+   "descricao": "usa as colunas de reversao que churn_log ja tem (so linhas de codigo, fora de comentario --)",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { [ \"$(grep -v '^[[:space:]]*--' \"$F\" | grep -ciE 'revertido')\" -ge 1 ] && echo OK || echo FAIL; } || echo ARQUIVO_AUSENTE",
+   "espera": "OK"
+  },
+  {
+   "descricao": "ano_mes com BARRA, nunca hifen (achado 2.2 do diagnostico) (so linhas de codigo, fora de comentario --)",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { grep -v '^[[:space:]]*--' \"$F\" | grep -oE \"'[0-9]{4}-[0-9]{2}'\" | wc -l | tr -d ' '; } || echo ARQUIVO_AUSENTE",
+   "espera": "0"
+  },
+  {
+   "descricao": "nenhum join por cliente_notion_id (achado 2.1) (so linhas de codigo, fora de comentario --)",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { grep -v '^[[:space:]]*--' \"$F\" | grep -ci 'cliente_notion_id'; true; } || echo ARQUIVO_AUSENTE",
+   "espera": "0"
+  },
+  {
+   "descricao": "o ticket NAO aplica a migration, so escreve (so linhas de codigo, fora de comentario --)",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { grep -v '^[[:space:]]*--' \"$F\" | grep -ciE 'db push|supabase db|psql|apply_migration'; true; } || echo ARQUIVO_AUSENTE",
+   "espera": "0"
+  },
+  {
+   "descricao": "nenhum join entre churn_log, churn_aprovacoes, clientes e clientes_receita usa coluna que pode ser NULL sem tratamento explicito de NULL; o cabecalho nomeia a chave real escolhida",
+   "cmd": "",
+   "espera": "avaliador"
+  },
+  {
+   "descricao": "a unica escrita em clientes_receita e o UPDATE de status dentro desta funcao, e ela esta declarada no cabecalho como a excecao C0 autorizada",
+   "cmd": "",
+   "espera": "avaliador"
+  },
+  {
+   "descricao": "os DOIS caminhos do nao_iniciado estao provados: com app.reativacao_direta='on' o cliente termina 'ativo'; sem a flag, a reativacao pelo fluxo normal de venda continua caindo em 'nao_iniciado' como hoje",
+   "cmd": "",
+   "espera": "avaliador"
+  },
+  {
+   "descricao": "reverter_para_nao_iniciado deixa de inserir historico proprio (hoje saem duas linhas por reativacao, porque trg_registrar_historico_status ja registra)",
+   "cmd": "",
+   "espera": "avaliador"
+  },
+  {
+   "descricao": "nenhuma escrita direta em churn_monthly_summary na funcao de reativacao: quem recalcula e trg_sync_churn_summary, que ja cobre o UPDATE de revertido",
+   "cmd": "",
+   "espera": "avaliador"
+  },
+  {
+   "descricao": "ensaio de reversao: ao marcar um churn_log como revertido, num_saidas E churn_rate do mes mudam JUNTOS e batem com round(num_saidas/nullif(total_clientes,0)*100, 4). Hoje churn_rate nao muda, e esse e o furo que este ticket fecha",
+   "cmd": "",
+   "espera": "avaliador"
+  },
+  {
+   "descricao": "a funcao usa a mensagem acionavel exata de cliente sem vinculo na receita",
+   "cmd": "F=supabase/migrations/20260920000000_fn_reativar_churn.sql; test -f \"$F\" && { grep -v '^[[:space:]]*--' \"$F\" | grep -cF 'cliente sem vínculo na receita: vincule antes de reverter'; true; } || echo ARQUIVO_AUSENTE",
+   "espera": "1"
+  },
+  {
+   "descricao": "a rota DELETE de churn-log nao apaga mais a linha de churn_log",
+   "cmd": "grep -c '\\.from(\"churn_log\")\\.delete()' src/app/api/churn-log/route.ts",
+   "espera": "0"
+  },
+  {
+   "descricao": "a rota DELETE de churn-log marca revertido = true na saida",
+   "cmd": "grep -c 'revertido: true' src/app/api/churn-log/route.ts | awk '{print ($1>=1)?\"OK\":\"FAIL\"}'",
+   "espera": "OK"
+  },
+  {
+   "descricao": "a rota nao ganha escrita nova em zona C0: o numero de from(\"clientes_receita\") na rota nao muda",
+   "cmd": "[ \"$(grep -c 'from(\"clientes_receita\")' src/app/api/churn-log/route.ts)\" = \"$(git show origin/main:src/app/api/churn-log/route.ts | grep -c 'from(\"clientes_receita\")')\" ] && echo OK || echo FAIL",
+   "espera": "OK"
+  },
+  {
+   "descricao": "teste novo prova que a linha de churn_log sobrevive ao DELETE com revertido true; nenhuma assercao removida dos dois testes da rota",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "ATUALIZADO 29/09 (Lucas, 2a passada): recon[1] reescrito para o estado pos-d77ab1e (tela /churn so le) e recon novo prova que a rota DELETE de churn-log ainda apaga; o ticket passa a trocar esse .delete() por marcar revertido = true (decisao de 19/09 mantida: reversao nunca apaga), com src/app/api/churn-log/route.ts e os dois testes da rota na allowlist. RAISE com mensagem exata 'cliente sem vínculo na receita: vincule antes de reverter'. 112 churned sem cliente_id na receita: sem backfill agora (item de baixa prioridade no BACKLOG-MAPEADO). ddl-407a segue pendente. | REESCRITO 29/09 (Lucas): chave passa a ser cliente_id (clientes.id; cliente_id em clientes_receita, churn_aprovacoes e churn_log), sem join por nome, notion_id nem cliente_receita_id; sai a dependencia humano:backfill-churn-log (cliente_receita_id nulo em 93/93 do churn_log; cliente_id falta em 6, no BACKLOG-MAPEADO); humano:excecao-c0-churn-reativar liberado em 29/09 citando a autorizacao de 19/09; humano:ddl-407a segue pendente (o ticket escreve o .sql e para; revisao humana antes de aplicar). Criterio 7 troca para cliente_id (grep -w, >= 3 linhas) e entra criterio novo: zero cliente_receita_id no codigo. Medido 29/09: clientes_receita.cliente_id nulo em 112 das 208 churned; sem vinculo a funcao falha alto. | conserto 21/09 (sessao interativa, 2a passada): criterios [1]-[15] passam a contar so linhas de codigo (grep -v '^[[:space:]]*--'), como no 407a0: o objetivo manda o cabecalho declarar a excecao C0, nomear a chave real e explicar o nao-join por cliente_notion_id, e os criterios contavam o arquivo inteiro. [7] cliente_receita_id, [9] data_cancelamento, [10] sync_churn_summary_num_saidas e [12] revertido trocam contagem exata '1' por presenca -ge 1 -> OK: o parametro p_cliente_receita_id mais o WHERE ja dao 2, revertido aparece em churn_log e churn_aprovacoes, e a funcao de summary aparece no CREATE OR REPLACE e no trigger. [14] cliente_notion_id so em codigo. [6] contava a migration inteira e reprovava a migration correta, porque o item (g) exige o UPDATE churn_monthly_summary dentro de sync_churn_summary_num_saidas: agora le so o corpo de fn_reativar_churn. [1] security definer e [2] set search_path passam a ler so o corpo de fn_reativar_churn, com contagem exata 1 (nao afrouxados): contando a migration inteira, recriar reverter_para_nao_iniciado ou sync_churn_summary_num_saidas com os atributos originais dava 2 e reprovava. Objetivo ganhou a clausula de cabecalho so com --. | anterior: conserto 21/09 (sessao interativa de reparo de spec): criterios_aceite[3,6,8,14,15] (espera '0') tinham o padrao `grep -c ... || echo X`; com zero matches o grep -c imprime 0 e sai 1, o || imprime de novo e a saida vira '0 X', reprovando justo o caso correto. Viraram `test -f F && { grep -c ...; true; } || echo ...` (saida unica). | anterior: 20/09 sessao interativa: ganhou humano:ddl-407a0. A fn_reativar_churn localiza o registro por churn_log.cliente_receita_id, coluna que so passa a existir depois da migration do 407a0 aplicada no banco; sem o token aqui, este ticket poderia rodar contra uma tabela sem a coluna. O token estava no 407a0, onde travava o proprio produtor.",
+ "cria_novo": [
+  "supabase/migrations/20260920000000_fn_reativar_churn.sql"
+ ],
+ "_objetivo_cortado_na_fixture": 5099
+}

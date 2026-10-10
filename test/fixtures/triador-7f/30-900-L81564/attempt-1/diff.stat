@@ -1,0 +1,3 @@
+ .../20261007190900_churn_fecha_leitura_anon.sql    | 28 +++++++++++++
+ test/churn-fecha-leitura-anon-ddl.test.ts          | 48 ++++++++++++++++++++++
+ 2 files changed, 76 insertions(+)

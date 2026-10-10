@@ -1,0 +1,12 @@
+{
+ "id": "900",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/900-churn-fecha-leitura-anon.md",
+ "ticket_sha": "43492e0e5b498aa5e0a749f5cd1bb9c95dd077a7",
+ "ticket_antes": true,
+ "linha_bloqueio": 81564,
+ "log_inicio": 81537,
+ "fim": "2026-10-08T07:44:12Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/900"
+}

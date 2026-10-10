@@ -1,0 +1,17 @@
+Fiz a mudança do 346d e commitei (`dfc3903`), mas a suíte completa não está verde. `test/lote-b3-2-periodo.test.ts` quebra 5 testes, e esse arquivo está fora da allowlist.
+
+**Mudança na tela**
+- `page.tsx` agora tem só as abas Carteira (padrão) e Metas de Performance. Saíram a aba Comparativo, o `FunilCard`, o `HistoricoSemanal`, a `MatrizSemanal` e os dois seletores de período.
+- Sobra um período só, o da `CarteiraAba`.
+- A page carrega por `fetchJson` e tem zero `.json()` crus.
+- Continuam presentes o `LoadingState`, o `ErrorState` com timeout de 15s (`ctaLabel`/`onCtaClick`) e o `console.error`.
+- Para esses estados terem o que carregar, a page busca a lista de clientes (`/api/perf/clientes`), que já existia. Se nenhum cliente tiver conta de anúncio vinculada, mostra o aviso de vincular em Clientes → Conexões. Se preferir que a page não faça essa busca, o `LoadingState`/`ErrorState` dela perdem a razão de existir.
+
+**Testes**
+- Recalculei as asserções em `performance-seletores`, `performance-coleta-ui`, `estados-crm-fin-perf` e `trafego-carteira`, cada uma com comentário dizendo de onde veio o valor novo. Não removi asserção, não usei `skip`/`only`/`toBeDefined`, e os 4 arquivos somam 105 `expect(`, acima do piso de 88.
+- Rodei os 7 arquivos de teste que o ticket cobra (os 4 acoplados, `trafego-carteira`, `fetch-json-teto`, `ui-guard`) e todos passam.
+- O tsc deu 3 erros, igual ao baseline. Não rodei `npm run build`.
+
+**Pendência**
+- `test/lote-b3-2-periodo.test.ts` passava antes da mudança e agora falha 5 testes. Os da seção "funil do Comparativo" e do "aceite AQUINO" leem o funil e o seletor que saíram da `page.tsx` (linhas 179 e 272).
+- Esse teste precisa ser recalculado em outro ticket com ele na allowlist. A mensagem do commit registra isso.

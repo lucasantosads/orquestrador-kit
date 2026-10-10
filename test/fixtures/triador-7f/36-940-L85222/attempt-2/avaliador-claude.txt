@@ -1,0 +1,1 @@
+{"aprovado": true, "motivo": "Mediana por cliente com faixa e n; menos de 3 clientes dá sem_amostra sem número; multitese conta o cliente nas 2 teses e 1 vez no nicho; engajamento soma no investido e fica fora do custo; custo por tipo separado; score 50/30/20 com parcial; desvio só via DESVIO_TESE; null sem base; lib pura. Ressalva: 2 toEqual em lista de 1 item no teste."}

@@ -1,0 +1,201 @@
+ ✓ test/relatorio-semanal-nomes-meta.test.ts (11 tests) 56ms
+ ✓ test/equipe-painel-superadmin.test.tsx (7 tests) 28ms
+ ✓ test/campanhas-aceite-mockup.test.tsx (50 tests) 39ms
+ ✓ test/painel-estado-explicito.test.tsx (16 tests) 31ms
+ ✓ test/lote-tabela-2.test.tsx (17 tests) 40ms
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura do resumo existente falha → 500 e nada gravado
+[churn-summary PATCH] Error: resumo do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/churn-summary-patch-leitura-falha.test.ts:59:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura de clientes_receita falha → 500 e nada gravado
+[churn-summary PATCH] Error: base de clientes: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/churn-summary-patch-leitura-falha.test.ts:66:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura das saídas falha → 500 e nada gravado
+[churn-summary PATCH] Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/churn-summary-patch-leitura-falha.test.ts:73:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > recalcularAposSaida — não lança, devolve aviso > falha de leitura vira aviso por mês, sem gravar
+[churn/resumo-mensal] 2026/09 Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/churn-summary-patch-leitura-falha.test.ts:123:20
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > recalcularAposSaida — não lança, devolve aviso > falha de leitura vira aviso por mês, sem gravar
+[churn/resumo-mensal] 2026/08 Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/churn-summary-patch-leitura-falha.test.ts:123:20
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > GET /api/cron/churn-resumo > falha visível: 500 com o mês que falhou
+[cron/churn-resumo] 2026/09 Error: base de clientes: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/churn-summary-patch-leitura-falha.test.ts:150:17
+
+[alertas-engine] 1 regras, 1 abertas, 0 atualizadas
+
+ ✓ test/getsession-churn-feedbacks.test.ts (13 tests) 25ms
+ ✓ test/crons-meta-consolidacao.test.ts (18 tests) 25ms
+ ✓ test/meu-dia-textos.test.ts (7 tests) 27ms
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes-extra/[id] > exceção do logAudit não muda o status da resposta
+[clientes-extra PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/audit-log-rotas.test.ts:258:36
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > POST: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/audit-log-rotas.test.ts:293:36
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > PATCH: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/audit-log-rotas.test.ts:309:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/[id]/crm-config PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/audit-log-rotas.test.ts:336:36
+
+stderr | test/audit-log-rotas.test.ts > PUT /api/clientes/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/crm-config PUT] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/audit-log-rotas.test.ts:363:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/perfil-obs > exceção do logAudit não muda o status da resposta
+[clientes/[id]/perfil-obs PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/audit-log-rotas.test.ts:392:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/registros/[registroId] > exceção do logAudit não muda o status da resposta
+[registros PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/audit-log-rotas.test.ts:432:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/tarefas-kanban > exceção do logAudit não muda o status da resposta
+[tarefas-kanban POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/audit-log-rotas.test.ts:459:36
+
+ ✓ test/onboarding-kpis-motor.test.ts (16 tests) 38ms
+stderr | test/audit-log-rotas.test.ts > POST /api/clientes/relatorio-config (ativo=true) > exceção do logAudit não muda o status da resposta
+[clientes/relatorio-config POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/audit-log-rotas.test.ts:486:36
+ ✓ test/template-documentos-exigidos.test.ts (9 tests) 15ms
+stderr | test/pacote-cliente-em-operacao.test.ts > POST /api/clientes/[id]/pacote > escopo que falha na leitura vira null (nunca 0) e o pacote continua gravado
+[clientes/pacote POST] escopo boom
+
+ ✓ test/pacote-cliente-em-operacao.test.ts (11 tests) 17ms
+stderr | test/ficha-resolucao-chave.test.ts > GET /api/perf/cockpit/[id] — adota o resolvedor do ticket 094 > falha na resolução da chave vira mensagem humana e acentuada, não o e.message cru
+[perf/cockpit] falha ao resolver chave do cliente: Error: connection terminated unexpectedly
+    at Object.maybeSingle (/Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/ficha-resolucao-chave.test.ts:49:28)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/ficha-resolucao-chave.test.ts:111:17
+[analise-risco] Cap de 40 atingido: 1 cliente(s) ficaram de fora desta execução.
+
+ ✓ test/crons-get-ia.test.ts (6 tests) 15ms
+ ✓ test/cs-wpp-ingestao.test.ts (7 tests) 17ms
+ ✓ test/wpp-webhook-grupo.test.ts (8 tests) 17ms
+stderr | test/ficha-por-uuid.test.ts > uuid resolvido primeiro como id do cliente (29/09) > leitura de clientes que falha: 500, nunca 'não encontrado'
+[/api/notion/clientes/[id]] Error: cliente: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-722/test/ficha-por-uuid.test.ts:79:15
+
+ ✓ test/a11y/components-acoes-recomendadas-acoes-recomendadas.test.ts (1 test) 4ms
+ ✓ test/carteira-view.test.ts (3 tests) 1ms
+ ✓ test/deeplink-setup.test.ts (3 tests) 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/leitura-relacao-gatilhos.test.ts > cron leitura-relacao > falha de um cliente não derruba o outro: 1 falha e 1 gerada
+AssertionError: expected { clientes: 2, geradas: +0, …(4) } to deeply equal { clientes: 2, geradas: 1, …(3) }
+
+- Expected
++ Received
+
+  {
+    "clientes": 2,
+-   "falhas": 1,
+-   "geradas": 1,
++   "falhas": 0,
++   "geradas": 0,
+    "puladas": 0,
++   "pulado_sem_base": 2,
+    "restantes": 0,
+  }
+
+ ❯ test/leitura-relacao-gatilhos.test.ts:187:30
+    185|     h.gerar.mockRejectedValueOnce(new Error("boom"));
+    186|     const res = await GET(req("Bearer segredo"));
+    187|     expect(await res.json()).toEqual({ clientes: 2, geradas: 1, pulada…
+       |                              ^
+    188|   });
+    189|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  test/leitura-relacao-gatilhos.test.ts > cron leitura-relacao > erro ao ler a fidelidade de um cliente vira null logado: ele e os demais seguem
+AssertionError: expected { clientes: 2, geradas: +0, …(4) } to deeply equal { clientes: 2, geradas: 2, …(3) }
+
+- Expected
++ Received
+
+  {
+    "clientes": 2,
+    "falhas": 0,
+-   "geradas": 2,
++   "geradas": 0,
+    "puladas": 0,
++   "pulado_sem_base": 2,
+    "restantes": 0,
+  }
+
+ ❯ test/leitura-relacao-gatilhos.test.ts:195:18
+    193|     const erro = vi.spyOn(console, "error").mockImplementation(() => {…
+    194|     const body = await (await GET(req("Bearer segredo"))).json();
+    195|     expect(body).toEqual({ clientes: 2, geradas: 2, puladas: 0, falhas…
+       |                  ^
+    196|     expect(h.gerar.mock.calls.map((c) => (c[0] as { clienteId: string …
+    197|     expect(erro.mock.calls.some((c) => String(c[0]).includes("fidelida…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  test/leitura-relacao-gatilhos.test.ts > cron leitura-relacao > cliente ativo do OS sem linha no espelho do Notion entra no gatilho de renovação
+AssertionError: expected { clientes: 1, geradas: +0, …(4) } to match object { clientes: 1, geradas: 1, falhas: +0 }
+(3 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "clientes": 1,
+    "falhas": 0,
+-   "geradas": 1,
++   "geradas": 0,
+  }
+
+ ❯ test/leitura-relacao-gatilhos.test.ts:215:18
+    213|     });
+    214|     const body = await (await GET(req("Bearer segredo"))).json();
+    215|     expect(body).toMatchObject({ clientes: 1, geradas: 1, falhas: 0 });
+       |                  ^
+    216|     expect(h.gerar).toHaveBeenCalledTimes(1);
+    217|     expect(h.gerar.mock.calls[0][0]).toMatchObject({ clienteId: "c1", …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  test/leitura-relacao-gatilhos.test.ts > cron leitura-relacao > com 41 clientes com gatilho chama o motor 40 vezes e restantes = 1
+AssertionError: expected "vi.fn()" to be called 40 times, but got 0 times
+ ❯ test/leitura-relacao-gatilhos.test.ts:232:21
+    230|     monta(41);
+    231|     const body = await (await GET(req("Bearer segredo"))).json();
+    232|     expect(h.gerar).toHaveBeenCalledTimes(40);
+       |                     ^
+    233|     expect(body).toMatchObject({ clientes: 41, geradas: 40, restantes:…
+    234|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  test/leitura-relacao-gatilhos.test.ts > cron leitura-relacao > com o teto estourado, os de evento passam antes dos semanais
+AssertionError: expected "vi.fn()" to be called 40 times, but got 0 times
+ ❯ test/leitura-relacao-gatilhos.test.ts:239:21
+    237|     monta(45, [43, 44]);
+    238|     const body = await (await GET(req("Bearer segredo"))).json();
+    239|     expect(h.gerar).toHaveBeenCalledTimes(40);
+       |                     ^
+    240|     expect(body.restantes).toBe(5);
+    241|     const chamadas = h.gerar.mock.calls.map((c) => c[0] as { clienteId…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed | 715 passed (716)
+      Tests  5 failed | 7377 passed (7382)
+   Start at  21:25:31
+   Duration  16.64s (transform 11.21s, setup 0ms, import 50.63s, tests 17.59s, environment 53ms)
+

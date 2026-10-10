@@ -1,0 +1,1 @@
+{"aprovado": false, "motivo": "O corpo diverge do especificado: falta 'on delete cascade' em cliente_id e 'on delete set null' em definido_por. Sem isso, apagar um cliente ou employee falha por FK. O teste também não amarra essas cláusulas. RLS, guarda de pg_policies, revoke e C0 estão ok."}

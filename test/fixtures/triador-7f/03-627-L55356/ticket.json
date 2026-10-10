@@ -1,0 +1,82 @@
+{
+ "id": "627",
+ "slug": "guarda-travessao-mudo",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "Crie a guarda global test/travessao-mudo.test.ts (NOVO) que trava o travessao mudo em tela. PASSO 1: leia src/components/estados/sem-dado.tsx (unico lugar onde \"—\" literal e permitido: e o SemDado da regra 096), test/bloco-vazio-linha.test.ts e test/cartao-copy-sem-travessao.test.ts (moldes de leitura de fonte) e o prosa deste ticket. O QUE O TESTE FAZ, sem JSX: (a) varre recursivamente src/ com fs.readdirSync e le todo arquivo .tsx, EXCETO src/components/estados/sem-dado.tsx; (b) remove comentarios antes de contar: blocos /* ... */ (inclui {/* */} de JSX), preservando as quebras de linha para o numero de linha continuar certo, e comentario de linha // quando nao estiver dentro de string nem for parte de URL (a sequencia :// nao e comentario); (c) conta, linha a linha, as ocorrencias de travessao MUDO: string literal cujo conteudo inteiro e um travessao ou meia-risca, regex /([\"'`])[—–]\\1/g (cobre return \"—\", ?? \"—\", || \"—\", ternario ? ... : \"—\", {\"—\"}, prop=\"—\", placeholder=\"—\", item de array), mais texto JSX sozinho entre tags, regex />[ \\t]*[—–][ \\t]*</g; NAO conta travessao com espaco dentro da string ({\" — \"}, \"a — b\"), que e copy de frase (regra 6, leva separada). (d) declara no topo `const TETO = 273;` com comentario acima: `// medido em 25/09/2026 contra origin/staging-auto 2f58e67 (ticket 627). Cada ticket de area (627a-627k) baixa este numero no mesmo diff.` Se, no worktree do executor, a contagem medida for MENOR que 273 (outro ticket removeu travessao no meio temp",
+ "pathspec_allowlist": [
+  "test/travessao-mudo.test.ts"
+ ],
+ "cria_novo": [
+  "test/travessao-mudo.test.ts"
+ ],
+ "dependencias": [
+  "559a"
+ ],
+ "prioridade": 19,
+ "recon_esperado": [
+  {
+   "descricao": "a excecao existe: sem-dado.tsx desenha o travessao",
+   "cmd": "grep -qF '<span aria-hidden=\"true\">—</span>' src/components/estados/sem-dado.tsx && echo EXCECAO_OK || echo SEM_EXCECAO",
+   "espera": "EXCECAO_OK"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 em src/",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -c '^src/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "o teste da guarda existe e declara o teto com a data da medicao",
+   "cmd": "test -f test/travessao-mudo.test.ts && grep -qE 'const TETO = [0-9]+;' test/travessao-mudo.test.ts && grep -qF '2f58e67' test/travessao-mudo.test.ts && echo TETO_DECLARADO || echo SEM_TETO",
+   "espera": "TETO_DECLARADO"
+  },
+  {
+   "descricao": "o teto nao passa de 273 (medido em 2f58e67)",
+   "cmd": "t=$(grep -oE 'const TETO = [0-9]+' test/travessao-mudo.test.ts 2>/dev/null | grep -oE '[0-9]+$'); [ -n \"$t\" ] && [ \"$t\" -le 273 ] && [ \"$t\" -ge 200 ] && echo TETO_OK || echo TETO_FORA_$t",
+   "espera": "TETO_OK"
+  },
+  {
+   "descricao": "os quatro it( com os nomes do ticket",
+   "cmd": "m=0; for n in 'travessao mudo nao passa do teto' 'sem-dado.tsx continua sendo a excecao e tem o travessao' 'contador casa os casos de travessao mudo' 'contador ignora frase, comentario e separador'; do grep -qF \"$n\" test/travessao-mudo.test.ts 2>/dev/null || m=$((m+1)); done; [ $m = 0 ] && echo NOMES_OK || echo FALTAM_$m",
+   "espera": "NOMES_OK"
+  },
+  {
+   "descricao": "a guarda exclui so sem-dado.tsx e varre .tsx de src",
+   "cmd": "grep -qF 'sem-dado.tsx' test/travessao-mudo.test.ts 2>/dev/null && grep -qF '.tsx' test/travessao-mudo.test.ts && grep -qE 'readdirSync' test/travessao-mudo.test.ts && echo VARRE_SRC || echo NAO_VARRE",
+   "espera": "VARRE_SRC"
+  },
+  {
+   "descricao": "a guarda nova esta verde",
+   "cmd": "test -f test/travessao-mudo.test.ts && npx vitest run test/travessao-mudo.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "sem .skip/.only/.todo na guarda",
+   "cmd": "test -f test/travessao-mudo.test.ts && [ \"$(grep -cE '[.](skip|only|todo|fails)\\(' test/travessao-mudo.test.ts)\" = 0 ] && echo SEM_SKIP || echo TEM_SKIP_OU_AUSENTE",
+   "espera": "SEM_SKIP"
+  },
+  {
+   "descricao": "nenhum arquivo de src mudou (ticket so de teste)",
+   "cmd": "[ \"$(git diff --name-only HEAD -- src | wc -l | tr -d ' ')\" = 0 ] && echo SO_TESTE || echo MEXEU_EM_SRC",
+   "espera": "SO_TESTE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "as cinco guardas globais seguem verdes (fetch-json-teto, consistencia-contagens, bloco-vazio-linha, abas-montadas, cartao-topo-perfil)",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "o contador segue a definicao do ticket (literal que e so travessao, ou texto JSX sozinho; comentario e frase fora) e o teto reflete a medicao real, nao um numero folgado",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "em_execucao",
+ "notas_status": "reprovado (tentativa 1): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/627/attempt-1/gate-vitest.txt)",
+ "_objetivo_cortado_na_fixture": 2889
+}

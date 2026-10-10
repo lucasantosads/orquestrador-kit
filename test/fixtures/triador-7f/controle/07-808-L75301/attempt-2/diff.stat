@@ -1,0 +1,7 @@
+ .../clientes/[id]/contratual/comunicacoes/route.ts |  27 ++++--
+ .../api/clientes/[id]/contratual/disputa/route.ts  |  17 ++--
+ .../api/clientes/[id]/contratual/entregas/route.ts |  27 ++++--
+ test/contratual-disputa.test.ts                    |   6 +-
+ test/contratual-entregas.test.ts                   |   6 +-
+ test/resolver-cliente-rota-contratual.test.ts      | 105 +++++++++++++++++++++
+ 6 files changed, 155 insertions(+), 33 deletions(-)

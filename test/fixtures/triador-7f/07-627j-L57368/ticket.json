@@ -1,0 +1,74 @@
+{
+ "id": "627j",
+ "slug": "travessao-mudo-clientes-perf",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "Tire o travessao mudo da area clientes-perf (cerca de 15 ocorrencias em 3 arquivos pela medicao de autoria em 2f58e67; o numero oficial e o do contador de test/travessao-mudo.test.ts) e baixe o teto da guarda test/travessao-mudo.test.ts no mesmo diff. PASSO 1: leia test/travessao-mudo.test.ts (ticket 627: o que conta como travessao mudo e a constante TETO), src/components/estados/sem-dado.tsx (SemDado e ValorOuSemDado), src/components/estados/sem-insumo.ts e cada arquivo da allowlist nas linhas medidas: src/app/dashboard/clientes/perf/_components/ClientePerfPanel.tsx (linhas 144, 149, 217, 708, 735, 736, 1153, 1166); src/app/dashboard/clientes/perf/_components/ControleCampanhasPanel.tsx (linhas 60, 64, 117, 182, 511); src/app/dashboard/clientes/perf/perf-block.tsx (linhas 41, 68). Remedir no worktree antes de mexer: a contagem da area pode ter mudado. REGRA DE SUBSTITUICAO (decisao do Lucas, 25/09; NAO muda o SemDado): (1) \"—\" literal so pode existir em src/components/estados/sem-dado.tsx; em qualquer outro arquivo e travessao mudo. (2) celula de tabela ou valor em linha sem dado: <SemDado compacto motivo=\"...\"/> (import de @/components/estados/sem-dado) com motivo ESPECIFICO do caso (ex.: \"sem fechamento no periodo\", \"conta Meta nao vinculada\", \"responsavel nao atribuido\"); PROIBIDO motivo generico (\"sem dado\", \"sem dados\", \"n/a\", \"vazio\"). (3) cartao/KPI sem base de calculo: texto explicito \"sem base\" (vocabulario 251/252), nunca 0 fabricado. (4) metadado secundario ausente",
+ "pathspec_allowlist": [
+  "src/app/dashboard/clientes/perf/_components/ClientePerfPanel.tsx",
+  "src/app/dashboard/clientes/perf/_components/ControleCampanhasPanel.tsx",
+  "src/app/dashboard/clientes/perf/perf-block.tsx",
+  "test/travessao-mudo.test.ts"
+ ],
+ "cria_novo": [],
+ "dependencias": [
+  "627h"
+ ],
+ "prioridade": 38,
+ "recon_esperado": [
+  {
+   "descricao": "a area clientes-perf ainda tem travessao mudo",
+   "cmd": "n=$(cat 'src/app/dashboard/clientes/perf/_components/ClientePerfPanel.tsx' 'src/app/dashboard/clientes/perf/_components/ControleCampanhasPanel.tsx' 'src/app/dashboard/clientes/perf/perf-block.tsx' 2>/dev/null | grep -hF -e '\"—\"' -e \"'—'\" -e '`—`' -e '\"–\"' -e \"'–'\" -e '>—<' -e '> — <' | wc -l | tr -d ' '); [ \"$n\" -gt 0 ] && echo TEM_TRAVESSAO || echo SEM_TRAVESSAO",
+   "espera": "TEM_TRAVESSAO"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 em src/",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -c '^src/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "zero travessao mudo nos arquivos da area clientes-perf, pelo contador de test/travessao-mudo.test.ts",
+   "cmd": "r=$(mktemp); TRAVESSAO_RELATORIO=\"$r\" npx vitest run test/travessao-mudo.test.ts -t 'travessao mudo nao passa do teto' >/dev/null 2>&1; node -e 'const fs=require(\"fs\");let j;try{j=JSON.parse(fs.readFileSync(process.argv[1],\"utf8\"))}catch(e){console.log(\"SEM_RELATORIO\");process.exit(0)};const m=fs.readFileSync(\"test/travessao-mudo.test.ts\",\"utf8\").match(/const TETO = (\\d+);/);const t=m?+m[1]:-1;const a=[\"src/app/dashboard/clientes/perf/_components/ClientePerfPanel.tsx\", \"src/app/dashboard/clientes/perf/_components/ControleCampanhasPanel.tsx\", \"src/app/dashboard/clientes/perf/perf-block.tsx\"];const n=a.reduce((s,f)=>s+((j.porArquivo||{})[f]||0),0);console.log(n===0?\"AREA_LIMPA\":\"AREA_RESTAM_\"+n)' \"$r\"",
+   "espera": "AREA_LIMPA"
+  },
+  {
+   "descricao": "o TETO baixou em relacao ao HEAD e ficou igual a contagem do contador (sem folga), logo baixou exatamente o que a area removeu",
+   "cmd": "r=$(mktemp); TRAVESSAO_RELATORIO=\"$r\" npx vitest run test/travessao-mudo.test.ts -t 'travessao mudo nao passa do teto' >/dev/null 2>&1; h=$(git show \"$(git merge-base HEAD staging-auto)\":test/travessao-mudo.test.ts 2>/dev/null | grep -oE 'const TETO = [0-9]+' | grep -oE '[0-9]+$'); node -e 'const fs=require(\"fs\");let j;try{j=JSON.parse(fs.readFileSync(process.argv[1],\"utf8\"))}catch(e){console.log(\"SEM_RELATORIO\");process.exit(0)};const m=fs.readFileSync(\"test/travessao-mudo.test.ts\",\"utf8\").match(/const TETO = (\\d+);/);const t=m?+m[1]:-1;const h=+process.argv[2];console.log(h>0&&j.total===t&&t<h?\"TETO_BAIXOU_SEM_FOLGA\":\"TETO_ERRADO_\"+j.total+\"_\"+t+\"_\"+h)' \"$r\" \"$h\"",
+   "espera": "TETO_BAIXOU_SEM_FOLGA"
+  },
+  {
+   "descricao": "no teste da guarda so mudou a constante TETO e o comentario da medicao",
+   "cmd": "n=$(git diff HEAD -- test/travessao-mudo.test.ts | grep -E '^[-+]' | grep -vE '^(\\+\\+\\+|---)' | grep -vcE 'TETO|medid'); [ \"$n\" = 0 ] && echo SO_TETO || echo MEXEU_$n",
+   "espera": "SO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum motivo generico de SemDado",
+   "cmd": "n=$(cat 'src/app/dashboard/clientes/perf/_components/ClientePerfPanel.tsx' 'src/app/dashboard/clientes/perf/_components/ControleCampanhasPanel.tsx' 'src/app/dashboard/clientes/perf/perf-block.tsx' 2>/dev/null | grep -ciE 'motivo=\"(sem dados?|n/a|vazio|-)\"'); [ \"$n\" = 0 ] && echo MOTIVOS_ESPECIFICOS || echo GENERICO_$n",
+   "espera": "MOTIVOS_ESPECIFICOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guarda do travessao verde",
+   "cmd": "npx vitest run test/travessao-mudo.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "as cinco guardas globais seguem verdes (fetch-json-teto, consistencia-contagens, bloco-vazio-linha, abas-montadas, cartao-topo-perfil)",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "cada travessao virou o caso certo da regra (SemDado compacto com motivo especifico em celula, 'sem base' em KPI, elemento omitido em metadado, bloco vazio em uma linha); nenhum 0 fabricado; sentinelas trocadas junto com quem compara; nenhuma assercao existente afrouxada",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 3208
+}

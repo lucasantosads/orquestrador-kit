@@ -1,0 +1,19 @@
+O ticket 367 está commitado em `796b38e` e a suíte do vitest agora passa inteira. O `tsc` dá 3 erros, igual ao baseline. Não rodei `npm run build`.
+
+**O que falhou antes:** o teste de rotas órfãs (`test/rotas-orfas.test.ts`) apontava `/dashboard/briefings-criativos/[id]`. Depois que a página de lista virou redirect, nada mais linkava para o detalhe. O bloco da ficha agora tem um link "Abrir detalhe" para essa página, então ela deixa de ser órfã. Não precisei mexer em teste existente.
+
+**Resultado dos gates:**
+- **Vitest:** 825 arquivos e 8314 testes passaram.
+- **tsc:** 3 erros, medido com `grep -v '^\.next/'` mas sem o `rm -rf .next` do CLAUDE.md, porque o Bash negou o comando com `rm`.
+
+**O que entrou:**
+- **Seed:** `scripts/dados/367-briefing-template.ts` lê `docs/briefing/MODELO.md` e roda em dry-run por padrão. Aborta com mensagem se o arquivo não existir.
+- **Bloco na ficha:** "Briefing criativo" em Conta › Onboarding, com link público `/briefing/<token>`, status e as respostas quando existirem. O token vem de `GET /api/briefings-criativos?cliente_id=`.
+- **Fonte no motor:** `briefing_pendente` em `src/lib/hoje/fontes/briefing.ts`, para cliente ativo com envio sem resposta há mais de 7 dias.
+- **Rota antiga:** `/dashboard/briefings-criativos` agora redireciona para `/dashboard/clientes`.
+
+**Pendências:**
+- **Fonte não ligada:** a fonte `briefing_pendente` só fica ativa quando `src/lib/hoje/fontes.ts` importar `./fontes/briefing`. Esse arquivo está fora da allowlist, então falta um ticket que o inclua (mesmo caso do onboarding 316).
+- **Página pública:** `src/app/briefing-publico/[token]` não existe no disco. A página pública real é `src/app/briefing/[token]`, e não mexi nela.
+- **Cron e `vercel.json`:** não criei rota de cron nem mexi no `vercel.json`.
+- **Push:** não fiz push.

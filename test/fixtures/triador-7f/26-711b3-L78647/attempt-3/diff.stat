@@ -1,0 +1,11 @@
+ src/app/dashboard/clientes/[id]/page.tsx           |  26 ++--
+ src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx |  34 +++---
+ test/cadastro-colapsavel.test.ts                   |  11 +-
+ test/cartao-topo-renovacao.test.ts                 |   7 +-
+ test/header-cliente-consolidado.test.ts            |   8 +-
+ test/saude-chip-ficha.test.ts                      | 135 +++++++++++++++++++++
+ test/score-saude-fonte-unica.test.ts               |  14 ++-
+ test/visao-aceite-estrutura.test.tsx               |  11 +-
+ test/visao-aceite-mockup.test.tsx                  |  21 ++--
+ test/visao-sem-cockpit-antigo.test.ts              |  18 +--
+ 10 files changed, 228 insertions(+), 57 deletions(-)

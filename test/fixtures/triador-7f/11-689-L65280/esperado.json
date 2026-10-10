@@ -1,0 +1,12 @@
+{
+ "classe": "R1",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/689/attempt-2/gate-vitest.txt",
+   "linha": 1375,
+   "origem": "medicao"
+  }
+ ],
+ "requeue": "nao",
+ "fonte_da_verdade": "medicao-bloqueios-out.md:112"
+}

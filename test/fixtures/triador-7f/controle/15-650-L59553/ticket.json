@@ -1,0 +1,145 @@
+{
+ "id": "650",
+ "slug": "visao-blocos-inferiores-linha",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "Na aba Visão da ficha, blocos abaixo da tabela de campanhas (montados em geral-tab.tsx:939-956 e :1103-1105; linhas medidas na staging-auto cc0d3ce, iguais em main). (1) Bloco Relação (src/app/dashboard/clientes/[id]/_components/bloco-relacao.tsx, BlocoRelacaoView :118-269, container BlocoRelacao :271-342): quando não há registro, reunião, NPS nem leitura com conteúdo, o bloco renderiza UMA linha 'Temperatura · sem base | Último contato · sem base | Próximo compromisso · sem base', UM botão 'Registrar' e UM link 'Ver relação' (hoje 'Ver aba Relação', :265). Somem no vazio: as linhas Kv com semBase()+Registrar (:169, :174-190), 'Pendências abertas · nenhuma · Registrar' (:216-219), SinaisDeRisco vazio (:67-92, render :243) e o item Leitura (:246-250). Leitura com temperatura \"sem_base\" conta como SEM leitura: o texto 'Sem base para ler a relação.' é gravado no banco pelo motor (src/lib/ia/leitura-relacao.ts:132) e impresso por fraseResumo; aqui ele deixa de ser impresso (não mexer no motor). O container sempre passa painelRegistro={<RegistrarRelacao/>} (:339), cujo fechado já é '+ Registrar': conte isso para dar exatamente 1. Com dado, cada campo mostra o valor e o comportamento atual fica. (2) Linha do tempo (src/app/dashboard/clientes/[id]/_components/timeline-visao.tsx, TimelineVisaoView :158): os chips de filtro (:191-218, role=\"group\" aria-label=\"Filtrar por origem\") só são renderizados com pelo menos um evento; sem evento, uma linha 'Linha do tempo · nenhum evento entre ",
+ "cria_novo": [
+  "test/ficha-visao-blocos-vazios.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/app/dashboard/clientes/[id]/_components/bloco-relacao.tsx",
+  "src/app/dashboard/clientes/[id]/_components/timeline-visao.tsx",
+  "src/app/dashboard/clientes/[id]/_components/bloco-otimizacoes.tsx",
+  "src/app/dashboard/clientes/[id]/_components/analise-ia.tsx",
+  "src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx",
+  "test/acao-unica-ficha-controles.test.tsx",
+  "test/analise-ia-visao.test.tsx",
+  "test/atalhos-externos.test.ts",
+  "test/barra-visao.test.tsx",
+  "test/bloco-alertas-visao.test.tsx",
+  "test/bloco-relacao.test.tsx",
+  "test/bloco-tarefas-visao.test.tsx",
+  "test/bloco-vazio-linha.test.ts",
+  "test/cadastro-colapsavel.test.ts",
+  "test/cartao-copy-sem-travessao.test.ts",
+  "test/cartao-topo-nps.test.ts",
+  "test/cartao-topo-perfil.test.tsx",
+  "test/cartao-topo-renovacao.test.ts",
+  "test/cartao-topo-setup-e-closer.test.ts",
+  "test/cartao-topo-status-popover.test.ts",
+  "test/cartao-topo-teses.test.tsx",
+  "test/cockpit-blocos-null.test.ts",
+  "test/conta-resultados-escritorio.test.ts",
+  "test/ficha-perfil-operacional.test.ts",
+  "test/header-cliente-consolidado.test.ts",
+  "test/historico-status-compacto.test.ts",
+  "test/kpis-visao.test.tsx",
+  "test/leitura-relacao-tela.test.tsx",
+  "test/orquestrador-enforcement.test.ts",
+  "test/otimizacoes-tela.test.ts",
+  "test/registro-unico-relacao.test.ts",
+  "test/relacao-aceite.test.tsx",
+  "test/relacao-sinais-de-risco.test.tsx",
+  "test/rotas-fantasma-ficha.test.ts",
+  "test/saude-motivo-sem-base.test.ts",
+  "test/score-saude-fonte-unica.test.ts",
+  "test/sem-insumo.test.ts",
+  "test/tabela-campanhas-expansao.test.tsx",
+  "test/tabela-funil-tese.test.tsx",
+  "test/timeline-estado-vazio-unico.test.tsx",
+  "test/timeline-visao.test.tsx",
+  "test/tooltip-acessivel.test.ts",
+  "test/visao-aceite-estrutura.test.tsx",
+  "test/visao-aceite-mockup.test.tsx",
+  "test/visao-dado-parado-e-link.test.ts",
+  "test/visao-estrutura-cabecalho.test.tsx",
+  "test/visao-estrutura-relacao.test.tsx",
+  "test/visao-estrutura-timeline.test.tsx",
+  "test/visao-estrutura-trio.test.tsx",
+  "test/visao-limpeza-final.test.tsx",
+  "test/visao-sem-cockpit-antigo.test.ts",
+  "test/ficha-visao-blocos-vazios.test.ts"
+ ],
+ "dependencias": [
+  "649"
+ ],
+ "recon_esperado": [
+  {
+   "descricao": "vazios hoje: link 'Ver aba Relação', frase das cinco origens, h3 de Otimizações",
+   "cmd": "a=$(grep -c 'Ver aba Relação' 'src/app/dashboard/clientes/[id]/_components/bloco-relacao.tsx'); b=$(grep -c 'nenhum evento nas cinco origens' 'src/app/dashboard/clientes/[id]/_components/timeline-visao.tsx'); c=$(grep -c '>Otimizações</h3>' 'src/app/dashboard/clientes/[id]/_components/bloco-otimizacoes.tsx'); echo \"VER_ABA=$a CINCO=$b H3=$c\"",
+   "espera": "VER_ABA=1 CINCO=1 H3=1"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 em src/",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -c '^src/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "link 'Ver relação' substitui 'Ver aba Relação'",
+   "cmd": "a=$(grep -c 'Ver aba Relação' 'src/app/dashboard/clientes/[id]/_components/bloco-relacao.tsx'); b=$(grep -c 'Ver relação' 'src/app/dashboard/clientes/[id]/_components/bloco-relacao.tsx'); [ \"$a\" = 0 ] && [ \"$b\" -ge 1 ] && echo LINK_OK || echo LINK_$a.$b",
+   "espera": "LINK_OK"
+  },
+  {
+   "descricao": "vazio da linha do tempo com datas, sem 'nas cinco origens'",
+   "cmd": "a=$(grep -c 'nenhum evento nas cinco origens' 'src/app/dashboard/clientes/[id]/_components/timeline-visao.tsx'); b=$(grep -c 'nenhum evento entre' 'src/app/dashboard/clientes/[id]/_components/timeline-visao.tsx'); [ \"$a\" = 0 ] && [ \"$b\" -ge 1 ] && echo TIMELINE_OK || echo TIMELINE_$a.$b",
+   "espera": "TIMELINE_OK"
+  },
+  {
+   "descricao": "otimizacoes vazias sem heading e com 'nenhuma no período'",
+   "cmd": "a=$(grep -c 'nenhuma no período' 'src/app/dashboard/clientes/[id]/_components/bloco-otimizacoes.tsx'); b=$(grep -c 'sem base, nenhuma otimização registrada' 'src/app/dashboard/clientes/[id]/_components/bloco-otimizacoes.tsx'); [ \"$a\" -ge 1 ] && [ \"$b\" = 0 ] && echo OTIM_OK || echo OTIM_$a.$b",
+   "espera": "OTIM_OK"
+  },
+  {
+   "descricao": "Analise IA vazia como linha 'nenhuma'",
+   "cmd": "a=$(grep -c 'sem base, nenhuma análise gerada' 'src/app/dashboard/clientes/[id]/_components/analise-ia.tsx'); [ \"$a\" = 0 ] && echo IA_LINHA || echo IA_$a",
+   "espera": "IA_LINHA"
+  },
+  {
+   "descricao": "motor de leitura intocado (o texto sem base vem do banco; a tela e que para de imprimir)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD -- src/lib/ia/leitura-relacao.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo MOTOR_INTOCADO || echo MOTOR_TOCADO",
+   "espera": "MOTOR_INTOCADO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde",
+   "cmd": "test -f test/ficha-visao-blocos-vazios.test.ts && npx vitest run test/ficha-visao-blocos-vazios.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "testes existentes da allowlist nao encolhem (it/test >= contagem medida em main 26/09; igual na staging-auto)",
+   "cmd": "r=INTACTOS; for p in 'test/acao-unica-ficha-controles.test.tsx:9' 'test/analise-ia-visao.test.tsx:6' 'test/atalhos-externos.test.ts:17' 'test/barra-visao.test.tsx:9' 'test/bloco-alertas-visao.test.tsx:6' 'test/bloco-relacao.test.tsx:6' 'test/bloco-tarefas-visao.test.tsx:5' 'test/bloco-vazio-linha.test.ts:13' 'test/cadastro-colapsavel.test.ts:14' 'test/cartao-copy-sem-travessao.test.ts:11' 'test/cartao-topo-nps.test.ts:6' 'test/cartao-topo-perfil.test.tsx:19' 'test/cartao-topo-renovacao.test.ts:8' 'test/cartao-topo-setup-e-closer.test.ts:8' 'test/cartao-topo-status-popover.test.ts:5' 'test/cartao-topo-teses.test.tsx:8' 'test/cockpit-blocos-null.test.ts:7' 'test/conta-resultados-escritorio.test.ts:9' 'test/ficha-perfil-operacional.test.ts:16' 'test/header-cliente-consolidado.test.ts:21' 'test/historico-status-compacto.test.ts:13' 'test/kpis-visao.test.tsx:16' 'test/leitura-relacao-tela.test.tsx:14' 'test/orquestrador-enforcement.test.ts:27' 'test/otimizacoes-tela.test.ts:11' 'test/registro-unico-relacao.test.ts:10' 'test/relacao-aceite.test.tsx:47' 'test/relacao-sinais-de-risco.test.tsx:7' 'test/rotas-fantasma-ficha.test.ts:18' 'test/saude-motivo-sem-base.test.ts:8' 'test/score-saude-fonte-unica.test.ts:9' 'test/sem-insumo.test.ts:35' 'test/tabela-campanhas-expansao.test.tsx:12' 'test/tabela-funil-tese.test.tsx:17' 'test/timeline-estado-vazio-unico.test.tsx:4' 'test/timeline-visao.test.tsx:7' 'test/tooltip-acessivel.test.ts:24' 'test/visao-aceite-estrutura.test.tsx:39' 'test/visao-aceite-mockup.test.tsx:58' 'test/visao-dado-parado-e-link.test.ts:5' 'test/visao-estrutura-cabecalho.test.tsx:8' 'test/visao-estrutura-relacao.test.tsx:5' 'test/visao-estrutura-timeline.test.tsx:9' 'test/visao-estrutura-trio.test.tsx:5' 'test/visao-limpeza-final.test.tsx:4' 'test/visao-sem-cockpit-antigo.test.ts:8'; do f=${p%:*}; n=${p##*:}; [ \"$(grep -cE '(^|[^A-Za-z_.])(it|test)\\(' \"$f\")\" -ge \"$n\" ] || r=\"ENCOLHEU:$f\"; done; echo $r",
+   "espera": "INTACTOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum skip/only/todo nos testes existentes da allowlist",
+   "cmd": "n=$(cat 'test/acao-unica-ficha-controles.test.tsx' 'test/analise-ia-visao.test.tsx' 'test/atalhos-externos.test.ts' 'test/barra-visao.test.tsx' 'test/bloco-alertas-visao.test.tsx' 'test/bloco-relacao.test.tsx' 'test/bloco-tarefas-visao.test.tsx' 'test/bloco-vazio-linha.test.ts' 'test/cadastro-colapsavel.test.ts' 'test/cartao-copy-sem-travessao.test.ts' 'test/cartao-topo-nps.test.ts' 'test/cartao-topo-perfil.test.tsx' 'test/cartao-topo-renovacao.test.ts' 'test/cartao-topo-setup-e-closer.test.ts' 'test/cartao-topo-status-popover.test.ts' 'test/cartao-topo-teses.test.tsx' 'test/cockpit-blocos-null.test.ts' 'test/conta-resultados-escritorio.test.ts' 'test/ficha-perfil-operacional.test.ts' 'test/header-cliente-consolidado.test.ts' 'test/historico-status-compacto.test.ts' 'test/kpis-visao.test.tsx' 'test/leitura-relacao-tela.test.tsx' 'test/orquestrador-enforcement.test.ts' 'test/otimizacoes-tela.test.ts' 'test/registro-unico-relacao.test.ts' 'test/relacao-aceite.test.tsx' 'test/relacao-sinais-de-risco.test.tsx' 'test/rotas-fantasma-ficha.test.ts' 'test/saude-motivo-sem-base.test.ts' 'test/score-saude-fonte-unica.test.ts' 'test/sem-insumo.test.ts' 'test/tabela-campanhas-expansao.test.tsx' 'test/tabela-funil-tese.test.tsx' 'test/timeline-estado-vazio-unico.test.tsx' 'test/timeline-visao.test.tsx' 'test/tooltip-acessivel.test.ts' 'test/visao-aceite-estrutura.test.tsx' 'test/visao-aceite-mockup.test.tsx' 'test/visao-dado-parado-e-link.test.ts' 'test/visao-estrutura-cabecalho.test.tsx' 'test/visao-estrutura-relacao.test.tsx' 'test/visao-estrutura-timeline.test.tsx' 'test/visao-estrutura-trio.test.tsx' 'test/visao-limpeza-final.test.tsx' 'test/visao-sem-cockpit-antigo.test.ts' | grep -cE '[.](skip|only|todo)\\('); [ \"$n\" = 0 ] && echo SEM_SKIP || echo SKIP_$n",
+   "espera": "SEM_SKIP",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes da allowlist verdes (recalculados, nunca afrouxados)",
+   "cmd": "npx vitest run test/acao-unica-ficha-controles.test.tsx test/analise-ia-visao.test.tsx test/atalhos-externos.test.ts test/barra-visao.test.tsx test/bloco-alertas-visao.test.tsx test/bloco-relacao.test.tsx test/bloco-tarefas-visao.test.tsx test/bloco-vazio-linha.test.ts test/cadastro-colapsavel.test.ts test/cartao-copy-sem-travessao.test.ts test/cartao-topo-nps.test.ts test/cartao-topo-perfil.test.tsx test/cartao-topo-renovacao.test.ts test/cartao-topo-setup-e-closer.test.ts test/cartao-topo-status-popover.test.ts test/cartao-topo-teses.test.tsx test/cockpit-blocos-null.test.ts test/conta-resultados-escritorio.test.ts test/ficha-perfil-operacional.test.ts test/header-cliente-consolidado.test.ts test/historico-status-compacto.test.ts test/kpis-visao.test.tsx test/leitura-relacao-tela.test.tsx test/orquestrador-enforcement.test.ts test/otimizacoes-tela.test.ts test/registro-unico-relacao.test.ts test/relacao-aceite.test.tsx test/relacao-sinais-de-risco.test.tsx test/rotas-fantasma-ficha.test.ts test/saude-motivo-sem-base.test.ts test/score-saude-fonte-unica.test.ts test/sem-insumo.test.ts test/tabela-campanhas-expansao.test.tsx test/tabela-funil-tese.test.tsx test/timeline-estado-vazio-unico.test.tsx test/timeline-visao.test.tsx test/tooltip-acessivel.test.ts test/visao-aceite-estrutura.test.tsx test/visao-aceite-mockup.test.tsx test/visao-dado-parado-e-link.test.ts test/visao-estrutura-cabecalho.test.tsx test/visao-estrutura-relacao.test.tsx test/visao-estrutura-timeline.test.tsx test/visao-estrutura-trio.test.tsx test/visao-limpeza-final.test.tsx test/visao-sem-cockpit-antigo.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais fora da allowlist seguem verdes (travessao mudo, nenhum title= novo no cartao, vazio em linha, abas montadas)",
+   "cmd": "npx vitest run test/travessao-mudo.test.ts test/cartao-topo-perfil.test.tsx test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "avaliador: com dado vazio o bloco Relacao renderiza 1 'Registrar' e 1 'Ver relação'; leitura sem_base nao imprime 'Sem base para ler a relação'; chips da linha do tempo condicionados a evento, datas vindas por prop; nenhum estado vazio em CardTitle/h*; Tarefas e Alertas intocados; comportamento com dado preservado. REPROVE se: linha vazia virou heading; mais de 1 'Registrar' no bloco vazio; Tarefas/Alertas alterados; teste recalculado perdeu assercao.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "RECON 26/09 (staging-auto cc0d3ce = main nestes arquivos). Renumerado de 624. Campo bloco removido. Mudancas: (a) CRITERIO IMPOSSIVEL SUBSTITUIDO: 'Sem base para ler a relação' em src/ = 0 dava 2 (leitura-relacao-bloco.tsx:128 e src/lib/ia/leitura-relacao.ts:132, fora da allowlist) e o texto tambem esta gravado no banco: apagar o literal nao tiraria a frase da tela. O conserto honesto e a Visao tratar leitura sem_base como ausencia; motor fica intocado (guarda). (b) 'Ver relação' nao existia (so em saude/retencao-centro.tsx:117); o link atual e 'Ver aba Relação'. (c) a linha do tempo da Visao e TimelineVisao (timeline-visao.tsx), nao a timeline-relacao do 647; ela nao recebia periodo: geral-tab.tsx entra na allowlist para passar a prop. (d) vazio de Otimizacoes tinha <h3> (viola a regra do proprio ticket). vitest por exit code; tsc ^src/ = 3.",
+ "_objetivo_cortado_na_fixture": 3486
+}

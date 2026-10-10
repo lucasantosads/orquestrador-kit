@@ -1,0 +1,5 @@
+src/app/api/perf/qualificacao-regras/[id]/route.ts(55,34): error TS2538: Type 'undefined' cannot be used as an index type.
+src/app/api/perf/qualificacao-regras/estagios/route.ts(31,21): error TS2802: Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+src/app/dashboard/clientes/qualificacao/qualificacao-block.tsx(74,29): error TS2802: Type 'MapIterator<ClienteTese>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+test/relacao-responder-tela.test.ts(5,38): error TS7016: Could not find a declaration file for module 'react-dom/server'. '/Users/lucasantos/Projetos/comarka-operacional/node_modules/react-dom/server.node.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react-dom` if it exists or add a new declaration (.d.ts) file containing `declare module 'react-dom/server';`

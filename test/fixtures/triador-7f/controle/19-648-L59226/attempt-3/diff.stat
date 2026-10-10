@@ -1,0 +1,11 @@
+ .../clientes/[id]/_components/perfil-chip.tsx      |  3 +-
+ src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx | 44 +++++++++++-----------
+ test/cartao-copy-sem-travessao.test.ts             |  9 +++--
+ test/cartao-topo-setup-e-closer.test.ts            |  4 +-
+ test/cartao-topo-teses.test.tsx                    |  7 +++-
+ test/rotas-fantasma-ficha.test.ts                  |  8 +++-
+ test/tooltip-acessivel.test.ts                     |  6 +++
+ test/visao-aceite-estrutura.test.tsx               | 17 ++++++---
+ test/visao-aceite-mockup.test.tsx                  | 10 +++--
+ test/visao-estrutura-cabecalho.test.tsx            | 12 ++++--
+ 10 files changed, 77 insertions(+), 43 deletions(-)

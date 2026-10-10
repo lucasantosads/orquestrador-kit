@@ -1,0 +1,24 @@
+The clientes-perf area now has zero travessão mudo and the TETO dropped from 44 to 29. One test outside the allowlist now fails, `test/painel-campanhas-mockup.test.ts`. It can't pass without editing that test, and the ticket says to stop and describe in that case, so I stopped there.
+
+**Results**
+- **tsc:** 3 errors in `src/`, same as the baseline.
+- **Build:** `npm run build` passes.
+- **Travessão guard:** passes, and the five global guards pass.
+- **Measurement:** the total is 29 with zero in the area. I couldn't run the `TRAVESSAO_RELATORIO=... npx vitest` form because the permission check blocked the env-var prefix. So I set TETO to 0 for one run, read the total from the failure message ("29 > teto 0"), and then wrote 29.
+- **Full suite:** all 5,878 tests pass, but one test file fails to load (below).
+- I didn't run the acceptance-criteria scripts as written, since they use the same blocked env-var prefix.
+
+**The blocking failure:** `painel-campanhas-mockup.test.ts` loads `ClientePerfPanel.tsx` with a fixed list of stand-ins for its imports. The ticket requires `<SemDado compacto>` in that file's cells. The new import `@/components/estados/sem-dado` isn't on that list, so the test file fails with `Cannot find module '@/components/estados/sem-dado'`. The previous attempt probably avoided this by using a local "sem base", which is exactly what got it rejected. The fix is one line in that test (add the import to its stand-in list), but the test has to be added to the ticket's allowlist first. I saved a memory note about this.
+
+**A second test I kept passing:** `test/contas-anuncio-tabela.test.ts`, also outside the allowlist, checks for the exact text `{fmt(acc.ctr, "", "%")}`. The accounts table cells now use a small wrapper, `<OuSemDado motivo={...}>{fmt(...)}</OuSemDado>`. The calling code still picks the motivo, and that exact text is preserved.
+
+**Fixes for the previous rejection**
+- **`fmt`/`fmtInt`/`brl`/`int`:** they now return `null` instead of "—" or `SEM_BASE`. Where the value can be missing, the calling code picks the case:
+  - Table cells show `SemDado` compacto with a specific motivo, such as "sem leads no período", "sem impressões no período", "sem MQL rastreado no período", "anúncio não tem orçamento próprio" or "orçamento definido nos conjuntos".
+  - KPI cards show "sem base".
+- **ScoreBreakdown:** a missing value shows "fonte do componente indisponível", and a missing weight shows "fora do score, peso redistribuído".
+- **CPMQL ranking:** shows "sem MQL no período".
+- **`previewValor`:** each branch has its own motivo. Budget shows "sem orçamento diário" and status shows "status não informado pela Meta".
+- **Perf Score card:** with no score it shows "sem base". The dead "—" branch in `ScoreBadge` is gone; in `perf-block` a missing score shows "score não calculado para o período".
+
+**Commits** (none pushed): `a83238b`, `1e376a4`, `aeb1565` (TETO change), `ea220f5`. The test diff touches only the `TETO` line and its measurement comment.

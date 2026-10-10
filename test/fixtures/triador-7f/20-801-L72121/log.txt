@@ -1,0 +1,30 @@
+72092	[2026-10-03 22:39:19-0300] drenagem: ticket 801 (21 pendentes restantes)
+72093	[orq 01:39:20] orquestrador iniciando · modo: real · once
+72094	[orq 01:39:20] preflight: validando infra (scripts, fila, env, claude)...
+72095	[orq 01:39:23] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+72096	[orq 01:39:32] preflight: ok
+72097	[orq 01:39:55] === ticket 801 (resolver-cliente-rota-auditoria) — tentativa 1 · modo: real ===
+72098	[orq 01:39:57]   recon_esperado: ok (3 comando(s))
+72099	[orq 01:39:57] aviso allowlist: src/app/api/clientes/[id]/auditoria/route.ts já existe no worktree — o agente vai EDITAR, não criar
+72100	[orq 01:39:57] aviso allowlist: test/auditoria-cliente.test.ts já existe no worktree — o agente vai EDITAR, não criar
+72101	[orq 01:39:57]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/801/attempt-1/prompt.txt
+72102	[orq 01:39:57]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+72103	[orq 03:41:54]   diff cru salvo (122 linhas alteradas) · HEAD julgado 262fa0f0
+72104	[orq 03:41:55]   enforcement: ok
+72105	[orq 04:42:30]   gate tsc: ok (baseline)
+72106	[orq 05:43:25]   gate vitest: FALHA
+72107	[orq 05:43:25]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/801/attempt-1/gate-vitest.txt)
+72108	[orq 05:43:26] ticket 801: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/801/attempt-1/gate-vitest.txt)
+72109	[orq 05:43:26] === ticket 801 (resolver-cliente-rota-auditoria) — tentativa 2 · modo: real ===
+72110	[orq 05:43:27]   recon_esperado: ok (3 comando(s))
+72111	[orq 05:43:27] aviso allowlist: src/app/api/clientes/[id]/auditoria/route.ts já existe no worktree — o agente vai EDITAR, não criar
+72112	[orq 05:43:27] aviso allowlist: test/auditoria-cliente.test.ts já existe no worktree — o agente vai EDITAR, não criar
+72113	[orq 05:43:27]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/801/attempt-2/prompt.txt
+72114	[orq 05:43:27]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+72115	[orq 06:44:23]   diff cru salvo (128 linhas alteradas) · HEAD julgado d681427c
+72116	[orq 06:44:24]   enforcement: ok
+72117	[orq 06:44:49]   gate tsc: ok (baseline)
+72118	[orq 07:45:44]   gate vitest: FALHA
+72119	[orq 07:45:44]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/801/attempt-2/gate-vitest.txt)
+72120	[orq 07:45:45] ticket 801: motivo de reprova REPETIU — circuit breaker (por ticket)
+72121	[orq 07:45:45] ticket 801: BLOQUEADO sem gastar a próxima volta

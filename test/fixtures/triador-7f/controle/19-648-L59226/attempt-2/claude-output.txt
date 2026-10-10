@@ -1,0 +1,12 @@
+O ticket 648 está commitado em dois commits (`f9cc43d` e `91fa3c7`); nada foi enviado com push. A reprovação `VAZIO_0.0.0` acontecia porque a branch não tinha nenhuma mudança do 648: `HEAD` era o merge do 647.
+
+O que mudou em `geral-tab.tsx` e `perfil-chip.tsx`:
+- **Perfil e Gestor:** o chip de perfil mostra `Perfil · <valor>` (ou `Perfil · sem base`, em cinza), e o Gestor virou `Gestor · <nome>`.
+- **Regenerar:** o botão diz "Regenerar link NPS"; no estado ocupado continua "Regenerando…".
+- **Vazio da segunda linha:** as linhas agora ficam em uma linha só, `rotulo="Teses" texto="nenhuma"` e `rotulo="Entregáveis" texto="nenhum"`. A quebra em várias linhas era o que fazia o critério não casar.
+- **Ajuda do closer:** o `?` virou o ícone `HelpCircle`. A Dica explica as duas fontes: o closer vem do registro comercial do fechamento, e o tempo de casa conta a partir da data de fechamento do contrato.
+- **Editar atalhos:** o botão saiu da linha de atalhos e foi para o grupo de "Editar cadastro", com uma Dica explicando o que são atalhos.
+
+Testes: rodei `npx vitest run test/` inteiro e deu 578 arquivos, 5955 testes, tudo verde. A primeira rodada, antes de recalcular, tinha 15 falhas, todas em testes da allowlist. Recalculei sete arquivos de teste, cada asserção com comentário citando 648, sem remover asserção nem usar `.skip`/`.only`. Um deles, `test/rotas-fantasma-ficha.test.ts`, cita o novo texto da Dica em vez da frase antiga sobre a fonte não publicada.
+
+No tsc, o número de erros em `src/` é 3, conferido antes de recalcular os testes (que não mexem em `src/`). Essa contagem foi sem `rm -rf .next`, porque o comando foi negado. Os grep dos critérios de Teses/Entregáveis, Regenerar e `title=` foram conferidos só com a contagem de `title=` no `geral-tab.tsx`, que dá 1. Não rodei `npm run build`.

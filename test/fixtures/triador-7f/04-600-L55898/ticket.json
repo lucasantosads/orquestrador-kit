@@ -1,0 +1,111 @@
+{
+ "id": "600",
+ "slug": "aceite-visao-estrutura",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "ORCAMENTO DE DIFF: teto declarado de 420 linhas de diff (teto da leva: 600; diff_cap_linhas da fila e 900), repartido em ~420 em NOVO test/visao-aceite-estrutura.test.tsx (~420 somados). Conta por arquivo, adicoes + remocoes. Se passar de 600, pare e reporte em vez de entregar. Escreva test/visao-aceite-estrutura.test.tsx, o teste de ACEITE DE ESTRUTURA da aba Visao contra o mockup oficial docs/roadmap/mockups/ficha/visao.dc.html (estado vazio, REFERENCIA; docs/roadmap/mockups/ficha/visao-com-dado.dc.html e a mesma estrutura com dado, so ilustrativo). Padrao do 522: este ticket NAO corrige tela; se um item falhar, o teste fica vermelho, o ticket reprova e a lista de it( vermelhos e o entregavel (vira ticket de correcao, nunca afrouxamento). Ele complementa o 522 (que prova conteudo e copy contra o mockup antigo): aqui a prova e de ESTRUTURA (quantos cartoes, em que grade, em que ordem), mais presentes, ausentes e copy. PASSO 1: leia docs/roadmap/mockups/ficha/visao.dc.html inteiro; os tickets 594, 594b, 595, 596, 596b, 596c, 597, 598 e 599 (docs/fila) e os testes novos deles (test/visao-estrutura-*.test.tsx, test/saude-motivo-sem-base.test.ts); src/app/dashboard/clientes/[id]/page.tsx (ramo grupoAtivo === \"visao-geral\"), src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx (IdentidadeCliente e GeralTab) e os componentes de _components/ (kpis-visao, barra-visao, tabela-campanhas, bloco-relacao, bloco-tarefas, bloco-alertas, timeline-visao, bloco-otimizacoes, analise-ia). COMO VE",
+ "pathspec_allowlist": [
+  "test/visao-aceite-estrutura.test.tsx"
+ ],
+ "cria_novo": [
+  "test/visao-aceite-estrutura.test.tsx"
+ ],
+ "dependencias": [
+  "522",
+  "594",
+  "594b",
+  "595",
+  "596",
+  "596b",
+  "596c",
+  "597",
+  "598",
+  "599"
+ ],
+ "prioridade": 10,
+ "recon_esperado": [
+  {
+   "descricao": "o aceite de estrutura ainda nao existe",
+   "cmd": "test -f test/visao-aceite-estrutura.test.tsx && echo JA_EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "o mockup oficial esta no repo com a grade de 6 KPIs e o trio 1.5fr 1fr 1fr",
+   "cmd": "f=docs/roadmap/mockups/ficha/visao.dc.html; grep -q 'repeat(6, minmax(0, 1fr))' $f && grep -q '1.5fr 1fr 1fr' $f && echo MOCKUP_OK || echo SEM_MOCKUP",
+   "espera": "MOCKUP_OK"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 em src/",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -c '^src/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste de aceite de estrutura verde (a Visao cumpre o mockup de 23/09)",
+   "cmd": "test -f test/visao-aceite-estrutura.test.tsx && npx vitest run test/visao-aceite-estrutura.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "o arquivo tem pelo menos 39 it( (um por item)",
+   "cmd": "n=$(grep -cE '(^|[^a-zA-Z_.])it\\(' test/visao-aceite-estrutura.test.tsx 2>/dev/null); [ \"${n:-0}\" -ge 39 ] && echo IT_39_OK || echo IT_SO_${n:-0}",
+   "espera": "IT_39_OK"
+  },
+  {
+   "descricao": "teste novo sem .skip/.only/.todo e sem JSX (test/visao-aceite-estrutura.test.tsx)",
+   "cmd": "f=test/visao-aceite-estrutura.test.tsx; [ -f $f ] && [ \"$(grep -cE '[.](skip|only|todo)[(]' $f)\" = 0 ] && ! grep -qE 'return <|\\(<[A-Z]|= <[A-Z]' $f && echo LIMPO || echo SUJO_OU_AUSENTE",
+   "espera": "LIMPO"
+  },
+  {
+   "descricao": "o teste le o mockup oficial de 23/09 (as contagens vem dele)",
+   "cmd": "grep -qF 'visao.dc.html' test/visao-aceite-estrutura.test.tsx 2>/dev/null && grep -qF 'readFileSync' test/visao-aceite-estrutura.test.tsx && echo LE_MOCKUP || echo NAO_CITA_MOCKUP",
+   "espera": "LE_MOCKUP"
+  },
+  {
+   "descricao": "sem expect.soft nem it.fails",
+   "cmd": "f=test/visao-aceite-estrutura.test.tsx; [ -f $f ] && [ \"$(grep -cE 'expect[.]soft|it[.]fails' $f)\" = 0 ] && echo SEM_SOFT || echo TEM_SOFT",
+   "espera": "SEM_SOFT"
+  },
+  {
+   "descricao": "cada nome do grupo estrutura (25) aparece no arquivo",
+   "cmd": "m=0; for n in 'estrutura: ordem dos blocos da Visao igual a do mockup' 'estrutura: KPIs em grade de 6 colunas com 6 cartoes' 'estrutura: faixa no topo so no KPI com dado' 'estrutura: KPI sem base com rotulo, sem base e motivo' 'estrutura: barra em dois grupos numa linha' 'estrutura: periodo e relatorio no grupo da direita' 'estrutura: aviso de coleta atrasada acima dos KPIs' 'estrutura: colunas da tabela na ordem do mockup' 'estrutura: numeros da tabela alinhados a direita' 'estrutura: funil, tese e status como chip' 'estrutura: CPL colorido pela media' 'estrutura: expansao campanha conjunto anuncio recuada' 'estrutura: trio em grade de 3 colunas na ordem Relacao Tarefas Alertas' 'estrutura: Relacao e um cartao com temperatura e 4 linhas' 'estrutura: Combinados recolhidos' 'estrutura: Pendencias com chip de dono e prazo' 'estrutura: Relacao com + Registrar e Ver aba Relacao' 'estrutura: Tarefas com caixa de marcar, campo e Ver no kanban' 'estrutura: Alertas com bolinha de estado e Criar alerta' 'estrutura: Linha do tempo em largura cheia' 'estrutura: evento com data, bolinha por origem e texto' 'estrutura: filtros a direita do titulo da Linha do tempo' 'estrutura: rodape de Otimizacoes dentro da Linha do tempo' 'estrutura: Analise IA como faixa recolhida no rodape' 'estrutura: cabecalho em duas linhas'; do grep -qF \"\\\"$n\\\"\" test/visao-aceite-estrutura.test.tsx 2>/dev/null || m=$((m+1)); done; [ $m = 0 ] && echo NOMES_OK || echo FALTAM_$m",
+   "espera": "NOMES_OK"
+  },
+  {
+   "descricao": "cada nome do grupo cabecalho (4) aparece no arquivo",
+   "cmd": "m=0; for n in 'cabecalho: chips nomeados Saude, NPS e Setup' 'cabecalho: Gestor e renovacao como texto' 'cabecalho: Closer com dica no ?' 'cabecalho: Saude sem base explica o motivo'; do grep -qF \"\\\"$n\\\"\" test/visao-aceite-estrutura.test.tsx 2>/dev/null || m=$((m+1)); done; [ $m = 0 ] && echo NOMES_OK || echo FALTAM_$m",
+   "espera": "NOMES_OK"
+  },
+  {
+   "descricao": "cada nome do grupo ausente (7) aparece no arquivo",
+   "cmd": "m=0; for n in 'ausente: tira de KPIs com divisoria unica' 'ausente: Relacao, Tarefas e Alertas empilhados' 'ausente: Timeline e Otimizacoes lado a lado' 'ausente: origem em texto na Linha do tempo' 'ausente: explicacao longa do Closer na linha' 'ausente: Situacao e Atencao soltas na linha do nome' 'ausente: botao Concluir em texto nas Tarefas'; do grep -qF \"\\\"$n\\\"\" test/visao-aceite-estrutura.test.tsx 2>/dev/null || m=$((m+1)); done; [ $m = 0 ] && echo NOMES_OK || echo FALTAM_$m",
+   "espera": "NOMES_OK"
+  },
+  {
+   "descricao": "cada nome do grupo copy (3) aparece no arquivo",
+   "cmd": "m=0; for n in 'copy: nenhum travessao nos componentes da Visao' 'copy: ausencia e sem base' 'copy: titulos de secao do mockup'; do grep -qF \"\\\"$n\\\"\" test/visao-aceite-estrutura.test.tsx 2>/dev/null || m=$((m+1)); done; [ $m = 0 ] && echo NOMES_OK || echo FALTAM_$m",
+   "espera": "NOMES_OK"
+  },
+  {
+   "descricao": "as cinco guardas globais seguem verdes (fetch-json-teto, consistencia-contagens, bloco-vazio-linha, abas-montadas, cartao-topo-perfil)",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "o aceite atual da Visao (522, test/visao-aceite-mockup.test.tsx) segue verde; ausente so antes do 522 (arvore do validador)",
+   "cmd": "( [ ! -f test/visao-aceite-mockup.test.tsx ] || npx vitest run test/visao-aceite-mockup.test.tsx >/dev/null 2>&1 ) && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "cada it( assere de verdade sobre render ou fonte, com a contagem lida do mockup (nada tautologico, nenhum item afrouxado); os vermelhos, se houver, estao listados nas notas com o motivo",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 9231
+}

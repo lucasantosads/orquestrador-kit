@@ -1,0 +1,13 @@
+{
+ "id": "662b",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/662b-metas-realizado-leads-do-perf.md",
+ "ticket_sha": "d6af04565b2e035265684900dd7dad19b42cb479",
+ "ticket_antes": true,
+ "linha_bloqueio": null,
+ "linha_fim": 60556,
+ "log_inicio": 60513,
+ "fim": "2026-09-26T21:19:43Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/662b"
+}

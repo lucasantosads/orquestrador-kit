@@ -1,0 +1,13 @@
+{
+ "id": "712",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/712-aviso-tarefa-atribuida.md",
+ "ticket_sha": "94a46ba83c97bfe253f369a065559e7271d5f969",
+ "ticket_antes": true,
+ "linha_bloqueio": null,
+ "linha_fim": 68241,
+ "log_inicio": 68194,
+ "fim": "2026-10-02T01:04:55Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/712"
+}

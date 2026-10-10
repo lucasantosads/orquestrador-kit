@@ -1,0 +1,45 @@
+57009	[2026-09-25 19:04:52-0300] drenagem: ticket 549c (2 pendentes restantes)
+57010	[orq 22:04:52] orquestrador iniciando · modo: real · once
+57011	[orq 22:04:52] preflight: validando infra (scripts, fila, env, claude)...
+57012	[orq 22:04:54] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+57013	[orq 22:05:14] preflight: ok
+57014	[orq 22:05:22] === ticket 549c (leitura-relacao-agendar) — tentativa 1 · modo: real ===
+57015	[orq 22:05:23]   recon_esperado: ok (1 comando(s))
+57016	[orq 22:05:23] aviso allowlist: test/crons-meta-consolidacao.test.ts já existe no worktree — o agente vai EDITAR, não criar
+57017	[orq 22:05:23] aviso allowlist: test/crons-meta-consolidacao.test.ts (criterio[4]) já existe no worktree — o agente vai EDITAR, não criar
+57018	[orq 22:05:23]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/549c/attempt-1/prompt.txt
+57019	[orq 22:05:23]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+57020	[orq 22:06:11]   diff cru salvo (0 linhas) · HEAD julgado 7f347e3c
+57021	[orq 22:06:11]   enforcement: ok
+57022	[orq 22:06:24]   gate tsc: ok (baseline)
+57023	[orq 22:06:35]   gate vitest: ok
+57024	[orq 22:06:36]   criterios mecânicos: FALHA — criterio[1] mecânico: esperado 'CRON_REGISTRADO', obteve 'SEM_CRON'
+57025	[orq 22:06:36]   REPROVA (mecânica, sem Opus): criterio[1] mecânico: esperado 'CRON_REGISTRADO', obteve 'SEM_CRON'
+57026	[orq 22:06:36] ticket 549c: reprovado — retry 1/2. motivo: criterio[1] mecânico: esperado 'CRON_REGISTRADO', obteve 'SEM_CRON'
+57027	[orq 22:06:36] === ticket 549c (leitura-relacao-agendar) — tentativa 2 · modo: real ===
+57028	[orq 22:06:36]   recon_esperado: ok (1 comando(s))
+57029	[orq 22:06:36] aviso allowlist: test/crons-meta-consolidacao.test.ts já existe no worktree — o agente vai EDITAR, não criar
+57030	[orq 22:06:36] aviso allowlist: test/crons-meta-consolidacao.test.ts (criterio[4]) já existe no worktree — o agente vai EDITAR, não criar
+57031	[orq 22:06:36]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/549c/attempt-2/prompt.txt
+57032	[orq 22:06:36]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+57033	[orq 22:07:05]   diff cru salvo (33 linhas) · HEAD julgado d85dc07b
+57034	[orq 22:07:05]   enforcement: ok
+57035	[orq 22:07:18]   gate tsc: ok (baseline)
+57036	[orq 22:07:29]   gate vitest: ok
+57037	[orq 22:07:30]   criterios mecânicos: FALHA — criterio[2] mecânico: esperado 'ALVO_20_CRONS', obteve 'ALVO_ANTIGO'
+57038	[orq 22:07:30]   REPROVA (mecânica, sem Opus): criterio[2] mecânico: esperado 'ALVO_20_CRONS', obteve 'ALVO_ANTIGO'
+57039	[orq 22:07:30] ticket 549c: reprovado — retry 2/2. motivo: criterio[2] mecânico: esperado 'ALVO_20_CRONS', obteve 'ALVO_ANTIGO'
+57040	[orq 22:07:30] === ticket 549c (leitura-relacao-agendar) — tentativa 3 · modo: real ===
+57041	[orq 22:07:31]   recon_esperado: ok (1 comando(s))
+57042	[orq 22:07:31] aviso allowlist: test/crons-meta-consolidacao.test.ts já existe no worktree — o agente vai EDITAR, não criar
+57043	[orq 22:07:31] aviso allowlist: test/crons-meta-consolidacao.test.ts (criterio[4]) já existe no worktree — o agente vai EDITAR, não criar
+57044	[orq 22:07:31]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/549c/attempt-3/prompt.txt
+57045	[orq 22:07:31]   tentativa final: escalando modelo do executor para 'opus'
+57046	[orq 22:07:31]   chamando claude -p (headless, --model opus, timeout 1500s) no worktree...
+57047	[orq 22:08:01]   diff cru salvo (0 linhas) · HEAD julgado 7f347e3c
+57048	[orq 22:08:01]   enforcement: ok
+57049	[orq 22:08:14]   gate tsc: ok (baseline)
+57050	[orq 22:08:25]   gate vitest: ok
+57051	[orq 22:08:26]   criterios mecânicos: FALHA — criterio[1] mecânico: esperado 'CRON_REGISTRADO', obteve 'SEM_CRON'
+57052	[orq 22:08:26]   REPROVA (mecânica, sem Opus): criterio[1] mecânico: esperado 'CRON_REGISTRADO', obteve 'SEM_CRON'
+57053	[orq 22:08:26] ticket 549c: reprovado após 2 retries — BLOQUEADO

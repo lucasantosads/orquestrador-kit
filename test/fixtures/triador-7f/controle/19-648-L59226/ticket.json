@@ -1,0 +1,132 @@
+{
+ "id": "648",
+ "slug": "cabecalho-ficha-chips-rotulados",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "No cartão do topo da ficha: IdentidadeCliente em src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx:325 (NÃO em page.tsx nem ficha-banners.tsx; linha 1 :529-578 data-testid=\"cartao-linha-1\", linha 2 :582-635 data-testid=\"cartao-linha-2\", linha de atalhos :812-837). Linhas medidas na staging-auto cc0d3ce (iguais em main). (1) Chip sem rótulo: é o PerfilChip (src/app/dashboard/clientes/[id]/_components/perfil-chip.tsx, montado em geral-tab.tsx:547); hoje :231 rotuloChip = carregando ? \"Carregando…\" : perfil ? perfil.rotulo : \"sem base\" e o rótulo 'Perfil comportamental:' só existe em sr-only (:254). O chip passa a mostrar o rótulo visível 'Perfil · <valor>' e, sem perfil, 'Perfil · sem base' em cinza (regra de honestidade da casa: vazio é 'sem base', não 'não definido'). O chip de Gestor (:548 'Gestor: {analista || \"sem base\"}') passa a 'Gestor · <nome>' com o mesmo separador. O chip de Setup (ficha-banners.tsx) é do 656 e não muda aqui; Saúde, NPS e o badge de status não mudam. (2) O botão 'Regenerar' (:539-541, data-testid=\"nps-regenerar\", ação regenerarLinkNps :510-521) regenera o LINK DO NPS, não a saúde: rótulo passa a 'Regenerar link NPS' (e 'Regenerando…' no estado ocupado); já fica junto do chip de NPS, posição e confirm() não mudam. (3) Vazio da segunda linha: BlocoVazioLinha (src/components/estados/bloco-vazio-linha.tsx:30, já desenha 'rótulo · texto · ação') em :584-589 (rotulo=\"Teses\" texto=\"sem base, nenhuma tese cadastrada\") e :600-605 (rotulo=\"Entregáveis\" texto=",
+ "pathspec_allowlist": [
+  "src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx",
+  "src/app/dashboard/clientes/[id]/_components/perfil-chip.tsx",
+  "test/acao-unica-ficha-controles.test.tsx",
+  "test/analise-ia-visao.test.tsx",
+  "test/atalhos-externos.test.ts",
+  "test/barra-visao.test.tsx",
+  "test/bloco-alertas-visao.test.tsx",
+  "test/bloco-relacao.test.tsx",
+  "test/bloco-tarefas-visao.test.tsx",
+  "test/bloco-vazio-linha.test.ts",
+  "test/cadastro-colapsavel.test.ts",
+  "test/cartao-copy-sem-travessao.test.ts",
+  "test/cartao-topo-nps.test.ts",
+  "test/cartao-topo-perfil.test.tsx",
+  "test/cartao-topo-renovacao.test.ts",
+  "test/cartao-topo-setup-e-closer.test.ts",
+  "test/cartao-topo-status-popover.test.ts",
+  "test/cartao-topo-teses.test.tsx",
+  "test/cockpit-blocos-null.test.ts",
+  "test/conta-resultados-escritorio.test.ts",
+  "test/ficha-perfil-operacional.test.ts",
+  "test/header-cliente-consolidado.test.ts",
+  "test/historico-status-compacto.test.ts",
+  "test/kpis-visao.test.tsx",
+  "test/orquestrador-enforcement.test.ts",
+  "test/relacao-aceite.test.tsx",
+  "test/rotas-fantasma-ficha.test.ts",
+  "test/saude-motivo-sem-base.test.ts",
+  "test/score-saude-fonte-unica.test.ts",
+  "test/sem-insumo.test.ts",
+  "test/tabela-campanhas-expansao.test.tsx",
+  "test/tabela-funil-tese.test.tsx",
+  "test/timeline-visao.test.tsx",
+  "test/tooltip-acessivel.test.ts",
+  "test/visao-aceite-estrutura.test.tsx",
+  "test/visao-aceite-mockup.test.tsx",
+  "test/visao-dado-parado-e-link.test.ts",
+  "test/visao-estrutura-cabecalho.test.tsx",
+  "test/visao-estrutura-timeline.test.tsx",
+  "test/visao-estrutura-trio.test.tsx",
+  "test/visao-limpeza-final.test.tsx",
+  "test/visao-sem-cockpit-antigo.test.ts"
+ ],
+ "dependencias": [
+  "647"
+ ],
+ "recon_esperado": [
+  {
+   "descricao": "vazios redundantes, Regenerar curto e chip de perfil sem rotulo visivel",
+   "cmd": "a=$(grep -cE 'texto=\"sem base, nenhum(a)? (tese|entreg)' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'); b=$(grep -c '\"Regenerar\"' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'); c=$(grep -c 'perfil ? perfil.rotulo : \"sem base\"' 'src/app/dashboard/clientes/[id]/_components/perfil-chip.tsx'); echo \"VAZIOS=$a REGEN=$b CHIP=$c\"",
+   "espera": "VAZIOS=2 REGEN=1 CHIP=1"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 em src/",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -c '^src/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "redundancia 'sem base, nenhuma tese / nenhum entregavel' saiu; Teses e Entregaveis com texto nenhuma/nenhum",
+   "cmd": "a=$(grep -cE 'sem base, nenhum(a)? (tese|entreg)' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'); b=$(grep -c 'rotulo=\"Teses\" texto=\"nenhuma\"' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'); c=$(grep -c 'rotulo=\"Entregáveis\" texto=\"nenhum\"' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'); [ \"$a\" = 0 ] && [ \"$b\" -ge 1 ] && [ \"$c\" -ge 1 ] && echo VAZIO_LINHA || echo VAZIO_$a.$b.$c",
+   "espera": "VAZIO_LINHA"
+  },
+  {
+   "descricao": "Regenerar diz o que regenera",
+   "cmd": "a=$(grep -c 'Regenerar link NPS' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'); b=$(grep -c '\"Regenerar\"' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'); [ \"$a\" -ge 1 ] && [ \"$b\" = 0 ] && echo REGEN_OK || echo REGEN_$a.$b",
+   "espera": "REGEN_OK"
+  },
+  {
+   "descricao": "chip de perfil com rotulo visivel",
+   "cmd": "n=$(grep -c 'Perfil · ' 'src/app/dashboard/clientes/[id]/_components/perfil-chip.tsx'); [ \"$n\" -ge 1 ] && echo PERFIL_ROTULADO || echo PERFIL_SEM_ROTULO",
+   "espera": "PERFIL_ROTULADO"
+  },
+  {
+   "descricao": "Gestor com ponto medio, sem dois-pontos",
+   "cmd": "a=$(grep -c 'Gestor: ' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'); b=$(grep -c 'Gestor · ' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'); [ \"$a\" = 0 ] && [ \"$b\" -ge 1 ] && echo GESTOR_OK || echo GESTOR_$a.$b",
+   "espera": "GESTOR_OK"
+  },
+  {
+   "descricao": "a ajuda do closer nao e mais o caractere '?' solto (linha so com ?) e a Dica fala da data de fechamento",
+   "cmd": "a=$(grep -cE '^[[:space:]]*[?][[:space:]]*$' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'); b=$(grep -c 'ainda não foi publicada. Campo em branco' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'); [ \"$a\" = 0 ] && [ \"$b\" = 0 ] && echo AJUDA_ICONE || echo INTERROGACAO_$a.$b",
+   "espera": "AJUDA_ICONE"
+  },
+  {
+   "descricao": "nenhum title= novo em geral-tab (1) nem no chip (0)",
+   "cmd": "a=$(grep -c 'title=' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'); b=$(grep -c 'title=' 'src/app/dashboard/clientes/[id]/_components/perfil-chip.tsx'); [ \"$a\" -le 1 ] && [ \"$b\" -le 0 ] && echo SEM_TITLE_NOVO || echo TITLE_$a.$b",
+   "espera": "SEM_TITLE_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes da allowlist nao encolhem (it/test >= contagem medida em main 26/09; igual na staging-auto)",
+   "cmd": "r=INTACTOS; for p in 'test/acao-unica-ficha-controles.test.tsx:9' 'test/analise-ia-visao.test.tsx:6' 'test/atalhos-externos.test.ts:17' 'test/barra-visao.test.tsx:9' 'test/bloco-alertas-visao.test.tsx:6' 'test/bloco-relacao.test.tsx:6' 'test/bloco-tarefas-visao.test.tsx:5' 'test/bloco-vazio-linha.test.ts:13' 'test/cadastro-colapsavel.test.ts:14' 'test/cartao-copy-sem-travessao.test.ts:11' 'test/cartao-topo-nps.test.ts:6' 'test/cartao-topo-perfil.test.tsx:19' 'test/cartao-topo-renovacao.test.ts:8' 'test/cartao-topo-setup-e-closer.test.ts:8' 'test/cartao-topo-status-popover.test.ts:5' 'test/cartao-topo-teses.test.tsx:8' 'test/cockpit-blocos-null.test.ts:7' 'test/conta-resultados-escritorio.test.ts:9' 'test/ficha-perfil-operacional.test.ts:16' 'test/header-cliente-consolidado.test.ts:21' 'test/historico-status-compacto.test.ts:13' 'test/kpis-visao.test.tsx:16' 'test/orquestrador-enforcement.test.ts:27' 'test/relacao-aceite.test.tsx:47' 'test/rotas-fantasma-ficha.test.ts:18' 'test/saude-motivo-sem-base.test.ts:8' 'test/score-saude-fonte-unica.test.ts:9' 'test/sem-insumo.test.ts:35' 'test/tabela-campanhas-expansao.test.tsx:12' 'test/tabela-funil-tese.test.tsx:17' 'test/timeline-visao.test.tsx:7' 'test/tooltip-acessivel.test.ts:24' 'test/visao-aceite-estrutura.test.tsx:39' 'test/visao-aceite-mockup.test.tsx:58' 'test/visao-dado-parado-e-link.test.ts:5' 'test/visao-estrutura-cabecalho.test.tsx:8' 'test/visao-estrutura-timeline.test.tsx:9' 'test/visao-estrutura-trio.test.tsx:5' 'test/visao-limpeza-final.test.tsx:4' 'test/visao-sem-cockpit-antigo.test.ts:8'; do f=${p%:*}; n=${p##*:}; [ \"$(grep -cE '(^|[^A-Za-z_.])(it|test)\\(' \"$f\")\" -ge \"$n\" ] || r=\"ENCOLHEU:$f\"; done; echo $r",
+   "espera": "INTACTOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum skip/only/todo nos testes existentes da allowlist",
+   "cmd": "n=$(cat 'test/acao-unica-ficha-controles.test.tsx' 'test/analise-ia-visao.test.tsx' 'test/atalhos-externos.test.ts' 'test/barra-visao.test.tsx' 'test/bloco-alertas-visao.test.tsx' 'test/bloco-relacao.test.tsx' 'test/bloco-tarefas-visao.test.tsx' 'test/bloco-vazio-linha.test.ts' 'test/cadastro-colapsavel.test.ts' 'test/cartao-copy-sem-travessao.test.ts' 'test/cartao-topo-nps.test.ts' 'test/cartao-topo-perfil.test.tsx' 'test/cartao-topo-renovacao.test.ts' 'test/cartao-topo-setup-e-closer.test.ts' 'test/cartao-topo-status-popover.test.ts' 'test/cartao-topo-teses.test.tsx' 'test/cockpit-blocos-null.test.ts' 'test/conta-resultados-escritorio.test.ts' 'test/ficha-perfil-operacional.test.ts' 'test/header-cliente-consolidado.test.ts' 'test/historico-status-compacto.test.ts' 'test/kpis-visao.test.tsx' 'test/orquestrador-enforcement.test.ts' 'test/relacao-aceite.test.tsx' 'test/rotas-fantasma-ficha.test.ts' 'test/saude-motivo-sem-base.test.ts' 'test/score-saude-fonte-unica.test.ts' 'test/sem-insumo.test.ts' 'test/tabela-campanhas-expansao.test.tsx' 'test/tabela-funil-tese.test.tsx' 'test/timeline-visao.test.tsx' 'test/tooltip-acessivel.test.ts' 'test/visao-aceite-estrutura.test.tsx' 'test/visao-aceite-mockup.test.tsx' 'test/visao-dado-parado-e-link.test.ts' 'test/visao-estrutura-cabecalho.test.tsx' 'test/visao-estrutura-timeline.test.tsx' 'test/visao-estrutura-trio.test.tsx' 'test/visao-limpeza-final.test.tsx' 'test/visao-sem-cockpit-antigo.test.ts' | grep -cE '[.](skip|only|todo)\\('); [ \"$n\" = 0 ] && echo SEM_SKIP || echo SKIP_$n",
+   "espera": "SEM_SKIP",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes da allowlist verdes (recalculados, nunca afrouxados)",
+   "cmd": "npx vitest run test/acao-unica-ficha-controles.test.tsx test/analise-ia-visao.test.tsx test/atalhos-externos.test.ts test/barra-visao.test.tsx test/bloco-alertas-visao.test.tsx test/bloco-relacao.test.tsx test/bloco-tarefas-visao.test.tsx test/bloco-vazio-linha.test.ts test/cadastro-colapsavel.test.ts test/cartao-copy-sem-travessao.test.ts test/cartao-topo-nps.test.ts test/cartao-topo-perfil.test.tsx test/cartao-topo-renovacao.test.ts test/cartao-topo-setup-e-closer.test.ts test/cartao-topo-status-popover.test.ts test/cartao-topo-teses.test.tsx test/cockpit-blocos-null.test.ts test/conta-resultados-escritorio.test.ts test/ficha-perfil-operacional.test.ts test/header-cliente-consolidado.test.ts test/historico-status-compacto.test.ts test/kpis-visao.test.tsx test/orquestrador-enforcement.test.ts test/relacao-aceite.test.tsx test/rotas-fantasma-ficha.test.ts test/saude-motivo-sem-base.test.ts test/score-saude-fonte-unica.test.ts test/sem-insumo.test.ts test/tabela-campanhas-expansao.test.tsx test/tabela-funil-tese.test.tsx test/timeline-visao.test.tsx test/tooltip-acessivel.test.ts test/visao-aceite-estrutura.test.tsx test/visao-aceite-mockup.test.tsx test/visao-dado-parado-e-link.test.ts test/visao-estrutura-cabecalho.test.tsx test/visao-estrutura-timeline.test.tsx test/visao-estrutura-trio.test.tsx test/visao-limpeza-final.test.tsx test/visao-sem-cockpit-antigo.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais fora da allowlist seguem verdes (travessao mudo, nenhum title= novo no cartao, vazio em linha, abas montadas)",
+   "cmd": "npx vitest run test/travessao-mudo.test.ts test/cartao-topo-perfil.test.tsx test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "avaliador: todo chip da linha 1 que pode ficar vazio tem rotulo visivel (Perfil, Gestor); Regenerar diz 'link NPS'; ajuda do closer e icone numa Dica, texto com as duas fontes (fechamento, nao START); 'Editar atalhos' no grupo de 'Editar cadastro' com Dica; Teses/Entregaveis no cartao. REPROVE se: um chip continuar 'sem base' sem rotulo; alguma assercao foi removida/skipada em vez de recalculada; a Dica do closer disser que tempo de casa vem do START; Teses ou Entregaveis sairam do cartao.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "RECON 26/09 (staging-auto cc0d3ce = main em geral-tab/perfil-chip). Renumerado de 622. Campo bloco removido. Mudancas: (a) o componente e IdentidadeCliente em tabs/geral-tab.tsx:325, nao page.tsx/ficha-banners; o chip sem rotulo e o PerfilChip (_components/perfil-chip.tsx). (b) 'Regenerar' regenera o link do NPS (regenerarLinkNps), nao a saude: o exemplo 'Regenerar saúde' estava errado. (c) 'Perfil · não definido' contradizia a regra de honestidade do proprio ticket: virou 'Perfil · sem base'. (d) a Dica do closer dizia 'tempo de casa: data de START': o codigo usa fechamento.data_fechamento (:466). (e) criterio 'Teses · nenhuma' nunca casaria: BlocoVazioLinha monta 'rotulo · texto' em runtime; criterio passou a rotulo=\"Teses\" texto=\"nenhuma\". (f) 'title/Tooltip' virou Dica (cartao-topo-perfil fixa title=). (g) o vitest de header-cliente-consolidado ja passava em HEAD (31 testes) e grep 'passed' e substring: virou guarda por exit code, junto com todos os testes que citam geral-tab/perfil-chip. tsc ^src/ = 3.",
+ "_objetivo_cortado_na_fixture": 3525
+}

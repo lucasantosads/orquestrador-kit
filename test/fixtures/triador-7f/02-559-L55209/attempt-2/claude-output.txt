@@ -1,0 +1,13 @@
+Escrevi e commitei `test/conta-aceite.test.tsx`, mas 1 dos 50 testes continua vermelho. O gate de vitest vai reprovar de novo, pelo mesmo motivo da tentativa anterior. O commit é `8c128bc`.
+
+**O item vermelho:** `copy: nenhum s/ dado nem travessao de ausencia na aba Conta`. A causa é real na tela, não no teste. `formatBytes` em `src/components/arquivos/documentos-section.tsx:55` devolve `"—"` quando o documento não tem tamanho. Essa lista é a de Documentos da seção 1 da aba Conta.
+
+O ticket diz que item vermelho é o entregável e proíbe afrouxar o teste, e não posso tocar em `src`. Por isso deixei o teste como está. O conserto é trocar esse `"—"` por texto explícito (ticket de correção em `src`). Se preferirem excluir esse arquivo compartilhado do escopo do teste, a decisão é de vocês.
+
+- **Testes:** 49 dos 50 passam. Os nomes seguem a prosa do ticket. Nenhum `.skip`, `.only`, `.todo` ou `it.fails`.
+- **Tamanho:** o arquivo tem 404 linhas, dentro do teto de 600.
+- **Divergências:** as 4 têm comentário acima do `it(`. A do Grupo de WhatsApp não tem asserção contra `WhatsAppGruposSection`, conforme a nota do ticket.
+- **Guardas globais:** as cinco passam.
+- **tsc:** não consegui rodar o critério do baseline de 3 erros em `src/` (o comando foi negado). O único arquivo que criei é um teste.
+- **`src`:** não alterei nada.
+- **Recuperação:** o arquivo da tentativa anterior não estava na worktree. Reconstruí o conteúdo a partir de `runs/559/attempt-1/diff.raw`.

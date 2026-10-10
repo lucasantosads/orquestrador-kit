@@ -1,0 +1,16 @@
+O ticket 760 está implementado e commitado (`7dc5f11`), mas a suíte completa do vitest continua com 2 testes vermelhos. Esses 2 testes são de `test/migrations-policy-idempotente.test.ts`. Eles reprovam o arquivo `supabase/migrations/20261003182558_fecha_escrita_public_8_tabelas_os.sql`, que já está na base `staging-auto` (commit `8e8b525`). Esse arquivo não tem guarda de `pg_policies` nas 15 policies.
+
+A reprovação anterior (`gate-vitest.txt`) tem esses mesmos 2 testes. Esse arquivo e esse teste estão fora da allowlist e nenhum dos dois é do 760, então não mexi neles. Para o gate ficar verde, alguém precisa corrigir a migration (ou o teste) em outro ticket. Não rodei `npm run build`.
+
+**O que mudou:**
+- **`src/lib/perf/crm-oportunidades.ts` (novo, 243 linhas):** tem as funções do enunciado: `normalizarOportunidadeGhl`, `gravarOportunidade`, `removerOportunidade` e `requalificarContato`, mais os dois erros `OportunidadeSemConexaoError` e `OportunidadeSemEtapaError`.
+- **`src/app/api/webhooks/ghl/app/route.ts`:** passa a tratar os 4 eventos de oportunidade depois da assinatura e do `appId`. Os eventos de contato ficaram como estavam.
+- **`test/ghl-app-webhook.test.ts`:** só o tipo do exemplo de "tipo ignorado" mudou, de `OpportunityCreate` para `InvoiceCreate`, com comentário citando o 760. Todas as assertivas foram mantidas.
+- **`test/ghl-oportunidades-webhook.test.ts` (novo):** 18 testes, todos os casos do enunciado e mais 3: etapa que aparece depois do sync, Delete de oportunidade desconhecida e falha do motor na requalificação.
+
+**Verificação:**
+- **Testes do 760:** `ghl-oportunidades-webhook.test.ts` e `ghl-app-webhook.test.ts` passam (30 testes).
+- **tsc:** 3 erros, o baseline. Não consegui rodar `rm -rf .next` (a permissão foi negada), então o `grep -v '^\.next/'` do filtro foi o que tirou o ruído.
+- **Orçamento de diff:** 588 linhas, dentro do teto de 640.
+- **Vitest completo:** 742 arquivos passam e 1 falha (o da migration acima).
+- **Critérios de aceite:** não rodei um a um os `cmd:` dos critérios de aceite.

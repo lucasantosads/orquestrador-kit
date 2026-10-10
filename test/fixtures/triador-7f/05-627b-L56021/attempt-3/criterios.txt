@@ -1,0 +1,14 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-627b
+sanear_tsc: nao
+cmd:    r=$(mktemp); TRAVESSAO_RELATORIO="$r" npx vitest run test/travessao-mudo.test.ts -t 'travessao mudo nao passa do teto' >/dev/null 2>&1; h=$(git show HEAD:test/travessao-mudo.test.ts 2>/dev/null | grep -oE 'const TETO = [0-9]+' | grep -oE '[0-9]+$'); node -e 'const fs=require("fs");let j;try{j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"))}catch(e){console.log("SEM_RELATORIO");process.exit(0)};const m=fs.readFileSync("test/travessao-mudo.test.ts","utf8").match(/const TETO = (\d+);/);const t=m?+m[1]:-1;const h=+process.argv[2];console.log(h>0&&j.total===t&&t<h?"TETO_BAIXOU_SEM_FOLGA":"TETO_ERRADO_"+j.total+"_"+t+"_"+h)' "$r" "$h"
+espera: TETO_BAIXOU_SEM_FOLGA
+-- saida --
+TETO_ERRADO_234_234_234
+
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS

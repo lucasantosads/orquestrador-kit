@@ -1,0 +1,59 @@
+57310	[2026-09-25 19:37:05-0300] drenagem: ticket 627j (1 pendentes restantes)
+57311	[orq 22:37:05] orquestrador iniciando · modo: real · once
+57312	[orq 22:37:05] preflight: validando infra (scripts, fila, env, claude)...
+57313	[orq 22:37:07] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+57314	[orq 22:37:14] preflight: ok
+57315	[orq 22:37:22] === ticket 627j (travessao-mudo-clientes-perf) — tentativa 1 · modo: real ===
+57316	[orq 22:37:23]   recon_esperado: ok (1 comando(s))
+57317	[orq 22:37:23] aviso allowlist: src/app/dashboard/clientes/perf/_components/ClientePerfPanel.tsx já existe no worktree — o agente vai EDITAR, não criar
+57318	[orq 22:37:23] aviso allowlist: src/app/dashboard/clientes/perf/_components/ControleCampanhasPanel.tsx já existe no worktree — o agente vai EDITAR, não criar
+57319	[orq 22:37:23] aviso allowlist: src/app/dashboard/clientes/perf/perf-block.tsx já existe no worktree — o agente vai EDITAR, não criar
+57320	[orq 22:37:23] aviso allowlist: test/travessao-mudo.test.ts já existe no worktree — o agente vai EDITAR, não criar
+57321	[orq 22:37:23] aviso allowlist: test/travessao-mudo.test.ts (criterio[1]) já existe no worktree — o agente vai EDITAR, não criar
+57322	[orq 22:37:23] aviso allowlist: test/travessao-mudo.test.ts (criterio[2]) já existe no worktree — o agente vai EDITAR, não criar
+57323	[orq 22:37:23] aviso allowlist: test/travessao-mudo.test.ts (criterio[5]) já existe no worktree — o agente vai EDITAR, não criar
+57324	[orq 22:37:23]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/627j/attempt-1/prompt.txt
+57325	[orq 22:37:23]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+57326	[orq 22:40:40]   diff cru salvo (476 linhas) · HEAD julgado 6f6792b9
+57327	[orq 22:40:40]   enforcement: ok
+57328	[orq 22:40:53]   gate tsc: ok (baseline)
+57329	[orq 22:41:04]   gate vitest: FALHA
+57330	[orq 22:41:04]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/627j/attempt-1/gate-vitest.txt)
+57331	[orq 22:41:04] ticket 627j: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/627j/attempt-1/gate-vitest.txt)
+57332	[orq 22:41:04] === ticket 627j (travessao-mudo-clientes-perf) — tentativa 2 · modo: real ===
+57333	[orq 22:41:05]   recon_esperado: ok (1 comando(s))
+57334	[orq 22:41:05] aviso allowlist: src/app/dashboard/clientes/perf/_components/ClientePerfPanel.tsx já existe no worktree — o agente vai EDITAR, não criar
+57335	[orq 22:41:05] aviso allowlist: src/app/dashboard/clientes/perf/_components/ControleCampanhasPanel.tsx já existe no worktree — o agente vai EDITAR, não criar
+57336	[orq 22:41:05] aviso allowlist: src/app/dashboard/clientes/perf/perf-block.tsx já existe no worktree — o agente vai EDITAR, não criar
+57337	[orq 22:41:05] aviso allowlist: test/travessao-mudo.test.ts já existe no worktree — o agente vai EDITAR, não criar
+57338	[orq 22:41:05] aviso allowlist: test/travessao-mudo.test.ts (criterio[1]) já existe no worktree — o agente vai EDITAR, não criar
+57339	[orq 22:41:05] aviso allowlist: test/travessao-mudo.test.ts (criterio[2]) já existe no worktree — o agente vai EDITAR, não criar
+57340	[orq 22:41:05] aviso allowlist: test/travessao-mudo.test.ts (criterio[5]) já existe no worktree — o agente vai EDITAR, não criar
+57341	[orq 22:41:05]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/627j/attempt-2/prompt.txt
+57342	[orq 22:41:05]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+57343	[orq 22:44:17]   diff cru salvo (227 linhas) · HEAD julgado c13bc323
+57344	[orq 22:44:18]   enforcement: ok
+57345	[orq 22:44:30]   gate tsc: ok (baseline)
+57346	[orq 22:44:42]   gate vitest: ok
+57347	[orq 22:44:57]   criterios mecânicos: ok
+57348	[orq 22:45:25]   gate build: ok
+57349	[orq 22:45:38] avaliador: REPROVADO — fmt/fmtInt (ClientePerfPanel, perf-block) devolvem SEM_BASE em vez de null, e quem chama não decide o caso. Células da ScoreBreakdown e do CPMQL usam 'sem base' em vez de SemDado compacto. previewValor sem status cai no motivo de orçamento.
+57350	[orq 22:45:39] ticket 627j: reprovado — retry 2/2. motivo: fmt/fmtInt (ClientePerfPanel, perf-block) devolvem SEM_BASE em vez de null, e quem chama não decide o caso. Células da ScoreBreakdown e do CPMQL usam 'sem base' em vez de SemDado compacto. previewValor sem status cai no motivo de orçamento.
+57351	[orq 22:45:39] === ticket 627j (travessao-mudo-clientes-perf) — tentativa 3 · modo: real ===
+57352	[orq 22:45:39]   recon_esperado: ok (1 comando(s))
+57353	[orq 22:45:39] aviso allowlist: src/app/dashboard/clientes/perf/_components/ClientePerfPanel.tsx já existe no worktree — o agente vai EDITAR, não criar
+57354	[orq 22:45:39] aviso allowlist: src/app/dashboard/clientes/perf/_components/ControleCampanhasPanel.tsx já existe no worktree — o agente vai EDITAR, não criar
+57355	[orq 22:45:39] aviso allowlist: src/app/dashboard/clientes/perf/perf-block.tsx já existe no worktree — o agente vai EDITAR, não criar
+57356	[orq 22:45:39] aviso allowlist: test/travessao-mudo.test.ts já existe no worktree — o agente vai EDITAR, não criar
+57357	[orq 22:45:39] aviso allowlist: test/travessao-mudo.test.ts (criterio[1]) já existe no worktree — o agente vai EDITAR, não criar
+57358	[orq 22:45:39] aviso allowlist: test/travessao-mudo.test.ts (criterio[2]) já existe no worktree — o agente vai EDITAR, não criar
+57359	[orq 22:45:39] aviso allowlist: test/travessao-mudo.test.ts (criterio[5]) já existe no worktree — o agente vai EDITAR, não criar
+57360	[orq 22:45:39]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/627j/attempt-3/prompt.txt
+57361	[orq 22:45:39]   tentativa final: escalando modelo do executor para 'opus'
+57362	[orq 22:45:39]   chamando claude -p (headless, --model opus, timeout 1500s) no worktree...
+57363	[orq 22:50:34]   diff cru salvo (451 linhas) · HEAD julgado ea220f59
+57364	[orq 22:50:34]   enforcement: ok
+57365	[orq 22:50:47]   gate tsc: ok (baseline)
+57366	[orq 22:50:59]   gate vitest: FALHA
+57367	[orq 22:50:59]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/627j/attempt-3/gate-vitest.txt)
+57368	[orq 22:50:59] ticket 627j: reprovado após 2 retries — BLOQUEADO

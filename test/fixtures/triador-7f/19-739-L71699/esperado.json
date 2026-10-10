@@ -1,0 +1,12 @@
+{
+ "classe": "R3",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/local-loop.log",
+   "linha": 71698,
+   "origem": "medicao"
+  }
+ ],
+ "requeue": "nao",
+ "fonte_da_verdade": "medicao-bloqueios-out.md:120"
+}

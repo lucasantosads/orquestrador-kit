@@ -1,0 +1,28 @@
+O aceite está escrito e commitado (`f7bbebd`, 476 linhas, só `test/portal-inicio-aceite.test.tsx`), mas 3 dos 22 `it(` ficam vermelhos. O critério "teste novo verde" não passa, e é o resultado que o ticket pede quando a tela não cumpre o mockup.
+
+**Correção da reprovação anterior.** Tirei os filtros e o recorte que afrouxavam o teste. Os três itens abaixo ficam vermelhos porque a tela diz outra coisa que o mockup. A tabela de divergências no cabeçalho do teste agora só tem o que tem decisão escrita:
+- Abrir grupo, fora da fase (Evolution; só o AQUINO ADV está vinculado; Lucas, 08/10).
+- Criar tarefa vira Subir tarefa (697/736).
+- Saldo Pix, atalhos de teclado e rotinas agrupadas, fora da fase.
+- `s/ dado` vira `sem base`.
+
+"Promessa no prazo" e "Meta atualizada às" saíram da tabela.
+
+Os 22 `it(` seguem os nomes exatos do ticket. O teste lê os dois mockups com `readFileSync` e tira deles os rótulos, as colunas, os filtros e a ordem das seções.
+
+**Os 3 `it(` vermelhos** (cada um vira ticket de correção):
+1. **`presente: cabeçalho com saudação e carimbos de atualização`:** a tela diz "Grupos lidos até" e "Meta coletada até". O mockup diz "grupos lidos às" e "Meta atualizada às".
+2. **`presente: Responder agora com tempo, cliente, tipo e trecho`:** faltam três coisas do mockup:
+   - o tipo "Vácuo · pedido de upsell";
+   - o tipo "Promessa no prazo";
+   - o prazo "Até 18h" com o rótulo "prazo da promessa". A tela só mostra o tempo "desde a promessa".
+3. **`presente: Entrega de mídia com conta sem gasto, CPL e coleta`:** falta a ação "Coletar dias faltantes" no item de coleta que falhou.
+
+**Gates.**
+- O `tsc` dá 3 erros, o baseline, nenhum no arquivo novo.
+- Não há `.sql` nem alteração em `src/` ou nas guardas globais.
+- As 7 guardas globais seguem verdes.
+- Não rodei `npm run build` nem o `vitest run` completo.
+- O `rm -rf .next` foi negado por permissão. Rodei o `tsc` sem limpar e filtrei as linhas de `.next/`.
+
+**Fora do escopo dos itens, mas notado:** a fila da equipe do head mostra o tempo como "10h", e o mockup mostra "1d 3h". O item pede só o "Cobrar gestor", então não está coberto pelo teste.

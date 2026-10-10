@@ -1,0 +1,65 @@
+// Ticket 488d: chip de Setup dentro do cartão do topo e aviso do fechamento
+// em uma linha. Leitura de fonte, no estilo dos demais testes da ficha.
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const DIR = join(process.cwd(), "src/app/dashboard/clientes/[id]");
+const page = readFileSync(join(DIR, "page.tsx"), "utf8");
+const geral = readFileSync(join(DIR, "tabs/geral-tab.tsx"), "utf8");
+const banners = readFileSync(join(DIR, "tabs/ficha-banners.tsx"), "utf8");
+const semComentarios = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+const jsxPage = semComentarios(page);
+
+describe("chip de Setup no cartão do topo (488d)", () => {
+  it("o banner saiu do shell", () => {
+    expect(jsxPage).not.toContain("<SetupBanner");
+    expect(banners).not.toContain("export function SetupBanner");
+  });
+
+  it("o cartão IdentidadeCliente monta o chip", () => {
+    const corpo = geral.slice(geral.indexOf("export function IdentidadeCliente"));
+    expect(corpo).toContain("<SetupChip notionId={notionId} />");
+  });
+
+  it("o chip é ambar, mostra passos de 5 e leva para a tela de setup", () => {
+    expect(banners).toContain("bg-yellow-500/15");
+    expect(banners).toContain("{setup.passos_concluidos}/5");
+    expect(banners).toContain("/dashboard/clientes/$" + "{notionId}/setup");
+  });
+
+  it("setup completo não mostra nada", () => {
+    expect(banners).toContain("if (!setup || setup.setup_pct >= 100) return null;");
+  });
+
+  it("a dica é o balão da casa, sem title= nativo", () => {
+    expect(banners).toContain("<Dica texto=");
+    expect(semComentarios(banners)).not.toMatch(/\btitle=/);
+  });
+});
+
+describe("aviso de Closer e Tempo de casa vira uma linha (488d)", () => {
+  // RECALCULA (ticket 517): a linha (BlocoVazioLinha) saiu de page.tsx e
+  // passou a morar DENTRO do cartão de identidade, em geral-tab.tsx. jsxGeral
+  // aplica o mesmo filtro semComentarios ao arquivo novo.
+  const jsxGeral = semComentarios(geral);
+
+  it("não é mais FonteIndisponivel e não é card nem heading — e não sobrou em page.tsx", () => {
+    expect(jsxPage).not.toContain('campos="Closer que fechou e Tempo de casa"');
+    expect(jsxPage).not.toContain("<BlocoVazioLinha");
+    expect(jsxPage).not.toContain('rotulo="Closer que fechou e Tempo de casa"');
+    expect(jsxGeral).toContain("<BlocoVazioLinha");
+    expect(jsxGeral).toContain('rotulo="Closer que fechou e Tempo de casa"');
+  });
+
+  it("continua dizendo que a fonte não foi publicada e que vazio não é contrato sem closer", () => {
+    // RECALCULA (ticket 598, mockup 23/09 visao.dc.html:74): a explicação vive na
+    // dica do "?" (frase própria, maiúscula); a linha diz só "sem base".
+    expect(jsxGeral).toMatch(/A fonte de fechamento de contrato ainda não foi publicada/);
+    expect(jsxGeral).toContain("não significa contrato sem closer");
+  });
+
+  it("o aviso do CRM segue como FonteIndisponivel", () => {
+    expect(jsxPage).toContain('campos="Pipelines e etapas do CRM"');
+  });
+});

@@ -1,0 +1,5 @@
+ .../clientes/perf/_components/ClientePerfPanel.tsx | 89 ++++++++++++++--------
+ .../perf/_components/ControleCampanhasPanel.tsx    | 38 +++++----
+ src/app/dashboard/clientes/perf/perf-block.tsx     | 54 ++++++++-----
+ test/travessao-mudo.test.ts                        |  4 +-
+ 4 files changed, 117 insertions(+), 68 deletions(-)

@@ -1,0 +1,4 @@
+{
+  "aprovado": true,
+  "motivo": "Relação vazia vira 1 linha sem borda nem heading, com 1 Registrar (painelRegistro) e 1 Ver relação; leitura sem_base filtrada. Chips só com evento e período por prop. Otimizações e Análise IA vazias são linhas. Tarefas/Alertas intocados. Testes recalculados citam 650, sem perda de asserção."
+}

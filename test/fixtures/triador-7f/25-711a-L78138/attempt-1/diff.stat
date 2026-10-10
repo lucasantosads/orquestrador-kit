@@ -1,0 +1,7 @@
+ src/app/api/clientes/sinais/route.ts               |  34 +++++++
+ .../clientes/_components/lista-risco-bloco.tsx     |   4 +-
+ src/app/dashboard/clientes/page.tsx                | 100 ++++++++-------------
+ src/app/dashboard/clientes/risco/page.tsx          |   8 +-
+ src/lib/inicio/carregar-carteira.ts                |  18 +++-
+ test/saude-mesma-regra.test.ts                     |  92 +++++++++++++++++++
+ 6 files changed, 182 insertions(+), 74 deletions(-)

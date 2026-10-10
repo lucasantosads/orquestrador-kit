@@ -1,0 +1,11 @@
+Não escrevi nada e não fiz commit: o item (l) do ticket manda parar neste caso.
+
+`supabase/migrations/20261001090000_portal_inicio.sql` já existe nesta árvore, vinda do commit `94f535e` (ticket 691). O timestamp dela é maior que o de `20261001000000_fn_reativar_churn.sql`, então o critério (l) reprovaria, qualquer que seja o conteúdo da migration. O ticket diz para parar e reportar, sem renomear por conta própria, porque o nome está na allowlist.
+
+Para destravar, falta uma decisão sua:
+- **Mudar o nome na allowlist:** o ticket 407a passa a usar um timestamp posterior a `20261001090000`, por exemplo `20261001100000_fn_reativar_churn.sql`. Os critérios têm o nome fixo no comando, então todos mudam junto.
+- **Mudar o critério (l):** só faz sentido se a ordem relativa à `portal_inicio` não importar. Isso é uma decisão sua, não minha.
+
+Assim que o nome estiver definido, escrevo a migration e os ajustes na rota `churn-log` e nos dois testes (itens a–m).
+
+Na leitura da rota `src/app/api/churn-log/route.ts` não achei nenhum outro impedimento.

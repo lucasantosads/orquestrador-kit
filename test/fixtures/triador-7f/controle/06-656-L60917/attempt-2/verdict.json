@@ -1,0 +1,4 @@
+{
+  "aprovado": true,
+  "motivo": "calcularSetup única com LISTA_SETUP de 6 itens; a rota a chama com o grupo ativo lido de wpp_grupo; chip e cartão leem o mesmo objeto setup (feitos/total, sem /5 fixo). Pendentes viram link para âncora ou passo do assistente. Recálculos citam 656, sem perda de asserção. Ressalva: buildSetupPassos segue exportado sem uso."
+}

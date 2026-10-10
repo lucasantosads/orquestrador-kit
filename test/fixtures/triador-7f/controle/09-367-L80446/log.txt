@@ -1,0 +1,47 @@
+80400	[2026-10-08 01:45:17-0300] drenagem: ticket 367 (18 pendentes restantes)
+80401	[orq 04:45:17] orquestrador iniciando · modo: real · once
+80402	[orq 04:45:17] preflight: validando infra (scripts, fila, env, claude)...
+80403	[orq 04:45:21] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+80404	[orq 04:45:27] preflight: ok
+80405	[orq 04:45:44] === ticket 367 (briefing-criativo-etapa-onboarding) — tentativa 1 · modo: real ===
+80406	[orq 04:45:45]   recon_esperado: ok (2 comando(s))
+80407	[orq 04:45:45] aviso allowlist: test/header-cliente-consolidado.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80408	[orq 04:45:45] aviso allowlist: test/abas-montadas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80409	[orq 04:45:45]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/367/attempt-1/prompt.txt
+80410	[orq 04:45:45]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+80411	[orq 04:48:23]   diff cru salvo (812 linhas alteradas) · HEAD julgado c259b4ba
+80412	[orq 04:48:23]   enforcement: ok
+80413	[orq 04:48:38]   gate tsc: ok (baseline)
+80414	[orq 04:48:58]   gate vitest: FALHA
+80415	[orq 04:48:58]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/367/attempt-1/gate-vitest.txt)
+80416	[orq 04:48:58] ticket 367: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/367/attempt-1/gate-vitest.txt)
+80417	[orq 04:48:58] === ticket 367 (briefing-criativo-etapa-onboarding) — tentativa 2 · modo: real ===
+80418	[orq 04:48:59]   recon_esperado: ok (2 comando(s))
+80419	[orq 04:48:59] aviso allowlist: test/header-cliente-consolidado.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80420	[orq 04:48:59] aviso allowlist: test/abas-montadas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+80421	[orq 04:48:59]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/367/attempt-2/prompt.txt
+80422	[orq 04:49:00]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+80423	[orq 04:51:28]   diff cru salvo (817 linhas alteradas) · HEAD julgado 796b38e1
+80424	[orq 04:51:28]   enforcement: ok
+80425	[orq 04:51:43]   gate tsc: ok (baseline)
+80426	[orq 04:52:04]   gate vitest: ok
+80427	[orq 04:52:04]   criterios mecânicos: ok
+80428	[orq 04:52:31]   gate build: ok
+80429	Merge made by the 'ort' strategy.
+80430	 scripts/dados/367-briefing-template.ts             | 132 +++++++
+80431	 src/app/api/briefings-criativos/route.ts           |  18 +-
+80432	 src/app/dashboard/briefings-criativos/page.tsx     | 379 +--------------------
+80433	 .../clientes/[id]/tabs/briefing-criativo-bloco.tsx | 111 ++++++
+80434	 .../dashboard/clientes/[id]/tabs/briefing-link.ts  |   4 +
+80435	 .../clientes/[id]/tabs/onboarding-tab.tsx          |   2 +
+80436	 src/lib/hoje/fontes/briefing.ts                    | 112 ++++++
+80437	 test/briefing-etapa.test.tsx                       |  59 ++++
+80438	 8 files changed, 443 insertions(+), 374 deletions(-)
+80439	 create mode 100644 scripts/dados/367-briefing-template.ts
+80440	 create mode 100644 src/app/dashboard/clientes/[id]/tabs/briefing-criativo-bloco.tsx
+80441	 create mode 100644 src/app/dashboard/clientes/[id]/tabs/briefing-link.ts
+80442	 create mode 100644 src/lib/hoje/fontes/briefing.ts
+80443	 create mode 100644 test/briefing-etapa.test.tsx
+80444	[orq 04:52:50] avaliador: merge --no-ff de frente/367 em staging-auto ok
+80445	[orq 04:52:50] avaliador: APROVADO e mergeado.
+80446	[orq 04:52:51] ticket 367: APROVADO e mergeado em staging-auto

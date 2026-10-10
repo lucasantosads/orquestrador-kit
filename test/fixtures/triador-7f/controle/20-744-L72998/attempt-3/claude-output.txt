@@ -1,0 +1,28 @@
+Ticket 744 is done and committed in three commits on `frente/744` (`8e16eaf`, `f35ba1f`, `f22f4f5`). Nothing was pushed, and the worktree is clean.
+
+**Previous failure, fixed:** criterion 14 failed because `location_nome: p.locationNome` was still in `crm-conexao.ts`. The name now goes through a local variable and is only sent when it isn't null: `...comNome`, where `comNome` is `{ location_nome: nome }` or `{}`. The check now returns NOME_1_2_0, which gives NOME_OK.
+
+**What changed:**
+- **`ghl-agencia.ts`:** new `nomeDaConta`. It calls `GET /locations/{id}` and returns the trimmed name, or `null` on any failure, with a log. It never throws.
+- **`crm-conexao.ts`:**
+  - **Reconnecting:** reconnecting without a name no longer erases a good one.
+  - **Sync:** after the pipelines sync, it reads `location_nome`. If it is null, it asks the GHL. The name goes into the same final `'ativa'` update, which is still the last write to `perf_crm_conexoes`. It also fills `perf_ghl_locations` with `.is('location_nome', null)`, so an existing name is never overwritten.
+  - **Read failure:** an error reading the name is logged and the sync continues without a name.
+- **`crm-etapas.ts`** (new):
+  - `conexaoViva` picks the connection the same way the CRM status screen does.
+  - `estadoBackfill` has the four states and uses `PREFIXO_ERRO_BACKFILL` from `ghl-backfill.ts`.
+  - `carregarEtapasCrm` returns active pipelines and stages sorted by position. Totals are counted from the returned lists, and any read error throws with the reason.
+- **New routes:**
+  - `GET …/crm/etapas` returns 401, 404 or 500 with the reason, or 200 with the data.
+  - `POST …/crm/sincronizar` runs `sincronizarConexao`. If the backfill hasn't finished, it queues it with `enfileirarBackfillGhl`. It returns 200 when the account ends up active and 502 with `ultimo_erro` when the sync fails. A failure to queue the backfill is also a 502 with the reason.
+
+**Verification:**
+- **Type check:** 3 errors, the tolerated baseline (all in qualificacao files).
+- **Tests:** the new test file passes (19 tests); the 7 global guards and 13 existing GHL tests pass (220 tests); the full suite passes (749 files, 7722 tests).
+- **Build:** `npm run build` printed BUILD_OK.
+- **Diff size:** 586 lines, under the 600 limit, with only allowlisted files.
+- **Content checks:** no new `.json()`, no `?? []` or `|| []`, nothing writes `backfill_concluido_em`, and no `.sql` files.
+
+**Not run as specified:** I couldn't run `rm -rf .next` because the command was denied, so the type-check count was read with the `.next/` filter instead.
+
+**Design call:** when the backfill isn't finished, the sincronizar route queues it even if the sync itself just failed. That is what the ticket says literally, but you may prefer to queue only after a successful sync.

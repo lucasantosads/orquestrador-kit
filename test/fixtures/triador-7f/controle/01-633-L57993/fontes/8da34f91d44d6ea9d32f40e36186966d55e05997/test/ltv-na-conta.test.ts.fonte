@@ -1,0 +1,50 @@
+/**
+ * Ticket 513 — LTV e "Vincular receita" moram na aba Conta (bloco Financeiro),
+ * lendo o composto do cockpit que o shell já busca. Sem jsdom neste projeto:
+ * a prova é por leitura de fonte.
+ */
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const src = readFileSync(join("src", "app", "dashboard", "clientes", "[id]", "page.tsx"), "utf8");
+
+function ocorrencias(texto: string, re: RegExp): number {
+  return texto.match(re)?.length ?? 0;
+}
+
+describe("ticket 513 — LTV na aba Conta", () => {
+  it("importa CockpitNegocio de cockpit-cards e o monta uma única vez", () => {
+    expect(src).toContain('import { CockpitNegocio } from "./_components/cockpit-cards"');
+    expect(ocorrencias(src, /<CockpitNegocio\b/g)).toBe(1);
+  });
+
+  it("o CockpitNegocio fica no ramo conta, dentro da seção 2 (Resultados do escritório), fora do AnchorBlock financeiro", () => {
+    const ramo = src.indexOf('grupoAtivo === "conta" && (<>');
+    expect(ramo).toBeGreaterThan(-1);
+    const ancora = src.indexOf('<AnchorBlock id="financeiro"', ramo);
+    const negocio = src.indexOf("<CockpitNegocio", ramo);
+    const financeiro = src.indexOf("<FinanceiroTab", ramo);
+    // Ticket 555: o LTV saiu do financeiro e mora na seção 2; os índices vêm da
+    // abertura de <SecaoConta ordem={2} e do primeiro </SecaoConta> depois dela.
+    const secao2 = src.indexOf("<SecaoConta ordem={2}", ramo);
+    const fimSecao2 = src.indexOf("</SecaoConta>", secao2);
+    const fechaAncora = src.indexOf("</AnchorBlock>", ancora);
+    expect(ancora).toBeGreaterThan(ramo);
+    // Ticket 555: as três asserções antigas (negocio dentro do financeiro)
+    // viram: dentro da seção 2 e fora do AnchorBlock financeiro.
+    expect(negocio).toBeGreaterThan(secao2);
+    expect(negocio).toBeLessThan(fimSecao2);
+    expect(negocio < ancora || negocio > fechaAncora).toBe(true);
+    expect(financeiro).toBeLessThan(fechaAncora);
+  });
+
+  it("Vincular receita abre a sub-aba config e lê o cockpitData do shell", () => {
+    expect(src).toMatch(/<CockpitNegocio[^>]*onConfig=\{\(\) => setActiveTab\("config"\)\}/);
+    expect(src).toContain("negocio={cockpitData?.negocio ?? null}");
+  });
+
+  it("continua uma única chamada fetch do composto do cockpit", () => {
+    expect(ocorrencias(src, /fetch\(`\/api\/perf\/cockpit\//g)).toBe(1);
+  });
+});

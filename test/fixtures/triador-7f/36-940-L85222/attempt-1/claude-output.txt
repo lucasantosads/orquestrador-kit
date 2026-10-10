@@ -1,0 +1,14 @@
+Implementei a regra pura de agregação por nicho e tese, o score e o desvio, mais o teste novo. Está tudo commitado em dois commits, sem push.
+
+- **tsc:** deu 3 erros, o baseline.
+- **Teste novo:** `test/perf-nicho-tese-agregar.test.ts` tem 18 testes, todos passando.
+- **Guardas globais:** as 8 ficaram verdes e não foram editadas.
+- **Diff:** 738 linhas, dentro do teto de 780. Os 5 arquivos são só os da allowlist.
+
+Não rodei `npm run build` nem a suíte `npx vitest run` completa. Os outros critérios de aceite (checagem de `.sql`, `vercel.json`, I/O na lib, número 50 solto) também não foram executados. Ficaram pelo harness.
+
+Duas escolhas minhas que a spec não definia:
+- **Cobertura e "sem tese":** respeitam o filtro de tipo de funil, mas não o de nicho.
+- **Campanha sem tipo e sem indicador:** conta como captação, então não some do investido nem do custo.
+
+Criei os quatro arquivos em `src/lib/perf/nicho-tese/`: `constantes.ts`, `agregar.ts`, `score.ts` e `desvio.ts`.

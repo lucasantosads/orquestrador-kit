@@ -1,0 +1,1 @@
+{"aprovado": true, "motivo": "Rota envolve rodarOperacaoInicio em registrarExecucaoCron('operacao-inicio'); lança EtapasComFalha com 'nome (erro)' por etapa; console.error; 500 mantém o resultado no corpo, 200 igual; 401/503 antes do registro. Sem escrita direta, lib intocada, casos a-d cobertos."}

@@ -1,0 +1,12 @@
+{
+ "id": "711a",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/711a-saude-carteira-e-risco-mesma-regra.md",
+ "ticket_sha": "7ab698b0fff43966ba50cf280016dd700e03f3e8",
+ "ticket_antes": true,
+ "linha_bloqueio": 78138,
+ "log_inicio": 78083,
+ "fim": "2026-10-07T21:32:49Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/711a"
+}

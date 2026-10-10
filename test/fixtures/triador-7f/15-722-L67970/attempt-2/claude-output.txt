@@ -1,0 +1,20 @@
+O ticket 722 está implementado e commitado (`a57b429`), mas a suíte completa continua com 5 testes vermelhos em `test/leitura-relacao-gatilhos.test.ts`. Esse arquivo está fora da allowlist, então não o editei. O desenho do ticket quebra esses testes e preciso de uma decisão sua.
+
+**O que mudou**
+- **Cron (`src/app/api/cron/leitura-relacao/route.ts`):** cada cliente com gatilho passa por `carregarFontes` e `montarEntrada`, ambos importados da lib. Com `fontes_com_dado < 2` o cliente é pulado, sem chamar `gerarLeituraRelacao` e sem gravar em `perf_leituras_relacao`. O teste de fontes vem antes do teto de 40, então cliente sem base não ocupa vaga. O resumo ganhou o campo `pulado_sem_base`, e o comentário do topo foi atualizado.
+- **Middleware (`src/middleware.ts`):** `/api/cron/leitura-relacao` entrou no `CRON_PATHS`, com comentário citando o 722. `sync-clientes` continua fora.
+- **`test/cron-paths-vercel.test.ts`:** `leitura-relacao` saiu de `CRON_PENDENTES_REVISAO`, e o comentário acima da lista cita o 722. Nenhum `it(` nem `expect(` foi removido.
+- **`test/leitura-relacao-cron-sem-base.test.ts` (novo):** cobre os casos do ticket: cliente sem fontes é pulado e não grava, cliente com 2 fontes gera 1 vez, e o middleware deixa passar com o Bearer do cron e devolve 401 com Bearer errado.
+
+**Verificação**
+- O teste novo e o `cron-paths-vercel` passam (11 de 11).
+- O gate do `tsc` dá 3, o baseline.
+- A suíte completa e o `npm run build` não foram rodados depois da mudança.
+
+**O que falha e por quê**
+Os 5 testes que falham são dos clientes de `monta()` e do caso da renovação em `test/leitura-relacao-gatilhos.test.ts`. As fixtures deles têm cliente com gatilho mas sem nenhuma fonte (sem registros, reunião, NPS ou renovação). Pela regra nova esses clientes agora são pulados, então esperar `geradas: 1`, ou 40 chamadas ao motor, deixou de valer.
+
+Este foi o mesmo motivo da reprovação anterior. Os critérios do ticket pedem esse arquivo verde e ao mesmo tempo mandam parar se um teste fora da allowlist quebrar.
+
+**Decisão necessária**
+Recalcular as fixtures desse arquivo, dando 2 ou mais fontes aos clientes do `monta()` e ao caso da renovação. Isso exige incluí-lo na allowlist do 722. Posso fazer isso se você autorizar.

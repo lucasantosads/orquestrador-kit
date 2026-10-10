@@ -1,0 +1,72 @@
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { motivoSaudeSemBase } from "@/lib/perf/motivo-saude";
+import type { ComponenteHealth, ComponenteNome, HealthResult } from "@/lib/perf/cockpit";
+
+function comp(nome: ComponenteNome, ok: boolean): ComponenteHealth {
+  return { nome, valor: ok ? 80 : null, peso_efetivo: 0, status: ok ? "ok" : "sem_dado" };
+}
+function health(score: number | null, ok: Partial<Record<ComponenteNome, boolean>>): HealthResult {
+  return {
+    score,
+    faixa: score === null ? null : "verde",
+    parcial: score === null,
+    componentes: (["performance", "relacionamento", "nps", "financeiro"] as ComponenteNome[]).map(
+      (n) => comp(n, ok[n] === true),
+    ),
+    pendencias_de_fonte: ["client_nps sem resposta", "perf_alert_rules vazia"],
+  };
+}
+
+const PAGE = readFileSync("src/app/dashboard/clientes/[id]/page.tsx", "utf8");
+const GERAL = readFileSync("src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx", "utf8");
+
+describe("ticket 599: motivo da saúde sem base", () => {
+  it("0 de 3 sinais: diz hoje tem 0 e lista os três rótulos", () => {
+    const m = motivoSaudeSemBase(health(null, {}))!;
+    expect(m).toContain("hoje tem 0");
+    expect(m).toContain("2 de 3 sinais");
+    expect(m).toContain("Performance (MQL no período e teto de CPMQL ou nicho)");
+    expect(m).toContain("Alertas (nenhuma regra ativa)");
+    expect(m).toContain("NPS (nenhuma resposta)");
+    expect(m).toContain("Alertas (nenhuma regra ativa) e NPS (nenhuma resposta).");
+  });
+
+  it("só NPS com dado: hoje tem 1 e falta Performance e Alertas", () => {
+    const m = motivoSaudeSemBase(health(null, { nps: true }))!;
+    expect(m).toContain("hoje tem 1");
+    expect(m).toContain("Performance");
+    expect(m).toContain("Alertas");
+    expect(m).not.toContain("NPS");
+  });
+
+  it("score com valor devolve null", () => {
+    expect(motivoSaudeSemBase(health(78, { performance: true, nps: true }))).toBeNull();
+  });
+
+  it("health null devolve null", () => {
+    expect(motivoSaudeSemBase(null)).toBeNull();
+  });
+
+  it("financeiro sem dado nunca aparece", () => {
+    expect(motivoSaudeSemBase(health(null, {}))!.toLowerCase()).not.toContain("financeiro");
+  });
+
+  it("a saída nunca tem jargão de banco", () => {
+    for (const ok of [{}, { nps: true }, { performance: true }]) {
+      const m = motivoSaudeSemBase(health(null, ok))!;
+      expect(m).not.toContain("_");
+      expect(m).not.toContain("client_");
+      expect(m).not.toContain("perf_");
+    }
+  });
+
+  it("shell passa o motivo ao cartão e mantém uma só busca do cockpit", () => {
+    expect(PAGE).toContain("motivoSaude={motivoSaudeSemBase(health)}");
+    expect(PAGE.split("fetch(`/api/perf/cockpit/").length - 1).toBe(1);
+  });
+
+  it("o cartão usa motivoSaude na Dica do chip de saúde", () => {
+    expect(GERAL).toContain("<Dica texto={motivoSaude ?? score.motivo}>{chipSaude}</Dica>");
+  });
+});

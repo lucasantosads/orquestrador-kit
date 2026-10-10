@@ -1,0 +1,12 @@
+{
+ "id": "549c",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/549c-leitura-relacao-agendar.md",
+ "ticket_sha": "b1a554a5e127708fc0c37f7f1529b03a12d3129a",
+ "ticket_antes": true,
+ "linha_bloqueio": 57053,
+ "log_inicio": 57009,
+ "fim": "2026-09-25T22:08:26Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/549c"
+}

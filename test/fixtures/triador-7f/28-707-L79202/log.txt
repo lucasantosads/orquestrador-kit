@@ -1,0 +1,26 @@
+79177	[2026-10-07 22:02:21-0300] drenagem: ticket 707 (25 pendentes restantes)
+79178	[orq 01:02:21] orquestrador iniciando · modo: real · once
+79179	[orq 01:02:21] preflight: validando infra (scripts, fila, env, claude)...
+79180	[orq 01:02:24] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+79181	[orq 01:02:30] preflight: ok
+79182	[orq 01:02:47] === ticket 707 (aceite-inicio-e-head) — tentativa 1 · modo: real ===
+79183	[orq 01:02:48]   recon_esperado: ok (3 comando(s))
+79184	[orq 01:02:48]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/707/attempt-1/prompt.txt
+79185	[orq 01:02:48]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+79186	[orq 01:08:11]   diff cru salvo (454 linhas alteradas) · HEAD julgado 6c064cca
+79187	[orq 01:08:11]   enforcement: ok
+79188	[orq 01:08:26]   gate tsc: ok (baseline)
+79189	[orq 01:08:43]   gate vitest: FALHA
+79190	[orq 01:08:43]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/707/attempt-1/gate-vitest.txt)
+79191	[orq 01:08:43] ticket 707: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/707/attempt-1/gate-vitest.txt)
+79192	[orq 01:08:43] === ticket 707 (aceite-inicio-e-head) — tentativa 2 · modo: real ===
+79193	[orq 01:08:44]   recon_esperado: ok (3 comando(s))
+79194	[orq 01:08:44]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/707/attempt-2/prompt.txt
+79195	[orq 01:08:44]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+79196	[orq 01:10:43]   diff cru salvo (455 linhas alteradas) · HEAD julgado c73f19d2
+79197	[orq 01:10:44]   enforcement: ok
+79198	[orq 01:10:59]   gate tsc: ok (baseline)
+79199	[orq 01:11:16]   gate vitest: FALHA
+79200	[orq 01:11:16]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/707/attempt-2/gate-vitest.txt)
+79201	[orq 01:11:16] ticket 707: motivo de reprova REPETIU — circuit breaker (por ticket)
+79202	[orq 01:11:16] ticket 707: BLOQUEADO sem gastar a próxima volta

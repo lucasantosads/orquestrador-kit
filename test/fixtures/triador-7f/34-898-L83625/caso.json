@@ -1,0 +1,12 @@
+{
+ "id": "898",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/898-alerta-saldo-meta.md",
+ "ticket_sha": "b7858391fee5e44752c8c74d76681b512acb1b78",
+ "ticket_antes": true,
+ "linha_bloqueio": 83625,
+ "log_inicio": 83584,
+ "fim": "2026-10-08T18:22:05Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/898"
+}

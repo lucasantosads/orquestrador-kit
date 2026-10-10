@@ -1,0 +1,94 @@
+60824	[2026-09-26 18:56:16-0300] drenagem: ticket 656 (4 pendentes restantes)
+60825	[orq 21:56:16] orquestrador iniciando · modo: real · once
+60826	[orq 21:56:16] preflight: validando infra (scripts, fila, env, claude)...
+60827	[orq 21:56:18] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+60828	[orq 21:56:24] preflight: ok
+60829	[orq 21:56:36] === ticket 656 (setup-fonte-unica) — tentativa 1 · modo: real ===
+60830	[orq 21:56:37]   recon_esperado: ok (2 comando(s))
+60831	[orq 21:56:37] aviso allowlist: src/app/api/perf/setup/[clienteId]/route.ts já existe no worktree — o agente vai EDITAR, não criar
+60832	[orq 21:56:37] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/ficha-banners.tsx já existe no worktree — o agente vai EDITAR, não criar
+60833	[orq 21:56:37] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/config-tab.tsx já existe no worktree — o agente vai EDITAR, não criar
+60834	[orq 21:56:37] aviso allowlist: src/app/dashboard/clientes/[id]/_components/conexoes-relacao.tsx já existe no worktree — o agente vai EDITAR, não criar
+60835	[orq 21:56:37] aviso allowlist: test/acao-unica-ficha-controles.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+60836	[orq 21:56:37] aviso allowlist: test/cartao-topo-setup-e-closer.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60837	[orq 21:56:37] aviso allowlist: test/conta-aceite.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+60838	[orq 21:56:37] aviso allowlist: test/conta-bugs-reais.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60839	[orq 21:56:37] aviso allowlist: test/conta-cadastro-operacao.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60840	[orq 21:56:37] aviso allowlist: test/conta-conexoes.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60841	[orq 21:56:37] aviso allowlist: test/deeplink-setup.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60842	[orq 21:56:37] aviso allowlist: test/ficha-performance-chave.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60843	[orq 21:56:37] aviso allowlist: test/ficha-qualificacao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+60844	[orq 21:56:37] aviso allowlist: test/ghl-conectar-ficha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60845	[orq 21:56:37] aviso allowlist: test/ghl-um-lugar-so.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60846	[orq 21:56:37] aviso allowlist: test/link-setup-notion-id.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60847	[orq 21:56:37] aviso allowlist: test/mapeamento-etapas-crm.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60848	[orq 21:56:37] aviso allowlist: test/relacao-config-para-conta.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60849	[orq 21:56:37] aviso allowlist: test/resolve-cockpit-id.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60850	[orq 21:56:37] aviso allowlist: test/resolver-chave-uma-vez.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60851	[orq 21:56:37] aviso allowlist: test/setup-progresso-ficha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60852	[orq 21:56:37] aviso allowlist: test/vincular-contas-meta-ficha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60853	[orq 21:56:37] aviso allowlist: test/whatsapp-grupos-ui.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60854	[orq 21:56:37] aviso allowlist: test/conta-crm-sem-contradicao.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60855	[orq 21:56:37] aviso allowlist: test/conta-whatsapp-um-cartao.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60856	[orq 21:56:37] aviso allowlist: test/ficha-abas-orfas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60857	[orq 21:56:37] aviso allowlist: test/rotas-fantasma-ficha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60858	[orq 21:56:37]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/656/attempt-1/prompt.txt
+60859	[orq 21:56:37]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+60860	[orq 21:58:45]   diff cru salvo (319 linhas) · HEAD julgado 40425927
+60861	[orq 21:58:46]   enforcement: ok
+60862	[orq 21:58:59]   gate tsc: ok (baseline)
+60863	[orq 21:59:16]   gate vitest: FALHA
+60864	[orq 21:59:16]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/656/attempt-1/gate-vitest.txt)
+60865	[orq 21:59:16] ticket 656: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/656/attempt-1/gate-vitest.txt)
+60866	[orq 21:59:16] === ticket 656 (setup-fonte-unica) — tentativa 2 · modo: real ===
+60867	[orq 21:59:18]   recon_esperado: ok (2 comando(s))
+60868	[orq 21:59:18] aviso allowlist: src/app/api/perf/setup/[clienteId]/route.ts já existe no worktree — o agente vai EDITAR, não criar
+60869	[orq 21:59:18] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/ficha-banners.tsx já existe no worktree — o agente vai EDITAR, não criar
+60870	[orq 21:59:18] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/config-tab.tsx já existe no worktree — o agente vai EDITAR, não criar
+60871	[orq 21:59:18] aviso allowlist: src/app/dashboard/clientes/[id]/_components/conexoes-relacao.tsx já existe no worktree — o agente vai EDITAR, não criar
+60872	[orq 21:59:18] aviso allowlist: test/acao-unica-ficha-controles.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+60873	[orq 21:59:18] aviso allowlist: test/cartao-topo-setup-e-closer.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60874	[orq 21:59:18] aviso allowlist: test/conta-aceite.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+60875	[orq 21:59:18] aviso allowlist: test/conta-bugs-reais.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60876	[orq 21:59:18] aviso allowlist: test/conta-cadastro-operacao.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60877	[orq 21:59:18] aviso allowlist: test/conta-conexoes.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60878	[orq 21:59:18] aviso allowlist: test/deeplink-setup.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60879	[orq 21:59:18] aviso allowlist: test/ficha-performance-chave.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60880	[orq 21:59:18] aviso allowlist: test/ficha-qualificacao.test.tsx já existe no worktree — o agente vai EDITAR, não criar
+60881	[orq 21:59:18] aviso allowlist: test/ghl-conectar-ficha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60882	[orq 21:59:18] aviso allowlist: test/ghl-um-lugar-so.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60883	[orq 21:59:18] aviso allowlist: test/link-setup-notion-id.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60884	[orq 21:59:18] aviso allowlist: test/mapeamento-etapas-crm.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60885	[orq 21:59:18] aviso allowlist: test/relacao-config-para-conta.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60886	[orq 21:59:18] aviso allowlist: test/resolve-cockpit-id.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60887	[orq 21:59:18] aviso allowlist: test/resolver-chave-uma-vez.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60888	[orq 21:59:18] aviso allowlist: test/setup-progresso-ficha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60889	[orq 21:59:18] aviso allowlist: test/vincular-contas-meta-ficha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60890	[orq 21:59:18] aviso allowlist: test/whatsapp-grupos-ui.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60891	[orq 21:59:18] aviso allowlist: test/conta-crm-sem-contradicao.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60892	[orq 21:59:18] aviso allowlist: test/conta-whatsapp-um-cartao.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60893	[orq 21:59:18] aviso allowlist: test/ficha-abas-orfas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60894	[orq 21:59:18] aviso allowlist: test/rotas-fantasma-ficha.test.ts já existe no worktree — o agente vai EDITAR, não criar
+60895	[orq 21:59:18]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/656/attempt-2/prompt.txt
+60896	[orq 21:59:18]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+60897	[orq 22:02:18]   diff cru salvo (308 linhas) · HEAD julgado 78216023
+60898	[orq 22:02:19]   enforcement: ok
+60899	[orq 22:02:34]   gate tsc: ok (baseline)
+60900	[orq 22:03:02]   gate vitest: ok
+60901	[orq 22:03:26]   criterios mecânicos: ok
+60902	[orq 22:04:04]   gate build: ok
+60903	Merge made by the 'ort' strategy.
+60904	 src/app/api/perf/setup/[clienteId]/route.ts        | 19 +++++++-
+60905	 .../clientes/[id]/_components/conexoes-relacao.tsx |  2 +-
+60906	 .../dashboard/clientes/[id]/tabs/config-tab.tsx    | 32 ++++++++++----
+60907	 .../dashboard/clientes/[id]/tabs/ficha-banners.tsx | 14 +++---
+60908	 src/lib/setup/calcular-setup.ts                    | 50 ++++++++++++++++++++++
+60909	 test/cartao-topo-setup-e-closer.test.ts            |  6 ++-
+60910	 test/setup-fonte-unica.test.ts                     | 45 +++++++++++++++++++
+60911	 test/setup-progresso-ficha.test.ts                 |  3 +-
+60912	 8 files changed, 151 insertions(+), 20 deletions(-)
+60913	 create mode 100644 src/lib/setup/calcular-setup.ts
+60914	 create mode 100644 test/setup-fonte-unica.test.ts
+60915	[orq 22:04:21] avaliador: merge --no-ff de frente/656 em staging-auto ok
+60916	[orq 22:04:21] avaliador: APROVADO e mergeado.
+60917	[orq 22:04:21] ticket 656: APROVADO e mergeado em staging-auto

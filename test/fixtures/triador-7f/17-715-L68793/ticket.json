@@ -1,0 +1,145 @@
+{
+ "id": "715",
+ "slug": "eventos-resposta-grupo",
+ "lane": "produto",
+ "perfil": "api",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 520 linhas (~70 em src/lib/jobs/operacao-inicio.ts NOVO, ~50 na rota de cron NOVA, ~130 em src/lib/eventos/resposta-grupo.ts NOVO, ~4 em vercel.json e middleware, ~240 no teste NOVO). Se passar do teto, pare e reporte. FONTE: docs/planos/plano-portal-gestor-30set.md (plano aprovado + adendo de decisoes de 30/09, que vale sobre o plano). PASSO 1: leia src/app/api/cron/kanban-higiene/route.ts (molde de cron com CRON_SECRET), src/middleware.ts (CRON_PATHS; o 689 ja pos o kanban-higiene), vercel.json, src/lib/whatsapp/equipe.ts, src/lib/whatsapp/autor.ts (pessoaDaLinha), src/lib/wpp/interacao.ts (686), src/lib/tempo/minutos-uteis.ts e src/lib/eventos/registrar.ts (714). FAZER: (1) NOVO src/lib/jobs/operacao-inicio.ts: export const ETAPAS: { nome, rodar(db, agoraISO) }[] com a etapa 'eventos_resposta'; export async function rodarOperacaoInicio(db, agoraISO) roda cada etapa em try/catch proprio e devolve { etapas: [{ nome, ok, resumo, erro }] } (uma etapa que falha nao impede as outras). (2) NOVO src/lib/eventos/resposta-grupo.ts: derivarRespostas(db, desdeISO, agoraISO) le as mensagens dos grupos vinculados (wpp_grupo vigente) na janela (ultimas 48h, teto de 5000), com COLUNAS_AUTOR; para cada mensagem de fora da equipe (ehDaEquipe falso) acha a PRIMEIRA mensagem da equipe depois dela no mesmo grupo; registra 1 evento por par com registrarEvento: tipo 'resposta_grupo', valor = minutosUteisEntre(inicio util da mensagem do cliente, resposta), colaborador =",
+ "cria_novo": [
+  "src/lib/jobs/operacao-inicio.ts",
+  "src/app/api/cron/operacao-inicio/route.ts",
+  "src/lib/eventos/resposta-grupo.ts",
+  "test/eventos-resposta-grupo.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/lib/jobs/operacao-inicio.ts",
+  "src/app/api/cron/operacao-inicio/route.ts",
+  "src/lib/eventos/resposta-grupo.ts",
+  "vercel.json",
+  "src/middleware.ts",
+  "test/eventos-resposta-grupo.test.ts",
+  "test/kanban-higiene-cron-arquivada.test.ts",
+  "test/cron-paths-vercel.test.ts"
+ ],
+ "dependencias": [
+  "714",
+  "692",
+  "686",
+  "689",
+  "722"
+ ],
+ "prioridade": 51,
+ "recon_esperado": [
+  {
+   "descricao": "src/app/api/cron/operacao-inicio/route.ts ainda nao existe",
+   "cmd": "test -e 'src/app/api/cron/operacao-inicio/route.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "operacao-inicio ainda fora do vercel.json",
+   "cmd": "grep -c 'operacao-inicio' vercel.json",
+   "espera": "0"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "testes existentes da allowlist verdes (recalculados, nunca afrouxados)",
+   "cmd": "fs=\"\"; for f in test/cron-paths-vercel.test.ts test/kanban-higiene-cron-arquivada.test.ts test/middleware-bypass-ponto.test.ts test/crons-meta-consolidacao.test.ts; do [ -f \"$f\" ] && fs=\"$fs $f\"; done; [ -z \"$fs\" ] && echo VERDE || { npx vitest run $fs >/dev/null 2>&1 && echo VERDE || echo VERMELHO; }",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "anti-afrouxamento: nenhum teste existente da allowlist perdeu it(/expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (contra o merge-base com staging-auto)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=NAO_AFROUXOU; for f in test/cron-paths-vercel.test.ts test/kanban-higiene-cron-arquivada.test.ts test/middleware-bypass-ponto.test.ts test/crons-meta-consolidacao.test.ts; do [ -f \"$f\" ] || { git cat-file -e \"$b:$f\" 2>/dev/null && r=APAGOU_$f; continue; }; for p in 'expect(' 'it('; do a=$(git show \"$b:$f\" 2>/dev/null | grep -cF \"$p\"); n=$(grep -cF \"$p\" \"$f\"); [ \"${n:-0}\" -ge \"${a:-0}\" ] || r=CAIU_$f; done; s0=$(git show \"$b:$f\" 2>/dev/null | grep -cE '\\.(skip|only|todo)\\('); s1=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"${s1:-0}\" -le \"${s0:-0}\" ] || r=SKIP_NOVO_$f; d0=$(git show \"$b:$f\" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' \"$f\"); [ \"${d1:-0}\" -le \"${d0:-0}\" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r",
+   "espera": "NAO_AFROUXOU",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes",
+   "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+   "espera": "INTOCADAS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/lib/jobs/operacao-inicio.ts' 'src/app/api/cron/operacao-inicio/route.ts' 'src/lib/eventos/resposta-grupo.ts' 'src/middleware.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+   "espera": "ZERO_JSON_NOVO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "arquivos fora do escopo intocados",
+   "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/lib/whatsapp/equipe.ts' 'src/lib/eventos/registrar.ts' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+   "espera": "INTOCADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/lib/jobs/operacao-inicio.ts' 'src/app/api/cron/operacao-inicio/route.ts' 'src/lib/eventos/resposta-grupo.ts' 'vercel.json' 'src/middleware.ts' 'test/eventos-resposta-grupo.test.ts' 'test/kanban-higiene-cron-arquivada.test.ts' 'test/cron-paths-vercel.test.ts'; do case \"$f\" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 520 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 520 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "teste novo verde (test/eventos-resposta-grupo.test.ts)",
+   "cmd": "test -f test/eventos-resposta-grupo.test.ts && npx vitest run test/eventos-resposta-grupo.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "cron registrado no vercel.json e no CRON_PATHS",
+   "cmd": "a=$(grep -c '\"/api/cron/operacao-inicio\"' vercel.json); b=$(grep -c '\"/api/cron/operacao-inicio\"' src/middleware.ts); [ \"$a\" = 1 ] && [ \"$b\" = 1 ] && echo CRON_OK || echo CRON_${a}_${b}",
+   "espera": "CRON_OK"
+  },
+  {
+   "descricao": "resposta usa ehDaEquipe, minutos uteis e registrarEvento",
+   "cmd": "f=src/lib/eventos/resposta-grupo.ts; test -f $f || { echo AUSENTE; exit 0; }; n=0; for p in ehDaEquipe minutosUteisEntre registrarEvento; do grep -q $p $f && n=$((n+1)); done; [ $n = 3 ] && echo FONTES_OK || echo FONTES_$n",
+   "espera": "FONTES_OK"
+  },
+  {
+   "descricao": "CRON_PATHS do middleware tem as DUAS rotas: /api/cron/leitura-relacao (posta pelo 722) e /api/cron/operacao-inicio (este ticket)",
+   "cmd": "b=$(sed -n '/const CRON_PATHS/,/^]);/p' src/middleware.ts); n=0; for r in leitura-relacao operacao-inicio; do printf '%s\\n' \"$b\" | grep -q \"\\\"/api/cron/$r\\\"\" && n=$((n+1)); done; [ $n = 2 ] && echo AMBAS || echo FALTAM_$((2-n))",
+   "espera": "AMBAS"
+  },
+  {
+   "descricao": "todo cron novo do vercel.json (contra o merge-base com staging-auto) esta no CRON_PATHS do middleware",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; c=$(sed -n '/const CRON_PATHS/,/^]);/p' src/middleware.ts); r=CRONS_NOVOS_LIBERADOS; for p in $(comm -13 <(git show \"$b:vercel.json\" | grep -oE '\"path\": *\"[^\"]+\"' | grep -oE '/api/[^\"]+' | sort -u) <(grep -oE '\"path\": *\"[^\"]+\"' vercel.json | grep -oE '/api/[^\"]+' | sort -u)); do printf '%s\\n' \"$c\" | grep -qF \"\\\"$p\\\"\" || r=FORA_DO_CRON_PATHS_$p; done; echo $r",
+   "espera": "CRONS_NOVOS_LIBERADOS",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "CRON_PENDENTES_REVISAO de test/cron-paths-vercel.test.ts nao ganha entrada (cron novo entra no CRON_PATHS, nunca na lista de pendentes)",
+   "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; a=$(git show \"$b:test/cron-paths-vercel.test.ts\" | sed -n '/const CRON_PENDENTES_REVISAO/,/];/p' | grep -c '\"/api/'); n=$(sed -n '/const CRON_PENDENTES_REVISAO/,/];/p' test/cron-paths-vercel.test.ts | grep -c '\"/api/'); [ \"$n\" -le \"$a\" ] && echo PENDENTES_SEM_ENTRADA_NOVA || echo PENDENTES_${a}_PARA_${n}",
+   "espera": "PENDENTES_SEM_ENTRADA_NOVA",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "avaliador: o job de operacao roda etapas isoladas; a etapa de resposta grava 1 evento por mensagem de cliente respondida, em minutos uteis, com o autor pelo telefone e sem duplicar ao reprocessar; o cron passa pelo middleware. REPROVE se: trata Ana como caso especial; regra de equipe propria; conta horas corridas; etapa que falha derruba as outras.",
+   "cmd": "",
+   "espera": "avaliador"
+  }
+ ],
+ "status": "em_execucao",
+ "notas_status": "reprovado (tentativa 1): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/715/attempt-1/gate-vitest.txt)",
+ "_objetivo_cortado_na_fixture": 5706
+}

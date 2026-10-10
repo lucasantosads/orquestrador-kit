@@ -1,0 +1,22 @@
+A cascata está implementada e commitada (`6dae629`), mas `test/etapa2-funil-motor.test.ts` continua vermelho. Esse arquivo fica fora da allowlist. A reprovação anterior tinha a mesma causa.
+
+Neste worktree o commit anterior não existia, então refiz o trabalho do zero.
+
+**O que mudou**
+- **`src/lib/qualificacao/motor.ts`:** nova função `aplicarCascata`, exportada, chamada em `qualificarLead` depois do laço das fases e antes de montar o motivo. Os comentários antigos foram trocados, e a frase "fase pulada não é inferida" saiu do motor.
+- **`test/qualificacao-cascata-marcos.test.ts`:** novo, com 8 testes puros cobrindo os casos pedidos no ticket.
+- **`test/etapa2-motor-fases.test.ts`:** o teste de fase pulada foi recalculado para a regra nova. VENDA sozinho agora preenche `rm_em`, `rr_em` e `mql_em`, e `is_mql` fica true. Mantive o comentário "Ticket 950" acima, e nenhuma asserção foi removida.
+- **Tamanho:** 109 linhas adicionadas e 6 removidas, dentro do teto de 260.
+
+**O que passou**
+- O tsc continua no baseline de 3 erros. Rodei sem o `rm -rf .next`, que foi negado.
+- Passaram os 5 arquivos de teste da lista do critério, fora o `etapa2-funil-motor`.
+- Não rodei a suíte completa, o `npm run build`, as guardas globais nem os outros critérios de diff e allowlist.
+
+**O que continua vermelho**
+- Em `test/etapa2-funil-motor.test.ts:92`, o teste espera que o lead "c" (só VENDA) tenha as marcas `["VENDA"]`. Com a cascata ele passa a ter `["MQL","RM","RR","VENDA"]`.
+- A causa é a regra nova, não um erro do motor.
+- Esse arquivo não está na allowlist, e o critério de aceite exige tocar só os três arquivos. O critério "testes verdes" lista esse mesmo arquivo, então os dois critérios se contradizem.
+- Não editei o arquivo fora da allowlist.
+
+**Para fechar:** o ticket precisa incluir `test/etapa2-funil-motor.test.ts` na allowlist. Aí recalculo a linha 92 para `[["MQL","RM","RR"],["MQL"],["MQL","RM","RR","VENDA"],[]]`, com comentário citando o 950. O comentário da linha 43 ("fase pulada não é inferida") fica desatualizado e entra no mesmo ajuste. O teste usa os dados do próprio teste, então não depende de banco.

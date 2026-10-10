@@ -1,0 +1,5 @@
+ src/app/api/cron/leitura-relacao/route.ts  | 32 ++++++++---
+ src/middleware.ts                          |  2 +
+ test/cron-paths-vercel.test.ts             |  2 +-
+ test/leitura-relacao-cron-sem-base.test.ts | 90 ++++++++++++++++++++++++++++++
+ 4 files changed, 117 insertions(+), 9 deletions(-)

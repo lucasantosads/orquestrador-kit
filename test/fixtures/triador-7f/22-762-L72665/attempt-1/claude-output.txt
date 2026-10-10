@@ -1,0 +1,23 @@
+O ticket 762 está implementado e commitado, mas **um teste que a lista de verificação exige verde fica vermelho**. A correção está fora da allowlist, então parei aí.
+
+**O que fica vermelho:** `test/cron-paths-vercel.test.ts`, no caso "todo cron fora da lista de pendências passa direto para o handler". O erro é `expected ['/api/cron/ghl-backfill'] to deeply equal []`.
+
+**Por quê:** todo cron do `vercel.json` precisa estar no `CRON_PATHS` de `src/middleware.ts`. Sem isso o Vercel Cron toma 401 antes de chegar na rota. Esse arquivo não está na allowlist, então não toquei nele.
+
+**Para fechar:** adicionar `"/api/cron/ghl-backfill",` ao `CRON_PATHS` em `src/middleware.ts`, junto de `ghl-agencia-refresh`. Foi o que os tickets 689 e 722 fizeram. Isso exige ampliar a allowlist ou liberar um ticket de uma linha. Sem essa linha, o cron em produção leva 401 e o backfill nunca é agendado.
+
+**Commits** (sem push):
+- `a0c0407` traz a implementação:
+  - em `src/lib/perf/ghl-backfill.ts`: `TIPO_JOB_BACKFILL`, `enfileirarBackfillGhl`, `agendarBackfillsPendentes` e `processarJobBackfillGhl`;
+  - o handler registrado em `src/lib/jobs/handlers/index.ts` com corte de 240 s;
+  - `backfill_concluido_em: null` no upsert de `conectarContaCliente`;
+  - a rota nova `src/app/api/cron/ghl-backfill/route.ts` (GET e POST);
+  - o cron `*/15 * * * *` no `vercel.json`.
+- `6c0b474` traz `test/ghl-backfill-job.test.ts`, com 19 testes verdes.
+
+**Verificações:**
+- **tsc:** 3 erros, o mesmo baseline (em `qualificacao-*` e duas rotas de perf).
+- **Suítes rodadas:** `ghl-backfill`, `ghl-oauth`, `jobs-worker`, `travessao-mudo`, `c0-guard`, `fetch-json-teto` e `consistencia-contagens` passaram, junto com o teste novo.
+- **Não rodei:** o restante da lista de testes do GHL e de crons, o `npm run build` e a soma do orçamento de diff (600 linhas). Também não rodei os critérios de grep do diff (`.json()`, `?? []`, status, SQL). Evitei `?? []` e `|| []` nas linhas novas de src.
+
+Duas restrições do ambiente: o `rm -rf .next` foi negado, então o tsc rodou com o `.next` existente, filtrado como no gate. Um comando que misturava vários passos também foi bloqueado, e refiz em chamadas separadas.

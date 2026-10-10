@@ -1,0 +1,16 @@
+I stopped at the Contratual part (item 2), as the ticket says to do when a test outside the allowlist would break. Items 1 and 3 are done and committed in `b0a41a3`. This attempt will still fail review: the Contratual criterion and the new-test criterion can't pass until the allowlist is fixed.
+
+**What's committed:**
+- **Observações do Closer** (`financeiro-tab.tsx`): the "Editar" button in the section header is gone. Only the inline "Editar" is left: next to "Sem observações" when empty, and next to the text (same `onClick`) when there is an observation, so editing still works.
+- **Fechamentos** (`resultados-tab.tsx`): the "Mês do registro" label now sits before the month chips.
+- tsc gives 3 errors in `src/`, the baseline. These 11 test files pass (172 tests): `conta-aceite`, `conta-bugs-reais`, `conta-entregas-vazio-unico`, the three `conta-resultados-*`, `aba-resultados-fechamentos`, `fechamentos`, `travessao-mudo`, `cartao-topo-perfil`, `bloco-vazio-linha` and `abas-montadas`. I did not run the full `vitest run` or `npm run build`.
+
+**Why Contratual is blocked:** attempt 2's gate failed because `test/conta-entregas-vazio-unico.test.ts` broke. That test was added by ticket 636, is outside this ticket's allowlist, and requires two exact strings in `contratual.tsx`:
+- `"Prova de entrega · nenhuma entrega registrada"`, the current empty-state line, which this ticket replaces with "Nenhuma entrega registrada até DD/MM/AAAA · …".
+- `"(consultouManual || temEntregas)"`, the condition on the "Consultar" results line that the ticket removes.
+
+The ticket and that test can't both pass. Attempt 1 tried the other way round: it put the dated text on the "Consultar" results line and kept the 636 line. The reviewer rejected it for being on the wrong line and for showing two empty-state lines after Consultar. I didn't copy the old string into a comment just to satisfy the test; that would be gaming it. The ticket was sized against staging `cc0d3ce`, before 636 landed, so its allowlist doesn't know about that test.
+
+**To unblock:** add `test/conta-entregas-vazio-unico.test.ts` to ticket 654's allowlist, so its two assertions can be recalculated with a comment citing 654. Then re-queue. Attempt 2's `contratual.tsx` change (`runs/654/attempt-2/diff.raw`) is what the ticket asks for: the date moves up to `ContratualTab`, there is one dated empty line, and "Sem prova de entrega no período" is gone. The new `test/ficha-conta-contrato.test.ts` should be added in the same step. Adding it now would mean committing a failing test.
+
+I also saved this mismatch to memory (`contratual-vazio-pinado-pelo-636`).

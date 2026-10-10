@@ -1,0 +1,25 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> PASS
+### criterio[9] -> PASS
+### criterio[10] -> PASS
+### criterio[11] -> PASS
+### criterio[12] -> PASS
+### criterio[13] -> PASS
+### criterio[14] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-711a
+sanear_tsc: nao
+cmd:    n=0; for f in 'src/app/dashboard/clientes/risco/page.tsx' 'src/app/dashboard/clientes/_components/lista-risco-bloco.tsx'; do grep -q 'corScoreSaude' "$f" && n=$((n+1)); done; [ "$n" = 0 ] && echo SEM_COR_ANTIGA || echo COR_ANTIGA_$n
+espera: SEM_COR_ANTIGA
+-- saida --
+COR_ANTIGA_1
+
+### criterio[15] (qualitativo — julgado pelo Opus)
+descricao: avaliador: a rota devolve cor, sinal, motivo e faltando pela funcao do loader (avaliarCliente); a coluna Temperatura da carteira mostra a mesma cor e o mesmo motivo do Inicio, com sem base explicito; o score antigo nao tem cor na tela de risco nem na lista de risco; testes recalculados e comentados. REPROVE se: segunda regra de cor; copiou regra do 693 na rota; mexeu em arquivo da ficha (e do 711b); assercao removida; diff acima de 600 sem parar.
+
