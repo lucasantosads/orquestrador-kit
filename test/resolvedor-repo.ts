@@ -25,6 +25,8 @@ export const CASO: Record<string, string> = {
   '929': join(FX_RES, 'casos', '02-929-L85996'),
   '940': join(FX_TRI, '36-940-L85222'),
   '932': join(FX_TRI, '37-932-L85272'),
+  // R5 máquina (D4), sem gabarito humano: o ticket da fixture, posto em bloqueado
+  '801': join(FX_TRI, '20-801-L72121'),
 }
 
 export interface Ambiente {
@@ -137,8 +139,12 @@ export function repoDoCaso(base: string, id: string, o: { nome?: string; arvoreS
   git(raiz, 'checkout', '-q', '--orphan', 'main')
   git(raiz, 'rm', '-rq', '--cached', '--ignore-unmatch', '.')
   materializar(d, raiz)
-  const antes = readFileSync(join(FX_RES, 'gabarito', id, 'antes.md'), 'utf8')
-  const depois = readFileSync(join(FX_RES, 'gabarito', id, 'depois.md'), 'utf8')
+  const gab = join(FX_RES, 'gabarito', id)
+  const tk = JSON.parse(readFileSync(join(d, 'ticket.json'), 'utf8')) as Record<string, unknown>
+  const antes = existsSync(gab)
+    ? readFileSync(join(gab, 'antes.md'), 'utf8')
+    : `# ${id}\n\n\`\`\`json\n${JSON.stringify({ ...tk, status: 'bloqueado', notas_status: 'motivo repetido: gate vitest' }, null, 2)}\n\`\`\`\n`
+  const depois = existsSync(gab) ? readFileSync(join(gab, 'depois.md'), 'utf8') : ''
   writeFileSync(join(raiz, caso.arquivo_ticket), antes)
   writeFileSync(join(raiz, '.gitignore'), 'docs/fila/runs/\n')
   for (const s of serie) {

@@ -11,14 +11,19 @@
  *
  * --dry-run não escreve no repo, não chama modelo e não toca o ledger: grava
  * só `dry-run.jsonl` (caminhos.ts) e imprime.
+ *
+ * Travas da passada: o interruptor (`RESOLVEDOR_PAUSADO`) existindo, nada roda
+ * (nem triagem, nem ledger); e uma passada por vez na máquina (`resolver.lock`,
+ * O_EXCL). As travas por ação estão em acoes.ts e repo.ts.
  */
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { blocoJson } from '../triador/comum.js'
 import { criarPassoModelo, lerConfigModelo } from '../triador/modelo.js'
 import { Guarda, lerDiagnostico } from '../triador/saida.js'
 import { bloqueados, triarTicket, type Diagnostico } from '../triador/triar.js'
-import { GuardaResolvedor, arquivoDryRun } from './caminhos.js'
+import { agirR1R5 } from './acoes.js'
+import { GuardaResolvedor, arquivoDryRun, interruptor, travarPassada } from './caminhos.js'
 import { decidir, type Decisao } from './decidir.js'
 import { acharRepo, lerReposResolvedor, type Modo, type RepoResolvedor } from './modos.js'
 
@@ -97,10 +102,13 @@ export interface Contexto {
   g: GuardaResolvedor
 }
 
-/** O que a ação faz (ou faria). Peça 2: nenhuma ação escreve ainda. */
-export function executar(c: Contexto): Pick<ItemPassada, 'feito' | 'motivo' | 'commit' | 'proposta'> {
+/** O que a ação faz (ou faria). */
+export function executar(c: Contexto): Pick<ItemPassada, 'feito' | 'motivo' | 'commit' | 'proposta'> & { diff?: string } {
   const { decisao: d } = c
   if (d.acao === 'diagnostico' || d.acao === 'aviso') return { feito: d.acao, motivo: d.motivo }
+  const alvo = { repo: c.repo, id: c.id, diag: c.diag, decisao: d, agora: c.agora, dryRun: c.dryRun, g: c.g }
+  if (d.acao === 'r1_allowlist' || d.acao === 'r5_reabrir') return agirR1R5(alvo, d.acao)
+  if (d.acao === 'sombra' && d.propoe) return agirR1R5(alvo, d.propoe)
   if (c.dryRun) return { feito: 'faria', motivo: d.motivo }
   return { feito: 'nao_consegui', motivo: `ação ${d.acao} ainda não implementada` }
 }
@@ -108,25 +116,39 @@ export function executar(c: Contexto): Pick<ItemPassada, 'feito' | 'motivo' | 'c
 export function passada(o: OpcoesPassada = {}): ResultadoPassada {
   const agora = o.agora ?? Date.now()
   const dryRun = o.dryRun === true
+  if (existsSync(interruptor())) return { pausado: true, travado: false, itens: [] }
   const repos = o.repo ? [acharRepo(o.repo)] : lerReposResolvedor()
   const g = new GuardaResolvedor(repos.map((r) => r.caminho))
+  const soltar = travarPassada(g)
+  if (!soltar) return { pausado: false, travado: true, itens: [] }
+  try {
+    return { pausado: false, travado: false, itens: passadaTravada(repos, g, agora, dryRun, o.semModelo === true) }
+  } finally {
+    soltar()
+  }
+}
+
+function passadaTravada(repos: RepoResolvedor[], g: GuardaResolvedor, agora: number, dryRun: boolean, semModelo: boolean): ItemPassada[] {
   const itens: ItemPassada[] = []
   for (const repo of repos) {
+    // o interruptor vale também no meio da passada: entre um ticket e outro
+    if (existsSync(interruptor())) break
     for (const { id, dependentes } of ordenarBloqueados(repo.caminho)) {
-      const diag = triar(repo, id, agora, o.semModelo === true || dryRun)
+      if (existsSync(interruptor())) break
+      const diag = triar(repo, id, agora, semModelo || dryRun)
       const base = { repo: repo.nome, id, dependentes, classe: diag?.classe ?? null, regra: diag?.regra ?? null, firme: diag?.firme ?? false }
       if (!diag) {
         itens.push({ ...base, modo: 'diagnostico', acao: 'aviso', feito: 'nao_consegui', motivo: 'sem diagnóstico (triagem travada por outro processo?)' })
         continue
       }
       const decisao = decidir(diag, repo.modos)
-      const r = executar({ repo, id, diag, decisao, dependentes, agora, dryRun, g })
+      const { diff, ...r } = executar({ repo, id, diag, decisao, dependentes, agora, dryRun, g })
       const item: ItemPassada = { ...base, modo: decisao.modo, acao: decisao.acao, ...r }
       itens.push(item)
-      if (dryRun) g.acrescentar(arquivoDryRun(), JSON.stringify({ ts: new Date(agora).toISOString(), ...item, assinatura: diag.assinatura }))
+      if (dryRun) g.acrescentar(arquivoDryRun(), JSON.stringify({ ts: new Date(agora).toISOString(), ...item, assinatura: diag.assinatura, ...(diff ? { diff } : {}) }))
     }
   }
-  return { pausado: false, travado: false, itens }
+  return itens
 }
 
 export function resumo(r: ResultadoPassada): string {
