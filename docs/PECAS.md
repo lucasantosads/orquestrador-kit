@@ -984,7 +984,42 @@
   mesmo reabrir, 929 só proposta), `-passada`, `-acoes` (travas), `-r2`, `-ledger`,
   `-promocao`, `-desfazer`, `-job`.
 
+- **Etapa 7f-b3 · ajustes do primeiro dia do resolvedor** (11/10/2026). D6b: o
+  enforcement que barra o teste vermelho da tentativa anterior é R1 firme (o 1006 e o
+  346d); D0: bloqueado sem tentativa não vai ao modelo nem ao ledger e diz qual
+  dependência espera; custo real sempre (reserva antes, custo real depois, devolução se a
+  chamada não começou); teto por prioridade (auto, sombra, diagnóstico). Commits
+  `d38289e` (D6b), `d9adccc` (D0), `e2a96ae` (custo real), `a209edb` (prioridade).
+  *Evidência:* `~/.orq/diagnosticos/{comarka-operacional/1006,actus-saas/518,conteudos-infinitos/243}.json`,
+  `~/.orq/diagnosticos/custo.json`, `~/orq-sessoes/conserto-1006.md` e
+  `~/orq-sessoes/relatorio-kit-etapa7f-b3.md`.
+  *Teste:* `orquestrador-triador-aceite.test.ts` (primeiro-dia), `-sem-tentativa`,
+  `-custo-real`, `orquestrador-resolvedor-prioridade.test.ts`.
+
 ## PENDENTES
+
+- **7f-b3 · o `claude` no PATH do job (humano).** O plist instalado tem
+  `PATH={{NODE_DIR}}:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin`, e o
+  `claude` está em `~/.local/bin`: toda chamada do modelo pelo job sai `nao_iniciou`
+  (depois da 7f-b3, sem custo e sem teto; antes, US$ 0,60 de teto cada). Pôr o diretório
+  do `claude` no template (ou `ORQ_TRIADOR_CLAUDE` no plist) e reinstalar é decisão do
+  chat do programa: liga o gasto real do job.
+  *Evidência:* `~/Library/LaunchAgents/com.orq.resolvedor.plist`, `which claude`, rc 127
+  e 0 a 1 ms nos 8 diagnósticos de 11/10.
+  *Teste:* `orquestrador-resolvedor-job.test.ts` com o PATH do plist contendo o diretório.
+- **7f-b3 · o teto entre passadas.** A prioridade da 7f-b3 vale dentro de uma passada:
+  repos em diagnóstico que gastam numa passada sem bloqueio do Comarka ainda podem esgotar
+  o teto antes do próximo bloqueio em auto. Uma fatia do teto reservada para auto é
+  decisão do chat do programa.
+  *Evidência:* CONTRATO §15.4.
+- **7f-b3 · assinatura do 243 muda a cada 30 min.** Em 11/10 o diagnóstico do 243
+  (conteudos-infinitos) ganhou 23 assinaturas novas, uma a cada passada de 30 min, sem
+  tentativa nova: cada uma é uma triagem nova (e, com o modelo no PATH, uma chamada nova).
+  Achar o arquivo lido cujo mtime/tamanho muda (provável: o recorte do `events.log`).
+  *Evidência:* `~/.orq/diagnosticos/conteudos-infinitos/243/historico/` (23 arquivos de
+  04:09 a 14:40 UTC).
+  *Teste:* duas leituras do mesmo repo com só o `events.log` crescendo em outros ids dão a
+  mesma assinatura.
 
 - **7f-b1b · mini-corrida paga do R3.** `~/orq-sessoes/corrida-7f-r3.cmd` (9 casos: os 5 R3 e
   os 6 cortados no teto, prompt `7f-b1b-r3`, teto US$ 5,40), depois do merge da 7f-b1b; as

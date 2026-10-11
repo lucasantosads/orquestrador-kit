@@ -966,3 +966,34 @@ CONTRATO §14.
 Asserções existentes que mudaram: nenhuma fora dos testes novos da etapa. Na 7f-b2-5, dois
 testes da própria etapa (peças 2 e 3) deixaram de exigir ledger ausente: o "não consegui"
 passou a entrar no ledger, que é o pedido da peça 5; o dry-run continua sem mudar o ledger.
+
+### Etapa 7f-b3 · ajustes do primeiro dia do resolvedor (11/10/2026)
+
+O primeiro dia do job mostrou um R1 que nunca fica firme no legado (1006), um teto do dia
+comido por 8 chamadas que nem começaram (`claude` fora do PATH do job, rc 127) e repos em
+diagnóstico gastando antes do Comarka em auto. Sem chamada de API, sem launchctl, sem
+escrita em repo real. CONTRATO §15.
+
+- **7f-b3-1** `d38289e`: D6b: enforcement com uma violação `fora_do_pathspec` de um teste
+  que estava vermelho fora da allowlist e do diff (nessa tentativa ou na anterior) é R1
+  firme; `decidir` age nela como na D6. Fixture `triador-7f/primeiro-dia/01-1006-L88744`.
+  Matriz: só o 1006 e o 346d mudam (`R1?` → R1 firme, certos); zero firme errado.
+- **7f-b3-2** `d9adccc`: D0: bloqueado sem tentativa não chama nem reserva o modelo; sai
+  com a nota do ticket e as dependências ainda não done (ou `humano:` sem liberação).
+  Fixture `triador-sem-tentativa/actus-1110` (os 7 do Actus de 11/10).
+- **7f-b3-3** `e2a96ae`: custo real sempre: reserva do pior caso antes da chamada, custo
+  real do envelope depois (também em erro), devolução se o processo não começou; timeout
+  fica com o pior caso, marcado `custo_desconhecido`. Fixture
+  `triador-custo-real/conteudos-243`.
+- **7f-b3-4** `a209edb`: teto por prioridade: na passada, repos com classe em auto antes
+  dos com sombra antes dos só em diagnóstico (`ordenarRepos`).
+- **7f-b3-5**: CONTRATO §15 (e as tabelas de §13.3, §13.4, §13.5, §14.1 e §14.2), este
+  registro e `docs/PECAS.md` com os shas.
+
+Asserções existentes que mudaram (7f-b3-1), todas pelo 346d, que a D6b torna R1 firme e
+certo: firmes no instante do bloqueio 13 → 14; (B) os firmes certos 15 → 16 (o 346d sai de
+`R1?` para R1 D6b); replay da corrida da peça 6 com 21 respostas consumidas (eram 22),
+22/37 (eram 21), 21 chamadas e US$ 5,8840 (eram 22 e US$ 6,1265; a diferença é a resposta
+do 346d, US$ 0,2424); evidência equivalente sobre 7 casos (o 346d saiu da lista, agora
+certo pela medição; o total segue 28); `orq triar --fixture` grava 21
+`resposta-modelo.json` (eram 22). Nenhuma perdeu força.

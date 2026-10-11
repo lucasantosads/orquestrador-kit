@@ -1046,40 +1046,43 @@ guarda o número do original.
 Regra de falta: fonte ausente entra em `falta[]` e a classe só é firme com as fontes que a
 regra usa. Nada é estimado.
 
-### 13.3 Regras (`extrair.ts:107`)
+### 13.3 Regras (`extrair.ts:108`)
 
 A primeira que casa decide; o estágio é o da última tentativa. Firme vai ao diagnóstico
 sem modelo; palpite (`?`) ou sem regra vai ao modelo, se houver orçamento.
 
 | # | condição | classe | linha |
 |---|---|---|---|
-| D1 | merge recusado por mudança local (`overwritten by merge`) e juiz aprovou | R5 árvore suja | `:184` |
-| D2 | diff-cap e diff.stat ≤ `diff_cap_linhas` | R6 | `:197` |
-| D3 | diff-cap e diff.stat > cap | R3? | `:197` |
-| D4 | `Timeout waiting for worker`/`Timeout starting`/EMFILE/ENOSPC na última tentativa | R5 máquina | `:207` |
-| D5 | o motor do kit já decidiu `base_vermelha`; ou o vermelho fora da allowlist e do diff aparece em outra família nas ±6 h | R5 base | `:214` |
-| D6 | vitest/enforcement, vermelho fora da allowlist e do diff, e o fonte em HEAD cita nome-base (≥ 4) ou diretório (≥ 5) do diff; firme só com o mesmo teste vermelho fora em ≥ 2 tentativas da série, senão `R1?` (7f-b1-7) | R1 / R1? | `:229` |
-| D7 | vitest, vermelho fora, não acoplado (ou sem fonte) | R5? | `:245` |
-| D8 | enforcement | R1? | `:249` |
-| D9 | vitest, vermelho dentro, allowlist toda em `test/` | R4? | `:254` |
-| D10 | vitest, vermelho dentro | R2? | `:254` |
-| D11 | critério e vermelho fora em tentativa anterior | R1\|R2? | `:260` |
-| D12 | critério | R2? | `:260` |
+| D0 | nenhuma tentativa na série (7f-b3, §15.2): "bloqueado sem tentativa", sem modelo | sem classe | `:182` |
+| D1 | merge recusado por mudança local (`overwritten by merge`) e juiz aprovou | R5 árvore suja | `:194` |
+| D2 | diff-cap e diff.stat ≤ `diff_cap_linhas` | R6 | `:207` |
+| D3 | diff-cap e diff.stat > cap | R3? | `:207` |
+| D4 | `Timeout waiting for worker`/`Timeout starting`/EMFILE/ENOSPC na última tentativa | R5 máquina | `:217` |
+| D5 | o motor do kit já decidiu `base_vermelha`; ou o vermelho fora da allowlist e do diff aparece em outra família nas ±6 h | R5 base | `:224` |
+| D6b | enforcement na última tentativa com UMA violação, `fora_do_pathspec` de um arquivo que estava vermelho fora da allowlist e do diff nessa tentativa ou na anterior (7f-b3, §15.1) | R1 | `:239` |
+| D6 | vitest/enforcement, vermelho fora da allowlist e do diff, e o fonte em HEAD cita nome-base (≥ 4) ou diretório (≥ 5) do diff; firme só com o mesmo teste vermelho fora em ≥ 2 tentativas da série, senão `R1?` (7f-b1-7) | R1 / R1? | `:261` |
+| D7 | vitest, vermelho fora, não acoplado (ou sem fonte) | R5? | `:277` |
+| D8 | enforcement | R1? | `:281` |
+| D9 | vitest, vermelho dentro, allowlist toda em `test/` | R4? | `:286` |
+| D10 | vitest, vermelho dentro | R2? | `:286` |
+| D11 | critério e vermelho fora em tentativa anterior | R1\|R2? | `:292` |
+| D12 | critério | R2? | `:292` |
 
 Allowlist pelo `matchesAllowlist` do enforcement (`enforcement-core.ts:178`); local do
 vermelho pelo `primeiroLocal` (`diagnostico.ts:109`). A prova de um vermelho é a linha
 `FAIL`, o erro logo abaixo e o local `❯`. O que o agente disse nunca entra em regra.
 
-Placar na fixture dos 37 (estado da passada): 15 firmes certos, 0 firme errado, 14
-palpites certos, 7 errados, 1 sem regra; no instante do bloqueio, 13 firmes (760 e 898 #31
-ficam `R5?` até o vizinho aparecer). Nenhum dos 20 de controle e nenhum dos 5 de série
-cortada sai firme.
+Placar na fixture dos 37 (estado da passada): 16 firmes certos (15 até a 7f-b3; o 346d
+voltou pela D6b), 0 firme errado, 13 palpites certos, 7 errados, 1 sem regra; no instante
+do bloqueio, 14 firmes (760 e 898 #31 ficam `R5?` até o vizinho aparecer). Nenhum dos 20
+de controle e nenhum dos 5 de série cortada sai firme.
 
 A restrição da D6 (7f-b1-7, decisão do chat do programa) existe porque um vermelho fora da
 allowlist numa tentativa só pode ser mérito que o próprio agente resolve no retry: os 5
 controles cortados na última tentativa que reprovou (671d, 624, 627e, 808, 367) saíam R1
 firme, e errado. O preço é o 346d, R1 de verdade com o vermelho numa tentativa só (na T2 o
-mesmo teste aparece como violação de enforcement): vira `R1?` e vai ao modelo.
+mesmo teste aparece como violação de enforcement): virava `R1?` e ia ao modelo. Desde a
+7f-b3 a D6b o pega (§15.1).
 
 ### 13.4 Saída (`saida.ts`)
 
@@ -1091,7 +1094,7 @@ Raiz: `ORQ_DIAG_DIR` ou `~/.orq/diagnosticos` (`raizDiagnosticos`, `:25`).
 | `<repo>/<id>.lock` | trava `O_EXCL` com pid e hora; órfã depois de 10 min (`travar`, `:160`) |
 | `<repo>/<id>/historico/<assinatura12>.json` | os anteriores (`gravarDiagnostico`, `:200`) |
 | `<repo>/<id>/<assinatura12>/evidencia/<caminho original>` | cópia do que foi lido, recortada e mascarada (`copiarEvidencia`, `:213`) |
-| `custo.json` | ledger do modelo: `{dias: {"AAAA-MM-DD": [{repo, id, assinatura, custo_usd, tokens_in, tokens_out}]}}` |
+| `custo.json` | ledger do modelo: `{dias: {"AAAA-MM-DD": [{repo, id, assinatura, custo_usd, tokens_in, tokens_out}]}}`; `reserva: true` durante a chamada e `custo_desconhecido: true` quando ela começou e não devolveu custo (7f-b3, §15.3) |
 
 `<repo>` é o `nome` do `repos.json` (padrão: o nome do diretório), o mesmo do painel.
 
@@ -1134,15 +1137,17 @@ Só para palpite e sem regra, uma vez por assinatura (mesmo que falhe: `modelo.e
   marca `custo_acima_do_teto` no ledger, como na spec §4.
 - Envelope (`lerEnvelope`, `:244`): o de erro do CLI, sem `result`, é lido como `is_error`
   com `subtype`, `errors` e o custo pago, que vai ao ledger.
-- Teto do dia (`criarPassoModelo`, `:414`): a chamada só sai se gasto do dia + corte ≤
-  teto do dia (entrada sem custo conhecido conta como o corte, `gastoDoDia`, `:364`);
-  senão `modelo: {pulado: "teto_dia"}` e vale a extração.
+- Teto do dia (`criarPassoModelo`, `:453`): a chamada só sai se gasto do dia + corte ≤
+  teto do dia (entrada sem custo conhecido conta como o corte, `gastoDoDia`, `:384`);
+  senão `modelo: {pulado: "teto_dia"}` e vale a extração. Desde a 7f-b3, reserva antes,
+  custo real depois, devolução se a chamada não começou (§15.3).
 - Resposta (`lerResposta`, `:299`): a última linha JSON com `classe` em R1-R7. Cada
   evidência tem de ser de um arquivo lido e de uma linha que ele tem (no recorte, uma
   linha guardada); a que não confere sai e conta `evidencia_descartada`
   (`conferirEvidencia`, `:325`). A resposta do modelo nunca é firme.
 - Descarte (`Descarte`, `:378`): toda resposta descartada grava `modelo.erro` e
-  `modelo.descartado = {regra, trecho}`, com `regra` em `envelope_ilegivel`,
+  `modelo.descartado = {regra, trecho}`, com `regra` em `nao_iniciou` (7f-b3),
+  `envelope_ilegivel`,
   `teto_corte_cli`, `envelope_is_error`, `resposta_sem_classe` ou
   `evidencia_nenhuma_confere`; vale a extração, e o placar mostra
   `[descartado: <regra>: <trecho>]`.
@@ -1212,16 +1217,19 @@ orq resolver [--repo <nome|caminho>] [--dry-run] [--sem-modelo]
    outro.
 2. Trava global: `resolver.lock` com `O_EXCL`, pid e hora, órfã depois de 15 min
    (`travarPassada`, `caminhos.ts:104`). Outra passada segurando: nada roda.
-3. Por repo, antes da triagem: o desfecho das ações e propostas anteriores e a
+3. Os repos em ordem de modo (7f-b3, §15.4): os com alguma classe em `auto`, depois os
+   com alguma em `sombra`, depois os só em `diagnostico`; empate na ordem do repos.json.
+   É a ordem de consumo do teto do dia do modelo.
+4. Por repo, antes da triagem: o desfecho das ações e propostas anteriores e a
    promoção/rebaixamento (§14.6); o modo que vale na passada já é o novo.
-4. Os bloqueados, do que tem mais tickets esperando por ele ao que tem menos
+5. Os bloqueados, do que tem mais tickets esperando por ele ao que tem menos
    (`ordenarBloqueados`, `passada.ts:64`): tickets fora de `done`/`obsoleto` com o id em
    `dependencias` (direta); empate pela ordem do arquivo.
-5. Cada um pelo `triarTicket` (§13); mesma assinatura: vale o diagnóstico gravado. O
+6. Cada um pelo `triarTicket` (§13); mesma assinatura: vale o diagnóstico gravado. O
    modelo entra como no `orq triar` (só palpite e sem regra), com teto de **US$ 5,00 por
    dia** (`TETO_DIA_USD`, `passada.ts:32`; `ORQ_RESOLVEDOR_TETO_DIA` sobrepõe), contado
    no mesmo `custo.json` do triador.
-6. A decisão (§14.2) e a ação (§14.3, §14.4).
+7. A decisão (§14.2) e a ação (§14.3, §14.4).
 
 `--dry-run`: não escreve no repo, não chama modelo, não toca o ledger nem as propostas;
 o que faria (com o diff) vai para `dry-run.jsonl` e para a saída, uma linha por
@@ -1239,7 +1247,7 @@ caminho) fica em `diagnostico`.
 | R5 árvore suja (D1), firme | reabre quando a worktree alvo está limpa | proposta | só triagem |
 | R5 máquina (D4), firme | reabre com carga ≤ 0,75 por CPU e ≥ 2 GiB livres | proposta | só triagem |
 | R5 base vermelha (D5) | aviso | aviso | só triagem |
-| R1 (D6), firme | allowlist com guarda, critério da lista, reabre | proposta | só triagem |
+| R1 (D6 ou D6b), firme | allowlist com guarda, critério da lista, reabre | proposta | só triagem |
 | R2 (firme ou palpite) | **proposta** (nesta etapa R2 nunca aplica) | proposta | só triagem |
 | R3, R4, R6, R7; palpite fora de R2; sem classe | aviso | aviso | só triagem |
 
@@ -1356,6 +1364,81 @@ fixture `test/fixtures/resolvedor-7f/`, montada por `montar.py`, só leitura do 
 `ORQ_RESOLVEDOR_PAUSADO`, `ORQ_RESOLVEDOR_PGREP`). Gabarito: o 840 sai igual ao commit
 humano (só a `descricao` da guarda é livre), o 940 e o 932 mudam as mesmas duas linhas para
 `pendente` e nota vazia, o 929 só ganha a proposta com o cmd do humano.
+
+## 15. Etapa 7f-b3: ajustes do primeiro dia do resolvedor (11/10/2026)
+
+O job `com.orq.resolvedor` rodou o primeiro dia em 11/10. Três defeitos, medidos em
+`~/.orq/diagnosticos` e no comarka-operacional (relatório:
+`~/orq-sessoes/relatorio-kit-etapa7f-b3.md`):
+
+- o 1006 do Comarka (enforcement `fora_do_pathspec: test/quem-cuida.test.ts`, com o mesmo
+  arquivo vermelho em `:137` na tentativa anterior) saiu `R1?`: no legado o enforcement
+  roda antes dos gates, então a D6 nunca vê o vermelho em duas tentativas. O humano
+  consertou como R1 (`~/orq-sessoes/conserto-1006.md`);
+- as 8 entradas do `custo.json` de 11/10 têm `custo_usd: null` e nenhuma chamada real: o
+  `claude` não estava no PATH do job (rc 127, 0 a 1 ms, stdout vazio). Contadas como o
+  corte (US$ 0,60), comeram US$ 4,80 do teto de US$ 3,00, e o 1006 foi pulado por
+  `teto_dia`. 7 delas são bloqueados do Actus sem nenhuma tentativa;
+- o teto foi consumido por repos em `diagnostico` antes do Comarka (R1 em `auto`).
+
+### 15.1 D6b · R1 firme pelo enforcement (`extrair.ts:239`)
+
+A última tentativa parou no enforcement com UMA violação, `fora_do_pathspec: <arquivo>`, e
+esse arquivo estava vermelho fora da allowlist e do diff nessa tentativa ou na anterior.
+São duas provas em duas tentativas (o vermelho e o agente mexendo nele), como a D6 pede.
+Sai R1 firme; a evidência é o `FAIL`, o erro, o `❯` e o `enforcement.json`; o remédio
+começa por `pôr <arquivo> na allowlist com guarda`, que é o que a ação R1 lê. Vem depois
+da D5 (base vermelha ganha). `decidir` trata D6b como D6 (`decidir.ts:49`); a guarda
+cita a regra (`descricaoGuarda`, `r1.ts:77`). Fixture: `triador-7f/primeiro-dia/01-1006-L88744`
+(`montar.py --so-primeiro-dia`, esperado R1 pelo conserto humano). Na matriz, só o 1006 e
+o 346d mudam (`R1?` → R1 firme, os dois certos); zero firme errado nos 37, nos 20 de
+controle e nos 5 cortados, nos dois instantes. O replay da corrida da peça 6 fica 22/37,
+21 chamadas, US$ 5,8840 (o 346d não vai mais ao modelo).
+
+### 15.2 D0 · sem evidência, sem modelo (`extrair.ts:182`, `triar.ts:167`)
+
+Série sem tentativa sai "bloqueado sem tentativa": classe nula, regra D0, a nota do ticket
+(`notas_status`) de evidência, e no remédio cada dependência ainda não `done` com o estado
+(`espera 517 (pendente), 518 (bloqueado)`) e cada token `humano:` sem liberação no
+`docs/fila/liberacoes.json` (`jaLiberado`). O estado vem do leitor (`estadoDasDependencias`,
+`leitor.ts:43`); sem tentativa, ele entra na assinatura (`saida.ts:154`): dependência que
+fica `done` faz o ticket ser triado de novo. O modelo não é chamado e o ledger não é
+tocado: `modelo: {modelo: null, pulado: "sem_tentativa"}`. Fixture:
+`triador-sem-tentativa/actus-1110` (`montar.py`, só leitura do Actus), os 7 de 11/10.
+
+### 15.3 Custo real sempre (`modelo.ts`: `reservar` `:393`, `acertar` `:402`)
+
+Antes de chamar, o `custo.json` ganha a reserva do pior caso (`reserva: true`, o corte).
+Depois:
+
+| o que aconteceu | o ledger fica com |
+|---|---|
+| envelope com `total_cost_usd` (sucesso, `is_error`, `error_max_budget_usd`) | o custo real |
+| o processo não começou (`ENOENT`, `EACCES`, `ENOTDIR`, `EPERM`: `chamar`, `:232`) | nada: a reserva é devolvida; `modelo.descartado.regra = nao_iniciou` |
+| a chamada foi recusada sob teste (sem stub) | nada |
+| começou e não devolveu custo (timeout, envelope ilegível) | `custo_usd: null`, `custo_desconhecido: true`: conta o corte, o único limite do que pode ter sido pago |
+
+`gastoDoDia` não mudou: soma o custo, e o corte onde ele é nulo (a reserva em curso e o
+custo desconhecido). A entrada nula de antes da 7f-b3, sem marca, também conta o corte.
+O placar da corrida não conta `nao_iniciou` como chamada.
+
+### 15.4 Teto por prioridade (`ordenarRepos`, `passada.ts:73`)
+
+Na passada, o modo mais forte de cada repo (de qualquer classe, ou o padrão) decide a
+ordem: `auto`, depois `sombra`, depois `diagnostico`; empate na ordem do repos.json. O
+teto do dia é consumido nessa ordem. Vale dentro de uma passada: uma passada anterior que
+já gastou o teto não é desfeita.
+
+### 15.5 Testes
+
+`orquestrador-triador-aceite.test.ts` (primeiro-dia: o 1006 R1 firme D6b nos dois
+instantes; (B) com os 16 firmes da spec; replay 22/37), `orquestrador-triador-sem-tentativa.test.ts`
+(os 7: zero chamada, ledger vazio, D0, dependências no remédio),
+`orquestrador-triador-custo-real.test.ts` (o 243 com o binário ausente; 8 que não
+começam e a 9ª sai; reserva só durante a chamada; erro com custo; timeout; recusa; o teto
+só com gasto real), `orquestrador-resolvedor-prioridade.test.ts` (com US$ 4,30 de US$ 5,00,
+o Comarka em auto chama e o Actus em diagnostico, listado antes, fica pulado) e
+`orquestrador-resolvedor-passada.test.ts` (D6b decide `r1_allowlist`).
 
 ## 10. Divergências conhecidas
 
