@@ -28,11 +28,13 @@ import { criarPassoModelo, lerConfigModelo } from '../triador/modelo.js'
 import { Guarda, lerDiagnostico } from '../triador/saida.js'
 import { bloqueados, triarTicket, type Diagnostico } from '../triador/triar.js'
 import { agirR1R5, agirR2 } from './acoes.js'
-import { GuardaResolvedor, arquivoDryRun, interruptor, travarPassada } from './caminhos.js'
+import { GuardaResolvedor, arquivoDryRun, interruptor, raizResolvedor, travarPassada } from './caminhos.js'
 import { decidir, type Decisao } from './decidir.js'
 import { apurarAcoes, apurarPropostas, registrarSemAcao } from './desfecho.js'
 import { decidirPausa, retomar, textoVeredito, type Decisao as DecisaoPausa } from './gate-streak.js'
 import { avisarPausa } from './pausa.js'
+import { sobreposicoes } from './sobreposicao.js'
+import { lerLedger, registrar } from './ledger.js'
 import { PAUSA_GATE_PADRAO, acharRepo, lerReposResolvedor, lerTetoReservaAuto, type Modo, type RepoResolvedor } from './modos.js'
 import { promoverRebaixar } from './promocao.js'
 
@@ -122,6 +124,23 @@ function passoModelo(repo: RepoResolvedor, todos: RepoResolvedor[]) {
   return criarPassoModelo({ ...lerConfigModelo(), teto_dia_usd: teto }, fatia)
 }
 
+/**
+ * Os pares de allowlist sobreposta do repo (7f-b5, peça 3): o retrato em
+ * `<resolvedor>/<repo>/sobreposicoes.json` e, no ledger, uma linha
+ * `sobreposicao` por par novo. Classe R8, regra D13, nunca firme, modo
+ * diagnostico: nada é escrito no repo.
+ */
+function registrarSobreposicoes(g: GuardaResolvedor, repo: RepoResolvedor, agora: number): void {
+  const pares = sobreposicoes(repo.caminho)
+  const ts = new Date(agora).toISOString().replace(/\.\d{3}Z$/, 'Z')
+  g.escrever(join(raizResolvedor(), repo.nome, 'sobreposicoes.json'), JSON.stringify({ repo: repo.nome, gerado_em: ts, pares }, null, 2) + '\n')
+  const ja = new Set(lerLedger().filter((e) => e.tipo === 'sobreposicao' && e.repo === repo.nome).map((e) => `${e.depende_de}<${e.id}`))
+  for (const p of pares) {
+    if (ja.has(`${p.menor}<${p.maior}`)) continue
+    registrar(g, { ts, tipo: 'sobreposicao', repo: repo.nome, id: p.maior, depende_de: p.menor, classe: 'R8', regra: 'D13', firme: false, modo: 'diagnostico', arquivos: p.arquivos, proposta: p.proposta })
+  }
+}
+
 /** O que da decisão da pausa de gate vai ao ledger (linha `pausa`). */
 const ledgerDaDecisao = (d: DecisaoPausa) => ({
   veredito: { tipo: d.veredito.tipo, gate: d.veredito.gate, tickets: d.veredito.tickets, comuns: d.veredito.comuns, motivo: d.veredito.motivo, lidos: d.veredito.lidos },
@@ -191,6 +210,8 @@ function passadaTravada(repos: RepoResolvedor[], todos: RepoResolvedor[], g: Gua
       })
       const d = decisao as DecisaoPausa | null
       if (aviso && d?.retomar) retomar(g, repo, aviso.pausa, d, agora)
+      // allowlist sobreposta sem dependência entre os tickets (peça 3): só diagnóstico
+      registrarSobreposicoes(g, repo, agora)
       apurarAcoes(g, repo, agora)
       apurarPropostas(g, repo, agora)
       // e o modo que vale nesta passada já é o depois da promoção/rebaixamento (peça 6)
