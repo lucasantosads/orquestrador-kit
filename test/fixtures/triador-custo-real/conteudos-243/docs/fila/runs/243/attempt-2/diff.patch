@@ -1,0 +1,288 @@
+diff --git a/apps/web/src/app/aprovar/[token]/page.tsx b/apps/web/src/app/aprovar/[token]/page.tsx
+new file mode 100644
+index 0000000..8de3542
+--- /dev/null
++++ b/apps/web/src/app/aprovar/[token]/page.tsx
+@@ -0,0 +1,83 @@
++// Ticket 243 — tela pública do link de aprovação: quem tem o link vê UM roteiro e responde.
++// Sem layout próprio, sem menu, sem link para outra tela. Link inexistente, vencido ou cancelado
++// caem todos no mesmo notFound(): a tela não reintroduz a distinção que o servidor tirou.
++// O token vive na URL e no campo escondido que a ação recebe; nunca em texto, atributo de
++// acessibilidade ou console.
++
++import type { Metadata } from 'next'
++import { notFound } from 'next/navigation'
++import { decidirPorToken, lerRoteiroPorToken } from '@/server/aprovacoes-publico'
++
++export const dynamic = 'force-dynamic'
++
++// O layout raiz fala do painel interno; aqui o título diz só o que a tela é.
++export const metadata: Metadata = { title: 'Roteiro para aprovação', description: '' }
++
++// O layout raiz monta a barra do app em toda rota e ela não se esconde aqui (Nav.tsx e layout.tsx
++// ficam fora deste ticket). Até ela aprender a rota, esta tela a esconde por conta própria.
++const ESCONDE_BARRA_DO_APP = 'body > header { display: none !important; }'
++
++async function aprovar(formData: FormData) {
++  'use server'
++  const token = String(formData.get('token') ?? '')
++  if (token === '') return
++  await decidirPorToken(token, 'aprovado')
++}
++
++async function pedirAjuste(formData: FormData) {
++  'use server'
++  const token = String(formData.get('token') ?? '')
++  const comentario = String(formData.get('comentario') ?? '').trim()
++  if (token === '' || comentario === '') return
++  await decidirPorToken(token, 'ajuste_pedido', comentario)
++}
++
++export default async function AprovarPage({ params }: { params: Promise<{ token: string }> }) {
++  const { token } = await params
++  const roteiro = await lerRoteiroPorToken(token)
++  if (!roteiro) notFound()
++
++  return (
++    <main style={{ maxWidth: 720, margin: '0 auto', padding: '32px 16px' }}>
++      <style>{ESCONDE_BARRA_DO_APP}</style>
++      <section>
++        <h1>Roteiro</h1>
++        <h2>{roteiro.gancho}</h2>
++        <p style={{ whiteSpace: 'pre-wrap' }}>{roteiro.corpo}</p>
++      </section>
++
++      <section>
++        <h2>Legenda</h2>
++        <p style={{ whiteSpace: 'pre-wrap' }}>{roteiro.legenda}</p>
++        {roteiro.hashtags.length > 0 && <p>{roteiro.hashtags.join(' ')}</p>}
++      </section>
++
++      <section>
++        <h2>Checagem do Provimento 205</h2>
++        <p>{roteiro.veredito}</p>
++      </section>
++
++      {roteiro.estado === 'pendente' ? (
++        <section>
++          <form action={aprovar}>
++            <input type="hidden" name="token" value={token} />
++            <button type="submit">Aprovar</button>
++          </form>
++
++          <form action={pedirAjuste}>
++            <input type="hidden" name="token" value={token} />
++            <label htmlFor="comentario">O que precisa ser ajustado?</label>
++            <textarea id="comentario" name="comentario" required rows={4} />
++            <button type="submit">Pedir ajuste</button>
++          </form>
++        </section>
++      ) : (
++        <section>
++          <h2>Sua resposta</h2>
++          <p>{roteiro.estado === 'aprovado' ? 'Roteiro aprovado.' : 'Ajuste pedido.'}</p>
++          {roteiro.comentario && <p style={{ whiteSpace: 'pre-wrap' }}>{roteiro.comentario}</p>}
++        </section>
++      )}
++    </main>
++  )
++}
+diff --git a/apps/web/src/lib/auth/routes.ts b/apps/web/src/lib/auth/routes.ts
+index 29df5f0..25feb61 100644
+--- a/apps/web/src/lib/auth/routes.ts
++++ b/apps/web/src/lib/auth/routes.ts
+@@ -6,9 +6,11 @@ export const AUTH_SCREENS = ['/login', '/cadastro', '/recuperar'] as const
+ 
+ /**
+  * Prefixos públicos: telas de auth + o callback `/auth` (confirmação de email / reset de senha)
+- * + o endpoint de saúde, que responde sem sessão porque o smoke da staging o chama sem cookie.
++ * + o endpoint de saúde, que responde sem sessão porque o smoke da staging o chama sem cookie
++ * + `/aprovar`, o link que o cliente do escritório abre sem conta (não é tela de auth: logado
++ * que abre o link não é mandado para a home).
+  */
+-export const PUBLIC_PREFIXES = [...AUTH_SCREENS, '/auth', '/api/health'] as const
++export const PUBLIC_PREFIXES = [...AUTH_SCREENS, '/auth', '/aprovar', '/api/health'] as const
+ 
+ function casaPrefixo(pathname: string, prefixos: readonly string[]): boolean {
+   return prefixos.some((p) => pathname === p || pathname.startsWith(p + '/'))
+diff --git a/apps/web/test/aprovar-publico.test.tsx b/apps/web/test/aprovar-publico.test.tsx
+new file mode 100644
+index 0000000..a8c5f22
+--- /dev/null
++++ b/apps/web/test/aprovar-publico.test.tsx
+@@ -0,0 +1,159 @@
++// Ticket 243 — a rota pública /aprovar/<token>: classe pública provada nos DOIS níveis (função pura
++// e request sem sessão atravessando updateSession, no padrão de briefing-gate.test.ts) e a tela
++// renderizada (o que mostra e o que não pode mostrar). Segredo de teste nasce em tempo de execução.
++
++import { describe, it, expect, beforeEach, vi } from 'vitest'
++import { NextRequest } from 'next/server'
++import { randomBytes } from 'node:crypto'
++import { renderToStaticMarkup } from 'react-dom/server'
++import { isPublicPath, isAuthScreen } from '../src/lib/auth/routes'
++
++const TOKEN = randomBytes(16).toString('hex')
++
++let mockUser: { id: string } | null = null
++let membershipCalls = 0
++let personaCalls = 0
++let mockRoteiro: Record<string, unknown> | null = null
++const notFoundMock = vi.fn(() => {
++  throw new Error('NEXT_NOT_FOUND')
++})
++const lerMock = vi.fn(async (_t: string) => mockRoteiro)
++
++vi.mock('@supabase/ssr', () => ({
++  createServerClient: () => ({
++    auth: {
++      getUser: async () => ({ data: { user: mockUser } }),
++    },
++    from: (table: string) => {
++      if (table === 'organization_members') {
++        membershipCalls++
++        return {
++          select: () => ({
++            eq: () => ({
++              order: () => ({
++                limit: () => ({
++                  maybeSingle: async () => ({ data: null }),
++                }),
++              }),
++            }),
++          }),
++        }
++      }
++      if (table === 'personas') {
++        personaCalls++
++        return { select: () => ({ eq: async () => ({ count: 0 }) }) }
++      }
++      throw new Error(`tabela inesperada: ${table}`)
++    },
++  }),
++}))
++
++vi.mock('server-only', () => ({}))
++vi.mock('next/navigation', () => ({ notFound: () => notFoundMock() }))
++vi.mock('@/server/aprovacoes-publico', () => ({
++  lerRoteiroPorToken: (t: string) => lerMock(t),
++  decidirPorToken: vi.fn(),
++}))
++
++const { updateSession } = await import('../src/lib/supabase/middleware')
++const { default: AprovarPage } = await import('../src/app/aprovar/[token]/page')
++
++function req(pathname: string) {
++  return new NextRequest(new URL(pathname, 'https://app.example.com'))
++}
++
++async function render() {
++  return renderToStaticMarkup(await AprovarPage({ params: Promise.resolve({ token: TOKEN }) }))
++}
++
++const roteiroValido = {
++  gancho: 'Gancho do roteiro de teste',
++  corpo: 'Corpo do roteiro de teste',
++  legenda: 'Legenda de teste',
++  hashtags: ['#direito', '#advocacia'],
++  veredito: 'Aprovado no Provimento 205',
++  estado: 'pendente',
++  comentario: null,
++}
++
++beforeEach(() => {
++  mockUser = null
++  membershipCalls = 0
++  personaCalls = 0
++  mockRoteiro = { ...roteiroValido }
++  notFoundMock.mockClear()
++  lerMock.mockClear()
++})
++
++describe('ticket 243 — classe pública nos dois níveis', () => {
++  it('função pura: /aprovar/<token> é público, não é tela de auth, e /aprovacoes é protegida', () => {
++    expect(isPublicPath('/aprovar')).toBe(true)
++    expect(isPublicPath(`/aprovar/${TOKEN}`)).toBe(true)
++    expect(isAuthScreen(`/aprovar/${TOKEN}`)).toBe(false)
++    expect(isPublicPath('/aprovacoes')).toBe(false)
++  })
++
++  it('sem sessão, /aprovar/<token> atravessa updateSession sem redirecionar para /login', async () => {
++    const res = await updateSession(req(`/aprovar/${TOKEN}`))
++    expect(res.headers.get('location')).toBeNull()
++  })
++
++  it('sem sessão, /aprovacoes (fila interna) redireciona para /login', async () => {
++    const res = await updateSession(req('/aprovacoes'))
++    expect(res.headers.get('location') ?? '').toContain('/login')
++  })
++
++  it('sem sessão, /aprovar não dispara consulta de organization_members nem de personas', async () => {
++    await updateSession(req(`/aprovar/${TOKEN}`))
++    expect(membershipCalls).toBe(0)
++    expect(personaCalls).toBe(0)
++  })
++})
++
++describe('ticket 243 — a tela do link', () => {
++  it('com roteiro válido mostra gancho, corpo, legenda, hashtags e veredito, e os dois caminhos de resposta', async () => {
++    const html = await render()
++    expect(lerMock).toHaveBeenCalledWith(TOKEN)
++    expect(html).toContain('Gancho do roteiro de teste')
++    expect(html).toContain('Corpo do roteiro de teste')
++    expect(html).toContain('Legenda de teste')
++    expect(html).toContain('#direito #advocacia')
++    expect(html).toContain('Aprovado no Provimento 205')
++    expect(html).toContain('Aprovar')
++    expect(html).toContain('Pedir ajuste')
++  })
++
++  it('com lerRoteiroPorToken devolvendo nulo chama notFound, sem mensagem própria', async () => {
++    mockRoteiro = null
++    await expect(render()).rejects.toThrow('NEXT_NOT_FOUND')
++    expect(notFoundMock).toHaveBeenCalledTimes(1)
++  })
++
++  it('não mostra persona, ângulo, score nem link para outra tela', async () => {
++    const html = await render()
++    expect(html).not.toMatch(/persona|[aâ]ngulo|score|menu|dashboard/i)
++    expect(html).not.toMatch(/<a[\s>]/i)
++    expect(html).not.toMatch(/href=/i)
++  })
++
++  it('esconde a barra do app que o layout raiz monta em toda rota', async () => {
++    const html = await render()
++    expect(html).toMatch(/<style>body &gt; header \{ display: none !important; \}<\/style>|<style>body > header \{ display: none !important; \}<\/style>/)
++  })
++
++  it('o token só aparece no campo escondido da ação, nunca em texto visível nem em rótulo', async () => {
++    const html = await render()
++    const semCampos = html.replace(/<input type="hidden"[^>]*>/gi, '')
++    expect(semCampos).not.toContain(TOKEN)
++    expect(html).not.toMatch(/aria-[a-z]+="[^"]*/i)
++  })
++
++  it('link já respondido mostra o estado e o comentário e não oferece os botões de novo', async () => {
++    mockRoteiro = { ...roteiroValido, estado: 'ajuste_pedido', comentario: 'Trocar o gancho' }
++    const html = await render()
++    expect(html).toContain('Ajuste pedido')
++    expect(html).toContain('Trocar o gancho')
++    expect(html).not.toMatch(/<button/i)
++    expect(html).not.toMatch(/<textarea/i)
++  })
++})
+diff --git a/apps/web/test/auth-validation.test.ts b/apps/web/test/auth-validation.test.ts
+index ffea3f2..3224482 100644
+--- a/apps/web/test/auth-validation.test.ts
++++ b/apps/web/test/auth-validation.test.ts
+@@ -81,4 +81,11 @@ describe('Epic H — classificação de rotas', () => {
+     expect(isPublicPath('/api')).toBe(false)
+     expect(isAuthScreen('/api/health')).toBe(false)
+   })
++
++  it('/aprovar e publico (link do cliente), nao e tela de auth, e /aprovacoes segue protegida', () => {
++    expect(isPublicPath('/aprovar')).toBe(true)
++    expect(isPublicPath('/aprovar/abc123')).toBe(true)
++    expect(isPublicPath('/aprovacoes')).toBe(false)
++    expect(isAuthScreen('/aprovar/abc123')).toBe(false)
++  })
+ })

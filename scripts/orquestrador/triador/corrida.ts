@@ -68,7 +68,9 @@ export function corridaFixture(dir: string, o: { modelo: PassoModelo | null; for
     if (existente && existente.assinatura === assin && !o.forcar) diag = existente
     else {
       diag = diagnosticar(g, NOME_CORRIDA, { ...ev, id: caso }, ext, assin, agora, fixture, o.modelo)
-      chamou = diag.modelo !== null && !(diag.modelo as { pulado?: string }).pulado
+      // a que não começou (sem binário, 7f-b3) não é chamada: nada foi pago
+      const mod = diag.modelo as { pulado?: string; descartado?: { regra: string } } | null
+      chamou = mod !== null && !mod.pulado && mod.descartado?.regra !== 'nao_iniciou'
       gravarDiagnostico(g, NOME_CORRIDA, caso, diag)
       if (!ext.firme) {
         g.escrever(

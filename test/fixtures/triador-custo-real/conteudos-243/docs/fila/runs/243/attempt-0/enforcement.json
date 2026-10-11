@@ -1,0 +1,9 @@
+{
+  "ok": false,
+  "violations": [
+    {
+      "tipo": "credencial",
+      "detalhe": "apps/web/test/aprovar-publico.test.tsx: const TOKEN = 'tok-secreto-9f8e7d6c'"
+    }
+  ]
+}

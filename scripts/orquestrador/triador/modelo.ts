@@ -25,6 +25,14 @@
  * do CLI é `teto_corte_usd` (padrão US$ 0,60), acima do teto do caso; o teto
  * do caso (US$ 0,30) só marca `custo_acima_do_teto` no ledger, como na spec
  * §4. O pior caso de uma chamada, para o teto do dia, é o corte.
+ *
+ * Custo real sempre (7f-b3): antes de chamar, o ledger ganha a RESERVA do
+ * pior caso (`reserva: true`); depois, ela vira o custo real do envelope
+ * (também no erro), ou é DEVOLVIDA se a chamada não começou (o binário não
+ * existe: em 11/10 o `claude` não estava no PATH do job e 8 reservas nulas
+ * comeram US$ 4,80 do teto sem um centavo gasto). Chamada que começou e não
+ * devolveu custo (timeout, envelope ilegível) fica com o pior caso, marcada
+ * `custo_desconhecido`: é o único limite honesto do que pode ter sido pago.
  */
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
@@ -220,7 +228,10 @@ export interface Envelope {
  */
 export class ChamadaRealRecusada extends Error {}
 
-export function chamar(prompt: string, cfg: ConfigModelo): { rc: number; stdout: string; ms: number } {
+/** Erros de spawn em que o processo nem começou: nenhuma chamada, nada pago. */
+const NAO_INICIOU = new Set(['ENOENT', 'EACCES', 'ENOTDIR', 'EPERM'])
+
+export function chamar(prompt: string, cfg: ConfigModelo): { rc: number; stdout: string; ms: number; iniciou: boolean; erro: string | null } {
   // Sob teste (vitest ou ORQ_TESTE=1) só o stub roda: sem ORQ_TRIADOR_CLAUDE,
   // o `claude` do PATH seria o de verdade, e a etapa nunca chama API.
   if (!process.env.ORQ_TRIADOR_CLAUDE && (process.env.VITEST || process.env.ORQ_TESTE === '1')) {
@@ -233,7 +244,8 @@ export function chamar(prompt: string, cfg: ConfigModelo): { rc: number; stdout:
     ['-p', '--output-format', 'json', '--model', cfg.modelo ?? '', '--allowedTools', '', '--max-turns', '1', '--max-budget-usd', String(cfg.teto_corte_usd ?? PADRAO.teto_corte_usd)],
     { input: prompt, encoding: 'utf8', timeout: cfg.timeout_secs * 1000, maxBuffer: 16 * 1024 * 1024, killSignal: 'SIGKILL' },
   )
-  return { rc: r.status ?? (r.error ? 127 : 124), stdout: r.stdout ?? '', ms: Date.now() - t0 }
+  const codigo = (r.error as NodeJS.ErrnoException | undefined)?.code ?? null
+  return { rc: r.status ?? (r.error ? 127 : 124), stdout: r.stdout ?? '', ms: Date.now() - t0, iniciou: !(codigo && NAO_INICIOU.has(codigo)), erro: codigo }
 }
 
 /**
@@ -346,6 +358,10 @@ export interface Gasto {
   tokens_in: number | null
   tokens_out: number | null
   custo_acima_do_teto?: true
+  /** a reserva do pior caso, só enquanto a chamada roda (7f-b3) */
+  reserva?: true
+  /** a chamada começou e não devolveu custo: conta o pior caso */
+  custo_desconhecido?: true
 }
 
 const dia = (agora: number) => new Date(agora).toISOString().slice(0, 10)
@@ -360,15 +376,38 @@ export function lerLedger(g: Guarda): { dias: Record<string, Gasto[]> } {
   }
 }
 
-/** Gasto do dia; entrada sem custo conhecido conta como `piorCaso` (o corte do CLI). */
+/**
+ * Gasto do dia; entrada sem custo conhecido (a reserva de uma chamada em
+ * curso, ou a que começou e não devolveu custo) conta como `piorCaso` (o
+ * corte do CLI).
+ */
 export function gastoDoDia(g: Guarda, agora: number, piorCaso: number): number {
   return (lerLedger(g).dias[dia(agora)] ?? []).reduce((s, x) => s + (x.custo_usd ?? piorCaso), 0)
 }
 
-function registrar(g: Guarda, agora: number, x: Gasto): void {
-  const l = lerLedger(g)
-  ;(l.dias[dia(agora)] ??= []).push(x)
+function gravarLedger(g: Guarda, l: { dias: Record<string, Gasto[]> }): void {
   g.escrever(join(g.raiz, 'custo.json'), JSON.stringify(l, null, 1) + '\n')
+}
+
+/** A reserva do pior caso, ANTES da chamada; devolve a chave para acertar depois. */
+function reservar(g: Guarda, agora: number, x: Omit<Gasto, 'custo_usd' | 'tokens_in' | 'tokens_out'>): string {
+  const chave = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  const l = lerLedger(g)
+  ;(l.dias[dia(agora)] ??= []).push({ ...x, custo_usd: null, tokens_in: null, tokens_out: null, reserva: true, chave } as Gasto)
+  gravarLedger(g, l)
+  return chave
+}
+
+/** Troca a reserva pelo gasto real; `null` devolve a reserva (a chamada não aconteceu). */
+function acertar(g: Guarda, agora: number, chave: string, x: Gasto | null): void {
+  const l = lerLedger(g)
+  const d = l.dias[dia(agora)] ?? []
+  const i = d.findIndex((e) => (e as Gasto & { chave?: string }).chave === chave)
+  if (i >= 0) d.splice(i, 1, ...(x ? [x] : []))
+  else if (x) d.push(x)
+  if (d.length) l.dias[dia(agora)] = d
+  else delete l.dias[dia(agora)]
+  gravarLedger(g, l)
 }
 
 /**
@@ -376,7 +415,7 @@ function registrar(g: Guarda, agora: number, x: Gasto): void {
  * que descartou e o trecho que a mostra. Nenhum descarte é silencioso (7f-b1b).
  */
 export interface Descarte {
-  regra: 'envelope_ilegivel' | 'teto_corte_cli' | 'envelope_is_error' | 'resposta_sem_classe' | 'evidencia_nenhuma_confere'
+  regra: 'nao_iniciou' | 'envelope_ilegivel' | 'teto_corte_cli' | 'envelope_is_error' | 'resposta_sem_classe' | 'evidencia_nenhuma_confere'
   trecho: string
 }
 
@@ -421,11 +460,26 @@ export function criarPassoModelo(cfg: ConfigModelo = lerConfigModelo()): PassoMo
     }
     const versao = cfg.prompt ?? PADRAO.prompt
     const entrada = montarEntrada(repo, ev, ext, cfg.entrada_max_tokens, versao)
-    const r = chamar(entrada.prompt, cfg)
+    const chave = reservar(guarda, agora, { repo, id: ev.id, assinatura })
+    let r: ReturnType<typeof chamar>
+    try {
+      r = chamar(entrada.prompt, cfg)
+    } catch (e) {
+      acertar(guarda, agora, chave, null)
+      throw e
+    }
+    if (!r.iniciou) {
+      acertar(guarda, agora, chave, null)
+      const motivo = `claude não iniciou (${r.erro}): nenhuma chamada, nada no teto`
+      return {
+        registro: { modelo: cfg.modelo, ...(versao !== 'spec' ? { prompt: versao } : {}), erro: motivo, descartado: { regra: 'nao_iniciou', trecho: trecho(`rc ${r.rc}: ${motivo}`) }, custo_usd: 0, duracao_ms: r.ms, entrada_tokens_est: entrada.tokens_est } satisfies RegistroModelo,
+      }
+    }
     const env = lerEnvelope(r.stdout)
     const gasto: Gasto = { repo, id: ev.id, assinatura, custo_usd: env?.custo_usd ?? null, tokens_in: env?.tokens_in ?? null, tokens_out: env?.tokens_out ?? null }
     if (env?.custo_usd != null && env.custo_usd > cfg.teto_caso_usd) gasto.custo_acima_do_teto = true
-    registrar(guarda, agora, gasto)
+    if (gasto.custo_usd === null) gasto.custo_desconhecido = true
+    acertar(guarda, agora, chave, gasto)
     const reg: RegistroModelo = {
       modelo: cfg.modelo,
       ...(versao !== 'spec' ? { prompt: versao } : {}),

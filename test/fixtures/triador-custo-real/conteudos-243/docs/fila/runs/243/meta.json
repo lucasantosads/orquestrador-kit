@@ -1,0 +1,42 @@
+[
+  {
+    "attempt": 0,
+    "model": "sonnet",
+    "claude_dur_secs": 126,
+    "diff_lines": 228,
+    "resultado": "refatiar",
+    "ts": "2026-09-21T16:33:41Z",
+    "dir": "attempt-0",
+    "commitDoHarness": false
+  },
+  {
+    "attempt": 0,
+    "model": "sonnet",
+    "claude_dur_secs": 79,
+    "diff_lines": 241,
+    "resultado": "reprovado",
+    "ts": "2026-09-21T23:00:17Z",
+    "dir": "attempt-1",
+    "commitDoHarness": false
+  },
+  {
+    "attempt": 1,
+    "model": "opus",
+    "claude_dur_secs": 122,
+    "diff_lines": 255,
+    "resultado": "reprovado",
+    "ts": "2026-09-21T23:04:08Z",
+    "dir": "attempt-2",
+    "commitDoHarness": false
+  },
+  {
+    "attempt": 2,
+    "model": "opus",
+    "claude_dur_secs": 81,
+    "diff_lines": 255,
+    "resultado": "reprovado",
+    "ts": "2026-09-21T23:07:38Z",
+    "dir": "attempt-3",
+    "commitDoHarness": false
+  }
+]

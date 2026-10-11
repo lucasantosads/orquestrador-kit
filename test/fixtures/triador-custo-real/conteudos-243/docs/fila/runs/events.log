@@ -1,0 +1,21 @@
+2026-09-21T13:30:02-0300 243 INICIO attempt=1 model=sonnet
+2026-09-21T13:33:41-0300 243 GATE typecheck=ok testes=ok enforcement=falha criterios=27/27 build=ok
+2026-09-21T13:33:41-0300 243 REFATIAR motivo=enforcement arquivos=apps/web/test/aprovar-publico.test.tsx: const TOKEN = 'tok-secreto-9f8e7d6c'
+2026-09-21T13:33:41-0300 243 DECISAO_PENDENTE origem=humano-executor
+2026-09-21T19:57:47-0300 243 INICIO attempt=1 model=sonnet
+2026-09-21T19:59:47-0300 243 GATE typecheck=ok testes=ok enforcement=ok criterios=28/28 build=ok
+2026-09-21T20:00:17-0300 243 JUIZ veredito=reprovado classe=alto modelo=opus attempt=1
+2026-09-21T20:00:17-0300 243 REPROVADO motivo=criterio_qualidade sub=juiz attempt=1 diff=241
+2026-09-21T20:00:17-0300 243 RETRY attempt=2 model=opus motivo=criterio_qualidade sub=juiz worktree=reaproveitada
+2026-09-21T20:00:17-0300 243 WORKTREE modo=reaproveitada de=attempt-1 base=376082ba
+2026-09-21T20:00:17-0300 243 INICIO attempt=2 model=opus
+2026-09-21T20:03:45-0300 243 GATE typecheck=ok testes=ok enforcement=ok criterios=28/28 build=ok
+2026-09-21T20:04:08-0300 243 JUIZ veredito=reprovado classe=alto modelo=opus attempt=2
+2026-09-21T20:04:08-0300 243 REPROVADO motivo=criterio_qualidade sub=juiz attempt=2 diff=255
+2026-09-21T20:04:09-0300 243 RETRY attempt=3 model=opus motivo=criterio_qualidade sub=juiz worktree=reaproveitada
+2026-09-21T20:04:09-0300 243 WORKTREE modo=reaproveitada de=attempt-2 base=376082ba
+2026-09-21T20:04:09-0300 243 INICIO attempt=3 model=opus
+2026-09-21T20:07:14-0300 243 GATE typecheck=ok testes=ok enforcement=ok criterios=28/28 build=ok
+2026-09-21T20:07:38-0300 243 JUIZ veredito=reprovado classe=alto modelo=opus attempt=3
+2026-09-21T20:07:39-0300 243 REPROVADO motivo=criterio_qualidade sub=juiz attempt=3 diff=255
+2026-09-21T20:07:39-0300 243 BLOQUEADO motivo=repeticao sub=juiz diff=255 attempt=3
