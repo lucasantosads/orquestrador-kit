@@ -16,6 +16,11 @@
 #
 # `triar` (7f) não escreve no repo: grava o diagnóstico em ~/.orq/diagnosticos.
 #
+# `resolver` e `desfazer` (7f-b2) são a exceção consciente: escrevem num repo
+# instalado (nunca neste checkout) SÓ o arquivo do ticket bloqueado, num commit
+# só dele com trailer `Orq-Resolvedor`, no modo `auto` do repo no
+# ~/.orq/repos.json, e com as travas de scripts/orquestrador/resolvedor/.
+#
 # Nenhum subcomando toca ticket, staging, worktree, branch ou lock, e nenhum
 # mata processo — parar o loop é desagendar + esperar o disparo corrente
 # (Ciclo de vida, na SKILL). Se `orq` puder alterar estado, alguém vai
@@ -41,6 +46,9 @@
 #   orq triar <repo> [<id>] [--passada] [--forcar] [--sem-modelo]
 #                        triador de bloqueios (7f): diagnóstico em ~/.orq/diagnosticos,
 #                        nunca no repo; --fixture <dir> roda sobre a fixture da 7f
+#   orq resolver [--repo X] [--dry-run] [--sem-modelo]
+#                        resolvedor de bloqueios (7f-b2): tria e, no modo do repo, age
+#   orq desfazer <repo> <id>   reverte a última ação do resolvedor no ticket
 
 set -euo pipefail
 ORQ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -100,8 +108,9 @@ fi
 # ~/.orq/repos.json (ou o --repo), não sobre o checkout onde este `orq` está.
 # Ele é o único verbo que escreve num repo instalado sem ser o loop: só o
 # arquivo do ticket bloqueado, em commit próprio com trailer, e só no modo
-# `auto` do repo (scripts/orquestrador/resolvedor/, CONTRATO §14).
-if [ "${1:-}" = resolver ]; then
+# `auto` do repo (scripts/orquestrador/resolvedor/, CONTRATO §14). `desfazer`
+# reverte a última ação dele num ticket, pela mesma porta.
+if [ "${1:-}" = resolver ] || [ "${1:-}" = desfazer ]; then
   _root="${ORQ_EXEC_ROOT:-$(cd "$ORQ_DIR/.." && pwd)}"
   _gc="$(git -C "$_root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
   if [ -n "$_gc" ] && [ -d "$_gc" ]; then _main="$(cd "$_gc/.." && pwd)"; else _main="$_root"; fi
