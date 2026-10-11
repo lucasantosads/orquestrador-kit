@@ -7,6 +7,10 @@
  *     triagem (o triador existente, `triarTicket`) → decisão pela classe e pelo
  *     modo (decidir.ts) → ação, ou, em --dry-run, o registro do que faria.
  *
+ * Entre passadas, a fatia (7f-b4): os repos fora de auto, juntos, gastam no
+ * máximo (1 − teto_reserva_auto) do teto do dia (padrão 30%); o resto espera
+ * pelo bloqueio de um repo em auto, que pode chegar numa passada mais tarde.
+ *
  * "Esperando por ele": tickets fora de `done`/`obsoleto` com o id em
  * `dependencias` (dependência direta). Empate: a ordem do arquivo.
  *
@@ -27,7 +31,7 @@ import { agirR1R5, agirR2 } from './acoes.js'
 import { GuardaResolvedor, arquivoDryRun, interruptor, travarPassada } from './caminhos.js'
 import { decidir, type Decisao } from './decidir.js'
 import { apurarAcoes, apurarPropostas, registrarSemAcao } from './desfecho.js'
-import { acharRepo, lerReposResolvedor, type Modo, type RepoResolvedor } from './modos.js'
+import { acharRepo, lerReposResolvedor, lerTetoReservaAuto, type Modo, type RepoResolvedor } from './modos.js'
 import { promoverRebaixar } from './promocao.js'
 
 export const TETO_DIA_USD = 5
@@ -70,10 +74,14 @@ const PRIORIDADE: Record<Modo, number> = { auto: 0, sombra: 1, diagnostico: 2 }
  * dia do modelo: em 11/10, Actus e conteudos-infinitos (diagnostico) o
  * consumiram e o 1006 do Comarka (R1 em auto) foi pulado por `teto_dia`.
  */
+const forca = (r: { modos: RepoResolvedor['modos'] }) => Math.min(...Object.values(r.modos).map((m) => PRIORIDADE[m]))
+
 export function ordenarRepos<T extends { modos: RepoResolvedor['modos'] }>(repos: T[]): T[] {
-  const forca = (r: T) => Math.min(...Object.values(r.modos).map((m) => PRIORIDADE[m]))
   return repos.map((r, i) => ({ r, i, p: forca(r) })).sort((a, b) => a.p - b.p || a.i - b.i).map((x) => x.r)
 }
+
+/** Repo em auto: alguma classe (ou o padrão) em auto. É quem usa a fatia reservada do teto (7f-b4). */
+export const emAuto = (r: { modos: RepoResolvedor['modos'] }): boolean => forca(r) === PRIORIDADE.auto
 
 /** Os bloqueados de um repo com o número de tickets que esperam por cada um, do maior ao menor. */
 export function ordenarBloqueados(raiz: string): { id: string; dependentes: number }[] {
@@ -101,9 +109,20 @@ function tetoDia(): number {
   return process.env.ORQ_RESOLVEDOR_TETO_DIA && Number.isFinite(v) && v >= 0 ? v : TETO_DIA_USD
 }
 
+/**
+ * O passo do modelo do repo: o teto do dia para todos; para repo fora de auto,
+ * também a fatia de (1 − teto_reserva_auto) do teto, somada entre os repos
+ * fora de auto (7f-b4).
+ */
+function passoModelo(repo: RepoResolvedor, todos: RepoResolvedor[]) {
+  const teto = tetoDia()
+  const fatia = emAuto(repo) ? null : { teto_usd: teto * (1 - lerTetoReservaAuto()), repos_auto: todos.filter(emAuto).map((r) => r.nome) }
+  return criarPassoModelo({ ...lerConfigModelo(), teto_dia_usd: teto }, fatia)
+}
+
 /** O diagnóstico atual do ticket: o que a triagem acabou de gravar, ou o gravado com a mesma assinatura. */
-function triar(repo: RepoResolvedor, id: string, agora: number, semModelo: boolean): Diagnostico | null {
-  const modelo = semModelo ? null : criarPassoModelo({ ...lerConfigModelo(), teto_dia_usd: tetoDia() })
+function triar(repo: RepoResolvedor, todos: RepoResolvedor[], id: string, agora: number, semModelo: boolean): Diagnostico | null {
+  const modelo = semModelo ? null : passoModelo(repo, todos)
   const r = triarTicket({ repo: { nome: repo.nome, caminho: repo.caminho }, id, agora, ...(modelo ? { modelo } : {}) })
   return r.diagnostico ?? lerDiagnostico<Diagnostico>(new Guarda([repo.caminho]), repo.nome, id)
 }
@@ -139,13 +158,15 @@ export function passada(o: OpcoesPassada = {}): ResultadoPassada {
   const soltar = travarPassada(g)
   if (!soltar) return { pausado: false, travado: true, itens: [] }
   try {
-    return { pausado: false, travado: false, itens: passadaTravada(repos, g, agora, dryRun, o.semModelo === true) }
+    // os repos em auto vêm do repos.json inteiro, mesmo com --repo: a fatia é do dia, não da passada
+    const todos = o.repo ? lerReposResolvedor() : repos
+    return { pausado: false, travado: false, itens: passadaTravada(repos, todos, g, agora, dryRun, o.semModelo === true) }
   } finally {
     soltar()
   }
 }
 
-function passadaTravada(repos: RepoResolvedor[], g: GuardaResolvedor, agora: number, dryRun: boolean, semModelo: boolean): ItemPassada[] {
+function passadaTravada(repos: RepoResolvedor[], todos: RepoResolvedor[], g: GuardaResolvedor, agora: number, dryRun: boolean, semModelo: boolean): ItemPassada[] {
   const itens: ItemPassada[] = []
   for (const repo of repos) {
     // o interruptor vale também no meio da passada: entre um ticket e outro
@@ -159,7 +180,7 @@ function passadaTravada(repos: RepoResolvedor[], g: GuardaResolvedor, agora: num
     }
     for (const { id, dependentes } of ordenarBloqueados(repo.caminho)) {
       if (existsSync(interruptor())) break
-      const diag = triar(repo, id, agora, semModelo || dryRun)
+      const diag = triar(repo, todos, id, agora, semModelo || dryRun)
       const base = { repo: repo.nome, id, dependentes, classe: diag?.classe ?? null, regra: diag?.regra ?? null, firme: diag?.firme ?? false }
       if (!diag) {
         itens.push({ ...base, modo: 'diagnostico', acao: 'aviso', feito: 'nao_consegui', motivo: 'sem diagnóstico (triagem travada por outro processo?)' })

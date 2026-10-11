@@ -11,6 +11,8 @@
  *   sombra       tria e grava a PROPOSTA em ~/.orq/resolvedor; nunca toca o repo
  *   auto         tria e aplica a ação da classe no ticket (com as travas de acoes.ts)
  *
+ * No topo do repos.json, `teto_reserva_auto` (7f-b4, `lerTetoReservaAuto`).
+ *
  * O nome e o caminho saem de `lerRepos` (triador/saida.ts), a mesma leitura do
  * painel; este arquivo só acrescenta o campo. A promoção e o rebaixamento
  * (peça 6) regravam o campo com `gravarModo`.
@@ -57,6 +59,23 @@ function itensCrus(): unknown[] {
     return Array.isArray(d.repos) ? d.repos : []
   } catch {
     return []
+  }
+}
+
+/**
+ * A fatia do teto do dia do modelo guardada para os repos em auto (7f-b4):
+ * `teto_reserva_auto`, no topo do repos.json, de 0 a 1 (padrão 0.7). Os repos
+ * sem classe em auto (sombra e diagnostico, juntos) só gastam até
+ * (1 − teto_reserva_auto) do teto; o resto fica para os repos em auto.
+ */
+export const TETO_RESERVA_AUTO = 0.7
+
+export function lerTetoReservaAuto(): number {
+  try {
+    const v = (JSON.parse(readFileSync(arquivoRepos(), 'utf8')) as { teto_reserva_auto?: unknown }).teto_reserva_auto
+    return typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1 ? v : TETO_RESERVA_AUTO
+  } catch {
+    return TETO_RESERVA_AUTO
   }
 }
 

@@ -381,8 +381,8 @@ export function lerLedger(g: Guarda): { dias: Record<string, Gasto[]> } {
  * curso, ou a que começou e não devolveu custo) conta como `piorCaso` (o
  * corte do CLI).
  */
-export function gastoDoDia(g: Guarda, agora: number, piorCaso: number): number {
-  return (lerLedger(g).dias[dia(agora)] ?? []).reduce((s, x) => s + (x.custo_usd ?? piorCaso), 0)
+export function gastoDoDia(g: Guarda, agora: number, piorCaso: number, conta: (x: Gasto) => boolean = () => true): number {
+  return (lerLedger(g).dias[dia(agora)] ?? []).filter(conta).reduce((s, x) => s + (x.custo_usd ?? piorCaso), 0)
 }
 
 function gravarLedger(g: Guarda, l: { dias: Record<string, Gasto[]> }): void {
@@ -432,7 +432,7 @@ function trechoIlegivel(stdout: string, rc: number): string {
 
 export interface RegistroModelo {
   modelo: string | null
-  pulado?: 'teto_dia' | 'desligado' | 'sem_tentativa'
+  pulado?: 'teto_dia' | 'teto_reserva_auto' | 'desligado' | 'sem_tentativa'
   /** só quando não é o da spec (ex.: `7f-b1b-r3`) */
   prompt?: NomePrompt
   erro?: string
@@ -449,14 +449,27 @@ export interface RegistroModelo {
   envelope_bruto?: string
 }
 
+/**
+ * A fatia do teto de quem não é repo em auto (7f-b4): o gasto do dia dos
+ * repos fora de `repos_auto` (sombra, diagnostico e o que não está no
+ * repos.json), mais o pior caso da chamada, não passa de `teto_usd`.
+ */
+export interface FatiaTeto {
+  teto_usd: number
+  repos_auto: string[]
+}
+
 /** O passo do modelo que `triarTicket` chama para palpite e sem regra. */
-export function criarPassoModelo(cfg: ConfigModelo = lerConfigModelo()): PassoModelo {
+export function criarPassoModelo(cfg: ConfigModelo = lerConfigModelo(), fatia: FatiaTeto | null = null): PassoModelo {
   return ({ ev, ext, repo, assinatura, guarda, agora }) => {
     if (!cfg.modelo) return { registro: { modelo: null, pulado: 'desligado' } satisfies RegistroModelo }
     // Teto do dia: a chamada só sai se, mesmo no pior caso (o corte do CLI), o dia não passa do teto.
     const pior = cfg.teto_corte_usd ?? PADRAO.teto_corte_usd
     if (microdolares(gastoDoDia(guarda, agora, pior) + pior) > microdolares(cfg.teto_dia_usd)) {
       return { registro: { modelo: cfg.modelo, pulado: 'teto_dia' } satisfies RegistroModelo }
+    }
+    if (fatia && microdolares(gastoDoDia(guarda, agora, pior, (x) => !fatia.repos_auto.includes(x.repo)) + pior) > microdolares(fatia.teto_usd)) {
+      return { registro: { modelo: cfg.modelo, pulado: 'teto_reserva_auto' } satisfies RegistroModelo }
     }
     const versao = cfg.prompt ?? PADRAO.prompt
     const entrada = montarEntrada(repo, ev, ext, cfg.entrada_max_tokens, versao)
