@@ -22,7 +22,7 @@ import { blocoJson } from '../triador/comum.js'
 import { criarPassoModelo, lerConfigModelo } from '../triador/modelo.js'
 import { Guarda, lerDiagnostico } from '../triador/saida.js'
 import { bloqueados, triarTicket, type Diagnostico } from '../triador/triar.js'
-import { agirR1R5 } from './acoes.js'
+import { agirR1R5, agirR2 } from './acoes.js'
 import { GuardaResolvedor, arquivoDryRun, interruptor, travarPassada } from './caminhos.js'
 import { decidir, type Decisao } from './decidir.js'
 import { acharRepo, lerReposResolvedor, type Modo, type RepoResolvedor } from './modos.js'
@@ -109,8 +109,8 @@ export function executar(c: Contexto): Pick<ItemPassada, 'feito' | 'motivo' | 'c
   const alvo = { repo: c.repo, id: c.id, diag: c.diag, decisao: d, agora: c.agora, dryRun: c.dryRun, g: c.g }
   if (d.acao === 'r1_allowlist' || d.acao === 'r5_reabrir') return agirR1R5(alvo, d.acao)
   if (d.acao === 'sombra' && d.propoe) return agirR1R5(alvo, d.propoe)
-  if (c.dryRun) return { feito: 'faria', motivo: d.motivo }
-  return { feito: 'nao_consegui', motivo: `ação ${d.acao} ainda não implementada` }
+  if (d.acao === 'r2_proposta') return agirR2(alvo)
+  return { feito: 'nao_consegui', motivo: `ação ${d.acao} sem implementação` }
 }
 
 export function passada(o: OpcoesPassada = {}): ResultadoPassada {

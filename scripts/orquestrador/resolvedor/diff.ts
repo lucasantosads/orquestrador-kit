@@ -15,8 +15,8 @@ export function diffLinhas(a: string, b: string, rotulo: string, contexto = 1): 
   let j = 0
   while (i < n || j < m) {
     if (i < n && j < m && la[i] === lb[j]) ops.push({ t: ' ', l: la[i]!, ia: i++, ib: j++ })
-    else if (j < m && (i === n || lcs[i]![j + 1]! >= lcs[i + 1]![j]!)) ops.push({ t: '+', l: lb[j]!, ia: i, ib: j++ })
-    else ops.push({ t: '-', l: la[i]!, ia: i++, ib: j })
+    else if (i < n && (j === m || lcs[i + 1]![j]! >= lcs[i]![j + 1]!)) ops.push({ t: '-', l: la[i]!, ia: i++, ib: j })
+    else ops.push({ t: '+', l: lb[j]!, ia: i, ib: j++ })
   }
   const muda = ops.map((o, k) => (o.t !== ' ' ? k : -1)).filter((k) => k >= 0)
   if (!muda.length) return ''
