@@ -1022,3 +1022,37 @@ assinatura gravada na fixture pela fórmula da corrida (`assinaturaDaCorrida`, n
 não pela do motor; continua exigindo as 21 respostas da mesma evidência. (7f-b4-3) o teste
 do job da 7f-b2 põe um `claude` falso (que reprova se rodar) no PATH, porque o `--dry-run`
 agora o exige. Nenhuma perdeu força.
+
+### Etapa 7f-b5 · sobras da 7f-b4, pausas e a medição do Comarka (11/10/2026)
+
+O PASSO 0 mostrou que a "edição no meio da série" do Comarka é quase sempre edição de
+ticket bloqueado pelo circuit breaker (status ainda não commitado) e que a dependência
+que faltou era, em 5 de 8 casos, para um ticket criado na hora. O chat do programa trocou
+a ação na reprova por uma trava, a classe de dependência por um diagnóstico de allowlist
+sobreposta, a corrida paga do R2 por um replay mecânico, e acrescentou o aviso e o
+veredito da pausa. Sem chamada de API, sem launchctl, sem escrita em repo da frota nem em
+`~/.orq`. CONTRATO §17. Os commits estão na ordem em que as peças foram feitas (1, 2, 6,
+7, 4, 3; a peça 5 é só medição; a 8 é esta).
+
+- **7f-b5-1** `3634631` (peça 1): diagnóstico com `pulado: teto_dia` de um dia UTC
+  anterior é triado de novo, uma vez por dia, mesmo com a mesma assinatura.
+- **7f-b5-2** `37c2208` (peça 2): o leitor do kit tira o diretório de cada INICIO do
+  `meta.json` (`dir` e `ts`), não do `attempt=`: o 243 lê `attempt-0..3`, uma vez cada.
+  Fixture `test/fixtures/triador-leitor-kit/conteudos-243`.
+- **7f-b5-3** `c3e2dfb` (peça 6): aviso de pausa (notificação do macOS e iMessage com
+  `notificar.imessage`), uma vez por pausa pelo sha do conteúdo; `pausa` no ledger.
+- **7f-b5-4** `d321256` (peça 7): veredito da pausa de gate sistêmico; `pausa_gate` por
+  repo (padrão sombra); em auto, só falso positivo retoma, pelo `orq-pause.sh --off` do
+  repo, 1 por repo a cada 6 h, nunca de novo para o mesmo par. Gabarito: 6 de 6.
+- **7f-b5-5** `10e1d5e` (peça 4 b): trava de tentativa nova antes de trocar o ticket
+  (`runs/<id>/` e log do loop relidos depois da espera do git; `em_execucao`). Teste de
+  corrida. A peça 4 (a), a medição dos 37 casos de allowlist, está no relatório.
+- **7f-b5-6** `1fc513a` (peça 3): allowlist sobreposta sem dependência entre os tickets,
+  R8 D13, só diagnóstico (retrato e ledger, nunca o repo).
+- **7f-b5-7** (peça 8): CONTRATO §17 (e §14.5), este registro e `docs/PECAS.md`.
+
+Asserções existentes que mudaram: (7f-b5-4) o teste da peça 6 desta etapa conferia o
+corpo da notificação igual à 1ª linha do motivo; com o veredito da pausa de gate depois
+dela, confere que a 1ª linha abre o corpo. Nenhuma de etapa anterior mudou. A
+assinatura do 243 da fixture `triador-custo-real` muda (o `attempt-0` não é mais lido duas
+vezes); os testes que a usam não dependem do valor.

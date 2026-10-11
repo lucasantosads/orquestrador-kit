@@ -1319,6 +1319,9 @@ a comparação), uma por assinatura. Nunca aplica, nem no modo `auto`.
   `repos.json`. Troca atômica.
 - No repo instalado, leitura só por `gitLeitura` (`GIT_OPTIONAL_LOCKS=0`); nenhum script do
   repo roda (o hook é do `git commit`); runs, locks, sentinelas e `_worktrees` só lidos.
+  Exceção desde a 7f-b5: `orq-pause.sh --off` do repo, só com `pausa_gate: auto` e
+  veredito `falso_positivo` (§17.4). Antes de trocar o ticket, a trava de tentativa nova
+  (§17.5).
 
 ### 14.6 Ledger, desfecho, promoção (`ledger.ts`, `desfecho.ts`, `promocao.ts`)
 
@@ -1514,6 +1517,133 @@ leitura da chave), `orquestrador-resolvedor-job-claude.test.ts` (`--dry-run` com
 novo; recusa sem claude; job sem claude: uma linha por dia, nada no teto; o claude volta e
 o 243 é triado de novo, uma vez) e `orquestrador-resolvedor-job.test.ts` (um `claude`
 falso no PATH do teste: o `--dry-run` agora o exige).
+
+## 17. Etapa 7f-b5: sobras da 7f-b4, pausas e o que a medição do Comarka pediu (11/10/2026)
+
+A medição do comarka-operacional (`~/orq-sessoes/medicao-comarka.md`) apontou a edição
+humana de spec de ticket já reprovado (allowlist, critério, dependência) como a maior
+causa de intervenção. O PASSO 0 desta etapa mostrou que a "edição no meio da série" é,
+quase sempre, edição de ticket BLOQUEADO pelo circuit breaker, com o status ainda não
+commitado (o writeback de antes de 01/10), e que a dependência que faltou era, em 5 de 8
+casos, para um ticket criado na mesma hora. O chat do programa reduziu a etapa ao que
+segue (relatório: `~/orq-sessoes/relatorio-kit-etapa7f-b5.md`).
+
+### 17.1 Pulado pelo teto, refeito uma vez por dia (`triar.ts:152`)
+
+Diagnóstico gravado com `modelo.pulado = "teto_dia"` num dia UTC anterior ao da triagem
+(`gerado_em`) é triado de novo quando a triagem tem modelo, mesmo com a mesma assinatura.
+O `gerado_em` passa a ser o de hoje: pulado de novo hoje, só amanhã. `teto_reserva_auto`
+não entra (é a fatia, §16.2, e volta sozinha quando o repo vai para auto).
+
+### 17.2 Leitor do kit: uma leitura por tentativa real (`leitor-kit.ts:119`)
+
+O diretório de cada `INICIO` da série é a entrada do `runs/<id>/meta.json` com `dir`
+(`attempt-N`) cujo `ts` cai depois do INICIO e até o INICIO seguinte; nenhum `dir` é
+usado duas vezes. Sem `dir`/`ts` no meta, vale o de antes (`attempt-(attempt=−1)`). O
+dado da tentativa (`diffLines`, `duracaoSecs`) vem da mesma entrada. No 243 do
+conteudos-infinitos (dois `INICIO attempt=1`: a volta que terminou em `REFATIAR` e a
+seguinte) as tentativas são `attempt-0..3`, uma vez cada; antes eram `attempt-0` duas
+vezes e nunca o `attempt-3`. Efeito único no merge: a assinatura do 243 (e de qualquer
+série com INICIO repetido) muda uma vez.
+
+### 17.3 Aviso de pausa (`pausa.ts`, `passada.ts:207`)
+
+A cada passada (fora do `--dry-run`, e só com o interruptor desligado), o sentinela de
+cada repo do repos.json: `pausar_file` do config, `docs/fila/PAUSAR` ou
+`docs/fila/.orq-pause`, o primeiro que existir (`lerPausa`, `:38`). Pausa nova, pelo
+sha256 do conteúdo, vira UMA vez:
+
+- `osascript` `display notification`, título `orq: <repo> pausado`, corpo a primeira
+  linha do motivo sem o carimbo `AAAA-MM-DD HH:MM | ` (e o veredito da §17.4);
+- com `notificar.imessage` no TOPO do repos.json (um destinatário ou uma lista; quem
+  preenche é o humano), uma mensagem pelo Messages para cada um;
+- linha `pausa` no ledger: `arquivo`, `sha`, `motivo`, `notificacao: {macos, imessage}`
+  (`enviada`, `falhou`, `sem_osascript`, `nao_configurado`), mais `veredito` e
+  `pausa_gate` quando é pausa de gate sistêmico.
+
+Os textos vão ao AppleScript por `argv` (`on run argv`), nunca colados no script. O
+sentinela só é lido; quem retoma é o humano, ou a §17.4.
+
+### 17.4 Veredito da pausa de gate sistêmico (`gate-streak.ts`)
+
+Sentinela do loop legado do Comarka: `gate sistemico: "<gate>" reprovou N tickets
+seguidos (A,B,…) em <ts>` (`lerPausaGate`, `:51`). Para cada ticket, o
+`gate-<gate>.txt` da última tentativa até a hora da pausa + 180 s, entre `attempt-N` e
+`attempt-N.prevK` (`artefatoDoGate`, `:75`); os arquivos que falharam (`FAIL` do vitest;
+`arquivo(l,c): error TS` do tsc). Veredito (`vereditoDaPausa`, `:122`):
+
+| o que os artefatos mostram | veredito |
+|---|---|
+| nenhum arquivo falhou em dois ou mais tickets | `falso_positivo` (provável) |
+| algum arquivo falhou em dois ou mais | `base_vermelha` (provável), com os arquivos |
+| artefato ausente; gate sem lista (`criterio`, `build`, `enforcement`); artefato sem arquivo que falhou; sinal de máquina (worker do vitest, EMFILE, ENOSPC) | `sem_veredito`, com o motivo |
+
+Chave nova no ITEM do repo no repos.json: **`pausa_gate`**: `diagnostico` | `sombra` |
+`auto`, padrão **`sombra`** (`pausaGateDe`, `modos.ts:38`). `diagnostico`: só o veredito;
+`sombra`: o veredito e o que faria; `auto`: retoma, e só com `falso_positivo`
+(`decidirPausa`, `:166`; `retomar`, `:192`):
+
+- pelo script do próprio repo, `bash scripts/orquestrador/orq-pause.sh --off` (nunca `rm`;
+  repo sem o script: não retoma). É a única exceção a "nenhum script do repo roda"
+  (§14.5), e só neste modo;
+- no máximo uma retomada automática por repo a cada 6 h (`JANELA_RETOMADA_MS`), e nunca
+  de novo quando o mesmo par (conjunto de tickets) pausar outra vez depois de uma
+  retomada (`travaRetomada`, `:150`);
+- logo antes, o sentinela tem de ter o mesmo sha que foi lido e o interruptor tem de
+  estar desligado; senão, `nao_agiu` com `acao: retomar_pausa_gate`;
+- no ledger, `retomada` (`sha`, `par`, `gate`, `veredito`, `saida` do script).
+
+O defeito `docs/defeitos/2026-10-10-streak-zerado-na-pausa-bloqueia-na-retomada.md`
+segue aberto no Comarka: a pausa zera o streak, e retomar com a base ainda vermelha
+bloqueia o primeiro ticket depois da retomada. A retomada automática só acontece com
+`falso_positivo`, onde a base não é a suspeita; o risco fica no veredito errado.
+
+### 17.5 Trava de tentativa nova (`repo.ts:92`, `:107`, `:184`)
+
+Antes de qualquer troca de ticket (ação e `orq desfazer`), o resolvedor compara o estado
+do loop com o da leitura (`retratoDoLoop`): as entradas de `<runs>/<id>/` com o maior
+mtime de cada uma (o legado arquiva o `attempt-N` em `.prevK` e recria; o kit cria
+`attempt-N`) e o tamanho do log do loop (`events.log` do kit ou `local-loop.log` do
+legado). Depois da espera do git e antes de escrever (`tentativaNova`), desiste com
+`tentativa nova: …` (`nao_agiu` no ledger) se: o ticket está `em_execucao`; uma entrada
+de `runs/<id>/` apareceu ou mudou; ou o log ganhou `=== ticket <id> (` (legado) ou
+`<ts> <id> INICIO` (kit). O loop do Comarka relê o ticket a cada tentativa e só marca
+`em_execucao` depois de ler (recon e prompt, `executor.sh:477-496`): o diretório e a
+linha do log vêm antes.
+
+### 17.6 Allowlist sobreposta (R8, D13; só diagnóstico) (`sobreposicao.ts`, `passada.ts:133`)
+
+Par: dois tickets fora de `done`/`obsoleto` com `pathspec_allowlist` sobreposta (o mesmo
+caminho, ou um glob de um que casa um caminho do outro) e sem caminho de dependência
+entre eles em nenhum sentido (fecho transitivo dos ids; `humano:` não conta). Proposta:
+o id MAIOR passa a depender do menor; ciclo é impossível. A passada grava
+`<resolvedor>/<repo>/sobreposicoes.json` (o retrato) e uma linha `sobreposicao` por par
+novo no ledger (`id` = o maior, `depende_de`, `arquivos`, `classe: R8`, `regra: D13`,
+`firme: false`, `modo: diagnostico`). Nunca escreve no repo; não há modo `sombra` nem
+`auto` para R8 (a medição, no relatório, decide).
+
+### 17.7 Ledger: tipos novos
+
+| tipo | quando | campos |
+|---|---|---|
+| `pausa` | pausa nova num repo (§17.3) | `arquivo`, `sha`, `motivo`, `notificacao`, e `veredito`, `pausa_gate` (§17.4) |
+| `retomada` | retomada automática (§17.4) | `sha`, `par`, `gate`, `veredito`, `script`, `saida` |
+| `sobreposicao` | par novo de allowlist sobreposta (§17.6) | `id`, `depende_de`, `arquivos`, `proposta`, `classe`, `regra`, `firme`, `modo` |
+| `nao_agiu` | também `acao: retomar_pausa_gate` e o motivo `tentativa nova: …` (§17.5) | idem §14.6 |
+
+### 17.8 Testes
+
+`orquestrador-resolvedor-pulado-teto.test.ts` (pulado hoje não refaz; pulado ontem refaz
+uma vez, com o teto cheio ou livre), `orquestrador-triador-leitor-kit-tentativas.test.ts`
+(fixture `test/fixtures/triador-leitor-kit/conteudos-243`, `montar.py` só lê o repo),
+`orquestrador-resolvedor-pausa.test.ts` (osascript falso no PATH: um aviso por pausa,
+iMessage com `notificar.imessage`, dry-run e interruptor não avisam, sentinela intacto),
+`orquestrador-resolvedor-pausa-gate.test.ts` (os três vereditos, máquina, 4 tickets,
+`diagnostico`/`sombra`/`auto`, a janela de 6 h, o mesmo par, o sentinela que muda antes da
+retomada), `orquestrador-resolvedor-tentativa-nova.test.ts` (a corrida: a tentativa nova
+aparece no `pgrep` da espera do git, entre a leitura e a troca; o ticket fica intacto) e
+`orquestrador-resolvedor-sobreposicao.test.ts` (os pares, fecho transitivo, ciclo, glob, o
+ledger uma vez por par, o repo intocado).
 
 ## 10. Divergências conhecidas
 

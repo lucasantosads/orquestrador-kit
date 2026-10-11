@@ -1008,6 +1008,22 @@
   *Teste:* `orquestrador-triador-assinatura-estavel.test.ts`,
   `orquestrador-resolvedor-fatia-auto.test.ts`, `orquestrador-resolvedor-job-claude.test.ts`.
 
+- **Etapa 7f-b5 · sobras da 7f-b4, pausas e a medição do Comarka** (11/10/2026). Pulado
+  pelo teto refeito uma vez por dia UTC; leitor do kit com uma leitura por tentativa real
+  (o `dir` do meta, não o `attempt=` do INICIO); aviso de pausa por notificação do macOS e
+  iMessage (`notificar.imessage`); veredito da pausa de gate sistêmico (falso positivo,
+  base vermelha, sem veredito) com `pausa_gate` por repo e retomada só em auto e falso
+  positivo, pelo `orq-pause.sh --off` do repo; trava de tentativa nova antes de trocar o
+  ticket; allowlist sobreposta (R8 D13) só em diagnóstico. Commits `3634631` (pulado),
+  `37c2208` (leitor), `c3e2dfb` (aviso de pausa), `d321256` (veredito da pausa), `10e1d5e`
+  (tentativa nova), `1fc513a` (sobreposição).
+  *Evidência:* `~/orq-sessoes/medicao-comarka.md`, `~/orq-sessoes/7f-b5/` (gabaritos e
+  medições) e `~/orq-sessoes/relatorio-kit-etapa7f-b5.md`.
+  *Teste:* `orquestrador-resolvedor-pulado-teto.test.ts`,
+  `orquestrador-triador-leitor-kit-tentativas.test.ts`, `orquestrador-resolvedor-pausa.test.ts`,
+  `orquestrador-resolvedor-pausa-gate.test.ts`, `orquestrador-resolvedor-tentativa-nova.test.ts`,
+  `orquestrador-resolvedor-sobreposicao.test.ts`.
+
 ## PENDENTES
 
 - **7f-b4 · reinstalar o job com o `claude` no PATH (humano).** Depois do merge, do
@@ -1018,21 +1034,32 @@
   `custo.json`, elas ainda contam US$ 4,80 (a proposta de correção da 7f-b3 segue aberta).
   *Evidência:* `~/Library/LaunchAgents/com.orq.resolvedor.plist` (PATH sem `~/.local/bin`).
   *Teste:* `orquestrador-resolvedor-job-claude.test.ts`.
-- **7f-b4 · `pulado: teto_dia` nunca volta ao modelo.** Diagnóstico pulado pelo teto (do
-  dia ou da fatia) tem a mesma assinatura no dia seguinte e não é triado de novo: o ticket
-  fica sem o modelo até mudar. A 7f-b4 só refaz o gravado com `modelo: null`. Refazer o
-  pulado no dia seguinte é decisão do chat do programa (é gasto).
-  *Evidência:* `triar.ts:147` (`semModeloAntes`), `~/.orq/diagnosticos/conteudos-infinitos/243.json`
-  (`pulado: teto_dia`).
-  *Teste:* diagnóstico com `pulado: teto_dia` ontem, teto livre hoje: chama uma vez.
-- **7f-b4 · o leitor do kit numera a tentativa pelo `attempt=` do INICIO.** No 243, o
-  `INICIO attempt=1` aparece duas vezes (a 1ª volta e a refatiada): o leitor lê
-  `attempt-0` duas vezes e nunca o `attempt-3` (a tentativa do bloqueio). Achado no PASSO 0
-  da 7f-b4, não mexido.
-  *Evidência:* `~/Projetos/conteudos-infinitos/docs/fila/runs/events.log` (as linhas do
-  243), `leitor-kit.ts:140` (`dirRel` por `attempt - 1`).
-  *Teste:* o 243 da fixture com os 4 INICIO: as tentativas lidas são `attempt-0..3`, uma
-  vez cada.
+- **7f-b5 · valores no repos.json do Comarka (humano).** `pausa_gate` no item do
+  Comarka (padrão `sombra`; `auto` retoma sozinho só o falso positivo, no máximo 1 por 6 h)
+  e `notificar.imessage` no topo (o destinatário). Gabarito do veredito: 6 de 6 com
+  verdade conhecida.
+  *Evidência:* `~/orq-sessoes/7f-b5/gabarito-pausa-gate.jsonl`, relatório da 7f-b5.
+  *Teste:* `orquestrador-resolvedor-pausa-gate.test.ts`.
+- **7f-b5 · D6 firme errado no 762.** Na medição da peça 4 (a), o 762 (`09e85d2`, 05/10)
+  sai R1 firme D6 para `test/cron-paths-vercel.test.ts`, e o humano manteve o teste
+  intocado e liberou `src/middleware.ts` (o conserto era no código). Em auto, o resolvedor
+  teria posto o teste na allowlist com guarda. Decisão do chat do programa: aceitar, ou
+  apertar a D6 (ex.: o teste cita rota/config que o diff não toca).
+  *Evidência:* `~/orq-sessoes/7f-b5/medir-allowlist.jsonl` (linha do 762).
+  *Teste:* o 762 materializado da série de 05/10: não sai R1 firme.
+- **7f-b5 · direção da R8 (allowlist sobreposta).** A regra decidida põe a dependência no
+  id maior; nos dois casos do gabarito (826/866 e 306b/500) o humano fez o contrário: o
+  ticket que já tinha reprovado esperou o outro. Em 30 dias, 261 pares distintos, 16
+  ligados depois pelo humano, 6 inofensivos, 239 indeterminados: segue em diagnóstico.
+  *Evidência:* `~/orq-sessoes/7f-b5/medir-sobreposicao.txt`.
+  *Teste:* `orquestrador-resolvedor-sobreposicao.test.ts` (a direção é a decidida).
+- **7f-b5 · formas de critério fora do R2.** O replay mecânico dos 25 casos de critério:
+  zero na forma `unbound variable`; 4 na mesma raiz (o `grep -c` sai 1 com contagem 0) com
+  outro sintoma, 3 de contagem frágil sobre a saída de ferramenta, 5 de regex/glob frágil,
+  8 de premissa da spec, 4 só de descrição de critério qualitativo, 1 de critério novo.
+  Propositor com modelo é peça futura (as formas de fora são todas).
+  *Evidência:* `~/orq-sessoes/7f-b5/replay-r2.jsonl` e o relatório da 7f-b5.
+  *Teste:* por forma nova, o caso real com o cmd do humano letra por letra.
 
 - **7f-b1b · mini-corrida paga do R3.** `~/orq-sessoes/corrida-7f-r3.cmd` (9 casos: os 5 R3 e
   os 6 cortados no teto, prompt `7f-b1b-r3`, teto US$ 5,40), depois do merge da 7f-b1b; as
