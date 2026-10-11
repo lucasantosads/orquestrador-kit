@@ -22,7 +22,7 @@ import { acoesDe, lerLedger, registrar } from './ledger.js'
 import { planejarR1, type Plano } from './r1.js'
 import { planejarR2 } from './r2.js'
 import { planejarR5 } from './r5.js'
-import { arquivoDoTicket, escreverEComitar, trailer } from './repo.js'
+import { arquivoDoTicket, escreverEComitar, retratoDoLoop, trailer } from './repo.js'
 
 export interface Feito {
   feito: 'aplicado' | 'proposto' | 'faria' | 'nao_consegui'
@@ -79,6 +79,8 @@ export function agirR1R5(a: Alvo, tipo: 'r1_allowlist' | 'r5_reabrir'): Feito {
   const rel = arquivoDoTicket(repo.caminho, id)
   if (!rel) return { feito: 'nao_consegui', motivo: `não achei um arquivo docs/fila/${id}-*.md só` }
   const antes = readFileSync(join(repo.caminho, rel), 'utf8')
+  // o loop agora: conferido de novo imediatamente antes da troca (repo.ts, 7f-b5)
+  const retrato = retratoDoLoop(repo.caminho, id)
   const plano: Plano<{ novo: string; teste?: string; criteriosLista?: number[]; guarda?: number; condicao?: string }> =
     tipo === 'r1_allowlist' ? planejarR1(repo.caminho, diag, antes, a.agora) : planejarR5(repo.caminho, diag, antes)
   if (!plano.ok) return { feito: 'nao_consegui', motivo: plano.motivo }
@@ -102,7 +104,7 @@ export function agirR1R5(a: Alvo, tipo: 'r1_allowlist' | 'r5_reabrir'): Feito {
   const classe = diag.classe!
   const regra = diag.regra!
   const msg = `orq-resolvedor: ${id} ${classe} ${regra}: ${mudou}\n\n${diag.remedio}\n\n${trailer(classe, regra, diag.assinatura)}\n`
-  const e = escreverEComitar(repo.caminho, id, rel, antes, plano.plano.novo, msg)
+  const e = escreverEComitar(repo.caminho, id, rel, antes, plano.plano.novo, msg, retrato)
   if (!e.ok) return { feito: 'nao_consegui', motivo: e.motivo }
   const copia = join(dirTicket(repo.nome, id), 'acoes', carimbo(a.agora))
   a.g.escrever(join(copia, 'antes.md'), antes)

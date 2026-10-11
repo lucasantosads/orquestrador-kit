@@ -25,7 +25,7 @@ import { gitLeitura } from '../triador/git.js'
 import { GuardaResolvedor } from './caminhos.js'
 import { acoesDe, lerLedger, registrar } from './ledger.js'
 import { acharRepo } from './modos.js'
-import { escreverEComitar, trailer } from './repo.js'
+import { escreverEComitar, retratoDoLoop, trailer } from './repo.js'
 
 export type Desfeito = { ok: true; commit: string; desfez: string } | { ok: false; motivo: string }
 
@@ -51,12 +51,13 @@ export function desfazer(o: { repo: string; id: string; agora?: number }): Desfe
   if (depois.stdout.trim()) return { ok: false, motivo: `${rel} mudou depois da ação: ${depois.stdout.trim().split('\n').join('; ')}` }
   const noCommit = gitLeitura(repo.caminho, ['show', `${sha}:${rel}`]).stdout
   const noDisco = readFileSync(join(repo.caminho, rel), 'utf8')
+  const retrato = retratoDoLoop(repo.caminho, o.id)
   if (noDisco !== noCommit) return { ok: false, motivo: `${rel} no disco não é o do commit ${sha.slice(0, 12)} (mudança não commitada depois da ação)` }
 
   const copia = typeof a.copia === 'string' ? join(a.copia, 'antes.md') : null
   const antes = copia && existsSync(copia) ? readFileSync(copia, 'utf8') : gitLeitura(repo.caminho, ['show', `${sha}^:${rel}`]).stdout
   const msg = `orq-resolvedor: desfaz ${sha.slice(0, 12)} (${o.id} ${a.classe} ${a.regra})\n\n${a.mudou ?? ''}\n\nOrq-Resolvedor-Desfaz: ${sha}\n`
-  const e = escreverEComitar(repo.caminho, o.id, rel, noDisco, antes, msg)
+  const e = escreverEComitar(repo.caminho, o.id, rel, noDisco, antes, msg, retrato)
   if (!e.ok) return { ok: false, motivo: e.motivo }
   const g = new GuardaResolvedor([repo.caminho])
   const base = { ts: iso(agora), repo: repo.nome, id: o.id, classe: a.classe ?? null, regra: a.regra ?? null, assinatura: a.assinatura }

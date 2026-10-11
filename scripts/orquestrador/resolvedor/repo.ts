@@ -8,6 +8,9 @@
  *     no git dir, nem processo `git` (`pgrep -x git`; `ORQ_RESOLVEDOR_PGREP`
  *     troca o binário nos testes), até `ORQ_RESOLVEDOR_ESPERA_GIT_S` (60 s);
  *   - o arquivo tem de estar como foi lido (senão outro processo mexeu: não age);
+ *   - nenhuma tentativa nova desde a leitura (7f-b5): o `runs/<id>/` igual
+ *     (nenhum `attempt-*` novo ou mexido), o log do loop sem o começo de uma
+ *     tentativa do ticket e o ticket fora de `em_execucao`; senão desiste;
  *   - commit só daquele arquivo (`git commit --only -- <arquivo>`: o que mais
  *     estiver no índice fica onde está), com o trailer
  *     `Orq-Resolvedor: <classe> <regra> <assinatura>`;
@@ -18,9 +21,11 @@
  * Toda leitura de git continua em `gitLeitura` (GIT_OPTIONAL_LOCKS=0).
  */
 import { spawnSync } from 'node:child_process'
-import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
+import { closeSync, existsSync, lstatSync, openSync, readdirSync, readFileSync, readSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join, resolve } from 'node:path'
+import { blocoJson } from '../triador/comum.js'
 import { gitLeitura } from '../triador/git.js'
+import { runsDir } from '../triador/leitor.js'
 import { dentro } from './caminhos.js'
 
 export class EscritaNoRepoRecusada extends Error {}
@@ -47,6 +52,88 @@ export function confereTicket(raiz: string, id: string, rel: string): string {
   const real = realpathSync(abs)
   if (!dentro(real, fila) || real === fila) throw new EscritaNoRepoRecusada(`ticket ${rel} sai de docs/fila: ${real}`)
   return real
+}
+
+/**
+ * O estado do loop para um ticket na hora da leitura (7f-b5): as entradas de
+ * `<runs>/<id>/` com o mtime, e o tamanho do log do loop (`events.log` do kit
+ * ou `local-loop.log` do legado). O loop relê o ticket a cada tentativa e só
+ * marca `em_execucao` DEPOIS de ler (no Comarka, `executor.sh:466-496`): o
+ * `mkdir attempt-N` e a linha `=== ticket <id> … — tentativa N` vêm antes.
+ */
+export interface Retrato {
+  runs: string
+  entradas: Record<string, number>
+  log: string
+  tamanhoLog: number
+}
+
+function entradasDe(dir: string): Record<string, number> {
+  const out: Record<string, number> = {}
+  try {
+    for (const e of readdirSync(dir)) {
+      try {
+        const p = join(dir, e)
+        const st = statSync(p)
+        // um attempt-* conta pelo mais novo entre ele e o que tem dentro
+        let m = st.mtimeMs
+        if (st.isDirectory()) for (const f of readdirSync(p)) m = Math.max(m, statSync(join(p, f)).mtimeMs)
+        out[e] = m
+      } catch {
+        /* sumiu entre o readdir e o stat: conta como mudança na próxima leitura */
+      }
+    }
+  } catch {
+    /* sem runs/<id>: nenhuma tentativa */
+  }
+  return out
+}
+
+export function retratoDoLoop(raiz: string, id: string): Retrato {
+  const runs = runsDir(raiz)
+  const log = existsSync(join(raiz, runs, 'events.log')) ? `${runs}/events.log` : `${runs}/local-loop.log`
+  let tamanhoLog = 0
+  try {
+    tamanhoLog = statSync(join(raiz, log)).size
+  } catch {
+    tamanhoLog = 0
+  }
+  return { runs: `${runs}/${id}`, entradas: entradasDe(join(raiz, runs, id)), log, tamanhoLog }
+}
+
+const escapa = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** Por que há uma tentativa nova do ticket desde o retrato, ou `null`. */
+export function tentativaNova(raiz: string, id: string, rel: string, r: Retrato): string | null {
+  try {
+    if (blocoJson(readFileSync(join(raiz, rel), 'utf8'))?.status === 'em_execucao') return 'tentativa nova: o ticket está em_execucao'
+  } catch {
+    /* ticket ilegível: a conferência do arquivo decide */
+  }
+  const agora = entradasDe(join(raiz, r.runs))
+  for (const [e, m] of Object.entries(agora)) {
+    if (!(e in r.entradas)) return `tentativa nova: ${r.runs}/${e} apareceu depois da leitura`
+    if (r.entradas[e] !== m) return `tentativa nova: ${r.runs}/${e} mudou depois da leitura`
+  }
+  let tam = 0
+  try {
+    tam = statSync(join(raiz, r.log)).size
+  } catch {
+    tam = 0
+  }
+  if (tam > r.tamanhoLog) {
+    const buf = Buffer.alloc(tam - r.tamanhoLog)
+    const fd = openSync(join(raiz, r.log), 'r')
+    try {
+      readSync(fd, buf, 0, buf.length, r.tamanhoLog)
+    } finally {
+      closeSync(fd)
+    }
+    const re = new RegExp(String.raw`=== ticket ${escapa(id)} \(|^\S+ ${escapa(id)} INICIO\b`)
+    const l = buf.toString('utf8').split('\n').find((x) => re.test(x))
+    if (l) return `tentativa nova: ${r.log}: ${l.trim().slice(0, 120)}`
+  }
+  return null
 }
 
 const dorme = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
@@ -89,10 +176,13 @@ export type Escrita = { ok: true; commit: string } | { ok: false; motivo: string
  * coisa falha depois de escrever (hook, commit com outro arquivo), o arquivo
  * volta a `antes`.
  */
-export function escreverEComitar(raiz: string, id: string, rel: string, antes: string, novo: string, mensagem: string): Escrita {
+export function escreverEComitar(raiz: string, id: string, rel: string, antes: string, novo: string, mensagem: string, retrato?: Retrato): Escrita {
   const real = confereTicket(raiz, id, rel)
   const esperando = esperarGit(raiz)
   if (esperando) return { ok: false, motivo: `git rodando: ${esperando}` }
+  // a última releitura antes da troca: tentativa nova do loop, desiste (7f-b5)
+  const nova = retrato ? tentativaNova(raiz, id, rel, retrato) : null
+  if (nova) return { ok: false, motivo: nova }
   if (readFileSync(real, 'utf8') !== antes) return { ok: false, motivo: 'o ticket mudou desde a leitura: outro processo mexeu' }
   const headAntes = gitLeitura(raiz, ['rev-parse', 'HEAD']).stdout.trim()
   writeFileSync(real, novo)
