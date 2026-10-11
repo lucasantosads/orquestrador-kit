@@ -7,7 +7,7 @@
  *     que tem menos (dependência direta, fora de done/obsoleto);
  *   - cada um passa pelo triador existente (o diagnóstico fica em ORQ_DIAG_DIR);
  *   - em --dry-run nada muda no repo (arquivo, índice, commits), o ledger não
- *     nasce, e o que faria fica em dry-run.jsonl e na saída.
+ *     muda, e o que faria fica em dry-run.jsonl e na saída.
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -98,12 +98,14 @@ describe('peça 2: a passada', () => {
     const r = repoDoCaso(join(amb.base, 'dry'), '840', { nome: 'comarka-operacional' })
     amb.repos([{ nome: 'comarka-dry', caminho: r.raiz, resolvedor: { R1: 'auto' } }])
     const headAntes = git(r.raiz, 'rev-parse', 'HEAD')
+    const pLedger = join(amb.env.ORQ_RESOLVEDOR_DIR!, 'ledger.jsonl')
+    const ledgerAntes = existsSync(pLedger) ? readFileSync(pLedger, 'utf8') : null
     const res = m!.passada({ repo: 'comarka-dry', dryRun: true })
     expect(res.itens).toEqual([expect.objectContaining({ id: '840', acao: 'r1_allowlist', feito: 'faria' })])
     expect(readFileSync(join(r.raiz, r.ticket), 'utf8')).toBe(r.antes)
     expect(git(r.raiz, 'rev-parse', 'HEAD')).toBe(headAntes)
     expect(git(r.raiz, 'status', '--porcelain')).toBe('')
-    expect(existsSync(join(amb.env.ORQ_RESOLVEDOR_DIR!, 'ledger.jsonl'))).toBe(false)
+    expect(existsSync(pLedger) ? readFileSync(pLedger, 'utf8') : null).toBe(ledgerAntes)
     const linhas = readFileSync(join(amb.env.ORQ_RESOLVEDOR_DIR!, 'dry-run.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l) as { id: string; acao: string })
     expect(linhas.at(-1)).toEqual(expect.objectContaining({ id: '840', acao: 'r1_allowlist' }))
   })

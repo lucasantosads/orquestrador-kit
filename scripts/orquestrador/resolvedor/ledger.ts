@@ -3,8 +3,16 @@
  * acrescentada (etapa 7f-b2).
  *
  *   acao        uma ação aplicada no repo: classe, regra, assinatura, o que
- *               mudou, commit, arquivo, e a cópia do antes/depois
- *               (`acoes/<ts>/`, o desfazer usa)
+ *               mudou, commit, arquivo, a cópia do antes/depois (`acoes/<ts>/`,
+ *               o desfazer usa) e `tempo_ate_destravar_s` (do bloqueio à ação)
+ *   proposta    uma proposta em sombra gravada (R2 sempre; R1/R5 no modo sombra)
+ *   nao_agiu    "não consegui", com o motivo (uma linha por assinatura e motivo)
+ *   aviso       classe sem ação (R3, R4, R6, R7, base vermelha, palpite)
+ *   desfecho    o fim de uma ação: done, bloqueou_de_novo, humano_mexeu ou
+ *               desfeito, `bom`, e os tempos (desfecho.ts)
+ *   comparacao  proposta de R2 contra o conserto humano: acerto ou erro (desfecho.ts)
+ *   promocao, rebaixamento   o modo de uma classe mudou sozinho (peça 6)
+ *   desfeito    `orq desfazer` reverteu uma ação (peça 7)
  */
 import { readFileSync } from 'node:fs'
 import { arquivoLedger, type GuardaResolvedor } from './caminhos.js'
@@ -13,10 +21,10 @@ export interface Entrada {
   ts: string
   tipo: string
   repo: string
-  id?: string
-  classe?: string | null
-  regra?: string | null
-  assinatura?: string
+  id?: string | undefined
+  classe?: string | null | undefined
+  regra?: string | null | undefined
+  assinatura?: string | undefined
   [k: string]: unknown
 }
 

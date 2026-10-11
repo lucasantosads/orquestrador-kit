@@ -43,6 +43,24 @@ export interface Alvo {
 }
 
 const iso = (t: number) => new Date(t).toISOString().replace(/\.\d{3}Z$/, 'Z')
+const segs = (de: string | null, ate: number) => (de && !Number.isNaN(Date.parse(de)) ? Math.round((ate - Date.parse(de)) / 1000) : null)
+
+/** Uma proposta nova vai ao ledger (a comparação com o humano parte dela, peça 5). */
+function registrarProposta(a: Alvo, acao: string, mudou: string, proposta: string): void {
+  registrar(a.g, {
+    ts: iso(a.agora),
+    tipo: 'proposta',
+    repo: a.repo.nome,
+    id: a.id,
+    classe: a.diag.classe,
+    regra: a.diag.regra,
+    assinatura: a.diag.assinatura,
+    acao,
+    mudou,
+    proposta,
+    proposta_json: proposta.replace(/\.md$/, '.json'),
+  })
+}
 const carimbo = (t: number) => iso(t).replace(/[-:]/g, '')
 
 /** O que mudou, em uma linha, para o ledger e a mensagem do commit. */
@@ -78,6 +96,7 @@ export function agirR1R5(a: Alvo, tipo: 'r1_allowlist' | 'r5_reabrir'): Feito {
         `\`\`\`diff\n${diff}\`\`\`\n`,
     )
     a.g.escrever(join(dir, 'proposta.json'), JSON.stringify({ repo: repo.nome, id, tipo, classe: diag.classe, regra: diag.regra, assinatura: diag.assinatura, gerada_em: iso(a.agora), arquivo: rel, antes, depois: plano.plano.novo }, null, 2) + '\n')
+    registrarProposta(a, tipo, mudou, p)
     return { feito: 'proposto', motivo: mudou, proposta: p, diff }
   }
   const classe = diag.classe!
@@ -103,6 +122,7 @@ export function agirR1R5(a: Alvo, tipo: 'r1_allowlist' | 'r5_reabrir'): Feito {
     arquivo: rel,
     copia,
     bloqueado_em: diag.bloqueio.quando,
+    tempo_ate_destravar_s: segs(diag.bloqueio.quando, a.agora),
   })
   return { feito: 'aplicado', motivo: mudou, commit: e.commit, diff }
 }
@@ -152,7 +172,8 @@ export function agirR2(a: Alvo): Feito {
   )
   a.g.escrever(
     pj,
-    JSON.stringify({ repo: repo.nome, id, tipo: 'r2', classe: diag.classe, regra: diag.regra, assinatura: diag.assinatura, gerada_em: iso(a.agora), arquivo: rel, indice: r.indice, criterio: r.criterio, espera: r.espera, cmd_antigo: r.cmd_antigo, cmd_novo: r.cmd_novo, head: r.head, ref_alvo: r.ref_alvo, arquivos: r.arquivos, prova: r.prova }, null, 2) + '\n',
+    JSON.stringify({ repo: repo.nome, id, tipo: 'r2', classe: diag.classe, regra: diag.regra, assinatura: diag.assinatura, gerada_em: iso(a.agora), arquivo: rel, indice: r.indice, criterio: r.criterio, espera: r.espera, cmd_antigo: r.cmd_antigo, cmd_novo: r.cmd_novo, head: r.head, ref_alvo: r.ref_alvo, arquivos: r.arquivos, prova: r.prova, arvores: r.arvores }, null, 2) + '\n',
   )
+  registrarProposta(a, 'r2_proposta', mudou, pm)
   return { feito: 'proposto', motivo: mudou, proposta: pm, diff }
 }

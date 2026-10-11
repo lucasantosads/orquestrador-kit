@@ -25,6 +25,7 @@ import { bloqueados, triarTicket, type Diagnostico } from '../triador/triar.js'
 import { agirR1R5, agirR2 } from './acoes.js'
 import { GuardaResolvedor, arquivoDryRun, interruptor, travarPassada } from './caminhos.js'
 import { decidir, type Decisao } from './decidir.js'
+import { apurarAcoes, apurarPropostas, registrarSemAcao } from './desfecho.js'
 import { acharRepo, lerReposResolvedor, type Modo, type RepoResolvedor } from './modos.js'
 
 export const TETO_DIA_USD = 5
@@ -133,6 +134,11 @@ function passadaTravada(repos: RepoResolvedor[], g: GuardaResolvedor, agora: num
   for (const repo of repos) {
     // o interruptor vale também no meio da passada: entre um ticket e outro
     if (existsSync(interruptor())) break
+    // o desfecho do que já foi feito vem antes da triagem nova (peça 5)
+    if (!dryRun) {
+      apurarAcoes(g, repo, agora)
+      apurarPropostas(g, repo, agora)
+    }
     for (const { id, dependentes } of ordenarBloqueados(repo.caminho)) {
       if (existsSync(interruptor())) break
       const diag = triar(repo, id, agora, semModelo || dryRun)
@@ -145,6 +151,20 @@ function passadaTravada(repos: RepoResolvedor[], g: GuardaResolvedor, agora: num
       const { diff, ...r } = executar({ repo, id, diag, decisao, dependentes, agora, dryRun, g })
       const item: ItemPassada = { ...base, modo: decisao.modo, acao: decisao.acao, ...r }
       itens.push(item)
+      if (!dryRun && (item.feito === 'nao_consegui' || item.feito === 'aviso')) {
+        registrarSemAcao(g, {
+          ts: new Date(agora).toISOString().replace(/\.\d{3}Z$/, 'Z'),
+          tipo: item.feito === 'aviso' ? 'aviso' : 'nao_agiu',
+          repo: repo.nome,
+          id,
+          classe: item.classe,
+          regra: item.regra,
+          assinatura: diag.assinatura,
+          acao: item.acao,
+          modo: item.modo,
+          motivo: item.motivo,
+        })
+      }
       if (dryRun) g.acrescentar(arquivoDryRun(), JSON.stringify({ ts: new Date(agora).toISOString(), ...item, assinatura: diag.assinatura, ...(diff ? { diff } : {}) }))
     }
   }

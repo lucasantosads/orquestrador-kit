@@ -141,7 +141,7 @@ describe('peça 3: ações R1 e R5 com as travas', () => {
     spawnSync('rm', ['-f', join(r.raiz, '.git', 'index.lock')])
     expect(readFileSync(join(r.raiz, r.ticket), 'utf8')).toBe(r.antes)
     expect(git(r.raiz, 'rev-list', '--count', 'HEAD').trim()).toBe('1')
-    expect(ledger()).toEqual([])
+    expect(ledger().filter((e) => e.tipo === 'acao')).toEqual([])
   })
 
   it('com o interruptor ele não faz nada: nem triagem, nem ledger, nem o repo', () => {

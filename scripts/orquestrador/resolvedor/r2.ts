@@ -46,6 +46,8 @@ export interface PropostaR2 {
   cmd_antigo: string
   cmd_novo: string
   arquivos: { nao_feito: string[]; head: string[] }
+  /** o conteúdo de cada arquivo da prova: a comparação com o humano (peça 5) roda sobre ele */
+  arvores: { nao_feito: Record<string, string>; head: Record<string, string> | null }
   ref_alvo: string | null
   head: string | null
   prova: Rodada[]
@@ -96,7 +98,7 @@ cd "$1"
 out="$( ( export NO_COLOR=1 FORCE_COLOR=0 && eval "$2" ) 2>&1 || true )"
 printf '%s' "$out"`
 
-function rodar(dir: string, cmd: string, espera: string): { saida: string; abortou: boolean; passa: boolean } {
+export function rodar(dir: string, cmd: string, espera: string): { saida: string; abortou: boolean; passa: boolean } {
   const r = spawnSync('bash', ['-c', HARNESS, 'prova', dir, cmd], {
     encoding: 'utf8',
     timeout: 10_000,
@@ -107,19 +109,35 @@ function rodar(dir: string, cmd: string, espera: string): { saida: string; abort
   return { saida, abortou: r.status !== 0 || /unbound variable|syntax error/.test(saida), passa: r.status === 0 && criterioPassa(saida, espera) }
 }
 
-/** Uma árvore temporária com os arquivos citados, como estão num ref. */
-function arvore(raiz: string, ref: string | ((f: string) => string | null), arquivos: string[]): { dir: string; postos: string[] } {
+/** Uma árvore temporária com os arquivos dados (caminho → conteúdo). */
+function arvoreDe(conteudos: Record<string, string>): string {
   const dir = mkdtempSync(join(tmpdir(), 'orq-r2-'))
-  const postos: string[] = []
+  for (const [f, txt] of Object.entries(conteudos)) {
+    mkdirSync(dirname(join(dir, f)), { recursive: true })
+    writeFileSync(join(dir, f), txt)
+  }
+  return dir
+}
+
+/** Os arquivos citados, como estão num ref (o que não existe lá fica de fora). */
+function conteudosEm(raiz: string, ref: string | ((f: string) => string | null), arquivos: string[]): Record<string, string> {
+  const out: Record<string, string> = {}
   for (const f of arquivos) {
     const g = typeof ref === 'function' ? null : gitLeitura(raiz, ['show', `${ref}:${f}`])
     const txt = typeof ref === 'function' ? ref(f) : g!.rc === 0 ? g!.stdout : null
-    if (txt === null) continue
-    mkdirSync(dirname(join(dir, f)), { recursive: true })
-    writeFileSync(join(dir, f), txt)
-    postos.push(f)
+    if (txt !== null) out[f] = txt
   }
-  return { dir, postos }
+  return out
+}
+
+/** Roda os cmds dados num estado (cópia temporária), no harness do executor. */
+export function rodarEm(conteudos: Record<string, string>, cmds: [string, string][], espera: string): ({ cmd: string } & ReturnType<typeof rodar>)[] {
+  const dir = arvoreDe(conteudos)
+  try {
+    return cmds.map(([qual, cmd]) => ({ cmd: qual, ...rodar(dir, cmd, espera) }))
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 }
 
 /** O índice do critério: `criterio[i]` (legado) ou a descrição (kit). */
@@ -169,18 +187,13 @@ export function planejarR2(raiz: string, diag: Diagnostico, md: string): Plano<P
   const arqs = citados(antigo)
   const fonteAlvo = (f: string) => noAlvo(raiz, f)
   const alvoRef = arqs.map(fonteAlvo).find((x) => x)?.ref ?? null
-  const prova: Rodada[] = []
-  const nf = arvore(raiz, (f) => fonteAlvo(f)?.texto ?? null, arqs)
+  const nf = conteudosEm(raiz, (f) => fonteAlvo(f)?.texto ?? null, arqs)
   const head = headDa(raiz, diag)
-  const hd = head ? arvore(raiz, head, arqs) : null
-  try {
-    for (const [estado, a] of [['nao_feito', nf], ['head', hd]] as const) {
-      if (!a) continue
-      for (const [qual, cmd] of [['novo', novoCmd], ['antigo', antigo]] as const) prova.push({ estado, cmd: qual, ...rodar(a.dir, cmd, espera) })
-    }
-  } finally {
-    rmSync(nf.dir, { recursive: true, force: true })
-    if (hd) rmSync(hd.dir, { recursive: true, force: true })
+  const hd = head ? conteudosEm(raiz, head, arqs) : null
+  const prova: Rodada[] = []
+  for (const [estado, a] of [['nao_feito', nf], ['head', hd]] as const) {
+    if (!a) continue
+    for (const r of rodarEm(a, [['novo', novoCmd], ['antigo', antigo]], espera)) prova.push({ estado, ...(r as Omit<Rodada, 'estado'>) })
   }
   const novoNf = prova.find((p) => p.estado === 'nao_feito' && p.cmd === 'novo')!
   if (novoNf.abortou) return { ok: false, motivo: `o cmd consertado ainda aborta no estado não feito: ${novoNf.saida.slice(0, 120)}` }
@@ -201,7 +214,8 @@ export function planejarR2(raiz: string, diag: Diagnostico, md: string): Plano<P
       espera,
       cmd_antigo: antigo,
       cmd_novo: novoCmd,
-      arquivos: { nao_feito: nf.postos, head: hd?.postos ?? [] },
+      arquivos: { nao_feito: Object.keys(nf), head: hd ? Object.keys(hd) : [] },
+      arvores: { nao_feito: nf, head: hd },
       ref_alvo: alvoRef,
       head,
       prova,
