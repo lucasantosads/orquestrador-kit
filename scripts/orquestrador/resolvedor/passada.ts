@@ -31,6 +31,7 @@ import { agirR1R5, agirR2 } from './acoes.js'
 import { GuardaResolvedor, arquivoDryRun, interruptor, travarPassada } from './caminhos.js'
 import { decidir, type Decisao } from './decidir.js'
 import { apurarAcoes, apurarPropostas, registrarSemAcao } from './desfecho.js'
+import { avisarPausa } from './pausa.js'
 import { acharRepo, lerReposResolvedor, lerTetoReservaAuto, type Modo, type RepoResolvedor } from './modos.js'
 import { promoverRebaixar } from './promocao.js'
 
@@ -173,6 +174,8 @@ function passadaTravada(repos: RepoResolvedor[], todos: RepoResolvedor[], g: Gua
     if (existsSync(interruptor())) break
     // o desfecho do que já foi feito vem antes da triagem nova (peça 5)
     if (!dryRun) {
+      // pausa nova no repo: um aviso por pausa (peça 6 da 7f-b5); a pausa só é lida
+      avisarPausa(g, repo, agora)
       apurarAcoes(g, repo, agora)
       apurarPropostas(g, repo, agora)
       // e o modo que vale nesta passada já é o depois da promoção/rebaixamento (peça 6)
