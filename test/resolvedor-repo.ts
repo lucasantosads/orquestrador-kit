@@ -10,7 +10,7 @@
  * que o resolvedor lê nela.
  */
 import { execFileSync } from 'node:child_process'
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { materializar } from './triador-repo-legado.js'
@@ -145,7 +145,11 @@ export function repoDoCaso(base: string, id: string, o: { nome?: string; arvoreS
     const p = join(raiz, s.dir, 'head.txt')
     if (existsSync(p)) {
       const velho = readFileSync(p, 'utf8').trim()
-      if (shas.has(velho)) writeFileSync(p, `${shas.get(velho)}\n`)
+      if (!shas.has(velho)) continue
+      // o mtime fica o da materialização: a série do leitor é por mtime (≤ fim + 180 s)
+      const st = statSync(p)
+      writeFileSync(p, `${shas.get(velho)}\n`)
+      utimesSync(p, st.atime, st.mtime)
     }
   }
   git(raiz, 'add', '--', '.gitignore', caso.arquivo_ticket, 'docs/fila/000-config.json')
