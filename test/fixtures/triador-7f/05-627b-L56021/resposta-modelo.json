@@ -1,0 +1,53 @@
+{
+ "caso": "05-627b-L56021",
+ "assinatura": "66e6480a3c8cd6a43928c1f9d2a95eae352daf5d955b37e22293985e9faa0822",
+ "extracao": {
+  "classe": "R1|R2?",
+  "regra": "D11"
+ },
+ "modelo": {
+  "modelo": "claude-opus-5-5",
+  "custo_usd": 0.2912888,
+  "tokens_in": 2,
+  "tokens_out": 1043,
+  "duracao_ms": 17534,
+  "entrada_tokens_est": 6737,
+  "cortes": [],
+  "envelope_bruto": "{\"duration_api_ms\":14362,\"stop_reason\":\"end_turn\",\"session_id\":\"c6fa9541-5ac1-4060-8e91-16fdc90472eb\",\"total_cost_usd\":0.2912888,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":33493,\"cache_read_input_tokens\":12384,\"output_tokens\":1043,\"output_tokens_details\":{\"thinking_tokens\":286},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":33493,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"global\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":1043,\"cache_read_input_tokens\":12384,\"cache_creation_input_tokens\":33493,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":33493},\"type\":\"message\"}],\"speed\":\"standard\",\"fallback_credit\":null},\"modelUsage\":{\"claude-opus-5-5\":{\"inputTokens\":2,\"outputTokens\":1043,\"cacheReadInputTokens\":12384,\"cacheCreationInputTokens\":33493,\"webSearchRequests\":0,\"costUSD\":0.2912888,\"contextWindow\":1000000,\"maxOutputTokens\":128000,\"thinkingTokens\":286,\"canonicalModel\":\"claude-opus-5-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"safety_stops\":0,\"is_error\":false,\"num_turns\":1,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"```json\\n{\\\"classe\\\":\\\"R2\\\",\\\"confianca\\\":\\\"alta\\\",\\\"evidencia\\\":[{\\\"arquivo\\\":\\\"docs/fila/runs/627b/attempt-3/criterios.txt\\\",\\\"linha\\\":20,\\\"trecho\\\":\\\"h=$(git show HEAD:test/travessao-mudo.test.ts 2>/dev/null | grep -oE 'const TETO = [0-9]+' ...) ... j.total===t&&t<h?\\\\\\\"TETO_BAIXOU_SEM_FOLGA\\\\\\\"\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/627b/attempt-3/criterios.txt\\\",\\\"linha\\\":23,\\\"trecho\\\":\\\"TETO_ERRADO_234_234_234\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/627b/attempt-2/criterios.txt\\\",\\\"linha\\\":23,\\\"trecho\\\":\\\"TETO_ERRADO_234_234_234\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/627b/attempt-3/gate-vitest.txt\\\",\\\"linha\\\":942,\\\"trecho\\\":\\\"Test Files  564 passed (564)\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/627b/attempt-3/diff.stat\\\",\\\"linha\\\":12,\\\"trecho\\\":\\\"test/travessao-mudo.test.ts                        |   4 +-\\\"}],\\\"remedio\\\":\\\"No .md do ticket 05-627b-L56021, troque no criterio[2] `git show HEAD:test/travessao-mudo.test.ts` por `git show $(git merge-base staging-auto HEAD):test/travessao-mudo.test.ts`, para comparar o TETO com a base e não com o HEAD que já tem os commits do ticket.\\\",\\\"requeue\\\":\\\"nao\\\",\\\"justificativa\\\":\\\"A saída mostra h=234, igual ao TETO da worktree (t=234) e à contagem (total=234). Isso quer dizer que o HEAD lido pelo critério já contém o TETO baixado pelo próprio ticket, então t<h nunca vale e o critério reprovaria qualquer implementação. O palpite R1 cai porque os vermelhos acoplados (delta-sem-base, perf-cliente-438) só apareceram na tentativa 1; na tentativa 3 o gate deu 564/564 verde, e o único bloqueio que sobra é o critério com premissa errada.\\\"}\\n```\",\"ttft_ms\":6611,\"type\":\"result\",\"duration_ms\":14414,\"uuid\":\"eb1ae33f-051c-4c46-86f9-19629c499098\",\"ttft_stream_ms\":2518,\"time_to_request_ms\":45,\"first_content_frame_ms\":2518,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "evidencia_descartada": 0,
+  "resposta": {
+   "classe": "R2",
+   "confianca": "alta",
+   "evidencia": [
+    {
+     "arquivo": "docs/fila/runs/627b/attempt-3/criterios.txt",
+     "linha": 20,
+     "trecho": "h=$(git show HEAD:test/travessao-mudo.test.ts 2>/dev/null | grep -oE 'const TETO = [0-9]+' ...) ... j.total===t&&t<h?\"TETO_BAIXOU_SEM_FOLGA\""
+    },
+    {
+     "arquivo": "docs/fila/runs/627b/attempt-3/criterios.txt",
+     "linha": 23,
+     "trecho": "TETO_ERRADO_234_234_234"
+    },
+    {
+     "arquivo": "docs/fila/runs/627b/attempt-2/criterios.txt",
+     "linha": 23,
+     "trecho": "TETO_ERRADO_234_234_234"
+    },
+    {
+     "arquivo": "docs/fila/runs/627b/attempt-3/gate-vitest.txt",
+     "linha": 942,
+     "trecho": "Test Files  564 passed (564)"
+    },
+    {
+     "arquivo": "docs/fila/runs/627b/attempt-3/diff.stat",
+     "linha": 12,
+     "trecho": "test/travessao-mudo.test.ts                        |   4 +-"
+    }
+   ],
+   "remedio": "No .md do ticket 05-627b-L56021, troque no criterio[2] `git show HEAD:test/travessao-mudo.test.ts` por `git show $(git merge-base staging-auto HEAD):test/travessao-mudo.test.ts`, para comparar o TETO com a base e não com o HEAD que já tem os commits do ticket.",
+   "requeue": "nao",
+   "justificativa": "A saída mostra h=234, igual ao TETO da worktree (t=234) e à contagem (total=234). Isso quer dizer que o HEAD lido pelo critério já contém o TETO baixado pelo próprio ticket, então t<h nunca vale e o critério reprovaria qualquer implementação. O palpite R1 cai porque os vermelhos acoplados (delta-sem-base, perf-cliente-438) só apareceram na tentativa 1; na tentativa 3 o gate deu 564/564 verde, e o único bloqueio que sobra é o critério com premissa errada."
+  }
+ }
+}

@@ -1,0 +1,48 @@
+{
+ "caso": "12-691-L65374",
+ "assinatura": "9860df7e8ef40454134d625c276d1c49fa4757134e16a35b6c0b029027ac0247",
+ "extracao": {
+  "classe": "R2?",
+  "regra": "D12"
+ },
+ "modelo": {
+  "modelo": "claude-opus-5-5",
+  "custo_usd": 0.1756768,
+  "tokens_in": 2,
+  "tokens_out": 890,
+  "duracao_ms": 9601,
+  "entrada_tokens_est": 3362,
+  "cortes": [],
+  "envelope_bruto": "{\"duration_api_ms\":8035,\"stop_reason\":\"end_turn\",\"session_id\":\"ed2e75ce-0efa-4e47-8e13-6b3b92ccfe5b\",\"total_cost_usd\":0.1756768,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":19424,\"cache_read_input_tokens\":12384,\"output_tokens\":890,\"output_tokens_details\":{\"thinking_tokens\":172},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":19424,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"global\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":890,\"cache_read_input_tokens\":12384,\"cache_creation_input_tokens\":19424,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":19424},\"type\":\"message\"}],\"speed\":\"standard\",\"fallback_credit\":null},\"modelUsage\":{\"claude-opus-5-5\":{\"inputTokens\":2,\"outputTokens\":890,\"cacheReadInputTokens\":12384,\"cacheCreationInputTokens\":19424,\"webSearchRequests\":0,\"costUSD\":0.1756768,\"contextWindow\":1000000,\"maxOutputTokens\":128000,\"thinkingTokens\":172,\"canonicalModel\":\"claude-opus-5-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"safety_stops\":0,\"is_error\":false,\"num_turns\":1,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"{\\\"classe\\\":\\\"R2\\\",\\\"confianca\\\":\\\"alta\\\",\\\"evidencia\\\":[{\\\"arquivo\\\":\\\"docs/fila/runs/691/attempt-2.prev1/criterios.txt\\\",\\\"linha\\\":68,\\\"trecho\\\":\\\"m=$( [ -f $f ] && grep -ciE 'notifications|comunicados' $f || echo 0); [ \\\\\\\"$n\\\\\\\" = 1 ] && [ \\\\\\\"$m\\\\\\\" = 0 ] && echo UM_SQL || echo SQL_${n}_${m}\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/691/attempt-2.prev1/criterios.txt\\\",\\\"linha\\\":71,\\\"trecho\\\":\\\"SQL_1_0 0\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/691/attempt-1.prev1/criterios.txt\\\",\\\"linha\\\":71,\\\"trecho\\\":\\\"SQL_1_0 0\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/691/attempt-2.prev1/diff.stat\\\",\\\"linha\\\":3,\\\"trecho\\\":\\\"2 files changed, 161 insertions(+)\\\"}],\\\"remedio\\\":\\\"No .md do ticket 12-691-L65374, no criterio[8], troque `grep -ciE 'notifications|comunicados' $f || echo 0` por `grep -ciE 'notifications|comunicados' $f || true` (ou envolva o subshell todo em `{ ...; } | head -1`) e mantenha `espera: UM_SQL`.\\\",\\\"requeue\\\":\\\"nao\\\",\\\"justificativa\\\":\\\"Sem ocorrências, `grep -c` imprime `0` e sai com código 1. Aí o `|| echo 0` imprime um segundo `0`, então m vale \\\\\\\"0\\\\\\\\n0\\\\\\\" e nunca é igual a \\\\\\\"0\\\\\\\". O echo sem aspas achata isso em `SQL_1_0 0`, a mesma saída nas duas tentativas (criterios.txt:71). Essa saída também mostra n=1 e zero ocorrências, ou seja, a intenção do critério foi cumprida e ele reprovaria qualquer implementação. O gate vitest está verde e o diff só toca os 2 arquivos da allowlist, mas o requeue exige consertar antes o cmd na spec.\\\"}\",\"ttft_ms\":2409,\"type\":\"result\",\"duration_ms\":8068,\"uuid\":\"a6445fff-f544-430f-9868-6f72bf5f5e1b\",\"ttft_stream_ms\":872,\"time_to_request_ms\":27,\"first_content_frame_ms\":872,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "evidencia_descartada": 0,
+  "resposta": {
+   "classe": "R2",
+   "confianca": "alta",
+   "evidencia": [
+    {
+     "arquivo": "docs/fila/runs/691/attempt-2.prev1/criterios.txt",
+     "linha": 68,
+     "trecho": "m=$( [ -f $f ] && grep -ciE 'notifications|comunicados' $f || echo 0); [ \"$n\" = 1 ] && [ \"$m\" = 0 ] && echo UM_SQL || echo SQL_${n}_${m}"
+    },
+    {
+     "arquivo": "docs/fila/runs/691/attempt-2.prev1/criterios.txt",
+     "linha": 71,
+     "trecho": "SQL_1_0 0"
+    },
+    {
+     "arquivo": "docs/fila/runs/691/attempt-1.prev1/criterios.txt",
+     "linha": 71,
+     "trecho": "SQL_1_0 0"
+    },
+    {
+     "arquivo": "docs/fila/runs/691/attempt-2.prev1/diff.stat",
+     "linha": 3,
+     "trecho": "2 files changed, 161 insertions(+)"
+    }
+   ],
+   "remedio": "No .md do ticket 12-691-L65374, no criterio[8], troque `grep -ciE 'notifications|comunicados' $f || echo 0` por `grep -ciE 'notifications|comunicados' $f || true` (ou envolva o subshell todo em `{ ...; } | head -1`) e mantenha `espera: UM_SQL`.",
+   "requeue": "nao",
+   "justificativa": "Sem ocorrências, `grep -c` imprime `0` e sai com código 1. Aí o `|| echo 0` imprime um segundo `0`, então m vale \"0\\n0\" e nunca é igual a \"0\". O echo sem aspas achata isso em `SQL_1_0 0`, a mesma saída nas duas tentativas (criterios.txt:71). Essa saída também mostra n=1 e zero ocorrências, ou seja, a intenção do critério foi cumprida e ele reprovaria qualquer implementação. O gate vitest está verde e o diff só toca os 2 arquivos da allowlist, mas o requeue exige consertar antes o cmd na spec."
+  }
+ }
+}

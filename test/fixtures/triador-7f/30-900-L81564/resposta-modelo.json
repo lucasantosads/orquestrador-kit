@@ -1,0 +1,48 @@
+{
+ "caso": "30-900-L81564",
+ "assinatura": "79e4b159ff8ec634a2dd96d9820ebc1cabfae9f05856a0dff67d2405495d7ddc",
+ "extracao": {
+  "classe": "R2?",
+  "regra": "D12"
+ },
+ "modelo": {
+  "modelo": "claude-opus-5-5",
+  "custo_usd": 0.2422088,
+  "tokens_in": 2,
+  "tokens_out": 737,
+  "duracao_ms": 10553,
+  "entrada_tokens_est": 3135,
+  "cortes": [],
+  "envelope_bruto": "{\"duration_api_ms\":7253,\"stop_reason\":\"end_turn\",\"session_id\":\"0e3b3ef2-f00a-47ac-acec-86fdd4c9be4c\",\"total_cost_usd\":0.2422088,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":28123,\"cache_read_input_tokens\":12384,\"output_tokens\":737,\"output_tokens_details\":{\"thinking_tokens\":153},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":28123,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"global\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":737,\"cache_read_input_tokens\":12384,\"cache_creation_input_tokens\":28123,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":28123},\"type\":\"message\"}],\"speed\":\"standard\",\"fallback_credit\":null},\"modelUsage\":{\"claude-opus-5-5\":{\"inputTokens\":2,\"outputTokens\":737,\"cacheReadInputTokens\":12384,\"cacheCreationInputTokens\":28123,\"webSearchRequests\":0,\"costUSD\":0.2422088,\"contextWindow\":1000000,\"maxOutputTokens\":128000,\"thinkingTokens\":153,\"canonicalModel\":\"claude-opus-5-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"safety_stops\":0,\"is_error\":false,\"num_turns\":1,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"{\\\"classe\\\":\\\"R2\\\",\\\"confianca\\\":\\\"alta\\\",\\\"evidencia\\\":[{\\\"arquivo\\\":\\\"docs/fila/runs/900/attempt-2/criterios.txt\\\",\\\"linha\\\":60,\\\"trecho\\\":\\\"a=$(printf '%s\\\\\\\\n' \\\\\\\"$h\\\\\\\" | grep -ciE 'APLICAR .(1, 2) HUMANO')\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/900/attempt-2/criterios.txt\\\",\\\"linha\\\":63,\\\"trecho\\\":\\\"ST_0_2\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/900/attempt-1.prev1/criterios.txt\\\",\\\"linha\\\":63,\\\"trecho\\\":\\\"ST_0_2\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/900/attempt-2/gate-vitest.txt\\\",\\\"linha\\\":1883,\\\"trecho\\\":\\\"Tests  8425 passed (8425)\\\"}],\\\"remedio\\\":\\\"No .md do ticket 30-900-L81564, troque no criterio[7] o padrão 'APLICAR .(1, 2) HUMANO' por 'APLICAR .{1,2} HUMANO' (ou 'APLICAR E HUMANO').\\\",\\\"requeue\\\":\\\"nao\\\",\\\"justificativa\\\":\\\"Em grep -E, '(1, 2)' é um grupo que só casa o texto literal '1, 2'. Por isso a linha exigida pelo próprio ticket, 'APLICAR E HUMANO', nunca casa e a=0 em qualquer implementação. Nas duas tentativas a saída foi ST_0_2: a reversão com os 2 create policy foi achada (p=2) e só o contador do marcador falhou. Os testes passaram (8425/8425), então o bloqueio vem do critério e não do código, o que confirma o palpite R2 da D12.\\\"}\",\"ttft_ms\":2443,\"type\":\"result\",\"duration_ms\":7300,\"uuid\":\"3b29ef39-e5cc-4202-a6ff-df2890f50904\",\"ttft_stream_ms\":1147,\"time_to_request_ms\":47,\"first_content_frame_ms\":1147,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "evidencia_descartada": 0,
+  "resposta": {
+   "classe": "R2",
+   "confianca": "alta",
+   "evidencia": [
+    {
+     "arquivo": "docs/fila/runs/900/attempt-2/criterios.txt",
+     "linha": 60,
+     "trecho": "a=$(printf '%s\\n' \"$h\" | grep -ciE 'APLICAR .(1, 2) HUMANO')"
+    },
+    {
+     "arquivo": "docs/fila/runs/900/attempt-2/criterios.txt",
+     "linha": 63,
+     "trecho": "ST_0_2"
+    },
+    {
+     "arquivo": "docs/fila/runs/900/attempt-1.prev1/criterios.txt",
+     "linha": 63,
+     "trecho": "ST_0_2"
+    },
+    {
+     "arquivo": "docs/fila/runs/900/attempt-2/gate-vitest.txt",
+     "linha": 1883,
+     "trecho": "Tests  8425 passed (8425)"
+    }
+   ],
+   "remedio": "No .md do ticket 30-900-L81564, troque no criterio[7] o padrão 'APLICAR .(1, 2) HUMANO' por 'APLICAR .{1,2} HUMANO' (ou 'APLICAR E HUMANO').",
+   "requeue": "nao",
+   "justificativa": "Em grep -E, '(1, 2)' é um grupo que só casa o texto literal '1, 2'. Por isso a linha exigida pelo próprio ticket, 'APLICAR E HUMANO', nunca casa e a=0 em qualquer implementação. Nas duas tentativas a saída foi ST_0_2: a reversão com os 2 create policy foi achada (p=2) e só o contador do marcador falhou. Os testes passaram (8425/8425), então o bloqueio vem do critério e não do código, o que confirma o palpite R2 da D12."
+  }
+ }
+}

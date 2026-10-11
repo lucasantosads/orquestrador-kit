@@ -1,0 +1,53 @@
+{
+ "caso": "02-559-L55209",
+ "assinatura": "320bd706e3bc98f44327b276ffdfbdf196b9f0b5fcbbc9adde7d5833794fa7e8",
+ "extracao": {
+  "classe": "R4?",
+  "regra": "D9"
+ },
+ "modelo": {
+  "modelo": "claude-opus-5-5",
+  "custo_usd": 0.2614088,
+  "tokens_in": 2,
+  "tokens_out": 1421,
+  "duracao_ms": 16432,
+  "entrada_tokens_est": 4308,
+  "cortes": [],
+  "envelope_bruto": "{\"duration_api_ms\":13150,\"stop_reason\":\"end_turn\",\"session_id\":\"8e6a98a6-f445-47d8-b833-1f67cc297969\",\"total_cost_usd\":0.2614088,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":28813,\"cache_read_input_tokens\":12384,\"output_tokens\":1421,\"output_tokens_details\":{\"thinking_tokens\":540},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":28813,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"global\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":1421,\"cache_read_input_tokens\":12384,\"cache_creation_input_tokens\":28813,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":28813},\"type\":\"message\"}],\"speed\":\"standard\",\"fallback_credit\":null},\"modelUsage\":{\"claude-opus-5-5\":{\"inputTokens\":2,\"outputTokens\":1421,\"cacheReadInputTokens\":12384,\"cacheCreationInputTokens\":28813,\"webSearchRequests\":0,\"costUSD\":0.2614088,\"contextWindow\":1000000,\"maxOutputTokens\":128000,\"thinkingTokens\":540,\"canonicalModel\":\"claude-opus-5-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"safety_stops\":0,\"is_error\":false,\"num_turns\":1,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"{\\\"classe\\\":\\\"R4\\\",\\\"confianca\\\":\\\"alta\\\",\\\"evidencia\\\":[{\\\"arquivo\\\":\\\"docs/fila/runs/559/attempt-2/gate-vitest.txt\\\",\\\"linha\\\":979,\\\"trecho\\\":\\\"FAIL  test/conta-aceite.test.tsx > aceite da aba Conta: copy > copy: nenhum s/ dado nem travessao de ausencia na aba Conta\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/559/attempt-2/gate-vitest.txt\\\",\\\"linha\\\":980,\\\"trecho\\\":\\\"AssertionError: expected '\\\\\\\"use client\\\\\\\";\\\\\\\\n\\\\\\\\n\\\\\\\\n\\\\\\\\n\\\\\\\\n\\\\\\\\nimport { use…' not to match /[\\\\\\\"'`>]\\\\\\\\s*[—–]\\\\\\\\s*[\\\\\\\"'`<]/\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/559/attempt-2/gate-vitest.txt\\\",\\\"linha\\\":3472,\\\"trecho\\\":\\\"expect(FONTES_CONTA).not.toMatch(/[\\\\\\\"'`>]\\\\\\\\s*[—–]\\\\\\\\s*[\\\\\\\"'`<]/);\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/559/attempt-2/gate-vitest.txt\\\",\\\"linha\\\":3481,\\\"trecho\\\":\\\"Tests  1 failed | 5747 passed (5748)\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/559/attempt-2/diff.stat\\\",\\\"linha\\\":1,\\\"trecho\\\":\\\"test/conta-aceite.test.tsx | 398 +++++++++++++++++++++++++++++++++++++++++++++\\\"}],\\\"remedio\\\":\\\"Fechar o ticket de código 626 trocando o \\\\\\\"—\\\\\\\" de ausência nas fontes da aba Conta (apontado em src/components/arquivos/documentos-section.tsx:55, formatBytes) por texto explícito, e depois reabrir o 559 sem mudar a spec.\\\",\\\"requeue\\\":\\\"sim_apos:ticket 626 mergeado, sem travessão de ausência nas fontes da aba Conta\\\",\\\"justificativa\\\":\\\"O único vermelho, igual nas 2 tentativas, é uma asserção do teste de aceite contra FONTES_CONTA. Essas fontes são da tela (o texto recebido começa com \\\\\\\"use client\\\\\\\"), e o diff só cria o teste, dentro da allowlist e do teto. Pela própria spec, item vermelho por falha da tela é o entregável, e o notas_status já manda os travessões para o 626 como dependência nova, então o aceite está certo e falta código fora do escopo. O formatBytes em documentos-section.tsx:55 foi apontado pelo executor e nenhum artefato confirma que esse é o arquivo; confira na hora do conserto.\\\"}\",\"ttft_ms\":6897,\"type\":\"result\",\"duration_ms\":13202,\"uuid\":\"5dd6d180-6d58-455e-9907-4ed35ab17c19\",\"ttft_stream_ms\":832,\"time_to_request_ms\":46,\"first_content_frame_ms\":832,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "evidencia_descartada": 0,
+  "resposta": {
+   "classe": "R4",
+   "confianca": "alta",
+   "evidencia": [
+    {
+     "arquivo": "docs/fila/runs/559/attempt-2/gate-vitest.txt",
+     "linha": 979,
+     "trecho": "FAIL  test/conta-aceite.test.tsx > aceite da aba Conta: copy > copy: nenhum s/ dado nem travessao de ausencia na aba Conta"
+    },
+    {
+     "arquivo": "docs/fila/runs/559/attempt-2/gate-vitest.txt",
+     "linha": 980,
+     "trecho": "AssertionError: expected '\"use client\";\\n\\n\\n\\n\\n\\nimport { use…' not to match /[\"'`>]\\s*[—–]\\s*[\"'`<]/"
+    },
+    {
+     "arquivo": "docs/fila/runs/559/attempt-2/gate-vitest.txt",
+     "linha": 3472,
+     "trecho": "expect(FONTES_CONTA).not.toMatch(/[\"'`>]\\s*[—–]\\s*[\"'`<]/);"
+    },
+    {
+     "arquivo": "docs/fila/runs/559/attempt-2/gate-vitest.txt",
+     "linha": 3481,
+     "trecho": "Tests  1 failed | 5747 passed (5748)"
+    },
+    {
+     "arquivo": "docs/fila/runs/559/attempt-2/diff.stat",
+     "linha": 1,
+     "trecho": "test/conta-aceite.test.tsx | 398 +++++++++++++++++++++++++++++++++++++++++++++"
+    }
+   ],
+   "remedio": "Fechar o ticket de código 626 trocando o \"—\" de ausência nas fontes da aba Conta (apontado em src/components/arquivos/documentos-section.tsx:55, formatBytes) por texto explícito, e depois reabrir o 559 sem mudar a spec.",
+   "requeue": "nao",
+   "justificativa": "O único vermelho, igual nas 2 tentativas, é uma asserção do teste de aceite contra FONTES_CONTA. Essas fontes são da tela (o texto recebido começa com \"use client\"), e o diff só cria o teste, dentro da allowlist e do teto. Pela própria spec, item vermelho por falha da tela é o entregável, e o notas_status já manda os travessões para o 626 como dependência nova, então o aceite está certo e falta código fora do escopo. O formatBytes em documentos-section.tsx:55 foi apontado pelo executor e nenhum artefato confirma que esse é o arquivo; confira na hora do conserto."
+  }
+ }
+}

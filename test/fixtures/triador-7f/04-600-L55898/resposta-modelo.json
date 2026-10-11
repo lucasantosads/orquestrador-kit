@@ -1,0 +1,53 @@
+{
+ "caso": "04-600-L55898",
+ "assinatura": "728ca2ce19da30deab4cd1133e0bd835f5b95bec2305b51474681f338bdc5350",
+ "extracao": {
+  "classe": "R4?",
+  "regra": "D9"
+ },
+ "modelo": {
+  "modelo": "claude-opus-5-5",
+  "custo_usd": 0.2996888,
+  "tokens_in": 2,
+  "tokens_out": 1731,
+  "duracao_ms": 19804,
+  "entrada_tokens_est": 5346,
+  "cortes": [],
+  "envelope_bruto": "{\"duration_api_ms\":16736,\"stop_reason\":\"end_turn\",\"session_id\":\"a5bcfec4-f76e-4a21-9b3b-d13266479893\",\"total_cost_usd\":0.2996888,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":32823,\"cache_read_input_tokens\":12384,\"output_tokens\":1731,\"output_tokens_details\":{\"thinking_tokens\":913},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":32823,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"global\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":1731,\"cache_read_input_tokens\":12384,\"cache_creation_input_tokens\":32823,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":32823},\"type\":\"message\"}],\"speed\":\"standard\",\"fallback_credit\":null},\"modelUsage\":{\"claude-opus-5-5\":{\"inputTokens\":2,\"outputTokens\":1731,\"cacheReadInputTokens\":12384,\"cacheCreationInputTokens\":32823,\"webSearchRequests\":0,\"costUSD\":0.2996888,\"contextWindow\":1000000,\"maxOutputTokens\":128000,\"thinkingTokens\":913,\"canonicalModel\":\"claude-opus-5-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"safety_stops\":0,\"is_error\":false,\"num_turns\":1,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"{\\\"classe\\\":\\\"R4\\\",\\\"confianca\\\":\\\"media\\\",\\\"evidencia\\\":[{\\\"arquivo\\\":\\\"docs/fila/runs/600/attempt-3/gate-vitest.txt\\\",\\\"linha\\\":983,\\\"trecho\\\":\\\"FAIL  test/visao-aceite-estrutura.test.tsx > [copy] > copy: titulos de secao do mockup\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/600/attempt-3/gate-vitest.txt\\\",\\\"linha\\\":984,\\\"trecho\\\":\\\"AssertionError: expected [ 'Campanhas' ] to deeply equal []\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/600/attempt-3/gate-vitest.txt\\\",\\\"linha\\\":1006,\\\"trecho\\\":\\\"Tests  1 failed | 5872 passed (5873)\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/600/attempt-3/diff.stat\\\",\\\"linha\\\":1,\\\"trecho\\\":\\\"test/visao-aceite-estrutura.test.tsx | 570 +++\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/600/attempt-2/criterios.txt\\\",\\\"linha\\\":55,\\\"trecho\\\":\\\"FALTAM_1\\\"}],\\\"remedio\\\":\\\"Abra um ticket de correção que ponha o título \\\\\\\"Campanhas\\\\\\\" no ramo com dado de TabelaCampanhas (src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx) e reabra o 600 depois do merge, sem afrouxar o item copy.\\\",\\\"requeue\\\":\\\"sim_apos:merge do ticket de correção que mostra o título Campanhas na tabela com dado\\\",\\\"justificativa\\\":\\\"Na tentativa 3 a suíte inteira passa, menos um item do próprio teste de aceite (gate-vitest.txt:983-994), e o diff só toca o arquivo da allowlist. Por isso não é R1 nem R5: o aceite acusa que falta o título \\\\\\\"Campanhas\\\\\\\" na tela com dado, e isso está em src/, fora do escopo. O ticket manda tratar esse vermelho como entregável que vira ticket de correção. A confiança é média por dois motivos: o mockup de referência é o do estado vazio, e a tentativa 2 entendeu o mockup do jeito oposto. Além disso, a saída dos critérios da tentativa 3 não está nos artefatos, então não dá para provar que o FALTAM_1 do criterio[6] (attempt-2/criterios.txt:55) foi resolvido.\\\"}\",\"ttft_ms\":10056,\"type\":\"result\",\"duration_ms\":16786,\"uuid\":\"35a4dc0c-867c-4772-b2ad-1eddf54c37f5\",\"ttft_stream_ms\":1311,\"time_to_request_ms\":46,\"first_content_frame_ms\":1312,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "evidencia_descartada": 0,
+  "resposta": {
+   "classe": "R4",
+   "confianca": "media",
+   "evidencia": [
+    {
+     "arquivo": "docs/fila/runs/600/attempt-3/gate-vitest.txt",
+     "linha": 983,
+     "trecho": "FAIL  test/visao-aceite-estrutura.test.tsx > [copy] > copy: titulos de secao do mockup"
+    },
+    {
+     "arquivo": "docs/fila/runs/600/attempt-3/gate-vitest.txt",
+     "linha": 984,
+     "trecho": "AssertionError: expected [ 'Campanhas' ] to deeply equal []"
+    },
+    {
+     "arquivo": "docs/fila/runs/600/attempt-3/gate-vitest.txt",
+     "linha": 1006,
+     "trecho": "Tests  1 failed | 5872 passed (5873)"
+    },
+    {
+     "arquivo": "docs/fila/runs/600/attempt-3/diff.stat",
+     "linha": 1,
+     "trecho": "test/visao-aceite-estrutura.test.tsx | 570 +++"
+    },
+    {
+     "arquivo": "docs/fila/runs/600/attempt-2/criterios.txt",
+     "linha": 55,
+     "trecho": "FALTAM_1"
+    }
+   ],
+   "remedio": "Abra um ticket de correção que ponha o título \"Campanhas\" no ramo com dado de TabelaCampanhas (src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx) e reabra o 600 depois do merge, sem afrouxar o item copy.",
+   "requeue": "nao",
+   "justificativa": "Na tentativa 3 a suíte inteira passa, menos um item do próprio teste de aceite (gate-vitest.txt:983-994), e o diff só toca o arquivo da allowlist. Por isso não é R1 nem R5: o aceite acusa que falta o título \"Campanhas\" na tela com dado, e isso está em src/, fora do escopo. O ticket manda tratar esse vermelho como entregável que vira ticket de correção. A confiança é média por dois motivos: o mockup de referência é o do estado vazio, e a tentativa 2 entendeu o mockup do jeito oposto. Além disso, a saída dos critérios da tentativa 3 não está nos artefatos, então não dá para provar que o FALTAM_1 do criterio[6] (attempt-2/criterios.txt:55) foi resolvido."
+  }
+ }
+}

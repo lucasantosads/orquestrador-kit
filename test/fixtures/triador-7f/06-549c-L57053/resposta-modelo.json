@@ -1,0 +1,58 @@
+{
+ "caso": "06-549c-L57053",
+ "assinatura": "72f30988e42755d7109614d567c8ba0cf0dbf194560214fc04ab4a63542084b6",
+ "extracao": {
+  "classe": "R2?",
+  "regra": "D12"
+ },
+ "modelo": {
+  "modelo": "claude-opus-5-5",
+  "custo_usd": 0.24966480000000002,
+  "tokens_in": 2,
+  "tokens_out": 1471,
+  "duracao_ms": 17688,
+  "entrada_tokens_est": 3362,
+  "cortes": [],
+  "envelope_bruto": "{\"duration_api_ms\":14424,\"stop_reason\":\"end_turn\",\"session_id\":\"8c7d1ac5-59b3-4a77-810e-21e0f837c9ff\",\"total_cost_usd\":0.24966480000000002,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":27220,\"cache_read_input_tokens\":12384,\"output_tokens\":1471,\"output_tokens_details\":{\"thinking_tokens\":703},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":27220,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"global\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":1471,\"cache_read_input_tokens\":12384,\"cache_creation_input_tokens\":27220,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":27220},\"type\":\"message\"}],\"speed\":\"standard\",\"fallback_credit\":null},\"modelUsage\":{\"claude-opus-5-5\":{\"inputTokens\":2,\"outputTokens\":1471,\"cacheReadInputTokens\":12384,\"cacheCreationInputTokens\":27220,\"webSearchRequests\":0,\"costUSD\":0.24966480000000002,\"contextWindow\":1000000,\"maxOutputTokens\":128000,\"thinkingTokens\":703,\"canonicalModel\":\"claude-opus-5-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"safety_stops\":0,\"is_error\":false,\"num_turns\":1,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"```json\\n{\\\"classe\\\":\\\"R2\\\",\\\"confianca\\\":\\\"media\\\",\\\"evidencia\\\":[{\\\"arquivo\\\":\\\"docs/fila/runs/549c/attempt-2/criterios.txt\\\",\\\"linha\\\":17,\\\"trecho\\\":\\\"### criterio[2] -> FALHA\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/549c/attempt-2/criterios.txt\\\",\\\"linha\\\":20,\\\"trecho\\\":\\\"grep -cF 'expect(vercel.crons).toHaveLength(20);' ... = 1 ] && [ ... 'toHaveLength(19);' ... = 0 ]\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/549c/attempt-2/criterios.txt\\\",\\\"linha\\\":23,\\\"trecho\\\":\\\"ALVO_ANTIGO\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/549c/attempt-2/diff.stat\\\",\\\"linha\\\":1,\\\"trecho\\\":\\\" test/crons-meta-consolidacao.test.ts | 5 ++++-\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/549c/attempt-2/diff.stat\\\",\\\"linha\\\":2,\\\"trecho\\\":\\\" vercel.json                          | 4 ++++\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/549c/attempt-3/criterios.txt\\\",\\\"linha\\\":15,\\\"trecho\\\":\\\"SEM_CRON\\\"}],\\\"remedio\\\":\\\"No .md do 549c, meça a contagem de crons na base atual (pós-619) e troque o alvo do critério 2 e do objetivo para essa contagem + 1 (provavelmente toHaveLength(21)=1 e toHaveLength(20)=0), permitindo atualizar também o título do it(.\\\",\\\"requeue\\\":\\\"nao\\\",\\\"justificativa\\\":\\\"Na tentativa 2, o critério 1 passou e só o critério 2 falhou (ALVO_ANTIGO), mesmo com o diff trocando uma única linha do teste. Isso combina com uma premissa velha: o critério fixa o alvo 19→20 medido na 1b200fc, e a base já teria 20 crons. Já a tentativa 3 tem diff vazio e não serve de prova. A contagem da base atual só aparece no relato do executor, por isso a confiança é média: confira vercel.json na base antes de reescrever o critério. O token humano:ligar-cron-ia continua valendo à parte.\\\"}\\n```\",\"ttft_ms\":7975,\"type\":\"result\",\"duration_ms\":14471,\"uuid\":\"a64ea3d0-911c-4e54-929f-77bcf8a96192\",\"ttft_stream_ms\":1253,\"time_to_request_ms\":42,\"first_content_frame_ms\":1253,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "evidencia_descartada": 0,
+  "resposta": {
+   "classe": "R2",
+   "confianca": "media",
+   "evidencia": [
+    {
+     "arquivo": "docs/fila/runs/549c/attempt-2/criterios.txt",
+     "linha": 17,
+     "trecho": "### criterio[2] -> FALHA"
+    },
+    {
+     "arquivo": "docs/fila/runs/549c/attempt-2/criterios.txt",
+     "linha": 20,
+     "trecho": "grep -cF 'expect(vercel.crons).toHaveLength(20);' ... = 1 ] && [ ... 'toHaveLength(19);' ... = 0 ]"
+    },
+    {
+     "arquivo": "docs/fila/runs/549c/attempt-2/criterios.txt",
+     "linha": 23,
+     "trecho": "ALVO_ANTIGO"
+    },
+    {
+     "arquivo": "docs/fila/runs/549c/attempt-2/diff.stat",
+     "linha": 1,
+     "trecho": "test/crons-meta-consolidacao.test.ts | 5 ++++-"
+    },
+    {
+     "arquivo": "docs/fila/runs/549c/attempt-2/diff.stat",
+     "linha": 2,
+     "trecho": "vercel.json                          | 4 ++++"
+    },
+    {
+     "arquivo": "docs/fila/runs/549c/attempt-3/criterios.txt",
+     "linha": 15,
+     "trecho": "SEM_CRON"
+    }
+   ],
+   "remedio": "No .md do 549c, meça a contagem de crons na base atual (pós-619) e troque o alvo do critério 2 e do objetivo para essa contagem + 1 (provavelmente toHaveLength(21)=1 e toHaveLength(20)=0), permitindo atualizar também o título do it(.",
+   "requeue": "nao",
+   "justificativa": "Na tentativa 2, o critério 1 passou e só o critério 2 falhou (ALVO_ANTIGO), mesmo com o diff trocando uma única linha do teste. Isso combina com uma premissa velha: o critério fixa o alvo 19→20 medido na 1b200fc, e a base já teria 20 crons. Já a tentativa 3 tem diff vazio e não serve de prova. A contagem da base atual só aparece no relato do executor, por isso a confiança é média: confira vercel.json na base antes de reescrever o critério. O token humano:ligar-cron-ia continua valendo à parte."
+  }
+ }
+}

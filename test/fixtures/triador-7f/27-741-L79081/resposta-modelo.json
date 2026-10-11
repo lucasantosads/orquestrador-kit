@@ -1,0 +1,53 @@
+{
+ "caso": "27-741-L79081",
+ "assinatura": "65ecb3123e418bc7e968526ca9747ed251b7929b670bf512a4e8b727c85adb38",
+ "extracao": {
+  "classe": "R2?",
+  "regra": "D12"
+ },
+ "modelo": {
+  "modelo": "claude-opus-5-5",
+  "custo_usd": 0.23949679999999998,
+  "tokens_in": 2,
+  "tokens_out": 1269,
+  "duracao_ms": 16371,
+  "entrada_tokens_est": 3583,
+  "cortes": [],
+  "envelope_bruto": "{\"duration_api_ms\":13100,\"stop_reason\":\"end_turn\",\"session_id\":\"23e0696f-77d3-4b5e-8732-93a787a1641f\",\"total_cost_usd\":0.23949679999999998,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":26454,\"cache_read_input_tokens\":12384,\"output_tokens\":1269,\"output_tokens_details\":{\"thinking_tokens\":517},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":26454,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"global\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":1269,\"cache_read_input_tokens\":12384,\"cache_creation_input_tokens\":26454,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":26454},\"type\":\"message\"}],\"speed\":\"standard\",\"fallback_credit\":null},\"modelUsage\":{\"claude-opus-5-5\":{\"inputTokens\":2,\"outputTokens\":1269,\"cacheReadInputTokens\":12384,\"cacheCreationInputTokens\":26454,\"webSearchRequests\":0,\"costUSD\":0.23949679999999998,\"contextWindow\":1000000,\"maxOutputTokens\":128000,\"thinkingTokens\":517,\"canonicalModel\":\"claude-opus-5-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"safety_stops\":0,\"is_error\":false,\"num_turns\":1,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"{\\\"classe\\\":\\\"R4\\\",\\\"confianca\\\":\\\"media\\\",\\\"evidencia\\\":[{\\\"arquivo\\\":\\\"docs/fila/runs/741/attempt-2/diff.stat\\\",\\\"linha\\\":1,\\\"trecho\\\":\\\"(vazio: a tentativa 2 não alterou nenhum arquivo)\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/741/attempt-1.prev1/diff.stat\\\",\\\"linha\\\":1,\\\"trecho\\\":\\\"(vazio: a tentativa 1 também não alterou nada)\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/741/attempt-2/criterios.txt\\\",\\\"linha\\\":79,\\\"trecho\\\":\\\"AUSENTE\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/741/attempt-2/criterios.txt\\\",\\\"linha\\\":71,\\\"trecho\\\":\\\"VERMELHO\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/741/attempt-2/gate-vitest.txt\\\",\\\"linha\\\":1813,\\\"trecho\\\":\\\"Tests  8194 passed (8194)\\\"}],\\\"remedio\\\":\\\"Criar e mergear antes do 741 um ticket de código com src/lib/promessas/detectar.ts (e test/promessa-par.test.ts) na allowlist, que exporte uma função pura detectarCandidatos(mensagens, contexto, janela) devolvendo candidatos com veredito e motivo, sem escrita; depois reabrir o 741 sem mudar a spec.\\\",\\\"requeue\\\":\\\"sim_apos:ticket que extrai de detectar.ts a função pura de candidatos mergeado na base\\\",\\\"justificativa\\\":\\\"Não é R2. Os critérios 8 e 9 estão bem formados e falham só porque os arquivos não existem: o diff.stat está vazio nas duas tentativas, e a saída foi AUSENTE e VERMELHO. A base está verde. Nas duas tentativas o executor parou, como o ticket manda quando não existe função pura de detecção, e ainda aponta o upsert em detectar.ts:171 e o retorno ResumoPromessas, que traz só contagens. Mas essa falta em detectar.ts vem só do relato do executor: nenhum artefato lido confirma, por isso a confiança é média. Vale conferir detectar.ts:100-171 antes de abrir o ticket anterior.\\\"}\",\"ttft_ms\":6790,\"type\":\"result\",\"duration_ms\":13152,\"uuid\":\"05ef349a-4aeb-4afd-9bbf-52a6e5bb1f95\",\"ttft_stream_ms\":1229,\"time_to_request_ms\":48,\"first_content_frame_ms\":1230,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "evidencia_descartada": 0,
+  "resposta": {
+   "classe": "R4",
+   "confianca": "media",
+   "evidencia": [
+    {
+     "arquivo": "docs/fila/runs/741/attempt-2/diff.stat",
+     "linha": 1,
+     "trecho": "(vazio: a tentativa 2 não alterou nenhum arquivo)"
+    },
+    {
+     "arquivo": "docs/fila/runs/741/attempt-1.prev1/diff.stat",
+     "linha": 1,
+     "trecho": "(vazio: a tentativa 1 também não alterou nada)"
+    },
+    {
+     "arquivo": "docs/fila/runs/741/attempt-2/criterios.txt",
+     "linha": 79,
+     "trecho": "AUSENTE"
+    },
+    {
+     "arquivo": "docs/fila/runs/741/attempt-2/criterios.txt",
+     "linha": 71,
+     "trecho": "VERMELHO"
+    },
+    {
+     "arquivo": "docs/fila/runs/741/attempt-2/gate-vitest.txt",
+     "linha": 1813,
+     "trecho": "Tests  8194 passed (8194)"
+    }
+   ],
+   "remedio": "Criar e mergear antes do 741 um ticket de código com src/lib/promessas/detectar.ts (e test/promessa-par.test.ts) na allowlist, que exporte uma função pura detectarCandidatos(mensagens, contexto, janela) devolvendo candidatos com veredito e motivo, sem escrita; depois reabrir o 741 sem mudar a spec.",
+   "requeue": "nao",
+   "justificativa": "Não é R2. Os critérios 8 e 9 estão bem formados e falham só porque os arquivos não existem: o diff.stat está vazio nas duas tentativas, e a saída foi AUSENTE e VERMELHO. A base está verde. Nas duas tentativas o executor parou, como o ticket manda quando não existe função pura de detecção, e ainda aponta o upsert em detectar.ts:171 e o retorno ResumoPromessas, que traz só contagens. Mas essa falta em detectar.ts vem só do relato do executor: nenhum artefato lido confirma, por isso a confiança é média. Vale conferir detectar.ts:100-171 antes de abrir o ticket anterior."
+  }
+ }
+}

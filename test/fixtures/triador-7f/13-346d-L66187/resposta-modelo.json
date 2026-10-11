@@ -1,0 +1,48 @@
+{
+ "caso": "13-346d-L66187",
+ "assinatura": "c62dc5f51d6d719bab764c27d7a7e4034cc901932e12361a9333332bf701fa77",
+ "extracao": {
+  "classe": "R1?",
+  "regra": "D6"
+ },
+ "modelo": {
+  "modelo": "claude-opus-5-5",
+  "custo_usd": 0.2424128,
+  "tokens_in": 2,
+  "tokens_out": 1188,
+  "duracao_ms": 13918,
+  "entrada_tokens_est": 3793,
+  "cortes": [],
+  "envelope_bruto": "{\"duration_api_ms\":10601,\"stop_reason\":\"end_turn\",\"session_id\":\"bded65dc-431a-46dd-b459-c909b29c02ff\",\"total_cost_usd\":0.2424128,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":27021,\"cache_read_input_tokens\":12384,\"output_tokens\":1188,\"output_tokens_details\":{\"thinking_tokens\":383},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":27021,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"global\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":1188,\"cache_read_input_tokens\":12384,\"cache_creation_input_tokens\":27021,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":27021},\"type\":\"message\"}],\"speed\":\"standard\",\"fallback_credit\":null},\"modelUsage\":{\"claude-opus-5-5\":{\"inputTokens\":2,\"outputTokens\":1188,\"cacheReadInputTokens\":12384,\"cacheCreationInputTokens\":27021,\"webSearchRequests\":0,\"costUSD\":0.2424128,\"contextWindow\":1000000,\"maxOutputTokens\":128000,\"thinkingTokens\":383,\"canonicalModel\":\"claude-opus-5-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"safety_stops\":0,\"is_error\":false,\"num_turns\":1,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"```json\\n{\\\"classe\\\":\\\"R1\\\",\\\"confianca\\\":\\\"alta\\\",\\\"evidencia\\\":[{\\\"arquivo\\\":\\\"docs/fila/runs/346d/attempt-1.prev1/gate-vitest.txt\\\",\\\"linha\\\":1423,\\\"trecho\\\":\\\"FAIL  test/lote-b3-2-periodo.test.ts > (b) funil do Comparativo às 22:30 da Bahia de 30/09 > sem período na URL abre em Este mês = 01/09 a 30/09\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/346d/attempt-1.prev1/gate-vitest.txt\\\",\\\"linha\\\":1488,\\\"trecho\\\":\\\"AssertionError: expected '\\\\\\\"use client\\\\\\\";\\\\\\\\n\\\\\\\\n/**\\\\\\\\n * Performance …' to match /usePeriodoUrl\\\\\\\\(\\\\\\\\)/\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/346d/attempt-1.prev1/gate-vitest.txt\\\",\\\"linha\\\":1607,\\\"trecho\\\":\\\"FAIL  test/lote-b3-2-periodo.test.ts > aceite AQUINO: a linha da Carteira e o funil somam o mesmo que a ficha > Últimos 7 dias: Carteira = funil = R$ 1.239,54\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/346d/attempt-2/diff.stat\\\",\\\"linha\\\":3,\\\"trecho\\\":\\\" test/lote-b3-2-periodo.test.ts         |  30 ++++--\\\"}],\\\"remedio\\\":\\\"Adicione test/lote-b3-2-periodo.test.ts à pathspec_allowlist do .md do 346d com guarda anti-afrouxamento (mesma contagem de it/expect, sem skip/only), pedindo recálculo das seções do funil do Comparativo e do aceite AQUINO para a Carteira.\\\",\\\"requeue\\\":\\\"nao\\\",\\\"justificativa\\\":\\\"Na tentativa 1, test/lote-b3-2-periodo.test.ts, que está fora da allowlist, ficou vermelho porque monta a page esperando o funil e o seletor do Comparativo, justamente o que o ticket manda remover. Na tentativa 2, o agente editou esse arquivo (diff.stat:3) e o enforcement bloqueou. O D6 não ficou firme só porque a tentativa 2 não chegou ao gate de testes. O acoplamento está provado e a allowlist precisa mudar, então não cabe requeue sem mudar a spec.\\\"}\\n```\",\"ttft_ms\":4695,\"type\":\"result\",\"duration_ms\":10648,\"uuid\":\"f8a2b8ae-1c45-45dc-9490-0d996c26ea5f\",\"ttft_stream_ms\":1176,\"time_to_request_ms\":43,\"first_content_frame_ms\":1176,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "evidencia_descartada": 0,
+  "resposta": {
+   "classe": "R1",
+   "confianca": "alta",
+   "evidencia": [
+    {
+     "arquivo": "docs/fila/runs/346d/attempt-1.prev1/gate-vitest.txt",
+     "linha": 1423,
+     "trecho": "FAIL  test/lote-b3-2-periodo.test.ts > (b) funil do Comparativo às 22:30 da Bahia de 30/09 > sem período na URL abre em Este mês = 01/09 a 30/09"
+    },
+    {
+     "arquivo": "docs/fila/runs/346d/attempt-1.prev1/gate-vitest.txt",
+     "linha": 1488,
+     "trecho": "AssertionError: expected '\"use client\";\\n\\n/**\\n * Performance …' to match /usePeriodoUrl\\(\\)/"
+    },
+    {
+     "arquivo": "docs/fila/runs/346d/attempt-1.prev1/gate-vitest.txt",
+     "linha": 1607,
+     "trecho": "FAIL  test/lote-b3-2-periodo.test.ts > aceite AQUINO: a linha da Carteira e o funil somam o mesmo que a ficha > Últimos 7 dias: Carteira = funil = R$ 1.239,54"
+    },
+    {
+     "arquivo": "docs/fila/runs/346d/attempt-2/diff.stat",
+     "linha": 3,
+     "trecho": "test/lote-b3-2-periodo.test.ts         |  30 ++++--"
+    }
+   ],
+   "remedio": "Adicione test/lote-b3-2-periodo.test.ts à pathspec_allowlist do .md do 346d com guarda anti-afrouxamento (mesma contagem de it/expect, sem skip/only), pedindo recálculo das seções do funil do Comparativo e do aceite AQUINO para a Carteira.",
+   "requeue": "nao",
+   "justificativa": "Na tentativa 1, test/lote-b3-2-periodo.test.ts, que está fora da allowlist, ficou vermelho porque monta a page esperando o funil e o seletor do Comparativo, justamente o que o ticket manda remover. Na tentativa 2, o agente editou esse arquivo (diff.stat:3) e o enforcement bloqueou. O D6 não ficou firme só porque a tentativa 2 não chegou ao gate de testes. O acoplamento está provado e a allowlist precisa mudar, então não cabe requeue sem mudar a spec."
+  }
+ }
+}

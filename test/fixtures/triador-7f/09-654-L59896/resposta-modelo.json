@@ -1,0 +1,63 @@
+{
+ "caso": "09-654-L59896",
+ "assinatura": "2ec29e2d68ec8214907605862edb80ed86b78e24ad3af428c44f705071194318",
+ "extracao": {
+  "classe": "R1|R2?",
+  "regra": "D11"
+ },
+ "modelo": {
+  "modelo": "claude-opus-5-5",
+  "custo_usd": 0.2856848,
+  "tokens_in": 2,
+  "tokens_out": 1710,
+  "duracao_ms": 18083,
+  "entrada_tokens_est": 6615,
+  "cortes": [],
+  "envelope_bruto": "{\"duration_api_ms\":14881,\"stop_reason\":\"end_turn\",\"session_id\":\"03be14be-3938-4c46-bc1d-d9f18d0c4b25\",\"total_cost_usd\":0.2856848,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":31125,\"cache_read_input_tokens\":12384,\"output_tokens\":1710,\"output_tokens_details\":{\"thinking_tokens\":691},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":31125,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"global\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":1710,\"cache_read_input_tokens\":12384,\"cache_creation_input_tokens\":31125,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":31125},\"type\":\"message\"}],\"speed\":\"standard\",\"fallback_credit\":null},\"modelUsage\":{\"claude-opus-5-5\":{\"inputTokens\":2,\"outputTokens\":1710,\"cacheReadInputTokens\":12384,\"cacheCreationInputTokens\":31125,\"webSearchRequests\":0,\"costUSD\":0.2856848,\"contextWindow\":1000000,\"maxOutputTokens\":128000,\"thinkingTokens\":691,\"canonicalModel\":\"claude-opus-5-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"safety_stops\":0,\"is_error\":false,\"num_turns\":1,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"```json\\n{\\\"classe\\\":\\\"R1\\\",\\\"confianca\\\":\\\"alta\\\",\\\"evidencia\\\":[{\\\"arquivo\\\":\\\"docs/fila/runs/654.pre-requeue-26set/attempt-2/gate-vitest.txt\\\",\\\"linha\\\":975,\\\"trecho\\\":\\\"FAIL  test/conta-entregas-vazio-unico.test.ts > 636: vazio único em Contrato e entregas > contratual não tem caixa vazia centralizada nem heading no vazio\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/654.pre-requeue-26set/attempt-2/gate-vitest.txt\\\",\\\"linha\\\":1207,\\\"trecho\\\":\\\"35|     expect(contratual).toContain(\\\\\\\"Prova de entrega · nenhuma entrega r…\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/654.pre-requeue-26set/attempt-2/gate-vitest.txt\\\",\\\"linha\\\":1446,\\\"trecho\\\":\\\"39|     expect(contratual).toContain(\\\\\\\"(consultouManual || temEntregas)\\\\\\\");\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/654.pre-requeue-26set/attempt-2/gate-vitest.txt\\\",\\\"linha\\\":1454,\\\"trecho\\\":\\\"Test Files  1 failed | 585 passed (586)\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/654.pre-requeue-26set/attempt-3/diff.stat\\\",\\\"linha\\\":3,\\\"trecho\\\":\\\"2 files changed, 8 insertions(+), 7 deletions(-)\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/654.pre-requeue-26set/attempt-3/criterios.txt\\\",\\\"linha\\\":31,\\\"trecho\\\":\\\"CONTRATUAL_1.0\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/654.pre-requeue-26set/attempt-3/criterios.txt\\\",\\\"linha\\\":47,\\\"trecho\\\":\\\"VERMELHO\\\"}],\\\"remedio\\\":\\\"No .md do 654, pôr test/conta-entregas-vazio-unico.test.ts na pathspec_allowlist com guarda anti-afrouxamento (mesma contagem de it/expect, sem skip), para trocar as asserções de :35 ('Prova de entrega · nenhuma entrega registrada') e :39 ('(consultouManual || temEntregas)') pelo vazio datado do 654.\\\",\\\"requeue\\\":\\\"nao\\\",\\\"justificativa\\\":\\\"Na tentativa 2, a mudança em contratual.tsx que o ticket pede (texto datado e saída do vazio da consulta) deixou vermelho o teste do 636, que está fora da allowlist e fixa justamente as duas strings que o 654 manda trocar (gate-vitest :1207 e :1446). Na tentativa 3 o agente não mexeu em contratual.tsx (diff.stat sem esse arquivo): o gate ficou verde, mas os critérios [3] e [5] reprovaram, o que confirma o acoplamento e descarta R2, porque o critério em si está bem formado. A allowlist precisa mudar no .md, então reabrir sem mexer na spec não resolve.\\\"}\\n```\",\"ttft_ms\":7605,\"type\":\"result\",\"duration_ms\":14941,\"uuid\":\"0528530d-febf-4d12-ba17-be25b1267047\",\"ttft_stream_ms\":825,\"time_to_request_ms\":52,\"first_content_frame_ms\":825,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "evidencia_descartada": 0,
+  "resposta": {
+   "classe": "R1",
+   "confianca": "alta",
+   "evidencia": [
+    {
+     "arquivo": "docs/fila/runs/654.pre-requeue-26set/attempt-2/gate-vitest.txt",
+     "linha": 975,
+     "trecho": "FAIL  test/conta-entregas-vazio-unico.test.ts > 636: vazio único em Contrato e entregas > contratual não tem caixa vazia centralizada nem heading no vazio"
+    },
+    {
+     "arquivo": "docs/fila/runs/654.pre-requeue-26set/attempt-2/gate-vitest.txt",
+     "linha": 1207,
+     "trecho": "35|     expect(contratual).toContain(\"Prova de entrega · nenhuma entrega r…"
+    },
+    {
+     "arquivo": "docs/fila/runs/654.pre-requeue-26set/attempt-2/gate-vitest.txt",
+     "linha": 1446,
+     "trecho": "39|     expect(contratual).toContain(\"(consultouManual || temEntregas)\");"
+    },
+    {
+     "arquivo": "docs/fila/runs/654.pre-requeue-26set/attempt-2/gate-vitest.txt",
+     "linha": 1454,
+     "trecho": "Test Files  1 failed | 585 passed (586)"
+    },
+    {
+     "arquivo": "docs/fila/runs/654.pre-requeue-26set/attempt-3/diff.stat",
+     "linha": 3,
+     "trecho": "2 files changed, 8 insertions(+), 7 deletions(-)"
+    },
+    {
+     "arquivo": "docs/fila/runs/654.pre-requeue-26set/attempt-3/criterios.txt",
+     "linha": 31,
+     "trecho": "CONTRATUAL_1.0"
+    },
+    {
+     "arquivo": "docs/fila/runs/654.pre-requeue-26set/attempt-3/criterios.txt",
+     "linha": 47,
+     "trecho": "VERMELHO"
+    }
+   ],
+   "remedio": "No .md do 654, pôr test/conta-entregas-vazio-unico.test.ts na pathspec_allowlist com guarda anti-afrouxamento (mesma contagem de it/expect, sem skip), para trocar as asserções de :35 ('Prova de entrega · nenhuma entrega registrada') e :39 ('(consultouManual || temEntregas)') pelo vazio datado do 654.",
+   "requeue": "nao",
+   "justificativa": "Na tentativa 2, a mudança em contratual.tsx que o ticket pede (texto datado e saída do vazio da consulta) deixou vermelho o teste do 636, que está fora da allowlist e fixa justamente as duas strings que o 654 manda trocar (gate-vitest :1207 e :1446). Na tentativa 3 o agente não mexeu em contratual.tsx (diff.stat sem esse arquivo): o gate ficou verde, mas os critérios [3] e [5] reprovaram, o que confirma o acoplamento e descarta R2, porque o critério em si está bem formado. A allowlist precisa mudar no .md, então reabrir sem mexer na spec não resolve."
+  }
+ }
+}

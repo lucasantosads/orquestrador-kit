@@ -1,0 +1,53 @@
+{
+ "caso": "10-407a-L64280",
+ "assinatura": "80d6ac8a7ae066e9db92d88c72212a254601d693b3fc61f51f2d2f357e64f04e",
+ "extracao": {
+  "classe": "R2?",
+  "regra": "D12"
+ },
+ "modelo": {
+  "modelo": "claude-opus-5-5",
+  "custo_usd": 0.285805,
+  "tokens_in": 2,
+  "tokens_out": 1218,
+  "duracao_ms": 15816,
+  "entrada_tokens_est": 4332,
+  "cortes": [],
+  "envelope_bruto": "{\"duration_api_ms\":12250,\"stop_reason\":\"end_turn\",\"session_id\":\"073954ee-ac2f-4482-ac8e-3929362dabf0\",\"total_cost_usd\":0.285805,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":32415,\"cache_read_input_tokens\":10585,\"output_tokens\":1218,\"output_tokens_details\":{\"thinking_tokens\":395},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":32415,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"global\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":1218,\"cache_read_input_tokens\":10585,\"cache_creation_input_tokens\":32415,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":32415},\"type\":\"message\"}],\"speed\":\"standard\",\"fallback_credit\":null},\"modelUsage\":{\"claude-opus-5-5\":{\"inputTokens\":2,\"outputTokens\":1218,\"cacheReadInputTokens\":10585,\"cacheCreationInputTokens\":32415,\"webSearchRequests\":0,\"costUSD\":0.285805,\"contextWindow\":1000000,\"maxOutputTokens\":128000,\"thinkingTokens\":395,\"canonicalModel\":\"claude-opus-5-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"safety_stops\":0,\"is_error\":false,\"num_turns\":1,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"{\\\"classe\\\":\\\"R2\\\",\\\"confianca\\\":\\\"alta\\\",\\\"evidencia\\\":[{\\\"arquivo\\\":\\\"docs/fila/runs/407a/attempt-2.prev1/criterios.txt\\\",\\\"linha\\\":116,\\\"trecho\\\":\\\"cmd:    F=...; test -f \\\\\\\"$F\\\\\\\" && { grep -v '^[[:space:]]*--' \\\\\\\"$F\\\\\\\" | grep -oE \\\\\\\"'[0-9]{4}-[0-9]{2}'\\\\\\\" | wc -l | tr -d ' '; } || echo ARQUIVO_AUSENTE\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/407a/attempt-2.prev1/criterios.txt\\\",\\\"linha\\\":119,\\\"trecho\\\":\\\"0\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/407a/attempt-2.prev1/criterios.txt\\\",\\\"linha\\\":120,\\\"trecho\\\":\\\"ARQUIVO_AUSENTE\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/407a/attempt-2.prev1/diff.stat\\\",\\\"linha\\\":2,\\\"trecho\\\":\\\".../20260920000000_fn_reativar_churn.sql           | 131 +++++++++++++++++++++\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/407a/attempt-1.prev1/criterios.txt\\\",\\\"linha\\\":120,\\\"trecho\\\":\\\"ARQUIVO_AUSENTE\\\"}],\\\"remedio\\\":\\\"No .md do ticket 10-407a-L64280, troque o cmd do criterio[14] para `test -f \\\\\\\"$F\\\\\\\" && { grep -v '^[[:space:]]*--' \\\\\\\"$F\\\\\\\" | grep -oE \\\\\\\"'[0-9]{4}-[0-9]{2}'\\\\\\\" | wc -l | tr -d ' '; true; } || echo ARQUIVO_AUSENTE` (saida unica com zero matches sob pipefail).\\\",\\\"requeue\\\":\\\"nao\\\",\\\"justificativa\\\":\\\"A saida '0' seguida de 'ARQUIVO_AUSENTE' prova que o arquivo existia (test -f passou, wc imprimiu 0, que e a contagem esperada). Mas o grep -oE sem match sai com 1, o pipefail propaga esse status para o grupo e o || dispara assim mesmo; o diff.stat confirma a migration nas duas tentativas. E o mesmo defeito '|| echo' que o conserto de 21/09 tirou dos criterios com grep -c e que ficou neste: ele reprova justamente a implementacao correta, entao o palpite R2 da D12 se confirma.\\\"}\",\"ttft_ms\":5280,\"type\":\"result\",\"duration_ms\":12300,\"uuid\":\"a953c4e3-f2e3-4194-9356-6ab852ed1e91\",\"ttft_stream_ms\":1515,\"time_to_request_ms\":45,\"first_content_frame_ms\":1515,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "evidencia_descartada": 0,
+  "resposta": {
+   "classe": "R2",
+   "confianca": "alta",
+   "evidencia": [
+    {
+     "arquivo": "docs/fila/runs/407a/attempt-2.prev1/criterios.txt",
+     "linha": 116,
+     "trecho": "cmd:    F=...; test -f \"$F\" && { grep -v '^[[:space:]]*--' \"$F\" | grep -oE \"'[0-9]{4}-[0-9]{2}'\" | wc -l | tr -d ' '; } || echo ARQUIVO_AUSENTE"
+    },
+    {
+     "arquivo": "docs/fila/runs/407a/attempt-2.prev1/criterios.txt",
+     "linha": 119,
+     "trecho": "0"
+    },
+    {
+     "arquivo": "docs/fila/runs/407a/attempt-2.prev1/criterios.txt",
+     "linha": 120,
+     "trecho": "ARQUIVO_AUSENTE"
+    },
+    {
+     "arquivo": "docs/fila/runs/407a/attempt-2.prev1/diff.stat",
+     "linha": 2,
+     "trecho": ".../20260920000000_fn_reativar_churn.sql           | 131 +++++++++++++++++++++"
+    },
+    {
+     "arquivo": "docs/fila/runs/407a/attempt-1.prev1/criterios.txt",
+     "linha": 120,
+     "trecho": "ARQUIVO_AUSENTE"
+    }
+   ],
+   "remedio": "No .md do ticket 10-407a-L64280, troque o cmd do criterio[14] para `test -f \"$F\" && { grep -v '^[[:space:]]*--' \"$F\" | grep -oE \"'[0-9]{4}-[0-9]{2}'\" | wc -l | tr -d ' '; true; } || echo ARQUIVO_AUSENTE` (saida unica com zero matches sob pipefail).",
+   "requeue": "nao",
+   "justificativa": "A saida '0' seguida de 'ARQUIVO_AUSENTE' prova que o arquivo existia (test -f passou, wc imprimiu 0, que e a contagem esperada). Mas o grep -oE sem match sai com 1, o pipefail propaga esse status para o grupo e o || dispara assim mesmo; o diff.stat confirma a migration nas duas tentativas. E o mesmo defeito '|| echo' que o conserto de 21/09 tirou dos criterios com grep -c e que ficou neste: ele reprova justamente a implementacao correta, entao o palpite R2 da D12 se confirma."
+  }
+ }
+}

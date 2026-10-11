@@ -1,0 +1,48 @@
+{
+ "caso": "03-627-L55356",
+ "assinatura": "3624a88c6bf9b1d1801c5347c9e2ce4209e4128383b2cb79b8b030b63e4285ce",
+ "extracao": {
+  "classe": "R4?",
+  "regra": "D9"
+ },
+ "modelo": {
+  "modelo": "claude-opus-5-5",
+  "custo_usd": 0.2515528,
+  "tokens_in": 2,
+  "tokens_out": 989,
+  "duracao_ms": 13471,
+  "entrada_tokens_est": 4305,
+  "cortes": [],
+  "envelope_bruto": "{\"duration_api_ms\":10167,\"stop_reason\":\"end_turn\",\"session_id\":\"c212172b-d190-46e6-a578-231ea711e00b\",\"total_cost_usd\":0.2515528,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":28661,\"cache_read_input_tokens\":12384,\"output_tokens\":989,\"output_tokens_details\":{\"thinking_tokens\":379},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":28661,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"global\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":989,\"cache_read_input_tokens\":12384,\"cache_creation_input_tokens\":28661,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":28661},\"type\":\"message\"}],\"speed\":\"standard\",\"fallback_credit\":null},\"modelUsage\":{\"claude-opus-5-5\":{\"inputTokens\":2,\"outputTokens\":989,\"cacheReadInputTokens\":12384,\"cacheCreationInputTokens\":28661,\"webSearchRequests\":0,\"costUSD\":0.2515528,\"contextWindow\":1000000,\"maxOutputTokens\":128000,\"thinkingTokens\":379,\"canonicalModel\":\"claude-opus-5-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"safety_stops\":0,\"is_error\":false,\"num_turns\":1,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"{\\\"classe\\\":\\\"R2\\\",\\\"confianca\\\":\\\"media\\\",\\\"evidencia\\\":[{\\\"arquivo\\\":\\\"docs/fila/runs/627/attempt-2/gate-vitest.txt\\\",\\\"linha\\\":937,\\\"trecho\\\":\\\"AssertionError: travessao mudo: 278 ocorrencias, teto 273\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/627/attempt-2/gate-vitest.txt\\\",\\\"linha\\\":1219,\\\"trecho\\\":\\\"99|     ).toBeLessThanOrEqual(TETO);\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/627/attempt-2/gate-vitest.txt\\\",\\\"linha\\\":1227,\\\"trecho\\\":\\\"Test Files  1 failed | 551 passed (552)\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/627/attempt-2/diff.stat\\\",\\\"linha\\\":1,\\\"trecho\\\":\\\"(vazio: nenhum arquivo de src/ alterado pelo ticket)\\\"}],\\\"remedio\\\":\\\"No .md do ticket 627, troque `const TETO = 273` e o critério `-le 273` pelo valor medido com o contador definido no próprio ticket (278 em 2f58e67, conferir antes) e atualize o comentário de medição.\\\",\\\"requeue\\\":\\\"nao\\\",\\\"justificativa\\\":\\\"O palpite R4 não se sustenta: nenhuma falta de código fora do escopo, a única falha é a própria guarda nova (linhas 937 e 1219) e o diff está vazio, então o ticket não mudou src/. O teto 273 é premissa da spec que não bate com o contador que a mesma spec define (deu 278 nas duas tentativas), e qualquer implementação fiel reprovaria. A confiança é média porque 'src idêntico a 2f58e67' vem só do executor; se o dono quiser manter 273, o caso vira R7 (decidir qual contador vale).\\\"}\",\"ttft_ms\":4974,\"type\":\"result\",\"duration_ms\":10223,\"uuid\":\"3980b461-05bd-412d-bc2f-2211a1934f3b\",\"ttft_stream_ms\":679,\"time_to_request_ms\":50,\"first_content_frame_ms\":680,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "evidencia_descartada": 0,
+  "resposta": {
+   "classe": "R2",
+   "confianca": "media",
+   "evidencia": [
+    {
+     "arquivo": "docs/fila/runs/627/attempt-2/gate-vitest.txt",
+     "linha": 937,
+     "trecho": "AssertionError: travessao mudo: 278 ocorrencias, teto 273"
+    },
+    {
+     "arquivo": "docs/fila/runs/627/attempt-2/gate-vitest.txt",
+     "linha": 1219,
+     "trecho": "99|     ).toBeLessThanOrEqual(TETO);"
+    },
+    {
+     "arquivo": "docs/fila/runs/627/attempt-2/gate-vitest.txt",
+     "linha": 1227,
+     "trecho": "Test Files  1 failed | 551 passed (552)"
+    },
+    {
+     "arquivo": "docs/fila/runs/627/attempt-2/diff.stat",
+     "linha": 1,
+     "trecho": "(vazio: nenhum arquivo de src/ alterado pelo ticket)"
+    }
+   ],
+   "remedio": "No .md do ticket 627, troque `const TETO = 273` e o critério `-le 273` pelo valor medido com o contador definido no próprio ticket (278 em 2f58e67, conferir antes) e atualize o comentário de medição.",
+   "requeue": "nao",
+   "justificativa": "O palpite R4 não se sustenta: nenhuma falta de código fora do escopo, a única falha é a própria guarda nova (linhas 937 e 1219) e o diff está vazio, então o ticket não mudou src/. O teto 273 é premissa da spec que não bate com o contador que a mesma spec define (deu 278 nas duas tentativas), e qualquer implementação fiel reprovaria. A confiança é média porque 'src idêntico a 2f58e67' vem só do executor; se o dono quiser manter 273, o caso vira R7 (decidir qual contador vale)."
+  }
+ }
+}

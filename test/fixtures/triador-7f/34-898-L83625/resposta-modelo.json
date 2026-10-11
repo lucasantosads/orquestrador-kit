@@ -1,0 +1,43 @@
+{
+ "caso": "34-898-L83625",
+ "assinatura": "9830bfa71a9e822a18247e2bcc50addc18cd89e96c2d0987bd00ef215c171401",
+ "extracao": {
+  "classe": "R2?",
+  "regra": "D12"
+ },
+ "modelo": {
+  "modelo": "claude-opus-5-5",
+  "custo_usd": 0.2572448,
+  "tokens_in": 2,
+  "tokens_out": 924,
+  "duracao_ms": 13055,
+  "entrada_tokens_est": 3695,
+  "cortes": [],
+  "envelope_bruto": "{\"duration_api_ms\":9786,\"stop_reason\":\"end_turn\",\"session_id\":\"0f6f799c-494a-4613-bcc1-35c08eeaa693\",\"total_cost_usd\":0.2572448,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":29535,\"cache_read_input_tokens\":12384,\"output_tokens\":924,\"output_tokens_details\":{\"thinking_tokens\":313},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":29535,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"global\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":924,\"cache_read_input_tokens\":12384,\"cache_creation_input_tokens\":29535,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":29535},\"type\":\"message\"}],\"speed\":\"standard\",\"fallback_credit\":null},\"modelUsage\":{\"claude-opus-5-5\":{\"inputTokens\":2,\"outputTokens\":924,\"cacheReadInputTokens\":12384,\"cacheCreationInputTokens\":29535,\"webSearchRequests\":0,\"costUSD\":0.2572448,\"contextWindow\":1000000,\"maxOutputTokens\":128000,\"thinkingTokens\":313,\"canonicalModel\":\"claude-opus-5-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"safety_stops\":0,\"is_error\":false,\"num_turns\":1,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"{\\\"classe\\\":\\\"R2\\\",\\\"confianca\\\":\\\"alta\\\",\\\"evidencia\\\":[{\\\"arquivo\\\":\\\"docs/fila/runs/898/attempt-3/criterios.txt\\\",\\\"linha\\\":36,\\\"trecho\\\":\\\"x=$(grep -vE '^[[:space:]]*--' $f | grep -ciE 'drop |delete|truncate|grant|security definer|insert')\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/898/attempt-3/criterios.txt\\\",\\\"linha\\\":39,\\\"trecho\\\":\\\"ST_11111_2\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/898/attempt-2/avaliador-claude.txt\\\",\\\"linha\\\":1,\\\"trecho\\\":\\\"falta 'on delete cascade' em cliente_id e 'on delete set null' em definido_por. Sem isso, apagar um cliente ou employee falha por FK.\\\"}],\\\"remedio\\\":\\\"No .md do ticket 898, no criterio[4], troque o padrão 'delete' do contador x por 'delete from' (ou tire 'on delete (cascade|set null)' com sed -E antes do grep -ciE).\\\",\\\"requeue\\\":\\\"nao\\\",\\\"justificativa\\\":\\\"Os cinco contadores estruturais dão 11111 nas tentativas 1 e 3; só o contador x=2 reprova, e o padrão 'delete' sem âncora também pega as cláusulas FK 'on delete cascade/set null' que o corpo pede e que o juiz exigiu na tentativa 2. A tentativa 2 passou no critério porque tirou essas cláusulas, e por isso o juiz a reprovou. Com o critério como está, nenhuma implementação correta passa; o palpite R2 da extração se confirma. Que os 2 acertos são exatamente as duas linhas FK vem da citação do executor e bate com a contagem, mas não está provado por um artefato do arquivo.\\\"}\",\"ttft_ms\":4408,\"type\":\"result\",\"duration_ms\":9830,\"uuid\":\"c7657aa6-c2ab-4d63-9743-de9b51443b5c\",\"ttft_stream_ms\":882,\"time_to_request_ms\":39,\"first_content_frame_ms\":882,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "evidencia_descartada": 0,
+  "resposta": {
+   "classe": "R2",
+   "confianca": "alta",
+   "evidencia": [
+    {
+     "arquivo": "docs/fila/runs/898/attempt-3/criterios.txt",
+     "linha": 36,
+     "trecho": "x=$(grep -vE '^[[:space:]]*--' $f | grep -ciE 'drop |delete|truncate|grant|security definer|insert')"
+    },
+    {
+     "arquivo": "docs/fila/runs/898/attempt-3/criterios.txt",
+     "linha": 39,
+     "trecho": "ST_11111_2"
+    },
+    {
+     "arquivo": "docs/fila/runs/898/attempt-2/avaliador-claude.txt",
+     "linha": 1,
+     "trecho": "falta 'on delete cascade' em cliente_id e 'on delete set null' em definido_por. Sem isso, apagar um cliente ou employee falha por FK."
+    }
+   ],
+   "remedio": "No .md do ticket 898, no criterio[4], troque o padrão 'delete' do contador x por 'delete from' (ou tire 'on delete (cascade|set null)' com sed -E antes do grep -ciE).",
+   "requeue": "nao",
+   "justificativa": "Os cinco contadores estruturais dão 11111 nas tentativas 1 e 3; só o contador x=2 reprova, e o padrão 'delete' sem âncora também pega as cláusulas FK 'on delete cascade/set null' que o corpo pede e que o juiz exigiu na tentativa 2. A tentativa 2 passou no critério porque tirou essas cláusulas, e por isso o juiz a reprovou. Com o critério como está, nenhuma implementação correta passa; o palpite R2 da extração se confirma. Que os 2 acertos são exatamente as duas linhas FK vem da citação do executor e bate com a contagem, mas não está provado por um artefato do arquivo."
+  }
+ }
+}

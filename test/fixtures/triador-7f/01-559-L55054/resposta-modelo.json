@@ -1,0 +1,53 @@
+{
+ "caso": "01-559-L55054",
+ "assinatura": "e9bbf5d75de33c6c7600c5fce78a673d272eacb10c1b38580b3e31c9c3f18ecb",
+ "extracao": {
+  "classe": "R4?",
+  "regra": "D9"
+ },
+ "modelo": {
+  "modelo": "claude-opus-5-5",
+  "custo_usd": 0.2862448,
+  "tokens_in": 2,
+  "tokens_out": 1272,
+  "duracao_ms": 15242,
+  "entrada_tokens_est": 5234,
+  "cortes": [],
+  "envelope_bruto": "{\"duration_api_ms\":11976,\"stop_reason\":\"end_turn\",\"session_id\":\"da603e72-f266-4c87-b347-4c59c6bad11f\",\"total_cost_usd\":0.2862448,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":32335,\"cache_read_input_tokens\":10584,\"output_tokens\":1272,\"output_tokens_details\":{\"thinking_tokens\":410},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":32335,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"global\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":1272,\"cache_read_input_tokens\":10584,\"cache_creation_input_tokens\":32335,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":32335},\"type\":\"message\"}],\"speed\":\"standard\",\"fallback_credit\":null},\"modelUsage\":{\"claude-opus-5-5\":{\"inputTokens\":2,\"outputTokens\":1272,\"cacheReadInputTokens\":10584,\"cacheCreationInputTokens\":32335,\"webSearchRequests\":0,\"costUSD\":0.2862448,\"contextWindow\":1000000,\"maxOutputTokens\":128000,\"thinkingTokens\":410,\"canonicalModel\":\"claude-opus-5-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"safety_stops\":0,\"is_error\":false,\"num_turns\":1,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"{\\\"classe\\\":\\\"R4\\\",\\\"confianca\\\":\\\"alta\\\",\\\"evidencia\\\":[{\\\"arquivo\\\":\\\"docs/fila/runs/559/attempt-2.prev2/gate-vitest.txt\\\",\\\"linha\\\":3879,\\\"trecho\\\":\\\"Test Files  1 failed | 549 passed (550)\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/559/attempt-2.prev2/gate-vitest.txt\\\",\\\"linha\\\":1064,\\\"trecho\\\":\\\"327|     expect(src.conexoes).not.toContain(\\\\\\\"<WhatsAppGruposSection\\\\\\\");\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/559/attempt-2.prev2/gate-vitest.txt\\\",\\\"linha\\\":1072,\\\"trecho\\\":\\\"AssertionError: tela sem \\\\\\\"nenhum evento\\\\\\\": expected '\\\\\\\"use client\\\\\\\";\\\\\\\\n\\\\\\\\nimport { useEffect, …' to contain 'nenhum evento'\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/559/attempt-2.prev2/gate-vitest.txt\\\",\\\"linha\\\":1367,\\\"trecho\\\":\\\"AssertionError: expected '{grupoAtivo === \\\\\\\"conta\\\\\\\" && (<>\\\\\\\\n     …' not to match /[\\\\\\\"'>]\\\\\\\\s*[—–]\\\\\\\\s*[\\\\\\\"'<]/\\\"},{\\\"arquivo\\\":\\\"docs/fila/runs/559/attempt-2.prev2/diff.stat\\\",\\\"linha\\\":1,\\\"trecho\\\":\\\"test/conta-aceite.test.tsx | 475 +++++++++++++++++++++++++++++++++++++++++++++\\\"}],\\\"remedio\\\":\\\"Mantenha test/conta-aceite.test.tsx como está; feche em src os gaps (WhatsAppGruposSection em conexoes-relacao.tsx, 'nenhum evento' na Auditoria, travessão de ausência) pelo ticket 625 e reponha o 559 depois do merge dele.\\\",\\\"requeue\\\":\\\"sim_apos:merge do ticket 625 (gaps de src da aba Conta fechados) na base\\\",\\\"justificativa\\\":\\\"O diff só tocou o teste novo da allowlist (diff.stat:1), e a base inteira passa, menos esse arquivo (gate-vitest:3879). Os 3 vermelhos são asserções que comparam a tela em src com o mockup (gate-vitest:1064, 1072, 1367): é falta real de código fora do escopo, não defeito de critério nem de motor, e por isso o palpite R4 da D9 se confirma. As notas dizem que o 625 fecha 5 gaps e a tentativa 2 mostra só 3. Ao repor, confira se o 625 cobre estes 3.\\\"}\",\"ttft_ms\":5299,\"type\":\"result\",\"duration_ms\":12026,\"uuid\":\"c494b61a-9637-4c0f-8945-340063f39292\",\"ttft_stream_ms\":1232,\"time_to_request_ms\":45,\"first_content_frame_ms\":1232,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "evidencia_descartada": 0,
+  "resposta": {
+   "classe": "R4",
+   "confianca": "alta",
+   "evidencia": [
+    {
+     "arquivo": "docs/fila/runs/559/attempt-2.prev2/gate-vitest.txt",
+     "linha": 3879,
+     "trecho": "Test Files  1 failed | 549 passed (550)"
+    },
+    {
+     "arquivo": "docs/fila/runs/559/attempt-2.prev2/gate-vitest.txt",
+     "linha": 1064,
+     "trecho": "327|     expect(src.conexoes).not.toContain(\"<WhatsAppGruposSection\");"
+    },
+    {
+     "arquivo": "docs/fila/runs/559/attempt-2.prev2/gate-vitest.txt",
+     "linha": 1072,
+     "trecho": "AssertionError: tela sem \"nenhum evento\": expected '\"use client\";\\n\\nimport { useEffect, …' to contain 'nenhum evento'"
+    },
+    {
+     "arquivo": "docs/fila/runs/559/attempt-2.prev2/gate-vitest.txt",
+     "linha": 1367,
+     "trecho": "AssertionError: expected '{grupoAtivo === \"conta\" && (<>\\n     …' not to match /[\"'>]\\s*[—–]\\s*[\"'<]/"
+    },
+    {
+     "arquivo": "docs/fila/runs/559/attempt-2.prev2/diff.stat",
+     "linha": 1,
+     "trecho": "test/conta-aceite.test.tsx | 475 +++++++++++++++++++++++++++++++++++++++++++++"
+    }
+   ],
+   "remedio": "Mantenha test/conta-aceite.test.tsx como está; feche em src os gaps (WhatsAppGruposSection em conexoes-relacao.tsx, 'nenhum evento' na Auditoria, travessão de ausência) pelo ticket 625 e reponha o 559 depois do merge dele.",
+   "requeue": "nao",
+   "justificativa": "O diff só tocou o teste novo da allowlist (diff.stat:1), e a base inteira passa, menos esse arquivo (gate-vitest:3879). Os 3 vermelhos são asserções que comparam a tela em src com o mockup (gate-vitest:1064, 1072, 1367): é falta real de código fora do escopo, não defeito de critério nem de motor, e por isso o palpite R4 da D9 se confirma. As notas dizem que o 625 fecha 5 gaps e a tentativa 2 mostra só 3. Ao repor, confira se o 625 cobre estes 3."
+  }
+ }
+}

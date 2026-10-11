@@ -15,17 +15,22 @@
  *   (controle) nenhum dos 20 sai firme.
  *   (cortados) nenhum dos 5 de série cortada sai firme: com a D6 da spec os 5
  *       saíam R1 firme, e errado (o agente resolveu o vermelho no retry).
- *   (C) extração + modelo, por replay de `resposta-modelo.json`: peça 6, que
- *       não é da 7f-b1 (a sessão não chama modelo).
+ *   (C) extração + modelo, por REPLAY (7f-b1b): as 22 `resposta-modelo.json`
+ *       da corrida real da peça 6 (10/10, `~/.orq/corrida-7f-peca6/`) estão
+ *       copiadas em `<caso>/resposta-modelo.json`. O `claude` é o stub, que
+ *       devolve o `envelope_bruto` gravado (com o rc da corrida), e o envelope
+ *       passa pelo parser, pela conferência da evidência e pelo ledger de
+ *       verdade. Nenhuma chamada de API.
  *
  * Os módulos do triador entram por import DINÂMICO tolerante: sem eles, todo
  * caso sai "sem diagnóstico" e o vermelho é de asserção (0 de 15 firmes), não
  * de import quebrado.
  */
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 const FX = join(import.meta.dirname, 'fixtures', 'triador-7f')
 const TRIADOR = join(import.meta.dirname, '..', 'scripts', 'orquestrador', 'triador')
@@ -144,5 +149,124 @@ describe('aceite do triador (spec 7f-a §7.2)', () => {
     }
   })
 
-  it.todo('(C) extração + modelo ≥ 30/37 por replay de resposta-modelo.json (peça 6, fora da 7f-b1)')
+})
+
+// ─── (C) replay da corrida real da peça 6 ────────────────────────────────────
+
+const STUB = join(import.meta.dirname, 'fixtures', 'claude-envelope', 'triador-stub.sh')
+// a corrida da peça 6: `orq triar --fixture` com ORQ_TRIADOR_TETO_DIA=6.60, em 2026-10-11 (UTC)
+const AGORA_PECA6 = Date.parse('2026-10-11T00:20:45Z')
+const CFG_PECA6 = { modelo: 'claude-opus-5-5', teto_dia_usd: 6.6, teto_caso_usd: 0.3, entrada_max_tokens: 30000, timeout_secs: 120 }
+
+// `~/orq-sessoes/corrida-7f-peca6.txt`, a saída crua da corrida real (21/37).
+const PLACAR_PECA6 = [
+  "01-559-L55054\tesperado R3\textração R4? (D9)\tfinal R4 [modelo]\terrado\tUS$ 0.2862",
+  "02-559-L55209\tesperado R4\textração R4? (D9)\tfinal R4 [modelo]\tCERTO\tUS$ 0.2614",
+  "03-627-L55356\tesperado R2\textração R4? (D9)\tfinal R2 [modelo]\tCERTO\tUS$ 0.2516",
+  "04-600-L55898\tesperado R4\textração R4? (D9)\tfinal R4 [modelo]\tCERTO\tUS$ 0.2997",
+  "05-627b-L56021\tesperado R2\textração R1|R2? (D11)\tfinal R2 [modelo]\tCERTO\tUS$ 0.2913",
+  "06-549c-L57053\tesperado R2\textração R2? (D12)\tfinal R2 [modelo]\tCERTO\tUS$ 0.2497",
+  "07-627j-L57368\tesperado R1\textração R1 (D6)\tfinal R1 [extracao]\tCERTO\t",
+  "08-635-L58105\tesperado R3\textração R5? (D7)\tfinal R5? [extracao]\terrado\t",
+  "09-654-L59896\tesperado R1\textração R1|R2? (D11)\tfinal R1 [modelo]\tCERTO\tUS$ 0.2857",
+  "10-407a-L64280\tesperado R2\textração R2? (D12)\tfinal R2 [modelo]\tCERTO\tUS$ 0.2858",
+  "11-689-L65280\tesperado R1\textração R1 (D6)\tfinal R1 [extracao]\tCERTO\t",
+  "12-691-L65374\tesperado R2\textração R2? (D12)\tfinal R2 [modelo]\tclasse certa, evidência fora\tUS$ 0.1757",
+  "13-346d-L66187\tesperado R1\textração R1? (D6)\tfinal R1 [modelo]\tclasse certa, evidência fora\tUS$ 0.2424",
+  "14-407a-L67585\tesperado R2\textração R1|R2? (D11)\tfinal R1|R2? [extracao]\terrado\t",
+  "15-722-L67970\tesperado R1\textração R1 (D6)\tfinal R1 [extracao]\tCERTO\t",
+  "16-723-L68736\tesperado R6\textração R6 (D2)\tfinal R6 [extracao]\tCERTO\t",
+  "17-715-L68793\tesperado R1\textração R1 (D6)\tfinal R1 [extracao]\tCERTO\t",
+  "18-737-L69920\tesperado R2\textração R2? (D12)\tfinal R2 [modelo]\tclasse certa, evidência fora\tUS$ 0.2645",
+  "19-739-L71699\tesperado R3\textração R1? (D8)\tfinal R2 [modelo]\terrado\tUS$ 0.2391",
+  "20-801-L72121\tesperado R5\textração R5 (D4)\tfinal R5 [extracao]\tCERTO\t",
+  "21-760-L72407\tesperado R5\textração R5 (D5)\tfinal R5 [extracao]\tCERTO\t",
+  "22-762-L72665\tesperado R1\textração R1 (D6)\tfinal R1 [extracao]\tCERTO\t",
+  "23-856-L73817\tesperado R1\textração R1 (D6)\tfinal R1 [extracao]\tCERTO\t",
+  "24-867-L76790\tesperado R3\textração R2? (D12)\tfinal R3 [modelo]\tclasse certa, evidência fora\tUS$ 0.2656",
+  "25-711a-L78138\tesperado R1\textração R1|R2? (D11)\tfinal R1|R2? [extracao]\terrado\t",
+  "26-711b3-L78647\tesperado R1\textração R1 (D6)\tfinal R1 [extracao]\tclasse certa, evidência fora\t",
+  "27-741-L79081\tesperado R4\textração R2? (D12)\tfinal R4 [modelo]\tclasse certa, evidência fora\tUS$ 0.2395",
+  "28-707-L79202\tesperado R7\textração R4? (D9)\tfinal R4? [extracao]\terrado\t",
+  "29-826-L80362\tesperado R3\textração - (-)\tfinal - [extracao]\terrado\t",
+  "30-900-L81564\tesperado R2\textração R2? (D12)\tfinal R2 [modelo]\tclasse certa, evidência fora\tUS$ 0.2422",
+  "31-898-L82594\tesperado R5\textração R5 (D5)\tfinal R5 [extracao]\tCERTO\t",
+  "32-741a-L82726\tesperado R5\textração R5 (D5)\tfinal R5 [extracao]\tCERTO\t",
+  "33-707-L83026\tesperado R4\textração R4? (D9)\tfinal R4? [extracao]\terrado\t",
+  "34-898-L83625\tesperado R2\textração R2? (D12)\tfinal R2 [modelo]\tclasse certa, evidência fora\tUS$ 0.2572",
+  "35-950-L85145\tesperado R1\textração R1 (D6)\tfinal R1 [extracao]\tCERTO\t",
+  "36-940-L85222\tesperado R5\textração R5 (D1)\tfinal R5 [extracao]\tCERTO\t",
+  "37-932-L85272\tesperado R5\textração R5 (D1)\tfinal R5 [extracao]\tCERTO\t",
+  "-- (C) classe e evidência certas: 21/37 (aceite: >= 30); chamadas novas: 22; custo desta corrida: US$ 4.1376",
+].join('\n')
+
+interface Gravada {
+  caso: string
+  assinatura: string
+  modelo: { envelope_bruto?: string; erro?: string }
+}
+interface Replay {
+  texto: string
+  linhas: { caso: string; esperado: string | null; final: string | null; fonte: string; certo: boolean; evidencia_certa: boolean }[]
+  diags: Map<string, { classe: string | null; fonte: string; evidencia: Ref[]; modelo: Record<string, unknown> | null }>
+  gravadas: number
+  assinaturas_velhas: string[]
+}
+
+let base = ''
+const envAntes = { ...process.env }
+
+async function replay(): Promise<Replay | null> {
+  try {
+    const imp = async (f: string) => (await import(pathToFileURL(join(TRIADOR, f)).href)) as Record<string, any>
+    const { corridaFixture, placar } = await imp('corrida.ts')
+    const { criarPassoModelo } = await imp('modelo.ts')
+    const passo = criarPassoModelo(CFG_PECA6)
+    let gravadas = 0
+    const velhas: string[] = []
+    const modelo = (ctx: { ev: { id: string }; assinatura: string }) => {
+      const f = join(FX, ctx.ev.id, 'resposta-modelo.json')
+      if (!existsSync(f)) return { registro: { modelo: null, pulado: 'sem_replay' } }
+      const g = JSON.parse(readFileSync(f, 'utf8')) as Gravada
+      if (g.assinatura !== ctx.assinatura) velhas.push(ctx.ev.id)
+      gravadas++
+      writeFileSync(join(base, 'resposta.json'), g.modelo.envelope_bruto ?? '')
+      process.env.STUB_RC = /\(rc (\d+)\)/.exec(g.modelo.erro ?? '')?.[1] ?? '0'
+      return passo(ctx)
+    }
+    const linhas = corridaFixture(FX, { modelo, agora: AGORA_PECA6, forcar: true })
+    const diags = new Map<string, any>()
+    for (const l of linhas) diags.set(l.caso, JSON.parse(readFileSync(join(base, 'diag', 'fixture-triador-7f', `${l.caso}.json`), 'utf8')))
+    return { texto: placar(linhas), linhas, diags, gravadas, assinaturas_velhas: velhas }
+  } catch (e) {
+    return null
+  }
+}
+
+describe('aceite (C) do triador, em replay da corrida real da peça 6 (7f-b1b)', () => {
+  beforeAll(() => {
+    base = realpathSync(mkdtempSync(join(tmpdir(), 'triador-replay-')))
+    mkdirSync(join(base, 'trava'))
+    writeFileSync(join(base, 'trava', 'claude'), `#!/usr/bin/env bash\nprintf '%s\\n' "$*" >> "${join(base, 'trava.log')}"\nexit 99\n`)
+    chmodSync(join(base, 'trava', 'claude'), 0o755)
+    Object.assign(process.env, {
+      ORQ_DIAG_DIR: join(base, 'diag'),
+      ORQ_REPOS: join(base, 'repos.json'),
+      ORQ_TRIADOR_CLAUDE: STUB,
+      STUB_LOG: join(base, 'stub.log'),
+      STUB_RESPOSTA: join(base, 'resposta.json'),
+      PATH: `${join(base, 'trava')}:${envAntes.PATH}`,
+    })
+  })
+  afterAll(() => {
+    // a trava do claude real nunca pode ter sido tocada
+    expect(existsSync(join(base, 'trava.log')) ? readFileSync(join(base, 'trava.log'), 'utf8') : '').toBe('')
+    process.env = { ...envAntes }
+  })
+
+  it('(C) as 22 respostas gravadas, da mesma assinatura, reproduzem o placar da corrida real: 21/37', async () => {
+    const r = await replay()
+    expect({ gravadas: r?.gravadas, velhas: r?.assinaturas_velhas }).toEqual({ gravadas: 22, velhas: [] })
+    expect(r?.texto).toBe(PLACAR_PECA6)
+  })
 })
