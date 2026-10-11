@@ -38,6 +38,8 @@ export interface LinhaPlacar {
   evidencia_certa: boolean
   custo_usd: number | null
   chamou: boolean
+  /** a resposta do modelo descartada, com o motivo (modelo.ts, `Descarte`) */
+  descartado: { regra: string; trecho: string } | null
 }
 
 const casa = (dada: Ref[], esp: Esperado['evidencia']) =>
@@ -69,7 +71,7 @@ export function corridaFixture(dir: string, o: { modelo: PassoModelo | null; for
         )
       }
     }
-    const m = (diag.modelo ?? {}) as { custo_usd?: number | null }
+    const m = (diag.modelo ?? {}) as { custo_usd?: number | null; descartado?: { regra: string; trecho: string } }
     out.push({
       caso,
       esperado: esp.classe,
@@ -81,6 +83,7 @@ export function corridaFixture(dir: string, o: { modelo: PassoModelo | null; for
       evidencia_certa: casa(diag.evidencia, esp.evidencia),
       custo_usd: m.custo_usd ?? null,
       chamou,
+      descartado: diag.fonte === 'extracao' ? (m.descartado ?? null) : null,
     })
   }
   return out
@@ -88,7 +91,7 @@ export function corridaFixture(dir: string, o: { modelo: PassoModelo | null; for
 
 export function placar(ls: LinhaPlacar[]): string {
   const linhas = ls.map((l) =>
-    [l.caso, `esperado ${l.esperado}`, `extração ${l.extracao ?? '-'} (${l.regra ?? '-'})`, `final ${l.final ?? '-'} [${l.fonte}]`, l.certo ? (l.evidencia_certa ? 'CERTO' : 'classe certa, evidência fora') : 'errado', l.custo_usd != null ? `US$ ${l.custo_usd.toFixed(4)}` : ''].join('\t'),
+    [l.caso, `esperado ${l.esperado}`, `extração ${l.extracao ?? '-'} (${l.regra ?? '-'})`, `final ${l.final ?? '-'} [${l.descartado ? `descartado: ${l.descartado.regra}: ${l.descartado.trecho}` : l.fonte}]`, l.certo ? (l.evidencia_certa ? 'CERTO' : 'classe certa, evidência fora') : 'errado', l.custo_usd != null ? `US$ ${l.custo_usd.toFixed(4)}` : ''].join('\t'),
   )
   const certos = ls.filter((l) => l.certo && l.evidencia_certa).length
   const custo = ls.reduce((s, l) => s + (l.custo_usd ?? 0), 0)

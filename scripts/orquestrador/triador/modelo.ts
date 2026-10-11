@@ -332,10 +332,31 @@ function registrar(g: Guarda, agora: number, x: Gasto): void {
   g.escrever(join(g.raiz, 'custo.json'), JSON.stringify(l, null, 1) + '\n')
 }
 
+/**
+ * Por que a resposta do modelo foi descartada (e valeu a extração): a regra
+ * que descartou e o trecho que a mostra. Nenhum descarte é silencioso (7f-b1b).
+ */
+export interface Descarte {
+  regra: 'envelope_ilegivel' | 'envelope_is_error' | 'resposta_sem_classe' | 'evidencia_nenhuma_confere'
+  trecho: string
+}
+
+/** O que o stdout ilegível mostra: o subtipo e os erros, se for JSON; senão o começo. */
+function trechoIlegivel(stdout: string, rc: number): string {
+  try {
+    const j = JSON.parse(stdout.trim()) as Record<string, unknown>
+    if (j && typeof j === 'object') return trecho(`rc ${rc}: sem result; subtype=${String(j.subtype)} is_error=${String(j.is_error)} errors=${JSON.stringify(j.errors ?? null)}`)
+  } catch {
+    /* não é JSON */
+  }
+  return trecho(`rc ${rc}: ${stdout.trim() || '(stdout vazio)'}`)
+}
+
 export interface RegistroModelo {
   modelo: string | null
   pulado?: 'teto_dia' | 'desligado'
   erro?: string
+  descartado?: Descarte
   custo_usd?: number | null
   tokens_in?: number | null
   tokens_out?: number | null
@@ -373,13 +394,16 @@ export function criarPassoModelo(cfg: ConfigModelo = lerConfigModelo()): PassoMo
       cortes: entrada.cortes,
       envelope_bruto: r.stdout.slice(0, 20000),
     }
-    if (!env) return { registro: { ...reg, erro: `envelope ilegível (rc ${r.rc})` } }
-    if (env.is_error) return { registro: { ...reg, erro: `envelope com is_error: ${env.result.slice(0, 200)}` } }
+    if (!env) return { registro: { ...reg, erro: `envelope ilegível (rc ${r.rc})`, descartado: { regra: 'envelope_ilegivel', trecho: trechoIlegivel(r.stdout, r.rc) } } }
+    if (env.is_error) return { registro: { ...reg, erro: `envelope com is_error: ${env.result.slice(0, 200)}`, descartado: { regra: 'envelope_is_error', trecho: trecho(env.result) } } }
     const resp = lerResposta(env.result)
-    if (!resp) return { registro: { ...reg, erro: 'resposta sem JSON com classe R1-R7' } }
+    if (!resp) return { registro: { ...reg, erro: 'resposta sem JSON com classe R1-R7', descartado: { regra: 'resposta_sem_classe', trecho: trecho(env.result) } } }
     const { validas, descartadas } = conferirEvidencia(ev, resp.evidencia)
     const comResposta = { ...reg, evidencia_descartada: descartadas.length, resposta: resp }
-    if (!validas.length) return { registro: { ...comResposta, erro: 'nenhuma evidência confere com a cópia' } }
+    if (!validas.length) {
+      const refs = descartadas.map((x) => `${x.arquivo}:${x.linha ?? '-'}`).join('; ')
+      return { registro: { ...comResposta, erro: 'nenhuma evidência confere com a cópia', descartado: { regra: 'evidencia_nenhuma_confere', trecho: trecho(refs || '(resposta sem evidência)') } } }
+    }
     return { registro: comResposta, resposta: { ...resp, evidencia: validas } }
   }
 }

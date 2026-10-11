@@ -200,6 +200,15 @@ const PLACAR_PECA6 = [
   "-- (C) classe e evidência certas: 21/37 (aceite: >= 30); chamadas novas: 22; custo desta corrida: US$ 4.1376",
 ].join('\n')
 
+// os 6 que saíram [extracao] na corrida real sem o motivo no placar
+const DESCARTADOS_PECA6 = ['08-635-L58105', '14-407a-L67585', '25-711a-L78138', '28-707-L79202', '29-826-L80362', '33-707-L83026']
+const classes = (texto: string) =>
+  texto
+    .split('\n')
+    .slice(0, -1)
+    .map((l) => l.split('\t'))
+    .map(([caso, esp, ext, final, veredito]) => [caso, esp, ext, final?.replace(/ \[.*$/, ''), veredito])
+
 interface Gravada {
   caso: string
   assinatura: string
@@ -221,6 +230,9 @@ async function replay(): Promise<Replay | null> {
     const imp = async (f: string) => (await import(pathToFileURL(join(TRIADOR, f)).href)) as Record<string, any>
     const { corridaFixture, placar } = await imp('corrida.ts')
     const { criarPassoModelo } = await imp('modelo.ts')
+    // cada replay num ORQ_DIAG_DIR novo: o ledger de um não pesa no teto do outro
+    const diag = mkdtempSync(join(base, 'diag-'))
+    process.env.ORQ_DIAG_DIR = diag
     const passo = criarPassoModelo(CFG_PECA6)
     let gravadas = 0
     const velhas: string[] = []
@@ -236,7 +248,7 @@ async function replay(): Promise<Replay | null> {
     }
     const linhas = corridaFixture(FX, { modelo, agora: AGORA_PECA6, forcar: true })
     const diags = new Map<string, any>()
-    for (const l of linhas) diags.set(l.caso, JSON.parse(readFileSync(join(base, 'diag', 'fixture-triador-7f', `${l.caso}.json`), 'utf8')))
+    for (const l of linhas) diags.set(l.caso, JSON.parse(readFileSync(join(diag, 'fixture-triador-7f', `${l.caso}.json`), 'utf8')))
     return { texto: placar(linhas), linhas, diags, gravadas, assinaturas_velhas: velhas }
   } catch (e) {
     return null
@@ -250,7 +262,6 @@ describe('aceite (C) do triador, em replay da corrida real da peça 6 (7f-b1b)',
     writeFileSync(join(base, 'trava', 'claude'), `#!/usr/bin/env bash\nprintf '%s\\n' "$*" >> "${join(base, 'trava.log')}"\nexit 99\n`)
     chmodSync(join(base, 'trava', 'claude'), 0o755)
     Object.assign(process.env, {
-      ORQ_DIAG_DIR: join(base, 'diag'),
       ORQ_REPOS: join(base, 'repos.json'),
       ORQ_TRIADOR_CLAUDE: STUB,
       STUB_LOG: join(base, 'stub.log'),
@@ -267,6 +278,22 @@ describe('aceite (C) do triador, em replay da corrida real da peça 6 (7f-b1b)',
   it('(C) as 22 respostas gravadas, da mesma assinatura, reproduzem o placar da corrida real: 21/37', async () => {
     const r = await replay()
     expect({ gravadas: r?.gravadas, velhas: r?.assinaturas_velhas }).toEqual({ gravadas: 22, velhas: [] })
-    expect(r?.texto).toBe(PLACAR_PECA6)
+    // caso, esperado, extração, classe final e veredito de cada linha; a fonte
+    // dos descartados e o custo mudam nas peças 2 e 3 (testes abaixo)
+    expect(classes(r?.texto ?? '')).toEqual(classes(PLACAR_PECA6))
+    expect(r?.texto.split('\n').at(-1)).toMatch(/^-- \(C\) classe e evidência certas: 21\/37 \(aceite: >= 30\); chamadas novas: 22;/)
+  })
+
+  it('(C) todo descarte da resposta do modelo grava modelo.descartado (regra e trecho) e aparece no placar', async () => {
+    const r = await replay()
+    const descartados = [...(r?.diags ?? [])].filter(([, d]) => d.modelo && !d.modelo.pulado && d.fonte !== 'modelo').map(([c]) => c)
+    expect(descartados).toEqual(DESCARTADOS_PECA6)
+    for (const c of DESCARTADOS_PECA6) {
+      const d = r?.diags.get(c)?.modelo?.descartado as { regra?: string; trecho?: string } | undefined
+      expect({ c, regra: typeof d?.regra, trecho: !!d?.trecho }).toEqual({ c, regra: 'string', trecho: true })
+      const linha = r?.texto.split('\n').find((l) => l.startsWith(c)) ?? ''
+      expect(linha.split('\t')[3]).toMatch(new RegExp(`^final \\S+ \\[descartado: ${d?.regra}: .+\\]$`))
+    }
+    for (const [c, d] of r?.diags ?? []) if (d.fonte === 'modelo') expect({ c, descartado: d.modelo?.descartado }).toEqual({ c, descartado: undefined })
   })
 })

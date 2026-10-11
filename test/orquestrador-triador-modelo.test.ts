@@ -150,6 +150,7 @@ describe('modelo do triador, com stub (peça 5)', () => {
     const d = c?.m.diagnosticar(c.ctx.guarda, 'fixture', c.ev, c.ext, c.ctx.assinatura, c.ctx.agora, FX, c.m.criarPassoModelo(CFG))
     expect([d?.classe, d?.fonte, d?.firme, d?.regra]).toEqual(['R4?', 'extracao', false, 'D9'])
     expect(d?.modelo?.erro).toMatch(/envelope ilegível/)
+    expect(d?.modelo?.descartado).toEqual({ regra: 'envelope_ilegivel', trecho: 'rc 0: Error: conexão recusada' })
     expect(chamadas()).toHaveLength(1)
     const l = JSON.parse(readFileSync(join(base, 'diag', 'custo.json'), 'utf8')) as { dias: Record<string, { custo_usd: number | null }[]> }
     expect(l.dias[hoje()]).toEqual([expect.objectContaining({ id: '559', custo_usd: null })])
@@ -173,15 +174,26 @@ describe('modelo do triador, com stub (peça 5)', () => {
 
   it('resposta sem nenhuma evidência que confere, ou com classe fora de R1-R7: vale a extração', async () => {
     const c = await contexto()
-    for (const result of [
-      JSON.stringify({ classe: 'R3', confianca: 'alta', evidencia: [{ arquivo: 'x', linha: 1 }], remedio: 'x', requeue: 'nao', justificativa: '' }),
-      JSON.stringify({ classe: 'R9', confianca: 'alta', evidencia: [], remedio: 'x', requeue: 'nao', justificativa: '' }),
-    ]) {
+    for (const [result, descartado] of [
+      [
+        JSON.stringify({ classe: 'R3', confianca: 'alta', evidencia: [{ arquivo: 'x', linha: 1 }], remedio: 'x', requeue: 'nao', justificativa: '' }),
+        { regra: 'evidencia_nenhuma_confere', trecho: 'x:1' },
+      ],
+      [
+        JSON.stringify({ classe: 'R9', confianca: 'alta', evidencia: [], remedio: 'x', requeue: 'nao', justificativa: '' }),
+        { regra: 'resposta_sem_classe', trecho: expect.stringMatching(/^\{"classe":"R9"/) },
+      ],
+    ] as const) {
       envelope(result)
       const d = c?.m.diagnosticar(c.ctx.guarda, 'fixture', c.ev, c.ext, c.ctx.assinatura, c.ctx.agora, FX, c.m.criarPassoModelo(CFG))
       expect([d?.classe, d?.fonte]).toEqual(['R4?', 'extracao'])
       expect(d?.modelo?.erro).toBeTruthy()
+      expect(d?.modelo?.descartado).toEqual(descartado)
     }
+    // envelope com is_error (e result): o motivo é o result
+    writeFileSync(join(base, 'resposta.json'), JSON.stringify({ type: 'result', subtype: 'success', is_error: true, result: 'API Error: 529 overloaded', total_cost_usd: 0 }))
+    const d = c?.m.diagnosticar(c.ctx.guarda, 'fixture', c.ev, c.ext, c.ctx.assinatura, c.ctx.agora, FX, c.m.criarPassoModelo(CFG))
+    expect(d?.modelo?.descartado).toEqual({ regra: 'envelope_is_error', trecho: 'API Error: 529 overloaded' })
   })
 
   it('sem stub, sob teste, a chamada real é recusada antes de existir processo', async () => {
