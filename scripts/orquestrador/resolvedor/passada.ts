@@ -27,6 +27,7 @@ import { GuardaResolvedor, arquivoDryRun, interruptor, travarPassada } from './c
 import { decidir, type Decisao } from './decidir.js'
 import { apurarAcoes, apurarPropostas, registrarSemAcao } from './desfecho.js'
 import { acharRepo, lerReposResolvedor, type Modo, type RepoResolvedor } from './modos.js'
+import { promoverRebaixar } from './promocao.js'
 
 export const TETO_DIA_USD = 5
 
@@ -138,6 +139,8 @@ function passadaTravada(repos: RepoResolvedor[], g: GuardaResolvedor, agora: num
     if (!dryRun) {
       apurarAcoes(g, repo, agora)
       apurarPropostas(g, repo, agora)
+      // e o modo que vale nesta passada já é o depois da promoção/rebaixamento (peça 6)
+      promoverRebaixar(g, repo, agora)
     }
     for (const { id, dependentes } of ordenarBloqueados(repo.caminho)) {
       if (existsSync(interruptor())) break

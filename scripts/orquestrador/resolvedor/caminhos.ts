@@ -59,7 +59,8 @@ export class GuardaResolvedor {
 
   escrever(destino: string, conteudo: string): void {
     const real = this.confere(destino)
-    mkdirSync(this.confere(dirname(real)), { recursive: true })
+    // o repos.json não ganha diretório: ele já existe (a promoção só regrava)
+    if (real !== this.repos) mkdirSync(this.confere(dirname(real)), { recursive: true })
     // troca atômica: quem lê (o painel, a próxima passada) nunca vê meio arquivo
     const tmp = `${real}.tmp-${process.pid}`
     if (real !== this.repos) this.confere(tmp)
