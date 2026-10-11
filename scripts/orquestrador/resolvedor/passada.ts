@@ -31,8 +31,9 @@ import { agirR1R5, agirR2 } from './acoes.js'
 import { GuardaResolvedor, arquivoDryRun, interruptor, travarPassada } from './caminhos.js'
 import { decidir, type Decisao } from './decidir.js'
 import { apurarAcoes, apurarPropostas, registrarSemAcao } from './desfecho.js'
+import { decidirPausa, retomar, textoVeredito, type Decisao as DecisaoPausa } from './gate-streak.js'
 import { avisarPausa } from './pausa.js'
-import { acharRepo, lerReposResolvedor, lerTetoReservaAuto, type Modo, type RepoResolvedor } from './modos.js'
+import { PAUSA_GATE_PADRAO, acharRepo, lerReposResolvedor, lerTetoReservaAuto, type Modo, type RepoResolvedor } from './modos.js'
 import { promoverRebaixar } from './promocao.js'
 
 export const TETO_DIA_USD = 5
@@ -121,6 +122,12 @@ function passoModelo(repo: RepoResolvedor, todos: RepoResolvedor[]) {
   return criarPassoModelo({ ...lerConfigModelo(), teto_dia_usd: teto }, fatia)
 }
 
+/** O que da decisão da pausa de gate vai ao ledger (linha `pausa`). */
+const ledgerDaDecisao = (d: DecisaoPausa) => ({
+  veredito: { tipo: d.veredito.tipo, gate: d.veredito.gate, tickets: d.veredito.tickets, comuns: d.veredito.comuns, motivo: d.veredito.motivo, lidos: d.veredito.lidos },
+  pausa_gate: { modo: d.modo, retomar: d.retomar, porque: d.porque },
+})
+
 /** O diagnóstico atual do ticket: o que a triagem acabou de gravar, ou o gravado com a mesma assinatura. */
 function triar(repo: RepoResolvedor, todos: RepoResolvedor[], id: string, agora: number, semModelo: boolean): Diagnostico | null {
   const modelo = semModelo ? null : passoModelo(repo, todos)
@@ -174,8 +181,16 @@ function passadaTravada(repos: RepoResolvedor[], todos: RepoResolvedor[], g: Gua
     if (existsSync(interruptor())) break
     // o desfecho do que já foi feito vem antes da triagem nova (peça 5)
     if (!dryRun) {
-      // pausa nova no repo: um aviso por pausa (peça 6 da 7f-b5); a pausa só é lida
-      avisarPausa(g, repo, agora)
+      // pausa nova no repo: um aviso por pausa (7f-b5, peça 6), com o veredito
+      // da pausa de gate sistêmico (peça 7); em pausa_gate auto e falso
+      // positivo, a retomada pelo script do repo vem depois do aviso
+      let decisao: DecisaoPausa | null = null
+      const aviso = avisarPausa(g, repo, agora, (p) => {
+        decisao = decidirPausa(repo.caminho, repo.nome, repo.pausaGate ?? PAUSA_GATE_PADRAO, p, agora)
+        return decisao ? { texto: textoVeredito(decisao), ledger: ledgerDaDecisao(decisao) } : null
+      })
+      const d = decisao as DecisaoPausa | null
+      if (aviso && d?.retomar) retomar(g, repo, aviso.pausa, d, agora)
       apurarAcoes(g, repo, agora)
       apurarPropostas(g, repo, agora)
       // e o modo que vale nesta passada já é o depois da promoção/rebaixamento (peça 6)

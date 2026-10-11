@@ -12,6 +12,7 @@
  *   auto         tria e aplica a ação da classe no ticket (com as travas de acoes.ts)
  *
  * No topo do repos.json, `teto_reserva_auto` (7f-b4, `lerTetoReservaAuto`).
+ * No item, `pausa_gate` (7f-b5, `pausaGateDe`): diagnostico | sombra | auto, padrão sombra.
  *
  * O nome e o caminho saem de `lerRepos` (triador/saida.ts), a mesma leitura do
  * painel; este arquivo só acrescenta o campo. A promoção e o rebaixamento
@@ -29,7 +30,12 @@ export type Modos = { padrao: Modo } & Record<string, Modo>
 
 export interface RepoResolvedor extends RepoListado {
   modos: Modos
+  /** `pausa_gate` do item (7f-b5, peça 7): o que fazer com a pausa de gate sistêmico; padrão sombra */
+  pausaGate?: Modo
 }
+
+export const PAUSA_GATE_PADRAO: Modo = 'sombra'
+export const pausaGateDe = (campo: unknown): Modo => (ehModo(campo) ? campo : PAUSA_GATE_PADRAO)
 
 const ehModo = (v: unknown): v is Modo => typeof v === 'string' && (MODOS as readonly string[]).includes(v)
 
@@ -85,7 +91,8 @@ export function lerReposResolvedor(): RepoResolvedor[] {
   const crus = itensCrus().filter((it) => caminhoDoItem(it) !== null)
   return listados.map((r, i) => {
     const it = crus[i]
-    return { ...r, modos: modosDe(it && typeof it === 'object' ? (it as { resolvedor?: unknown }).resolvedor : undefined) }
+    const obj = it && typeof it === 'object' ? (it as { resolvedor?: unknown; pausa_gate?: unknown }) : undefined
+    return { ...r, modos: modosDe(obj?.resolvedor), pausaGate: pausaGateDe(obj?.pausa_gate) }
   })
 }
 
