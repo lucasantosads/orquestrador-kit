@@ -130,6 +130,8 @@ export interface OpcoesTriar {
   agora?: number
 }
 
+const diaUtc = (t: number) => new Date(t).toISOString().slice(0, 10)
+
 export function triarTicket(o: OpcoesTriar): Resultado {
   const agora = o.agora ?? Date.now()
   const g = new Guarda([o.repo.caminho])
@@ -145,7 +147,10 @@ export function triarTicket(o: OpcoesTriar): Resultado {
   // triado sem modelo (o job sem `claude`, ou --sem-modelo) quando o modelo cabia:
   // com o modelo de volta, a mesma assinatura é triada de novo, uma vez (7f-b4)
   const semModeloAntes = !!o.modelo && existente?.modelo === null && !existente.extracao.firme && existente.extracao.regra !== 'D0'
-  if (!o.passada && !o.forcar && existente?.assinatura === assin && !semModeloAntes) return { id: o.id, feito: 'mesma_assinatura' }
+  // pulado pelo teto do dia num dia UTC anterior: triado de novo, uma vez por
+  // dia (o gerado_em passa a ser de hoje), mesmo com a mesma assinatura (7f-b5)
+  const puladoOntem = !!o.modelo && !!existente && (existente.modelo as { pulado?: unknown } | null)?.pulado === 'teto_dia' && existente.gerado_em.slice(0, 10) < diaUtc(agora)
+  if (!o.passada && !o.forcar && existente?.assinatura === assin && !semModeloAntes && !puladoOntem) return { id: o.id, feito: 'mesma_assinatura' }
   const soltar = travar(g, o.repo.nome, o.id, agora)
   if (!soltar) return { id: o.id, feito: 'travado' }
   try {
