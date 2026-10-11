@@ -21,6 +21,11 @@
  *       devolve o `envelope_bruto` gravado (com o rc da corrida), e o envelope
  *       passa pelo parser, pela conferência da evidência e pelo ledger de
  *       verdade. Nenhuma chamada de API.
+ *       Regra de evidência (7f-b1b, peça 4): a evidência é certa se casa a da
+ *       medição (mesmo arquivo; linha a ±3) OU se é EQUIVALENTE: a linha
+ *       existe na cópia, o trecho citado está nela, ela carrega o sinal da
+ *       classe e sustenta o remédio (ver \`equivalente\`). R5, R6 e R7 não têm
+ *       equivalente: só a da medição conta.
  *
  * Os módulos do triador entram por import DINÂMICO tolerante: sem eles, todo
  * caso sai "sem diagnóstico" e o vermelho é de asserção (0 de 15 firmes), não
@@ -202,12 +207,106 @@ const PLACAR_PECA6 = [
 
 // os 6 que saíram [extracao] na corrida real sem o motivo no placar
 const DESCARTADOS_PECA6 = ['08-635-L58105', '14-407a-L67585', '25-711a-L78138', '28-707-L79202', '29-826-L80362', '33-707-L83026']
+// os 8 "classe certa, evidência fora" da corrida real
+const EVIDENCIA_FORA_PECA6 = ['12-691-L65374', '13-346d-L66187', '18-737-L69920', '24-867-L76790', '26-711b3-L78647', '27-741-L79081', '30-900-L81564', '34-898-L83625']
 const classes = (texto: string) =>
   texto
     .split('\n')
     .slice(0, -1)
     .map((l) => l.split('\t'))
     .map(([caso, esp, ext, final, veredito]) => [caso, esp, ext, final?.replace(/ \[.*$/, ''), veredito])
+
+// ─── regra de evidência equivalente (peça 4) ────────────────────────────────
+
+interface Lido {
+  arquivo: string
+  conteudo: string
+  faixas?: [number, number][]
+}
+interface Diag {
+  classe: string | null
+  remedio: string
+  evidencia: (Ref & { trecho?: string })[]
+}
+
+/** As linhas do arquivo lido como [número original, texto]. */
+function linhasDe(l: Lido): [number, string][] {
+  const ts = l.conteudo.split('\n')
+  if (!l.faixas) return ts.map((t, i) => [i + 1, t])
+  const ns = l.faixas.flatMap(([a, b]) => Array.from({ length: b - a + 1 }, (_, i) => a + i))
+  return ns.map((n, i) => [n, ts[i] ?? ''])
+}
+
+const norm = (t: string) => t.replace(/\\"/g, '"').replace(/\s+/g, ' ').trim()
+/** O trecho citado está na linha: cada pedaço entre "..." ou "…" aparece nela, em ordem. */
+function trechoNaLinha(trecho: string, linha: string): boolean {
+  const l = norm(linha)
+  let i = 0
+  for (const p of norm(trecho).split(/\.\.\.|…/).map((x) => x.trim()).filter(Boolean)) {
+    const j = l.indexOf(p, i)
+    if (j < 0) return false
+    i = j + p.length
+  }
+  return l.length > 0
+}
+
+const ehTeste = (f: string) => /(^|\/)test\/|\.test\.tsx?$/.test(f)
+const arquivosDe = (t: string) => [...t.matchAll(/((?:test|src)\/[\w./\[\]-]+\.(?:tsx?|sql))/g)].map((m) => m[1]!)
+
+/**
+ * A linha carrega o sinal da classe e sustenta o remédio:
+ *   R1  um vermelho (\`FAIL\`, \`❯ arquivo:linha\`, \`fora_do_pathspec\`) ou uma linha
+ *       do diff.stat de um TESTE fora da allowlist, e o remédio cita esse teste;
+ *   R2  a linha está num bloco \`### criterio[i] -> FALHA\` do criterios.txt (ou
+ *       é o "criterio[i] mecânico" do log do motor), e o remédio cita criterio[i];
+ *   R3  linha do juiz ou do log do motor com sinal de decisão humana (token,
+ *       lista fechada, autorização, liberacoes.json, DDL/FK, refatiar, motor),
+ *       e o remédio pede decisão/autorização/token;
+ *   R4  um vermelho do gate de testes num teste DENTRO da allowlist (o aceite
+ *       achou a falta), e o remédio é ticket novo.
+ */
+function sinal(classe: string, arquivo: string, n: number, linha: string, todas: [number, string][], allow: string[], remedio: string): boolean {
+  const fora = (f: string) => ehTeste(f) && !allow.includes(f)
+  const vermelho = /(^|\s)FAIL\s|❯ \S+:\d+|fora_do_pathspec|ENFORCEMENT BLOQUEOU/.test(linha)
+  if (classe === 'R1') {
+    const testes = arquivosDe(linha).filter(fora)
+    const ok = vermelho || arquivo.endsWith('/diff.stat')
+    return ok && testes.some((t) => remedio.includes(t))
+  }
+  if (classe === 'R2') {
+    let crit: string | null = null
+    if (arquivo.endsWith('/criterios.txt')) {
+      const cab = todas.filter(([m, t]) => m <= n && t.startsWith('### ')).at(-1)
+      crit = cab && /-> FALHA/.test(cab[1]) ? (/criterio\[\d+\]/.exec(cab[1])?.[0] ?? null) : null
+    } else if (arquivo.endsWith('local-loop.log')) crit = /(criterio\[\d+\]) mecânico/.exec(linha)?.[1] ?? null
+    return crit !== null && remedio.includes(crit)
+  }
+  if (classe === 'R3') {
+    const doJuiz = /\/(avaliador-claude\.txt|verdict\.json)$|local-loop\.log$/.test(arquivo)
+    const humano = /token|lista fechada|autoriza|liberacoes\.json|\bDDL\b|\bFK\b|foreign key|refati|motor/i
+    return doJuiz && humano.test(linha) && /token|decid|autoriz|liberac|refati|motor|OK do/i.test(remedio)
+  }
+  if (classe === 'R4') {
+    const testes = arquivosDe(linha).filter((f) => ehTeste(f) && allow.includes(f))
+    return arquivo.endsWith('/gate-vitest.txt') && vermelho && testes.length > 0 && /ticket/i.test(remedio)
+  }
+  return false
+}
+
+/** Uma evidência do diagnóstico, diferente da medição, que vale por ela (peça 4). */
+function equivalente(d: Diag, lidos: Lido[], allow: string[]): string[] {
+  if (!d.classe) return []
+  const ok: string[] = []
+  for (const r of d.evidencia) {
+    const l = lidos.find((x) => x.arquivo === r.arquivo)
+    if (!l || r.linha === null) continue
+    const todas = linhasDe(l)
+    const linha = todas.find(([n]) => n === r.linha)?.[1]
+    if (linha === undefined || !trechoNaLinha(r.trecho ?? '', linha)) continue
+    if (sinal(d.classe, r.arquivo, r.linha, linha, todas, allow, d.remedio)) ok.push(`${r.arquivo}:${r.linha}`)
+  }
+  return ok
+}
 
 interface Gravada {
   caso: string
@@ -217,7 +316,7 @@ interface Gravada {
 interface Replay {
   texto: string
   linhas: { caso: string; esperado: string | null; final: string | null; fonte: string; certo: boolean; evidencia_certa: boolean }[]
-  diags: Map<string, { classe: string | null; fonte: string; evidencia: Ref[]; modelo: Record<string, unknown> | null }>
+  diags: Map<string, Diag & { fonte: string; modelo: Record<string, unknown> | null }>
   gravadas: number
   assinaturas_velhas: string[]
 }
@@ -253,6 +352,17 @@ async function replay(): Promise<Replay | null> {
   } catch (e) {
     return null
   }
+}
+
+/** O placar do replay com as duas regras: medição (±3) e equivalente (peça 4). */
+async function placarComEquivalencia() {
+  const r = await replay()
+  const t = await carregar()
+  return (r?.linhas ?? []).map((l) => {
+    const ev = t?.lerCasoDeFixture(join(FX, l.caso), { instante: 'passada' }) as { lidos: Lido[]; ticket: { pathspec_allowlist?: string[] } | null } | undefined
+    const eq = l.certo && !l.evidencia_certa ? equivalente(r!.diags.get(l.caso)!, ev?.lidos ?? [], ev?.ticket?.pathspec_allowlist ?? []) : []
+    return { caso: l.caso, certo: l.certo, medicao: l.evidencia_certa, equivalente: eq }
+  })
 }
 
 describe('aceite (C) do triador, em replay da corrida real da peça 6 (7f-b1b)', () => {
@@ -307,5 +417,47 @@ describe('aceite (C) do triador, em replay da corrida real da peça 6 (7f-b1b)',
     expect(r?.texto.split('\n').at(-1)).toMatch(/chamadas novas: 22; custo desta corrida: US\$ 6\.1265$/)
     // 0 dos 6 passam a usar a resposta do modelo: o envelope não tem result
     expect(DESCARTADOS_PECA6.filter((c) => r?.diags.get(c)?.fonte === 'modelo')).toEqual([])
+  })
+
+  it('(C) com a regra de evidência equivalente: dos 8 "classe certa, evidência fora", 7 valem; o 741 não (sem artefato da falta)', async () => {
+    const placar = await placarComEquivalencia()
+    const fora = placar.filter((p) => p.certo && !p.medicao)
+    expect(fora.map((p) => p.caso)).toEqual(EVIDENCIA_FORA_PECA6)
+    // as refs que valem; as que NÃO valem ficam de fora por falta de sinal ou de trecho:
+    // "Tests N passed" (737, 741, 900), diff.stat vazio (741, 867), ST_1_5 (867), AUSENTE/VERMELHO (741),
+    // a linha do juiz no 898 (R2 pede bloco FALHA), e no 711b3 o saude-motivo (o remédio cita só o sem-insumo)
+    const R = 'docs/fila/runs/'
+    expect(Object.fromEntries(fora.map((p) => [p.caso, p.equivalente.map((x) => x.replace(R, ''))]))).toEqual({
+      '12-691-L65374': ['691/attempt-2.prev1/criterios.txt:68', '691/attempt-2.prev1/criterios.txt:71', '691/attempt-1.prev1/criterios.txt:71'],
+      '13-346d-L66187': ['346d/attempt-1.prev1/gate-vitest.txt:1423', '346d/attempt-1.prev1/gate-vitest.txt:1607', '346d/attempt-2/diff.stat:3'],
+      '18-737-L69920': ['737/attempt-3/criterios.txt:52', '737/attempt-3/criterios.txt:55', '737/attempt-2.prev1/criterios.txt:55'],
+      '24-867-L76790': ['867/attempt-2/avaliador-claude.txt:1', '867/attempt-1.prev1/avaliador-claude.txt:1'],
+      '26-711b3-L78647': [4654, 6222, 6212, 7780].flatMap((n) => [`711b3/attempt-2.prev1/gate-vitest.txt:${n}`]).concat([4654, 6222, 6212, 7780].map((n) => `711b3/attempt-3/gate-vitest.txt:${n}`)),
+      '27-741-L79081': [],
+      '30-900-L81564': ['900/attempt-2/criterios.txt:60', '900/attempt-2/criterios.txt:63', '900/attempt-1.prev1/criterios.txt:63'],
+      '34-898-L83625': ['898/attempt-3/criterios.txt:36', '898/attempt-3/criterios.txt:39'],
+    })
+    expect(placar.filter((p) => p.certo && (p.medicao || p.equivalente.length)).length).toBe(28)
+  })
+
+  it('(C) a regra não afrouxa: trecho que não está na linha, linha sem o sinal, ou remédio que não cita o alvo não valem', async () => {
+    const t = await carregar()
+    const ev = t?.lerCasoDeFixture(join(FX, '12-691-L65374'), { instante: 'passada' }) as { lidos: Lido[] } | undefined
+    const lidos = ev?.lidos ?? []
+    const a = 'docs/fila/runs/691/attempt-2.prev1/criterios.txt'
+    const rem = 'No .md, no criterio[8], troque `|| echo 0` por `|| true`'
+    const d = (evidencia: Diag['evidencia'], remedio = rem, classe = 'R2'): Diag => ({ classe, remedio, evidencia })
+    expect(equivalente(d([{ arquivo: a, linha: 71, trecho: 'SQL_1_0 0' }]), lidos, [])).toEqual([`${a}:71`])
+    expect(equivalente(d([{ arquivo: a, linha: 71, trecho: 'UM_SQL' }]), lidos, [])).toEqual([]) // trecho inventado
+    expect(equivalente(d([{ arquivo: a, linha: 65, trecho: '### criterio[8] -> FALHA' }]), lidos, [])).toEqual([`${a}:65`])
+    expect(equivalente(d([{ arquivo: a, linha: 57, trecho: '### criterio[7] -> PASS' }]), lidos, [])).toEqual([]) // bloco PASS
+    expect(equivalente(d([{ arquivo: a, linha: 71, trecho: 'SQL_1_0 0' }], 'no criterio[3], troque x'), lidos, [])).toEqual([]) // outro critério
+    expect(equivalente(d([{ arquivo: a, linha: 71, trecho: 'SQL_1_0 0' }], rem, 'R5'), lidos, [])).toEqual([]) // R5 só pela medição
+  })
+
+  // it.fails: passa enquanto o aceite NÃO é atingido; vira vermelho (e pede atualizar) quando chegar a 30
+  it.fails('(C) aceite ≥ 30/37 (spec 7f-a §7.2): ainda não; 28/37 com a regra de equivalência, sem a mini-corrida', async () => {
+    const placar = await placarComEquivalencia()
+    expect(placar.filter((p) => p.certo && (p.medicao || p.equivalente.length)).length).toBeGreaterThanOrEqual(30)
   })
 })
