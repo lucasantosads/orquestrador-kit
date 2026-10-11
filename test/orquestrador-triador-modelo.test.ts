@@ -276,7 +276,8 @@ describe('modelo do triador, com stub (peça 5)', () => {
     expect(chamadas()).toHaveLength(21)
     expect(r.stdout).toMatch(/-- \(C\) classe e evidência certas: \d+\/37 \(aceite: >= 30\); chamadas novas: 21; custo desta corrida: US\$ 6\.3000/)
     const dir = join(base, 'diag', 'fixture-triador-7f')
-    expect(readdirSync(dir).filter((f) => existsSync(join(dir, f, 'resposta-modelo.json')))).toHaveLength(22)
+    // 21 palpites: o 346d sai R1 firme pela D6b (7f-b3) e não grava resposta
+    expect(readdirSync(dir).filter((f) => existsSync(join(dir, f, 'resposta-modelo.json')))).toHaveLength(21)
     expect(orq('6.60').stdout).toMatch(/chamadas novas: 0;/)
     expect(chamadas()).toHaveLength(21)
     expect(spawnSync('git', ['status', '--porcelain', '--', FX], { encoding: 'utf8', cwd: RAIZ, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } }).stdout).toBe(antes)

@@ -15,7 +15,10 @@ De onde sai cada caso (spec 7f-a §7.1):
     vermelho intermediário. Nenhum deles pode sair firme;
   - 5 de série cortada (`cortados/`, 7f-b1-7): controles cortados na última
     tentativa que reprovou. Saem de `controle/`, sem o comarka
-    (`--so-cortados` refaz só eles). Nenhum deles pode sair firme.
+    (`--so-cortados` refaz só eles). Nenhum deles pode sair firme;
+  - os bloqueios do primeiro dia do resolvedor (`primeiro-dia/`, 7f-b3): o
+    1006 de 11/10, com a classe do conserto humano (`--so-primeiro-dia` refaz
+    só eles, lendo o comarka).
 
 O que vai para cada caso é SÓ o que o triador lê, já recortado:
   caso.json, ticket.json, meta.json, config.json, log.txt, serie.json,
@@ -90,6 +93,13 @@ CONTROLE = ["633", "671d", "624", "694", "627e", "656", "808", "706", "367", "89
 # reprovou, como se o motor tivesse bloqueado ali. Com a D6 da spec, os 5 saíam
 # R1 firme, e errado: o próprio agente resolveu o vermelho no retry.
 CORTADOS = ["671d", "624", "627e", "808", "367"]
+
+# Primeiro dia do resolvedor (11/10, 7f-b3): id, L (BLOQUEADO no local-loop.log),
+# classe do conserto humano, a evidência (como em CASOS) e a fonte da verdade.
+PRIMEIRO_DIA = [
+    ("1006", 88744, "R1", ["runs/1006/attempt-1/gate-vitest.txt:2041", "runs/1006/attempt-2/enforcement.json"],
+     "~/orq-sessoes/conserto-1006.md (R1: test/quem-cuida.test.ts na allowlist com guarda; a mudança do agente no teste era só um vi.mock)"),
+]
 
 # --- O recorte: o MESMO algoritmo de triador/recorte.ts -----------------------
 ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
@@ -611,6 +621,18 @@ def monta_cortado(saida, nn, tid):
     return destino
 
 
+def monta_primeiro_dia(cm, saida):
+    """Os casos de `PRIMEIRO_DIA`, montados como os 37 (monta_caso), em
+    `primeiro-dia/`; o esperado aponta o conserto humano, não a medição."""
+    destino = os.path.join(saida, "primeiro-dia")
+    subprocess.run(["rm", "-rf", destino], check=True)
+    for nn, (tid, L, classe, cit, fonte) in enumerate(PRIMEIRO_DIA, 1):
+        print("primeiro-dia", nn, tid, L, file=sys.stderr)
+        d = monta_caso(cm, destino, nn, tid, L, classe, None, cit)
+        esp = json.load(open(os.path.join(d, "esperado.json")))
+        json_escreve(os.path.join(d, "esperado.json"), {**esp, "fonte_da_verdade": fonte})
+
+
 INTEIROS = [("627j", "docs/fila/runs/627j/attempt-3/gate-vitest.txt"),
             ("627b", "docs/fila/runs/627b/attempt-1.prev1/gate-vitest.txt"),
             ("600", "docs/fila/runs/600/attempt-3/gate-vitest.txt")]
@@ -621,7 +643,11 @@ def main():
     ap.add_argument("--comarka", default=os.path.expanduser("~/Projetos/comarka-operacional"))
     ap.add_argument("--saida", default=AQUI)
     ap.add_argument("--so-cortados", action="store_true", help="refaz só cortados/, a partir de controle/ (sem o comarka)")
+    ap.add_argument("--so-primeiro-dia", action="store_true", help="refaz só primeiro-dia/ (lê o comarka)")
     a = ap.parse_args()
+    if a.so_primeiro_dia:
+        monta_primeiro_dia(Comarka(os.path.abspath(a.comarka)), a.saida)
+        return
     subprocess.run(["rm", "-rf", os.path.join(a.saida, "cortados")], check=True)
     if a.so_cortados:
         for nn, tid in enumerate(CORTADOS, 1):

@@ -74,9 +74,10 @@ const ddmm = (agora: number) => {
   return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
-export function descricaoGuarda(teste: string, c: Contagem, ref: string, assinatura: string, agora: number): string {
+export function descricaoGuarda(teste: string, c: Contagem, ref: string, assinatura: string, agora: number, regra = 'D6'): string {
+  const porque = regra === 'D6b' ? 'vermelho fora da allowlist e barrado pelo enforcement' : 'vermelho fora da allowlist acoplado ao diff'
   return (
-    `anti-afrouxamento: ${teste} (entrou na allowlist em ${ddmm(agora)} pelo resolvedor, R1 D6 ${assinatura.slice(0, 12)}: vermelho fora da allowlist acoplado ao diff) ` +
+    `anti-afrouxamento: ${teste} (entrou na allowlist em ${ddmm(agora)} pelo resolvedor, R1 ${regra} ${assinatura.slice(0, 12)}: ${porque}) ` +
     `mantem >= ${c.it + c.test} it(/test( e >= ${c.expect} expect( e nao tem .skip/.only/.todo ` +
     `(medido em ${ref} em ${ddmm(agora)}: ${c.it} it(, ${c.test} test(, ${c.expect} expect(, ${c.skip} skip/only/todo)`
   )
@@ -147,7 +148,7 @@ export function planejarR1(raiz: string, diag: Diagnostico, md: string, agora: n
       novo = trocarCmd(novo, i, `${cmd.slice(0, fim)} '${teste}'${cmd.slice(fim)}`)
     }
     novo = inserirCriterio(novo, depoisDe, {
-      descricao: descricaoGuarda(teste, c, fonte.ref, diag.assinatura, agora),
+      descricao: descricaoGuarda(teste, c, fonte.ref, diag.assinatura, agora, diag.regra ?? 'D6'),
       cmd: cmdGuarda(teste, c.it + c.test, c.expect),
       espera: 'CONTAGEM_MANTIDA',
       tipo: 'guarda',

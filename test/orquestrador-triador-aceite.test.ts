@@ -12,9 +12,16 @@
  *       menos o 346d: com a restrição da D6 (7f-b1-7, decisão do chat do
  *       programa), R1 só é firme com o mesmo vermelho fora da allowlist em ≥ 2
  *       tentativas; o 346d tem uma só e vira `R1?`. Ficam 15.
+ *       Com a D6b (7f-b3), o 346d volta a firme: enforcement na tentativa 2
+ *       por mexer no teste que estava vermelho na 1. Ficam os 16 da spec.
  *   (controle) nenhum dos 20 sai firme.
  *   (cortados) nenhum dos 5 de série cortada sai firme: com a D6 da spec os 5
  *       saíam R1 firme, e errado (o agente resolveu o vermelho no retry).
+ *   (primeiro-dia) o 1006 de 11/10 (7f-b3): vermelho em
+ *       test/quem-cuida.test.ts:137 na tentativa 1 e enforcement
+ *       (fora_do_pathspec do mesmo arquivo) na 2. O legado do Comarka roda o
+ *       enforcement antes dos gates, então a D6 (o vermelho em ≥ 2 tentativas)
+ *       nunca fecha; a D6b fecha R1 firme. O humano consertou como R1.
  *   (C) extração + modelo, por REPLAY (7f-b1b): as 22 `resposta-modelo.json`
  *       da corrida real da peça 6 (10/10, `~/.orq/corrida-7f-peca6/`) estão
  *       copiadas em `<caso>/resposta-modelo.json`. O `claude` é o stub, que
@@ -100,9 +107,10 @@ function evidenciaCasa(dada: Ref[], esp: Ref[]): boolean {
   )
 }
 
-// Spec §3.3: os 16 firmes e certos, menos o 346d (D6 com ≥ 2 tentativas, 7f-b1-7).
+// Spec §3.3: os 16 firmes e certos. O 346d saiu na 7f-b1-7 (D6 com ≥ 2
+// tentativas) e voltou na 7f-b3 pela D6b (enforcement no teste vermelho).
 const FIRMES_DA_SPEC = [
-  '07-627j-L57368', '11-689-L65280', '15-722-L67970', '17-715-L68793',
+  '07-627j-L57368', '11-689-L65280', '13-346d-L66187', '15-722-L67970', '17-715-L68793',
   '22-762-L72665', '23-856-L73817', '26-711b3-L78647', '35-950-L85145',
   '20-801-L72121', '21-760-L72407', '31-898-L82594', '32-741a-L82726', '36-940-L85222', '37-932-L85272',
   '16-723-L68736',
@@ -126,16 +134,16 @@ describe('aceite do triador (spec 7f-a §7.2)', () => {
       expect({ nome, classe: r.get(nome)?.classe, firme: r.get(nome)?.firme }).toEqual({ nome, classe: 'R5?', firme: false })
     }
     const firmes = [...r].filter(([, x]) => x.firme).map(([n]) => n)
-    expect(firmes).toHaveLength(13)
+    expect(firmes).toHaveLength(14)
   })
 
-  it('(B) zero firme errado nos 37, e os firmes certos são os 15 (16 da spec menos o 346d)', async () => {
+  it('(B) zero firme errado nos 37, e os firmes certos são os 16 da spec (o 346d pela D6b)', async () => {
     const r = await triarTodos('', 'passada')
     const firmes = [...r].filter(([, x]) => x.firme)
     const errados = firmes.filter(([n, x]) => x.classe !== esperado(n).classe).map(([n, x]) => `${n}=${x.classe}`)
     expect(errados).toEqual([])
     expect(firmes.map(([n]) => n).sort()).toEqual(FIRMES_DA_SPEC)
-    expect({ classe: r.get('13-346d-L66187')?.classe, firme: r.get('13-346d-L66187')?.firme }).toEqual({ classe: 'R1?', firme: false })
+    expect({ classe: r.get('13-346d-L66187')?.classe, firme: r.get('13-346d-L66187')?.firme, regra: r.get('13-346d-L66187')?.regra }).toEqual({ classe: 'R1', firme: true, regra: 'D6b' })
   })
 
   it('(controle) nenhum dos 20 done sai firme, nos dois instantes', async () => {
@@ -151,6 +159,19 @@ describe('aceite do triador (spec 7f-a §7.2)', () => {
       const r = await triarTodos('cortados', instante)
       expect(r.size).toBe(5)
       expect([...r].filter(([, x]) => x.firme).map(([n, x]) => `${n}=${x.classe}`)).toEqual([])
+    }
+  })
+
+  it('(primeiro-dia) o 1006 sai R1 firme pela D6b, com o vermelho :137 e o enforcement de prova, nos dois instantes', async () => {
+    const caso = '01-1006-L88744'
+    const esp = JSON.parse(readFileSync(join(FX, 'primeiro-dia', caso, 'esperado.json'), 'utf8')) as Esperado
+    for (const instante of ['bloqueio', 'passada'] as const) {
+      const x = (await triarTodos('primeiro-dia', instante)).get(caso) ?? SEM_DIAGNOSTICO
+      expect({ instante, classe: x.classe, firme: x.firme, regra: x.regra }).toEqual({ instante, classe: 'R1', firme: true, regra: 'D6b' })
+      expect(evidenciaCasa(x.evidencia, esp.evidencia ?? []), JSON.stringify(x.evidencia)).toBe(true)
+      expect(x.evidencia.map((e) => `${e.arquivo}:${e.linha}`)).toEqual(
+        expect.arrayContaining(['docs/fila/runs/1006/attempt-1/gate-vitest.txt:2041', 'docs/fila/runs/1006/attempt-2/enforcement.json:1']),
+      )
     }
   })
 
@@ -205,10 +226,20 @@ const PLACAR_PECA6 = [
   "-- (C) classe e evidência certas: 21/37 (aceite: >= 30); chamadas novas: 22; custo desta corrida: US$ 4.1376",
 ].join('\n')
 
+// 7f-b3: com a D6b, o 346d sai R1 firme na extração (enforcement no teste
+// vermelho da tentativa 1) e não vai mais ao modelo. O replay da corrida real
+// fica igual nas outras 36 linhas; a resposta gravada do 346d (US$ 0,2424) não
+// é mais consumida: 21 gravadas, 21 chamadas, 22/37.
+const LINHA_346D_7F_B3 = '13-346d-L66187\tesperado R1\textração R1 (D6b)\tfinal R1 [extracao]\tCERTO\t'
+const PLACAR_7F_B3 = PLACAR_PECA6.split('\n')
+  .map((l) => (l.startsWith('13-346d-') ? LINHA_346D_7F_B3 : l))
+  .join('\n')
+
 // os 6 que saíram [extracao] na corrida real sem o motivo no placar
 const DESCARTADOS_PECA6 = ['08-635-L58105', '14-407a-L67585', '25-711a-L78138', '28-707-L79202', '29-826-L80362', '33-707-L83026']
-// os 8 "classe certa, evidência fora" da corrida real
-const EVIDENCIA_FORA_PECA6 = ['12-691-L65374', '13-346d-L66187', '18-737-L69920', '24-867-L76790', '26-711b3-L78647', '27-741-L79081', '30-900-L81564', '34-898-L83625']
+// os 8 "classe certa, evidência fora" da corrida real, menos o 346d (7f-b3:
+// firme pela D6b, com a evidência da medição)
+const EVIDENCIA_FORA_PECA6 = ['12-691-L65374', '18-737-L69920', '24-867-L76790', '26-711b3-L78647', '27-741-L79081', '30-900-L81564', '34-898-L83625']
 const classes = (texto: string) =>
   texto
     .split('\n')
@@ -385,13 +416,13 @@ describe('aceite (C) do triador, em replay da corrida real da peça 6 (7f-b1b)',
     process.env = { ...envAntes }
   })
 
-  it('(C) as 22 respostas gravadas, da mesma assinatura, reproduzem o placar da corrida real: 21/37', async () => {
+  it('(C) as respostas gravadas, da mesma assinatura, reproduzem o placar da corrida real, com o 346d firme (7f-b3): 22/37', async () => {
     const r = await replay()
-    expect({ gravadas: r?.gravadas, velhas: r?.assinaturas_velhas }).toEqual({ gravadas: 22, velhas: [] })
+    expect({ gravadas: r?.gravadas, velhas: r?.assinaturas_velhas }).toEqual({ gravadas: 21, velhas: [] })
     // caso, esperado, extração, classe final e veredito de cada linha; a fonte
     // dos descartados e o custo mudam nas peças 2 e 3 (testes abaixo)
-    expect(classes(r?.texto ?? '')).toEqual(classes(PLACAR_PECA6))
-    expect(r?.texto.split('\n').at(-1)).toMatch(/^-- \(C\) classe e evidência certas: 21\/37 \(aceite: >= 30\); chamadas novas: 22;/)
+    expect(classes(r?.texto ?? '')).toEqual(classes(PLACAR_7F_B3))
+    expect(r?.texto.split('\n').at(-1)).toMatch(/^-- \(C\) classe e evidência certas: 22\/37 \(aceite: >= 30\); chamadas novas: 21;/)
   })
 
   it('(C) todo descarte da resposta do modelo grava modelo.descartado (regra e trecho) e aparece no placar', async () => {
@@ -413,13 +444,14 @@ describe('aceite (C) do triador, em replay da corrida real da peça 6 (7f-b1b)',
       const m = r?.diags.get(c)?.modelo as { descartado?: { regra: string; trecho: string }; custo_usd?: number | null; resposta?: unknown }
       expect({ c, regra: m.descartado?.regra, custo: (m.custo_usd ?? 0) > 0.3, resposta: m.resposta }).toEqual({ c, regra: 'teto_corte_cli', custo: true, resposta: undefined })
     }
-    // custo desta corrida: os 16 com resposta (US$ 4,1376) + os 6 cortados (US$ 1,9889), o que a corrida real pagou
-    expect(r?.texto.split('\n').at(-1)).toMatch(/chamadas novas: 22; custo desta corrida: US\$ 6\.1265$/)
+    // custo desta corrida: os 16 com resposta (US$ 4,1376) + os 6 cortados (US$ 1,9889), o que a corrida real pagou,
+    // menos o 346d (US$ 0,2424), que na 7f-b3 sai firme sem modelo
+    expect(r?.texto.split('\n').at(-1)).toMatch(/chamadas novas: 21; custo desta corrida: US\$ 5\.8840$/)
     // 0 dos 6 passam a usar a resposta do modelo: o envelope não tem result
     expect(DESCARTADOS_PECA6.filter((c) => r?.diags.get(c)?.fonte === 'modelo')).toEqual([])
   })
 
-  it('(C) com a regra de evidência equivalente: dos 8 "classe certa, evidência fora", 7 valem; o 741 não (sem artefato da falta)', async () => {
+  it('(C) com a regra de evidência equivalente: dos 7 "classe certa, evidência fora" (o 346d saiu na 7f-b3), 6 valem; o 741 não (sem artefato da falta)', async () => {
     const placar = await placarComEquivalencia()
     const fora = placar.filter((p) => p.certo && !p.medicao)
     expect(fora.map((p) => p.caso)).toEqual(EVIDENCIA_FORA_PECA6)
@@ -429,7 +461,6 @@ describe('aceite (C) do triador, em replay da corrida real da peça 6 (7f-b1b)',
     const R = 'docs/fila/runs/'
     expect(Object.fromEntries(fora.map((p) => [p.caso, p.equivalente.map((x) => x.replace(R, ''))]))).toEqual({
       '12-691-L65374': ['691/attempt-2.prev1/criterios.txt:68', '691/attempt-2.prev1/criterios.txt:71', '691/attempt-1.prev1/criterios.txt:71'],
-      '13-346d-L66187': ['346d/attempt-1.prev1/gate-vitest.txt:1423', '346d/attempt-1.prev1/gate-vitest.txt:1607', '346d/attempt-2/diff.stat:3'],
       '18-737-L69920': ['737/attempt-3/criterios.txt:52', '737/attempt-3/criterios.txt:55', '737/attempt-2.prev1/criterios.txt:55'],
       '24-867-L76790': ['867/attempt-2/avaliador-claude.txt:1', '867/attempt-1.prev1/avaliador-claude.txt:1'],
       '26-711b3-L78647': [4654, 6222, 6212, 7780].flatMap((n) => [`711b3/attempt-2.prev1/gate-vitest.txt:${n}`]).concat([4654, 6222, 6212, 7780].map((n) => `711b3/attempt-3/gate-vitest.txt:${n}`)),

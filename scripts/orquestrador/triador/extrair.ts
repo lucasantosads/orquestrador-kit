@@ -20,7 +20,7 @@ import { matchesAllowlist } from '../enforcement-core.js'
 import { noDiff } from './leitor-legado-comarka.js'
 import type { Evidencia, Ref, Tentativa, Vizinho } from './tipos.js'
 
-export type Regra = 'D1' | 'D2' | 'D3' | 'D4' | 'D5' | 'D6' | 'D7' | 'D8' | 'D9' | 'D10' | 'D11' | 'D12'
+export type Regra = 'D1' | 'D2' | 'D3' | 'D4' | 'D5' | 'D6' | 'D6b' | 'D7' | 'D8' | 'D9' | 'D10' | 'D11' | 'D12'
 
 export interface Extracao {
   /** `R1`..`R7` quando firme; palpite leva `?` (`R5?`, `R1|R2?`); `null` = nenhuma regra casou */
@@ -224,6 +224,28 @@ export function extrair(ev: Evidencia): Extracao {
     ]
     const ids = [...new Set(base.flatMap((x) => x.viz.map((v) => v.ticket)))].sort()
     return sai('R5', 'D5', provas, `consertar a base: ${local(vermelhoRefs(b.t, b.arquivo), b.arquivo)} vermelho também em ${ids.join(', ')}, fora do diff`, `sim_apos:base_verde:${b.arquivo}`)
+  }
+
+  // D6b · o enforcement da última tentativa barrou só um arquivo, por
+  // fora_do_pathspec, e é o teste que estava vermelho fora da allowlist e do
+  // diff nessa tentativa ou na anterior: o agente mexeu no teste que o gate
+  // mostrou vermelho (7f-b3). O legado do Comarka roda o enforcement antes dos
+  // gates, então o vermelho e o bloqueio caem em tentativas seguidas e a D6 (o
+  // vermelho em ≥ 2 tentativas) nunca fecha: 1006 (:137 na 1, barrado na 2) e
+  // 346d. São duas provas em duas tentativas, como a D6 pede.
+  const barrados = ult.enforcement && !ult.enforcement.ok ? ult.enforcement.violacoes : []
+  const barrado = barrados.length === 1 ? /^fora_do_pathspec: (\S+)$/.exec(barrados[0]!)?.[1] : undefined
+  const ant = ts.at(-2)
+  const vermelhoBarrado = barrado ? fora.filter((x) => x.arquivo === barrado && (x.t === ult || x.t === ant)).at(-1) : undefined
+  if (u === 'enforcement' && vermelhoBarrado) {
+    const { t, arquivo } = vermelhoBarrado
+    const onde = local(vermelhoRefs(t, arquivo), arquivo)
+    return sai(
+      'R1',
+      'D6b',
+      [...vermelhoRefs(t, arquivo), ult.enforcement!.ref],
+      `pôr ${arquivo} na allowlist com guarda (mesma contagem de it/expect, sem skip); vermelho em ${onde} na tentativa ${t.n} e barrado pelo enforcement na ${ult.n}`,
+    )
   }
 
   // D6 · vermelho fora da allowlist e do diff, acoplado ao que o ticket mudou.

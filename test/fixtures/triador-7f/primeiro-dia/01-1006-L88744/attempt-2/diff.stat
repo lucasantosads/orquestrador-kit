@@ -1,0 +1,8 @@
+ src/app/api/clientes/[id]/performance/route.ts |  19 +--
+ src/app/api/clientes/alertas-campanha/route.ts |  11 +-
+ src/app/api/clientes/calcular-score/route.ts   |   9 +-
+ src/app/api/clientes/performance/route.ts      |   7 +-
+ src/lib/perf/conn-resolver.ts                  |  65 +++++++++-
+ test/quem-cuida.test.ts                        |   5 +
+ test/token-meta-sem-env.test.ts                | 160 +++++++++++++++++++++++++
+ 7 files changed, 259 insertions(+), 17 deletions(-)

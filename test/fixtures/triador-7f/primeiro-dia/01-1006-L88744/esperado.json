@@ -1,0 +1,17 @@
+{
+ "classe": "R1",
+ "evidencia": [
+  {
+   "arquivo": "docs/fila/runs/1006/attempt-1/gate-vitest.txt",
+   "linha": 2041,
+   "origem": "medicao"
+  },
+  {
+   "arquivo": "docs/fila/runs/1006/attempt-2/enforcement.json",
+   "linha": null,
+   "origem": "medicao"
+  }
+ ],
+ "requeue": "nao",
+ "fonte_da_verdade": "~/orq-sessoes/conserto-1006.md (R1: test/quem-cuida.test.ts na allowlist com guarda; a mudança do agente no teste era só um vi.mock)"
+}

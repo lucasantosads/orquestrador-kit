@@ -56,6 +56,8 @@ describe('peça 2: a passada', () => {
     const auto = { padrao: 'diagnostico', R1: 'auto', R5: 'auto', R2: 'sombra', R3: 'auto' }
     const d = (classe: string | null, regra: string | null, firme: boolean, modos: Record<string, string> = auto, fonte = 'extracao') => m!.decidir({ classe, regra, firme, fonte }, modos).acao
     expect(d('R1', 'D6', true)).toBe('r1_allowlist')
+    // 7f-b3: a D6b (enforcement no teste que estava vermelho) também é R1 firme
+    expect(d('R1', 'D6b', true)).toBe('r1_allowlist')
     expect(d('R5', 'D1', true)).toBe('r5_reabrir')
     expect(d('R5', 'D4', true)).toBe('r5_reabrir')
     expect(d('R5', 'D5', true)).toBe('aviso')

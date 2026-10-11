@@ -7,7 +7,7 @@
  * | R5 árvore suja (D1), firme  | reabrir           | proposta | nada        |
  * | R5 máquina (D4), firme      | reabrir           | proposta | nada        |
  * | R5 base vermelha (D5)       | aviso             | aviso    | nada        |
- * | R1 (D6), firme              | allowlist + guarda, reabrir | proposta | nada |
+ * | R1 (D6 ou D6b), firme       | allowlist + guarda, reabrir | proposta | nada |
  * | R2 (firme ou palpite)       | proposta (nunca aplica nesta etapa) | proposta | nada |
  * | R3, R4, R6, R7              | aviso             | aviso    | nada        |
  * | palpite (`?`) fora de R2, sem classe | aviso    | aviso    | nada        |
@@ -46,6 +46,7 @@ export function decidir(d: DiagnosticoMin, modos: Modos): Decisao {
   const aplica = (acao: 'r1_allowlist' | 'r5_reabrir', o: string): Decisao =>
     modo === 'auto' ? { acao, modo, motivo: o } : { acao: 'sombra', propoe: acao, modo, motivo: `${o} (em sombra: só proposta)` }
   if (base === 'R1' && firme && d.regra === 'D6') return aplica('r1_allowlist', 'R1 firme (D6): teste acoplado na allowlist com guarda')
+  if (base === 'R1' && firme && d.regra === 'D6b') return aplica('r1_allowlist', 'R1 firme (D6b): teste vermelho que o enforcement barrou, na allowlist com guarda')
   if (base === 'R5' && firme && d.regra === 'D1') return aplica('r5_reabrir', 'R5 árvore suja (D1): reabre quando a árvore alvo estiver limpa')
   if (base === 'R5' && firme && d.regra === 'D4') return aplica('r5_reabrir', 'R5 máquina (D4): reabre quando a máquina estiver livre')
   if (base === 'R5' && d.regra === 'D5') return { acao: 'aviso', modo, motivo: 'R5 base vermelha: só diagnóstico nesta etapa' }
