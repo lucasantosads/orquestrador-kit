@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  TEMPLATE - nao e um plist utilizavel. Os placeholders sao resolvidos por
+  scripts/orquestrador/resolvedor/instalar-job.sh (etapa 7f-b2, peca 8):
+
+    {{CHECKOUT}}   raiz do checkout do KIT (o resolvedor roda do kit, sobre os
+                   repos do ~/.orq/repos.json; nunca de um repo instalado)
+    {{NODE_DIR}}   dirname do `which node` desta maquina
+    {{ORQ_HOME}}   ~/.orq desta maquina (log do job em resolvedor/job.log)
+
+  Um job so por maquina (Label fixo com.orq.resolvedor): ele percorre todos os
+  repos, cada um no seu modo. A cada 300 s; o launchd nao sobrepoe duas
+  execucoes do mesmo job, e a passada ainda tem a trava global
+  (resolvedor/resolver.lock, O_EXCL). O interruptor ~/.orq/RESOLVEDOR_PAUSADO
+  para tudo: o job.sh sai antes de chamar o node.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.orq.resolvedor</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>{{CHECKOUT}}/scripts/orquestrador/resolvedor/job.sh</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>{{NODE_DIR}}:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>StartInterval</key>
+  <integer>300</integer>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>{{ORQ_HOME}}/resolvedor/job.log</string>
+  <key>StandardErrorPath</key>
+  <string>{{ORQ_HOME}}/resolvedor/job.log</string>
+</dict>
+</plist>
