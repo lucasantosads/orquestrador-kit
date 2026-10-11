@@ -39,10 +39,21 @@ DST="$HOME/Library/LaunchAgents/$LABEL.plist"
 command -v node >/dev/null 2>&1 || { echo "ERRO: node nao esta no PATH desta maquina." >&2; exit 1; }
 NODE_BIN="$(command -v node)"
 NODE_DIR="$(cd "$(dirname "$NODE_BIN")" && pwd)"
+# O `claude` do modelo do triador (7f-b4): sem ele no PATH do job, toda chamada
+# sai `nao_iniciou` (11/10). O diretório entra no PATH do plist DEPOIS do node
+# (o ~/.local/bin também tem um `node`); é o do link (`command -v`), não o alvo
+# versionado, que muda a cada atualização do claude. Sem claude, nem --dry-run.
+CLAUDE_BIN="$(command -v claude 2>/dev/null || true)"
+if [ -z "$CLAUDE_BIN" ]; then
+  echo "ERRO: claude nao esta no PATH desta maquina — RECUSO instalar o job (o modelo do triador nunca rodaria)." >&2
+  exit 1
+fi
+CLAUDE_DIR="$(cd "$(dirname "$CLAUDE_BIN")" && pwd)"
 
 renderiza() {
   sed -e "s|{{CHECKOUT}}|$CHECKOUT|g" \
       -e "s|{{NODE_DIR}}|$NODE_DIR|g" \
+      -e "s|{{CLAUDE_DIR}}|$CLAUDE_DIR|g" \
       -e "s|{{ORQ_HOME}}|$ORQ_HOME|g" \
       "$TEMPLATE"
 }
@@ -68,6 +79,7 @@ if [ "$DRY" = 1 ]; then
   echo "# LABEL     = $LABEL (a cada 300 s)" >&2
   echo "# CHECKOUT  = $CHECKOUT" >&2
   echo "# NODE_DIR  = $NODE_DIR  ($("$NODE_BIN" -v))" >&2
+  echo "# CLAUDE    = $CLAUDE_DIR/claude" >&2
   echo "# log       = $ORQ_HOME/resolvedor/job.log" >&2
   echo "# gravaria em $DST" >&2
   renderiza

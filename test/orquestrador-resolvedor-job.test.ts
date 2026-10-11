@@ -32,6 +32,9 @@ describe('peça 8: o job do launchd', () => {
     mkdirSync(bin)
     writeFileSync(join(bin, 'launchctl'), `#!/bin/bash\necho "$@" >> '${join(home, 'launchctl-chamado')}'\n`)
     chmodSync(join(bin, 'launchctl'), 0o755)
+    // o instalar-job.sh exige um `claude` no PATH (7f-b4): um falso, que reprova se rodar
+    writeFileSync(join(bin, 'claude'), '#!/bin/bash\nexit 99\n')
+    chmodSync(join(bin, 'claude'), 0o755)
     amb = ambiente()
     env = { ...(process.env as Record<string, string>), ...amb.env, HOME: home, PATH: `${bin}:${process.env.PATH}`, ORQ_TESTE: '1' }
   })

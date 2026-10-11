@@ -7,6 +7,8 @@
     {{CHECKOUT}}   raiz do checkout do KIT (o resolvedor roda do kit, sobre os
                    repos do ~/.orq/repos.json; nunca de um repo instalado)
     {{NODE_DIR}}   dirname do `which node` desta maquina
+    {{CLAUDE_DIR}} dirname do `command -v claude` desta maquina (7f-b4), depois
+                   do node; sem claude, o instalar-job.sh recusa
     {{ORQ_HOME}}   ~/.orq desta maquina (log do job em resolvedor/job.log)
 
   Um job so por maquina (Label fixo com.orq.resolvedor): ele percorre todos os
@@ -29,7 +31,7 @@
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
-    <string>{{NODE_DIR}}:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <string>{{NODE_DIR}}:{{CLAUDE_DIR}}:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
   </dict>
 
   <key>StartInterval</key>

@@ -142,7 +142,10 @@ export function triarTicket(o: OpcoesTriar): Resultado {
   }
   const ev = lerRepo(o.repo.caminho, o.id, { agora })
   const assin = assinatura(ev)
-  if (!o.passada && !o.forcar && existente?.assinatura === assin) return { id: o.id, feito: 'mesma_assinatura' }
+  // triado sem modelo (o job sem `claude`, ou --sem-modelo) quando o modelo cabia:
+  // com o modelo de volta, a mesma assinatura é triada de novo, uma vez (7f-b4)
+  const semModeloAntes = !!o.modelo && existente?.modelo === null && !existente.extracao.firme && existente.extracao.regra !== 'D0'
+  if (!o.passada && !o.forcar && existente?.assinatura === assin && !semModeloAntes) return { id: o.id, feito: 'mesma_assinatura' }
   const soltar = travar(g, o.repo.nome, o.id, agora)
   if (!soltar) return { id: o.id, feito: 'travado' }
   try {
