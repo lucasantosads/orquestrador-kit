@@ -3,7 +3,9 @@
  * fixture `test/fixtures/triador-7f`, no estado da passada (spec 7f-a §7.2 C).
  *
  * É a corrida da PEÇA 6: o humano roda depois do merge, com o modelo de
- * verdade e o teto do dia em US$ 6,60 (22 palpites × US$ 0,30). Os firmes não
+ * verdade e o teto do dia em US$ 6,60 (22 palpites × US$ 0,30; com o pior
+ * caso no corte do CLI, US$ 0,60, a última chamada só sai se o gasto real
+ * deixar, ver modelo.ts). Os firmes não
  * chamam modelo. Cada caso grava, em `ORQ_DIAG_DIR/fixture-triador-7f/`, o
  * diagnóstico e `<caso>/resposta-modelo.json` (o registro do modelo, para o
  * replay da peça 6). Nada é escrito na fixture: ela entra na `Guarda` como

@@ -296,4 +296,16 @@ describe('aceite (C) do triador, em replay da corrida real da peça 6 (7f-b1b)',
     }
     for (const [c, d] of r?.diags ?? []) if (d.fonte === 'modelo') expect({ c, descartado: d.modelo?.descartado }).toEqual({ c, descartado: undefined })
   })
+
+  it('(C) os 6: o CLI cortou no teto do caso depois de pagar; o custo real entra no placar e nenhuma resposta existe para recuperar', async () => {
+    const r = await replay()
+    for (const c of DESCARTADOS_PECA6) {
+      const m = r?.diags.get(c)?.modelo as { descartado?: { regra: string; trecho: string }; custo_usd?: number | null; resposta?: unknown }
+      expect({ c, regra: m.descartado?.regra, custo: (m.custo_usd ?? 0) > 0.3, resposta: m.resposta }).toEqual({ c, regra: 'teto_corte_cli', custo: true, resposta: undefined })
+    }
+    // custo desta corrida: os 16 com resposta (US$ 4,1376) + os 6 cortados (US$ 1,9889), o que a corrida real pagou
+    expect(r?.texto.split('\n').at(-1)).toMatch(/chamadas novas: 22; custo desta corrida: US\$ 6\.1265$/)
+    // 0 dos 6 passam a usar a resposta do modelo: o envelope não tem result
+    expect(DESCARTADOS_PECA6.filter((c) => r?.diags.get(c)?.fonte === 'modelo')).toEqual([])
+  })
 })

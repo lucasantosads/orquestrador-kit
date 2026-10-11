@@ -12,9 +12,18 @@
  * falhe: `modelo.erro` fica registrado e só `--forcar` repete.
  *
  * Config: `ORQ_TRIADOR_CONFIG` ou `~/.orq/triador.json`, chaves opcionais
- * (`modelo`, `teto_dia_usd`, `teto_caso_usd`, `entrada_max_tokens`,
- * `timeout_secs`). `modelo: null` desliga o modelo. `ORQ_TRIADOR_TETO_DIA`
- * sobrepõe o teto do dia (a corrida da peça 6 usa US$ 6,60).
+ * (`modelo`, `teto_dia_usd`, `teto_caso_usd`, `teto_corte_usd`,
+ * `entrada_max_tokens`, `timeout_secs`). `modelo: null` desliga o modelo.
+ * `ORQ_TRIADOR_TETO_DIA` sobrepõe o teto do dia (a corrida da peça 6 usa
+ * US$ 6,60).
+ *
+ * Teto do caso x corte do CLI (7f-b1b): o `--max-budget-usd` do `claude -p`,
+ * com uma volta só, não impede o gasto: a volta termina, é paga, e o CLI
+ * devolve `error_max_budget_usd` SEM `result`. Na corrida real da peça 6, 6
+ * de 22 casos pagaram US$ 0,31 a 0,40 e perderam a resposta. Por isso o corte
+ * do CLI é `teto_corte_usd` (padrão US$ 0,60), acima do teto do caso; o teto
+ * do caso (US$ 0,30) só marca `custo_acima_do_teto` no ledger, como na spec
+ * §4. O pior caso de uma chamada, para o teto do dia, é o corte.
  */
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
@@ -32,6 +41,8 @@ export interface ConfigModelo {
   modelo: string | null
   teto_dia_usd: number
   teto_caso_usd: number
+  /** o `--max-budget-usd` do CLI: corta (e descarta a resposta paga) só acima disto */
+  teto_corte_usd: number
   entrada_max_tokens: number
   timeout_secs: number
 }
@@ -40,6 +51,7 @@ export const PADRAO: ConfigModelo = {
   modelo: 'claude-opus-5-5',
   teto_dia_usd: 3,
   teto_caso_usd: 0.3,
+  teto_corte_usd: 0.6,
   entrada_max_tokens: 30000,
   timeout_secs: 120,
 }
@@ -58,6 +70,7 @@ export function lerConfigModelo(): ConfigModelo {
     modelo: c.modelo === null ? null : typeof c.modelo === 'string' && c.modelo ? c.modelo : PADRAO.modelo,
     teto_dia_usd: process.env.ORQ_TRIADOR_TETO_DIA && Number.isFinite(tetoEnv) ? tetoEnv : num(c.teto_dia_usd, PADRAO.teto_dia_usd),
     teto_caso_usd: num(c.teto_caso_usd, PADRAO.teto_caso_usd),
+    teto_corte_usd: num(c.teto_corte_usd, PADRAO.teto_corte_usd),
     entrada_max_tokens: num(c.entrada_max_tokens, PADRAO.entrada_max_tokens),
     timeout_secs: num(c.timeout_secs, PADRAO.timeout_secs),
   }
@@ -183,6 +196,10 @@ export function montarEntrada(repo: string, ev: Evidencia, ext: Extracao, maxTok
 export interface Envelope {
   result: string
   is_error: boolean
+  /** `subtype` do envelope (`success`, `error_max_budget_usd`, …) */
+  subtype: string | null
+  /** `errors` do envelope, quando ele vem sem `result` */
+  erros: string[]
   custo_usd: number | null
   tokens_in: number | null
   tokens_out: number | null
@@ -191,7 +208,7 @@ export interface Envelope {
 /**
  * `claude -p --output-format json --model <m>` sem ferramentas e com uma volta
  * (o molde do juiz, `executor.sh:753-755`), prompt pela entrada padrão,
- * `--max-budget-usd` no teto do caso, e timeout. O binário é
+ * `--max-budget-usd` no corte (`teto_corte_usd`), e timeout. O binário é
  * `ORQ_TRIADOR_CLAUDE` ou `claude`.
  */
 export class ChamadaRealRecusada extends Error {}
@@ -206,19 +223,34 @@ export function chamar(prompt: string, cfg: ConfigModelo): { rc: number; stdout:
   const t0 = Date.now()
   const r = spawnSync(
     bin,
-    ['-p', '--output-format', 'json', '--model', cfg.modelo ?? '', '--allowedTools', '', '--max-turns', '1', '--max-budget-usd', String(cfg.teto_caso_usd)],
+    ['-p', '--output-format', 'json', '--model', cfg.modelo ?? '', '--allowedTools', '', '--max-turns', '1', '--max-budget-usd', String(cfg.teto_corte_usd ?? PADRAO.teto_corte_usd)],
     { input: prompt, encoding: 'utf8', timeout: cfg.timeout_secs * 1000, maxBuffer: 16 * 1024 * 1024, killSignal: 'SIGKILL' },
   )
   return { rc: r.status ?? (r.error ? 127 : 124), stdout: r.stdout ?? '', ms: Date.now() - t0 }
 }
 
+/**
+ * O envelope de `claude -p --output-format json`. O de erro do CLI vem sem
+ * `result` (ex.: `error_max_budget_usd`), e ainda assim traz o custo pago:
+ * ele é lido como `is_error`, com `subtype` e `erros`, e o custo vai ao ledger.
+ */
 export function lerEnvelope(stdout: string): Envelope | null {
   try {
     const j = JSON.parse(stdout.trim()) as Record<string, unknown>
-    if (typeof j.result !== 'string') return null
+    if (!j || typeof j !== 'object' || Array.isArray(j)) return null
+    const semResult = typeof j.result !== 'string'
+    if (semResult && j.type !== 'result') return null
     const u = (j.usage ?? {}) as Record<string, unknown>
     const num = (v: unknown) => (typeof v === 'number' ? v : null)
-    return { result: j.result, is_error: j.is_error === true, custo_usd: num(j.total_cost_usd), tokens_in: num(u.input_tokens), tokens_out: num(u.output_tokens) }
+    return {
+      result: semResult ? '' : (j.result as string),
+      is_error: semResult || j.is_error === true,
+      subtype: typeof j.subtype === 'string' ? j.subtype : null,
+      erros: Array.isArray(j.errors) ? j.errors.map(String) : [],
+      custo_usd: num(j.total_cost_usd),
+      tokens_in: num(u.input_tokens),
+      tokens_out: num(u.output_tokens),
+    }
   } catch {
     return null
   }
@@ -321,9 +353,9 @@ export function lerLedger(g: Guarda): { dias: Record<string, Gasto[]> } {
   }
 }
 
-/** Gasto do dia; entrada sem custo conhecido conta como o teto do caso (o pior caso). */
-export function gastoDoDia(g: Guarda, agora: number, tetoCaso: number): number {
-  return (lerLedger(g).dias[dia(agora)] ?? []).reduce((s, x) => s + (x.custo_usd ?? tetoCaso), 0)
+/** Gasto do dia; entrada sem custo conhecido conta como `piorCaso` (o corte do CLI). */
+export function gastoDoDia(g: Guarda, agora: number, piorCaso: number): number {
+  return (lerLedger(g).dias[dia(agora)] ?? []).reduce((s, x) => s + (x.custo_usd ?? piorCaso), 0)
 }
 
 function registrar(g: Guarda, agora: number, x: Gasto): void {
@@ -337,7 +369,7 @@ function registrar(g: Guarda, agora: number, x: Gasto): void {
  * que descartou e o trecho que a mostra. Nenhum descarte é silencioso (7f-b1b).
  */
 export interface Descarte {
-  regra: 'envelope_ilegivel' | 'envelope_is_error' | 'resposta_sem_classe' | 'evidencia_nenhuma_confere'
+  regra: 'envelope_ilegivel' | 'teto_corte_cli' | 'envelope_is_error' | 'resposta_sem_classe' | 'evidencia_nenhuma_confere'
   trecho: string
 }
 
@@ -373,8 +405,9 @@ export interface RegistroModelo {
 export function criarPassoModelo(cfg: ConfigModelo = lerConfigModelo()): PassoModelo {
   return ({ ev, ext, repo, assinatura, guarda, agora }) => {
     if (!cfg.modelo) return { registro: { modelo: null, pulado: 'desligado' } satisfies RegistroModelo }
-    // Teto do dia: a chamada só sai se, mesmo no pior caso (o teto do caso), o dia não passa do teto.
-    if (microdolares(gastoDoDia(guarda, agora, cfg.teto_caso_usd) + cfg.teto_caso_usd) > microdolares(cfg.teto_dia_usd)) {
+    // Teto do dia: a chamada só sai se, mesmo no pior caso (o corte do CLI), o dia não passa do teto.
+    const pior = cfg.teto_corte_usd ?? PADRAO.teto_corte_usd
+    if (microdolares(gastoDoDia(guarda, agora, pior) + pior) > microdolares(cfg.teto_dia_usd)) {
       return { registro: { modelo: cfg.modelo, pulado: 'teto_dia' } satisfies RegistroModelo }
     }
     const entrada = montarEntrada(repo, ev, ext, cfg.entrada_max_tokens)
@@ -395,7 +428,20 @@ export function criarPassoModelo(cfg: ConfigModelo = lerConfigModelo()): PassoMo
       envelope_bruto: r.stdout.slice(0, 20000),
     }
     if (!env) return { registro: { ...reg, erro: `envelope ilegível (rc ${r.rc})`, descartado: { regra: 'envelope_ilegivel', trecho: trechoIlegivel(r.stdout, r.rc) } } }
-    if (env.is_error) return { registro: { ...reg, erro: `envelope com is_error: ${env.result.slice(0, 200)}`, descartado: { regra: 'envelope_is_error', trecho: trecho(env.result) } } }
+    if (env.is_error && env.subtype === 'error_max_budget_usd') {
+      const pago = env.custo_usd != null ? `pago US$ ${env.custo_usd.toFixed(4)}` : 'custo desconhecido'
+      return {
+        registro: {
+          ...reg,
+          erro: `corte do CLI (error_max_budget_usd): ${pago} e sem resposta`,
+          descartado: { regra: 'teto_corte_cli', trecho: trecho(`rc ${r.rc}: ${env.subtype}: ${JSON.stringify(env.erros)}; ${pago} e sem resposta`) },
+        },
+      }
+    }
+    if (env.is_error) {
+      const motivo = env.result || `${env.subtype ?? 'sem subtype'}: ${JSON.stringify(env.erros)}`
+      return { registro: { ...reg, erro: `envelope com is_error: ${motivo.slice(0, 200)}`, descartado: { regra: 'envelope_is_error', trecho: trecho(motivo) } } }
+    }
     const resp = lerResposta(env.result)
     if (!resp) return { registro: { ...reg, erro: 'resposta sem JSON com classe R1-R7', descartado: { regra: 'resposta_sem_classe', trecho: trecho(env.result) } } }
     const { validas, descartadas } = conferirEvidencia(ev, resp.evidencia)

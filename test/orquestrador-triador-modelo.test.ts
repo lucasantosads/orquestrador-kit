@@ -132,16 +132,17 @@ describe('modelo do triador, com stub (peça 5)', () => {
       writeFileSync(join(base, 'diag', 'custo.json'), JSON.stringify({ dias: { [hoje()]: gastos.map((g) => ({ repo: 'x', id: '1', assinatura: 'a', custo_usd: g, tokens_in: 1, tokens_out: 1 })) } }))
     }
     envelope(JSON.stringify({ classe: 'R3', confianca: 'media', evidencia: [], remedio: 'x', requeue: 'nao', justificativa: 'x' }))
-    ledger([1.5, 1.3])
+    // o pior caso de uma chamada é o corte do CLI (teto_corte_usd, 0,60 por padrão), não o teto do caso (7f-b1b)
+    ledger([1.5, 1.0])
     const r = c?.m.criarPassoModelo(CFG)(c.ctx)
     expect(r?.registro).toEqual({ modelo: 'claude-opus-5-5', pulado: 'teto_dia' })
     expect(chamadas()).toEqual([])
-    ledger([1.5, 1.2])
+    ledger([1.5, 0.9])
     c?.m.criarPassoModelo(CFG)(c.ctx)
     expect(chamadas()).toHaveLength(1)
-    expect(chamadas()[0]).toMatch(/^-p --output-format json --model claude-opus-5-5 --allowedTools {2}--max-turns 1 --max-budget-usd 0\.3\t\d+$/)
+    expect(chamadas()[0]).toMatch(/^-p --output-format json --model claude-opus-5-5 --allowedTools {2}--max-turns 1 --max-budget-usd 0\.6\t\d+$/)
     const l = JSON.parse(readFileSync(join(base, 'diag', 'custo.json'), 'utf8')) as { dias: Record<string, { custo_usd: number }[]> }
-    expect(l.dias[hoje()]!.map((x) => x.custo_usd)).toEqual([1.5, 1.2, 0.1234])
+    expect(l.dias[hoje()]!.map((x) => x.custo_usd)).toEqual([1.5, 0.9, 0.1234])
   })
 
   it('envelope ilegível mantém a extração e grava modelo.erro (e o gasto, sem custo conhecido)', async () => {
@@ -154,6 +155,19 @@ describe('modelo do triador, com stub (peça 5)', () => {
     expect(chamadas()).toHaveLength(1)
     const l = JSON.parse(readFileSync(join(base, 'diag', 'custo.json'), 'utf8')) as { dias: Record<string, { custo_usd: number | null }[]> }
     expect(l.dias[hoje()]).toEqual([expect.objectContaining({ id: '559', custo_usd: null })])
+  })
+
+  it('envelope do corte do CLI (error_max_budget_usd, sem result, da corrida real): o custo pago vai ao ledger e o descarte diz teto_corte_cli', async () => {
+    const c = await contexto()
+    const real = JSON.parse(readFileSync(join(FX, '08-635-L58105', 'resposta-modelo.json'), 'utf8')) as { modelo: { envelope_bruto: string } }
+    writeFileSync(join(base, 'resposta.json'), real.modelo.envelope_bruto)
+    process.env.STUB_RC = '1'
+    const d = c?.m.diagnosticar(c.ctx.guarda, 'fixture', c.ev, c.ext, c.ctx.assinatura, c.ctx.agora, FX, c.m.criarPassoModelo(CFG))
+    expect([d?.classe, d?.fonte]).toEqual(['R4?', 'extracao'])
+    expect(d?.modelo).toMatchObject({ custo_usd: 0.31072479999999997, custo_acima_do_teto: true })
+    expect(d?.modelo?.descartado).toEqual({ regra: 'teto_corte_cli', trecho: 'rc 1: error_max_budget_usd: ["Reached maximum budget ($0.3)"]; pago US$ 0.3107 e sem resposta' })
+    const l = JSON.parse(readFileSync(join(base, 'diag', 'custo.json'), 'utf8')) as { dias: Record<string, { custo_usd: number | null; custo_acima_do_teto?: true }[]> }
+    expect(l.dias[hoje()]).toEqual([expect.objectContaining({ custo_usd: 0.31072479999999997, custo_acima_do_teto: true })])
   })
 
   it('evidência com linha inexistente (ou arquivo que não foi lido) é descartada; a válida fica', async () => {
@@ -225,25 +239,27 @@ describe('modelo do triador, com stub (peça 5)', () => {
     expect(orq('comarka-fx', '559', '--passada', '--x').status).toBe(1)
   })
 
-  it('orq triar --fixture (a corrida da peça 6): 22 chamadas no teto de US$ 6,60, 10 no de US$ 3,00, nada na fixture, rerodar não paga', () => {
+  // Com o pior caso no corte do CLI (0,60), a 22ª chamada de US$ 0,30 já não cabe em 6,60 (21 × 0,30 + 0,60 = 6,90),
+  // e em 3,00 cabem 9 (8 × 0,30 + 0,60 = 3,00). Na corrida real os 22 couberam (custo real abaixo de 0,30 em 16).
+  it('orq triar --fixture (a corrida da peça 6): 21 chamadas no teto de US$ 6,60, 9 no de US$ 3,00, nada na fixture, rerodar não paga', () => {
     envelope(JSON.stringify({ classe: 'R2', confianca: 'baixa', evidencia: [], remedio: 'x', requeue: 'nao', justificativa: 'stub' }), 0.3)
     const antes = spawnSync('git', ['status', '--porcelain', '--', FX], { encoding: 'utf8', cwd: RAIZ, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } }).stdout
     const orq = (teto: string, ...a: string[]) =>
       spawnSync('bash', [join(RAIZ, 'scripts', 'orq'), 'triar', '--fixture', FX, ...a], { encoding: 'utf8', env: { ...process.env, ORQ_TRIADOR_TETO_DIA: teto } })
     const r = orq('6.60')
     expect(r.status, r.stderr).toBe(0)
-    expect(chamadas()).toHaveLength(22)
-    expect(r.stdout).toMatch(/-- \(C\) classe e evidência certas: \d+\/37 \(aceite: >= 30\); chamadas novas: 22; custo desta corrida: US\$ 6\.6000/)
+    expect(chamadas()).toHaveLength(21)
+    expect(r.stdout).toMatch(/-- \(C\) classe e evidência certas: \d+\/37 \(aceite: >= 30\); chamadas novas: 21; custo desta corrida: US\$ 6\.3000/)
     const dir = join(base, 'diag', 'fixture-triador-7f')
     expect(readdirSync(dir).filter((f) => existsSync(join(dir, f, 'resposta-modelo.json')))).toHaveLength(22)
     expect(orq('6.60').stdout).toMatch(/chamadas novas: 0;/)
-    expect(chamadas()).toHaveLength(22)
+    expect(chamadas()).toHaveLength(21)
     expect(spawnSync('git', ['status', '--porcelain', '--', FX], { encoding: 'utf8', cwd: RAIZ, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } }).stdout).toBe(antes)
-    // num dia novo de ledger, com o teto padrão de US$ 3,00: 10 chamadas e 12 puladas
+    // num dia novo de ledger, com o teto padrão de US$ 3,00: 9 chamadas e 13 puladas
     writeFileSync(join(base, 'diag', 'custo.json'), '{"dias":{}}')
     const r3 = orq('3', '--forcar')
-    expect(r3.stdout).toMatch(/chamadas novas: 10;/)
-    expect(chamadas()).toHaveLength(32)
+    expect(r3.stdout).toMatch(/chamadas novas: 9;/)
+    expect(chamadas()).toHaveLength(30)
   })
 
   it('orq triar --passada não chama modelo e promove R5? a R5 quando o vizinho de outra família aparece (760)', async () => {
