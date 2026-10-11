@@ -1189,6 +1189,174 @@ que pede ≥ 30.
   `REGRAS_R3_7F_B1B`), só por opt-in; virar padrão é mudar a spec. A mini-corrida paga (9
   casos, teto US$ 5,40) está em `~/orq-sessoes/corrida-7f-r3.cmd` e não foi rodada.
 
+## 14. Etapa 7f-b2: resolvedor de bloqueios rodando sozinho (10/10/2026)
+
+O triador (§13) diagnostica; o resolvedor age. A cada passada, para cada repo do
+`~/.orq/repos.json`, ele tria os bloqueados com o triador existente e conserta sozinho o
+que a classe e o modo do repo permitem, registrando tudo para aprender. Decisões do chat
+do programa; gabarito: os consertos humanos de 10/10 no comarka-operacional (`7787af3`:
+840 R1 e 929 R2; `819c49a`: 940 e 932 R5 árvore suja).
+
+Código: `scripts/orquestrador/resolvedor/`. Comandos: `orq resolver` e `orq desfazer`
+(`cli.ts`, despachados pelo `scripts/orq` antes do `lib.sh`, como o `triar`). Job:
+`resolvedor/instalar-job.sh` (§14.7).
+
+### 14.1 Passada (`passada.ts:118`)
+
+```
+orq resolver [--repo <nome|caminho>] [--dry-run] [--sem-modelo]
+```
+
+1. Interruptor: existindo `ORQ_RESOLVEDOR_PAUSADO` (padrão `~/.orq/RESOLVEDOR_PAUSADO`),
+   nada roda: nem triagem, nem ledger (`passada.ts:121`); vale também entre um ticket e
+   outro.
+2. Trava global: `resolver.lock` com `O_EXCL`, pid e hora, órfã depois de 15 min
+   (`travarPassada`, `caminhos.ts:104`). Outra passada segurando: nada roda.
+3. Por repo, antes da triagem: o desfecho das ações e propostas anteriores e a
+   promoção/rebaixamento (§14.6); o modo que vale na passada já é o novo.
+4. Os bloqueados, do que tem mais tickets esperando por ele ao que tem menos
+   (`ordenarBloqueados`, `passada.ts:64`): tickets fora de `done`/`obsoleto` com o id em
+   `dependencias` (direta); empate pela ordem do arquivo.
+5. Cada um pelo `triarTicket` (§13); mesma assinatura: vale o diagnóstico gravado. O
+   modelo entra como no `orq triar` (só palpite e sem regra), com teto de **US$ 5,00 por
+   dia** (`TETO_DIA_USD`, `passada.ts:32`; `ORQ_RESOLVEDOR_TETO_DIA` sobrepõe), contado
+   no mesmo `custo.json` do triador.
+6. A decisão (§14.2) e a ação (§14.3, §14.4).
+
+`--dry-run`: não escreve no repo, não chama modelo, não toca o ledger nem as propostas;
+o que faria (com o diff) vai para `dry-run.jsonl` e para a saída, uma linha por
+bloqueado: `repo id deps=N classe regra [firme] modo acao feito motivo [commit] [proposta]`.
+
+### 14.2 Modos e decisão (`modos.ts`, `decidir.ts:38`)
+
+Campo `resolvedor` de cada item do `repos.json` (o resto do item é o que o painel já lê,
+`lerRepos`): ausente → `diagnostico` em toda classe; uma string → a mesma em toda classe;
+um objeto `{"padrao": …, "R1": …, …}` → por classe. Repo fora do `repos.json` (passado por
+caminho) fica em `diagnostico`.
+
+| classe (regra) | auto | sombra | diagnostico |
+|---|---|---|---|
+| R5 árvore suja (D1), firme | reabre quando a worktree alvo está limpa | proposta | só triagem |
+| R5 máquina (D4), firme | reabre com carga ≤ 0,75 por CPU e ≥ 2 GiB livres | proposta | só triagem |
+| R5 base vermelha (D5) | aviso | aviso | só triagem |
+| R1 (D6), firme | allowlist com guarda, critério da lista, reabre | proposta | só triagem |
+| R2 (firme ou palpite) | **proposta** (nesta etapa R2 nunca aplica) | proposta | só triagem |
+| R3, R4, R6, R7; palpite fora de R2; sem classe | aviso | aviso | só triagem |
+
+Só diagnóstico firme da extração aplica; a resposta do modelo nunca é firme. Config de
+partida (decisão do chat do programa, o humano escreve no `repos.json`): comarka-operacional
+`{"padrao": "diagnostico", "R1": "auto", "R5": "auto", "R2": "sombra"}`; repos do kit sem o
+campo.
+
+### 14.3 Ações (`acoes.ts:73`, `r1.ts:106`, `r5.ts:46`, `ticket-md.ts`)
+
+O ticket é editado no texto do 1º bloco json, só onde muda, no recuo que o arquivo usa;
+toda edição é conferida por parse contra o objeto esperado, senão nada é escrito
+(`editar`, `ticket-md.ts:154`). O diff é o que o humano fez à mão.
+
+- **Reabrir** (`reabrir`, `ticket-md.ts:173`): `status` → `pendente`, `notas_status` → `""`.
+  É o que o humano fez no 840, no 940 e no 932 (no 940/932 o `done` de `819c49a` é o loop
+  rodando depois do reabrir: merges `dd94c08` e `4d52ef7`).
+- **R1** (`planejarR1`, `r1.ts:106`): o teste do remédio (`pôr <teste> na allowlist`),
+  único em `fora_da_allowlist_e_do_diff`, vai para o fim de `pathspec_allowlist`; todo
+  critério cujo `cmd` cita todos os caminhos da allowlist entre aspas simples ganha o mesmo
+  caminho depois do último; a guarda entra depois da última `tipo: guarda` (ou antes do
+  avaliador) com o `cmd` do 840 letra por letra (`cmdGuarda`, `r1.ts:63`): `it(`+`test(` e
+  `expect(` no mínimo a contagem ATUAL do teste no branch alvo (`branch_alvo`, local e depois
+  `origin/`, por `gitLeitura`), contada por linha como o `grep -c`, e zero
+  `.skip/.only/.todo`; e o ticket reabre. Não age se o teste já tem skip/only/todo, não
+  existe no alvo, ou há mais de um vermelho fora.
+- **R5** (`condicaoR5`, `r5.ts:46`): D1, `git status --porcelain` vazio na worktree alvo
+  (`worktrees_dir`/`branch_alvo`, os do triador); D4, a máquina (`ORQ_RESOLVEDOR_MAQUINA`
+  troca a leitura nos testes). A condição não sumiu: "não consegui" com o motivo.
+- **Sombra**: o mesmo plano vira `<repo>/<id>/proposta.md` (o diff) e `.json`; o repo não é
+  tocado.
+
+### 14.4 R2 em sombra (`r2.ts:162`, `agirR2` `acoes.ts:137`)
+
+Forma tratada: critério que reprovou com `unbound variable` por `v=$(grep -c …)` sem
+`|| true` numa corrente com `&&` sob `set -euo pipefail`. Conserto (`consertarUnbound`,
+`r2.ts:60`), o do humano no 929 letra por letra: `|| true` dentro de cada `$(grep -c …)` e
+toda expansão dessas variáveis como `${v:-x}`. A prova roda o critério no harness do
+executor (`out="$( ( cd … && eval "$cmd" ) 2>&1 || true )"` sob `set -euo pipefail`), numa
+pasta temporária com cópias dos arquivos que o cmd cita: no branch alvo (trabalho não
+feito) o novo tem de rodar sem abortar e REPROVAR; o antigo e o head da última tentativa
+entram como registro. cmd que chama git, npx, node, gerenciador de pacote, shell ou
+`scripts/` não é provado ("não consegui"). Saída: `<repo>/<id>/proposta.md` (cmd antigo e
+novo, tabela da prova, diff) e `proposta.json` (com o conteúdo dos arquivos da prova, para
+a comparação), uma por assinatura. Nunca aplica, nem no modo `auto`.
+
+### 14.5 Travas e escrita (`repo.ts`, `caminhos.ts`)
+
+- **Uma ação por ticket**: com uma `acao` no ledger, o próximo bloqueio do mesmo ticket vai
+  para humano ("não consegui: segunda vez bloqueado"), mesmo depois de `orq desfazer`.
+- **Interruptor** e **trava global**: §14.1.
+- **Espera git** (`esperarGit`, `repo.ts:66`): nem `index.lock`/`HEAD.lock` no git dir, nem
+  processo `git` (`pgrep -x git`; `ORQ_RESOLVEDOR_PGREP` nos testes), até
+  `ORQ_RESOLVEDOR_ESPERA_GIT_S` (60 s); passou do teto, não escreve.
+- **Só o arquivo do ticket** (`confereTicket`, `repo.ts:40`): `docs/fila/<id>-<slug>.md`, o
+  caminho real dentro de `docs/fila`, não symlink; e como foi lido (outro processo mexeu:
+  não age).
+- **Commit** (`escreverEComitar`, `repo.ts:92`): `git commit --only -- <arquivo>` (o resto
+  do índice fica), mensagem `orq-resolvedor: <id> <classe> <regra>: <o que mudou>` e o
+  trailer **`Orq-Resolvedor: <classe> <regra> <assinatura do diagnóstico>`**
+  (`trailer`, `repo.ts:77`). **Nunca `--no-verify`** (`gitEscrita` recusa): o hook do repo
+  (no Comarka, `validar-fila`) é a segunda trava; recusou, o arquivo volta ao que era. Commit
+  com outro arquivo ou outro pai: "não consegui", alto. Nunca push; nenhum outro verbo de
+  escrita.
+- **Fora do repo** (`GuardaResolvedor`, `caminhos.ts:39`): só sob `ORQ_RESOLVEDOR_DIR`
+  (padrão `~/.orq/resolvedor`) e o próprio `repos.json`; nunca dentro de um repo do
+  `repos.json`. Troca atômica.
+- No repo instalado, leitura só por `gitLeitura` (`GIT_OPTIONAL_LOCKS=0`); nenhum script do
+  repo roda (o hook é do `git commit`); runs, locks, sentinelas e `_worktrees` só lidos.
+
+### 14.6 Ledger, desfecho, promoção (`ledger.ts`, `desfecho.ts`, `promocao.ts`)
+
+`~/.orq/resolvedor/ledger.jsonl`, só acrescentado, uma linha JSON por fato:
+
+| tipo | quando | campos |
+|---|---|---|
+| `acao` | ação aplicada | classe, regra, assinatura, `acao`, `mudou`, `commit`, `arquivo`, `copia` (`acoes/<ts>/antes.md` e `depois.md`), `bloqueado_em`, `tempo_ate_destravar_s` |
+| `proposta` | proposta nova em sombra | `acao`, `mudou`, `proposta`, `proposta_json` |
+| `nao_agiu` | "não consegui" | `acao`, `modo`, `motivo`; uma por (ticket, assinatura, motivo) |
+| `aviso` | classe sem ação | idem |
+| `desfecho` | ação fechada (`apurarAcoes`, `desfecho.ts:45`) | `desfecho`: `done` (bom), `bloqueou_de_novo`, `humano_mexeu` (o json fora de `status`, `notas_status`, `tentativas`, `adiamentos_ambiente` difere do gravado) ou `desfeito`; `bom`, `tempo_ate_desfecho_s` |
+| `comparacao` | proposta R2 contra o humano (`apurarPropostas`, `desfecho.ts:104`) | `resultado` `acerto` (`igual`, ou `equivalente`: mesma saída nos estados guardados na proposta) ou `erro` (`diferente`, ou `humano_nao_trocou`: saiu de bloqueado com o cmd antigo); bloqueado com o cmd antigo: espera |
+| `promocao`, `rebaixamento` | o modo mudou sozinho (`promoverRebaixar`, `promocao.ts:44`) | `classe`, `de`, `para`, `motivo`, `considerados` |
+| `desfeito` | `orq desfazer` | `commit_desfeito`, `commit` |
+
+Promoção: R2 em sombra sobe para `auto` com **9 acertos nas 10 últimas** comparações
+(nesta etapa, R2 em auto continua só propondo). Rebaixamento: qualquer classe em `auto`
+volta para `sombra` com **2 desfechos ruins seguidos** (para R2, comparação com erro). Só
+conta o que veio depois da última mudança de modo daquela classe no repo. A mudança vai ao
+ledger e ao `repos.json` (`gravarModo`, `modos.ts:89`: só o campo `resolvedor` daquele
+item; item string vira objeto).
+
+### 14.7 `orq desfazer` e o job
+
+`orq desfazer <repo> <id>` (`desfazer.ts:34`) reverte a última ação do ledger no ticket só
+se o commit tem o trailer `Orq-Resolvedor` igual ao do ledger, nenhum commit depois toca o
+arquivo e o arquivo no disco é o do commit (nem writeback do loop). Volta à cópia do antes,
+pela mesma porta, com o trailer `Orq-Resolvedor-Desfaz: <sha>`; ledger `desfeito` e
+desfecho `desfeito`. Não respeita o interruptor (é o comando do humano).
+
+Job (`instalar-job.sh`, `com.orq.resolvedor.plist.template`, `job.sh`): label
+`com.orq.resolvedor`, um por máquina, `StartInterval` 300, `job.sh` sai em 0 com o
+interruptor antes de chamar o node e roda `orq resolver` (trava global na passada); log em
+`~/.orq/resolvedor/job.log`. `--dry-run` só imprime o plist; com `ORQ_TESTE=1` ou de
+checkout sob `/tmp`, só o `--dry-run` roda. Quem instala é o humano, do checkout principal
+do kit.
+
+### 14.8 Testes
+
+`orquestrador-resolvedor-{gabarito,passada,acoes,r2,ledger,promocao,desfazer,job}.test.ts`
+sobre repos `git init` em pasta temporária com os tickets reais (`test/resolvedor-repo.ts`,
+fixture `test/fixtures/resolvedor-7f/`, montada por `montar.py`, só leitura do Comarka);
+`~/.orq` só por variáveis (`ORQ_REPOS`, `ORQ_DIAG_DIR`, `ORQ_RESOLVEDOR_DIR`,
+`ORQ_RESOLVEDOR_PAUSADO`, `ORQ_RESOLVEDOR_PGREP`). Gabarito: o 840 sai igual ao commit
+humano (só a `descricao` da guarda é livre), o 940 e o 932 mudam as mesmas duas linhas para
+`pendente` e nota vazia, o 929 só ganha a proposta com o cmd do humano.
+
 ## 10. Divergências conhecidas
 
 O que este contrato **não** descreve como gostaria, e a peça que fecha cada uma.

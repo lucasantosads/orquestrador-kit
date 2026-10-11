@@ -966,6 +966,24 @@
   não afrouxa, ≥ 30 em `it.fails`), `orquestrador-triador-modelo.test.ts` (envelope do corte
   real, descartes, prompt `7f-b1b-r3`, `--casos`).
 
+- **Etapa 7f-b2 · resolvedor de bloqueios rodando sozinho** (10/10/2026). `orq resolver`
+  tria os bloqueados de cada repo do `repos.json`, do que tem mais dependentes ao que tem
+  menos, e age pela classe e pelo modo (`diagnostico`, `sombra`, `auto`): R1 firme põe o
+  teste na allowlist com guarda e reabre; R5 árvore suja e máquina reabrem quando a
+  condição some; R2 só propõe (cmd novo e prova sob `set -u`); o resto, diagnóstico e
+  aviso. Travas: uma ação por ticket, interruptor, trava global, espera git, só o arquivo
+  do ticket, commit com trailer `Orq-Resolvedor`, nunca `--no-verify`, nunca push. Ledger
+  de desfecho, comparação com o humano, promoção e rebaixamento, `orq desfazer`, job do
+  launchd. Commits `aeb5148` (gabarito), `0677c1e` (passada), `47231ca` (R1 e R5 com
+  travas), `e983df6` (R2 em sombra), `5b2a95d` (ledger), `b109bda` (promoção), `7daad91`
+  (desfazer), `e9551b7` (job).
+  *Evidência:* `7787af3` e `819c49a` do comarka-operacional,
+  `~/orq-sessoes/conserto-840-929.md`, `~/orq-sessoes/primeiros-diagnosticos-comarka.md` e
+  `~/orq-sessoes/relatorio-kit-etapa7f-b2.md`.
+  *Teste:* `orquestrador-resolvedor-gabarito.test.ts` (840 igual ao humano, 940/932 o
+  mesmo reabrir, 929 só proposta), `-passada`, `-acoes` (travas), `-r2`, `-ledger`,
+  `-promocao`, `-desfazer`, `-job`.
+
 ## PENDENTES
 
 - **7f-b1b · mini-corrida paga do R3.** `~/orq-sessoes/corrida-7f-r3.cmd` (9 casos: os 5 R3 e
@@ -981,12 +999,22 @@
   *Evidência:* `~/orq-sessoes/relatorio-kit-etapa7f-b1b.md`.
   *Teste:* aceite (C) por replay, sem chamada no CI.
 
-- **7f-b2 · gatilho e painel.** A peça 7 da spec redefinida (o painel nunca dispara gasto:
-  `orq triar` manual e depois job do launchd) e a peça 8 (coluna Diagnóstico, clique, filtro
-  por classe, linha na pausa, `pulado`/`obsoleto`); CONTRATO §9.5 lendo
-  `~/.orq/diagnosticos`.
-  *Evidência:* spec 7f-a §1 e §5 (Painel K12).
+- **7f · painel do triador e do resolvedor.** O gatilho virou o job do resolvedor
+  (7f-b2, `com.orq.resolvedor`); falta a peça 8 da spec (coluna Diagnóstico, clique,
+  filtro por classe, linha na pausa, `pulado`/`obsoleto`) e, agora, o que o resolvedor fez
+  (ação, proposta, "não consegui", modo por classe); CONTRATO §9.5 lendo
+  `~/.orq/diagnosticos` e `~/.orq/resolvedor`.
+  *Evidência:* spec 7f-a §1 e §5 (Painel K12); CONTRATO §14.
   *Teste:* `test-painel-triador.sh` da spec, com os quatro estados.
+- **7f-b2 · primeira passada real e instalação do job (humano).** `~/orq-sessoes/7f-b2-primeira-passada.cmd`
+  (`--dry-run` no comarka-operacional, depois do merge e do campo `resolvedor` no
+  `repos.json`) e `~/orq-sessoes/7f-b2-instalar-job.cmd`.
+  *Evidência:* `~/orq-sessoes/relatorio-kit-etapa7f-b2.md`.
+- **7f-b2 · R2 aplicando.** A promoção já registra R2 em auto com 9 acertos em 10, mas a
+  aplicação do cmd proposto não existe nesta etapa (decisão do chat do programa); e outras
+  formas de defeito de critério além do `unbound variable` (o `syntax error`, as três
+  formas de shell da medição).
+  *Evidência:* CONTRATO §14.4 e §14.6.
 
 - **7d-2 · o gate executa: C1, C5, C6.** Recon executado (C1, a única regra com causa e
   zero FP nos três repos na calibração), guarda que já falha (C5, com a exceção de arquivo

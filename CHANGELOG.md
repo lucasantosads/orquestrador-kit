@@ -929,3 +929,40 @@ programa, três mudaram de número (sem mudar de força): firmes certos 16 → 1
 no instante do bloqueio, e a corrida da peça 6 de 21 chamadas a US$ 6,30 para 22 a
 US$ 6,60. O teste da peça 2 cedeu o `materializar` para
 `test/triador-repo-legado.ts`, sem mudar asserção.
+
+### Etapa 7f-b2 · resolvedor de bloqueios rodando sozinho (10/10/2026)
+
+Diagnóstico vira ação: `orq resolver` tria os bloqueados de cada repo e, no modo do repo
+(`resolvedor` no `~/.orq/repos.json`), conserta o que é seguro, com travas, e registra
+tudo num ledger para aprender. Gabarito: os consertos humanos de 10/10 no
+comarka-operacional. Sem chamada de API, sem launchctl, sem escrita em repo real.
+CONTRATO §14.
+
+- **7f-b2-1** `aeb5148`: gabarito (`test/fixtures/resolvedor-7f/`, `montar.py` só lê o
+  Comarka): antes e depois reais do 840, 929 (`7787af3`), 940 e 932 (`819c49a`), a
+  evidência do bloqueio do 840 e do 929 e a árvore que o `criterio[12]` do 929 lê. Teste
+  vermelho (8 falhas por asserção).
+- **7f-b2-2** `0677c1e`: `orq resolver [--repo X] [--dry-run]`: passada, ordem pelos
+  tickets que esperam por cada bloqueado, triagem pelo triador, decisão por classe e modo;
+  `--dry-run` só grava o que faria.
+- **7f-b2-3** `47231ca`: ações R1 (allowlist com guarda de contagem, critério da lista,
+  reabre) e R5 (árvore alvo limpa, máquina livre), com edição textual conferida por parse;
+  travas: uma ação por ticket, interruptor, trava global, espera git, só o arquivo do
+  ticket, commit `--only` com o trailer `Orq-Resolvedor`, nunca `--no-verify`. Gabarito 840,
+  940 e 932 iguais ao humano.
+- **7f-b2-4** `e983df6`: R2 em sombra: proposta com o cmd do humano letra por letra e a
+  prova sob `set -u` (não aborta, reprova o estado não feito); nunca aplica. Gabarito 929.
+- **7f-b2-5** `5b2a95d`: ledger de desfecho: ação, "não consegui" com motivo, desfecho
+  (done, bloqueou de novo, humano mexeu) com tempos, e a proposta de R2 contra o conserto
+  humano (acerto igual ou equivalente, erro).
+- **7f-b2-6** `b109bda`: promoção (R2 com 9 acertos em 10 sobe para auto) e rebaixamento
+  (2 desfechos ruins seguidos em auto voltam para sombra), no ledger e no `repos.json`.
+- **7f-b2-7** `7daad91`: `orq desfazer <repo> <id>`: reverte a última ação só com o
+  trailer e o arquivo intocado depois; ledger `desfeito`.
+- **7f-b2-8** `e9551b7`: job `com.orq.resolvedor` (300 s, trava global, interruptor) com
+  `instalar-job.sh --dry-run`; o humano instala.
+- **7f-b2-9**: CONTRATO §14, este registro e `docs/PECAS.md` com os shas.
+
+Asserções existentes que mudaram: nenhuma fora dos testes novos da etapa. Na 7f-b2-5, dois
+testes da própria etapa (peças 2 e 3) deixaram de exigir ledger ausente: o "não consegui"
+passou a entrar no ledger, que é o pedido da peça 5; o dry-run continua sem mudar o ledger.
