@@ -142,12 +142,19 @@ export class Guarda {
 /**
  * sha256(repo | id | status | notas_status | para cada arquivo lido, em ordem:
  * nome, mtime_ns, tamanho). Mesma assinatura: não roda de novo (§1).
+ *
+ * O arquivo lido em recorte (`faixas`: a trilha `events.log` do kit, o
+ * `local-loop.log` do legado) é de todos os tickets e cresce a cada drenagem
+ * do loop: ele entra pelo recorte (as faixas e o conteúdo, que são do próprio
+ * ticket), nunca pelo stat do arquivo inteiro. Em 11/10 o stat do events.log
+ * deu ao 243 uma assinatura nova a cada 30 min sem tentativa nova (7f-b4).
  */
 export function assinatura(ev: Evidencia): string {
   const h = createHash('sha256')
   h.update([ev.repo, ev.id, ev.ticket?.status ?? '', ev.ticket?.notas_status ?? ''].join('|'))
   for (const l of [...ev.lidos].sort((a, b) => a.arquivo.localeCompare(b.arquivo))) {
-    h.update(`|${l.arquivo}|${l.mtime_ns}|${l.tamanho}`)
+    if (l.faixas) h.update(`|${l.arquivo}|recorte|${JSON.stringify(l.faixas)}|${createHash('sha256').update(l.conteudo).digest('hex')}`)
+    else h.update(`|${l.arquivo}|${l.mtime_ns}|${l.tamanho}`)
   }
   // sem tentativa, o diagnóstico é o estado das dependências (7f-b3): uma
   // dependência que fica done muda a assinatura e o ticket é triado de novo

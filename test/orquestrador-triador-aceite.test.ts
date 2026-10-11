@@ -38,6 +38,7 @@
  * caso sai "sem diagnóstico" e o vermelho é de asserção (0 de 15 firmes), não
  * de import quebrado.
  */
+import { createHash } from 'node:crypto'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -355,6 +356,19 @@ interface Replay {
 let base = ''
 const envAntes = { ...process.env }
 
+/**
+ * A assinatura como a corrida da peça 6 (7f-b1b) a gravou: o stat de todo
+ * arquivo lido, inclusive o do log em recorte. A 7f-b4 tirou o stat do log da
+ * assinatura do motor (o log cresce a cada drenagem); a guarda do replay
+ * continua sendo "a mesma evidência que a corrida viu", na fórmula de então.
+ */
+function assinaturaDaCorrida(ev: { repo: string; id: string; ticket: { status?: string; notas_status?: string } | null; lidos: { arquivo: string; mtime_ns: string; tamanho: number }[] }): string {
+  const h = createHash('sha256')
+  h.update([ev.repo, ev.id, ev.ticket?.status ?? '', ev.ticket?.notas_status ?? ''].join('|'))
+  for (const l of [...ev.lidos].sort((a, b) => a.arquivo.localeCompare(b.arquivo))) h.update(`|${l.arquivo}|${l.mtime_ns}|${l.tamanho}`)
+  return h.digest('hex')
+}
+
 async function replay(): Promise<Replay | null> {
   try {
     const imp = async (f: string) => (await import(pathToFileURL(join(TRIADOR, f)).href)) as Record<string, any>
@@ -366,11 +380,12 @@ async function replay(): Promise<Replay | null> {
     const passo = criarPassoModelo(CFG_PECA6)
     let gravadas = 0
     const velhas: string[] = []
-    const modelo = (ctx: { ev: { id: string }; assinatura: string }) => {
+    const modelo = (ctx: { ev: Parameters<typeof assinaturaDaCorrida>[0]; assinatura: string }) => {
       const f = join(FX, ctx.ev.id, 'resposta-modelo.json')
       if (!existsSync(f)) return { registro: { modelo: null, pulado: 'sem_replay' } }
       const g = JSON.parse(readFileSync(f, 'utf8')) as Gravada
-      if (g.assinatura !== ctx.assinatura) velhas.push(ctx.ev.id)
+      // a corrida assina a evidência com o id do ticket (o do caso vem só no diagnóstico)
+      if (g.assinatura !== assinaturaDaCorrida({ ...ctx.ev, id: ctx.ev.id.split('-')[1]! })) velhas.push(ctx.ev.id)
       gravadas++
       writeFileSync(join(base, 'resposta.json'), g.modelo.envelope_bruto ?? '')
       process.env.STUB_RC = /\(rc (\d+)\)/.exec(g.modelo.erro ?? '')?.[1] ?? '0'
