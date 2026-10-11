@@ -894,6 +894,36 @@ merge). CONTRATO §9.1 e §13.
   Vermelho antes por asserção (4 falhas).
 - **7f-b1-8**: CONTRATO §13.3 e §13.6, este registro e `docs/PECAS.md` com o sha da 7f-b1-7.
 
+### Etapa 7f-b1b · replay da corrida real da peça 6 e conserto do descarte (10/10/2026)
+
+A corrida real deu 21/37 no aceite (C) (aceite: ≥ 30). Sem nenhuma chamada de API.
+CONTRATO §13.5, §13.6 e §13.7.
+
+- **7f-b1b-1** `983ebae`: as 22 `resposta-modelo.json` da corrida entram na fixture; o
+  aceite (C) roda em replay (stub com o envelope gravado) e reproduz, byte a byte, o placar
+  da corrida: 21/37, 22 chamadas, US$ 4,1376.
+- **7f-b1b-2** `99407d1`: todo descarte da resposta do modelo grava `modelo.descartado`
+  (regra e trecho) e sai no placar como `[descartado: …]`. Os 6 `[extracao]` mostram
+  `error_max_budget_usd`.
+- **7f-b1b-3** `69956a2`: o motivo dos 6 era o triador: `--max-budget-usd` = teto do caso
+  (0,30) corta DEPOIS da volta paga e o CLI devolve o envelope sem `result`, que o
+  `lerEnvelope` jogava fora com o custo. Agora o corte do CLI é `teto_corte_usd` (0,60), o
+  envelope de erro entra no ledger (a corrida pagou US$ 6,1265, não 4,1376) e o descarte é
+  `teto_corte_cli`. O pior caso do teto do dia passa a ser o corte. No replay, 0 dos 6
+  recuperam resposta (não há `result`).
+- **7f-b1b-4** `7f748d0`: o aceite (C) conta a evidência equivalente à da medição (existe,
+  trecho na linha, sinal da classe, sustenta o remédio). 7 dos 8 "evidência fora" valem; o
+  741 não. Placar 28/37; o ≥ 30 fica em `it.fails`.
+- **7f-b1b-5** `12076a1`: proposta de prompt para R3 (`7f-b1b-r3`, opt-in) e
+  `orq triar --fixture --casos`. O comando da mini-corrida paga (9 casos, US$ 5,40) fica em
+  `~/orq-sessoes/corrida-7f-r3.cmd`, não rodado.
+- **7f-b1b-6**: CONTRATO §13.5 a §13.7, este registro e `docs/PECAS.md` com os shas.
+
+Asserções existentes que mudaram de número na 7f-b1b-3 (o pior caso do dia passou de
+0,30 a 0,60): o teto do dia no stub chama no limite com `[1,5; 0,9]` (era `[1,5; 1,2]`), o
+`--max-budget-usd` é 0,6 (era 0,3), e a corrida de stub a US$ 0,30 faz 21 chamadas em 6,60
+(era 22) e 9 em 3,00 (era 10). Nenhuma perdeu força.
+
 Até a 7f-b1-6, nenhuma asserção existente mudou. Na 7f-b1-7, por decisão do chat do
 programa, três mudaram de número (sem mudar de força): firmes certos 16 → 15 e 14 → 13
 no instante do bloqueio, e a corrida da peça 6 de 21 chamadas a US$ 6,30 para 22 a

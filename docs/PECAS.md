@@ -951,13 +951,34 @@
   controle e série cortada sem firme), `-fixture`, `-leitores`, `-extrair`, `-saida` (repo git intocado,
   `GIT_OPTIONAL_LOCKS=0`), `-modelo` (stub; `claude` do PATH é trava).
 
+- **Etapa 7f-b1b · replay da corrida real e conserto do descarte** (10/10/2026). As 22
+  respostas da corrida real da peça 6 viram replay do aceite (C) (reproduz 21/37); todo
+  descarte da resposta do modelo grava o motivo e sai no placar; os 6 sem motivo eram o
+  corte do CLI no teto do caso depois de pago, agora `teto_corte_usd` separado e com o custo
+  no ledger; o aceite conta a evidência equivalente com o sinal da classe (28/37); proposta
+  de prompt para R3, opt-in. Commits `983ebae` (replay), `99407d1` (descarte com motivo),
+  `69956a2` (corte do CLI e custo do envelope de erro), `7f748d0` (evidência equivalente),
+  `12076a1` (prompt R3 e `--casos`).
+  *Evidência:* `~/orq-sessoes/corrida-7f-peca6.txt`, `~/.orq/corrida-7f-peca6/` e
+  `~/orq-sessoes/relatorio-kit-etapa7f-b1b.md`.
+  *Teste:* `orquestrador-triador-aceite.test.ts` ((C) em replay: 21/37 reproduzido, 6
+  descartes com motivo, custo real US$ 6,1265, 28/37 com a evidência equivalente, a regra
+  não afrouxa, ≥ 30 em `it.fails`), `orquestrador-triador-modelo.test.ts` (envelope do corte
+  real, descartes, prompt `7f-b1b-r3`, `--casos`).
+
 ## PENDENTES
 
-- **7f peça 6 · corrida real e replay.** `orq triar --fixture test/fixtures/triador-7f` com o
-  modelo de verdade, teto US$ 6,60, nos 22 casos de palpite; as `resposta-modelo.json` entram
-  na fixture e o aceite (C) vira replay (≥ 30/37).
-  *Evidência:* spec 7f-a §7.2 e §8; o comando em `~/orq-sessoes/corrida-7f-peca6.cmd` e o
-  que conferir em `~/orq-sessoes/corrida-7f-peca6-conferir.md`.
+- **7f-b1b · mini-corrida paga do R3.** `~/orq-sessoes/corrida-7f-r3.cmd` (9 casos: os 5 R3 e
+  os 6 cortados no teto, prompt `7f-b1b-r3`, teto US$ 5,40), depois do merge da 7f-b1b; as
+  respostas novas entram na fixture e o aceite (C) é refeito. Com 28/37 hoje, chegar a 30
+  pede ao menos 2 dos 9 com classe e evidência certas.
+  *Evidência:* `~/orq-sessoes/relatorio-kit-etapa7f-b1b.md`.
+- **7f · decisões para o chat do programa.** (1) O teto do caso (0,30) não cobre o custo
+  real do `claude -p` (0,17 a 0,40 na corrida; por chamada, 10 a 12 mil tokens de cache lido e
+  19 a 47 mil criados, com a entrada dentro): manter 0,30 como marca ou subir. (2) O corte
+  do CLI em 0,60 e o pior caso do dia nele (9 chamadas por dia em 3,00, não 10). (3) O
+  prompt `7f-b1b-r3` como padrão, depois da mini-corrida.
+  *Evidência:* `~/orq-sessoes/relatorio-kit-etapa7f-b1b.md`.
   *Teste:* aceite (C) por replay, sem chamada no CI.
 
 - **7f-b2 · gatilho e painel.** A peça 7 da spec redefinida (o painel nunca dispara gasto:

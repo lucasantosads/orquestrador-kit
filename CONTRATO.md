@@ -1115,27 +1115,37 @@ Regras duras:
 
 Só para palpite e sem regra, uma vez por assinatura (mesmo que falhe: `modelo.erro`).
 
-- Config: `ORQ_TRIADOR_CONFIG` ou `~/.orq/triador.json` (`lerConfigModelo`, `:48`):
+- Config: `ORQ_TRIADOR_CONFIG` ou `~/.orq/triador.json` (`lerConfigModelo`, `:63`):
   `modelo` (padrão `claude-opus-5-5`; `null` desliga), `teto_dia_usd` (3,00),
-  `teto_caso_usd` (0,30), `entrada_max_tokens` (30000), `timeout_secs` (120).
-  `ORQ_TRIADOR_TETO_DIA` sobrepõe o teto do dia.
-- Entrada (`montarEntrada`, `:141`): as 7 seções da spec §4 (ticket; extração; recorte do
+  `teto_caso_usd` (0,30), `teto_corte_usd` (0,60, 7f-b1b), `entrada_max_tokens` (30000),
+  `timeout_secs` (120), `prompt` (`spec`; `7f-b1b-r3` é a proposta de §13.7).
+  `ORQ_TRIADOR_TETO_DIA` sobrepõe o teto do dia; `ORQ_TRIADOR_PROMPT`, o prompt. Prompt
+  desconhecido é erro.
+- Entrada (`montarEntrada`, `:161`): as 7 seções da spec §4 (ticket; extração; recorte do
   vitest; critérios FALHA; diff.stat; juiz; o que o agente disse, 3000 + 1500 caracteres),
   cortadas de baixo para cima até `entrada_max_tokens × 3,5` caracteres, e mascaradas. O
-  diff cru não entra. O prompt é o literal da spec (`prompt.ts`).
-- Chamada (`chamar`, `:199`): `claude -p --output-format json --model <m> --allowedTools ""
-  --max-turns 1 --max-budget-usd <teto_caso>`, prompt pela entrada padrão. O binário é
+  diff cru não entra. O prompt padrão é o literal da spec (`prompt.ts`, `PROMPT`).
+- Chamada (`chamar`, `:223`): `claude -p --output-format json --model <m> --allowedTools ""
+  --max-turns 1 --max-budget-usd <teto_corte>`, prompt pela entrada padrão. O binário é
   `ORQ_TRIADOR_CLAUDE` ou `claude`; sob teste (vitest ou `ORQ_TESTE=1`) sem
-  `ORQ_TRIADOR_CLAUDE`, a chamada é recusada.
-- Teto do dia (`criarPassoModelo`, `:352`): a chamada só sai se gasto do dia + teto do caso
-  ≤ teto do dia (entrada sem custo conhecido conta como o teto do caso); senão
-  `modelo: {pulado: "teto_dia"}` e vale a extração. Custo acima do teto do caso marca
-  `custo_acima_do_teto` no ledger.
-- Resposta (`lerResposta`, `:260`): a última linha JSON com `classe` em R1-R7. Cada
+  `ORQ_TRIADOR_CLAUDE`, a chamada é recusada. Com uma volta só, o `--max-budget-usd` não
+  impede o gasto: a volta é paga e, acima do corte, o CLI devolve `error_max_budget_usd`
+  sem `result` (§13.7). Por isso o corte (0,60) fica acima do teto do caso (0,30), que só
+  marca `custo_acima_do_teto` no ledger, como na spec §4.
+- Envelope (`lerEnvelope`, `:244`): o de erro do CLI, sem `result`, é lido como `is_error`
+  com `subtype`, `errors` e o custo pago, que vai ao ledger.
+- Teto do dia (`criarPassoModelo`, `:414`): a chamada só sai se gasto do dia + corte ≤
+  teto do dia (entrada sem custo conhecido conta como o corte, `gastoDoDia`, `:364`);
+  senão `modelo: {pulado: "teto_dia"}` e vale a extração.
+- Resposta (`lerResposta`, `:299`): a última linha JSON com `classe` em R1-R7. Cada
   evidência tem de ser de um arquivo lido e de uma linha que ele tem (no recorte, uma
   linha guardada); a que não confere sai e conta `evidencia_descartada`
-  (`conferirEvidencia`, `:286`). Envelope ilegível, sem evidência válida ou classe fora da
-  lista: vale a extração, com `modelo.erro`. A resposta do modelo nunca é firme.
+  (`conferirEvidencia`, `:325`). A resposta do modelo nunca é firme.
+- Descarte (`Descarte`, `:378`): toda resposta descartada grava `modelo.erro` e
+  `modelo.descartado = {regra, trecho}`, com `regra` em `envelope_ilegivel`,
+  `teto_corte_cli`, `envelope_is_error`, `resposta_sem_classe` ou
+  `evidencia_nenhuma_confere`; vale a extração, e o placar mostra
+  `[descartado: <regra>: <trecho>]`.
 
 ### 13.6 Fixture e testes
 
@@ -1143,11 +1153,41 @@ Só para palpite e sem regra, uma vez por assinatura (mesmo que falhe: `modelo.e
 em `cortados/`, 5 controles cortados na última tentativa que reprovou, montados por
 `montar.py` (só leitura do comarka-operacional, git com `GIT_OPTIONAL_LOCKS=0`; os
 cortados saem de `controle/`, `--so-cortados`), cada um com `esperado.json` (classe e
-evidência da medição, com a linha da tabela; nos de controle e cortados, `firme_proibido`). `orq triar --fixture <dir>` (`corrida.ts:46`) roda o triador sobre os 37
-e imprime o placar (C) da spec §7.2; é a corrida da peça 6.
+evidência da medição, com a linha da tabela; nos de controle e cortados, `firme_proibido`). `orq triar --fixture <dir> [--casos a,b,…]` (`corrida.ts:51`) roda o triador sobre
+os 37 (ou só os casos pedidos) e imprime o placar (C) da spec §7.2; é a corrida da peça 6.
+Os 22 palpites trazem `resposta-modelo.json`, a resposta gravada na corrida real (§13.7).
 
 Testes: `orquestrador-triador-{fixture,leitores,extrair,aceite,saida,modelo}.test.ts`. O
 `claude` deles é `test/fixtures/claude-envelope/triador-stub.sh`; o do PATH é uma trava.
+
+### 13.7 Etapa 7f-b1b: replay da corrida real e conserto do descarte (10/10/2026)
+
+A corrida real da peça 6 (`~/orq-sessoes/corrida-7f-peca6.txt`) deu 21/37 no aceite (C),
+que pede ≥ 30.
+
+- **Replay.** As 22 `resposta-modelo.json` de `~/.orq/corrida-7f-peca6/` estão na fixture.
+  O aceite (C) roda a corrida com o stub devolvendo cada `envelope_bruto` gravado (com o rc
+  da corrida), pelo parser, pela conferência e pelo ledger de verdade, no relógio e no teto
+  da corrida. Sem chamada de API. Sem conserto, o placar sai igual, byte a byte, ao da
+  corrida: 21/37, 22 chamadas, US$ 4,1376.
+- **Os 6 `[extracao]` sem motivo** (08-635, 14-407a, 25-711a, 28-707, 29-826, 33-707): o
+  CLI cortou no `--max-budget-usd` = teto do caso (0,30) DEPOIS da volta paga (US$ 0,31 a
+  0,40) e devolveu `error_max_budget_usd` sem `result`. `lerEnvelope` exigia `result`: o
+  envelope virava "ilegível" e o custo sumia do ledger e do placar (a corrida pagou
+  US$ 6,1265, não 4,1376). Conserto: corte do CLI separado (`teto_corte_usd`), o envelope de
+  erro entra no ledger com o custo, e o descarte `teto_corte_cli` sai no placar. No replay,
+  0 dos 6 passam a usar a resposta do modelo: o envelope não tem `result` para recuperar.
+- **Evidência equivalente** (só no teste de aceite): além da evidência da medição (±3), vale
+  a que existe na cópia, cujo trecho está na linha, que carrega o sinal da classe e sustenta
+  o remédio (R1: vermelho de teste fora da allowlist citado no remédio; R2: bloco `FALHA` de
+  `criterio[i]` citado no remédio; R3: juiz ou log com token, lista fechada, autorização,
+  `liberacoes.json`, DDL/FK, refatiar ou motor, e remédio de decisão; R4: vermelho de teste
+  dentro da allowlist, e remédio de ticket). R5, R6 e R7 só contam com a da medição. Dos 8
+  "classe certa, evidência fora", 7 valem; o 741 não (nenhum artefato mostra a falta de
+  código). Placar: 28/37.
+- **R3 no prompt:** proposta `7f-b1b-r3` (`prompt.ts`, `R3_7F_B1B` `:84` e
+  `REGRAS_R3_7F_B1B`), só por opt-in; virar padrão é mudar a spec. A mini-corrida paga (9
+  casos, teto US$ 5,40) está em `~/orq-sessoes/corrida-7f-r3.cmd` e não foi rodada.
 
 ## 10. Divergências conhecidas
 
