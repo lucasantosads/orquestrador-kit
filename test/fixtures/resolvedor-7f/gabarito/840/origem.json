@@ -1,0 +1,8 @@
+{
+ "id": "840",
+ "arquivo": "docs/fila/840-sai-resolver-chave-api-e.md",
+ "classe": "R1",
+ "commit_humano": "7787af37680122f1749b6a3a8c257c43232346f4",
+ "antes": "7787af3^:docs/fila/840-sai-resolver-chave-api-e.md com status bloqueado e a nota_do_motor do diagnóstico real",
+ "depois": "7787af3:docs/fila/840-sai-resolver-chave-api-e.md"
+}

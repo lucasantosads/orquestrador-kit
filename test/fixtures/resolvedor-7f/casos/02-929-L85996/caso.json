@@ -1,0 +1,12 @@
+{
+ "id": "929",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/929-nichos-teses-aba.md",
+ "ticket_sha": "75c684742f7fdc61a7f424819aa43c2179cb8865",
+ "ticket_antes": true,
+ "linha_bloqueio": 85996,
+ "log_inicio": 85967,
+ "fim": "2026-10-10T19:21:17Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/929"
+}

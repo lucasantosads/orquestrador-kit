@@ -1,0 +1,6 @@
+ .../performance/nichos-teses/drill-tese.tsx        |  80 +++++
+ .../performance/nichos-teses/nichos-teses-aba.tsx  | 329 +++++++++++++++++++++
+ .../performance/nichos-teses/nichos-teses-tela.ts  |  82 +++++
+ src/app/dashboard/performance/page.tsx             |   6 +
+ test/performance-nichos-teses-aba.test.ts          |  90 ++++++
+ 5 files changed, 587 insertions(+)

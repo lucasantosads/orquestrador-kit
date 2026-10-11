@@ -1,0 +1,329 @@
+"use client";
+
+/**
+ * Aba Nichos e teses de /dashboard/performance (ticket 929). Um período só para a aba,
+ * o seletor padrão do OS (usePeriodoUrl, o mesmo da URL da Carteira). Valor de linha é a
+ * mediana entre os clientes; abaixo de 3 clientes não há amostra.
+ */
+
+import { Fragment, Suspense, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { usePeriodoUrl } from "@/lib/periodo/use-periodo-url";
+import { SeletorPeriodo } from "@/components/periodo/seletor-periodo";
+import { fetchJson } from "@/lib/fetch-json";
+import { LoadingState } from "@/components/estados/loading-state";
+import { ErrorState } from "@/components/estados/error-state";
+import type { Mediana, TipoCampanha } from "@/lib/perf/nicho-tese/agregar";
+import type { ResultadoCarregado } from "@/lib/perf/nicho-tese/carregar";
+import { DrillTese } from "./drill-tese";
+import {
+  OPCOES_TIPO,
+  TEXTO_SEM_DADO,
+  formatarReais,
+  motivoMediana,
+  textoBase,
+  textoCobertura,
+  textoCustoPorTipo,
+  textoFaixa,
+  textoMediana,
+  urlNichoTese,
+  type FormatoValor,
+  type TipoFiltro,
+} from "./nichos-teses-tela";
+
+// Loading eterno é bug, não estado: 15s sem resposta vira ErrorState com retry.
+const LOADING_TIMEOUT_MS = 15_000;
+
+const TEXTO_RODAPE =
+  "Custo por resultado segue o objetivo de cada campanha; engajamento entra no investido e fica fora do custo. MQL vem do CRM; contratos, dos fechamentos registrados. Valor de linha é a mediana entre os clientes; abaixo de 3 clientes não há amostra.";
+
+const CLASSE_SELECT = "rounded-md border border-border bg-background px-2 py-1 text-fs-body";
+
+interface OpcaoNicho {
+  id: string;
+  nome: string;
+}
+
+/** Valor da mediana em font-mono ou texto cinza com o motivo no title. */
+function ValorMediana({ m, formato }: { m: Mediana; formato: FormatoValor }) {
+  const motivo = motivoMediana(m);
+  if (motivo) {
+    return (
+      <span className="text-muted-foreground" title={motivo}>
+        {textoMediana(m, formato)}
+      </span>
+    );
+  }
+  return <span className="font-mono">{textoMediana(m, formato)}</span>;
+}
+
+function CelulaMediana({ m, formato }: { m: Mediana; formato: FormatoValor }) {
+  const faixa = textoFaixa(m, formato);
+  return (
+    <td className="px-3 py-2 text-right align-top">
+      <ValorMediana m={m} formato={formato} />
+      {faixa && <div className="font-mono text-fs-label text-muted-foreground">{faixa}</div>}
+    </td>
+  );
+}
+
+function Indicador({ rotulo, m, formato }: { rotulo: string; m: Mediana; formato: FormatoValor }) {
+  const faixa = textoFaixa(m, formato);
+  return (
+    <div className="min-w-[8rem] space-y-0.5">
+      <p className="text-fs-label text-muted-foreground">{rotulo}</p>
+      <p className="text-fs-body">
+        <ValorMediana m={m} formato={formato} />
+        {m.motivo === null && <span className="ml-2 text-fs-label text-muted-foreground">{textoBase(m.n)}</span>}
+      </p>
+      {faixa && <p className="font-mono text-fs-label text-muted-foreground">{faixa}</p>}
+    </div>
+  );
+}
+
+interface LinhaMetricas {
+  clientes: number;
+  sem_amostra: boolean;
+  investido: number;
+  contratos: number;
+  pct_mql: Mediana;
+  cpmql: Mediana;
+  cac: Mediana;
+  custo_por_tipo: { tipo: TipoCampanha; mediana: Mediana }[];
+}
+
+function CelulasMetricas({ l, tipo }: { l: LinhaMetricas; tipo: TipoFiltro }) {
+  const semAmostra = l.sem_amostra ? `sem amostra · ${textoBase(l.clientes)}` : null;
+  if (semAmostra) {
+    return (
+      <td colSpan={4} className="px-3 py-2 text-right text-muted-foreground" title={motivoMediana(l.cpmql) ?? undefined}>
+        {semAmostra}
+      </td>
+    );
+  }
+  const custos = l.custo_por_tipo.map((c) => ({ tipo: c.tipo, custo: c.mediana.valor }));
+  const doTipo = custos.filter((c) => tipo === "todos" || c.tipo === tipo);
+  return (
+    <>
+      <td className="px-3 py-2 text-right font-mono">{textoCustoPorTipo(doTipo)}</td>
+      <CelulaMediana m={l.pct_mql} formato="pct" />
+      <CelulaMediana m={l.cpmql} formato="brl" />
+      <CelulaMediana m={l.cac} formato="brl" />
+    </>
+  );
+}
+
+function LinhaDeTabela({
+  nome,
+  l,
+  tipo,
+  recuo,
+  aberto,
+  onAlternar,
+}: {
+  nome: string;
+  l: LinhaMetricas;
+  tipo: TipoFiltro;
+  recuo?: boolean;
+  aberto: boolean;
+  onAlternar: () => void;
+}) {
+  return (
+    <tr className="border-b border-border">
+      <th scope="row" className={`px-3 py-2 text-left font-normal ${recuo ? "pl-8" : ""}`}>
+        <button type="button" onClick={onAlternar} aria-expanded={aberto} className="text-left hover:text-primary">
+          <span aria-hidden="true">{aberto ? "▾" : "▸"} </span>
+          {nome}
+        </button>
+      </th>
+      <td className="px-3 py-2 text-right font-mono">{l.clientes}</td>
+      <td className="px-3 py-2 text-right font-mono">{formatarReais(l.investido)}</td>
+      <CelulasMetricas l={l} tipo={tipo} />
+      <td className="px-3 py-2 text-right font-mono">{l.contratos}</td>
+    </tr>
+  );
+}
+
+function NichosTesesConteudo() {
+  const { valor, intervalo, mudar } = usePeriodoUrl();
+  const inicio = intervalo?.from ?? "";
+  const fim = intervalo?.until ?? "";
+  const [tipo, setTipo] = useState<TipoFiltro>("todos");
+  const [nicho, setNicho] = useState("todos");
+  const [dados, setDados] = useState<ResultadoCarregado | null>(null);
+  const [nichosConhecidos, setNichosConhecidos] = useState<OpcaoNicho[]>([]);
+  const [pendentesAbertos, setPendentesAbertos] = useState(false);
+  const [abertos, setAbertos] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
+  const [falhou, setFalhou] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setFalhou(false);
+    const timer = setTimeout(() => setFalhou(true), LOADING_TIMEOUT_MS);
+    try {
+      const r = await fetchJson<ResultadoCarregado>(urlNichoTese(inicio, fim, tipo, nicho === "todos" ? null : nicho));
+      setDados(r);
+      // Com um nicho filtrado a resposta só traz ele; as opções acumulam para não sumirem.
+      setNichosConhecidos((antes) => {
+        const mapa = new Map(antes.map((n) => [n.id, n] as const));
+        for (const n of r.nichos) mapa.set(n.nicho_id, { id: n.nicho_id, nome: n.nome });
+        return Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+      });
+    } catch (err) {
+      console.error("performance/nichos-teses: falha ao carregar", err);
+      setFalhou(true);
+    } finally {
+      clearTimeout(timer);
+      setLoading(false);
+    }
+  }, [inicio, fim, tipo, nicho]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const alternar = (chave: string) => setAbertos((a) => ({ ...a, [chave]: !a[chave] }));
+  const cobertura = dados?.cobertura;
+  const nPendentes = cobertura ? cobertura.pendentes.length : 0;
+
+  return (
+    <div className="space-y-4">
+      <div data-testid="nt-filtros" className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1">
+          <span className="text-fs-label text-muted-foreground" aria-hidden="true">Período</span>
+          <SeletorPeriodo valor={valor} onChange={mudar} ariaLabel="Período de nichos e teses" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-fs-label text-muted-foreground" aria-hidden="true">Tipo de funil</span>
+          <select aria-label="Tipo de funil" className={CLASSE_SELECT} value={tipo} onChange={(e) => setTipo(e.target.value as TipoFiltro)}>
+            {OPCOES_TIPO.map((o) => (
+              <option key={o.valor} value={o.valor}>{o.rotulo}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-fs-label text-muted-foreground" aria-hidden="true">Nicho</span>
+          <select aria-label="Nicho" className={CLASSE_SELECT} value={nicho} onChange={(e) => setNicho(e.target.value)}>
+            <option value="todos">Todos</option>
+            {nichosConhecidos.map((n) => (
+              <option key={n.id} value={n.id}>{n.nome}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {falhou ? (
+        <ErrorState description="Não foi possível carregar nichos e teses." ctaLabel="Tentar novamente" onCtaClick={() => load()} />
+      ) : loading || !dados || !cobertura ? (
+        <LoadingState />
+      ) : (
+        <>
+          <div data-testid="nt-cobertura" className="space-y-2">
+            <p className="text-fs-body text-muted-foreground">
+              {cobertura.campanhas_com_gasto === 0
+                ? "Nenhuma campanha com investimento no período."
+                : nPendentes === 0
+                  ? `${textoCobertura(cobertura)}: todas as campanhas com investimento têm tese`
+                  : textoCobertura(cobertura)}
+              {nPendentes > 0 && (
+                <button
+                  type="button"
+                  className="ml-3 text-primary hover:underline"
+                  aria-expanded={pendentesAbertos}
+                  onClick={() => setPendentesAbertos((v) => !v)}
+                >
+                  Classificar pendentes ({nPendentes})
+                </button>
+              )}
+            </p>
+            {pendentesAbertos && nPendentes > 0 && (
+              <ul className="divide-y divide-border text-fs-body">
+                {cobertura.pendentes.map((p) => (
+                  <li key={p.campaign_id} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-1.5">
+                    <span>{p.campaign_nome ?? "Campanha sem nome"}</span>
+                    <span className="text-muted-foreground">{p.cliente_nome}</span>
+                    <span className="font-mono">{formatarReais(p.investido)}</span>
+                    <Link href={`/dashboard/clientes/${p.cliente_id}`} className="text-primary hover:underline">
+                      Abrir ficha
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div data-testid="nt-indicadores" className="flex flex-wrap gap-x-8 gap-y-3">
+            <Indicador rotulo="Investido" m={dados.indicadores.investido} formato="brl" />
+            <Indicador rotulo="%MQL" m={dados.indicadores.pct_mql} formato="pct" />
+            <Indicador rotulo="CPMQL" m={dados.indicadores.cpmql} formato="brl" />
+            <Indicador rotulo="CAC" m={dados.indicadores.cac} formato="brl" />
+            <Indicador rotulo="ROAS dos clientes" m={dados.indicadores.roas} formato="x" />
+          </div>
+
+          <div data-testid="nt-tabela" className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-fs-body">
+              <thead className="text-fs-label text-muted-foreground">
+                <tr className="border-b border-border text-left">
+                  <th className="px-3 py-2 font-medium">Nicho e tese</th>
+                  <th className="px-3 py-2 text-right font-medium">Clientes</th>
+                  <th className="px-3 py-2 text-right font-medium">Investido</th>
+                  <th className="px-3 py-2 text-right font-medium">Custo por resultado</th>
+                  <th className="px-3 py-2 text-right font-medium">%MQL</th>
+                  <th className="px-3 py-2 text-right font-medium">CPMQL</th>
+                  <th className="px-3 py-2 text-right font-medium">CAC</th>
+                  <th className="px-3 py-2 text-right font-medium">Contratos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dados.nichos.map((n) => (
+                  <Fragment key={n.nicho_id}>
+                    <LinhaDeTabela nome={n.nome} l={n} tipo={tipo} aberto={!!abertos[n.nicho_id]} onAlternar={() => alternar(n.nicho_id)} />
+                    {abertos[n.nicho_id] &&
+                      n.teses.map((t) => (
+                        <Fragment key={t.tese_id}>
+                          <LinhaDeTabela nome={t.nome} l={t} tipo={tipo} recuo aberto={!!abertos[t.tese_id]} onAlternar={() => alternar(t.tese_id)} />
+                          {abertos[t.tese_id] && (
+                            <tr className="border-b border-border bg-muted/20">
+                              <td colSpan={8} className="px-3 pl-8">
+                                <DrillTese tese={t} />
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      ))}
+                  </Fragment>
+                ))}
+                <tr className="text-muted-foreground">
+                  <th scope="row" className="px-3 py-2 text-left font-normal">Sem tese</th>
+                  <td className="px-3 py-2 text-right font-mono">{dados.sem_tese.clientes}</td>
+                  <td className="px-3 py-2 text-right font-mono">{formatarReais(dados.sem_tese.investido)}</td>
+                  <td colSpan={4} className="px-3 py-2 text-right" title="Campanhas sem tese não entram nas medianas">
+                    <span className="font-mono">{dados.sem_tese.campanhas}</span> {dados.sem_tese.campanhas === 1 ? "campanha" : "campanhas"}, {TEXTO_SEM_DADO} de métricas
+                  </td>
+                  <td className="px-3 py-2" />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          {dados.nichos.length === 0 && (
+            <p className="text-fs-body text-muted-foreground">Nenhuma campanha com tese no período.</p>
+          )}
+        </>
+      )}
+
+      <p data-testid="nt-rodape" className="text-fs-label text-muted-foreground">
+        {TEXTO_RODAPE}
+      </p>
+    </div>
+  );
+}
+
+/** useSearchParams (dentro de usePeriodoUrl) exige Suspense no App Router. */
+export function NichosTesesAba() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <NichosTesesConteudo />
+    </Suspense>
+  );
+}

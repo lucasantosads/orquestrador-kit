@@ -1,0 +1,3 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+840	docs/fila/runs/840/attempt-1	test/nps-reacao-resposta.test.ts	1995	2026-10-10T22:47:06Z	1
+840	docs/fila/runs/840/attempt-2	test/nps-reacao-resposta.test.ts	1990	2026-10-10T22:50:37Z	1

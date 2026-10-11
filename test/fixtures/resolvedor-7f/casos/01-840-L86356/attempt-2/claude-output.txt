@@ -1,0 +1,18 @@
+O ticket 840 está commitado (`1208ce4`), mas um teste fora da allowlist ainda falha, então a suíte completa não fica verde. Parei nele, como o ticket manda.
+
+**Teste que falha:** `test/nps-reacao-resposta.test.ts`, caso `(i) rota pública`, linha 195. Foi o que reprovou a tentativa anterior. Ele faz `vi.mock("@/lib/clientes/resolver-chave", ...)` devolvendo `clienteId: 00000000-0000-4000-8000-000000000001`. A rota `nps/public/[token]` agora usa o resolver único, então esse mock não vale mais. A rota chama o resolver real, que lê um supabase mockado sem a tabela de clientes, e `clienteId` chega `undefined`.
+
+**Correção que falta, em uma linha:** trocar o mock desse arquivo por `vi.mock("@/lib/clientes/resolver-cliente", () => ({ resolverCliente: vi.fn(async () => ({ cliente_id: "00000000-0000-4000-8000-000000000001", notion_id: "n1" })) }))`. O arquivo não está na allowlist do 840, então não o editei. Ele precisa entrar na allowlist, ou outro ticket faz a troca.
+
+**O que mudou no commit:**
+- **Rotas:** as 4 rotas deixaram de importar `@/lib/clientes/resolver-chave` e usam o resolver único, com o mapeamento do ticket.
+- **Resposta da rota `resolver-chave`:** continua `{clienteId, notionId}`, que é o formato que o wizard de setup lê. Erro de leitura continua 500. Um uuid desconhecido agora devolve `{null, null}` em vez de ecoar o uuid.
+- **Cron:** não resolve nada em laço, só monta o filtro, então não precisou de lote.
+- **Testes da allowlist:** troquei o resolver nos `readFileSync` de `test/chave-unica-cliente-id.test.ts`, o nome do filtro em um comentário de `test/leitura-relacao-gatilhos.test.ts`, e acrescentei a tabela de clientes ao mock de `test/resolver-chave.test.ts`. Nenhuma asserção foi removida ou afrouxada.
+- **Teste novo:** `test/sai-resolver-chave-api-e.test.ts` confere que nenhum dos 4 arquivos importa o resolver antigo e que uuid e notion_id chegam ao mesmo `cliente_id`.
+
+**Verificação:**
+- `tsc` deu 3 erros, o baseline. Não consegui rodar `rm -rf .next` (negado), então esse número vem sem a limpeza.
+- Os 5 arquivos de teste da allowlist, mais `test/resolver-cliente.test.ts` e o teste novo, passam.
+- Não rodei `npm run build` nem a suíte completa depois do commit.
+- O orçamento de diff está folgado: 105 linhas adicionadas e 17 removidas, contra o teto de 350.

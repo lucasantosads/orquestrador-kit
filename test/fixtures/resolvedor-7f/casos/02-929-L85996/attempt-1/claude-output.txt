@@ -1,0 +1,20 @@
+A aba "Nichos e teses" está pronta e commitada, entre Carteira e Metas de Performance. Não rodei `npm run build`, o `rm -rf .next` (negado) nem os critérios de merge-base e SO_ALLOWLIST, que foram bloqueados como comando composto.
+
+**O que passou**
+- **tsc:** deu 3, igual ao baseline. Rodei sem o `rm -rf .next` e filtrei o ruído de `.next/`.
+- **Testes:** as 8 guardas globais, os testes que leem `page.tsx` e o teste novo passaram juntos (15 arquivos, 167 testes).
+- **Orçamento de diff:** 573 linhas adicionadas, dentro do teto de 720.
+
+**O que entrou**
+- **`page.tsx`:** só o import, o `TabsTrigger` e o `TabsContent`.
+- **`nichos-teses-tela.ts`:** as funções puras de texto (mediana, faixa, base, custo por tipo, distância, cobertura, URL) e o texto do rodapé.
+- **`drill-tese.tsx`:** o ranking dos clientes da tese por CPMQL crescente, com gestor principal, custo por tipo e distância da mediana. Tese sem amostra mostra o aviso "sem amostra · N clientes: sem mediana para comparar".
+- **`nichos-teses-aba.tsx`:** os blocos `nt-filtros`, `nt-cobertura`, `nt-indicadores`, `nt-tabela` e `nt-rodape`, nessa ordem. Inclui o botão "Classificar pendentes (N)", a linha "Sem tese" por último, o seletor de período via `usePeriodoUrl` e o timeout de 15s com "Tentar novamente".
+- **`test/performance-nichos-teses-aba.test.ts`:** funções puras, ordem dos blocos e posição da aba.
+
+**Comportamentos a conferir**
+- O filtro de Nicho guarda os nichos já vistos, porque a resposta filtrada traz só um nicho e a lista sumiria.
+- Os dois estados de tabela vazia são o texto de uma linha da regra de vazio (sem tabela).
+- Escrevi os arquivos novos com Write porque o Bash recusou um heredoc com "Unicode whitespace".
+
+Nada foi publicado.

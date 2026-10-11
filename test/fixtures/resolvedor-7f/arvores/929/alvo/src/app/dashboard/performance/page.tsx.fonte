@@ -1,0 +1,101 @@
+"use client";
+
+/**
+ * Trafego > Carteira (ticket 346d): a tela e a Carteira. Um periodo so, o do
+ * usePeriodoUrl, que vive na CarteiraAba. O comparativo (funil, historico e
+ * matriz semanal) saiu da tela; os componentes seguem no disco.
+ */
+
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LoadingState } from "@/components/estados/loading-state";
+import { ErrorState } from "@/components/estados/error-state";
+import { fetchJson } from "@/lib/fetch-json";
+import { MetasPorGestor } from "./metas-por-gestor";
+import { CarteiraAba } from "./carteira/carteira-aba";
+
+// Loading eterno é bug, não estado: 15s sem resposta vira ErrorState com retry.
+const LOADING_TIMEOUT_MS = 15_000;
+
+interface ClienteOption { client_id: string | null; nome: string; ad_accounts_count: number }
+
+/** useSearchParams (dentro de usePeriodoUrl, na CarteiraAba) exige Suspense no App Router. */
+export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <AnalyticsConteudo />
+    </Suspense>
+  );
+}
+
+function AnalyticsConteudo() {
+  // null = ainda sem resposta; true/false = ha (ou nao) cliente com conta de anuncio vinculada.
+  const [temContaVinculada, setTemContaVinculada] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!loading) {
+      setTimedOut(false);
+      return;
+    }
+    setTimedOut(false);
+    const timer = setTimeout(() => setTimedOut(true), LOADING_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const rows = await fetchJson<ClienteOption[]>("/api/perf/clientes");
+      setTemContaVinculada((rows || []).some((c) => c.client_id && c.ad_accounts_count > 0));
+    } catch {
+      // Sem a lista, a Carteira segue valendo; so o aviso de vinculo fica de fora.
+      setTemContaVinculada(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-fs-page font-bold">Performance</h1>
+
+      <Tabs defaultValue="carteira">
+        <TabsList>
+          <TabsTrigger value="carteira">Carteira</TabsTrigger>
+          <TabsTrigger value="metas">Metas de Performance</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="carteira" className="space-y-6">
+          {timedOut ? (
+            <ErrorState
+              description="Não foi possível carregar a lista de clientes com conta de anúncio."
+              ctaLabel="Tentar novamente"
+              onCtaClick={() => {
+                console.error("performance: carregamento excedeu o tempo limite");
+                setTimedOut(false);
+                load();
+              }}
+            />
+          ) : loading ? (
+            <LoadingState />
+          ) : (
+            temContaVinculada === false && (
+              <p className="text-xs text-muted-foreground">
+                Nenhum cliente com conta de anúncio vinculada — vincule em Clientes → Conexões.
+              </p>
+            )
+          )}
+          <CarteiraAba />
+        </TabsContent>
+
+        <TabsContent value="metas" className="space-y-6">
+          <MetasPorGestor />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

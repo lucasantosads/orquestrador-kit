@@ -1,0 +1,8 @@
+{
+ "id": "929",
+ "arquivo": "docs/fila/929-nichos-teses-aba.md",
+ "classe": "R2",
+ "commit_humano": "7787af37680122f1749b6a3a8c257c43232346f4",
+ "antes": "7787af3^:docs/fila/929-nichos-teses-aba.md com status bloqueado e a nota_do_motor do diagnóstico real",
+ "depois": "7787af3:docs/fila/929-nichos-teses-aba.md"
+}

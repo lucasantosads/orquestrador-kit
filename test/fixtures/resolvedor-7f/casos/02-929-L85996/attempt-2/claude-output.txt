@@ -1,0 +1,20 @@
+A aba Nichos e teses está implementada e commitada (587 linhas, dentro do teto de 720). O critério 12 que reprovou antes continua sem como passar com `page.tsx` correto. Não rodei `npm run build` e não refiz o `rm -rf .next`, porque o sandbox negou esses comandos. Também não rodei o `vitest` completo, só os testes dos critérios e das guardas.
+
+**Critério 12.** O erro `a: unbound variable` vem do próprio comando do critério. Ele encadeia `s=$(grep -c '<SeletorPeriodo' page.tsx) && a=$(...)`, e `grep -c` sai com código 1 quando a contagem é 0. A cadeia para antes de `a` ser definida, e o `set -u` do executor acusa a variável. O critério exige que `page.tsx` tenha 0 ocorrências de `<SeletorPeriodo`, o que garante esse código 1. Por isso ele não passa com a implementação certa. A saída é reescrever o critério com `|| true` ou `grep -c ... || :`. Eu não toquei no motor do orquestrador.
+
+**O que entrou:**
+- **`page.tsx`:** só o import, o `TabsTrigger` "Nichos e teses" entre Carteira e Metas, e o `TabsContent` com `<NichosTesesAba />`. Continua com 0 `<SeletorPeriodo` e 0 `aria-label`.
+- **`nichos-teses-tela.ts`:** as funções puras pedidas.
+- **`nichos-teses-aba.tsx`:** os blocos `nt-filtros`, `nt-cobertura`, `nt-indicadores`, `nt-tabela` e `nt-rodape`, nessa ordem. Usa `usePeriodoUrl`, `Suspense` e timeout de 15s com `ErrorState` e retry.
+- **`drill-tese.tsx`:** clientes ordenados por CPMQL crescente, com gestor principal e `textoDistancia`.
+- **`test/performance-nichos-teses-aba.test.ts`:** testes das funções puras e da ordem dos blocos.
+
+**Verificação:**
+- `tsc` ficou em 3 erros, todos de `qualificacao*`.
+- Os testes novos e os existentes que li passaram, inclusive as guardas travessão, regra 19, C0, fetch-json e abas-montadas. Não editei nenhuma guarda.
+- Não dá para confirmar a tela no navegador nem a rota 940b contra dados reais.
+
+**Decisões:**
+- `textoMediana` devolve só `s/ dado`; o motivo vai no `title` (`motivoMediana`) ou no texto se você passar `comMotivo`.
+- Escrevi "têm tese" com acento na linha de cobertura, em vez do "tem" do enunciado.
+- Não usei `SemDado`, porque ele desenha `—` (U+2014), que a guarda `travessao-mudo` barra.

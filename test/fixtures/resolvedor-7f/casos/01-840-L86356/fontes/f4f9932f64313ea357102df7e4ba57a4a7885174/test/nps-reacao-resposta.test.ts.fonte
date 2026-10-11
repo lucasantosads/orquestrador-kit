@@ -1,0 +1,224 @@
+/**
+ * Ticket 888: reação a resposta de NPS (detrator abre tarefa e avisa heads; promotor abre
+ * pedido de depoimento; neutro nada). A fonte falsa aplica eq/is/gte sobre as fixtures.
+ */
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
+
+const { reagirMock, fromMock } = vi.hoisted(() => ({ reagirMock: vi.fn(), fromMock: vi.fn() }));
+vi.mock("@/lib/nps/reacao-resposta", () => ({ reagirRespostaNps: reagirMock }));
+vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ from: fromMock }) }));
+vi.mock("@/lib/clientes/resolver-chave", () => ({
+  resolverChave: vi.fn(async () => ({ clienteId: "00000000-0000-4000-8000-000000000001", notionId: "n1" })),
+}));
+vi.mock("@/lib/session", () => ({
+  getSession: vi.fn(async () => ({ employeeId: "e", role: "admin", entityId: null, nome: "A" })),
+}));
+
+import { POST as postPublica } from "@/app/api/nps/public/[token]/route";
+import { POST as postRegistrar } from "@/app/api/clientes/nps/registrar/route";
+
+let real: typeof import("@/lib/nps/reacao-resposta");
+beforeAll(async () => {
+  real = await vi.importActual<typeof import("@/lib/nps/reacao-resposta")>("@/lib/nps/reacao-resposta");
+});
+
+const CLI = "00000000-0000-4000-8000-000000000001";
+const GESTOR = "00000000-0000-4000-8000-000000000011";
+const HEAD_A = "00000000-0000-4000-8000-000000000012";
+const HEAD_B = "00000000-0000-4000-8000-000000000013";
+const MES = "2026-10-01";
+
+type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+function valor(row: Row, col: string): unknown {
+  const [base, chave] = col.split("->>");
+  return chave ? row[base]?.[chave] : row[base];
+}
+
+function criarDb(tabelas: Record<string, Row[]>, erros: Record<string, string> = {}) {
+  const inserts: { tabela: string; row: Row }[] = [];
+  const froms: string[] = [];
+  const db = {
+    from(tabela: string) {
+      froms.push(tabela);
+      const f: ((r: Row) => boolean)[] = [];
+      const resultado = () =>
+        erros[tabela]
+          ? { data: null, error: { message: erros[tabela] } }
+          : { data: (tabelas[tabela] ?? []).filter((r) => f.every((x) => x(r))), error: null };
+      const chain: Record<string, unknown> = {
+        select: () => chain,
+        limit: () => chain,
+        eq: (c: string, v: unknown) => (f.push((r) => valor(r, c) === v), chain),
+        is: (c: string, v: unknown) => (f.push((r) => (valor(r, c) ?? null) === v), chain),
+        gte: (c: string, v: string) => (f.push((r) => String(valor(r, c)) >= v), chain),
+        maybeSingle: async () => resultado(),
+        insert: async (row: Row) => {
+          inserts.push({ tabela, row });
+          return erros[`insert:${tabela}`] ? { error: { message: erros[`insert:${tabela}`] } } : { error: null };
+        },
+        then: (ok: (v: unknown) => void, ko: (e: unknown) => void) => Promise.resolve(resultado()).then(ok, ko),
+      };
+      return chain;
+    },
+  };
+  return { db, inserts, froms };
+}
+
+const equipe: Row[] = [
+  { id: GESTOR, nome: "Gestora", is_head_operacional: false, ativo: true },
+  { id: HEAD_B, nome: "Zeca", is_head_operacional: true, ativo: true },
+  { id: HEAD_A, nome: "Ana", is_head_operacional: true, ativo: true },
+];
+const vinculo: Row[] = [{ cliente_id: CLI, gestor_id: GESTOR, ativo: true, principal: true }];
+const base = { clienteId: CLI, respondente: "Joana", comentario: "demora", mesReferencia: MES, score: 3 };
+
+describe("reagirRespostaNps", () => {
+  it("(a) nota 3 com gestor: 1 tarefa de detrator e 1 aviso por head", async () => {
+    const { db, inserts } = criarDb({ perf_cliente_gestor: vinculo, employees: equipe, tarefas_kanban: [], notifications: [] });
+    const r = await real.reagirRespostaNps(db, base);
+    expect(r).toMatchObject({ estado: "feita", faixa: "detrator", tarefa: "criada", avisados: 2 });
+    const tarefas = inserts.filter((i) => i.tabela === "tarefas_kanban");
+    expect(tarefas).toHaveLength(1);
+    expect(tarefas[0].row).toMatchObject({ origem: "nps_detrator", responsavel_id: GESTOR, prioridade: "alta", cliente_id: CLI });
+    expect(tarefas[0].row.titulo).toContain("Joana");
+    const avisos = inserts.filter((i) => i.tabela === "notifications");
+    expect(avisos).toHaveLength(2);
+    expect(avisos.map((a) => a.row.employee_id)).toContain(HEAD_A);
+    expect(avisos.map((a) => a.row.employee_id)).toContain(HEAD_B);
+    expect(avisos.map((a) => a.row.employee_id)).not.toContain(GESTOR);
+  });
+
+  it("(b) nota 10: pedido de depoimento, sem aviso", async () => {
+    const { db, inserts } = criarDb({ perf_cliente_gestor: vinculo, employees: equipe, tarefas_kanban: [] });
+    const r = await real.reagirRespostaNps(db, { ...base, score: 10 });
+    expect(r).toMatchObject({ estado: "feita", faixa: "promotor", avisados: 0 });
+    const t = inserts.filter((i) => i.tabela === "tarefas_kanban");
+    expect(t).toHaveLength(1);
+    expect(t[0].row).toMatchObject({ origem: "nps_promotor", prioridade: "media" });
+    expect(t[0].row.titulo).toContain("Pedir depoimento a Joana");
+    expect(inserts.filter((i) => i.tabela === "notifications")).toHaveLength(0);
+  });
+
+  it("(c) nota 8: nenhuma reação e nenhuma leitura", async () => {
+    const { db, froms } = criarDb({});
+    expect(await real.reagirRespostaNps(db, { ...base, score: 8 })).toMatchObject({ estado: "nenhuma" });
+    expect(froms).toHaveLength(0);
+  });
+
+  it("(d) sem gestor: tarefa vai para o head de menor nome", async () => {
+    const { db, inserts } = criarDb({ perf_cliente_gestor: [], employees: equipe, tarefas_kanban: [], notifications: [] });
+    await real.reagirRespostaNps(db, base);
+    const t = inserts.find((i) => i.tabela === "tarefas_kanban");
+    expect(t?.row.responsavel_id).toBe(HEAD_A);
+    expect(t?.row.responsavel).toBe("Ana");
+  });
+
+  it("(e) sem gestor e sem head: sem_responsavel e nenhum insert", async () => {
+    const { db, inserts } = criarDb({ perf_cliente_gestor: [], employees: [equipe[0]] });
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const r = await real.reagirRespostaNps(db, base);
+    aviso.mockRestore();
+    expect(r).toMatchObject({ estado: "sem_responsavel", faixa: "detrator" });
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("(f) leitura de quem cuida com erro: estado erro com o motivo, nunca sem_responsavel", async () => {
+    const { db, inserts } = criarDb({ employees: equipe }, { perf_cliente_gestor: "banco fora do ar" });
+    const r = await real.reagirRespostaNps(db, base);
+    expect(r.estado).toBe("erro");
+    expect(r.estado === "erro" && r.motivo).toContain("banco fora do ar");
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("(g) tarefa igual já no mês: ja_existia e sem insert de tarefa", async () => {
+    const titulo = "NPS 3 de Joana: ligar e entender o motivo";
+    const igual = { cliente_id: CLI, origem: "nps_detrator", titulo, deleted_at: null, created_at: "2026-10-03T10:00:00Z" };
+    const { db, inserts } = criarDb({ perf_cliente_gestor: vinculo, employees: equipe, tarefas_kanban: [igual], notifications: [] });
+    const r = await real.reagirRespostaNps(db, base);
+    expect(r).toMatchObject({ estado: "feita", tarefa: "ja_existia" });
+    expect(inserts.filter((i) => i.tabela === "tarefas_kanban")).toHaveLength(0);
+  });
+
+  it("(g2) a tarefa de mês anterior ou apagada não conta como existente", async () => {
+    const titulo = "NPS 3 de Joana: ligar e entender o motivo";
+    const antigas = [
+      { cliente_id: CLI, origem: "nps_detrator", titulo, deleted_at: null, created_at: "2026-09-20T10:00:00Z" },
+      { cliente_id: CLI, origem: "nps_detrator", titulo, deleted_at: "2026-10-04", created_at: "2026-10-03T10:00:00Z" },
+      { cliente_id: GESTOR, origem: "nps_detrator", titulo, deleted_at: null, created_at: "2026-10-03T10:00:00Z" },
+    ];
+    const { db } = criarDb({ perf_cliente_gestor: vinculo, employees: equipe, tarefas_kanban: antigas, notifications: [] });
+    expect(await real.reagirRespostaNps(db, base)).toMatchObject({ tarefa: "criada" });
+  });
+
+  it("(h) clienteId null: sem_cliente sem leitura", async () => {
+    const { db, froms } = criarDb({});
+    expect(await real.reagirRespostaNps(db, { ...base, clienteId: null })).toMatchObject({ estado: "sem_cliente" });
+    expect(froms).toHaveLength(0);
+  });
+
+  it("db.from que lança vira estado erro", async () => {
+    const r = await real.reagirRespostaNps({ from: () => { throw new Error("tabela inesperada"); } }, base);
+    expect(r).toMatchObject({ estado: "erro", motivo: "tabela inesperada" });
+  });
+});
+
+describe("rotas chamam a reação", () => {
+  beforeEach(() => {
+    reagirMock.mockReset();
+    fromMock.mockReset();
+  });
+
+  it("(i) rota pública: nota 2 reage com o cliente resolvido e responde só success, mesmo com erro", async () => {
+    reagirMock.mockResolvedValue({ estado: "erro", motivo: "x" });
+    const falha = vi.spyOn(console, "error").mockImplementation(() => {});
+    fromMock.mockImplementation(() => {
+      const chain: Record<string, unknown> = {
+        select: () => chain,
+        eq: () => chain,
+        maybeSingle: async () => ({ data: { cliente_notion_id: "n1", clientes_notion_mirror: { cliente: "Acme" } } }),
+        upsert: async () => ({ error: null }),
+      };
+      return chain;
+    });
+    const req = new NextRequest("http://localhost/api/nps/public/t", {
+      method: "POST",
+      body: JSON.stringify({ nps_score: 2, respondente_nome: "Joana" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const res = await postPublica(req, { params: Promise.resolve({ token: "t".repeat(20) }) });
+    falha.mockRestore();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true });
+    expect(reagirMock).toHaveBeenCalledTimes(1);
+    expect(reagirMock.mock.calls[0][1]).toMatchObject({ clienteId: CLI, score: 2, respondente: "Joana" });
+  });
+
+  it("(j) registrar com uuid devolve a reação no corpo", async () => {
+    const reacao = { estado: "feita", faixa: "promotor", tarefa: "criada", avisados: 0 };
+    reagirMock.mockResolvedValue(reacao);
+    fromMock.mockImplementation(() => {
+      const chain: Record<string, unknown> = {
+        select: () => chain,
+        eq: () => chain,
+        order: () => chain,
+        limit: () => chain,
+        upsert: () => chain,
+        maybeSingle: async () => ({ data: { notion_id: "n1" }, error: null }),
+        single: async () => ({ data: { id: "r1" }, error: null }),
+      };
+      return chain;
+    });
+    const req = new NextRequest("http://localhost/api/clientes/nps/registrar", {
+      method: "POST",
+      body: JSON.stringify({ cliente_id: CLI, nps_score: 10, respondente_nome: "Joana", mes_referencia: "2026-10" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const res = await postRegistrar(req);
+    const corpo = await res.json();
+    expect(res.status).toBe(200);
+    expect(corpo.reacao.estado).toBe("feita");
+    expect(reagirMock.mock.calls[0][1]).toMatchObject({ clienteId: CLI, mesReferencia: "2026-10-01" });
+  });
+});

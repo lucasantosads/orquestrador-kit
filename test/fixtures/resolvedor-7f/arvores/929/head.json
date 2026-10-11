@@ -1,0 +1,8 @@
+{
+ "ref": "head.txt da última tentativa da série",
+ "sha": "95e68e207158a88b5202694becc9c3f80566f389",
+ "arquivos": [
+  "src/app/dashboard/performance/page.tsx",
+  "src/app/dashboard/performance/nichos-teses/nichos-teses-aba.tsx"
+ ]
+}

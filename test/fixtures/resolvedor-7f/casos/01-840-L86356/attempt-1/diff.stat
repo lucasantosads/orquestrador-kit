@@ -1,0 +1,8 @@
+ src/app/api/cron/leitura-relacao/route.ts          |  4 +-
+ src/app/api/nps/public/[token]/route.ts            |  4 +-
+ src/app/api/nps/token/route.ts                     |  6 +-
+ .../api/perf/clientes/[id]/resolver-chave/route.ts | 10 ++--
+ test/chave-unica-cliente-id.test.ts                |  4 +-
+ test/resolver-chave.test.ts                        | 11 ++++
+ test/sai-resolver-chave-api-e.test.ts              | 64 ++++++++++++++++++++++
+ 7 files changed, 89 insertions(+), 14 deletions(-)

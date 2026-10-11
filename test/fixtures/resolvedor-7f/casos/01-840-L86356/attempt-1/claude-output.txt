@@ -1,0 +1,23 @@
+Os quatro arquivos do pacote não importam mais `@/lib/clientes/resolver-chave` e passam pelo resolver único. O trabalho está commitado em `f4f9932`, sem push.
+
+**O que rodei**
+- `tsc` dá 3 erros, o baseline.
+- Os 6 arquivos de teste (4 existentes, o `resolver-cliente` e o novo) passam, 84 testes.
+- As 7 guardas globais passam, 70 testes.
+- Não rodei `npm run build`. Também não rodei a suíte inteira do vitest nem os comandos dos critérios de aceite.
+
+**Mudanças nos arquivos**
+- **`cron/leitura-relacao`:** usa `filtroDoCliente`.
+- **`nps/token`:** usa `resolverCliente` e `filtroDoCliente`.
+- **`nps/public/[token]`:** usa `resolverCliente`.
+- **`resolver-chave` (rota):** usa `resolverCliente`. A resposta continua `{clienteId, notionId}`, porque o wizard de setup consome esse formato.
+- **Resolução em lote:** nenhum arquivo do pacote resolvia dentro de laço, então `resolverClientes` não foi necessário.
+- **Erro de leitura:** continua virando 500 nas rotas.
+
+**Testes**
+- **`chave-unica-cliente-id.test.ts`:** as duas linhas do `nps` agora esperam `resolverCliente(` no lugar de `resolverChave(`. Nenhuma assertion foi removida.
+- **`resolver-chave.test.ts`:** o mock do supabase ganhou a tabela de clientes, porque o resolver único lê o cliente antes do espelho do Notion. `UUID_CLIENTE` e `UUID_SEM_PAR` entram como clientes reais, e `UUID_SEM_PAR` segue sem linha no espelho. Os imports da lib `resolver-chave` e as assertions ficaram como estavam.
+- **`sai-resolver-chave-api-e.test.ts` (novo):** confere que os 4 arquivos não importam `resolver-chave` e importam `resolver-cliente`. Também prova, com supabase mockado, que o uuid e o notion_id chegam ao mesmo `cliente_id`.
+- **Sem mudança:** `leitura-relacao-cron-sem-base.test.ts`, `leitura-relacao-gatilhos.test.ts` e `resolver-cliente.test.ts` não precisaram de edição.
+
+Uma diferença de comportamento que os testes não cobrem: um uuid desconhecido agora volta com `clienteId` nulo em vez de ecoado. Isso segue o contrato do resolver único, mas nenhum teste ou chamador foi checado quanto a isso.

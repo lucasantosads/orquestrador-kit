@@ -1,0 +1,12 @@
+{
+ "id": "840",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/840-sai-resolver-chave-api-e.md",
+ "ticket_sha": "4e98df93fa05d6c48d0f4084109914d1851bc1a5",
+ "ticket_antes": true,
+ "linha_bloqueio": 86356,
+ "log_inicio": 86313,
+ "fim": "2026-10-10T22:50:37Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/840"
+}
