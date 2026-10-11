@@ -35,6 +35,7 @@ export function ticketLido(arquivo: string, j: Record<string, unknown> | null): 
     objetivo: str(j.objetivo),
     pathspec_allowlist: Array.isArray(j.pathspec_allowlist) ? j.pathspec_allowlist.filter((x): x is string => typeof x === 'string') : [],
     criterios_aceite: Array.isArray(j.criterios_aceite) ? j.criterios_aceite : [],
+    dependencias: Array.isArray(j.dependencias) ? j.dependencias.filter((x): x is string => typeof x === 'string') : [],
   }
 }
 

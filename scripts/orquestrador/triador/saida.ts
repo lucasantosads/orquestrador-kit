@@ -149,6 +149,9 @@ export function assinatura(ev: Evidencia): string {
   for (const l of [...ev.lidos].sort((a, b) => a.arquivo.localeCompare(b.arquivo))) {
     h.update(`|${l.arquivo}|${l.mtime_ns}|${l.tamanho}`)
   }
+  // sem tentativa, o diagnóstico é o estado das dependências (7f-b3): uma
+  // dependência que fica done muda a assinatura e o ticket é triado de novo
+  if (!ev.tentativas.length && ev.dependencias?.length) h.update(`|deps|${ev.dependencias.map((d) => `${d.dep}=${d.estado}`).join(',')}`)
   return h.digest('hex')
 }
 

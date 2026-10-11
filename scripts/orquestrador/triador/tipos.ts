@@ -126,6 +126,18 @@ export interface TicketLido {
   objetivo: string
   pathspec_allowlist: string[]
   criterios_aceite: unknown[]
+  /** `dependencias` do ticket: ids de ticket e tokens `humano:` */
+  dependencias: string[]
+}
+
+/**
+ * Uma dependência do ticket e o estado dela AGORA (7f-b3): o `status` do
+ * ticket (`done`, `pendente`, `bloqueado`…), `sem ticket`, e, para token
+ * `humano:`, `liberado` ou `sem liberação` (docs/fila/liberacoes.json).
+ */
+export interface Dependencia {
+  dep: string
+  estado: string
 }
 
 export interface Bloqueio {
@@ -167,5 +179,7 @@ export interface Evidencia {
   config: { diff_cap_linhas: number | null; claude_timeout_secs: number | null }
   /** fontes de evidência que faltaram (regra de falta, §2) */
   falta: string[]
+  /** o estado de cada dependência do ticket (leitor.ts); ausente = não lido */
+  dependencias?: Dependencia[]
   lidos: Lido[]
 }

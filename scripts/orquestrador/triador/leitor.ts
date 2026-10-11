@@ -3,11 +3,13 @@
  * `<runs>/events.log` presente → `kit`; ausente, com `docs/fila/runs/local-loop.log`
  * → `legado-comarka`. Nada aqui olha o nome do repo.
  */
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { jaLiberado } from '../liberacoes-core.js'
+import { blocoJson } from './comum.js'
 import { LOG_LEGADO, lerRepoLegado } from './leitor-legado-comarka.js'
 import { lerRepoKit } from './leitor-kit.js'
-import type { Evidencia, NomeLeitor } from './tipos.js'
+import type { Dependencia, Evidencia, NomeLeitor } from './tipos.js'
 
 export function runsDir(raiz: string): string {
   try {
@@ -27,7 +29,35 @@ export function detectarLeitor(raiz: string): NomeLeitor | null {
 
 export function lerRepo(raiz: string, id: string, opts: { agora?: number } = {}): Evidencia {
   const l = detectarLeitor(raiz)
-  if (l === 'kit') return lerRepoKit(raiz, id)
-  if (l === 'legado-comarka') return lerRepoLegado(raiz, id, opts)
-  throw new Error(`${raiz}: nem runs/events.log (kit) nem ${LOG_LEGADO} (legado)`)
+  const ev = l === 'kit' ? lerRepoKit(raiz, id) : l === 'legado-comarka' ? lerRepoLegado(raiz, id, opts) : null
+  if (!ev) throw new Error(`${raiz}: nem runs/events.log (kit) nem ${LOG_LEGADO} (legado)`)
+  if (ev.ticket?.dependencias.length) ev.dependencias = estadoDasDependencias(raiz, ev.ticket.dependencias)
+  return ev
+}
+
+/**
+ * O estado AGORA de cada dependência (7f-b3): o `status` do ticket na fila;
+ * token `humano:` liberado ou não no docs/fila/liberacoes.json (a mesma
+ * checagem do `orq liberar`).
+ */
+export function estadoDasDependencias(raiz: string, deps: string[]): Dependencia[] {
+  const fila = join(raiz, 'docs/fila')
+  let nomes: string[] = []
+  try {
+    nomes = readdirSync(fila)
+  } catch {
+    nomes = []
+  }
+  let lib: unknown = null
+  try {
+    lib = JSON.parse(readFileSync(join(fila, 'liberacoes.json'), 'utf8'))
+  } catch {
+    lib = null
+  }
+  return deps.map((dep) => {
+    if (dep.startsWith('humano:')) return { dep, estado: jaLiberado(lib, dep) ? 'liberado' : 'sem liberação' }
+    const f = nomes.find((x) => x.startsWith(`${dep}-`) && x.endsWith('.md'))
+    const j = f ? blocoJson(readFileSync(join(fila, f), 'utf8')) : null
+    return { dep, estado: typeof j?.status === 'string' ? j.status : 'sem ticket' }
+  })
 }

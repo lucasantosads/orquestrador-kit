@@ -163,6 +163,11 @@ export function triarTicket(o: OpcoesTriar): Resultado {
 export function diagnosticar(g: Guarda, repo: string, ev: Evidencia, ext: Extracao, assin: string, agora: number, raizRepo: string, modelo: PassoModelo | null): Diagnostico {
   const copia = copiarEvidencia(g, repo, ev, assin)
   const diag = montar(repo, ev, ext, assin, agora, copia, raizRepo)
+  // sem tentativa não há evidência para o modelo: nem chamada, nem reserva no teto (7f-b3)
+  if (ext.regra === 'D0') {
+    if (modelo) diag.modelo = { modelo: null, pulado: 'sem_tentativa' }
+    return diag
+  }
   if (ext.firme || !modelo) return diag
   const m = modelo({ ev, ext, repo, assinatura: assin, guarda: g, agora, copia })
   diag.modelo = m.registro

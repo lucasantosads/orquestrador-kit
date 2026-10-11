@@ -20,7 +20,7 @@ import { matchesAllowlist } from '../enforcement-core.js'
 import { noDiff } from './leitor-legado-comarka.js'
 import type { Evidencia, Ref, Tentativa, Vizinho } from './tipos.js'
 
-export type Regra = 'D1' | 'D2' | 'D3' | 'D4' | 'D5' | 'D6' | 'D6b' | 'D7' | 'D8' | 'D9' | 'D10' | 'D11' | 'D12'
+export type Regra = 'D0' | 'D1' | 'D2' | 'D3' | 'D4' | 'D5' | 'D6' | 'D6b' | 'D7' | 'D8' | 'D9' | 'D10' | 'D11' | 'D12'
 
 export interface Extracao {
   /** `R1`..`R7` quando firme; palpite leva `?` (`R5?`, `R1|R2?`); `null` = nenhuma regra casou */
@@ -57,6 +57,7 @@ const ROTULO: Record<string, string> = {
   R6: 'motor: o orquestrador mediu ou decidiu errado',
   R7: 'humano: só o dono decide',
 }
+export const ROTULO_D0 = 'bloqueado sem tentativa'
 export const rotuloDe = (classe: string | null): string => {
   if (!classe) return 'sem regra'
   const cs = classe.replace('?', '').split('|')
@@ -178,7 +179,16 @@ export function extrair(ev: Evidencia): Extracao {
     requeue,
     detalhe,
   })
-  if (!ult) return sai(null, null, [], 'sem tentativa na série: decisão humana')
+  // D0 · bloqueado sem tentativa (7f-b3): não há gate, diff nem juiz; o que
+  // há é a nota do ticket e as dependências. Sem evidência, sem modelo
+  // (triar.ts não chama nem reserva teto). A dependência ainda não done, ou o
+  // portão `humano:` sem liberação, vai para o remédio.
+  if (!ult) {
+    const espera = (ev.dependencias ?? []).filter((d) => d.estado !== 'done' && d.estado !== 'liberado')
+    const nota = ev.ticket && ev.ticket.notas_status ? [{ arquivo: ev.ticket.arquivo, linha: null, trecho: ev.ticket.notas_status.slice(0, 160) }] : []
+    const r = sai(null, 'D0', nota, `bloqueado sem tentativa${espera.length ? `; espera ${espera.map((d) => `${d.dep} (${d.estado})`).join(', ')}` : ''}: decisão humana`)
+    return { ...r, rotulo: ROTULO_D0 }
+  }
   const u = ult.estagio
 
   // D1 · merge recusado (árvore suja) e o juiz aprovou

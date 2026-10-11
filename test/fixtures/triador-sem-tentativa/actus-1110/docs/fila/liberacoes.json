@@ -1,0 +1,13 @@
+{
+ "$schema_versao": 2,
+ "tokens": [
+  {
+   "token": "humano:fonte-etapa-ghl-conversa-decidida",
+   "liberado_em": "2026-09-24",
+   "por": "lucasantosads",
+   "nota": "decisao do Lucas 23/09: opcao b, etapa do GHL da conversa vem da OPORTUNIDADE do GHL (etapa_crm 0/791; leads.etapa_atual importacao unica de 29/07, slugs do dashboard, zero na Covas); tickets 517a, 517b, 517. Gravado com jq: orq liberar ainda falha (top-level await no liberar-cli.ts)",
+   "origem": "v2"
+  }
+ ],
+ "liberadas": []
+}

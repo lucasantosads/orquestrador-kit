@@ -393,7 +393,7 @@ function trechoIlegivel(stdout: string, rc: number): string {
 
 export interface RegistroModelo {
   modelo: string | null
-  pulado?: 'teto_dia' | 'desligado'
+  pulado?: 'teto_dia' | 'desligado' | 'sem_tentativa'
   /** só quando não é o da spec (ex.: `7f-b1b-r3`) */
   prompt?: NomePrompt
   erro?: string
