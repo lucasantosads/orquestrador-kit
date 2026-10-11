@@ -1,0 +1,261 @@
+diff --git a/apps/web/src/app/aprovar/[token]/page.tsx b/apps/web/src/app/aprovar/[token]/page.tsx
+new file mode 100644
+index 0000000..deb4dda
+--- /dev/null
++++ b/apps/web/src/app/aprovar/[token]/page.tsx
+@@ -0,0 +1,76 @@
++// Ticket 243 — a tela que o cliente do escritório abre pelo link. Mostra UM roteiro: gancho e corpo,
++// legenda com hashtags e o resultado da checagem do Provimento 205. Nada além disso.
++//
++// Link inexistente, vencido e cancelado caem no MESMO notFound(), sem texto que diga qual foi.
++// O token vive na URL e na ação (fechado no servidor): não entra em texto, atributo nem registro.
++
++import { notFound } from 'next/navigation'
++import { revalidatePath } from 'next/cache'
++import { decidirPorToken, lerRoteiroPorToken } from '@/server/aprovacoes-publico'
++
++export const dynamic = 'force-dynamic'
++
++export default async function AprovarPage({ params }: { params: Promise<{ token: string }> }) {
++  const { token } = await params
++  const roteiro = await lerRoteiroPorToken(token)
++  if (!roteiro) notFound()
++
++  async function aprovar() {
++    'use server'
++    await decidirPorToken(token, 'aprovado')
++    revalidatePath(`/aprovar/${token}`)
++  }
++
++  async function pedirAjuste(formData: FormData) {
++    'use server'
++    const comentario = String(formData.get('comentario') ?? '').trim()
++    if (comentario === '') return
++    await decidirPorToken(token, 'ajuste_pedido', comentario)
++    revalidatePath(`/aprovar/${token}`)
++  }
++
++  const respondido = roteiro.estado !== 'pendente'
++
++  return (
++    <main style={{ maxWidth: 720, margin: '0 auto', padding: '32px 16px' }}>
++      <section aria-labelledby="roteiro-titulo">
++        <h1 id="roteiro-titulo">Roteiro</h1>
++        <h2>Gancho</h2>
++        <p style={{ whiteSpace: 'pre-wrap' }}>{roteiro.gancho}</p>
++        <h2>Corpo</h2>
++        <p style={{ whiteSpace: 'pre-wrap' }}>{roteiro.corpo}</p>
++      </section>
++
++      <section aria-labelledby="legenda-titulo">
++        <h2 id="legenda-titulo">Legenda</h2>
++        <p style={{ whiteSpace: 'pre-wrap' }}>{roteiro.legenda}</p>
++        {roteiro.hashtags.length > 0 && <p>{roteiro.hashtags.join(' ')}</p>}
++      </section>
++
++      <section aria-labelledby="checagem-titulo">
++        <h2 id="checagem-titulo">Checagem do Provimento 205</h2>
++        <p>{roteiro.veredito}</p>
++      </section>
++
++      {respondido ? (
++        <section aria-labelledby="resposta-titulo">
++          <h2 id="resposta-titulo">Sua resposta</h2>
++          <p>{roteiro.estado === 'aprovado' ? 'Roteiro aprovado.' : 'Ajuste pedido.'}</p>
++          {roteiro.comentario && <p style={{ whiteSpace: 'pre-wrap' }}>{roteiro.comentario}</p>}
++        </section>
++      ) : (
++        <section aria-labelledby="decisao-titulo">
++          <h2 id="decisao-titulo">Sua resposta</h2>
++          <form action={aprovar}>
++            <button type="submit">Aprovar</button>
++          </form>
++          <form action={pedirAjuste}>
++            <label htmlFor="comentario">O que precisa ser ajustado</label>
++            <textarea id="comentario" name="comentario" required rows={4} style={{ display: 'block', width: '100%' }} />
++            <button type="submit">Pedir ajuste</button>
++          </form>
++        </section>
++      )}
++    </main>
++  )
++}
+diff --git a/apps/web/src/lib/auth/routes.ts b/apps/web/src/lib/auth/routes.ts
+index 29df5f0..613ca5c 100644
+--- a/apps/web/src/lib/auth/routes.ts
++++ b/apps/web/src/lib/auth/routes.ts
+@@ -6,9 +6,11 @@ export const AUTH_SCREENS = ['/login', '/cadastro', '/recuperar'] as const
+ 
+ /**
+  * Prefixos públicos: telas de auth + o callback `/auth` (confirmação de email / reset de senha)
+- * + o endpoint de saúde, que responde sem sessão porque o smoke da staging o chama sem cookie.
++ * + o endpoint de saúde, que responde sem sessão porque o smoke da staging o chama sem cookie
++ * + `/aprovar`, a tela do link que o cliente do escritório abre (não é tela de auth: logado também a vê).
++ * Não confundir com `/aprovacoes`, a fila interna: `casaPrefixo` não a casa e ela segue atrás de sessão.
+  */
+-export const PUBLIC_PREFIXES = [...AUTH_SCREENS, '/auth', '/api/health'] as const
++export const PUBLIC_PREFIXES = [...AUTH_SCREENS, '/auth', '/api/health', '/aprovar'] as const
+ 
+ function casaPrefixo(pathname: string, prefixos: readonly string[]): boolean {
+   return prefixos.some((p) => pathname === p || pathname.startsWith(p + '/'))
+diff --git a/apps/web/test/aprovar-publico.test.tsx b/apps/web/test/aprovar-publico.test.tsx
+new file mode 100644
+index 0000000..7648a29
+--- /dev/null
++++ b/apps/web/test/aprovar-publico.test.tsx
+@@ -0,0 +1,139 @@
++// Ticket 243 — a rota pública do link de aprovação, provada em dois níveis:
++// (a) pela função pura isPublicPath; (b) por um request SEM SESSÃO atravessando updateSession.
++// Mocka '@supabase/ssr' (padrão de briefing-gate.test.ts) e usa NextRequest real.
++
++import { describe, it, expect, beforeEach, vi } from 'vitest'
++import { NextRequest } from 'next/server'
++import { renderToStaticMarkup } from 'react-dom/server'
++
++let mockUser: { id: string } | null = null
++const tabelasConsultadas: string[] = []
++
++vi.mock('@supabase/ssr', () => ({
++  createServerClient: () => ({
++    auth: {
++      getUser: async () => ({ data: { user: mockUser } }),
++    },
++    from: (table: string) => {
++      tabelasConsultadas.push(table)
++      throw new Error(`consulta inesperada: ${table}`)
++    },
++  }),
++}))
++
++vi.mock('server-only', () => ({}))
++
++const notFoundMock = vi.fn(() => {
++  throw new Error('NEXT_NOT_FOUND')
++})
++vi.mock('next/navigation', () => ({ notFound: () => notFoundMock() }))
++vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
++
++const lerMock = vi.fn()
++const decidirMock = vi.fn()
++vi.mock('@/server/aprovacoes-publico', () => ({
++  lerRoteiroPorToken: (...a: unknown[]) => lerMock(...a),
++  decidirPorToken: (...a: unknown[]) => decidirMock(...a),
++}))
++
++const { updateSession } = await import('../src/lib/supabase/middleware')
++const { isPublicPath, isAuthScreen } = await import('../src/lib/auth/routes')
++const { default: AprovarPage } = await import('../src/app/aprovar/[token]/page')
++
++const TOKEN = 'tok-secreto-9f8e7d6c'
++
++function req(pathname: string) {
++  return new NextRequest(new URL(pathname, 'https://app.example.com'))
++}
++
++async function renderizar(): Promise<string> {
++  return renderToStaticMarkup(await AprovarPage({ params: Promise.resolve({ token: TOKEN }) }))
++}
++
++const roteiro = {
++  gancho: 'GANCHO-DO-ROTEIRO',
++  corpo: 'CORPO-DO-ROTEIRO',
++  legenda: 'LEGENDA-DO-ROTEIRO',
++  hashtags: ['#direito', '#advocacia'],
++  veredito: 'VEREDITO-APROVADO',
++  estado: 'pendente' as const,
++  comentario: null,
++}
++
++beforeEach(() => {
++  mockUser = null
++  tabelasConsultadas.length = 0
++  lerMock.mockReset()
++  decidirMock.mockReset()
++  notFoundMock.mockClear()
++})
++
++describe('ticket 243 — classe pública, nos dois níveis', () => {
++  it('função pura: /aprovar e /aprovar/<token> são públicos, /aprovacoes não, e não é tela de auth', () => {
++    expect(isPublicPath('/aprovar')).toBe(true)
++    expect(isPublicPath(`/aprovar/${TOKEN}`)).toBe(true)
++    expect(isPublicPath('/aprovacoes')).toBe(false)
++    expect(isAuthScreen(`/aprovar/${TOKEN}`)).toBe(false)
++  })
++
++  it('sem sessão, /aprovar/<token> atravessa o middleware sem ir para /login', async () => {
++    const res = await updateSession(req(`/aprovar/${TOKEN}`))
++    expect(res.headers.get('location')).toBeNull()
++  })
++
++  it('sem sessão, /aprovacoes (fila interna) redireciona para /login', async () => {
++    const res = await updateSession(req('/aprovacoes'))
++    expect(res.headers.get('location')).toContain('/login')
++  })
++
++  it('sem sessão, /aprovar não dispara consulta de organization_members nem de personas', async () => {
++    await updateSession(req(`/aprovar/${TOKEN}`))
++    await updateSession(req('/aprovar'))
++    expect(tabelasConsultadas).toEqual([])
++  })
++
++  it('com sessão, /aprovar/<token> não é mandado para a home', async () => {
++    mockUser = { id: 'user-1' }
++    const res = await updateSession(req(`/aprovar/${TOKEN}`))
++    expect(res.headers.get('location')).toBeNull()
++  })
++})
++
++describe('ticket 243 — a página do link', () => {
++  it('com roteiro válido mostra gancho, corpo, legenda, hashtags e veredito', async () => {
++    lerMock.mockResolvedValue(roteiro)
++    const html = await renderizar()
++    expect(lerMock).toHaveBeenCalledWith(TOKEN)
++    expect(html).toContain('GANCHO-DO-ROTEIRO')
++    expect(html).toContain('CORPO-DO-ROTEIRO')
++    expect(html).toContain('LEGENDA-DO-ROTEIRO')
++    expect(html).toContain('#direito #advocacia')
++    expect(html).toContain('VEREDITO-APROVADO')
++    expect(html).toContain('Aprovar')
++    expect(html).toContain('Pedir ajuste')
++  })
++
++  it('com leitura nula (inválido, expirado ou revogado) chama notFound', async () => {
++    lerMock.mockResolvedValue(null)
++    await expect(renderizar()).rejects.toThrow('NEXT_NOT_FOUND')
++    expect(notFoundMock).toHaveBeenCalledTimes(1)
++  })
++
++  it('não mostra persona, ângulo, score, link para outra tela nem o token', async () => {
++    lerMock.mockResolvedValue(roteiro)
++    const html = await renderizar()
++    expect(html).not.toMatch(/persona|ângulo|angulo|score|nota/i)
++    expect(html).not.toMatch(/<a[\s>]/i)
++    expect(html).not.toMatch(/href=/i)
++    expect(html).not.toContain(TOKEN)
++  })
++
++  it('link já respondido mostra estado e comentário, sem oferecer os botões', async () => {
++    lerMock.mockResolvedValue({ ...roteiro, estado: 'ajuste_pedido', comentario: 'TROCAR-O-GANCHO' })
++    const html = await renderizar()
++    expect(html).toContain('Ajuste pedido.')
++    expect(html).toContain('TROCAR-O-GANCHO')
++    expect(html).not.toMatch(/<button/i)
++    expect(html).not.toMatch(/<textarea/i)
++  })
++})
+diff --git a/apps/web/test/auth-validation.test.ts b/apps/web/test/auth-validation.test.ts
+index ffea3f2..e1e9078 100644
+--- a/apps/web/test/auth-validation.test.ts
++++ b/apps/web/test/auth-validation.test.ts
+@@ -81,4 +81,11 @@ describe('Epic H — classificação de rotas', () => {
+     expect(isPublicPath('/api')).toBe(false)
+     expect(isAuthScreen('/api/health')).toBe(false)
+   })
++
++  it('/aprovar (link do cliente) e publico e nao e tela de auth; /aprovacoes (fila interna) segue protegida', () => {
++    expect(isPublicPath('/aprovar')).toBe(true)
++    expect(isPublicPath('/aprovar/abc123')).toBe(true)
++    expect(isPublicPath('/aprovacoes')).toBe(false)
++    expect(isAuthScreen('/aprovar/abc123')).toBe(false)
++  })
+ })

@@ -106,9 +106,27 @@ export function lerRepoKit(raiz: string, id: string): Evidencia {
     if (['BLOQUEADO', 'APROVADO', 'RECUPERADO'].includes(l.evento)) break
     if (l.evento === 'INICIO') inicios.unshift(l)
   }
-  const meta = lerJson<{ attempt: number; diffLines?: number; duracaoSecs?: number; dir?: string }[]>(join(runs, id, 'meta.json')) ?? []
+  const meta = lerJson<{ attempt: number; diffLines?: number; duracaoSecs?: number; dir?: string; ts?: string }[]>(join(runs, id, 'meta.json')) ?? []
   if (!meta.length) falta.push('meta')
   const motivoBloq = bloq?.campos.motivo ?? null
+
+  // O diretório de cada INICIO (7f-b5): a entrada do meta com `dir` que
+  // terminou depois dele e até o INICIO seguinte. O `attempt=` do INICIO não
+  // basta: no 243 a volta que terminou em REFATIAR e a seguinte começam as
+  // duas em `attempt=1`, e `attempt-(N-1)` lia o attempt-0 duas vezes e nunca
+  // o attempt-3. Sem `dir`/`ts` no meta (ou já usado), vale `attempt-(N-1)`.
+  const usados = new Set<string>()
+  const dirDoInicio = (k: number, N: number): string => {
+    const de = Date.parse(inicios[k]!.ts)
+    const ate = k + 1 < inicios.length ? Date.parse(inicios[k + 1]!.ts) : Infinity
+    const m = meta.find((x) => {
+      const t = x.ts ? Date.parse(x.ts) : NaN
+      return typeof x.dir === 'string' && /^attempt-\d+$/.test(x.dir) && !usados.has(x.dir) && t > de && t <= ate
+    })
+    const dir = m?.dir && !usados.has(m.dir) ? m.dir : `attempt-${N - 1}`
+    usados.add(dir)
+    return dir
+  }
 
   const lidos: Lido[] = []
   const lido = (a: Arquivo, inteiro = true) => {
@@ -137,7 +155,8 @@ export function lerRepoKit(raiz: string, id: string): Evidencia {
 
   const tentativas: Tentativa[] = inicios.map((ini, k) => {
     const N = Number(ini.campos.attempt ?? k + 1)
-    const dirRel = `${runsRel}/${id}/attempt-${N - 1}`
+    const dirNome = dirDoInicio(k, N)
+    const dirRel = `${runsRel}/${id}/${dirNome}`
     const dirAbs = join(raiz, dirRel)
     if (!existsSync(dirAbs)) falta.push(`${dirRel}/`)
     const gates = lerArq(`${dirRel}/gates.txt`)
@@ -174,7 +193,7 @@ export function lerRepoKit(raiz: string, id: string): Evidencia {
       }
     }
     for (const a of [gates, crit, enf, jz, patch]) if (a) lido(a)
-    const m = meta.find((x) => x.attempt === N - 1)
+    const m = meta.find((x) => x.dir === dirNome) ?? meta.find((x) => x.attempt === N - 1)
     return {
       n: k + 1,
       dir: dirRel,

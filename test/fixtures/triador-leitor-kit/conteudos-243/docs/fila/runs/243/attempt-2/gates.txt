@@ -1,0 +1,6 @@
+ok   limpeza_artefatos        33ms
+ok   typecheck_root          920ms
+ok   typecheck_web          3072ms
+ok   testes_por_pacote     43697ms [9 pacotes, 1750p/0f]
+ok   build                 21923ms
+VEREDITO: APROVADO

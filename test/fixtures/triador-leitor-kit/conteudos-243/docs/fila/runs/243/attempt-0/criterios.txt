@@ -1,0 +1,135 @@
+### o teste da rota publica existe e passa
+cmd: test -f apps/web/test/aprovar-publico.test.tsx && cd apps/web && npx vitest run test/aprovar-publico.test.tsx 2>&1 | grep -cE 'Tests +[0-9]+ passed'
+espera: 1
+saida: 1
+
+### o teste tem os 6 casos pedidos (1/2): o arquivo apps/web/test/aprovar-publico.test.tsx existe
+cmd: test -f apps/web/test/aprovar-publico.test.tsx && echo ok
+espera: ok
+saida: ok
+
+### o teste tem os 6 casos pedidos (2/2): contagem de 'it(' em apps/web/test/aprovar-publico.test.tsx
+cmd: test $(grep -c 'it(' apps/web/test/aprovar-publico.test.tsx) -ge 6 && echo ok
+espera: ok
+saida: ok
+
+### o teste atravessa o middleware de verdade, sem sessao (1/2): o arquivo apps/web/test/aprovar-publico.test.tsx existe
+cmd: test -f apps/web/test/aprovar-publico.test.tsx && echo ok
+espera: ok
+saida: ok
+
+### o teste atravessa o middleware de verdade, sem sessao (2/2): contagem de 'updateSession|@supabase/ssr' em apps/web/test/aprovar-publico.test.tsx
+cmd: test $(grep -oE 'updateSession|@supabase/ssr' apps/web/test/aprovar-publico.test.tsx | wc -l) -ge 2 && echo ok
+espera: ok
+saida: ok
+
+### a pagina publica existe
+cmd: test -f 'apps/web/src/app/aprovar/[token]/page.tsx' && echo ok
+espera: ok
+saida: ok
+
+### a rota foi declarada publica na tabela de classificacao
+cmd: test $(grep -cE "'/aprovar'" apps/web/src/lib/auth/routes.ts) -eq 1 && echo ok
+espera: ok
+saida: ok
+
+### a pagina le pelo servidor do ticket 242 e nega com notFound (1/2): o arquivo apps/web/src/app/aprovar/[token]/page.tsx existe
+cmd: test -f 'apps/web/src/app/aprovar/[token]/page.tsx' && echo ok
+espera: ok
+saida: ok
+
+### a pagina le pelo servidor do ticket 242 e nega com notFound (2/2): contagem de 'lerRoteiroPorToken|notFound' em apps/web/src/app/aprovar/[token]/page.tsx
+cmd: test $(grep -oE 'lerRoteiroPorToken|notFound' 2>/dev/null 'apps/web/src/app/aprovar/[token]/page.tsx' | wc -l) -ge 3 && echo ok
+espera: ok
+saida: ok
+
+### a decisao do cliente passa pelo servidor do ticket 242 (1/2): o arquivo apps/web/src/app/aprovar/[token]/page.tsx existe
+cmd: test -f 'apps/web/src/app/aprovar/[token]/page.tsx' && echo ok
+espera: ok
+saida: ok
+
+### a decisao do cliente passa pelo servidor do ticket 242 (2/2): contagem de 'decidirPorToken' em apps/web/src/app/aprovar/[token]/page.tsx
+cmd: test $(grep -c 'decidirPorToken' 2>/dev/null 'apps/web/src/app/aprovar/[token]/page.tsx') -ge 1 && echo ok
+espera: ok
+saida: ok
+
+### o teste das rotas ganhou os casos de /aprovar e de /aprovacoes
+cmd: test $(grep -oE "/aprovar|/aprovacoes" apps/web/test/auth-validation.test.ts | wc -l) -ge 4 && echo ok
+espera: ok
+saida: ok
+
+### so UM prefixo publico novo entrou na tabela
+cmd: test $(grep -oE "'/[a-z-]+'" apps/web/src/lib/auth/routes.ts | wc -l) -eq 5 && echo ok
+espera: ok
+saida: ok
+
+### a rota publica NAO virou tela de auth
+cmd: grep -cE "AUTH_SCREENS = .*aprovar" apps/web/src/lib/auth/routes.ts
+espera: 0
+saida: 0
+
+### o middleware nao foi tocado
+cmd: git diff --name-only $BASE_REF...HEAD -- apps/web/src/lib/supabase/middleware.ts apps/web/middleware.ts | wc -l | tr -d ' '
+espera: 0
+saida: 0
+
+### anti-afrouxamento: o teste das rotas nao perdeu caso nem assercao (1/2): contagem de 'it(' em apps/web/test/auth-validation.test.ts
+cmd: test $(grep -c 'it(' apps/web/test/auth-validation.test.ts) -ge 9 && echo ok
+espera: ok
+saida: ok
+
+### anti-afrouxamento: o teste das rotas nao perdeu caso nem assercao (2/2): contagem de 'expect(' em apps/web/test/auth-validation.test.ts
+cmd: test $(grep -c 'expect(' apps/web/test/auth-validation.test.ts) -ge 40 && echo ok
+espera: ok
+saida: ok
+
+### o teste do gate de onboarding nao foi editado
+cmd: git diff --name-only $BASE_REF...HEAD -- apps/web/test/briefing-gate.test.ts | wc -l | tr -d ' '
+espera: 0
+saida: 0
+
+### anti-afrouxamento: o gate de onboarding nao perdeu caso nem assercao (1/2): contagem de 'it(' em apps/web/test/briefing-gate.test.ts
+cmd: test $(grep -c 'it(' apps/web/test/briefing-gate.test.ts) -ge 9 && echo ok
+espera: ok
+saida: ok
+
+### anti-afrouxamento: o gate de onboarding nao perdeu caso nem assercao (2/2): contagem de 'expect(' em apps/web/test/briefing-gate.test.ts
+cmd: test $(grep -c 'expect(' apps/web/test/briefing-gate.test.ts) -ge 16 && echo ok
+espera: ok
+saida: ok
+
+### a tela publica nao vaza dado interno do escritorio
+cmd: grep -ciE 'persona|angulo|score|historico|dashboard|onboarding' 'apps/web/src/app/aprovar/[token]/page.tsx'
+espera: 0
+saida: 0
+
+### a tela publica nao usa chave administrativa direta
+cmd: grep -cE 'createSupabaseClientFromEnv|SERVICE_ROLE|createClient' 'apps/web/src/app/aprovar/[token]/page.tsx'
+espera: 0
+saida: 0
+
+### a fila interna NAO foi criada neste ticket
+cmd: git diff --name-only $BASE_REF...HEAD -- apps/web/src/app/aprovacoes apps/web/src/server | wc -l | tr -d ' '
+espera: 0
+saida: 0
+
+### nenhuma migration, supabase e services intocados
+cmd: git diff --name-only $BASE_REF...HEAD -- supabase services | wc -l | tr -d ' '
+espera: 0
+saida: 0
+
+### nenhum skip, only ou todo no teste novo
+cmd: cd apps/web && grep -cE '[.](skip|only|todo)\(' test/aprovar-publico.test.tsx
+espera: 0
+saida: 0
+
+### a suite da web continua verde
+cmd: cd apps/web && npx vitest run 2>&1 | grep -cE 'Tests +[0-9]+ passed'
+espera: 1
+saida: 1
+
+### typecheck da web sem erro
+cmd: npm run typecheck:web 2>&1 | grep -c 'error TS'
+espera: 0
+saida: 0
+
