@@ -1,7 +1,8 @@
 /**
  * passada.ts — uma passada do resolvedor (`orq resolver`, etapa 7f-b2).
  *
- *   para cada repo (ou o `--repo`):
+ *   para cada repo (ou o `--repo`), os em auto antes dos em sombra antes dos
+ *   só em diagnostico (o teto do dia do modelo é consumido nessa ordem, 7f-b3):
  *     bloqueados, do que tem mais tickets esperando por ele ao que tem menos →
  *     triagem (o triador existente, `triarTicket`) → decisão pela classe e pelo
  *     modo (decidir.ts) → ação, ou, em --dry-run, o registro do que faria.
@@ -58,6 +59,20 @@ export interface ResultadoPassada {
   pausado: boolean
   travado: boolean
   itens: ItemPassada[]
+}
+
+const PRIORIDADE: Record<Modo, number> = { auto: 0, sombra: 1, diagnostico: 2 }
+
+/**
+ * A ordem dos repos na passada (7f-b3): o modo mais forte de cada repo (o de
+ * qualquer classe ou o padrão) decide; auto, depois sombra, depois
+ * diagnostico; empate na ordem do repos.json. É a ordem de consumo do teto do
+ * dia do modelo: em 11/10, Actus e conteudos-infinitos (diagnostico) o
+ * consumiram e o 1006 do Comarka (R1 em auto) foi pulado por `teto_dia`.
+ */
+export function ordenarRepos<T extends { modos: RepoResolvedor['modos'] }>(repos: T[]): T[] {
+  const forca = (r: T) => Math.min(...Object.values(r.modos).map((m) => PRIORIDADE[m]))
+  return repos.map((r, i) => ({ r, i, p: forca(r) })).sort((a, b) => a.p - b.p || a.i - b.i).map((x) => x.r)
 }
 
 /** Os bloqueados de um repo com o número de tickets que esperam por cada um, do maior ao menor. */
@@ -119,7 +134,7 @@ export function passada(o: OpcoesPassada = {}): ResultadoPassada {
   const agora = o.agora ?? Date.now()
   const dryRun = o.dryRun === true
   if (existsSync(interruptor())) return { pausado: true, travado: false, itens: [] }
-  const repos = o.repo ? [acharRepo(o.repo)] : lerReposResolvedor()
+  const repos = o.repo ? [acharRepo(o.repo)] : ordenarRepos(lerReposResolvedor())
   const g = new GuardaResolvedor(repos.map((r) => r.caminho))
   const soltar = travarPassada(g)
   if (!soltar) return { pausado: false, travado: true, itens: [] }
