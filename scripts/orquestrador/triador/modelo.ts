@@ -15,7 +15,8 @@
  * (`modelo`, `teto_dia_usd`, `teto_caso_usd`, `teto_corte_usd`,
  * `entrada_max_tokens`, `timeout_secs`). `modelo: null` desliga o modelo.
  * `ORQ_TRIADOR_TETO_DIA` sobrepõe o teto do dia (a corrida da peça 6 usa
- * US$ 6,60).
+ * US$ 6,60). `prompt` (ou `ORQ_TRIADOR_PROMPT`) escolhe o texto: `spec` (o
+ * padrão, literal da spec §4) ou `7f-b1b-r3` (a proposta de R3, prompt.ts).
  *
  * Teto do caso x corte do CLI (7f-b1b): o `--max-budget-usd` do `claude -p`,
  * com uma volta só, não impede o gasto: a volta termina, é paga, e o CLI
@@ -31,7 +32,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { Extracao } from './extrair.js'
 import { mascarar } from './mascara.js'
-import { preencher, PROMPT } from './prompt.js'
+import { preencher, PROMPT, PROMPTS, type NomePrompt } from './prompt.js'
 import { numerosDe, trecho } from './recorte.js'
 import type { Guarda } from './saida.js'
 import type { Evidencia, Ref, Tentativa } from './tipos.js'
@@ -45,6 +46,7 @@ export interface ConfigModelo {
   teto_corte_usd: number
   entrada_max_tokens: number
   timeout_secs: number
+  prompt: NomePrompt
 }
 
 export const PADRAO: ConfigModelo = {
@@ -54,6 +56,7 @@ export const PADRAO: ConfigModelo = {
   teto_corte_usd: 0.6,
   entrada_max_tokens: 30000,
   timeout_secs: 120,
+  prompt: 'spec',
 }
 export const CHARS_POR_TOKEN = 3.5
 
@@ -66,6 +69,9 @@ export function lerConfigModelo(): ConfigModelo {
   }
   const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : d)
   const tetoEnv = Number(process.env.ORQ_TRIADOR_TETO_DIA)
+  // prompt desconhecido não cai calado no padrão: numa corrida paga, é erro
+  const prompt = process.env.ORQ_TRIADOR_PROMPT || (typeof c.prompt === 'string' && c.prompt) || PADRAO.prompt
+  if (!Object.hasOwn(PROMPTS, prompt)) throw new Error(`triador: prompt desconhecido: ${prompt} (conhecidos: ${Object.keys(PROMPTS).join(', ')})`)
   return {
     modelo: c.modelo === null ? null : typeof c.modelo === 'string' && c.modelo ? c.modelo : PADRAO.modelo,
     teto_dia_usd: process.env.ORQ_TRIADOR_TETO_DIA && Number.isFinite(tetoEnv) ? tetoEnv : num(c.teto_dia_usd, PADRAO.teto_dia_usd),
@@ -73,6 +79,7 @@ export function lerConfigModelo(): ConfigModelo {
     teto_corte_usd: num(c.teto_corte_usd, PADRAO.teto_corte_usd),
     entrada_max_tokens: num(c.entrada_max_tokens, PADRAO.entrada_max_tokens),
     timeout_secs: num(c.timeout_secs, PADRAO.timeout_secs),
+    prompt: prompt as NomePrompt,
   }
 }
 
@@ -151,7 +158,7 @@ export interface Entrada {
 }
 
 /** As 7 seções de §4 na ordem, cortadas de baixo para cima até caber; o texto vai mascarado. */
-export function montarEntrada(repo: string, ev: Evidencia, ext: Extracao, maxTokens = PADRAO.entrada_max_tokens): Entrada {
+export function montarEntrada(repo: string, ev: Evidencia, ext: Extracao, maxTokens = PADRAO.entrada_max_tokens, versao: NomePrompt = PADRAO.prompt): Entrada {
   const tk = ev.ticket
   const s1 = JSON.stringify(
     {
@@ -177,7 +184,7 @@ export function montarEntrada(repo: string, ev: Evidencia, ext: Extracao, maxTok
   }
   const max = Math.floor(maxTokens * CHARS_POR_TOKEN)
   const montar = () =>
-    preencher({ ...fixo, ticket: secoes[0]!, extracao_json: secoes[1]!, recortes_vitest: secoes[2]!, criterios_falhos: secoes[3]!, diff_stats: secoes[4]!, juiz: secoes[5]!, agente: secoes[6]! })
+    preencher({ ...fixo, ticket: secoes[0]!, extracao_json: secoes[1]!, recortes_vitest: secoes[2]!, criterios_falhos: secoes[3]!, diff_stats: secoes[4]!, juiz: secoes[5]!, agente: secoes[6]! }, PROMPTS[versao])
   const cortes: Entrada['cortes'] = []
   let prompt = montar()
   for (let i = secoes.length - 1; i >= 0 && prompt.length > max; i--) {
@@ -387,6 +394,8 @@ function trechoIlegivel(stdout: string, rc: number): string {
 export interface RegistroModelo {
   modelo: string | null
   pulado?: 'teto_dia' | 'desligado'
+  /** só quando não é o da spec (ex.: `7f-b1b-r3`) */
+  prompt?: NomePrompt
   erro?: string
   descartado?: Descarte
   custo_usd?: number | null
@@ -410,7 +419,8 @@ export function criarPassoModelo(cfg: ConfigModelo = lerConfigModelo()): PassoMo
     if (microdolares(gastoDoDia(guarda, agora, pior) + pior) > microdolares(cfg.teto_dia_usd)) {
       return { registro: { modelo: cfg.modelo, pulado: 'teto_dia' } satisfies RegistroModelo }
     }
-    const entrada = montarEntrada(repo, ev, ext, cfg.entrada_max_tokens)
+    const versao = cfg.prompt ?? PADRAO.prompt
+    const entrada = montarEntrada(repo, ev, ext, cfg.entrada_max_tokens, versao)
     const r = chamar(entrada.prompt, cfg)
     const env = lerEnvelope(r.stdout)
     const gasto: Gasto = { repo, id: ev.id, assinatura, custo_usd: env?.custo_usd ?? null, tokens_in: env?.tokens_in ?? null, tokens_out: env?.tokens_out ?? null }
@@ -418,6 +428,7 @@ export function criarPassoModelo(cfg: ConfigModelo = lerConfigModelo()): PassoMo
     registrar(guarda, agora, gasto)
     const reg: RegistroModelo = {
       modelo: cfg.modelo,
+      ...(versao !== 'spec' ? { prompt: versao } : {}),
       custo_usd: gasto.custo_usd,
       tokens_in: gasto.tokens_in,
       tokens_out: gasto.tokens_out,

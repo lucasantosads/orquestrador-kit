@@ -4,7 +4,7 @@
  * depois).
  *
  *   orq triar <repo> [<id>] [--passada] [--forcar] [--sem-modelo]
- *   orq triar --fixture <dir> [--forcar] [--sem-modelo]
+ *   orq triar --fixture <dir> [--casos a,b,…] [--forcar] [--sem-modelo]
  *
  * <repo> é um caminho ou um nome do `~/.orq/repos.json`. Extração sempre;
  * modelo só para palpite e sem regra, dentro dos tetos (modelo.ts), e nunca
@@ -36,12 +36,13 @@ export interface Args {
   repo?: string
   id?: string
   fixture?: string
+  casos?: string[]
   passada: boolean
   forcar: boolean
   semModelo: boolean
 }
 
-const USO = 'uso: orq triar <repo> [<id>] [--passada] [--forcar] [--sem-modelo] | orq triar --fixture <dir> [--forcar] [--sem-modelo]'
+const USO = 'uso: orq triar <repo> [<id>] [--passada] [--forcar] [--sem-modelo] | orq triar --fixture <dir> [--casos a,b,…] [--forcar] [--sem-modelo]'
 
 export function parseArgs(argv: string[]): Args {
   const a: Args = { passada: false, forcar: false, semModelo: false }
@@ -55,6 +56,10 @@ export function parseArgs(argv: string[]): Args {
       const d = argv[++i]
       if (!d) throw new Error(USO)
       a.fixture = d
+    } else if (x === '--casos') {
+      const l = (argv[++i] ?? '').split(',').filter(Boolean)
+      if (!l.length) throw new Error(USO)
+      a.casos = l
     } else if (x.startsWith('--')) throw new Error(`flag desconhecida: ${x}`)
     else pos.push(x)
   }
@@ -62,6 +67,7 @@ export function parseArgs(argv: string[]): Args {
     if (pos.length || a.passada) throw new Error(USO)
     return a
   }
+  if (a.casos) throw new Error(USO)
   if (!pos[0] || pos.length > 2) throw new Error(USO)
   a.repo = pos[0]
   if (pos[1]) a.id = pos[1]
@@ -70,16 +76,24 @@ export function parseArgs(argv: string[]): Args {
 
 export function main(argv: string[]): number {
   let a: Args
+  let cfg: ReturnType<typeof lerConfigModelo>
   try {
     a = parseArgs(argv)
+    cfg = lerConfigModelo()
   } catch (e) {
     process.stderr.write(`[orq triar] ${(e as Error).message}\n`)
     return 1
   }
-  const cfg = lerConfigModelo()
   const modelo = a.semModelo || a.passada ? null : criarPassoModelo(cfg)
   if (a.fixture) {
-    process.stdout.write(`${placar(corridaFixture(a.fixture, { modelo, forcar: a.forcar }))}\n`)
+    let ls: ReturnType<typeof corridaFixture>
+    try {
+      ls = corridaFixture(a.fixture, { modelo, forcar: a.forcar, ...(a.casos ? { casos: a.casos } : {}) })
+    } catch (e) {
+      process.stderr.write(`[orq triar] ${(e as Error).message}\n`)
+      return 1
+    }
+    process.stdout.write(`${placar(ls)}\n`)
     return 0
   }
   const repo = resolverRepo(a.repo!)

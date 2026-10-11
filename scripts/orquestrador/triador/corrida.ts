@@ -47,12 +47,16 @@ export interface LinhaPlacar {
 const casa = (dada: Ref[], esp: Esperado['evidencia']) =>
   dada.some((d) => (esp ?? []).some((e) => e.arquivo === d.arquivo && (e.linha === null || (d.linha !== null && Math.abs(d.linha - e.linha) <= 3))))
 
-export function corridaFixture(dir: string, o: { modelo: PassoModelo | null; forcar?: boolean; agora?: number }): LinhaPlacar[] {
+/** `casos`: só estes (a mini-corrida da 7f-b1b); um que não está na fixture é erro, antes de qualquer chamada. */
+export function corridaFixture(dir: string, o: { modelo: PassoModelo | null; forcar?: boolean; agora?: number; casos?: string[] }): LinhaPlacar[] {
   const fixture = resolve(dir)
   const g = new Guarda([fixture])
   const agora = o.agora ?? Date.now()
   const out: LinhaPlacar[] = []
-  for (const caso of readdirSync(fixture).filter((d) => /^\d\d-[0-9a-z]+-L\d+$/.test(d)).sort()) {
+  const todos = readdirSync(fixture).filter((d) => /^\d\d-[0-9a-z]+-L\d+$/.test(d)).sort()
+  const fora = (o.casos ?? []).filter((c) => !todos.includes(c))
+  if (fora.length) throw new Error(`caso fora da fixture: ${fora.join(', ')}`)
+  for (const caso of o.casos ? todos.filter((c) => o.casos!.includes(c)) : todos) {
     const d = join(fixture, caso)
     const esp = JSON.parse(readFileSync(join(d, 'esperado.json'), 'utf8')) as Esperado
     const ev = lerCasoDeFixture(d, { instante: 'passada' })

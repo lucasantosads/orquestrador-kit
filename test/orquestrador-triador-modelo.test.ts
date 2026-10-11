@@ -104,6 +104,31 @@ describe('modelo do triador, com stub (peça 5)', () => {
     expect(e?.cortes).toEqual([])
   })
 
+  it('prompt 7f-b1b-r3 (proposta, opt-in por ORQ_TRIADOR_PROMPT ou config "prompt"): troca o R3 e soma a conferência de R2/R4; o padrão segue o literal da spec', async () => {
+    const c = await contexto()
+    const imp = (await import(pathToFileURL(join(TRIADOR, 'modelo.ts')).href)) as Record<string, any>
+    const pr = (await import(pathToFileURL(join(TRIADOR, 'prompt.ts')).href)) as Record<string, any>
+    // o padrão não muda
+    expect(imp.lerConfigModelo().prompt).toBe('spec')
+    expect(createHash('sha256').update(pr.PROMPT).digest('hex')).toBe(SHA_PROMPT_DA_SPEC)
+    // a proposta: o texto do R3 e as duas regras novas, literais
+    process.env.ORQ_TRIADOR_PROMPT = '7f-b1b-r3'
+    const cfg = imp.lerConfigModelo()
+    expect(cfg.prompt).toBe('7f-b1b-r3')
+    envelope(JSON.stringify({ classe: 'R3', confianca: 'media', evidencia: [c?.ext.evidencia[0]], remedio: 'decidir: x', requeue: 'nao', justificativa: 'x' }))
+    const r = c?.m.criarPassoModelo(cfg)(c.ctx)
+    expect(r?.registro.prompt).toBe('7f-b1b-r3')
+    const entrada = readFileSync(join(base, 'entrada.txt'), 'utf8')
+    expect(entrada).toContain(pr.R3_7F_B1B)
+    expect(entrada).toContain(pr.REGRAS_R3_7F_B1B)
+    expect(entrada).not.toContain('R3  Spec que precisa de decisão humana, token, motor ou refatiamento. Parte do\n    remédio não cabe no .md do ticket.')
+    // fora o R3 e a regra nova, a entrada é a mesma do padrão (o stub lê por $(cat), que come o \n do fim)
+    expect(entrada.replace(pr.R3_7F_B1B, '').replace(pr.REGRAS_R3_7F_B1B, '')).toBe(c?.m.montarEntrada('fixture', c.ev, c.ext).prompt.replace(pr.R3_SPEC, '').trimEnd())
+    // valor desconhecido não cai calado no padrão
+    process.env.ORQ_TRIADOR_PROMPT = 'r3'
+    expect(() => imp.lerConfigModelo()).toThrow(/prompt desconhecido: r3/)
+  })
+
   it('entrada acima de 30 mil tokens corta de baixo para cima, na ordem de §4, e vai mascarada', async () => {
     const c = await contexto()
     if (c) {
@@ -260,6 +285,22 @@ describe('modelo do triador, com stub (peça 5)', () => {
     const r3 = orq('3', '--forcar')
     expect(r3.stdout).toMatch(/chamadas novas: 9;/)
     expect(chamadas()).toHaveLength(30)
+  })
+
+  it('orq triar --fixture --casos a,b: só os casos pedidos (a mini-corrida); caso que não existe é erro, sem chamada', () => {
+    envelope(JSON.stringify({ classe: 'R3', confianca: 'baixa', evidencia: [], remedio: 'x', requeue: 'nao', justificativa: 'stub' }), 0.3)
+    const orq = (...a: string[]) => spawnSync('bash', [join(RAIZ, 'scripts', 'orq'), 'triar', '--fixture', FX, ...a], { encoding: 'utf8', env: { ...process.env, ORQ_TRIADOR_TETO_DIA: '5.40' } })
+    const r = orq('--casos', '01-559-L55054,07-627j-L57368,29-826-L80362')
+    expect(r.status, r.stderr).toBe(0)
+    const linhas = r.stdout.trim().split('\n')
+    expect(linhas.slice(0, -1).map((l) => l.split('\t')[0])).toEqual(['01-559-L55054', '07-627j-L57368', '29-826-L80362'])
+    expect(linhas.at(-1)).toMatch(/^-- \(C\) classe e evidência certas: \d\/3 .*chamadas novas: 2;/)
+    expect(chamadas()).toHaveLength(2)
+    const e = orq('--casos', '01-559-L55054,99-nao-L1')
+    expect(e.status).toBe(1)
+    expect(e.stderr).toMatch(/caso fora da fixture: 99-nao-L1/)
+    expect(chamadas()).toHaveLength(2)
+    expect(orq('--casos').status).toBe(1)
   })
 
   it('orq triar --passada não chama modelo e promove R5? a R5 quando o vizinho de outra família aparece (760)', async () => {
