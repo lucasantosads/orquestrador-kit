@@ -996,30 +996,43 @@
   *Teste:* `orquestrador-triador-aceite.test.ts` (primeiro-dia), `-sem-tentativa`,
   `-custo-real`, `orquestrador-resolvedor-prioridade.test.ts`.
 
+- **Etapa 7f-b4 · ligar o modelo do triador com segurança** (11/10/2026). Assinatura
+  estável (o log em recorte entra pelo recorte, não pelo stat: o 243 deixa de mudar a cada
+  drenagem); fatia do teto para auto (`teto_reserva_auto`, padrão 0.7: sombra e
+  diagnóstico juntos até 30% do teto do dia); o `claude` no PATH do plist (o instalador
+  recusa sem ele; o job sem ele segue só com extração e avisa uma vez por dia). Commits
+  `a58f71f` (assinatura), `9ffd35b` (fatia), `643194d` (claude no PATH).
+  *Evidência:* `~/.orq/diagnosticos/conteudos-infinitos/243/` (24 assinaturas, cópias
+  iguais), `~/Projetos/conteudos-infinitos/docs/fila/runs/events.log` (as drenagens
+  ociosas), `which claude` e `~/orq-sessoes/relatorio-kit-etapa7f-b4.md`.
+  *Teste:* `orquestrador-triador-assinatura-estavel.test.ts`,
+  `orquestrador-resolvedor-fatia-auto.test.ts`, `orquestrador-resolvedor-job-claude.test.ts`.
+
 ## PENDENTES
 
-- **7f-b3 · o `claude` no PATH do job (humano).** O plist instalado tem
-  `PATH={{NODE_DIR}}:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin`, e o
-  `claude` está em `~/.local/bin`: toda chamada do modelo pelo job sai `nao_iniciou`
-  (depois da 7f-b3, sem custo e sem teto; antes, US$ 0,60 de teto cada). Pôr o diretório
-  do `claude` no template (ou `ORQ_TRIADOR_CLAUDE` no plist) e reinstalar é decisão do
-  chat do programa: liga o gasto real do job.
-  *Evidência:* `~/Library/LaunchAgents/com.orq.resolvedor.plist`, `which claude`, rc 127
-  e 0 a 1 ms nos 8 diagnósticos de 11/10.
-  *Teste:* `orquestrador-resolvedor-job.test.ts` com o PATH do plist contendo o diretório.
-- **7f-b3 · o teto entre passadas.** A prioridade da 7f-b3 vale dentro de uma passada:
-  repos em diagnóstico que gastam numa passada sem bloqueio do Comarka ainda podem esgotar
-  o teto antes do próximo bloqueio em auto. Uma fatia do teto reservada para auto é
-  decisão do chat do programa.
-  *Evidência:* CONTRATO §15.4.
-- **7f-b3 · assinatura do 243 muda a cada 30 min.** Em 11/10 o diagnóstico do 243
-  (conteudos-infinitos) ganhou 23 assinaturas novas, uma a cada passada de 30 min, sem
-  tentativa nova: cada uma é uma triagem nova (e, com o modelo no PATH, uma chamada nova).
-  Achar o arquivo lido cujo mtime/tamanho muda (provável: o recorte do `events.log`).
-  *Evidência:* `~/.orq/diagnosticos/conteudos-infinitos/243/historico/` (23 arquivos de
-  04:09 a 14:40 UTC).
-  *Teste:* duas leituras do mesmo repo com só o `events.log` crescendo em outros ids dão a
-  mesma assinatura.
+- **7f-b4 · reinstalar o job com o `claude` no PATH (humano).** Depois do merge, do
+  checkout principal: `bash scripts/orquestrador/resolvedor/instalar-job.sh --dry-run`
+  (conferir o PATH com `~/.local/bin` depois do node) e sem `--dry-run`. Liga o gasto real:
+  estimativa no relatório da 7f-b4 (média ~US$ 0,35/dia, pico ~US$ 2,00, só o Comarka nos
+  dados de 25/09 a 11/10). Se for no mesmo dia UTC das 8 entradas nulas de 11/10 no
+  `custo.json`, elas ainda contam US$ 4,80 (a proposta de correção da 7f-b3 segue aberta).
+  *Evidência:* `~/Library/LaunchAgents/com.orq.resolvedor.plist` (PATH sem `~/.local/bin`).
+  *Teste:* `orquestrador-resolvedor-job-claude.test.ts`.
+- **7f-b4 · `pulado: teto_dia` nunca volta ao modelo.** Diagnóstico pulado pelo teto (do
+  dia ou da fatia) tem a mesma assinatura no dia seguinte e não é triado de novo: o ticket
+  fica sem o modelo até mudar. A 7f-b4 só refaz o gravado com `modelo: null`. Refazer o
+  pulado no dia seguinte é decisão do chat do programa (é gasto).
+  *Evidência:* `triar.ts:147` (`semModeloAntes`), `~/.orq/diagnosticos/conteudos-infinitos/243.json`
+  (`pulado: teto_dia`).
+  *Teste:* diagnóstico com `pulado: teto_dia` ontem, teto livre hoje: chama uma vez.
+- **7f-b4 · o leitor do kit numera a tentativa pelo `attempt=` do INICIO.** No 243, o
+  `INICIO attempt=1` aparece duas vezes (a 1ª volta e a refatiada): o leitor lê
+  `attempt-0` duas vezes e nunca o `attempt-3` (a tentativa do bloqueio). Achado no PASSO 0
+  da 7f-b4, não mexido.
+  *Evidência:* `~/Projetos/conteudos-infinitos/docs/fila/runs/events.log` (as linhas do
+  243), `leitor-kit.ts:140` (`dirRel` por `attempt - 1`).
+  *Teste:* o 243 da fixture com os 4 INICIO: as tentativas lidas são `attempt-0..3`, uma
+  vez cada.
 
 - **7f-b1b · mini-corrida paga do R3.** `~/orq-sessoes/corrida-7f-r3.cmd` (9 casos: os 5 R3 e
   os 6 cortados no teto, prompt `7f-b1b-r3`, teto US$ 5,40), depois do merge da 7f-b1b; as

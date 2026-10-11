@@ -997,3 +997,28 @@ certo: firmes no instante do bloqueio 13 → 14; (B) os firmes certos 15 → 16 
 do 346d, US$ 0,2424); evidência equivalente sobre 7 casos (o 346d saiu da lista, agora
 certo pela medição; o total segue 28); `orq triar --fixture` grava 21
 `resposta-modelo.json` (eram 22). Nenhuma perdeu força.
+
+### Etapa 7f-b4 · ligar o modelo do triador com segurança (11/10/2026)
+
+Antes de pôr o `claude` no PATH do job: a assinatura do 243 mudava a cada drenagem do
+loop (o stat do `events.log` inteiro), e repos em diagnóstico ainda podiam esgotar o teto
+entre passadas. Sem chamada de API, sem launchctl, sem escrita em repo real nem em `~/.orq`.
+CONTRATO §16.
+
+- **7f-b4-1** `a58f71f`: assinatura estável: o arquivo lido em recorte (`events.log`,
+  `local-loop.log`) entra pelas faixas e pelo sha do recorte, não pelo stat do arquivo.
+  Matriz e gabaritos iguais.
+- **7f-b4-2** `9ffd35b`: fatia do teto para auto: `teto_reserva_auto` no topo do
+  repos.json (padrão 0.7); repos fora de auto, juntos, gastam até 30% do teto do dia
+  (`pulado: teto_reserva_auto`).
+- **7f-b4-3** `643194d`: `instalar-job.sh` põe o diretório do `claude` no PATH do plist
+  (depois do node) e recusa sem ele; `job.sh` sem `claude`: `MODELO_INDISPONIVEL` uma vez
+  por dia e passada `--sem-modelo`; diagnóstico gravado sem modelo é triado de novo, uma
+  vez, quando o modelo volta.
+- **7f-b4-4**: CONTRATO §16 (e §13.4, §14.7), este registro e `docs/PECAS.md` com os shas.
+
+Asserções existentes que mudaram: (7f-b4-1) o replay da corrida da peça 6 confere a
+assinatura gravada na fixture pela fórmula da corrida (`assinaturaDaCorrida`, no teste),
+não pela do motor; continua exigindo as 21 respostas da mesma evidência. (7f-b4-3) o teste
+do job da 7f-b2 põe um `claude` falso (que reprova se rodar) no PATH, porque o `--dry-run`
+agora o exige. Nenhuma perdeu força.

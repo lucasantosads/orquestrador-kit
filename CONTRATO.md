@@ -1104,9 +1104,11 @@ Regras duras:
   dentro de um repo lança no construtor.
 - **Git** (`git.ts:24`): só `gitLeitura`, com `GIT_OPTIONAL_LOCKS=0`; verbos `show`, `log`,
   `rev-parse`, `ls-tree`, `status --porcelain`; outro verbo lança antes de existir processo.
-- **Assinatura** (`saida.ts:146`): sha256 de repo, id, status, nota e nome/mtime/tamanho de
-  cada arquivo lido. Mesma assinatura: não roda (só `--forcar`). Assinatura nova: o
-  anterior vai para o histórico.
+- **Assinatura** (`saida.ts:152`): sha256 de repo, id, status, nota e nome/mtime/tamanho de
+  cada arquivo lido; o arquivo lido em recorte (a trilha) entra pelas faixas e pelo
+  conteúdo recortado, não pelo stat (7f-b4, §16.1). Mesma assinatura: não roda (só
+  `--forcar`, ou o diagnóstico gravado sem modelo quando o modelo volta, §16.3).
+  Assinatura nova: o anterior vai para o histórico.
 - **Passada** (`--passada`, `triar.ts:133`): sem modelo; só diagnósticos de até 6 h com
   classe em palpite; grava só se a extração ficou firme (promove).
 - Ticket que saiu de `bloqueado`: o diagnóstico fica, com `encerrado_em` (`triarRepo`, `:203`).
@@ -1353,7 +1355,8 @@ Job (`instalar-job.sh`, `com.orq.resolvedor.plist.template`, `job.sh`): label
 interruptor antes de chamar o node e roda `orq resolver` (trava global na passada); log em
 `~/.orq/resolvedor/job.log`. `--dry-run` só imprime o plist; com `ORQ_TESTE=1` ou de
 checkout sob `/tmp`, só o `--dry-run` roda. Quem instala é o humano, do checkout principal
-do kit.
+do kit. Desde a 7f-b4, o PATH do plist tem o diretório do `claude`, e o job sem ele
+segue só com extração (§16.3).
 
 ### 14.8 Testes
 
@@ -1439,6 +1442,78 @@ começam e a 9ª sai; reserva só durante a chamada; erro com custo; timeout; re
 só com gasto real), `orquestrador-resolvedor-prioridade.test.ts` (com US$ 4,30 de US$ 5,00,
 o Comarka em auto chama e o Actus em diagnostico, listado antes, fica pulado) e
 `orquestrador-resolvedor-passada.test.ts` (D6b decide `r1_allowlist`).
+
+## 16. Etapa 7f-b4: ligar o modelo do triador com segurança (11/10/2026)
+
+O job de 11/10 nunca chamou o modelo: o `claude` (em `~/.local/bin`) estava fora do PATH
+do plist (§15). Antes de pô-lo no PATH, dois defeitos que o modelo ligado tornaria pagos
+(relatório: `~/orq-sessoes/relatorio-kit-etapa7f-b4.md`):
+
+- o 243 do conteudos-infinitos ganhou 24 assinaturas em 11/10, uma a cada ~30 min, sem
+  tentativa nova: a assinatura levava o stat do `runs/events.log` inteiro, e o loop do
+  repo acrescenta 3 linhas a cada drenagem (`--- DRENAGEM_INICIO`, `--- OCIOSO …
+  244=dependencia:243:bloqueado`, `--- DRENAGEM_FIM`). A cópia da evidência das 24 é
+  igual byte a byte;
+- a prioridade da 7f-b3 (§15.4) vale dentro de uma passada: repos em diagnostico com
+  bloqueio novo em passadas anteriores ainda esgotam o teto antes de um bloqueio em auto.
+
+### 16.1 Assinatura estável (`assinatura`, `saida.ts:152`)
+
+A assinatura só muda quando muda algo do próprio ticket: o arquivo do ticket, os
+artefatos das tentativas dele (stat), a trilha DELE e o motivo do bloqueio. O arquivo lido
+em recorte (`Lido.faixas`: o `events.log` do kit, o `local-loop.log` do legado, que são de
+todos os tickets) entra como `arquivo | recorte | faixas | sha256(conteúdo recortado)`,
+nunca pelo mtime e tamanho do arquivo inteiro. Os arquivos inteiros seguem pelo stat.
+Gabaritos e a matriz da 7f-b3 iguais (63 linhas, `diff` vazio). A guarda do replay da
+corrida da peça 6 (resposta gravada da mesma evidência) confere pela fórmula da corrida.
+
+Efeito único no merge: todo diagnóstico existente muda de assinatura uma vez (fórmula
+nova) e é triado de novo; com o modelo, só o que não é firme nem D0 chama.
+
+### 16.2 Fatia do teto para auto (`teto_reserva_auto`; `passoModelo`, `passada.ts:117`)
+
+Chave nova no topo do `~/.orq/repos.json`: `teto_reserva_auto`, de 0 a 1, padrão **0.7**
+(ausente ou fora de 0..1: 0.7; `lerTetoReservaAuto`, `modos.ts:73`). Repo em auto
+(`emAuto`, `passada.ts:84`: alguma classe, ou o padrão, em `auto`) usa o teto do dia
+inteiro. Repo fora de auto (sombra e diagnostico) confere também a fatia
+(`criarPassoModelo`, `modelo.ts:471`):
+
+    gasto do dia dos repos fora de auto + corte ≤ (1 − teto_reserva_auto) × teto do dia
+
+Os "repos fora de auto" são os do ledger cujo `repo` não é nome de repo em auto no
+repos.json (sombra, diagnostico, e o que não está listado). Passando: `modelo: {pulado:
+"teto_reserva_auto"}`, sem reserva, vale a extração. Com o teto padrão do resolvedor
+(US$ 5,00), sombra e diagnostico juntos gastam até US$ 1,50 por dia; os US$ 3,50 restantes
+só os repos em auto alcançam. Com `--repo X`, os repos em auto são os do repos.json
+inteiro (a fatia é do dia, não da passada).
+
+### 16.3 O `claude` no PATH do job (`instalar-job.sh`, `job.sh`, `triar.ts:147`)
+
+- `instalar-job.sh` acha `command -v claude` e põe o diretório (o do link, não o alvo
+  versionado, que muda a cada atualização) no PATH do plist, **depois** do `NODE_DIR`
+  (o `~/.local/bin` também tem um `node`). Placeholder novo no template: `{{CLAUDE_DIR}}`.
+  Sem `claude` no PATH, recusa com `ERRO: claude nao esta no PATH`, rc 1, com ou sem
+  `--dry-run`, antes de escrever ou chamar `launchctl`.
+- `job.sh`: sem o `claude` (ou o `ORQ_TRIADOR_CLAUDE`), a passada roda com
+  `--sem-modelo` (nem chamada, nem reserva no teto), e o job.log ganha UMA linha
+  `<ts> MODELO_INDISPONIVEL claude fora do PATH (<PATH>): …` por dia UTC; a marca do dia
+  fica em `<resolvedor>/modelo-indisponivel`.
+- `triarTicket`: diagnóstico gravado com `modelo: null` (sem modelo) quando o modelo
+  cabia (nem firme, nem D0) é triado de novo, uma vez, quando a triagem tem modelo, mesmo
+  com a mesma assinatura. Sem isso, o ticket triado com o `claude` fora do PATH nunca
+  ganharia o modelo.
+
+### 16.4 Testes
+
+`orquestrador-triador-assinatura-estavel.test.ts` (o 243 com duas drenagens ociosas: a
+mesma assinatura; o ticket, uma tentativa nova, o motivo do bloqueio e um artefato
+reescrito mudam), `orquestrador-resolvedor-fatia-auto.test.ts` (18 passadas de um repo em
+diagnostico com assinatura nova a cada uma; o bloqueio do Comarka em auto que aparece
+depois chama; o diagnostico parou em US$ 1,00 de US$ 1,50 com `teto_reserva_auto`; a
+leitura da chave), `orquestrador-resolvedor-job-claude.test.ts` (`--dry-run` com o PATH
+novo; recusa sem claude; job sem claude: uma linha por dia, nada no teto; o claude volta e
+o 243 é triado de novo, uma vez) e `orquestrador-resolvedor-job.test.ts` (um `claude`
+falso no PATH do teste: o `--dry-run` agora o exige).
 
 ## 10. Divergências conhecidas
 
