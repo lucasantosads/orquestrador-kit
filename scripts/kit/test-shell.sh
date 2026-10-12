@@ -52,6 +52,9 @@
 # E os da etapa 7d-1b:
 #   test-sem-cor.sh                 critérios e gates rodam com NO_COLOR=1 e FORCE_COLOR=0 (vitest real, peça 5)
 #
+# E o da etapa 7f-b6:
+#   test-criterio-isolado.sh        o critério roda num bash novo, sem o set -euo pipefail do executor (P0)
+#
 # E um que mora no KIT, não no fixture, porque instancia o PRÓPRIO fixture
 # (roda depois do laço, pelo caminho do kit):
 #   scripts/kit/test-fixture-gates.sh  a worktree do motor passa nos gates REAIS do config (e2e de 27/09)
@@ -75,7 +78,7 @@
 set -uo pipefail
 
 KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPTS='test-lib-config.sh test-drenagem.sh test-retry-worktree.sh test-drenagem-sem-progresso.sh test-sem-progresso-limite.sh test-ocioso.sh test-rc-executor.sh test-ambiente.sh test-causa-adiamento.sh test-ambiente-adiado.sh test-adiamentos-limite.sh test-reprovado-sub.sh test-notificacao-ambiente.sh test-reabertura-humana.sh test-painel-visao.sh test-painel-detalhe.sh test-painel-pausa.sh test-painel-alarmes.sh test-painel-lento.sh test-gate-prevoo.sh test-tentativas-persistidas.sh test-orq-pause.sh test-preflight.sh test-diff-lines.sh test-sem-cor.sh'
+SCRIPTS='test-lib-config.sh test-drenagem.sh test-retry-worktree.sh test-drenagem-sem-progresso.sh test-sem-progresso-limite.sh test-ocioso.sh test-rc-executor.sh test-ambiente.sh test-causa-adiamento.sh test-ambiente-adiado.sh test-adiamentos-limite.sh test-reprovado-sub.sh test-notificacao-ambiente.sh test-reabertura-humana.sh test-painel-visao.sh test-painel-detalhe.sh test-painel-pausa.sh test-painel-alarmes.sh test-painel-lento.sh test-gate-prevoo.sh test-tentativas-persistidas.sh test-orq-pause.sh test-preflight.sh test-diff-lines.sh test-sem-cor.sh test-criterio-isolado.sh'
 
 FX="$(bash "$KIT/scripts/kit/fixture.sh")" || {
   printf 'ERRO: fixture.sh falhou — nada foi rodado\n' >&2; exit 2

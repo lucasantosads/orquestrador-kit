@@ -463,7 +463,13 @@ run_criterios() {
     # obedece NO_COLOR; quem segue supports-color/chalk ignora NO_COLOR e só
     # desliga com FORCE_COLOR=0. Os dois, sempre: a cor entra no pipeline do
     # critério antes do strip_ansi, que só limpa o resultado final.
-    ( cd "$wt" && export BASE_REF="$CFG_BRANCH_ALVO" NO_COLOR=1 FORCE_COLOR=0 && eval "$cmd" ) > "$tmp_out" 2>&1 || rc_cmd=$?
+    # Etapa 7f-b6 (P0): o cmd roda num bash NOVO, não por eval. O eval rodava
+    # num subshell que herda o `set -euo pipefail` da linha 23: variável vazia
+    # abortava com "unbound variable" e `n=$(grep -c ... | tr) && echo` sumia no
+    # pipefail (933/934b/935 do Comarka; lá, o 31104d0). env -u SHELLOPTS
+    # BASHOPTS: nenhuma opção do executor chega ao critério, nem exportada.
+    ( cd "$wt" && env -u SHELLOPTS -u BASHOPTS BASE_REF="$CFG_BRANCH_ALVO" NO_COLOR=1 FORCE_COLOR=0 \
+        "$BASH" --noprofile --norc -c "$cmd" ) > "$tmp_out" 2>&1 || rc_cmd=$?
     out="$(strip_ansi < "$tmp_out" || true)"; rm -f "$tmp_out"
     printf '### %s\ncmd: %s\nespera: %s\nsaida: %s\n\n' "$desc" "$cmd" "$esp" "$out" >> "$rundir/criterios.txt"
     if criterio_match "$out" "$esp"; then
