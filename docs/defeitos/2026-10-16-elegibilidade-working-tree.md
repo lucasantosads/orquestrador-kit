@@ -113,3 +113,26 @@ Critério extra, no repo de destino depois do porte:
 
     grep -c 'dono:' scripts/orquestrador/orq-pause.sh                 # espera >= 1
     grep -c 'origin/main..main' scripts/orquestrador/local-loop.sh    # espera >= 1 (checagem antes do push)
+
+## Validador e ritual
+
+Mesmo dia e mesmo checkout. Linhas citadas da cópia do comarka-operacional.
+
+### Validador: bloquear ticket com recon quebrado exige `--no-verify`
+
+- O que aconteceu: em 16/10, o 1060b e o 1138 (de outras frentes) tinham o recon divergindo do HEAD (`1060b`: esperado `LISTA_LEGADA`, obtido `ST_85`; `1138`: esperado `SEM_CRON`, obtido `ST_11`). A decisão foi tirá-los do loop com `"status": "bloqueado"`. O diff staged era **só** de `status` e `notas_status`, e mesmo assim o pre-commit (`validar-fila.py`) recusou: `✗ spec com ERRO — corrija ou use --no-verify se for consciente.` O commit saiu com `--no-verify` (`ac1a665` no comarka), com aprovação explícita do Lucas.
+- Causa: `validar-fila.py` só pula tickets `done` e `obsoleto` (`scripts/validar-fila.py:1399-1400`). Para o diff só de status, `so_status_staged()` (`:1358`) rebaixa as camadas 6, 7 e 9, e o colchete (`:1483`). O recon divergente continua `ERRO` fixo (`:1494`). Resultado: bloquear um ticket justamente **porque** o recon quebrou é impossível sem desligar o hook inteiro. Pelo mesmo caminho, o `autocommit_status_fila` do loop (`local-loop.sh:314`) também falha ao commitar o writeback `bloqueado` de um ticket assim, e o `.md` fica sujo no checkout principal.
+- Proposta: quando `so_status_staged(f)` for verdadeiro **e** o status novo for `bloqueado`, o recon divergente sai como `WARN`, com o motivo dito (`recon diverge, mas o diff só bloqueia o ticket`). Qualquer outro status (sobretudo `pendente`) segue com `ERRO`: reabrir com recon quebrado continua barrado.
+- Fixture e contraprova: ticket com `recon_esperado` que diverge, staged com diff só de `status: pendente -> bloqueado`. Espera: `validar-fila.py <id>` sai com rc 0 e uma linha `WARN recon[0]`. Contraprova 1: o mesmo diff para `bloqueado -> pendente` dá `ERRO` e rc 1. Contraprova 2: diff que também mexe no `objetivo` dá `ERRO`.
+
+### Ritual: remover a pausa torna elegíveis os tickets não commitados de outra sessão
+
+- Evidência: às ~15:40 de 16/10 havia sete tickets **untracked** em `docs/fila/` do checkout principal, `1190` a `1196` (`reuniao-*`), escritos por outra sessão e ainda sem commit nem validação. A fila estava parada só pela pausa manual.
+- Causa: o `ritual-staging.sh` remove a pausa ao terminar (`scripts/ritual-staging.sh:154` no caminho `nada_a_trazer`, `:292` no fim normal). A checagem de limpeza dele (`:203`, `git status --porcelain`) roda na **worktree da staging**, não no checkout principal, que é de onde o loop lê a fila (seção "Causa verificada" acima). Então um ritual rodado com tickets alheios não commitados no checkout principal tira a pausa e entrega esses tickets ao loop, que é o mesmo defeito da elegibilidade, agora disparado pelo ritual.
+- Proposta: no passo 0 do ritual (e no `publicar.sh`, que também remove a pausa), antes de gravar ou remover qualquer pausa, rodar no checkout principal `git status --porcelain -- "$FILA_REL/*.md"` (modificado ou untracked, sem `runs/`). Se houver saída, abortar sem tocar em nada, listando os arquivos (`ha ticket nao commitado em docs/fila: <lista>; commite e valide ou mova antes do ritual`). Enquanto a regra de elegibilidade das seções acima não estiver no motor, esta é a barreira que impede o ritual de soltar o loop sobre ticket não revisado.
+- Fixture e contraprova: checkout principal de fixture (git) com um `9xx-dummy.md` untracked em `docs/fila/`, pausa gravada. Rodar o ritual. Espera: rc diferente de zero, a pausa **continua** no lugar e a saída lista o `9xx`. Contraprova: com o `9xx` commitado, o ritual segue até o fim e remove a própria pausa. Caso extra: um `.md` modificado só em `docs/fila/runs/` não barra.
+
+Critério extra, no repo de destino depois do porte:
+
+    grep -c 'nao commitado em' scripts/ritual-staging.sh     # espera >= 1
+    python3 scripts/validar-fila.py <id-da-fixture>         # bloqueado com recon divergente: rc 0
