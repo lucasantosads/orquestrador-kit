@@ -121,7 +121,7 @@ JSON
 TICKET
   printf 'export const base = 0\n' > "$r/src/base.ts"
   mkdir -p "$r/scripts/orquestrador"
-  cp "$FXE_AQUI"/*.sh "$FXE_AQUI"/*.ts "$r/scripts/orquestrador/"
+  cp "$FXE_AQUI"/*.sh "$FXE_AQUI"/*.ts "$FXE_AQUI"/*.json "$r/scripts/orquestrador/"
   printf 'docs/fila/runs/\nnode_modules\n' > "$r/.gitignore"
   [ -e "$FXE_NM" ] && ln -s "$FXE_NM" "$r/node_modules"
   git -C "$r" init -q -b main

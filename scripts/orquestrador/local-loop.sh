@@ -809,16 +809,17 @@ autocommit_status_fila() {
   local -a paths=()
   while IFS= read -r f; do
     [ -n "$f" ] || continue
-    paths+=("$f")
+    paths+=("$MAIN_CHECKOUT/$f")
     f="$(basename "$f" .md)"; ids="${ids:+$ids }${f%%-*}"
   done <<<"$arquivos"
   quando="$(date '+%Y-%m-%d %H:%M')"
-  if ! git -C "$MAIN_CHECKOUT" add -- "${paths[@]}"; then
-    say "autocommit fila: git add falhou (não fatal)"; return 0
-  fi
-  # 'commit -- <paths>' (= --only) ignora qualquer outra coisa já staged.
-  if ! git -C "$MAIN_CHECKOUT" commit -q -m "fila: status automatico do loop $quando ($ids)" -- "${paths[@]}"; then
+  local antes; antes="$(git -C "$MAIN_CHECKOUT" rev-parse HEAD)"
+  # Só as chaves do motor entram; edição alheia fica no working tree (8b, lib.sh:commit_motor).
+  if ! commit_motor "fila: status automatico do loop $quando ($ids)" "${paths[@]}"; then
     say "autocommit fila: commit falhou (não fatal)"; return 0
+  fi
+  if [ "$(git -C "$MAIN_CHECKOUT" rev-parse HEAD)" = "$antes" ]; then
+    say "autocommit fila: só edição alheia em $fila_rel ($ids), nada do loop a commitar"; return 0
   fi
   say "autocommit fila: commit $(git -C "$MAIN_CHECKOUT" rev-parse --short HEAD) em $BRANCH_PROTEGIDA ($ids) — sem push"
 }

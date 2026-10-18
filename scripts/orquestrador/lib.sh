@@ -265,18 +265,128 @@ ticket_zera_adiamentos_ambiente() {
   ticket_set "$1" 'del(.adiamentos_ambiente)'
 }
 
+# --- O COMMIT DO LOOP LEVA SÓ AS CHAVES DO MOTOR (etapa 8b, peça 1) ----------
+# O `git add` do arquivo inteiro levava junto qualquer edição que não fosse do
+# loop. Caso real: o ba731d8 do comarka-operacional (18/10/2026 07:39) commitou
+# como "status automatico" o `objetivo` do 1361 e o `cmd` de critério do 1371 e
+# do 1377, editados no working tree por outra sessão, sem trailer e sem autor.
+#
+# Agora o commit do motor é montado num índice TEMPORÁRIO a partir da HEAD:
+#   - ticket sem edição alheia: entra o arquivo do working tree, como antes;
+#   - com edição alheia (fora de campos-do-motor.json, inclusive a prosa): entra
+#     a versão da HEAD com só as chaves do motor trocadas, e a edição alheia
+#     fica no working tree, sem commit, com EDICAO_ALHEIA na trilha e um aviso
+#     (uma vez por edição, não a cada escrita);
+#   - ticket fora da HEAD (criado e não commitado): não entra, e EDICAO_ALHEIA
+#     com campos=nao_rastreado.
+# O commit é `git commit` de verdade (os hooks do repo rodam) e leva um trailer
+# `Orq-Loop: <id>` por ticket: é por ele que o resolvedor separa commit do loop
+# de commit humano (peça 4), já que o assunto "fila: <id> …" é igual.
+CAMPOS_DO_MOTOR_FILE="$ORQ_LIB_DIR/campos-do-motor.json"
+
+# Tudo do ticket fora do primeiro bloco json (a prosa, com as cercas).
+_ticket_prosa() {
+  awk '
+    { cerca = $0; gsub(/^[ \t]+|[ \t]+$/, "", cerca) }
+    !feito && !inblk && cerca == "```json" { print; inblk=1; next }
+    inblk && cerca == "```" { print; inblk=0; feito=1; next }
+    inblk { next }
+    { print }
+  ' "$1"
+}
+
+# _ticket_rel <arquivo> -> caminho no repo, vazio se não está na HEAD.
+_ticket_rel() {
+  git -C "$(dirname "$1")" ls-tree --full-name --name-only HEAD -- "$(basename "$1")" 2>/dev/null || true
+}
+
+# ticket_alheio <arquivo> -> os campos que não são do motor e diferem da HEAD
+# (separados por vírgula; `prosa` para fora do bloco; `nao_rastreado` se o
+# arquivo não está na HEAD). Vazio: só o motor mexeu.
+ticket_alheio() {
+  local file="$1" rel tmp campos
+  rel="$(_ticket_rel "$file")"
+  [ -n "$rel" ] || { echo nao_rastreado; return 0; }
+  tmp="$(mktemp)"
+  git -C "$MAIN_CHECKOUT" show "HEAD:$rel" > "$tmp" 2>/dev/null
+  campos="$(jq -rn --slurpfile a <(ticket_json "$tmp") --slurpfile b <(ticket_json "$file") \
+      --slurpfile c "$CAMPOS_DO_MOTOR_FILE" '
+    ($a[0] // {}) as $a | ($b[0] // {}) as $b
+    | [ (($a | keys_unsorted) + ($b | keys_unsorted)) | unique[]
+        | select(. as $k | $c[0] | index($k) | not)
+        | select($a[.] != $b[.]) ] | join(",")' 2>/dev/null || echo bloco_ilegivel)"
+  if ! cmp -s <(_ticket_prosa "$tmp") <(_ticket_prosa "$file"); then campos="${campos:+$campos,}prosa"; fi
+  rm -f "$tmp"
+  printf '%s' "$campos"
+}
+
+# ticket_so_motor <arquivo> -> a versão da HEAD com só as chaves do motor do
+# working tree (ausente no working tree = apagada).
+ticket_so_motor() {
+  local file="$1" rel tmp wt
+  rel="$(_ticket_rel "$file")"
+  tmp="$(mktemp)"
+  git -C "$MAIN_CHECKOUT" show "HEAD:$rel" > "$tmp"
+  wt="$(ticket_json "$file" | jq -c .)"
+  ticket_set "$tmp" 'reduce $c[0][] as $k (.; if ($w | has($k)) then .[$k] = $w[$k] else del(.[$k]) end)' \
+    --argjson w "$wt" --slurpfile c "$CAMPOS_DO_MOTOR_FILE"
+  cat "$tmp"
+  rm -f "$tmp"
+}
+
+# Evento e aviso de edição alheia, uma vez por edição: a marca guarda o hash do
+# ticket SEM as chaves do motor, que muda só quando a edição alheia muda.
+_aviso_edicao_alheia() {
+  local file="$1" id="$2" campos="$3" marca h
+  marca="$RUNS_BASE/$id/.edicao-alheia"
+  h="$( { ticket_json "$file" | jq -S -c --slurpfile c "$CAMPOS_DO_MOTOR_FILE" 'reduce $c[0][] as $k (.; del(.[$k]))' 2>/dev/null; _ticket_prosa "$file"; } | shasum -a 256 | cut -c1-12)"
+  [ "$(cat "$marca" 2>/dev/null)" = "$h" ] && return 0
+  if escrita_de_teste_permitida "$marca"; then mkdir -p "$(dirname "$marca")" && printf '%s\n' "$h" > "$marca"; fi
+  event "$id" EDICAO_ALHEIA "arquivo=$(basename "$file")" "campos=$campos" "hash=$h"
+  log "  AVISO: edição que não é do loop em $(basename "$file") ($campos): fica no working tree, sem commit; o loop commitou só as chaves dele"
+}
+
+# commit_motor <mensagem> <arquivo>... — o commit do loop com os tickets dados.
+# Idempotente: sem diferença para a HEAD, não cria commit. Falha não é fatal.
+commit_motor() {
+  local msg="$1"; shift
+  local idx f rel id campos blob modo trailers="" ok=1
+  local -a rels=()
+  idx="$(mktemp)"
+  GIT_INDEX_FILE="$idx" git -C "$MAIN_CHECKOUT" read-tree HEAD || { rm -f "$idx"; return 1; }
+  for f in "$@"; do
+    id="$(ticket_field "$f" '.id' 2>/dev/null || true)"
+    campos="$(ticket_alheio "$f")"
+    if [ "$campos" = nao_rastreado ]; then _aviso_edicao_alheia "$f" "${id:-—}" "$campos"; continue; fi
+    rel="$(_ticket_rel "$f")"
+    if [ -z "$campos" ]; then
+      blob="$(git -C "$MAIN_CHECKOUT" hash-object -w -- "$f")"
+    else
+      blob="$(ticket_so_motor "$f" | git -C "$MAIN_CHECKOUT" hash-object -w --stdin)"
+      _aviso_edicao_alheia "$f" "$id" "$campos"
+    fi
+    modo="$(git -C "$MAIN_CHECKOUT" ls-tree HEAD -- "$rel" | awk '{print $1}')"
+    GIT_INDEX_FILE="$idx" git -C "$MAIN_CHECKOUT" update-index --cacheinfo "${modo:-100644},$blob,$rel" || ok=0
+    rels+=("$rel")
+    trailers="${trailers:+$trailers
+}Orq-Loop: $id"
+  done
+  if [ "${#rels[@]}" -eq 0 ] || [ "$ok" = 0 ] || GIT_INDEX_FILE="$idx" git -C "$MAIN_CHECKOUT" diff --cached --quiet; then
+    rm -f "$idx"; [ "$ok" = 1 ]; return
+  fi
+  GIT_INDEX_FILE="$idx" git -C "$MAIN_CHECKOUT" commit -q -m "$msg" -m "$trailers" || { rm -f "$idx"; return 1; }
+  rm -f "$idx"
+  # O índice real volta a casar a HEAD nesses caminhos; a edição alheia segue no working tree.
+  git -C "$MAIN_CHECKOUT" reset -q -- "${rels[@]}" 2>/dev/null || true
+}
+
 # ticket_commit <arquivo> <mensagem>
 # Commita a mudança de status/nota do ticket no MAIN_CHECKOUT imediatamente
 # apos escreve-la. Sem isso a arvore fica suja entre disparos e o preflight
 # do PROXIMO ticket aborta com "arvore de execucao suja" — incidente visto
-# 6+ vezes (ver ticket 012). Pathspec explicito, nunca `git add -A`/`.`
-# (regra do PLAYBOOK). Idempotente: sem diff staged, nao cria commit vazio.
-ticket_commit() {
-  local file="$1" msg="$2"
-  git -C "$MAIN_CHECKOUT" add -- "$file"
-  git -C "$MAIN_CHECKOUT" diff --cached --quiet -- "$file" || \
-    git -C "$MAIN_CHECKOUT" commit -q -m "$msg" -- "$file"
-}
+# 6+ vezes (ver ticket 012). Desde a 8b passa pelo commit_motor: só as chaves
+# do motor, nunca `git add` do arquivo inteiro.
+ticket_commit() { commit_motor "$2" "$1"; }
 
 # --- Observabilidade (contrato: skill/references/observabilidade.md §1 e §2) --
 # Duas irmãs do `log`, no mesmo lugar onde o loop já registra progresso:

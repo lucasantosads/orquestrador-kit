@@ -60,6 +60,8 @@ preflight() {
     [ -f "$ORQ_LIB_DIR/$s" ] && { bash -n "$ORQ_LIB_DIR/$s" || die "preflight: $s com erro de sintaxe"; }
   done
   jq -e . "$CONFIG" >/dev/null 2>&1 || die "preflight: $CONFIG não é JSON válido"
+  # Sem a lista, todo ticket pareceria edição alheia e nada do loop seria commitado (8b).
+  jq -e 'type == "array" and length > 0' "$CAMPOS_DO_MOTOR_FILE" >/dev/null 2>&1 || die "preflight: $CAMPOS_DO_MOTOR_FILE ausente ou inválido"
   for f in $(ticket_files); do
     ticket_json "$f" | jq -e . >/dev/null 2>&1 || die "preflight: bloco json inválido em $(basename "$f")"
   done
@@ -1331,7 +1333,7 @@ drive_ticket() {
     # SEM os campos que o próprio loop reescreve (status, nota, tentativas,
     # adiamentos): editar o ticket gera versão nova e aviso novo.
     local versao
-    versao="$(ticket_json "$file" | jq -S -c 'del(.status, .notas_status, .tentativas, .adiamentos_ambiente, .adiado_ate)' 2>/dev/null | shasum -a 256 | cut -c1-12)"
+    versao="$(ticket_json "$file" | jq -S -c --slurpfile c "$CAMPOS_DO_MOTOR_FILE" 'reduce $c[0][] as $k (.; del(.[$k]))' 2>/dev/null | shasum -a 256 | cut -c1-12)"
     if grep -F " $id GATE_TICKET_AVISO " "$EVENTS_FILE" 2>/dev/null | grep -qE " hash=$versao( |\$)"; then
       log "  gate de ticket: aviso desta versão já está na trilha (hash=$versao) — não repete"
     else

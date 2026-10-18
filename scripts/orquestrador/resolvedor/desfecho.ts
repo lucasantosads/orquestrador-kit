@@ -37,7 +37,8 @@ import { R1_MULTI } from './modos.js'
 import { notificar } from './pausa.js'
 import { rodarEm } from './r2.js'
 
-export const CAMPOS_DO_MOTOR = ['status', 'notas_status', 'tentativas', 'adiamentos_ambiente']
+/** Os campos que o motor escreve no ticket: a lista única do motor (etapa 8b), a mesma do lib.sh. */
+export const CAMPOS_DO_MOTOR: readonly string[] = JSON.parse(readFileSync(new URL('../campos-do-motor.json', import.meta.url), 'utf8'))
 export const DESFECHO_RUIM = new Set(['bloqueou_de_novo', 'humano_mexeu', 'desfeito'])
 
 const iso = (t: number) => new Date(t).toISOString().replace(/\.\d{3}Z$/, 'Z')
