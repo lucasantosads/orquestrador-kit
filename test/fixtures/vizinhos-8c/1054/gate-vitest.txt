@@ -1,0 +1,100 @@
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 5 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m test/resolver-cliente-rota-diagnostico.test.ts[2m > [22mdiagnostico: resolverCliente[2m > [22m(a)(b) chave em uuid e em notion_id chegam à mesma consulta por cliente_id
+[31m[1mAssertionError[22m: expected 500 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 500[39m
+
+[36m [2m❯[22m test/resolver-cliente-rota-diagnostico.test.ts:[2m67:37[22m[39m
+    [90m 65|[39m     mockResolver.mockResolvedValue({ cliente_id: CLIENTE, notion_id: N…
+    [90m 66|[39m     montar({ entrada: ENTRADA, mirror: { notion_id: NOTION, nicho: nul…
+    [90m 67|[39m     [34mexpect[39m(([35mawait[39m [34mchamar[39m())[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                                     [31m^[39m
+    [90m 68|[39m     montar({ entrada: { ...ENTRADA, cliente_id: null }, mirror: { noti…
+    [90m 69|[39m     [34mexpect[39m(([35mawait[39m [34mchamar[39m())[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m test/resolver-cliente-rota-diagnostico.test.ts[2m > [22mdiagnostico: resolverCliente[2m > [22m(c) sem vínculo (sem cliente_id e sem ponte) segue 200, sem resolver e sem consultar reuniões
+[31m[1mAssertionError[22m: expected 500 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 500[39m
+
+[36m [2m❯[22m test/resolver-cliente-rota-diagnostico.test.ts:[2m81:24[22m[39m
+    [90m 79|[39m     [34mmontar[39m({ entrada[33m:[39m { [33m...[39m[33mENTRADA[39m[33m,[39m cliente_id[33m:[39m [35mnull[39m } })[33m;[39m
+    [90m 80|[39m     [35mconst[39m res [33m=[39m [35mawait[39m [34mchamar[39m()[33m;[39m
+    [90m 81|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m 82|[39m     [34mexpect[39m(mockResolver)[33m.[39mnot[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+    [90m 83|[39m     [34mexpect[39m(filtros[33m.[39mor)[33m.[39m[34mtoHaveLength[39m([34m0[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m test/resolver-cliente-rota-diagnostico.test.ts[2m > [22mdiagnostico: resolverCliente[2m > [22m(c2) par sem cliente_id mas com ponte ainda lê pela ponte, como antes
+[31m[1mAssertionError[22m: expected 500 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 500[39m
+
+[36m [2m❯[22m test/resolver-cliente-rota-diagnostico.test.ts:[2m89:37[22m[39m
+    [90m 87|[39m     mockResolver.mockResolvedValue({ cliente_id: null, notion_id: NOTI…
+    [90m 88|[39m     montar({ entrada: { ...ENTRADA, cliente_id: null }, mirror: { noti…
+    [90m 89|[39m     [34mexpect[39m(([35mawait[39m [34mchamar[39m())[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                                     [31m^[39m
+    [90m 90|[39m     expect(filtros.or[0]).toContain(`cliente_notion_id.eq."${NOTION}"`…
+    [90m 91|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m test/resolver-cliente-rota-diagnostico.test.ts[2m > [22mdiagnostico: resolverCliente[2m > [22m(e) resolver que lança = 500 com a mensagem
+[31m[1mAssertionError[22m: expected 'TypeError: base.in is not a function' to be 'falha de leitura' // Object.is equality[39m
+
+Expected: [32m"falha de leitura"[39m
+Received: [31m"TypeError: base.in is not a function"[39m
+
+[36m [2m❯[22m test/resolver-cliente-rota-diagnostico.test.ts:[2m105:38[22m[39m
+    [90m103|[39m     [35mconst[39m res [33m=[39m [35mawait[39m [34mchamar[39m()[33m;[39m
+    [90m104|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m500[39m)[33m;[39m
+    [90m105|[39m     [34mexpect[39m(([35mawait[39m res[33m.[39m[34mjson[39m())[33m.[39merror)[33m.[39m[34mtoBe[39m([32m"falha de leitura"[39m)[33m;[39m
+    [90m   |[39m                                      [31m^[39m
+    [90m106|[39m     [34mexpect[39m(mockProvider)[33m.[39mnot[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+    [90m107|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m test/resolver-cliente-rota-resumo.test.ts[2m > [22mpar sem cliente_id (só apelido legado)[2m > [22mresumo segue lendo a linha antiga pela ponte (notion_id)
+[31m[1mAssertionError[22m: expected 500 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 500[39m
+
+[36m [2m❯[22m test/resolver-cliente-rota-resumo.test.ts:[2m128:24[22m[39m
+    [90m126|[39m     mockResolver[33m.[39m[34mmockResolvedValue[39m(par)[33m;[39m
+    [90m127|[39m     [35mconst[39m res [33m=[39m [35mawait[39m [34mgetResumo[39m([34mreq[39m([33mNOTION[39m[33m,[39m [32m"resumo"[39m)[33m,[39m [34mctx[39m([33mNOTION[39m))[33m;[39m
+    [90m128|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m129|[39m     const ors = chamadas.filter((c) => c.metodo === "or").map((c) => S…
+    [90m130|[39m     [34mexpect[39m(ors[33m.[39m[34mjoin[39m([32m"|"[39m))[33m.[39m[34mtoContain[39m([33mNOTION[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m1029 passed[39m[22m[90m (1031)[39m
+[2m      Tests [22m [1m[31m5 failed[39m[22m[2m | [22m[1m[32m10286 passed[39m[22m[90m (10291)[39m
+[2m   Start at [22m 17:54:07
+[2m   Duration [22m 24.62s[2m (transform 14.98s, setup 0ms, import 75.11s, tests 26.39s, environment 79ms)[22m
+

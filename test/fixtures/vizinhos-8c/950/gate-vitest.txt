@@ -1,0 +1,38 @@
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m test/etapa2-funil-motor.test.ts[2m > [22mfunil e motor dão o mesmo número para o mesmo lead[2m > [22mcada classe do funil conta exatamente os leads que o motor marcou
+[31m[1mAssertionError[22m: expected [ [ 'MQL', 'RM', 'RR' ], …(3) ] to deeply equal [ [ 'MQL', 'RM', 'RR' ], …(3) ][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[33m@@ -6,9 +6,12 @@[39m
+[2m    ],[22m
+[2m    [[22m
+[2m      "MQL",[22m
+[2m    ],[22m
+[2m    [[22m
+[31m+     "MQL",[39m
+[31m+     "RM",[39m
+[31m+     "RR",[39m
+[2m      "VENDA",[22m
+[2m    ],[22m
+[2m    [],[22m
+[2m  ][22m
+
+[36m [2m❯[22m test/etapa2-funil-motor.test.ts:[2m92:50[22m[39m
+    [90m 90|[39m     }
+    [90m 91|[39m     // Lead a: MQL, RM, RR. Lead b: MQL. Lead c: VENDA só. Lead d: nad…
+    [90m 92|[39m     expect(gravados.map((g) => marcasDoLead(g))).toEqual([["MQL", "RM"…
+    [90m   |[39m                                                  [31m^[39m
+    [90m 93|[39m   })[33m;[39m
+    [90m 94|[39m })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m873 passed[39m[22m[90m (874)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m8752 passed[39m[22m[90m (8753)[39m
+[2m   Start at [22m 15:46:22
+[2m   Duration [22m 25.71s[2m (transform 15.87s, setup 0ms, import 78.95s, tests 26.37s, environment 83ms)[22m
+

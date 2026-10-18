@@ -1,0 +1,23 @@
+// 9907af07dfda7d6f5ed0ff04ac63549726dbb358:test/leitores-carteira-casa-nova.test.ts (só as linhas de import e citação)
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+vi.mock("@/lib/session", () => ({ getSession: mockSession }));
+vi.mock("@/lib/auth/exigir-papel", () => ({ exigirPapel: async () => ({ session: { employeeId: "x" } }) }));
+vi.mock("@/lib/ops/onboarding/db", () => ({
+vi.mock("@/lib/db/commercial-readonly", () => ({ getActiveClients: async () => [], getChurnedClients: async () => [] }));
+vi.mock("@/lib/clientes/espelho-legado", async (orig) => {
+  const real = await orig<typeof import("@/lib/clientes/espelho-legado")>();
+import { GET as getDashboard } from "@/app/api/dashboard/clientes/route";
+import { GET as getCarteira } from "@/app/api/carteira/route";
+import { GET as getGestores } from "@/app/api/clientes/kpis/gestores/route";
+import { GET as getFiltrados } from "@/app/api/notion/clientes-filtrados/route";
+import { GET as getEquipe } from "@/app/api/equipe/carteira/route";
+import { calcularP1Basico } from "@/lib/setup/p1-basico";
+    return Promise.resolve(r).then(resolve, reject);
+    "src/app/api/dashboard/clientes/route.ts",
+    "src/app/api/carteira/route.ts",
+    "src/app/api/clientes/kpis/gestores/route.ts",
+    "src/app/api/equipe/carteira/route.ts",
+    "src/app/api/notion/clientes-filtrados/route.ts",
+    "src/lib/setup/p1-basico.ts",
+    expect(readFileSync(f, "utf8")).not.toContain("clientes_notion_mirror");

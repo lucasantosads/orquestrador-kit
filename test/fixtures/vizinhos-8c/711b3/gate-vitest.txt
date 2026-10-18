@@ -1,0 +1,6 @@
+[41m[1m FAIL [22m[49m test/saude-motivo-sem-base.test.ts[2m > [22mticket 599: motivo da saúde sem base[2m > [22mshell passa o motivo ao cartão e mantém uma só busca do cockpit
+[41m[1m FAIL [22m[49m test/saude-motivo-sem-base.test.ts[2m > [22mticket 599: motivo da saúde sem base[2m > [22mo cartão usa motivoSaude na Dica do chip de saúde
+[41m[1m FAIL [22m[49m test/sem-insumo.test.ts[2m > [22mfiação — superfície 1 na ficha e em /clientes/risco[2m > [22mo prompt da IA não recebe mais score fabricado
+[41m[1m FAIL [22m[49m test/sem-insumo.test.ts[2m > [22mfiação — superfície 1 na ficha e em /clientes/risco[2m > [22mo header recebe estado resolvido, não um número cru
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m805 passed[39m[22m[90m (807)[39m
+[2m      Tests [22m [1m[31m4 failed[39m[22m[2m | [22m[1m[32m8153 passed[39m[22m[90m (8157)[39m

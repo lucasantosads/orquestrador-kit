@@ -1,0 +1,7 @@
+// 6c0b474d9ce157a8ac463059870b64b17aa7af17:test/cron-paths-vercel.test.ts (só as linhas de import e citação)
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { NextRequest } from "next/server";
+import { middleware } from "@/middleware";
+const vercel = JSON.parse(readFileSync(join(__dirname, "..", "vercel.json"), "utf8")) as {

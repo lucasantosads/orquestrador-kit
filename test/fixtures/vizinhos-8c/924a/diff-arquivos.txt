@@ -1,0 +1,11 @@
+# runs/924a/attempt-1.prev1/diff.raw: os caminhos "diff --git a/<x> b/<x>", na ordem
+src/app/dashboard/clientes/[id]/_components/bloco-contrato.tsx
+src/app/dashboard/clientes/[id]/_components/cockpit-cards.tsx
+src/app/dashboard/clientes/[id]/page.tsx
+src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx
+test/cockpit-blocos-null.test.ts
+test/conta-aceite.test.tsx
+test/conta-contrato-e-entregas.test.ts
+test/conta-quadro-contrato-aberto.test.ts
+test/contrato-escopo-implementacoes.test.ts
+test/ltv-na-conta.test.ts

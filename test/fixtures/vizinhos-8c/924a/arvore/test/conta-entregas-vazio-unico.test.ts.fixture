@@ -1,0 +1,7 @@
+// c31dcea42ccb2251f275415709342ae40282911e:test/conta-entregas-vazio-unico.test.ts (só as linhas de import e citação)
+import { readFileSync } from "node:fs";
+import { describe, it, expect } from "vitest";
+const dir = "src/app/dashboard/clientes/[id]/tabs/";
+const entregaveis = readFileSync(dir + "entregaveis-tab.tsx", "utf8");
+const financeiro = readFileSync(dir + "financeiro-tab.tsx", "utf8");
+const contratual = readFileSync(dir + "contratual.tsx", "utf8");

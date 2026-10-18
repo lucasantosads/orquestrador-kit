@@ -1,0 +1,48 @@
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m test/rotas-orfas.test.ts[2m > [22mrotas órfãs em src/app/dashboard[2m > [22mprova de vermelho: rota fora da allowlist e sem href aparece como órfã
+[31m[1mAssertionError[22m: expected 21 to be 20 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 20[39m
+[31m+ 21[39m
+
+[36m [2m❯[22m test/rotas-orfas.test.ts:[2m267:40[22m[39m
+    [90m265|[39m     // descontar LEGAL_CONFIG.length do total da allowlist pra continu…
+    [90m266|[39m     [34mexpect[39m(orphansSemAllowlist)[33m.[39mnot[33m.[39m[34mtoContain[39m([33mLEGAL_CONFIG[39m[[34m0[39m])
+    [90m267|[39m     expect(orphansSemAllowlist.length).toBe(Object.keys(ALLOWLIST).len…
+    [90m   |[39m                                        [31m^[39m
+    [90m268|[39m   }[33m,[39m [34m60000[39m)
+    [90m269|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m test/rotas-orfas.test.ts[2m > [22mrotas órfãs em src/app/dashboard[2m > [22mtoda página de dashboard tem href real ou está na allowlist com motivo
+[31m[1mAssertionError[22m: expected [ '/dashboard/team/[id]' ] to deeply equal [][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- [][39m
+[31m+ [[39m
+[31m+   "/dashboard/team/[id]",[39m
+[31m+ ][39m
+
+[36m [2m❯[22m test/rotas-orfas.test.ts:[2m297:21[22m[39m
+    [90m295|[39m   it('toda página de dashboard tem href real ou está na allowlist com …
+    [90m296|[39m     [35mconst[39m orphans [33m=[39m [34mfindOrphanRoutes[39m([35mnew[39m [33mSet[39m([33mObject[39m[33m.[39m[34mkeys[39m([33mALLOWLIST[39m)))
+    [90m297|[39m     [34mexpect[39m(orphans)[33m.[39m[34mtoEqual[39m([])
+    [90m   |[39m                     [31m^[39m
+    [90m298|[39m   })
+    [90m299|[39m })
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m940 passed[39m[22m[90m (941)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m9399 passed[39m[22m[90m (9401)[39m
+[2m   Start at [22m 01:15:51
+[2m   Duration [22m 27.61s[2m (transform 18.12s, setup 0ms, import 84.40s, tests 27.71s, environment 83ms)[22m
+

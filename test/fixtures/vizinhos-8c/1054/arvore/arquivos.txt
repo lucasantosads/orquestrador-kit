@@ -1,0 +1,9 @@
+# c375e7c8e944ac79bdb17e16771ca04f24e18b2a: ls-tree dos itens de src/ da allowlist (glob expandido) e dos testes falhos
+src/app/api/clientes/[id]/diagnostico/route.ts
+src/app/api/clientes/[id]/resumo/route.ts
+src/app/api/clientes/entregaveis/route.ts
+src/app/api/notion/clientes/[id]/route.ts
+src/lib/clientes/nichos-catalogo.ts
+src/lib/data.ts
+test/resolver-cliente-rota-diagnostico.test.ts
+test/resolver-cliente-rota-resumo.test.ts

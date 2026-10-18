@@ -1,0 +1,5 @@
+# a1965f931b1ea9dccc90fcc80ae721bafb2e2cf2: ls-tree dos itens de src/ da allowlist (glob expandido) e dos testes falhos
+src/app/dashboard/clientes/[id]/page.tsx
+src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx
+test/saude-motivo-sem-base.test.ts
+test/sem-insumo.test.ts

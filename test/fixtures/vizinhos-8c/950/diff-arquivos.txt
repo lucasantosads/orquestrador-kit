@@ -1,0 +1,4 @@
+# runs/950/attempt-1.prev1/diff.raw: os caminhos "diff --git a/<x> b/<x>", na ordem
+src/lib/qualificacao/motor.ts
+test/etapa2-motor-fases.test.ts
+test/qualificacao-cascata-marcos.test.ts

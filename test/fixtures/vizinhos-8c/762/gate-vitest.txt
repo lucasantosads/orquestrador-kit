@@ -1,0 +1,29 @@
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m test/cron-paths-vercel.test.ts[2m > [22mcrons do vercel.json passam pelo middleware com Bearer CRON_SECRET[2m > [22mtodo cron fora da lista de pendências passa direto para o handler
+[31m[1mAssertionError[22m: expected [ '/api/cron/ghl-backfill' ] to deeply equal [][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- [][39m
+[31m+ [[39m
+[31m+   "/api/cron/ghl-backfill",[39m
+[31m+ ][39m
+
+[36m [2m❯[22m test/cron-paths-vercel.test.ts:[2m62:22[22m[39m
+    [90m 60|[39m       if (res.headers.get("x-middleware-next") !== "1") barrados.push(…
+    [90m 61|[39m     }
+    [90m 62|[39m     [34mexpect[39m(barrados)[33m.[39m[34mtoEqual[39m([])[33m;[39m
+    [90m   |[39m                      [31m^[39m
+    [90m 63|[39m   })[33m;[39m
+    [90m 64|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m745 passed[39m[22m[90m (746)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m7682 passed[39m[22m[90m (7683)[39m
+[2m   Start at [22m 15:16:13
+[2m   Duration [22m 41.59s[2m (transform 53.98s, setup 0ms, import 150.17s, tests 42.97s, environment 134ms)[22m
+

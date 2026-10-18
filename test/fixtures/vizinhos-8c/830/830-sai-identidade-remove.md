@@ -1,0 +1,192 @@
+# Ticket 830: Remove resolverUuid de src/lib/identidade/resolver.ts
+
+> Fonte de máquina é o bloco ```json. A prosa é para humanos.
+
+## Objetivo (prosa)
+
+Frente F1d, último passo de `resolverUuid`: sem importador (tickets 828 e 829), a função e o `describe` dela em `test/identidade-resolver.test.ts` (7 casos, linha 79) saem. **Apagar esse describe é autorizado por este ticket**: os 3 caminhos estão cobertos nos testes novos dos dois tickets anteriores.
+
+## Campos de máquina
+
+```json
+{
+  "id": "830",
+  "slug": "sai-identidade-remove",
+  "lane": "produto",
+  "perfil": "api",
+  "objetivo": "ORCAMENTO DE DIFF: so remocao; teto de 200 linhas. Se passar do teto, pare e reporte. FONTE: docs/mapa/00-MAPA-GERAL.md (divida 6), docs/mapa/04-notion.md secao 3 (chave dupla; tabela dos resolvers) e docs/mapa/ref-auditoria-26set.md:57 e :201 (resolver unico e prioridade 1 da auditoria de 26/09). PASSO 1: grep -rn 'resolverUuid' src test: so pode sobrar src/lib/identidade/resolver.ts e test/identidade-resolver.test.ts; sobrou outro, PARE e descreva. FAZER: (1) remover export function resolverUuid (e tipos usados so por ela) de src/lib/identidade/resolver.ts; as demais exportacoes ficam iguais. (2) remover de test/identidade-resolver.test.ts o describe 'resolverUuid — ordem cliente_id → mirror → nome' inteiro (7 it, AUTORIZADO por este ticket); os outros describes ficam intactos. (3) NOVO test/sai-identidade-removido.test.ts: resolverUuid nao existe em src e as outras exportacoes de src/lib/identidade/resolver.ts seguem (normalizeClienteNome, planejarIdentidade, casarPorNome). FORA DE ESCOPO: qualquer outro arquivo, migration. REGRAS: zona C0 (clientes_receita, leads_crm, leads_crm_historico, ads_metadata, ads_performance, fn_mql_sql_by_month, prefixos trafego_* e vw_*) e leitura pura: nada de escrita, DDL, grant, RLS ou trigger nelas; zero migration e zero .sql; chave oficial do cliente e cliente_id (uuid), notion_id e so apelido aceito em URL legada (decisao-chave-oficial-cliente-id, 26/09); falha de leitura nunca vira zero, lista vazia ou verde: erro aparece como erro (500 na rota, aviso na tela); dado ausente aparece como 'sem base' com o motivo; nenhum jargao de banco em texto de tela (nome de tabela, coluna ou operador); nenhum travessao (U+2014) em texto de tela nem em string de copy (guarda travessao-mudo); numeros de tela em font-mono; Set e Map so com Array.from (tsc sem downlevelIteration); nenhum .json() literal novo em src (cliente: fetchJson de @/lib/fetch-json; rota: lerCorpoJson de @/lib/fetch-json, nunca req.json()); getSession e server-only, nunca em arquivo 'use client'; supabase, fetch e getSession sempre mockados nos testes (vi.mock), nunca banco real; fixture de uuid RFC-4122 (00000000-0000-4000-8000-000000000000 ou crypto.randomUUID()); testes sem JSX (React.createElement + renderToStaticMarkup ou readFileSync da fonte; o projeto nao tem jsdom nem @testing-library); teste ancora em texto visivel, data-testid ou nome exportado, nunca em classe de estilo; nunca toEqual numa lista inteira. TESTES EXISTENTES da allowlist: se a mudanca quebrar uma assercao, RECALCULE o valor sob a regra nova com comentario acima citando o ticket e de onde veio o numero; trocar o alvo de um vi.mock do resolver antigo para @/lib/clientes/resolver-cliente nao e afrouxar; PROIBIDO remover assercao, trocar toBe/toEqual/toMatch por toBeDefined/toBeTruthy, usar .skip/.only/.todo, apagar it( ou o arquivo (excecao unica deste ticket: o describe de resolverUuid em test/identidade-resolver.test.ts). GUARDAS GLOBAIS (fora da allowlist, nao edite): test/fetch-json-teto.test.ts, test/consistencia-contagens.test.ts, test/bloco-vazio-linha.test.ts, test/abas-montadas.test.ts, test/cartao-topo-perfil.test.tsx, test/travessao-mudo.test.ts, test/c0-guard.test.ts. Se um teste FORA da allowlist quebrar, PARE e descreva. Motor do orquestrador (scripts/orquestrador/, docs/orquestrador/) intocado.",
+  "cria_novo": [
+    "test/sai-identidade-removido.test.ts"
+  ],
+  "pathspec_allowlist": [
+    "src/lib/identidade/resolver.ts",
+    "test/identidade-resolver.test.ts",
+    "test/sai-identidade-removido.test.ts"
+  ],
+  "dependencias": [
+    "828",
+    "829",
+    "800",
+    "826",
+    "801",
+    "802",
+    "803",
+    "804",
+    "805",
+    "806",
+    "807",
+    "808",
+    "809",
+    "810",
+    "811",
+    "812",
+    "813",
+    "814",
+    "815",
+    "816",
+    "817",
+    "818",
+    "819",
+    "820",
+    "821",
+    "822",
+    "823",
+    "824",
+    "825",
+    "humano:decisao-chave-oficial-cliente-id"
+  ],
+  "prioridade": 44,
+  "recon_esperado": [
+    {
+      "descricao": "src/lib/identidade/resolver.ts existe na arvore do loop",
+      "cmd": "test -e 'src/lib/identidade/resolver.ts' && echo EXISTE || echo AUSENTE",
+      "espera": "EXISTE"
+    },
+    {
+      "descricao": "test/identidade-resolver.test.ts existe na arvore do loop",
+      "cmd": "test -e 'test/identidade-resolver.test.ts' && echo EXISTE || echo AUSENTE",
+      "espera": "EXISTE"
+    },
+    {
+      "descricao": "test/sai-identidade-removido.test.ts ainda nao existe",
+      "cmd": "test -e 'test/sai-identidade-removido.test.ts' && echo EXISTE || echo AUSENTE",
+      "espera": "AUSENTE"
+    },
+    {
+      "descricao": "it( em test/identidade-resolver.test.ts hoje",
+      "cmd": "grep -c 'it(' test/identidade-resolver.test.ts",
+      "espera": "28"
+    }
+  ],
+  "criterios_aceite": [
+    {
+      "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+      "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+      "espera": "OK",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "nenhum .sql novo (zero DDL)",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+      "espera": "SEM_SQL",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "guardas globais seguem verdes",
+      "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+      "espera": "VERDE",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+      "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+      "espera": "INTOCADAS",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/lib/identidade/resolver.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+      "espera": "ZERO_JSON_NOVO",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "arquivos fora do escopo intocados",
+      "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD staging-auto)\" -- 'src/lib/jobs/sync-clientes.ts' 'src/app/api/equipe/distribuir/route.ts' 'src/lib/clientes/resolver-cliente.ts' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+      "espera": "INTOCADOS",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "so arquivos da allowlist foram tocados",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/lib/identidade/resolver.ts' 'test/identidade-resolver.test.ts' 'test/sai-identidade-removido.test.ts'; do if [ \"$f\" = \"$p\" ]; then ok=1; fi; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+      "espera": "SO_ALLOWLIST",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "diff dentro do orcamento (<= 200 linhas somando adicoes e remocoes)",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 200 ] && echo NO_TETO || echo ESTOUROU_$t",
+      "espera": "NO_TETO",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "resolverUuid nao existe mais em src",
+      "cmd": "n=$(grep -rn 'resolverUuid' src | grep -vE ':[0-9]+:\\s*(//|\\*|/\\*)' | cut -d: -f1 | sort -u | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo REMOVIDO || echo SOBRA_$n",
+      "espera": "REMOVIDO"
+    },
+    {
+      "descricao": "anti-afrouxamento: test/identidade-resolver.test.ts perdeu exatamente os 7 it do describe de resolverUuid e nada mais",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; a=$(git show \"$b:test/identidade-resolver.test.ts\" | grep -c 'it('); n=$(grep -c 'it(' test/identidade-resolver.test.ts); [ \"$n\" = $((a-7)) ] && echo SO_O_DESCRIBE || echo IT_${a}_${n}",
+      "espera": "SO_O_DESCRIBE"
+    },
+    {
+      "descricao": "teste novo verde (test/sai-identidade-removido.test.ts)",
+      "cmd": "test -f test/sai-identidade-removido.test.ts && npx vitest run test/sai-identidade-removido.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+      "espera": "VERDE"
+    },
+    {
+      "descricao": "avaliador: so resolverUuid e o describe dela sairam; resto da identidade igual. REPROVE se: outro describe mudou; outra exportacao sumiu.",
+      "cmd": "",
+      "espera": "avaliador"
+    }
+  ],
+  "status": "bloqueado",
+  "notas_status": "reprovado apos 2 retries: criterio[8] mecânico: esperado 'REMOVIDO', obteve 'SOBRA_1'",
+  "testes_conferidos": [
+    {
+      "teste": "test/alerta-onboarding.test.ts",
+      "motivo": "importa src/lib/identidade/resolver.ts so transitivamente e nao cita resolverUuid (grep em 03/10); a remocao nao muda o que ele afirma; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/backfill-cliente-id.test.ts",
+      "motivo": "migrado pelo(s) ticket(s) 828 (dependencia deste): na hora deste ticket ja nao importa nem mocka src/lib/identidade/resolver.ts"
+    },
+    {
+      "teste": "test/distribuir-carteira-api.test.ts",
+      "motivo": "migrado pelo(s) ticket(s) 829 (dependencia deste): na hora deste ticket ja nao importa nem mocka src/lib/identidade/resolver.ts"
+    },
+    {
+      "teste": "test/hoje-fontes.test.ts",
+      "motivo": "importa src/lib/identidade/resolver.ts so transitivamente e nao cita resolverUuid (grep em 03/10); a remocao nao muda o que ele afirma; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/meu-dia-textos.test.ts",
+      "motivo": "importa src/lib/identidade/resolver.ts so transitivamente e nao cita resolverUuid (grep em 03/10); a remocao nao muda o que ele afirma; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/onboarding-match.test.ts",
+      "motivo": "migrado pelo(s) ticket(s) 828 (dependencia deste): na hora deste ticket ja nao importa nem mocka src/lib/identidade/resolver.ts"
+    },
+    {
+      "teste": "test/onboarding-sla-meu-dia-motor.test.ts",
+      "motivo": "importa src/lib/identidade/resolver.ts so transitivamente e nao cita resolverUuid (grep em 03/10); a remocao nao muda o que ele afirma; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/retencao-rota.test.ts",
+      "motivo": "importa src/lib/identidade/resolver.ts so transitivamente e nao cita resolverUuid (grep em 03/10); a remocao nao muda o que ele afirma; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/sync-clientes-job.test.ts",
+      "motivo": "migrado pelo(s) ticket(s) 828 (dependencia deste): na hora deste ticket ja nao importa nem mocka src/lib/identidade/resolver.ts"
+    }
+  ]
+}
+```

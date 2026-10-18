@@ -1,0 +1,456 @@
+# Ticket 711b3: Chip Saúde da ficha mostra a regra do Início (B20, 711b fatia 3 de 4)
+
+> Fonte de máquina é o bloco ```json. A prosa é para humanos.
+
+## Objetivo (prosa)
+
+O chip do cabeçalho da ficha passa a mostrar o resultado da leitura do 711b2; a estrutura do cabeçalho fica igual. Os testes que exigiam o score antigo são reescritos para a regra nova, sem perder asserção.
+
+## Campos de máquina
+
+```json
+{
+  "id": "711b3",
+  "slug": "saude-chip-ficha-tela",
+  "lane": "produto",
+  "perfil": "fullstack",
+  "objetivo": "FATIA 3 DE 4 DO 711b (recorte de 06/10). So o chip Saude do cabecalho da ficha passa a mostrar a regra do Inicio. ORCAMENTO DE DIFF: teto de 500 linhas (~60 em page.tsx e geral-tab.tsx, ~200 no teste NOVO test/saude-chip-ficha.test.ts, o resto para recalculo comentado). Se passar do teto, pare e reporte. FONTE: docs/planos/plano-portal-gestor-30set.md (plano aprovado + adendo de decisoes de 30/09, que vale sobre o plano) e o ticket 711b (obsoleto, recortado em 711b1 a 711b4 em 06/10). Pre-condicao: 711b2 feito (src/lib/clientes/ler-sinal-cliente.ts exporta lerSinalCliente; src/lib/clientes/chip-saude.ts exporta chipSaude). PASSO 1: leia src/lib/clientes/ler-sinal-cliente.ts, src/lib/clientes/chip-saude.ts, src/app/dashboard/clientes/[id]/page.tsx (estadoScoreSaude(health?.score ?? null), linhas ~1077 e ~1245), src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx (IdentidadeCliente ~326, chip data-testid=\"chip-saude\" ~496; o cartao e IdentidadeCliente, e _components/cartao-topo.tsx e proibido pelo teste do 489). REGRA DESTA FATIA: trocar SO a fonte e a cor do chip Saude. Nao mexer na estrutura do cabecalho: mesma ordem de blocos, mesmos rotulos de bloco, mesmos data-testid, mesmo componente (IdentidadeCliente), nenhum bloco novo nem removido. FAZER: (1) page.tsx chama lerSinalCliente(<id>) (import de @/lib/clientes/ler-sinal-cliente; a URL da rota mora no modulo, nao na pagina) e passa o resultado de chipSaude ao IdentidadeCliente; estadoScoreSaude(health?.score ...) sai das duas chamadas da pagina. (2) geral-tab.tsx: o chip data-testid=\"chip-saude\" mostra rotulo e dica de chipSaude (o numero do score antigo sai do chip); corScoreSaude sai do arquivo. src/app/dashboard/clientes/[id]/tabs/resumo-tab.tsx fica para o 711b4 (fora desta allowlist). (3) NOVO test/saude-chip-ficha.test.ts: page.tsx importa ler-sinal-cliente e nao chama estadoScoreSaude(health?.score; render do IdentidadeCliente para verde, amarelo, vermelho, sem base e erro (rotulo e dica). TESTES NA ALLOWLIST SO PARA RECALCULO DO TEXTO OU DA COR DO CHIP: test/score-saude-fonte-unica.test.ts, test/header-cliente-consolidado.test.ts, test/visao-sem-cockpit-antigo.test.ts, test/visao-aceite-estrutura.test.tsx, test/visao-aceite-mockup.test.tsx, test/cadastro-colapsavel.test.ts, test/cartao-topo-renovacao.test.ts. DECISAO DO LUCAS (06/10) sobre test/header-cliente-consolidado.test.ts e test/visao-sem-cockpit-antigo.test.ts: cada assercao que hoje EXIGE estadoScoreSaude ou corScoreSaude (test/header-cliente-consolidado.test.ts: toContain(\"score={estadoScoreSaude(health?.score ?? null)}\"); test/visao-sem-cockpit-antigo.test.ts: toContain(\"corScoreSaude(score.valor)\") e as vizinhas que fixam o score antigo no cartao) e REESCRITA para exigir a regra nova (chip vindo de ler-sinal-cliente / chipSaude), com comentario acima citando o ticket 711b3 e de onde veio o valor. PROIBIDO remover assercao, afrouxar para toBeDefined/toBeTruthy ou apagar it(: a contagem de it( e expect( desses dois arquivos nao pode cair abaixo da medida na staging-auto em 06/10 (test/header-cliente-consolidado.test.ts: 22 it( e 59 expect(; test/visao-sem-cockpit-antigo.test.ts: 8 it( e 21 expect(). O mesmo vale para test/score-saude-fonte-unica.test.ts (assercao toContain(\"score={estadoScoreSaude(health?.score ?? null)}\")). Assercao de ESTRUTURA (ordem, rotulo de bloco, data-testid, secao) NAO se recalcula: se quebrar, a mudanca saiu do escopo; desfaca. TESTES DE ESTRUTURA FORA DA ALLOWLIST (rodam no criterio de suite e tem de seguir verdes sem edicao): test/saude-motivo-sem-base.test.ts, test/visao-linha-comercial.test.tsx, test/visao-estrutura-trio.test.tsx, test/visao-estrutura-cabecalho.test.tsx, test/cartao-topo-nps.test.ts, test/cartao-topo-status-popover.test.ts, test/ficha-aba-comercial.test.tsx, test/ficha-abas-orfas.test.ts, test/ficha-nav-colapsavel.test.ts, test/ficha-obs-contrato.test.ts, test/ficha-perfil-operacional.test.ts, test/ficha-por-uuid.test.ts, test/ficha-relacao-leitura.test.ts, test/ficha-rotulo-moldura.test.ts, test/ficha-subsecoes-sequencia.test.ts, test/lote-d-colunas.test.tsx, test/gestor-fonte-unica.test.ts; test/lote-d-colunas.test.tsx protege a regra da celula sem fonte da tabela de Campanhas (decisao do Lucas, 30/09). FORA DE ESCOPO: resumo-tab.tsx (711b4), a rota de sinais, src/lib/clientes/chip-saude.ts, src/lib/clientes/ler-sinal-cliente.ts, a carteira, a tela e a lista de risco (711a), o calculo do score antigo (cron calcular-score), src/components/estados/sem-insumo.ts, src/app/dashboard/clientes/[id]/_components/cartao-topo.tsx. REGRAS: zona C0 (clientes_receita, leads_crm, leads_crm_historico, ads_metadata, ads_performance, fn_mql_sql_by_month, prefixos trafego_* e vw_*) e leitura pura: nada de escrita, DDL, grant, RLS ou trigger nelas; zero migration e zero .sql (so o 691 escreve .sql, e nao aplica); dono do cliente SO por carregarQuemCuida/responsaveisDoCliente/cuidaDoCliente (src/lib/clientes/quem-cuida.ts), nunca clientes.gestor_id nem o analista do espelho; equipe no grupo SO por ehDaEquipe (src/lib/whatsapp/equipe.ts), nunca a marca is_equipe gravada; cliente ativo SO por isClienteAtivo (src/lib/clientes/ativo.ts); papel SO por papelDe (src/lib/nav/papel.ts), nunca is_gestor_trafego nem is_head_operacional como papel; NUNCA rode UPDATE em employees.is_gestor_trafego; produtividade nasce de evento registrado, nunca de cronometro, sessao de tempo ou apontamento manual; dado ausente aparece como 'sem base' com o motivo, nunca zero e nunca verde; nenhum jargao de banco em texto de tela (nome de tabela, view, coluna ou operador); nenhum travessao (U+2014) em texto de tela nem em string de copy (guarda travessao-mudo); numeros de tela em Geist Mono (classe font-mono ja usada no repo); Set e Map so com Array.from (tsc sem downlevelIteration); nenhum .json() literal novo em src (cliente: fetchJson de @/lib/fetch-json; rota: lerCorpoJson de @/lib/fetch-json, nunca req.json()); getSession e server-only, nunca em arquivo 'use client'; supabase, fetch e getSession sempre mockados nos testes (vi.mock), nunca banco real; fixture de uuid RFC-4122 (00000000-0000-4000-8000-000000000000 ou crypto.randomUUID()); testes sem JSX (React.createElement + renderToStaticMarkup ou leitura de fonte com readFileSync; o projeto nao tem jsdom nem @testing-library); teste ancora em texto visivel ou data-testid, nunca em classe de estilo; nunca toEqual numa lista inteira (afirme itens com toContain/some). TESTES EXISTENTES da allowlist: se a mudanca quebrar uma assercao, RECALCULE o valor sob a regra nova com comentario acima citando o ticket e de onde veio o numero; PROIBIDO remover assercao, trocar toBe/toEqual/toMatch por toBeDefined/toBeTruthy, usar .skip/.only/.todo, apagar it( ou o arquivo. GUARDAS GLOBAIS (fora da allowlist, nao edite): test/fetch-json-teto.test.ts, test/consistencia-contagens.test.ts, test/bloco-vazio-linha.test.ts, test/abas-montadas.test.ts, test/cartao-topo-perfil.test.tsx, test/travessao-mudo.test.ts, test/c0-guard.test.ts. Se um teste FORA da allowlist quebrar, PARE e descreva. Motor do orquestrador (scripts/orquestrador/, docs/orquestrador/) intocado.",
+  "cria_novo": [
+    "test/saude-chip-ficha.test.ts"
+  ],
+  "pathspec_allowlist": [
+    "src/app/dashboard/clientes/[id]/page.tsx",
+    "src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx",
+    "test/saude-chip-ficha.test.ts",
+    "test/score-saude-fonte-unica.test.ts",
+    "test/header-cliente-consolidado.test.ts",
+    "test/visao-sem-cockpit-antigo.test.ts",
+    "test/visao-aceite-estrutura.test.tsx",
+    "test/visao-aceite-mockup.test.tsx",
+    "test/cadastro-colapsavel.test.ts",
+    "test/cartao-topo-renovacao.test.ts"
+  ],
+  "dependencias": [
+    "711b2",
+    "725",
+    "737",
+    "750"
+  ],
+  "prioridade": 50,
+  "recon_esperado": [
+    {
+      "descricao": "o chip ainda le o score antigo na pagina",
+      "cmd": "grep -c 'estadoScoreSaude(health?.score ?? null)' 'src/app/dashboard/clientes/[id]/page.tsx'",
+      "espera": "2"
+    },
+    {
+      "descricao": "o cartao ainda usa a cor do score antigo",
+      "cmd": "grep -q 'corScoreSaude' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx' && echo COR_ANTIGA_NO_CARTAO || echo SEM_COR_ANTIGA",
+      "espera": "COR_ANTIGA_NO_CARTAO"
+    },
+    {
+      "descricao": "test/saude-chip-ficha.test.ts ainda nao existe",
+      "cmd": "test -e 'test/saude-chip-ficha.test.ts' && echo EXISTE || echo AUSENTE",
+      "espera": "AUSENTE"
+    },
+    {
+      "descricao": "contagem de it( e expect( de test/header-cliente-consolidado.test.ts e test/visao-sem-cockpit-antigo.test.ts medida em 06/10 (base do anti-afrouxamento)",
+      "cmd": "echo H_$(grep -cF 'it(' test/header-cliente-consolidado.test.ts)_$(grep -cF 'expect(' test/header-cliente-consolidado.test.ts)_V_$(grep -cF 'it(' test/visao-sem-cockpit-antigo.test.ts)_$(grep -cF 'expect(' test/visao-sem-cockpit-antigo.test.ts)",
+      "espera": "H_22_59_V_8_21"
+    }
+  ],
+  "criterios_aceite": [
+    {
+      "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+      "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+      "espera": "OK",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "nenhum .sql novo (zero DDL)",
+      "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+      "espera": "SEM_SQL",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "guardas globais seguem verdes",
+      "cmd": "npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+      "espera": "VERDE",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)",
+      "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADAS || echo EDITOU_$n",
+      "espera": "INTOCADAS",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)",
+      "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff \"$b\" HEAD -- 'src/app/dashboard/clientes/[id]/page.tsx' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx' | grep -cE '^[+][^+].*[.]json[(][)]'); [ \"$n\" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n",
+      "espera": "ZERO_JSON_NOVO",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "arquivos fora do escopo (rota de sinais, regra do Inicio, 711a, cartao-topo.tsx, sem-insumo.ts) intocados",
+      "cmd": "n=$(git diff --name-only \"$(git merge-base HEAD origin/staging-auto)\" -- 'src/app/dashboard/clientes/[id]/_components/cartao-topo.tsx' 'src/lib/inicio/sinais.ts' 'src/lib/clientes/badges.ts' 'src/app/api/clientes/calcular-score' 'src/app/api/clientes/sinais/route.ts' 'src/lib/inicio/carregar-carteira.ts' 'src/app/dashboard/clientes/page.tsx' 'src/app/dashboard/clientes/risco/page.tsx' 'src/app/dashboard/clientes/_components/lista-risco-bloco.tsx' 'src/components/estados/sem-insumo.ts' | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo INTOCADOS || echo TOCOU_$n",
+      "espera": "INTOCADOS",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "so arquivos da allowlist foram tocados",
+      "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do ok=0; for p in 'src/app/dashboard/clientes/[id]/page.tsx' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx' 'test/saude-chip-ficha.test.ts' 'test/score-saude-fonte-unica.test.ts' 'test/header-cliente-consolidado.test.ts' 'test/visao-sem-cockpit-antigo.test.ts' 'test/visao-aceite-estrutura.test.tsx' 'test/visao-aceite-mockup.test.tsx' 'test/cadastro-colapsavel.test.ts' 'test/cartao-topo-renovacao.test.ts'; do [ \"$f\" = \"$p\" ] && ok=1; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r",
+      "espera": "SO_ALLOWLIST",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "diff dentro do orcamento (<= 500 linhas somando adicoes e remocoes)",
+      "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 500 ] && echo NO_TETO || echo ESTOUROU_$t",
+      "espera": "NO_TETO",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "nenhum travessao (U+2014) novo nos arquivos de tela do ticket (contagem por arquivo nao sobe contra o merge-base)",
+      "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SEM_TRAVESSAO_NOVO; for f in 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'; do [ -f \"$f\" ] || continue; a=$(git show \"$b:$f\" 2>/dev/null | grep -c $'\\xe2\\x80\\x94'); n=$(grep -c $'\\xe2\\x80\\x94' \"$f\"); [ \"${n:-0}\" -le \"${a:-0}\" ] || r=TRAVESSAO_NOVO_$f; done; echo $r",
+      "espera": "SEM_TRAVESSAO_NOVO",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "testes que leem page.tsx ou geral-tab.tsx seguem verdes (recalculados na allowlist, intocados fora dela)",
+      "cmd": "fs=\"\"; for f in test/score-saude-fonte-unica.test.ts test/header-cliente-consolidado.test.ts test/visao-sem-cockpit-antigo.test.ts test/visao-aceite-estrutura.test.tsx test/visao-aceite-mockup.test.tsx test/cadastro-colapsavel.test.ts test/cartao-topo-renovacao.test.ts test/saude-motivo-sem-base.test.ts test/visao-linha-comercial.test.tsx test/visao-estrutura-trio.test.tsx test/visao-estrutura-cabecalho.test.tsx test/cartao-topo-nps.test.ts test/cartao-topo-status-popover.test.ts test/ficha-aba-comercial.test.tsx test/ficha-abas-orfas.test.ts test/ficha-nav-colapsavel.test.ts test/ficha-obs-contrato.test.ts test/ficha-perfil-operacional.test.ts test/ficha-por-uuid.test.ts test/ficha-relacao-leitura.test.ts test/ficha-rotulo-moldura.test.ts test/ficha-subsecoes-sequencia.test.ts test/lote-d-colunas.test.tsx test/gestor-fonte-unica.test.ts test/historico-status-compacto.test.ts test/rotas-fantasma-ficha.test.ts test/cartao-copy-sem-travessao.test.ts test/cartao-topo-setup-e-closer.test.ts test/ficha-relacao-estados.test.tsx test/relacao-aceite.test.tsx; do [ -f \"$f\" ] && fs=\"$fs $f\"; done; [ -z \"$fs\" ] && echo VERDE || { npx vitest run $fs >/dev/null 2>&1 && echo VERDE || echo VERMELHO; }",
+      "espera": "VERDE",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "anti-afrouxamento: nenhum teste da allowlist perdeu it(/expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (contra o merge-base com staging-auto)",
+      "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=NAO_AFROUXOU; for f in test/score-saude-fonte-unica.test.ts test/header-cliente-consolidado.test.ts test/visao-sem-cockpit-antigo.test.ts test/visao-aceite-estrutura.test.tsx test/visao-aceite-mockup.test.tsx test/cadastro-colapsavel.test.ts test/cartao-topo-renovacao.test.ts; do [ -f \"$f\" ] || { git cat-file -e \"$b:$f\" 2>/dev/null && r=APAGOU_$f; continue; }; for p in 'expect(' 'it('; do a=$(git show \"$b:$f\" 2>/dev/null | grep -cF \"$p\"); n=$(grep -cF \"$p\" \"$f\"); [ \"${n:-0}\" -ge \"${a:-0}\" ] || r=CAIU_$f; done; s0=$(git show \"$b:$f\" 2>/dev/null | grep -cE '\\.(skip|only|todo)\\('); s1=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"${s1:-0}\" -le \"${s0:-0}\" ] || r=SKIP_NOVO_$f; d0=$(git show \"$b:$f\" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' \"$f\"); [ \"${d1:-0}\" -le \"${d0:-0}\" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r",
+      "espera": "NAO_AFROUXOU",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "anti-afrouxamento da decisao de 06/10: test/header-cliente-consolidado.test.ts mantem >= 22 it( e >= 59 expect(, test/visao-sem-cockpit-antigo.test.ts mantem >= 8 it( e >= 21 expect( (medido na staging-auto em 06/10)",
+      "cmd": "a=$(grep -cF 'it(' test/header-cliente-consolidado.test.ts); b=$(grep -cF 'expect(' test/header-cliente-consolidado.test.ts); c=$(grep -cF 'it(' test/visao-sem-cockpit-antigo.test.ts); d=$(grep -cF 'expect(' test/visao-sem-cockpit-antigo.test.ts); [ \"${a:-0}\" -ge 22 ] && [ \"${b:-0}\" -ge 59 ] && [ \"${c:-0}\" -ge 8 ] && [ \"${d:-0}\" -ge 21 ] && echo CONTAGEM_MANTIDA || echo CAIU_${a}_${b}_${c}_${d}",
+      "espera": "CONTAGEM_MANTIDA",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "estrutura do cabecalho mantida: nenhum data-testid de page.tsx ou geral-tab.tsx sumiu (contra o merge-base com staging-auto)",
+      "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(for f in 'src/app/dashboard/clientes/[id]/page.tsx' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'; do comm -23 <(git show \"$b:$f\" | grep -oE 'data-testid=\"[^\"]+\"' | sort -u) <(grep -oE 'data-testid=\"[^\"]+\"' \"$f\" | sort -u); done | wc -l | tr -d ' '); [ \"$n\" = 0 ] && echo TESTIDS_MANTIDOS || echo TESTIDS_SUMIRAM_$n",
+      "espera": "TESTIDS_MANTIDOS",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "o chip da ficha le a regra do Inicio por ler-sinal-cliente",
+      "cmd": "a=$(grep -c 'estadoScoreSaude(health?.score' 'src/app/dashboard/clientes/[id]/page.tsx'); c=$(grep -cE \"from ['\\\"]@/lib/clientes/ler-sinal-cliente['\\\"]\" 'src/app/dashboard/clientes/[id]/page.tsx'); [ \"$a\" = 0 ] && [ \"$c\" -ge 1 ] && echo MESMA_REGRA || echo REGRA_${a}_${c}",
+      "espera": "MESMA_REGRA"
+    },
+    {
+      "descricao": "o cartao nao usa mais a cor do score antigo",
+      "cmd": "n=$(grep -c 'corScoreSaude' 'src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx'); [ \"$n\" = 0 ] && echo CARTAO_SEM_COR_ANTIGA || echo COR_ANTIGA_NO_CARTAO_$n",
+      "espera": "CARTAO_SEM_COR_ANTIGA"
+    },
+    {
+      "descricao": "as asserções que exigiam o score antigo foram reescritas para a regra nova (nenhum toContain positivo do score antigo sobra nos 3 testes)",
+      "cmd": "if grep -qF 'toContain(\"score={estadoScoreSaude(health?.score ?? null)}\")' test/header-cliente-consolidado.test.ts test/score-saude-fonte-unica.test.ts || grep -qF 'toContain(\"corScoreSaude(score.valor)\")' test/visao-sem-cockpit-antigo.test.ts; then echo EXIGEM_REGRA_ANTIGA; else grep -qE 'ler-sinal-cliente|chipSaude' test/header-cliente-consolidado.test.ts && grep -qE 'ler-sinal-cliente|chipSaude' test/visao-sem-cockpit-antigo.test.ts && echo EXIGEM_REGRA_NOVA || echo SEM_REGRA_NOVA; fi",
+      "espera": "EXIGEM_REGRA_NOVA"
+    },
+    {
+      "descricao": "teste novo verde (test/saude-chip-ficha.test.ts)",
+      "cmd": "test -f test/saude-chip-ficha.test.ts && npx vitest run test/saude-chip-ficha.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+      "espera": "VERDE"
+    },
+    {
+      "descricao": "avaliador: o chip Saude da ficha mostra rotulo e dica de chipSaude via lerSinalCliente (mesma regra do Inicio), com sem base e erro visiveis; o cabecalho tem a mesma estrutura; as assercoes de header-cliente-consolidado e visao-sem-cockpit-antigo que exigiam estadoScoreSaude/corScoreSaude passaram a exigir a regra nova, com comentario citando 711b3. REPROVE se: segunda regra de cor; URL da rota em page.tsx em vez do modulo; mexeu em resumo-tab.tsx, na rota, em chip-saude.ts ou ler-sinal-cliente.ts; mudou ordem, rotulo de bloco, data-testid ou secao; recalculou assercao de estrutura; assercao removida ou trocada por toBeDefined/toBeTruthy; it( apagado; mexeu em lote-d-colunas; diff acima de 500 sem parar.",
+      "cmd": "",
+      "espera": "avaliador"
+    }
+  ],
+  "status": "pendente",
+  "notas_status": "06/10: fatia 3 de 4 do 711b (tela do chip). Herda do 711b as dependencias 725 (test/ficha-relacao-leitura.test.ts), 737 e 750 (page.tsx). Decisao do Lucas 06/10: header-cliente-consolidado e visao-sem-cockpit-antigo entram para recalculo, contagem de it(/expect( travada.",
+  "testes_conferidos": [
+    {
+      "teste": "test/a11y/app-dashboard-clientes-id-page.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/aba-na-url.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/aba-resultados-fechamentos.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/abas-montadas.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/acao-unica-ficha-controles.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/acao-unica-ficha-mutacoes.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ativo-pela-receita.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/barra-visao.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/bloco-tarefas-visao.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/bloco-vazio-linha.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/campanhas-aceite-mockup.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/cartao-copy-sem-travessao.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/cartao-topo-nps.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/cartao-topo-perfil.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/cartao-topo-setup-e-closer.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/cartao-topo-status-popover.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/conta-cadastro-operacao.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/conta-conexoes-entregaveis.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/conta-conexoes.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/conta-crm-sem-contradicao.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/conta-quadro-contrato-aberto.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/conta-resultados-escritorio.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/erro-objeto-nao-quebra.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-aba-comercial.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-abas-orfas.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-nav-colapsavel.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-nps.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-obs-contrato.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-perfil-operacional.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-por-uuid.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-relacao-estados.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-relacao-leitura.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-rotulo-moldura.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-subsecoes-sequencia.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/gestor-fonte-unica.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ghl-um-lugar-so.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/historico-status-compacto.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/kpis-visao-buraco-coleta.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/leitura-relacao-tela.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/link-setup-notion-id.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/lote-b3-1-periodo.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/lote-d-colunas.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ltv-na-conta.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/metricas-filtros-periodo.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/metricas-invalidacao.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/observacoes-notas-fora.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/orquestrador-enforcement.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/otimizacoes-tela.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/painel-em-campanhas.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/painel-estado-explicito.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/perf-cliente-438.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/rbac-visual.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/registrar-verificacao-rotulo.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/registro-unico-relacao.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/relacao-aceite.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/relacao-config-para-conta.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/relacao-responder-tela.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/resumo-grupo-wpp-tela.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/resumo-score-fonte-unica.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/rotas-fantasma-ficha.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/saude-motivo-sem-base.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/timeline-relacao.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/tooltip-acessivel.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/visao-copy-ausencia.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/visao-dado-parado-e-link.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/visao-estrutura-cabecalho.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/visao-estrutura-trio.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/visao-geral-ordem.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/visao-limpeza-final.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/visao-linha-comercial.test.tsx",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/whatsapp-grupos-ui.test.ts",
+      "motivo": "le page.tsx ou geral-tab.tsx por estrutura (ordem, data-testid, secao) e nao cita o chip nem o score (grep de 06/10 na staging); se quebrar, PARE e descreva"
+    }
+  ]
+}
+```

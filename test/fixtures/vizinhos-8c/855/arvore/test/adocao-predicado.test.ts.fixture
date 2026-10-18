@@ -1,0 +1,25 @@
+// 71ee1c91b776c62a5c5ab1d706b7edf1c1668f1c:test/adocao-predicado.test.ts (só as linhas de import e citação)
+ * src/lib/clientes/ativo.ts, export isClienteAtivo).
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+const IMPORT_PATH = '@/lib/clientes/ativo'
+  join('src', 'app', 'api', 'clientes', 'kpis', 'route.ts'),
+  join('src', 'app', 'api', 'clientes', 'automacoes-status', 'route.ts'),
+  join('src', 'app', 'api', 'clientes', 'renovacoes', 'route.ts'),
+  join('src', 'app', 'dashboard', 'team', '[id]', 'page.tsx'),
+  join('src', 'app', 'dashboard', 'clientes', '_components', 'mutations.ts'),
+  join('src', 'app', 'dashboard', 'clientes', 'page.tsx'),
+  join('src', 'app', 'api', 'meta', 'overview', 'route.ts'),
+  join('src', 'app', 'api', 'carteira', 'route.ts'),
+  join('src', 'app', 'api', 'portal-cliente', 'atribuicao', 'route.ts'),
+  join('src', 'app', 'api', 'clientes', 'resumo-cs', 'route.ts'),
+  join('src', 'app', 'api', 'clientes', 'alertas-detalhados', 'route.ts'),
+  join('src', 'app', 'api', 'visao-geral', 'route.ts'),
+  { file: join('src', 'app', 'time', 'liga-comarka', 'admin', 'page.tsx'), constante: 'DESAFIO_STATUS_ATIVO' },
+  { file: join('src', 'app', 'api', 'liga-comarka', 'placar', 'route.ts'), constante: 'DESAFIO_STATUS_ATIVO' },
+  { file: join('src', 'app', 'api', 'admin', 'sync-status', 'route.ts'), constante: 'CONTRATO_STATUS_ATIVO' },
+  { file: join('src', 'lib', 'db', 'commercial-readonly.ts'), constante: 'CONTRATO_STATUS_ATIVO' },
+  { file: join('src', 'lib', 'jobs', 'onboarding-creator.ts'), constante: 'CONTRATO_STATUS_ATIVO' },
+      const content = readFileSync(file, 'utf8')
+      const content = readFileSync(file, 'utf8')

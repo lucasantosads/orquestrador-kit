@@ -1,0 +1,197 @@
+# Ticket 950: motor: cascata dos marcos do lead (MQL < RM < RR < Venda)
+
+> Fonte de máquina é o bloco ```json. A prosa é para humanos.
+
+## Objetivo (prosa)
+
+Regra R2 aprovada pelo Lucas em 09/10: atingir um marco marca os anteriores. Lead em Comprou passa a contar como MQL, Reunião marcada e Reunião realizada, com a mesma data. Hoje o motor faz o contrário ("fase pulada não é inferida"), o que deixa o funil do Aquino invertido (MQL 90, RM 5, RR 24, Venda 11 contando só a etapa atual).
+
+Marca gravada continua nunca sobrescrita (R1). SQL fica fora.
+
+## Campos de máquina
+
+```json
+{
+  "id": "950",
+  "slug": "motor-cascata-marcos",
+  "lane": "produto",
+  "perfil": "backend",
+  "objetivo": "ORCAMENTO DE DIFF: teto de 260 linhas (~50 em src/lib/qualificacao/motor.ts, ~160 no teste NOVO test/qualificacao-cascata-marcos.test.ts, ~30 no recalculo de test/etapa2-motor-fases.test.ts). Se passar do teto, pare e reporte. DECISAO DO LUCAS (09/10, spec claude/spec-funil-atribuicao-crm-cliente-09out.md, regra R2): os marcos do lead seguem a hierarquia MQL < RM < RR < VENDA; atingir um marco marca os anteriores que ainda estao vazios. Isso SUBSTITUI a regra antiga 'fase pulada nao e inferida' da Etapa 2 (motor.ts:47-48 e o comentario de qualificarLead em ~:302-306). Recon (repo main 1f6d31f): qualificarLead em src/lib/qualificacao/motor.ts avalia MQL, SQL e depois o laco 'const fases' com RM, RR e VENDA (~:360-367), cada um por si; marca ja gravada nunca e sobrescrita (R1, ja existe, MANTER); dataDaFase devolve a primeira chegada pelo historico. test/etapa2-motor-fases.test.ts:85 fixa 'nao infere fase pulada'. FAZER: (1) em motor.ts, NOVA funcao pura exportada aplicarCascata(resultado: ResultadoQualificacao, motivos: string[]): void, chamada em qualificarLead DEPOIS do laco das fases e ANTES de montar motivo_qualificacao. Ordem fixa ORDEM_CASCATA = [['MQL','mql_em'],['RM','rm_em'],['RR','rr_em'],['VENDA','venda_em']]. Para cada marco vazio, se algum marco POSTERIOR tem data, preenche com a MENOR data entre os marcos posteriores preenchidos (MQL inferido tambem poe is_mql=true) e empurra em motivos a frase exata '<CLASSE> inferido de <CLASSE_QUE_PROVOU> (cascata)'. Nunca sobrescreve data existente (mesmo que seja posterior). SQL fica FORA da cascata (nao e inferido nem infere). A cascata vale com ou sem regra da classe anterior e em qualquer modo; o bloqueio do modo atual continua so impedindo marcacao NOVA pela regra (a cascata so propaga marcas que ja existem no resultado). (2) Atualize os comentarios de motor.ts:47-48 e do bloco de qualificarLead para descrever a cascata (sem a frase 'fase pulada nao e inferida'). (3) NOVO test/qualificacao-cascata-marcos.test.ts (puro, sem banco): VENDA so -> rm_em, rr_em e mql_em iguais a venda_em e is_mql true; RR so -> RM e MQL com a data de RR, venda_em nulo; RM ja gravado em data POSTERIOR a VENDA nao e sobrescrito; MQL ja gravado nao muda; SQL nunca inferido; motivos citam 'inferido de' com a classe que provou; com RM em 01/09 e VENDA em 10/09: RR recebe 10/09 (menor data entre os marcos POSTERIORES a RR, so VENDA) e MQL recebe 01/09 (menor entre RM, RR e VENDA); lead bloqueado em modo atual sem marca nenhuma continua sem marca. (4) RECALCULE test/etapa2-motor-fases.test.ts:85 para a nova regra (VENDA sozinho agora preenche rm_em, rr_em, mql_em e is_mql true) com comentario acima: 'Ticket 950 (cascata aprovada pelo Lucas em 09/10): marco maior marca os anteriores com a mesma data.' PROIBIDO remover assercao, afrouxar matcher ou usar .skip/.only. Regras do repo: sem .json() novo em src (lerCorpoJson nas rotas); mensagens humanas sem nome de tabela; sem travessao (U+2014); getSession server-only; nenhuma escrita em zona C0 (clientes_receita, leads_crm*, trafego_*, ads_metadata, ads_performance, vw_atribuicao_proporcional). FORA DE ESCOPO: funil-cliente.ts e a rota comercial (contam as marcas que o motor grava); reprocessar leads ja gravados (ticket 951a); qualquer .sql; mudar resolverRegras, leadBloqueado ou dataDaFase.",
+  "cria_novo": [
+    "test/qualificacao-cascata-marcos.test.ts"
+  ],
+  "pathspec_allowlist": [
+    "src/lib/qualificacao/motor.ts",
+    "test/qualificacao-cascata-marcos.test.ts",
+    "test/etapa2-motor-fases.test.ts"
+  ],
+  "dependencias": [],
+  "prioridade": 20,
+  "recon_esperado": [
+    {
+      "descricao": "test/qualificacao-cascata-marcos.test.ts ainda nao existe",
+      "cmd": "test -e 'test/qualificacao-cascata-marcos.test.ts' && echo EXISTE || echo AUSENTE",
+      "espera": "AUSENTE"
+    },
+    {
+      "descricao": "motor ainda avalia RM, RR e VENDA cada um por si",
+      "cmd": "n=$(grep -cF 'const fases: [ClassificaComo' src/lib/qualificacao/motor.ts); [ \"$n\" = 1 ] && echo SEM_CASCATA || echo ST_$n",
+      "espera": "SEM_CASCATA"
+    },
+    {
+      "descricao": "teste antigo fixa a nao-inferencia",
+      "cmd": "n=$(grep -c 'não infere fase pulada' test/etapa2-motor-fases.test.ts); [ \"$n\" -ge 1 ] && echo TESTE_ANTIGO || echo ST_$n",
+      "espera": "TESTE_ANTIGO"
+    }
+  ],
+  "criterios_aceite": [
+    {
+      "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+      "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+      "espera": "OK",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "nenhum .sql novo (zero DDL)",
+      "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+      "espera": "SEM_SQL",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "so arquivos da allowlist foram tocados",
+      "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do printf '%s\\n' 'src/lib/qualificacao/motor.ts' 'test/qualificacao-cascata-marcos.test.ts' 'test/etapa2-motor-fases.test.ts' | grep -Fxq \"$f\" || r=FORA_$f; done; echo $r",
+      "espera": "SO_ALLOWLIST",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "diff dentro do orcamento (<= 260 linhas somando adicoes e remocoes)",
+      "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 260 ] && echo NO_TETO || echo ESTOUROU_$t",
+      "espera": "NO_TETO",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "guardas globais seguem verdes",
+      "cmd": "npx vitest run test/c0-guard.test.ts test/fetch-json-teto.test.ts test/travessao-mudo.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+      "espera": "VERDE",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "motor exporta aplicarCascata e qualificarLead a chama",
+      "cmd": "a=$(grep -c 'export function aplicarCascata' src/lib/qualificacao/motor.ts); c=$(grep -v '^ *//' src/lib/qualificacao/motor.ts | grep -v '^ *[*]' | grep -c 'aplicarCascata(resultado'); [ \"$a\" = 1 ] && [ \"$c\" -ge 1 ] && echo CASCATA || echo ST_${a}_${c}",
+      "espera": "CASCATA",
+      "tipo": "alvo"
+    },
+    {
+      "descricao": "a regra antiga sumiu do motor e do teste",
+      "cmd": "m=$(grep -c 'fase pulada não' src/lib/qualificacao/motor.ts); t=$(grep -c 'não infere fase pulada' test/etapa2-motor-fases.test.ts); [ \"$m\" = 0 ] && [ \"$t\" = 0 ] && echo REGRA_NOVA || echo ST_${m}_${t}",
+      "espera": "REGRA_NOVA",
+      "tipo": "alvo"
+    },
+    {
+      "descricao": "anti-afrouxamento nos testes recalculados (test/etapa2-motor-fases.test.ts): expect( nao diminui, sem .skip/.only, cita 950",
+      "cmd": "b=\"$(git merge-base HEAD origin/staging-auto)\"; r=AFROUXAMENTO_OK; for f in 'test/etapa2-motor-fases.test.ts'; do if git diff --quiet \"$b\" HEAD -- \"$f\"; then continue; fi; a=$(git show \"$b:$f\" | grep -c 'expect('); h=$(grep -c 'expect(' \"$f\"); s=$(git diff \"$b\" HEAD -- \"$f\" | grep -cE '^[+].*[.](skip|only)[(]'); c=$(grep -c '950' \"$f\"); if [ \"$h\" -lt \"$a\" ] || [ \"$s\" != 0 ] || [ \"$c\" = 0 ]; then r=AFROUXOU_$f; fi; done; echo $r",
+      "espera": "AFROUXAMENTO_OK",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "testes verdes (test/qualificacao-cascata-marcos.test.ts, test/etapa2-motor-fases.test.ts, test/qualificacao-motor.test.ts, test/mql-cliente-regra-etapas.test.ts, test/mql-cliente-tags-regra.test.ts, test/etapa2-funil-motor.test.ts)",
+      "cmd": "test -f test/qualificacao-cascata-marcos.test.ts && npx vitest run test/qualificacao-cascata-marcos.test.ts test/etapa2-motor-fases.test.ts test/qualificacao-motor.test.ts test/mql-cliente-regra-etapas.test.ts test/mql-cliente-tags-regra.test.ts test/etapa2-funil-motor.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+      "espera": "VERDE"
+    },
+    {
+      "descricao": "avaliador: o motor passa a inferir os marcos anteriores (MQL < RM < RR < VENDA) com a menor data entre os marcos posteriores, sem nunca sobrescrever data gravada, com SQL fora da cascata e motivo 'inferido de'. REPROVE se: alguma data existente e sobrescrita; SQL e inferido; a cascata cria marco sem nenhum marco posterior; resolverRegras/leadBloqueado/dataDaFase mudam; assercao removida ou afrouxada.",
+      "cmd": "true",
+      "espera": "avaliador",
+      "tipo": "avaliador"
+    }
+  ],
+  "testes_conferidos": [
+    {
+      "teste": "test/crm-backfill-progresso.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/crm-cliente-etapas-sync.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/etapa2-funil-motor.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/fechamentos.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ghl-app-webhook.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ghl-backfill-job.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ghl-backfill-lib.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ghl-backfill-oportunidades.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ghl-backfill-orcamento-pagina.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ghl-backfill.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ghl-oportunidades-webhook.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ingest-ghl.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/jobs-motor-geral.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/jobs-worker.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/mql-cliente-regra-etapas.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/mql-cliente-tags-regra.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/oportunidade-etapa-do-lead.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/qualificacao-motor.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/qualificacao-preview.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/tela-regra-mql-tags.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/webhook-segredo-freio.test.ts",
+      "motivo": "alcanca motor.ts pelo grafo; conferido em 09/10: nenhum desses casos tem lead com marco posterior e marco anterior vazio esperado nulo (os is_mql false sao de lead sem nenhuma marca), entao a cascata nao muda o esperado; se quebrar, PARE e descreva"
+    }
+  ],
+  "status": "pendente",
+  "notas_status": ""
+}
+```

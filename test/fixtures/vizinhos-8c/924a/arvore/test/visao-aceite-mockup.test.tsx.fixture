@@ -1,0 +1,32 @@
+// c31dcea42ccb2251f275415709342ae40282911e:test/visao-aceite-mockup.test.tsx (só as linhas de import e citação)
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { Module, createRequire } from "node:module";
+import vm from "node:vm";
+import { transformSync } from "esbuild";
+import React from "react";
+import { TAB_GROUPS } from "../src/app/dashboard/clientes/[id]/tabs/ficha-types";
+import { isClienteAtivo } from "../src/lib/clientes/ativo";
+import { chipSaude } from "../src/lib/clientes/chip-saude";
+const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/server") as {
+const RAIZ = resolve(__dirname, "..");
+const DIR = resolve(RAIZ, "src/app/dashboard/clientes/[id]");
+const lerArq = (p: string): string => readFileSync(p, "utf8");
+const MOCKUP_PATH = resolve(RAIZ, "docs/roadmap/mockups/visao-geral-ficha-cliente.html");
+const PAGE_PATH = resolve(DIR, "page.tsx");
+const GERAL_PATH = resolve(DIR, "tabs/geral-tab.tsx");
+const caminhoComp = (c: string) => resolve(DIR, `_components/${c}.tsx`);
+/** Especificadores de import de valor (import type não conta). */
+  const cod = semComentarios(src).replace(/import type [^;]*;/g, "");
+  const re = /(?:from|import\(|require\()\s*"([^"]+)"/g;
+  const m = /(?:import|require)\("([^"]+)"\)/.exec(String(loader));
+  const chave = `${arquivo}|${Object.keys(overrides).join(",")}`;
+    loader: arquivo.endsWith(".tsx") ? "tsx" : "ts", jsx: "automatic", format: "cjs", target: "node18", sourcefile: arquivo,
+    const base = id.startsWith("@/") ? resolve(RAIZ, "src", id.slice(2)) : id.startsWith(".") ? resolve(dirname(arquivo), id) : null;
+    if (!base) return mod.require(id);
+    for (const ext of [".tsx", ".ts"]) {
+    return mod.require(id);
+    for (const mod of modulos) expect(imports.filter((i) => i.includes(mod)), `import de ${mod} na Visão`).toEqual([]);
+  const painel = semComentarios(lerArq(resolve(RAIZ, "src/app/dashboard/clientes/perf/_components/ClientePerfPanel.tsx")));
+    const botao = lerArq(resolve(RAIZ, "src/components/onboarding/iniciar-onboarding-button.tsx"));

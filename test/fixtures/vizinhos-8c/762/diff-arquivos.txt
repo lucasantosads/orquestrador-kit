@@ -1,0 +1,7 @@
+# runs/762/attempt-1.prev1/diff.raw: os caminhos "diff --git a/<x> b/<x>", na ordem
+src/app/api/cron/ghl-backfill/route.ts
+src/lib/jobs/handlers/index.ts
+src/lib/perf/crm-conexao.ts
+src/lib/perf/ghl-backfill.ts
+test/ghl-backfill-job.test.ts
+vercel.json

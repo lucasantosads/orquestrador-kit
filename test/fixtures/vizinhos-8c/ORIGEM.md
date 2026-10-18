@@ -11,3 +11,61 @@ e leitura de `docs/fila/runs/`), sem edição de conteúdo. A medição está em
 | 295-fetch-json-teto.md | 7057ab0:docs/fila/295-fetch-json-teto.md | a versão `pendente` que rodou às 15:06 de 03/09; allowlist com `src/app/dashboard/clientes/[id]/tabs/` |
 | arquivos-do-diff.txt | runs/295/attempt-1.prev1/diff.raw | os 43 caminhos do diff da tentativa |
 | violacoes-comarka.txt | runs/295/attempt-1.prev1/enforcement.json | as 41 `fora_do_pathspec` que o motor do Comarka deu antes de normalizar `dir/`: 31 sob `tabs/` (ruído) e os 10 testes de fato fora da allowlist |
+
+## P2a · os casos do replay (`<id>/`)
+
+`gate-vitest.txt` é o recorte verbatim do `gate-vitest.txt` da tentativa, da linha
+`⎯ Failed Tests` ao fim (é onde estão as linhas `FAIL`, o erro e o local `❯`). No 711b3
+o recorte tinha 5959 linhas de DOM: ficaram só as linhas `FAIL` e o placar. Em
+`arvore/`, cada teste falho tem só as linhas de import e citação, com o cabeçalho
+`// <sha>:<caminho>`, e o nome ganha `.fixture` (o tsc e o vitest do kit não leem como
+código; o teste tira o sufixo na carga, como na 8a). A C11 (`testesVizinhos`) dá nessas árvores reduzidas o mesmo
+resultado que nas árvores inteiras do Comarka (conferido caso a caso no PASSO 0).
+
+| caso | arquivo | origem |
+|---|---|---|
+| 950 | gate-vitest.txt | runs/950/attempt-1.prev1/gate-vitest.txt, linhas 1951 ao fim (de "⎯ Failed Tests"), verbatim |
+| 950 | 950-motor-cascata-marcos.md | 378e359:docs/fila/950-motor-cascata-marcos.md (a versão que rodou) |
+| 950 | diff-arquivos.txt | runs/950/attempt-1.prev1/diff.raw |
+| 950 | arvore/ | 03994f54c070239b4582b735f96852b83891340f: tsconfig.json, testes falhos reduzidos, lista de arquivos |
+| 1054 | gate-vitest.txt | runs/1054/attempt-1.prev1/gate-vitest.txt, linhas 2526 ao fim (de "⎯ Failed Tests"), verbatim |
+| 1054 | 1054-negocio-leitores-ficha.md | 3718afa:docs/fila/1054-negocio-leitores-ficha.md (a versão que rodou) |
+| 1054 | diff-arquivos.txt | runs/1054/attempt-1.prev1/diff.raw |
+| 1054 | arvore/ | c375e7c8e944ac79bdb17e16771ca04f24e18b2a: tsconfig.json, testes falhos reduzidos, lista de arquivos |
+| 1059 | gate-vitest.txt | runs/1059/attempt-2.prev1/gate-vitest.txt, linhas 2638 ao fim (de "⎯ Failed Tests"), verbatim |
+| 1059 | 1059-notion-rotas-renomeadas.md | 757e0da:docs/fila/1059-notion-rotas-renomeadas.md (a versão que rodou) |
+| 1059 | diff-arquivos.txt | runs/1059/attempt-2.prev1/diff.raw |
+| 1059 | arvore/ | 9907af07dfda7d6f5ed0ff04ac63549726dbb358: tsconfig.json, testes falhos reduzidos, lista de arquivos |
+| 924a | gate-vitest.txt | runs/924a/attempt-1.prev1/gate-vitest.txt, linhas 2490 ao fim (de "⎯ Failed Tests"), verbatim |
+| 924a | 924a-conta-contrato-montagem.md | bcdc764:docs/fila/924a-conta-contrato-montagem.md (a versão que rodou) |
+| 924a | diff-arquivos.txt | runs/924a/attempt-1.prev1/diff.raw |
+| 924a | arvore/ | c31dcea42ccb2251f275415709342ae40282911e: tsconfig.json, testes falhos reduzidos, lista de arquivos |
+| 855 | gate-vitest.txt | runs/855/attempt-1.prev1/gate-vitest.txt, linhas 2390 ao fim (de "⎯ Failed Tests"), verbatim |
+| 855 | 855-remove-team-id.md | 37a1bce:docs/fila/855-remove-team-id.md (a versão que rodou) |
+| 855 | diff-arquivos.txt | runs/855/attempt-1.prev1/diff.raw |
+| 855 | arvore/ | 71ee1c91b776c62a5c5ab1d706b7edf1c1668f1c: tsconfig.json, testes falhos reduzidos, lista de arquivos |
+| 762 | gate-vitest.txt | runs/762/attempt-1.prev1/gate-vitest.txt, linhas 1581 ao fim (de "⎯ Failed Tests"), verbatim |
+| 762 | 762-ghl-backfill-job-conexao.md | ef7dea4:docs/fila/762-ghl-backfill-job-conexao.md (a versão que rodou) |
+| 762 | diff-arquivos.txt | runs/762/attempt-1.prev1/diff.raw |
+| 762 | arvore/ | 6c0b474d9ce157a8ac463059870b64b17aa7af17: tsconfig.json, testes falhos reduzidos, lista de arquivos |
+| 854 | gate-vitest.txt | runs/854/attempt-1.prev1/gate-vitest.txt, linhas 2321 ao fim (de "⎯ Failed Tests"), verbatim |
+| 854 | 854-remove-equipe-geral.md | b988f6c:docs/fila/854-remove-equipe-geral.md (a versão que rodou) |
+| 854 | diff-arquivos.txt | runs/854/attempt-1.prev1/diff.raw |
+| 854 | arvore/ | 9b763de6c965fe42333c0ac4caa408168759429a: tsconfig.json, testes falhos reduzidos, lista de arquivos |
+| 711b3 | gate-vitest.txt | runs/711b3/attempt-2.prev1/gate-vitest.txt, linhas 1837 ao fim, reduzidas às 4 linhas `FAIL` e ao placar |
+| 711b3 | 711b3-saude-chip-ficha-tela.md | f5c235c:docs/fila/711b3-saude-chip-ficha-tela.md (a versão que rodou) |
+| 711b3 | diff-arquivos.txt | runs/711b3/attempt-2.prev1/diff.raw |
+| 711b3 | arvore/ | a1965f931b1ea9dccc90fcc80ae721bafb2e2cf2: tsconfig.json, testes falhos reduzidos, lista de arquivos |
+| 830 | gate-vitest.txt | runs/830/attempt-2/gate-vitest.txt, linhas 2319 ao fim (de "⎯ Failed Tests"), verbatim |
+| 830 | 830-sai-identidade-remove.md | b988f6c:docs/fila/830-sai-identidade-remove.md (a versão que rodou) |
+| 830 | diff-arquivos.txt | runs/830/attempt-2/diff.raw |
+| 830 | arvore/ | 1e3b30654a9ca7a4e5d417ade381682fb30b46a1: tsconfig.json, testes falhos reduzidos, lista de arquivos |
+
+## 1373/ (P2a · critério de lista fechada)
+
+| arquivo | origem | papel |
+|---|---|---|
+| 1373-ia-registro-funcoes-sem-cadastro.md | 6f94e84:docs/fila/1373-ia-registro-funcoes-sem-cadastro.md | a versão `pendente` que rodou às 11:14 de 18/10 (antes do R1, `6c42ce9`) |
+| allowlist-ampliada.txt | runs/1373/attempt-2/allowlist-ampliada.txt | o teste que o 457856c ampliou |
+| criterio-lista-fechada.txt | runs/1373/attempt-2/criterios.txt, linhas 9-16 | o critério `SO_ALLOWLIST` que reprovou a tentativa ampliada com `FORA_test/ia-funcoes-agentes-atendimento.test.ts` |
+| diff-arquivos.txt | runs/1373/attempt-2/diff.raw | os 3 caminhos do diff |

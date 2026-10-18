@@ -1,0 +1,12 @@
+# 9907af07dfda7d6f5ed0ff04ac63549726dbb358: ls-tree dos itens de src/ da allowlist (glob expandido) e dos testes falhos
+src/app/api/clientes/[id]/ficha/route.ts
+src/app/api/clientes/filtrados/route.ts
+src/app/api/notion/clientes-filtrados/route.ts
+src/app/api/notion/clientes/[id]/route.ts
+src/app/api/notion/onboarding/[id]/route.ts
+src/app/api/onboarding/legado/[id]/route.ts
+src/app/dashboard/clientes/[id]/page.tsx
+src/app/dashboard/onboarding/[id]/page.tsx
+src/components/gestor-capacidade.tsx
+test/leitores-carteira-casa-nova.test.ts
+test/leitores-ficha-casa-nova.test.ts

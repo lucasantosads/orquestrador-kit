@@ -1,0 +1,7 @@
+# c31dcea42ccb2251f275415709342ae40282911e: ls-tree dos itens de src/ da allowlist (glob expandido) e dos testes falhos
+src/app/dashboard/clientes/[id]/_components/bloco-contrato.tsx
+src/app/dashboard/clientes/[id]/_components/cockpit-cards.tsx
+src/app/dashboard/clientes/[id]/page.tsx
+src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx
+test/conta-entregas-vazio-unico.test.ts
+test/visao-aceite-mockup.test.tsx

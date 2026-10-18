@@ -1,0 +1,3 @@
+# 03994f54c070239b4582b735f96852b83891340f: ls-tree dos itens de src/ da allowlist (glob expandido) e dos testes falhos
+src/lib/qualificacao/motor.ts
+test/etapa2-funil-motor.test.ts

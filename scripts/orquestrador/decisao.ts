@@ -780,3 +780,101 @@ export function arquivosBaseVermelha(entrada: {
   const proprio = (a: string) => entrada.arquivosDoDiff.includes(a) || matchesAllowlist(a, entrada.allowlist)
   return falhos.some(proprio) ? [] : falhos
 }
+
+// ─── 7 · teste vizinho liberado só quando falha (etapa 8c) ─────────────────
+
+/** Onde mora teste, em qualquer repo da frota (a mesma régua do gate de ticket). */
+const RE_ARQ_TESTE = /(^|\/)(test|tests|__tests__)\/|\.(test|spec)\.[^/]*$/
+
+export interface ParVizinho {
+  teste: string
+  /** o item de `src/` da allowlist que o teste importa ou cita */
+  item: string
+}
+
+export interface DecisaoVizinhos {
+  amplia: boolean
+  testes: string[]
+  pares: ParVizinho[]
+  motivo: string
+}
+
+/**
+ * Porte do 457856c do Comarka no desenho do kit. Amplia só se TODO arquivo com
+ * FAIL no vitest é teste fora do diff e da allowlist e está na lista de vizinhos
+ * da C11 (`testesVizinhos` do gate-ticket.ts, na árvore do base_ticket: import
+ * direto resolvido ou citação de um item de `src/`). Um que não cumpre cancela
+ * tudo. A ligação é a da C11, não o `teste_cita` do Comarka (decisão do PASSO 0
+ * da 8c): no replay ela amplia 12 de 19 e cobre 11, e não amplia o 762, que só
+ * citava `vercel.json` e cujo conserto era código.
+ *
+ * `vizinhos` é a saída de `testesVizinhos`: item → testes que o importam ou citam.
+ */
+export function decidirVizinhos(entrada: {
+  gatesTxt: string
+  arquivosDoDiff: string[]
+  allowlist: string[]
+  vizinhos: ReadonlyMap<string, string[]>
+}): DecisaoVizinhos {
+  const nao = (motivo: string): DecisaoVizinhos => ({ amplia: false, testes: [], pares: [], motivo })
+  const falhos = arquivosFalhosDoVitest(entrada.gatesTxt)
+  if (falhos.length === 0) return nao('nenhum FAIL legível na saída do vitest')
+  const itemDe = new Map<string, string>()
+  for (const [item, ts] of entrada.vizinhos) for (const t of ts) if (!itemDe.has(t)) itemDe.set(t, item)
+  const pares: ParVizinho[] = []
+  for (const f of falhos) {
+    if (matchesAllowlist(f, entrada.allowlist)) return nao(`falha em ${f}, dentro da allowlist`)
+    if (entrada.arquivosDoDiff.includes(f)) return nao(`falha em ${f}, que está no diff do ticket`)
+    if (!RE_ARQ_TESTE.test(f)) return nao(`falha em ${f}, que não é arquivo de teste`)
+    const item = itemDe.get(f)
+    if (!item) return nao(`${f} falha e não é vizinho (não importa nem cita item de src/ da allowlist)`)
+    pares.push({ teste: f, item })
+  }
+  return {
+    amplia: true,
+    testes: pares.map((p) => p.teste),
+    pares,
+    motivo: `suíte vermelha só em teste vizinho: ${pares.map((p) => `${p.teste} (${p.item})`).join(', ')}`,
+  }
+}
+
+/**
+ * O bloco FAIL de cada teste ampliado, para o prompt da tentativa seguinte: da
+ * primeira linha `FAIL` do teste até o separador `⎯` da vitest (no máximo 40
+ * linhas), e o primeiro `❯ <teste>:L:C` como local. Sem cor.
+ */
+export function blocoFailVitest(gatesTxt: string, pares: ParVizinho[]): string {
+  const ls = gatesTxt.split('\n').map((l) => l.replace(/\x1b\[[0-9;]*m/g, ''))
+  return pares
+    .map(({ teste, item }) => {
+      const ini = ls.findIndex((l) => /^\s*FAIL\s/.test(l) && l.includes(teste))
+      const corpo: string[] = []
+      for (let i = ini; ini >= 0 && i < ls.length && corpo.length < 40; i++) {
+        if (i > ini && ls[i]!.includes('⎯')) break
+        corpo.push(ls[i]!)
+      }
+      const re = new RegExp(`❯\\s+(${teste.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:\\d+:\\d+)`)
+      const local = ls.map((l) => re.exec(l)?.[1]).find(Boolean) ?? '?'
+      return [`--- ${teste} (importa ou cita ${item})`, ...corpo, `local: ${local}`].join('\n')
+    })
+    .join('\n')
+}
+
+/**
+ * Critério de lista fechada (o cmd lista TODA a allowlist entre aspas simples,
+ * como o `SO_ALLOWLIST` do Comarka): os ampliados entram depois do último item,
+ * só na execução, sem editar o ticket. É o passo 2 do conserto do R1
+ * (`resolvedor/r1.ts`). Sem isto, a tentativa ampliada do 1373 consertou o teste
+ * e reprovou com `FORA_test/ia-funcoes-agentes-atendimento.test.ts`.
+ */
+export function cmdComAmpliados(cmd: string, allowlist: string[], ampliados: string[]): string {
+  if (allowlist.length === 0 || !allowlist.every((a) => cmd.includes(`'${a}'`))) return cmd
+  const novos = ampliados.filter((t) => !cmd.includes(`'${t}'`))
+  if (novos.length === 0) return cmd
+  let fim = -1
+  for (const a of allowlist) {
+    const p = cmd.lastIndexOf(`'${a}'`)
+    if (p >= 0) fim = Math.max(fim, p + a.length + 2)
+  }
+  return `${cmd.slice(0, fim)}${novos.map((t) => ` '${t}'`).join('')}${cmd.slice(fim)}`
+}

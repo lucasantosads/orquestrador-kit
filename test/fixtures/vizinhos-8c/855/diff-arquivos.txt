@@ -1,0 +1,4 @@
+# runs/855/attempt-1.prev1/diff.raw: os caminhos "diff --git a/<x> b/<x>", na ordem
+src/app/dashboard/team/[id]/page.tsx
+test/anon-navegador-congelado.test.ts
+test/remove-team-id.test.ts

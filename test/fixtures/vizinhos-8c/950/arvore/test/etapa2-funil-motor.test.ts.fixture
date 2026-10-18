@@ -1,0 +1,4 @@
+// 03994f54c070239b4582b735f96852b83891340f:test/etapa2-funil-motor.test.ts (só as linhas de import e citação)
+import { describe, it, expect, vi } from "vitest";
+import { montarFunilCliente, marcasDoLead, funilPeloMotor, type LeadFunil, type RegraFunil } from "@/lib/comercial/funil-cliente";
+import { qualificarLead, type RegraQualificacao, type LeadParaQualificar, type ClassificaComo } from "@/lib/qualificacao/motor";

@@ -1,0 +1,6 @@
+# runs/854/attempt-1.prev1/diff.raw: os caminhos "diff --git a/<x> b/<x>", na ordem
+src/app/dashboard/team/page.tsx
+src/app/equipe-geral/error.tsx
+src/app/equipe-geral/page.tsx
+test/error-boundaries-rotas-lote5.test.ts
+test/remove-equipe-geral.test.ts

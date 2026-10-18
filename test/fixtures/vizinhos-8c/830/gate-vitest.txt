@@ -1,0 +1,27 @@
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m test/sai-identidade-removido.test.ts[2m > [22mresolverUuid saiu da identidade (830)[2m > [22mnão é mais exportado pelo módulo
+[31m[1mAssertionError[22m: expected true to be false // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+[36m [2m❯[22m test/sai-identidade-removido.test.ts:[2m9:40[22m[39m
+    [90m  7|[39m [34mdescribe[39m([32m"resolverUuid saiu da identidade (830)"[39m[33m,[39m () [33m=>[39m {
+    [90m  8|[39m   [34mit[39m([32m"não é mais exportado pelo módulo"[39m[33m,[39m () [33m=>[39m {
+    [90m  9|[39m     [34mexpect[39m([32m"resolverUuid"[39m [35min[39m resolver)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+    [90m   |[39m                                        [31m^[39m
+    [90m 10|[39m     [34mexpect[39m([33mFONTE[39m)[33m.[39mnot[33m.[39m[34mtoMatch[39m([36m/export\s+function\s+resolverUuid/[39m)[33m;[39m
+    [90m 11|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m939 passed[39m[22m[90m (940)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m9392 passed[39m[22m[90m (9393)[39m
+[2m   Start at [22m 00:37:04
+[2m   Duration [22m 25.43s[2m (transform 15.09s, setup 0ms, import 76.35s, tests 26.18s, environment 94ms)[22m
+

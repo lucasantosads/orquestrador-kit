@@ -13,11 +13,16 @@
  *   disallowed                -> o piso de --disallowedTools do config (T17)
  *   base-vermelha             -> stdin = {gatesTxt, arquivosDoDiff, allowlist};
  *                                imprime a lista (vazia = caminho de hoje), ticket 632
+ *   vizinhos                  -> stdin = {gatesTxt, arquivosDoDiff, allowlist, worktree, base};
+ *                                lê a árvore de <base> na worktree e imprime
+ *                                {amplia, testes, pares, motivo, bloco} (etapa 8c)
  */
 import { readFileSync } from 'node:fs'
 import {
   arquivosBaseVermelha,
   avaliaRestricaoExecucao,
+  blocoFailVitest,
+  decidirVizinhos,
   decidirDesfecho,
   decidirRetry,
   registroMeta,
@@ -28,6 +33,7 @@ import {
   modeloIndefinido,
   modeloRecusado,
 } from './decisao.js'
+import { lerArvoreAlvo, testesVizinhos } from './gate-ticket.js'
 import { defaultToolsFromGates, pisoDoConfig, toolsDoTicket } from './perfil.js'
 import type { DecisaoConfig, SinalTentativa, Veredito } from './decisao.js'
 
@@ -115,6 +121,19 @@ switch (sub) {
   }
   case 'base-vermelha': {
     out(arquivosBaseVermelha(stdin() as { gatesTxt: string; arquivosDoDiff: string[]; allowlist: string[] }))
+    break
+  }
+  case 'vizinhos': {
+    // A árvore é a do base_ticket (o teste vizinho não está no diff). Árvore
+    // ilegível é erro alto: o executor não amplia sem saber.
+    const e = stdin() as { gatesTxt: string; arquivosDoDiff: string[]; allowlist: string[]; worktree: string; base: string }
+    const arvore = lerArvoreAlvo(e.worktree, e.base, 'docs/fila')
+    if (!arvore) {
+      process.stderr.write(`vizinhos: não li a árvore de ${e.base} em ${e.worktree}\n`)
+      process.exit(1)
+    }
+    const d = decidirVizinhos({ ...e, vizinhos: testesVizinhos(e.allowlist, arvore) })
+    out({ ...d, bloco: d.amplia ? blocoFailVitest(e.gatesTxt, d.pares) : '' })
     break
   }
   default:

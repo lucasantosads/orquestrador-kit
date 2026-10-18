@@ -1,0 +1,18 @@
+// a1965f931b1ea9dccc90fcc80ae721bafb2e2cf2:test/sem-insumo.test.ts (só as linhas de import e citação)
+import { describe, it, expect } from 'vitest'
+import { readFileSync, existsSync } from 'node:fs'
+import { join } from 'node:path'
+import {
+} from '@/components/estados/sem-insumo'
+const CLIENTES = join(SRC, 'app', 'dashboard', 'clientes')
+  return readFileSync(join(...partes), 'utf8')
+  const fichaTypes = ler(CLIENTES, '[id]', 'tabs', 'ficha-types.ts')
+  const ficha = ler(CLIENTES, '[id]', 'page.tsx')
+  const risco = ler(CLIENTES, 'risco', 'page.tsx')
+    expect(existsSync(join(CLIENTES, '[id]', 'tabs', 'header-cliente.tsx'))).toBe(false)
+  const carteira = ler(CLIENTES, 'page.tsx')
+  const rotaRisco = ler(SRC, 'app', 'api', 'clientes', 'risco', 'route.ts')
+  const libRisco = ler(SRC, 'lib', 'clientes', 'risco.ts')
+  const rotaLista = ler(SRC, 'app', 'api', 'dashboard', 'clientes', 'route.ts')
+    expect(suspeitas, `cast no caminho do KPI:\n${suspeitas.join('\n')}`).toEqual([])
+  const nps = ler(CLIENTES, 'nps', 'page.tsx')

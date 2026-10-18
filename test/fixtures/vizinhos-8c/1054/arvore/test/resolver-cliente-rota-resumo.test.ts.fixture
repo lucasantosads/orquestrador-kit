@@ -1,0 +1,19 @@
+// c375e7c8e944ac79bdb17e16771ca04f24e18b2a:test/resolver-cliente-rota-resumo.test.ts (só as linhas de import e citação)
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
+vi.mock("@/lib/session", () => ({ getSession: async () => ({ employeeId: "emp-1" }) }));
+      const promise = Promise.resolve({ data: [], error: null });
+vi.mock("@/lib/clientes/resolver-cliente", async (original) => ({
+  ...(await original<typeof import("@/lib/clientes/resolver-cliente")>()),
+vi.mock("@/lib/ia/resumo-relacao", async (original) => ({
+  ...(await original<typeof import("@/lib/ia/resumo-relacao")>()),
+vi.mock("@/lib/ia/resumo-grupo-wpp", async (original) => ({
+  ...(await original<typeof import("@/lib/ia/resumo-grupo-wpp")>()),
+import { GET as getResumo } from "@/app/api/clientes/[id]/resumo/route";
+import { GET as getGrupo } from "@/app/api/clientes/[id]/resumo-grupo/route";
+import { POST as postIa } from "@/app/api/clientes/[id]/resumo-ia/route";
+const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
+    expect(porNotion.join("|")).toBe(porUuid.join("|"));
+    expect(porUuid.join("|")).toContain(UUID);
+    expect(ors.join("|")).toContain(NOTION);
+    expect(ors.join("|")).not.toContain("cliente_id.eq");

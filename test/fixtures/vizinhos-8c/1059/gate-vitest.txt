@@ -1,0 +1,60 @@
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 3 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m test/leitores-carteira-casa-nova.test.ts[2m > [22mleitores da ponte pela lib (ticket 1055)[2m > [22mclientes-filtrados usa lerEspelhoTodo para a ponte
+[31m[1mAssertionError[22m: expected 308 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 308[39m
+
+[36m [2m❯[22m test/leitores-carteira-casa-nova.test.ts:[2m168:24[22m[39m
+    [90m166|[39m   it("clientes-filtrados usa lerEspelhoTodo para a ponte", async () =>…
+    [90m167|[39m     [35mconst[39m res [33m=[39m [35mawait[39m [34mgetFiltrados[39m()[33m;[39m
+    [90m168|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m169|[39m     expect(espelhoSpy.todo).toHaveBeenCalledWith(expect.anything(), []…
+    [90m170|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m test/leitores-ficha-casa-nova.test.ts[2m > [22mrotas[2m > [22mGET /api/notion/clientes/[id] por uuid devolve os campos da casa nova
+[31m[1mAssertionError[22m: expected 308 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 308[39m
+
+[36m [2m❯[22m test/leitores-ficha-casa-nova.test.ts:[2m118:22[22m[39m
+
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m test/leitores-ficha-casa-nova.test.ts[2m > [22mrotas[2m > [22mGET /api/notion/clientes/[id] por uuid com espelho: 404 com o notion_id da ponte
+[31m[1mAssertionError[22m: expected 308 to be 404 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 404[39m
+[31m+ 308[39m
+
+[36m [2m❯[22m test/leitores-ficha-casa-nova.test.ts:[2m125:22[22m[39m
+    [90m123|[39m   it("GET /api/notion/clientes/[id] por uuid com espelho: 404 com o no…
+    [90m124|[39m     const r = await getFicha(new NextRequest(`http://localhost/api/not…
+    [90m125|[39m     [34mexpect[39m(r[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m404[39m)[33m;[39m
+    [90m   |[39m                      [31m^[39m
+    [90m126|[39m     expect(await r.json()).toEqual({ error: "Not found", notion_id: "n…
+    [90m127|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m1045 passed[39m[22m[90m (1047)[39m
+[2m      Tests [22m [1m[31m3 failed[39m[22m[2m | [22m[1m[32m10475 passed[39m[22m[90m (10478)[39m
+[2m   Start at [22m 11:41:45
+[2m   Duration [22m 58.55s[2m (transform 74.48s, setup 0ms, import 218.25s, tests 57.44s, environment 118ms)[22m
+

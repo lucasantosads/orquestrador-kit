@@ -1,0 +1,9 @@
+# runs/1054/attempt-1.prev1/diff.raw: os caminhos "diff --git a/<x> b/<x>", na ordem
+src/app/api/clientes/[id]/diagnostico/route.ts
+src/app/api/clientes/[id]/resumo/route.ts
+src/app/api/clientes/entregaveis/route.ts
+src/app/api/notion/clientes/[id]/route.ts
+src/lib/clientes/nichos-catalogo.ts
+src/lib/data.ts
+test/leitores-ficha-casa-nova.test.ts
+test/resumo-cliente.test.ts

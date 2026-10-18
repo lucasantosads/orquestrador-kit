@@ -1,0 +1,120 @@
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m test/conta-entregas-vazio-unico.test.ts[2m > [22m636: vazio único em Contrato e entregas[2m > [22ma linha do Escopo continua e Adicionar abre a escolha
+[31m[1mAssertionError[22m: expected '"use client";\n\n// Aba Financeiro (C…' to contain '"nenhum cadastrado"'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- "[7mnenhum cadastrado"[27m[39m
+[31m+ "[7muse client";[27m[39m
+[31m+[39m
+[31m+ // Aba Financeiro (Conta & Setup) — observações do closer + slot de documentos.[39m
+[31m+ // Extraída de page.tsx; estado/handlers via useFicha().[39m
+[31m+ // Guardrail 14: mostra só metadados do contrato (tipo, datas). O valor que o[39m
+[31m+ // cliente paga à agência (mensalidade/valor integral/LTV) não é exibido aqui.[39m
+[31m+[39m
+[31m+ import type { ReactNode } from "react";[39m
+[31m+ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";[39m
+[31m+ import { Button } from "@/components/ui/button";[39m
+[31m+ import { toast } from "sonner";[39m
+[31m+ import { useFicha } from "./ficha-context";[39m
+[31m+ import { fetchJson } from "@/lib/fetch-json";[39m
+[31m+[39m
+[31m+ export function FinanceiroTab({ documentos }: { documentos?: ReactNode }) {[39m
+[31m+   const {[39m
+[31m+     clientePipelineId,[39m
+[31m+     editingObs, setEditingObs, obsContrato, setObsContrato, obsContratoOriginal,[39m
+[31m+     setObsContratoOriginal, obsContratoMeta, setObsContratoMeta, savingObs, setSavingObs,[39m
+[31m+   } = useFicha();[39m
+[31m+   // Ticket 924a (spec 09/10): o quadro do contrato e o Escopo saíram; o contrato mora no ContratoMarcos.[39m
+[31m+   return (<>[39m
+[31m+       <div className="grid gap-3 lg:grid-cols-2">[39m
+[31m+         <div className="space-y-3">[39m
+[31m+       {/* Observações do Closer */}[39m
+[31m+       <Card>[39m
+[31m+         <CardHeader>[39m
+[31m+           <CardTitle className="text-base">Observações do Closer</CardTitle>[39m
+[31m+         </CardHeader>[39m
+[31m+         <CardContent>[39m
+[31m+           {clientePipelineId ? ([39m
+[31m+             editingObs ? ([39m
+[31m+               <div className="space-y-2">[39m
+[31m+                 <textarea value={obsContrato} onChange={(e) => setObsContrato(e.target.value)}[39m
+[31m+                   className="w-full text-sm bg-transparent border rounded-lg px-3 py-2 min-h-[80px]"[39m
+[31m+                   placeholder="Anotações do closer sobre este contrato..." />[39m
+[31m+                 <div className="flex items-center gap-2">[39m
+[31m+                   <Button size="sm" disabled={savingObs} onClick={async () => {[39m
+[31m+                     setSavingObs(true);[39m
+[31m+                     try {[39m
+[31m+                       await fetchJson("/api/clientes/obs-contrato", {[39m
+[31m+                         method: "PATCH", headers: { "Content-Type": "application/json" },[39m
+[31m+                         body: JSON.stringify({ cliente_id: clientePipelineId, obs_contrato: obsContrato }),[39m
+[31m+                       });[39m
+[31m+                       toast.success("Observação salva");[39m
+[31m+                       setObsContratoOriginal(obsContrato);[39m
+[31m+                       setObsContratoMeta({ em: new Date().toISOString(), por: "" });[39m
+[31m+                       setEditingObs(false);[39m
+[31m+                     } catch (e) {[39m
+[31m+                       toast.error(e instanceof Error ? e.message : "Erro ao salvar");[39m
+[31m+                     } finally {[39m
+[31m+                       setSavingObs(false);[39m
+[31m+                     }[39m
+[31m+                   }}>{savingObs ? "Salvando..." : "Salvar"}</Button>[39m
+[31m+                   <Button size="sm" variant="outline" onClick={() => { setObsContrato(obsContratoOriginal); setEditingObs(false); }}>Cancelar</Button>[39m
+[31m+                 </div>[39m
+[31m+               </div>[39m
+[31m+             ) : ([39m
+[31m+               <div>[39m
+[31m+                 <p className="text-sm whitespace-pre-wrap">{obsContratoOriginal ? <>{obsContratoOriginal} <button type="button" className="text-blue-400 hover:underline" onClick={() => setEditingObs(true)}>Editar</button></> : <span className="text-muted-foreground">Sem observações · <button type="button" className="text-blue-400 hover:underline" onClick={() => setEditingObs(true)}>Editar</button></span>}</p>[39m
+[31m+                 {obsContratoMeta && ([39m
+[31m+                   <p className="text-fs-label text-muted-foreground mt-2">[39m
+[31m+                     Atualizado em {new Date(obsContratoMeta.em).toLocaleString("pt-BR")}[39m
+[31m+                   </p>[39m
+[31m+                 )}[39m
+[31m+               </div>[39m
+[31m+             )[39m
+[31m+           ) : ([39m
+[31m+             <p className="text-sm text-muted-foreground italic">Cliente não encontrado no pipeline</p>[39m
+[31m+           )}[39m
+[31m+         </CardContent>[39m
+[31m+       </Card>[39m
+[31m+         </div>[39m
+[31m+         <div>{documentos}</div>[39m
+[31m+       </div>[39m
+[31m+   </>);[39m
+[31m+ }[39m
+[31m+[39m
+
+[36m [2m❯[22m test/conta-entregas-vazio-unico.test.ts:[2m24:24[22m[39m
+    [90m 22|[39m   })[33m;[39m
+    [90m 23|[39m   [34mit[39m([32m"a linha do Escopo continua e Adicionar abre a escolha"[39m[33m,[39m () [33m=>[39m {
+    [90m 24|[39m     [34mexpect[39m(financeiro)[33m.[39m[34mtoContain[39m([32m'"nenhum cadastrado"'[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m 25|[39m     [34mexpect[39m(financeiro)[33m.[39m[34mtoContain[39m([32m'classList.remove("hidden")'[39m)[33m;[39m
+    [90m 26|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m test/visao-aceite-mockup.test.tsx[2m > [22moutras abas[2m > [22moutras abas: LTV na aba Conta
+[31m[1mAssertionError[22m: expected 'Negócio NPS sem base Sem respostas' to contain 'LTV'[39m
+
+Expected: [32m"LTV"[39m
+Received: [31m"Negócio NPS sem base Sem respostas"[39m
+
+[36m [2m❯[22m test/visao-aceite-mockup.test.tsx:[2m759:83[22m[39m
+    [90m757|[39m     [35mconst[39m cards [33m=[39m [34mcarregar[39m([34mcaminhoComp[39m([32m"cockpit-cards"[39m))[33m;[39m
+    [90m758|[39m     const CockpitNegocio = cards.CockpitNegocio as React.ComponentType…
+    [90m759|[39m     expect(textoDe(html(React.createElement(CockpitNegocio, { negocio:…
+    [90m   |[39m                                                                                   [31m^[39m
+    [90m760|[39m   })[33m;[39m
+    [90m761|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m996 passed[39m[22m[90m (998)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m9931 passed[39m[22m[90m (9933)[39m
+[2m   Start at [22m 00:22:08
+[2m   Duration [22m 48.28s[2m (transform 49.21s, setup 0ms, import 167.69s, tests 40.43s, environment 138ms)[22m
+

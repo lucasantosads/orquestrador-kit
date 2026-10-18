@@ -1,0 +1,11 @@
+// c375e7c8e944ac79bdb17e16771ca04f24e18b2a:test/resolver-cliente-rota-diagnostico.test.ts (só as linhas de import e citação)
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
+vi.mock("@/lib/session", () => ({ getSession: vi.fn(async () => ({ userId: "u" })) }));
+vi.mock("@/lib/ia/provider", () => ({ chamarProvider: mockProvider }));
+vi.mock("@/lib/clientes/resolver-cliente", async () => {
+  const real = await vi.importActual<typeof import("@/lib/clientes/resolver-cliente")>("@/lib/clientes/resolver-cliente");
+import { POST } from "@/app/api/clientes/[id]/diagnostico/route";
+  c.maybeSingle = () => Promise.resolve(resultado);
+  c.then = (ok: (v: unknown) => unknown, ko?: (e: unknown) => unknown) => Promise.resolve(resultado).then(ok, ko);
+    params: Promise.resolve({ id: RECEITA }),

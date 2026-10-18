@@ -1,0 +1,22 @@
+// 9907af07dfda7d6f5ed0ff04ac63549726dbb358:test/leitores-ficha-casa-nova.test.ts (só as linhas de import e citação)
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { NextRequest } from "next/server";
+  const { clienteMemoria } = await import("./helpers/supabase-memoria");
+vi.mock("@/lib/session", () => ({ getSession: vi.fn(async () => ({ employeeId: "e", role: "admin", entityId: null, nome: "X" })) }));
+vi.mock("@/lib/ia/provider", () => ({ chamarProvider: mockProvider }));
+vi.mock("@/lib/clientes/resolver-cliente", async () => {
+  const real = await vi.importActual<typeof import("@/lib/clientes/resolver-cliente")>("@/lib/clientes/resolver-cliente");
+import { getClienteById, getClientes, getClientesDoEmployee } from "@/lib/data";
+import { GET as getFicha } from "@/app/api/notion/clientes/[id]/route";
+import { POST as postDiagnostico } from "@/app/api/clientes/[id]/diagnostico/route";
+import { GET as getEntregaveis } from "@/app/api/clientes/entregaveis/route";
+      { params: Promise.resolve({ id: RECEITA }) },
+      { params: Promise.resolve({ id: RECEITA }) },
+    "src/lib/data.ts",
+    "src/app/api/notion/clientes/[id]/route.ts",
+    "src/app/api/clientes/[id]/resumo/route.ts",
+    "src/app/api/clientes/[id]/diagnostico/route.ts",
+    "src/app/api/clientes/entregaveis/route.ts",
+    "src/lib/clientes/nichos-catalogo.ts",
+    const src = readFileSync(arq, "utf8");

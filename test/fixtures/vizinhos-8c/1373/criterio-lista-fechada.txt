@@ -1,0 +1,9 @@
+# runs/1373/attempt-2/criterios.txt, linhas 9-16 (o critério de lista fechada que reprovou a tentativa ampliada)
+### criterio[1] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-1373
+sanear_tsc: nao
+cmd:    b="$(git merge-base HEAD staging-auto)"; r=SO_ALLOWLIST; for f in $(git diff --name-only "$b" HEAD); do printf '%s\n' 'src/lib/ia/funcoes.ts' 'test/ia-funcoes-sem-cadastro.test.ts' | grep -Fxq "$f" || r=FORA_$f; done; echo $r
+espera: SO_ALLOWLIST
+-- saida --
+FORA_test/ia-funcoes-agentes-atendimento.test.ts
+

@@ -1,0 +1,7 @@
+// a1965f931b1ea9dccc90fcc80ae721bafb2e2cf2:test/saude-motivo-sem-base.test.ts (só as linhas de import e citação)
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { motivoSaudeSemBase } from "@/lib/perf/motivo-saude";
+import type { ComponenteHealth, ComponenteNome, HealthResult } from "@/lib/perf/cockpit";
+const PAGE = readFileSync("src/app/dashboard/clientes/[id]/page.tsx", "utf8");
+const GERAL = readFileSync("src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx", "utf8");

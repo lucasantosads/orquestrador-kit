@@ -1,0 +1,6 @@
+# 6c0b474d9ce157a8ac463059870b64b17aa7af17: ls-tree dos itens de src/ da allowlist (glob expandido) e dos testes falhos
+src/app/api/cron/ghl-backfill/route.ts
+src/lib/jobs/handlers/index.ts
+src/lib/perf/crm-conexao.ts
+src/lib/perf/ghl-backfill.ts
+test/cron-paths-vercel.test.ts

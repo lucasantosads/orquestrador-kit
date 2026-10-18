@@ -1,0 +1,23 @@
+# runs/1059/attempt-2.prev1/diff.raw: os caminhos "diff --git a/<x> b/<x>", na ordem
+src/app/api/clientes/[id]/ficha/route.ts
+src/app/api/clientes/filtrados/route.ts
+src/app/api/notion/clientes-filtrados/route.ts
+src/app/api/notion/clientes/[id]/route.ts
+src/app/api/notion/clientes/route.ts
+src/app/api/notion/gestores/route.ts
+src/app/api/notion/member/[id]/route.ts
+src/app/api/notion/onboarding/[id]/route.ts
+src/app/api/notion/onboarding/route.ts
+src/app/api/notion/sync/route.ts
+src/app/api/notion/team/route.ts
+src/app/api/notion/update/route.ts
+src/app/api/onboarding/legado/[id]/route.ts
+src/app/dashboard/clientes/[id]/page.tsx
+src/app/dashboard/onboarding/[id]/page.tsx
+src/components/gestor-capacidade.tsx
+test/c0-guard.test.ts
+test/ficha-por-uuid.test.ts
+test/getsession-notion-clientes.test.ts
+test/getsession-notion-onboarding-team.test.ts
+test/notion-rotas-renomeadas.test.ts
+test/quem-cuida.test.ts

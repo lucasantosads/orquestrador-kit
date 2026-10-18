@@ -1,0 +1,4 @@
+# runs/1373/attempt-2/diff.raw: os caminhos
+src/lib/ia/funcoes.ts
+test/ia-funcoes-agentes-atendimento.test.ts
+test/ia-funcoes-sem-cadastro.test.ts

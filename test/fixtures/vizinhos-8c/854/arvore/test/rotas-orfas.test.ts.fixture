@@ -1,0 +1,28 @@
+// 9b763de6c965fe42333c0ac4caa408168759429a:test/rotas-orfas.test.ts (só as linhas de import e citação)
+// página em src/app/dashboard/** sem NENHUM href apontando pra ela em
+// nenhum outro arquivo de src/.
+import { describe, it, expect } from 'vitest'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join, extname, relative } from 'node:path'
+const REPO_ROOT = join(__dirname, '..')
+const SRC_ROOT = join(REPO_ROOT, 'src')
+const DASHBOARD_ROOT = join(SRC_ROOT, 'app', 'dashboard')
+const CODE_EXT = new Set(['.ts', '.tsx'])
+    entries = readdirSync(dir)
+    const full = join(dir, entry)
+// "src/app/dashboard/clientes/[id]/setup/page.tsx" -> "/dashboard/clientes/[id]/setup"
+  const rel = relative(join(SRC_ROOT, 'app'), file).replace(/\\/g, '/')
+    .join('/')
+    .filter((f) => f.endsWith('page.tsx'))
+const fileContents: [string, string][] = allFiles.map((f) => [f, stripComments(readFileSync(f, 'utf8'))])
+// saem da allowlist: agora têm href real em src/components/sidebar.tsx e o
+  'Rota dinâmica sem nenhum `${...}` apontando para ela em src/ — resolução de template literal confirma que não é falso positivo de grep. Residual/duplicada de aba já embutida noutra página; decisão de remover ou linkar é de execução, fora deste ticket.'
+// src/lib/nav/papel.ts (ticket 352, nav por papel — o próprio arquivo
+  'Ticket 342a: Legal saiu da sidebar (era item de menu com zero controles) e virou seção dentro de /config; a rota antiga é hoje só casca de redirect para /config#legal, sem nenhum href de sidebar.tsx apontando pra ela. Ainda aparece "linkada" pro scanner de string por causa de src/lib/nav/papel.ts (ticket 352/343, nav por papel ainda não ligada a sidebar nenhuma) — fora do escopo desta fatia mexer nesse arquivo.'
+// sobrando em src/ (as duas únicas menções ao caminho, no próprio redirect
+// Ticket 343b — a sidebar passa a ser os 5 grupos de src/lib/nav/papel.ts mais
+// deste arquivo: exatamente estas 4 rotas ficam sem nenhum href em src/ — as
+describe('rotas órfãs em src/app/dashboard', () => {
+    // órfãs de fato pro scanner (nenhum literal sobra em src/), e sem elas a
+    // comentário acima de LEGAL_CONFIG_RATIONALE: src/lib/nav/papel.ts já cita
+    // src/lib/hoje/fontes.ts — o link é real, não emprestado da allowlist.
