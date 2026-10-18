@@ -10,9 +10,10 @@
  *
  * Sem `allowlist-ampliada.txt`, leitor e extração ficam byte a byte iguais ao de
  * antes da 8c: a régua é o sha256 da evidência e da extração dos 65 casos reais
- * (`triador-sem-ampliacao.json`, gravado com o triador de antes desta peça).
+ * (`triador-sem-ampliacao.json`, gravado com o triador de antes desta peça; nos
+ * dois casos kit, com `repo` relativo desde a 8c-6).
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -33,6 +34,18 @@ const decide = (x: ReturnType<typeof extrair>) => decidir({ classe: x.classe, re
 describe('8c-P2c · sem allowlist-ampliada.txt, leitor e extração ficam byte a byte iguais (65 casos reais)', () => {
   const h = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 16);
   const semMtime = (ev: Evidencia) => ({ ...ev, lidos: ev.lidos.map(({ mtime_ns: _m, ...r }) => r) });
+  /**
+   * O que a régua compara do leitor kit: a evidência sem o que é do ambiente — o
+   * `mtime_ns` de `lidos` (muda a cada checkout) e `repo`, que o leitor kit grava
+   * como o caminho absoluto do checkout (`leitor-kit.ts:250`; 8c-6). O legado já
+   * grava `fixture:<caso>`.
+   */
+  const semAmbiente = (ev: Evidencia, rel: string) => ({ ...semMtime(ev), repo: rel });
+  const doCaso = (chave: string, raiz = join(FIXT, chave.split(/:(.*)/)[1]!)) => {
+    const [leitor, rel] = chave.split(/:(.*)/) as [string, string];
+    const ev = leitor === 'legado' ? lerCasoDeFixture(raiz) : lerRepoKit(raiz, '243');
+    return { evidencia: h(leitor === 'kit' ? semAmbiente(ev, rel) : ev), extracao: h(extrair(ev)) };
+  };
   const base = JSON.parse(readFileSync(join(FIXT, 'vizinhos-8c', 'triador-sem-ampliacao.json'), 'utf8')) as Record<
     string,
     { evidencia: string; extracao: string }
@@ -47,7 +60,34 @@ describe('8c-P2c · sem allowlist-ampliada.txt, leitor e extração ficam byte a
     const [leitor, rel] = chave.split(/:(.*)/) as [string, string];
     const ev = leitor === 'legado' ? lerCasoDeFixture(join(FIXT, rel)) : lerRepoKit(join(FIXT, rel), '243');
     expect(ev.tentativas.every((t) => !('ampliados' in t))).toBe(true);
-    expect({ evidencia: h(leitor === 'kit' ? semMtime(ev) : ev), extracao: h(extrair(ev)) }).toEqual(esperado);
+    expect(doCaso(chave)).toEqual(esperado);
+  });
+
+  // 8c-6: o merge de 18/10 caiu no checkout principal (20:54 UTC) nos dois casos kit,
+  // com a extração igual e a evidência diferente. O leitor kit grava em `repo` o
+  // caminho absoluto do checkout (`leitor-kit.ts:250`); a régua tinha sido gravada
+  // no worktree da etapa. Relógio e fuso não mudam nenhum dos 65 casos.
+  it.each(Object.keys(base).filter((k) => k.startsWith('kit:')))(
+    '%s copiado para outro diretório dá o mesmo hash (a régua não depende do checkout)',
+    (chave) => {
+      const outro = mkdtempSync(join(tmpdir(), 'orq-8c6-'));
+      cpSync(join(FIXT, chave.slice(4)), outro, { recursive: true });
+      expect(doCaso(chave, outro)).toEqual(base[chave]);
+    },
+  );
+
+  it('com o relógio adiantado 30 dias e atrasado 400, os 65 hashes não mudam', () => {
+    const agora = Date.now();
+    try {
+      for (const dias of [30, -400]) {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(agora + dias * 86_400_000);
+        for (const [chave, esperado] of Object.entries(base)) expect(doCaso(chave), `${chave} (${dias} dias)`).toEqual(esperado);
+        vi.useRealTimers();
+      }
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

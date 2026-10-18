@@ -91,7 +91,10 @@ bloqueou às 11:24 de 18/10, a que o R1 D6 do resolvedor consertou às 14:25Z.
 O sha256 (16 hex) de `JSON.stringify` da evidência e da extração dos 65 casos reais sem
 ampliação (todo caso com `caso.json` em `triador-7f/`, mais os dois repos `conteudos-243`
 pelo leitor kit, sem o `mtime_ns` de `lidos`, que muda a cada checkout), gravado com o
-triador do commit `8b4c6e1`, antes da P2c.
+triador do commit `8b4c6e1`, antes da P2c. Na 8c-6, os dois casos kit passaram a ter `repo`
+relativo (`triador-custo-real/conteudos-243`, `triador-leitor-kit/conteudos-243`) no lugar
+do caminho absoluto do checkout, recalculados com o triador de `49cf161` (o `8b4c6e1`
+rebaseado sobre a MIG-A): o hash antigo só valia no worktree da etapa.
 
 ## afrouxamento/ (P3 · os consertos reais passam)
 
