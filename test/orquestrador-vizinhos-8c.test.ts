@@ -24,6 +24,7 @@ import {
 } from '../scripts/orquestrador/decisao.js';
 import { testesVizinhos, type ArvoreAlvo } from '../scripts/orquestrador/gate-ticket.js';
 import { montarDiagnostico } from '../scripts/orquestrador/diagnostico.js';
+import { montarPromptJuiz, type EntradaPrompt } from '../scripts/orquestrador/juiz.js';
 
 const FIX = join(REPO_ROOT, 'test', 'fixtures', 'vizinhos-8c');
 const cfg = JSON.parse(
@@ -347,5 +348,32 @@ describe('8c-P3 · decisão: afrouxamento reprova sem retry (nunca refatiar)', (
   });
   it('contra-teste: sem afrouxamento, enforcement segue refatiar como hoje', () => {
     expect(decidirDesfecho(dcfg, sinal([{ tipo: 'fora_do_pathspec', detalhe: 'src/x.ts' }])).desfecho).toBe('refatiar');
+  });
+});
+
+// ─── P4 · o juiz recebe a lista ampliada ──────────────────────────────────────
+
+describe('8c-P4 · prompt do juiz: o bloco do teste vizinho ampliado só quando há ampliação', () => {
+  const base: EntradaPrompt = {
+    id: '950',
+    objetivo: 'cascata de marcos no motor',
+    criterios: [{ tipo: 'avaliador', descricao: 'o motor aplica a cascata', espera: 'avaliador' }],
+    allowlist: ['src/lib/qualificacao/motor.ts'],
+    diff: 'diff --git a/x b/x',
+    gates: 'ok',
+  };
+  it('sem ampliados (ausente ou vazio): o prompt sai byte a byte como antes, sem o bloco nem o anti-afrouxamento', () => {
+    const p = montarPromptJuiz(base);
+    expect(montarPromptJuiz({ ...base, ampliados: [] })).toBe(p);
+    expect(p).not.toContain('TESTE VIZINHO AMPLIADO');
+    expect(p).not.toContain('ANTI-AFROUXAMENTO');
+  });
+  it('com ampliados: lista os testes, liga o anti-afrouxamento e cobra o afrouxamento por dado (o 762)', () => {
+    const p = montarPromptJuiz({ ...base, ampliados: ['test/etapa2-funil-motor.test.ts'] });
+    expect(p).toContain('TESTE VIZINHO AMPLIADO');
+    expect(p).toContain('  - test/etapa2-funil-motor.test.ts');
+    expect(p).toContain('ANTI-AFROUXAMENTO');
+    expect(p).toMatch(/lista de exceções/);
+    expect(p).toMatch(/OBJETIVO/);
   });
 });

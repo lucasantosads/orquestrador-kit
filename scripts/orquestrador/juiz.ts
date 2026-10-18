@@ -115,6 +115,12 @@ export interface EntradaPrompt {
    * prompt sai byte a byte como antes.
    */
   definicoes?: DefinicaoChamada[]
+  /**
+   * Etapa 8c — testes vizinhos que o executor ampliou (fora da allowlist do
+   * ticket; quebraram com o diff e passam na base). Ausente ou vazio: o prompt
+   * sai byte a byte como antes.
+   */
+  ampliados?: string[]
 }
 
 /** A allowlist inclui arquivo de teste? Só então o bloco anti-afrouxamento entra. */
@@ -158,6 +164,20 @@ const ANTI_AFROUXAMENTO = `4. ANTI-AFROUXAMENTO (a allowlist deste ticket inclui
    - valor esperado alterado SEM comentário dizendo por que a regra nova o muda.
    Valor RECALCULADO sob a regra nova, com o porquê em comentário, é o único
    caminho aceito. Renomear símbolo para satisfazer contagem também é afrouxar.`
+
+/** Etapa 8c: o enforcement já barra o afrouxamento por contagem; aqui fica o que ele não vê. */
+function blocoAmpliados(ampliados: string[]): string[] {
+  return [
+    '',
+    `5. TESTE VIZINHO AMPLIADO (o executor liberou estes testes, fora da allowlist do ticket,
+   porque quebraram com o diff e passam na base):`,
+    ...ampliados.map((t) => `  - ${t}`),
+    `   No diff deles, REPROVE se o ajuste muda o DADO do teste (lista de exceções, de
+   pendências, fixture) para ele passar sem o comportamento que cobra, ou muda o valor
+   esperado sem que o OBJETIVO exija o comportamento novo. A contagem de it/expect, os
+   .skip e os matchers genéricos o enforcement já barrou; o que sobra é com você.`,
+  ]
+}
 
 const FORMATO = `RESPONDA SÓ COM ESTE JSON, sem cerca de código, sem texto antes ou depois:
 {"aprovado": true|false, "motivo": "<=2 frases, concreto, citando arquivo e linha>",
@@ -452,7 +472,8 @@ export function montarPromptJuiz(e: EntradaPrompt): string {
     CABECALHO,
     '',
     COBRANCAS,
-    ...(tocaTeste(e.allowlist) ? ['', ANTI_AFROUXAMENTO] : []),
+    ...(tocaTeste([...e.allowlist, ...(e.ampliados ?? [])]) ? ['', ANTI_AFROUXAMENTO] : []),
+    ...(e.ampliados && e.ampliados.length > 0 ? blocoAmpliados(e.ampliados) : []),
     '',
     FORMATO,
     '',

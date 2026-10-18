@@ -144,7 +144,7 @@ function vitestDaBase(tmp: string, base: Base): string {
   return f;
 }
 
-function drenagem(fx: string, tmp: string, ajustaTeste: boolean | 'skip', base: Base = 'verde'): string {
+function drenagem(fx: string, tmp: string, ajustaTeste: boolean | 'skip', base: Base = 'verde', juizReal = false): string {
   // Conta as tentativas fora do repo; da 2ª em diante, ajusta o teste vizinho se
   // pedido ('skip': ajusta e ainda põe um it.skip — o afrouxamento da P3).
   const ajuste = ajustaTeste === 'skip' ? `echo '// AJUSTADO'; echo "it.skip('o motor marca', () => {})"` : `echo '// AJUSTADO ao comportamento novo'`;
@@ -160,9 +160,13 @@ function drenagem(fx: string, tmp: string, ajustaTeste: boolean | 'skip', base: 
     claude_run() { echo 'TESTE: claude_run REAL chamado' >&2; exit 97; }
     ticket_commit() { return 0; }
     cooldown_arm() { return 0; }
-    run_juiz() {
+    ${
+      juizReal
+        ? `STUB_JUIZ='echo x >> ${fx}/.juiz-chamadas; echo "{\\"aprovado\\": true, \\"motivo\\": \\"ok\\", \\"criterios_falhos\\": []}"'`
+        : `run_juiz() {
       echo x >> '${fx}/.juiz-chamadas'
       JUIZ_ROU=1; JUIZ_APROVADO=true; JUIZ_ILEGIVEL=0; JUIZ_MOTIVO=""; JUIZ_FALHOS=""
+    }`
     }
     drive_ticket "$(ticket_file_by_id 901)"
   `;
@@ -299,5 +303,26 @@ describe('8c-P2b · teste vizinho no drive_ticket: amplia na tentativa seguinte,
     expect(ev.join('\n')).not.toContain('REFATIAR');
     expect(juiz(fx)).toBe(0);
     expect(String(ticket(fx).notas_status)).toContain('afrouxamento');
+  }, 240_000);
+
+  it('P4 · o bloco FAIL e a regra só no prompt da tentativa ampliada; o juiz (run_juiz real, STUB_JUIZ) recebe a lista ampliada', () => {
+    const { fx, tmp } = fixtureRepo();
+    const log = drenagem(fx, tmp, true, 'verde', true);
+
+    const p0 = readFileSync(run(fx, 0, 'prompt.txt'), 'utf8');
+    const p1 = readFileSync(run(fx, 1, 'prompt.txt'), 'utf8');
+    expect(p0, log).not.toContain('TESTES VIZINHOS QUEBRADOS');
+    expect(p0).not.toContain('[AMPLIADA');
+    expect(p1).toContain(`  - ${VIZINHO}   [AMPLIADA até o fim deste ticket: teste vizinho quebrado pelo seu diff]`);
+    expect(p1).toContain('TESTES VIZINHOS QUEBRADOS PELO SEU DIFF');
+    expect(p1).toContain(`local: ${VIZINHO}:92:50`);
+    expect(p1).toContain('REGRA ANTI-AFROUXAMENTO');
+
+    expect(existsSync(run(fx, 0, 'juiz.prompt.txt'))).toBe(false); // a 1ª reprovou no gate: juiz não chamado
+    const j1 = readFileSync(run(fx, 1, 'juiz.prompt.txt'), 'utf8');
+    expect(j1).toContain('TESTE VIZINHO AMPLIADO');
+    expect(j1).toContain(`  - ${VIZINHO}`);
+    expect(juiz(fx)).toBe(1);
+    expect(ticket(fx).status).toBe('aguardando_merge');
   }, 240_000);
 });

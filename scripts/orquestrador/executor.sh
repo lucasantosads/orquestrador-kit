@@ -350,10 +350,17 @@ tools_do_ticket() {
 tools_proibidas() { decisao disallowed; }
 
 build_prompt() {
-  local file="$1" motivo="$2" tools="${3:-}" id objetivo allow criterios spec="" lista
+  # ampliada/bloco_viz: por argumento ou, sem ele, a ampliação do drive em curso (8c)
+  local file="$1" motivo="$2" tools="${3:-}" ampliada="${4-${VIZ_AMPLIADA:-}}" bloco_viz="${5-${VIZ_BLOCO:-}}" id objetivo allow criterios spec="" lista t
   id="$(ticket_field "$file" '.id')"
   objetivo="$(ticket_field "$file" '.objetivo')"
   allow="$(ticket_field "$file" '.pathspec_allowlist | join("\n  - ")')"
+  # Teste vizinho ampliado (etapa 8c): entra na lista, marcado. Sem ampliação o
+  # prompt sai como antes.
+  while IFS= read -r t; do
+    [ -n "$t" ] && allow="$allow
+  - $t   [AMPLIADA até o fim deste ticket: teste vizinho quebrado pelo seu diff]"
+  done <<<"$ampliada"
   criterios="$(ticket_json "$file" | jq -r '.criterios_aceite[]? |
     if .espera == "avaliador" then "  - \(.descricao)\n      [julgado pelo avaliador — NAO execute]"
     else "  - \(.descricao)\n      cmd:   \(.cmd)\n      espera: \(.espera)" end')"
@@ -424,7 +431,22 @@ ENTREGA:
    acha depois o que este ticket mudou (git log --grep), não pelo log do harness.
 ${motivo:+
 REPROVAÇÃO ANTERIOR (corrija exatamente isto):
-${motivo}}
+${motivo}}${ampliada:+
+
+TESTES VIZINHOS QUEBRADOS PELO SEU DIFF (allowlist ampliada até o fim deste ticket).
+Cada um importa ou cita um arquivo da sua allowlist, falhou na tentativa
+anterior e passa na base: quem o quebrou foi o seu diff. Saída do vitest (FAIL,
+erro e local):
+${bloco_viz}
+
+REGRA ANTI-AFROUXAMENTO (o enforcement e o juiz cobram): ajuste o teste só para
+refletir o comportamento novo que o OBJETIVO exige. O enforcement REPROVA, e o
+ticket bloqueia sem nova tentativa, se o diff nesses testes: remove it/test ou
+expect, põe .skip/.only/.todo, comenta teste, troca asserção específica por
+genérica (toBeDefined, toBeTruthy, toMatchObject, expect.any/objectContaining)
+ou apaga o arquivo. O juiz reprova também o ajuste que muda o DADO do teste
+(lista de exceções, fixture) para ele passar sem o comportamento que cobra. Se
+o teste acusa regressão de verdade, conserte o código, não o teste.}
 EOF
 }
 
@@ -768,7 +790,8 @@ run_juiz() {
       --arg nota "$([ "${COMMIT_DO_HARNESS:-0}" = 1 ] && printf '%s' \
         'O agente saiu sem commitar e o COMMIT DESTE DIFF FOI DADO PELO HARNESS (wip). O trabalho pode estar num ponto intermediário e a mensagem de commit não é do agente — julgue o diff, não o commit.')" \
       --argjson ctx "$ctx" --argjson defs "$defs" \
-      '{id:$id, objetivo:$o, criterios:$c, allowlist:$al, diff:$diff, gates:$gates, nota:$nota, contexto:$ctx, definicoes:$defs}' \
+      --argjson amp "$(printf '%s' "$VIZ_AMPLIADA" | jq -Rn '[inputs | select(length > 0)]')" \
+      '{id:$id, objetivo:$o, criterios:$c, allowlist:$al, diff:$diff, gates:$gates, nota:$nota, contexto:$ctx, definicoes:$defs, ampliados:$amp}' \
     | juiz prompt > "$prompt"
 
   fase juiz
@@ -989,7 +1012,7 @@ RESULT=""; MOTIVO=""; DIFF_LINES=0; DUR=0; ENF_OK=1; AGENTE_RC=0
 # valendo da tentativa seguinte à decisão até o fim do drive (o drive_ticket zera
 # no começo e arma depois de um retry). VIZ_DECIDIU / VIZ_JA: o que a seção 7a
 # desta tentativa achou (ampliar agora / vizinho de novo, ampliação já usada).
-VIZ_AMPLIADA=""; VIZ_DECIDIU=""; VIZ_JA=""
+VIZ_AMPLIADA=""; VIZ_DECIDIU=""; VIZ_JA=""; VIZ_BLOCO=""
 # RETRY SEM MUDANÇA (ticket 623): `$8` (rundir_anterior) é o diretório de
 # evidência da tentativa ANTERIOR do mesmo ciclo de retry — vazio na primeira
 # tentativa, que não muda. Se o diff.patch novo tem o MESMO sha256 do anterior,
@@ -1384,7 +1407,7 @@ drive_ticket() {
   # virar ponto de partida nem destino de escrita. Reaproveitar worktree é
   # decisão TOMADA DENTRO deste laço, entre um retry e o seguinte, e só ali.
   local reusar=0 base_ticket="" slot attempt0 sub
-  VIZ_AMPLIADA=""   # a ampliação de teste vizinho nunca passa de um drive a outro (8c)
+  VIZ_AMPLIADA=""; VIZ_BLOCO=""   # a ampliação de teste vizinho nunca passa de um drive a outro (8c)
   id="$(ticket_field "$file" '.id')"
   slug="$(ticket_field "$file" '.slug')"
 
@@ -1628,6 +1651,7 @@ drive_ticket() {
     # torna a versão do ticket inelegível para outra ampliação.
     if [ -n "$VIZ_DECIDIU" ]; then
       VIZ_AMPLIADA="$VIZ_DECIDIU"
+      VIZ_BLOCO="$(cat "$rundir/vizinhos.txt" 2>/dev/null || true)"
       event "$id" VIZINHO_AMPLIADO "testes=$(printf '%s' "$VIZ_AMPLIADA" | paste -sd, -)" "hash=$(ticket_versao "$file")" "attempt=$((attempt + 1))"
     fi
     # DIAGNÓSTICO ESTRUTURADO no lugar do texto livre (custo-e-contexto §6): o
