@@ -1166,3 +1166,32 @@ Mudança em código existente: `resolvedor/repo.ts` ganha a porta genérica `com
 No rebase sobre a 8b, a checagem de branch do 8b-2 foi para dentro de `comitarUmArquivo`,
 por um parâmetro opcional `esperada`: o `escreverEComitar` sempre passa
 `branchEsperada(raiz, branch)`; o aplicador não passa, e o commit do token não confere branch.
+
+### Etapa 8c · teste vizinho liberado só quando falha (18/10/2026)
+
+Porte do 457856c do Comarka no desenho do kit: o executor consegue consertar o teste
+acoplado sem resgate humano. CONTRATO §21.
+
+- **8c-1** `2ea7e0c`: `dir/` na allowlist vale `dir/**` (`matchesAllowlist`; o diagnóstico de
+  retry usa a mesma função). Vermelho com o 295 real (41 violações, 31 de ruído).
+- **8c-2a** `3b82da1`: `decidirVizinhos` (a C11 v2 como ligação, tudo ou nada),
+  `blocoFailVitest`, `cmdComAmpliados` e `decisao vizinhos`. Vermelho com 9 casos reais do
+  replay e o critério de lista fechada do 1373.
+- **8c-2b1** `c37bc6f`: no executor, a seção 7a antes da base vermelha; a ampliação vale até
+  o fim do drive, uma vez por versão (`VIZINHO_AMPLIADO`); `--allowlist-extra`; critério de
+  lista fechada derivado na execução. Vermelho: o 950 bloqueava como `base_vermelha` na 1ª
+  tentativa; agora aprova na 2ª.
+- **8c-2b2** `8b4c6e1`: os arquivos falhos rodam na árvore do `base_ticket` antes de ampliar
+  (`VIZINHO_BASE`); base vermelha verdadeira não amplia.
+- **8c-2c** `04012f5`: o triador lê `allowlist-ampliada.txt` (kit e legado); D6v: bloqueio
+  depois de ampliação vira aviso, nunca R1. Vermelho com o 1373 real (R1 D6 às 14:25Z);
+  65 casos reais byte a byte iguais.
+- **8c-3** `660211e`: anti-afrouxamento mecânico só nos ampliados (6 regras líquidas, causa
+  `afrouxamento`, bloqueia sem retry). Os 33 testes dos consertos reais passam.
+- **8c-4** `c1d86b2`: prompts do executor (bloco FAIL e regra só na tentativa ampliada) e do
+  juiz (`ampliados`, o afrouxamento por dado).
+- **8c-5**: CONTRATO §21, §4.1 (`VIZINHO_BASE`, `VIZINHO_AMPLIADO`), §11.3 (`afrouxamento`),
+  §13 (D6v), este registro e `docs/PECAS.md`.
+
+Asserções existentes que mudaram: nenhuma. O hash de versão do aviso do gate de ticket virou
+`lib.sh:ticket_versao`, com o mesmo valor.

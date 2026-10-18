@@ -1062,6 +1062,19 @@
   `orquestrador-resolvedor-pausa-dono-intocavel.test.ts`,
   `orquestrador-resolvedor-humano-mexeu.test.ts`.
 
+- **8c · teste vizinho liberado só quando falha.** Porte do 457856c: quando todo FAIL do gate
+  de testes é teste vizinho (C11 v2 na árvore do `base_ticket`) e passa na base, a tentativa
+  seguinte, até o fim do drive e uma vez por versão do ticket, pode editá-lo; o critério de
+  lista fechada aceita o ampliado na execução; o enforcement reprova o afrouxamento (6 regras
+  líquidas, só nos ampliados, bloqueia sem retry); o triador não deixa o R1 agir de novo
+  sobre o teste já ampliado (D6v); `dir/` vale `dir/**`. Replay: amplia 12 dos 19 casos de
+  allowlist da 8a e cobre o resgate em 11. Commits `2ea7e0c`, `3b82da1`, `c37bc6f`,
+  `8b4c6e1`, `04012f5`, `660211e`, `c1d86b2`. CONTRATO §21.
+  *Evidência:* `~/orq-sessoes/relatorio-kit-etapa8c.md` (replay §2, afrouxamento §3).
+  *Teste:* `orquestrador-vizinhos-8c.test.ts`, `orquestrador-vizinhos-8c-executor.test.ts`,
+  `orquestrador-vizinhos-8c-triador.test.ts` (fixtures `test/fixtures/vizinhos-8c/`, do
+  Comarka, `ORIGEM.md`).
+
 ## PENDENTES
 
 - **8b · janela entre o sha e o `rm` na retomada da pausa de gate.** O resolvedor confere o
@@ -1077,21 +1090,18 @@
   Comarka tiver o conserto do C4 e o trailer.
   *Evidência:* CONTRATO §19.4; `docs/migracao-comarka.md` (Etapa 8b).
 
-- **8c · `testes_vizinhos` como allowlist de teste condicionada a falha.** Porte do
-  457856c do Comarka: a C11 v2 só avisa, porque nenhuma variante estática chega a zero FP
-  (c15 180/368 sem isenção, 87/368 com a isenção de `testes_conferidos`; c6 272/115;
-  `teste_cita` 163/82; híbrida 262/98 — relatório 8a §4b) e o defeito real é o conferido
-  errado (13 de 19 resgates de allowlist tinham o teste quebrado em `testes_conferidos`,
-  §3a). A 8c: o ticket ganha `testes_vizinhos` (a lista que o `--relatorio` já imprime);
-  o executor deixa o agente editar um deles só quando ele falha, uma vez por ticket, com a
-  regra anti-afrouxamento no prompt e no juiz (`teste_cita`, `vitest_vizinhos` e
-  `--allowlist-extra` do Comarka, `lib.sh:771-850`, `executor.sh:440-451`, `:681-692`).
-  Pelo `teste_cita`, a ampliação teria agido em 12 dos 19 casos. Junto, a normalização
-  de `dir/` em `dir/**` que o `enforcement-core.ts` do kit não tem (`:178`; o Comarka
-  tem, `enforcement-core.ts:85-90`).
-  *Evidência:* relatório 8a §2, §3a, §4b.
-  *Teste:* replay dos 19 casos de §3a (o teste real ampliado, nada fora dele) e o
-  enforcement aceitando `dir/` como `dir/**`.
+- **8c · runner da conferência na base é `npx --no-install vitest run` na raiz.** O
+  `vizinho_na_base` roda os arquivos falhos na raiz da worktree da base. Em repo que roda o
+  vitest num subdiretório (monorepo, `apps/web`), o caminho do FAIL não existe na raiz, o
+  runner não acha e a conferência dá `inconclusivo`: não amplia (seguro, mas inútil ali).
+  Fechar exige o runner vir do gate de papel `testes` do config.
+  *Evidência:* CONTRATO §21.2; `executor.sh:VIZINHO_CMD_BASE`.
+
+- **8c · o ledger grava o aviso da D6v com o motivo genérico do `decidir.ts`.** "R1: só
+  diagnóstico e aviso (decisão humana)"; o texto "teste já ampliado pelo executor" está no
+  rótulo e no remédio do diagnóstico, e a regra `D6v` na linha. Uma linha própria na tabela do
+  `resolvedor/decidir.ts` deixaria o motivo explícito (o resolvedor ficou fora do escopo da 8c).
+  *Evidência:* CONTRATO §21.5.
 
 - **8a · classe "teste que varre diretório" sem detector estático.** 854 e 856 quebraram
   `test/rotas-orfas.test.ts`, que varre `src/app/dashboard` por `readdirSync` a partir de

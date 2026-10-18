@@ -200,6 +200,8 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `AMBIENTE` | `local-loop.sh:drenar` (peça 7a-8) | `tickets=<id>,<id>` `causa=<normalizada>` (a causa vai até o fim da linha); ver abaixo |
 | `AMBIENTE_ADIAMENTO_DESFEITO` | `local-loop.sh:adiamentos_ambiente_desfazer` (porte-actus j2) | `adiamentos_ambiente=<antes>-><depois>` — a drenagem terminou em `AMBIENTE` e o `adiamentos_ambiente` que o executor somou no ticket nesta drenagem volta ao valor de antes (commitado); um por ticket ainda pendente cujo valor mudou |
 | `EDICAO_ALHEIA` | `lib.sh:_aviso_edicao_alheia`, chamada por `commit_motor` (ticket_commit e autocommit; etapa 8b, §19) | `arquivo=<nome do ticket>` `campos=<chave>,…\|prosa\|nao_rastreado` `hash=<12 hex>` — o ticket tinha edição que não é do motor; o commit do loop levou só as chaves do motor e a edição ficou no working tree. Uma vez por edição (`hash` do ticket sem os campos do motor) |
+| `VIZINHO_BASE` | `executor.sh:run_attempt`, seção 7a (etapa 8c, §21) | `resultado=verde\|vermelho\|inconclusivo` `testes=<arquivo>,…` — o FAIL só em teste vizinho foi rodado na árvore do `base_ticket` antes de ampliar; só `verde` amplia |
+| `VIZINHO_AMPLIADO` | `executor.sh:drive_ticket` (etapa 8c, §21) | `testes=<arquivo>,…` `hash=<12 hex>` `attempt=<N>` — a tentativa N reprovou só em teste vizinho e as seguintes, até o fim do drive, podem editá-lo. Uma vez por versão do ticket (o `hash` é o do `GATE_TICKET_AVISO`, `lib.sh:ticket_versao`); gravado só quando há tentativa para usar |
 | `PAUSA` | `lib.sh:pausa_registrar`, chamada por `orq pausar`, pelo `orq-pause.sh` (514, §11) e pelo painel (peças K12-C, K12-F) | `motivo=<token>` `por=terminal\|painel` |
 | `RETOMADA` | `lib.sh:retomada_registrar`, chamada por `orq retomar` e pelo painel (peças K12-C, K12-F) | `por=terminal\|painel` `dur=<N>min` |
 
@@ -908,12 +910,19 @@ teste do Actus passou a valer sobre ela (decisões do Lucas, 24/09/2026).
 - `base_vermelha` (632): gate(s) reprovado(s) todos de papel `testes`,
   enforcement ok, critérios verdes, e TODO arquivo das linhas ` FAIL  <arquivo>`
   fora do diff e da allowlist = bloqueado sem juiz, sem retry, sem consumir
-  tentativa; lista vazia ou arquivo do ticket = caminho de sempre.
+  tentativa; lista vazia ou arquivo do ticket = caminho de sempre. Antes dela
+  vem o teste vizinho (etapa 8c, §21): FAIL só em teste que importa ou cita item
+  da allowlist e passa na base não é base vermelha. Os testes ampliados contam
+  como allowlist aqui.
 - `arquivo_solto` (631): toda violação do enforcement é `fora_do_pathspec` de
   arquivo que estava NÃO rastreado antes do `add -A` do harness = reprovado com
   retry (`MANTER`, em `NUNCA_ESCALA`), o nome no diagnóstico ("remova da
   worktree"), e a worktree é reaproveitada. Precisa da regra
   `politica_retry.por_causa.arquivo_solto`; sem ela o `decidirRetry` bloqueia.
+- `afrouxamento` (etapa 8c, §21.4): alguma violação do enforcement é do tipo
+  `afrouxamento` (num teste vizinho ampliado) = reprovado, e a causa manda sobre
+  as outras violações (nunca `refatiar`). Nenhuma regra de `politica_retry`
+  a nomeia: o `decidirRetry` bloqueia, sem nova tentativa.
 - O diagnóstico de retry leva o motivo LITERAL do juiz e os criterios_falhos
   dele na frente (623). O juiz recebe, lido da base, o corpo das
   funções/fixtures chamadas pelos testes adicionados (628).
@@ -1093,6 +1102,7 @@ sem modelo; palpite (`?`) ou sem regra vai ao modelo, se houver orçamento.
 | D3 | diff-cap e diff.stat > cap | R3? | `:207` |
 | D4 | `Timeout waiting for worker`/`Timeout starting`/EMFILE/ENOSPC na última tentativa | R5 máquina | `:217` |
 | D5 | o motor do kit já decidiu `base_vermelha`; ou o vermelho fora da allowlist e do diff aparece em outra família nas ±6 h | R5 base | `:224` |
+| D6v | vermelho fora da allowlist e do diff que o executor já ampliou nesta série (`allowlist-ampliada.txt` de alguma tentativa; etapa 8c, §21.5): rótulo "teste já ampliado pelo executor", firme, sem `r1_testes`; o resolvedor só avisa | R1 (sem ação) | `extrair.ts:D6v` |
 | D6b | enforcement na última tentativa com UMA violação, `fora_do_pathspec` de um arquivo que estava vermelho fora da allowlist e do diff nessa tentativa ou na anterior (7f-b3, §15.1) | R1 | `:239` |
 | D6 | vitest/enforcement, vermelho fora da allowlist e do diff, e o fonte em HEAD cita nome-base (≥ 4) ou diretório (≥ 5) do diff; firme só com o mesmo teste vermelho fora em ≥ 2 tentativas da série, senão `R1?` (7f-b1-7) | R1 / R1? | `:261` |
 | D7 | vitest, vermelho fora, não acoplado (ou sem fonte) | R5? | `:277` |
@@ -2002,6 +2012,106 @@ recusas do SQL, envelope do 1377, sonda, mascaramento, `ORQ_TESTE`),
 5 herdados e 1 pendente) e `orquestrador-migrations-aplicar.test.ts` (cada recusa, a trava,
 o `pre_check`, a conferência, o commit de um arquivo e o replay no `liberacoes.json` real do
 Comarka de 18/10).
+
+## 21. Etapa 8c: teste vizinho liberado só quando falha (18/10/2026)
+
+Origem: a medição do Comarka de 04 a 17/10 (allowlist é a maior classe de resgate, 22, 18
+reais) e a 8a, que mostrou que nenhuma regra estática separa o teste que vai quebrar do que
+não vai (§12.6). Porte do 457856c do Comarka no desenho do kit. Relatório:
+`~/orq-sessoes/relatorio-kit-etapa8c.md`.
+
+### 21.1 `dir/` vale `dir/**` (`enforcement-core.ts:normalizarEntradaAllowlist`)
+
+`matchesAllowlist` normaliza o item terminado em `/`. Valem a mesma régua: o enforcement, a
+base vermelha (`decisao.ts:arquivosBaseVermelha`), o "dentro" da C11 (`gate-ticket.ts`), o
+`fora_da_allowlist` do diagnóstico de retry (`diagnostico.ts:cobre`), o triador e a
+sobreposição. Caso real: o 295 do Comarka, cujas 31 violações sob `tabs/` eram ruído; as 10
+reais ficam. A expansão de item `dir/` na C11 (`gate-ticket.ts:1538`) não mudou: segue aviso.
+
+### 21.2 A decisão (`decisao.ts:decidirVizinhos`, `decisao vizinhos`)
+
+Na tentativa em que o gate de papel `testes` reprova, com enforcement ok e sem
+`reexecutar`, ANTES da base vermelha (`executor.sh`, seção 7a): amplia só se TODO arquivo
+com ` FAIL ` é teste fora do diff e da allowlist e está em `testesVizinhos(allowlist, árvore
+do base_ticket)` (a C11 v2: import direto resolvido ou citação de item de `src/`). Tudo ou
+nada. Critério vermelho junto não impede (o retry conserta os dois). Depois, os arquivos
+falhos rodam na árvore do `base_ticket` (`vizinho_na_base`: worktree destacada,
+`VIZINHO_CMD_BASE`, padrão `npx --no-install vitest run`); só `verde` amplia; `vermelho`
+(falha também na base) e `inconclusivo` (o runner não rodou) seguem a base vermelha de hoje.
+`VIZINHO_BASE` na trilha nos três casos.
+
+Replay dos 19 casos de allowlist da 8a (relatório 8c §2):
+
+| régua de ligação | amplia | cobre o resgate | amplia errado |
+|---|---|---|---|
+| `teste_cita` do 457856c | 10 | 9 | 1 (762: o conserto era `src/middleware.ts`) |
+| **C11 v2 (a do kit)** | **12** | **11** | 1 (826: o resgate foi spec nova) |
+
+Fora do alcance: 854 e 856 (varrem diretório), 711a e 711b3 (`sem-insumo`), 830 (diff 0), 1195
+(a reprova não foi de vitest; é a D6b).
+
+### 21.3 A ampliação (`executor.sh`, `lib.sh`, `enforcement.sh`)
+
+- Vale da tentativa seguinte à decisão até o FIM DO DRIVE: a worktree é reaproveitada e o
+  diff é medido contra o `base_ticket`, então a tentativa 3 sem a ampliação barraria o teste
+  editado na 2. Nunca passa de um drive a outro.
+- Conta como tentativa (a reprovação que a decide consome, como qualquer outra).
+- Uma vez por versão do ticket: `VIZINHO_AMPLIADO` com o `hash` da versão. Com a ampliação
+  desta versão já usada, o vizinho vermelho reprova pelo caminho de hoje (nem amplia, nem é
+  base vermelha) e a nota diz "teste vizinho já ampliado".
+- No rundir de cada tentativa ampliada: `allowlist-ampliada.txt`. A decisão fica em
+  `vizinhos.json`, `vizinhos.txt` (o bloco FAIL) e `vizinhos-base.txt`.
+- O enforcement recebe `--allowlist-extra rundir/allowlist-ampliada.txt` (somado à
+  allowlist e mandado em `ampliados`). O critério de lista fechada (o cmd lista a allowlist
+  inteira entre aspas) ganha os ampliados SÓ na execução (`criterios_da_tentativa`,
+  `cmdComAmpliados`, o passo 2 do `r1.ts`); o ticket não muda. Sem isto, as tentativas
+  ampliadas do 1256 e do 1373 no Comarka consertaram o teste e reprovaram com
+  `FORA_<teste>`.
+- O ticket não ganha campo: `campos-do-motor.json` (8b) não muda.
+
+### 21.4 Anti-afrouxamento (`enforcement-core.ts:violacoesDeAfrouxamento`)
+
+Só nos arquivos de `ampliados`, por contagem LÍQUIDA de linhas no diff do arquivo (a régua
+da guarda do R1). Violação tipo `afrouxamento`, causa `afrouxamento` (§11.3):
+
+| regra | resgates reais reprovados (33 testes, 18 tickets) |
+|---|---|
+| remove `it(`/`test(` | 0 |
+| remove `expect(` | 0 |
+| acrescenta `.skip(`/`.only(`/`.todo(`/`xit(`/`xtest(`/`xdescribe(` | 0 |
+| acrescenta matcher genérico (`toBeDefined()`, `toBeTruthy()`, `toBeFalsy()`, `expect.any/anything/objectContaining/arrayContaining/stringContaining(`, `.toMatchObject(`) | 0 |
+| comenta linha com `it(`/`test(`/`expect(` | 0 |
+| apaga o arquivo de teste | 0 |
+| *(contraprova)* apaga qualquer linha com `expect(` | 19 |
+
+O que muda o DADO e não a asserção (o 762: pôr a rota na lista de pendências do teste) não é
+mecânico: fica com o juiz (§21.6).
+
+### 21.5 O triador e o resolvedor (`tipos.ts`, `leitor-kit.ts`, `leitor-legado-comarka.ts`, `extrair.ts`)
+
+`Tentativa.ampliados` vem de `attempt-N/allowlist-ampliada.txt` (os dois leitores; o legado
+lê o que o 457856c grava no Comarka). O teste ampliado conta como dentro da allowlist
+naquela tentativa. Vermelho fora que a série já ampliou fecha a D6v (§13): o bloqueio depois
+de uma ampliação que não fechou vira aviso, nunca R1. Caso real: a série do 1373 que o R1 D6
+consertou às 14:25Z de 18/10, depois de o 457856c a ter ampliado. Sem o arquivo, a evidência e
+a extração dos 65 casos reais ficam byte a byte iguais.
+
+### 21.6 Prompts (`executor.sh:build_prompt`, `juiz.ts:blocoAmpliados`)
+
+Na tentativa ampliada, o executor vê os testes marcados na allowlist, o bloco FAIL da
+decisão e a regra (o que o enforcement reprova e o que o juiz pega). O juiz recebe
+`ampliados`: o bloco 5 (reprovar mudança de dado ou de valor esperado sem o objetivo pedir) e o
+anti-afrouxamento. Sem ampliação, os dois prompts saem byte a byte como antes.
+
+### 21.7 Testes
+
+`orquestrador-vizinhos-8c.test.ts` (dir/ com o 295; a decisão com 950, 1054, 1059, 924a, 855,
+762, 854, 711b3 e 830 reais; o bloco FAIL do 950; a lista fechada do 1373 rodada num repo; o
+CLI; as 6 regras e os 33 consertos reais; a decisão de afrouxamento; o prompt do juiz),
+`orquestrador-vizinhos-8c-executor.test.ts` (`drive_ticket` de verdade com o 950: amplia e
+aprova; até o fim do drive; uma vez por versão; não vizinho segue base vermelha; vermelho e
+inconclusivo na base; `it.skip` bloqueia; os prompts) e `orquestrador-vizinhos-8c-triador.test.ts`
+(o 1373 real e os 65 casos byte a byte). Fixtures em `test/fixtures/vizinhos-8c/` (`ORIGEM.md`).
 
 ## 10. Divergências conhecidas
 
