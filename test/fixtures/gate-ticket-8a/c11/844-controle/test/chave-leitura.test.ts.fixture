@@ -1,0 +1,11 @@
+// 111a043:test/chave-leitura.test.ts (só as linhas de import e de citação)
+import { describe, it, expect, vi } from "vitest";
+vi.mock("@supabase/supabase-js", async () => {
+  const { clienteMemoria } = await import("./helpers/supabase-memoria");
+vi.mock("@/lib/session", () => ({ getSession: vi.fn(async () => ({ employeeId: "e1", role: "admin", entityId: null, nome: "T" })) }));
+import { filtroDoCliente, clienteDaLinha } from "@/lib/clientes/resolver-cliente";
+import { clienteMemoria } from "./helpers/supabase-memoria";
+describe("lote NPS: nps-disparo lê tokens e respostas pela chave (T4b)", () => {
+    const { criarFontesReais } = await import("@/lib/jobs/nps-disparo");
+    const { NextRequest } = await import("next/server");
+    const { GET } = await import("@/app/api/clientes/[id]/reunioes/route");

@@ -1,0 +1,11 @@
+// ba78cc9:test/nps-reacao-resposta.test.ts (só as linhas de import e de citação)
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
+vi.mock("@/lib/nps/reacao-resposta", () => ({ reagirRespostaNps: reagirMock }));
+vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ from: fromMock }) }));
+vi.mock("@/lib/clientes/resolver-chave", () => ({
+vi.mock("@/lib/session", () => ({
+import { POST as postPublica } from "@/app/api/nps/public/[token]/route";
+import { POST as postRegistrar } from "@/app/api/clientes/nps/registrar/route";
+let real: typeof import("@/lib/nps/reacao-resposta");
+  real = await vi.importActual<typeof import("@/lib/nps/reacao-resposta")>("@/lib/nps/reacao-resposta");

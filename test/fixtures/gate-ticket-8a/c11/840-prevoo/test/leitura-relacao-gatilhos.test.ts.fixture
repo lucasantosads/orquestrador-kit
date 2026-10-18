@@ -1,0 +1,10 @@
+// ba78cc9:test/leitura-relacao-gatilhos.test.ts (só as linhas de import e de citação)
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { NextRequest } from "next/server";
+vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ from: (t: string) => (h.db as { from: (t: string) => unknown }).from(t) }) }));
+vi.mock("@/lib/ia/provider", () => ({ chamarProvider: h.chamar, IAProviderError: class extends Error {} }));
+vi.mock("@/lib/ia/leitura-relacao", async (orig) => {
+  const real = await orig<typeof import("@/lib/ia/leitura-relacao")>();
+import { detectarGatilhos, esfriou, type EntradaGatilhos } from "@/lib/ia/leitura-relacao-gatilhos";
+import { GET } from "@/app/api/cron/leitura-relacao/route";
+    const { gerarLeituraRelacao } = await vi.importActual<typeof import("@/lib/ia/leitura-relacao")>("@/lib/ia/leitura-relacao");

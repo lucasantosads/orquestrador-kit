@@ -1,0 +1,15 @@
+// 111a043:test/cron-registro-rotas.test.ts (só as linhas de import e de citação)
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+vi.mock("@/lib/jobs/core/cron-registro", () => ({ registrarExecucaoCron }));
+vi.mock("@/lib/jobs/nps-disparo", () => ({
+vi.mock("@/app/api/clientes/nps/lote/_lib", () => ({
+vi.mock("@/lib/meta-sync-scheduler", () => ({ checkTokenExpiry }));
+import { NextRequest } from "next/server";
+import { GET as npsGET } from "@/app/api/cron/nps-disparo/route";
+import { GET as metaGET, POST as metaPOST } from "@/app/api/cron/meta-token-check/route";
+describe("nps-disparo registra a execução", () => {
+    const res = await npsGET(req("http://localhost/api/cron/nps-disparo", SEGREDO));
+    expect(registrarExecucaoCron.mock.calls[0][0]).toBe("nps-disparo");
+    expect(corpo.job).toBe("nps-disparo");
+    const res = await npsGET(req("http://localhost/api/cron/nps-disparo"));
+    const res = await npsGET(req("http://localhost/api/cron/nps-disparo", SEGREDO));

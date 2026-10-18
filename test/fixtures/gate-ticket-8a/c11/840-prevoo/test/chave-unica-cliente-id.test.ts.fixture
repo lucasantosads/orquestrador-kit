@@ -1,0 +1,7 @@
+// ba78cc9:test/chave-unica-cliente-id.test.ts (só as linhas de import e de citação)
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+    ["src/app/api/nps/token/route.ts", "cliente_id: chaveUuid", "resolverChave("],
+    ["src/app/api/nps/public/[token]/route.ts", "cliente_id: chaveUuid", "resolverChave("],
+  const { readdirSync, statSync } = require("node:fs") as typeof import("node:fs");

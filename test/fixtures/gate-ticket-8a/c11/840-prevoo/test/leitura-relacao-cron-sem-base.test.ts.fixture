@@ -1,0 +1,12 @@
+// ba78cc9:test/leitura-relacao-cron-sem-base.test.ts (só as linhas de import e de citação)
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
+vi.mock("@supabase/supabase-js", () => ({
+vi.mock("@/lib/ia/provider", () => ({ chamarProvider: vi.fn(), IAProviderError: class extends Error {} }));
+vi.mock("@/lib/ia/leitura-relacao", async () => {
+  const real = await vi.importActual<typeof import("@/lib/ia/leitura-relacao")>("@/lib/ia/leitura-relacao");
+vi.mock("@/lib/ia/leitura-relacao-gatilhos", async () => {
+  const real = await vi.importActual<typeof import("@/lib/ia/leitura-relacao-gatilhos")>("@/lib/ia/leitura-relacao-gatilhos");
+import { GET } from "@/app/api/cron/leitura-relacao/route";
+import { middleware } from "@/middleware";
+import type { Fontes } from "@/lib/ia/leitura-relacao";

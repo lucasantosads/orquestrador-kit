@@ -1,0 +1,11 @@
+// 111a043:test/sai-resolver-chave-lib-i.test.ts (só as linhas de import e de citação)
+import { describe, it, expect, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+vi.mock("@supabase/supabase-js", async () => {
+  const { clienteMemoria } = await import("./helpers/supabase-memoria");
+import { resolverCliente } from "@/lib/clientes/resolver-cliente";
+import { clienteMemoria } from "./helpers/supabase-memoria";
+const ARQUIVOS = ["src/lib/jobs/nps-disparo.ts", "src/lib/perf/health-snapshot.ts", "src/lib/whatsapp/resumo-semanal.ts"];
+  it("nps-disparo: linha gravada so com cliente_id casa com o par do mesmo cliente", async () => {
+    const { criarFontesReais } = await import("@/lib/jobs/nps-disparo");

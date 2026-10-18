@@ -1,0 +1,10 @@
+// ba78cc9:test/resolver-cliente.test.ts (só as linhas de import e de citação)
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { NextRequest } from "next/server";
+vi.mock("@supabase/supabase-js", () => ({
+vi.mock("@/lib/session", () => ({ getSession: vi.fn() }));
+import { resolverCliente, resolverClientes, filtroDoCliente, clienteDaLinha, clienteIdParaGravar, isUuid, type ParCliente } from "@/lib/clientes/resolver-cliente";
+import { getSession } from "@/lib/session";
+import { GET as rotaResolverChave } from "@/app/api/perf/clientes/[id]/resolver-chave/route";

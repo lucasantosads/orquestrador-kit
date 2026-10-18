@@ -9,9 +9,12 @@
  * (aprovado de primeira, na versão que rodou).
  */
 import { describe, it, expect } from 'vitest';
+import { execSync, spawnSync } from 'node:child_process';
+import { cpSync, mkdtempSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { REPO_ROOT } from './fixtures/orq-harness.js';
-import { lerFila, validarTicket, REGRAS, type GateCfg, type Violacao } from '../scripts/orquestrador/gate-ticket.js';
+import { carregarCfg, lerFila, validarTicket, REGRAS, type GateCfg, type Violacao } from '../scripts/orquestrador/gate-ticket.js';
 
 const FIX = join(REPO_ROOT, 'test', 'fixtures', 'gate-ticket-8a');
 // O Comarka não tem `gate_ticket` no config: o gate roda com a tabela pura.
@@ -73,5 +76,111 @@ describe('8a-P2 · C13: origin/ em critério (a worktree nasce da branch_alvo lo
     expect(REGRAS.C13?.severidade).toBe('aviso');
     expect(REGRAS.C13?.porque).toMatch(/120\/368/);
     expect(REGRAS.C13?.porque).toMatch(/erro para ticket novo/);
+  });
+});
+
+/**
+ * Um repo git temporário com a árvore reduzida de um caso (`c11/<pasta>`, sufixo
+ * `.fixture` tirado) na branch `staging-auto`, e a fila dentro dele. `antes` mexe
+ * nos arquivos antes do commit; `depois`, só no disco (o checkout), depois dele.
+ */
+function repoDoCaso(pasta: string, antes: (raiz: string) => void = () => {}, depois: (raiz: string) => void = () => {}): string {
+  const raiz = mkdtempSync(join(tmpdir(), `orq-8a-${pasta}-`));
+  cpSync(join(FIX, 'c11', pasta), raiz, { recursive: true });
+  const tirarSufixo = (d: string) => {
+    for (const n of readdirSync(d)) {
+      const p = join(d, n);
+      if (statSync(p).isDirectory()) tirarSufixo(p);
+      else if (n.endsWith('.fixture')) renameSync(p, p.slice(0, -'.fixture'.length));
+    }
+  };
+  tirarSufixo(raiz);
+  writeFileSync(join(raiz, 'docs', 'fila', '000-config.json'), JSON.stringify({ branch_alvo: 'staging-auto' }));
+  antes(raiz);
+  execSync('git init -q -b staging-auto . && git add -A && git -c user.email=t@t -c user.name=t commit -qm arvore', { cwd: raiz, stdio: 'pipe' });
+  depois(raiz);
+  return raiz;
+}
+
+function rodarRepo(raiz: string, id: string, ajuste: (t: Record<string, unknown>) => void = () => {}): Violacao[] {
+  const dir = join(raiz, 'docs', 'fila');
+  const fila = lerFila(dir);
+  const alvo = fila.find((t) => t.arquivo.split('/').pop()!.startsWith(`${id}-`))!;
+  const t = structuredClone({ ...alvo.json!, status: 'pendente' });
+  ajuste(t);
+  const eu = { arquivo: alvo.arquivo, json: t };
+  return validarTicket(eu, fila.map((x) => (x === alvo ? eu : x)), carregarCfg(dir));
+}
+
+describe('8a-P1 · C11 v2: import direto resolvido (relativo e paths do tsconfig) e citação, itens de src/', () => {
+  it('950 (versão de entrada): etapa2-funil-motor importa @/lib/qualificacao/motor — aviso, marcado como conferido', () => {
+    const v = regra(rodarRepo(repoDoCaso('950-entrada'), '950'), 'C11');
+    expect(v.length).toBe(1);
+    expect(v[0]!.aviso).toBe(true);
+    expect(v[0]!.mensagem).toContain('src/lib/qualificacao/motor.ts');
+    expect(v[0]!.mensagem).toContain('test/etapa2-funil-motor.test.ts (declarado conferido; em 13 de 19 resgates medidos o conferido quebrou)');
+    // etapa2-motor-fases também importa o motor, mas está na allowlist
+    expect(v[0]!.mensagem).not.toContain('etapa2-motor-fases');
+  });
+
+  it('1006 (versão de entrada): quem-cuida importa alertas-campanha/route e cita performance/route.ts', () => {
+    const v = regra(rodarRepo(repoDoCaso('1006-entrada'), '1006'), 'C11');
+    const msg = v.map((x) => x.mensagem).join('\n');
+    expect(msg).toMatch(/src\/app\/api\/clientes\/alertas-campanha\/route\.ts.*test\/quem-cuida\.test\.ts/);
+    expect(msg).toMatch(/src\/app\/api\/clientes\/performance\/route\.ts.*test\/quem-cuida\.test\.ts/);
+  });
+
+  it('840 (árvore do pré-voo): nps-reacao-resposta, que nasceu depois da entrada e não está em conferidos', () => {
+    const v = regra(rodarRepo(repoDoCaso('840-prevoo'), '840'), 'C11');
+    const msg = v.map((x) => x.mensagem).join('\n');
+    expect(msg).toContain('test/nps-reacao-resposta.test.ts');
+    expect(msg).not.toMatch(/nps-reacao-resposta\.test\.ts \(declarado conferido/);
+  });
+
+  it('844 (controle negativo P1r): cron-paths-vercel só contém o basename nps-disparo — não dispara (a C11 antiga disparava)', () => {
+    expect(regra(rodarRepo(repoDoCaso('844-controle'), '844'), 'C11')).toEqual([]);
+  });
+
+  it('lê a branch_alvo, não o disco do checkout', () => {
+    const raiz = repoDoCaso('950-entrada', () => {}, (r) => {
+      rmSync(join(r, 'test', 'etapa2-funil-motor.test.ts'));
+      writeFileSync(join(r, 'test', 'so-no-disco.test.ts'), "import { qualificarLead } from '../src/lib/qualificacao/motor'\n");
+    });
+    const msg = regra(rodarRepo(raiz, '950'), 'C11').map((x) => x.mensagem).join('\n');
+    expect(msg).toContain('test/etapa2-funil-motor.test.ts');
+    expect(msg).not.toContain('so-no-disco');
+  });
+
+  it('"dentro" é matchesAllowlist: glob da allowlist cobre o teste', () => {
+    const v = rodarRepo(repoDoCaso('950-entrada'), '950', (t) => {
+      (t.pathspec_allowlist as string[]).push('test/etapa2-*.test.ts');
+    });
+    expect(regra(v, 'C11')).toEqual([]);
+  });
+
+  it('import relativo resolve; item fora de src/ não entra (variante c15, não a híbrida)', () => {
+    const raiz = repoDoCaso('950-entrada', (r) => {
+      writeFileSync(join(r, 'vercel.json'), '{}\n');
+      writeFileSync(join(r, 'test', 'le-vercel.test.ts'), "const v = readFileSync('vercel.json')\n");
+      writeFileSync(join(r, 'test', 'relativo.test.ts'), "import { qualificarLead } from '../src/lib/qualificacao/motor'\n");
+    });
+    const msg = regra(rodarRepo(raiz, '950', (t) => (t.pathspec_allowlist as string[]).push('vercel.json')), 'C11')
+      .map((x) => x.mensagem)
+      .join('\n');
+    expect(msg).toContain('test/relativo.test.ts');
+    expect(msg).not.toContain('le-vercel');
+  });
+
+  it('--relatorio lista os testes vizinhos do ticket (insumo da 8b)', () => {
+    const raiz = repoDoCaso('950-entrada');
+    const r = spawnSync(join(REPO_ROOT, 'node_modules', '.bin', 'tsx'), [join(REPO_ROOT, 'scripts', 'orquestrador', 'gate-ticket.ts'), '--fila', join(raiz, 'docs', 'fila'), '--relatorio', '950'], { encoding: 'utf8' });
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain('testes_vizinhos (C11): ["test/etapa2-funil-motor.test.ts"]');
+  });
+
+  it('a tabela: C11 aviso, com o FP medido na 8a no porque (não mais o 9/4/122 da calibração do Comarka)', () => {
+    expect(REGRAS.C11?.severidade).toBe('aviso');
+    expect(REGRAS.C11?.porque).toMatch(/180\/368/);
+    expect(REGRAS.C11?.porque).not.toMatch(/9\/4\/122/);
   });
 });

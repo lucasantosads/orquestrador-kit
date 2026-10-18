@@ -1,0 +1,6 @@
+// 111a043:test/health-snapshot-compose.test.ts (só as linhas de import e de citação)
+import { describe, it, expect } from "vitest";
+import { montarHealthScore } from "../src/lib/perf/cockpit";
+import { resolverHealthComposto, statusComponentes } from "../src/lib/perf/health-snapshot";
+describe("resolverHealthComposto (test/health-snapshot-compose.test.ts)", () => {
+describe("statusComponentes (test/health-snapshot-compose.test.ts)", () => {

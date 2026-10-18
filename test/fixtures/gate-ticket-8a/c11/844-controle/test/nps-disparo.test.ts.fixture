@@ -1,0 +1,7 @@
+// 111a043:test/nps-disparo.test.ts (só as linhas de import e de citação)
+ * Ticket 335b — nps-disparo: job do cron de disparo de NPS (D34, fila de
+import { describe, it, expect } from "vitest";
+} from "../src/lib/jobs/nps-disparo";
+      webhookUrl: "https://n8n.example.com/webhook/nps-disparo",
+    expect(chamadasPoster[0].url).toBe("https://n8n.example.com/webhook/nps-disparo");
+      webhookUrl: "https://n8n.example.com/webhook/nps-disparo",

@@ -1,0 +1,5 @@
+// 5611e08:test/etapa2-motor-fases.test.ts (só as linhas de import e de citação)
+import { describe, it, expect, vi, beforeEach } from "vitest";
+vi.mock("@supabase/supabase-js", () => ({
+} from "@/lib/qualificacao/motor";
+import { configCrmGhl } from "@/app/api/perf/qualificacao-regras/config-schemas";

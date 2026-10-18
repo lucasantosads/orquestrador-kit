@@ -37,7 +37,9 @@ export function contextoDoCorpus(c: CasoCorpus): ContextoRepo {
   return {
     naAlvo: (p) => a.alvo[p] ?? null,
     noDisco: (p) => disco.has(p),
-    testesQueCitam: (texto) => a.testes[texto] ?? [],
+    // Etapa 8a: a C11 v2 lê a árvore inteira da branch alvo (import e citação);
+    // o corpus guardou só o resultado do grep por basename, então ela não roda aqui.
+    arvoreAlvo: () => undefined,
     palavrasAcentuadas: () => palavras,
   };
 }

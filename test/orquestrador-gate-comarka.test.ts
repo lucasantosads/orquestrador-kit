@@ -139,22 +139,13 @@ describe('7d1b-4 · C9, C11 e C12 (o ticket contra a árvore)', () => {
     expect(regra(v, 'C9').map((x) => x.mensagem).join(' ')).not.toMatch(/ranking\.ts'/);
   });
 
-  it('C11: Comarka 402 (vercel.json citado em 3 testes fora da allowlist) — aviso, nomeando os testes', () => {
-    const v = regra(rodar('b', 'Comarka', '402'), 'C11');
-    expect(v.length).toBe(1);
-    expect(v[0]!.aviso).toBe(true);
-    expect(v[0]!.mensagem).toMatch(/vercel\.json .*test\/crons-meta-consolidacao\.test\.ts/);
-  });
-
-  it('C11: teste que já está na allowlist não conta', () => {
-    const v = rodar('b', 'Comarka', '402', (t) => {
-      (t.pathspec_allowlist as string[]).push(
-        'test/crons-meta-consolidacao.test.ts',
-        'test/n8n-fase1.test.ts',
-        'test/n8n-fase2.test.ts',
-      );
-    });
-    expect(regra(v, 'C11')).toEqual([]);
+  // Etapa 8a: a C11 v2 (import direto e citação, itens de src/, na árvore da
+  // branch alvo) substituiu a de basename. O 402 tocava `vercel.json`, que não é
+  // item de src/ (decisão da 8a: variante c15, não a híbrida), e o corpus não tem
+  // a árvore inteira de que a v2 precisa. Os casos dela estão no
+  // orquestrador-gate-8a.test.ts, com árvore real.
+  it('C11 v2: Comarka 402 (vercel.json, item fora de src/) não é mais acusado', () => {
+    expect(regra(rodar('b', 'Comarka', '402'), 'C11')).toEqual([]);
   });
 
   it('C12: item sem extensão que não existe e cujo diretório pai também não — aviso; pai existente não acusa', () => {
@@ -190,7 +181,7 @@ describe('7d1b-4 · em produção o contexto vem do git e do disco do checkout d
     const r = spawnSync(join(REPO_ROOT, 'node_modules', '.bin', 'tsx'), [join(REPO_ROOT, 'scripts', 'orquestrador', 'gate-ticket.ts'), '--fila', join(raiz, 'docs', 'fila'), '--pendentes'], { encoding: 'utf8' });
     expect(r.status, r.stderr).toBe(0);
     expect(r.stdout).toMatch(/901-ctx\.md:pathspec_allowlist AVISO \(C9\): 'src\/novo\.ts' existe no checkout mas não na branch alvo 'staging-auto'/);
-    expect(r.stdout).toMatch(/AVISO \(C11\): a allowlist toca src\/calculadora\.ts \(basename 'calculadora'\), citado em test\/calculadora-soma\.test\.ts/);
+    expect(r.stdout).toMatch(/AVISO \(C11\): a allowlist toca src\/calculadora\.ts, importado ou citado por test\/calculadora-soma\.test\.ts/);
     expect(r.stdout).toMatch(/AVISO \(C12\): 'lib\/inexistente\/pasta' não casa arquivo nem diretório da branch alvo/);
   });
 });

@@ -1,0 +1,5 @@
+// 5611e08:test/etapa2-funil-motor.test.ts (só as linhas de import e de citação)
+import { describe, it, expect, vi } from "vitest";
+vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ from: vi.fn() }) }));
+import { montarFunilCliente, marcasDoLead, funilPeloMotor, type LeadFunil, type RegraFunil } from "@/lib/comercial/funil-cliente";
+import { qualificarLead, type RegraQualificacao, type LeadParaQualificar, type ClassificaComo } from "@/lib/qualificacao/motor";

@@ -22,9 +22,9 @@
 import { spawnSync } from 'node:child_process'
 import { readFileSync, readdirSync, existsSync, realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { basename, dirname, join, relative, resolve } from 'node:path'
+import { basename, dirname, join, posix, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { globToRegExp } from './enforcement-core.js'
+import { globToRegExp, matchesAllowlist } from './enforcement-core.js'
 
 // ─── Vocabulário do ticket ────────────────────────────────────────────────
 
@@ -134,7 +134,7 @@ export const REGRAS: Readonly<Record<string, Regra>> = {
   'C3': { severidade: 'aviso', oque: 'ausência com padrão amplo sem exceção nem teto', porque: 'Comarka: 3/0/9 FP; causal 1 (523b)' },
   'C4': { severidade: 'aviso', oque: 'regex que casa diferente em locale C e em UTF-8 (acento)', porque: 'Comarka: 0/0/12 FP, 0 causal; o kit roda sob launchd com a mesma exposição' },
   'C9': { severidade: 'aviso', oque: 'item da allowlist no checkout e fora da branch alvo (topologia)', porque: 'Comarka: 0/1/0 FP, 0 causal' },
-  'C11': { severidade: 'aviso', oque: 'arquivo da allowlist citado em 1 a 4 testes fora dela (colisão de teste)', porque: 'Comarka: 9/4/122 FP; causal 4 (152, 161, 402, 277)' },
+  'C11': { severidade: 'aviso', oque: 'arquivo de src/ da allowlist importado direto (relativo ou paths do tsconfig) ou citado por teste fora dela, na árvore da branch alvo (teste vizinho)', porque: 'etapa 8a: 180/368 FP nos done aprovados de primeira do Comarka (04-17/10, versão que rodou); pega o teste real em 14 de 19 resgates de allowlist (pré-voo). testes_conferidos não isenta: com a isenção, 87/368 e 3 de 19. A C11 antiga (basename) media 22/24/122 no corpus do kit' },
   'C12': { severidade: 'aviso', oque: 'item sem extensão da allowlist sem arquivo nem diretório pai na branch alvo', porque: 'executor do Comarka: 0 disparo, sem dado' },
   '10x': { severidade: 'erro', oque: 'exemplos_regex contra o padrão do cmd', porque: 'era 0/8/0 FP, todos das aspas escapadas e do grep -v de comentário' },
 }
@@ -169,6 +169,8 @@ export interface Violacao {
   isencao?: boolean
   /** Aviso NÃO é violação: sinal para quem escreve o ticket, não muda o rc. */
   aviso?: boolean
+  /** C11 (etapa 8a): os testes vizinhos nomeados, para o `--relatorio`. */
+  vizinhos?: string[]
 }
 
 export interface GateCfg {
@@ -1079,20 +1081,77 @@ export interface ContextoRepo {
   naAlvo(caminho: string): 'arquivo' | 'diretorio' | null | undefined
   /** O caminho existe no checkout de onde a fila é lida (C9, topologia). */
   noDisco(caminho: string): boolean
-  /** Arquivos de teste rastreados que citam o texto (C11, colisão de teste). */
-  testesQueCitam(texto: string): string[]
+  /**
+   * A árvore da branch alvo que a C11 lê (etapa 8a): todos os caminhos, o
+   * conteúdo dos arquivos de teste e o `tsconfig.json`. undefined = não sei (sem
+   * `branch_alvo`, branch inexistente, corpus sem árvore): a C11 não roda.
+   */
+  arvoreAlvo(): ArvoreAlvo | undefined
   /** Palavras com letra acentuada do código do repo (C4). */
   palavrasAcentuadas(): Set<string>
 }
 
+export interface ArvoreAlvo {
+  arquivos: ReadonlySet<string>
+  /** Arquivo de teste (`*.test.*`/`*.spec.*` de código, fora de e2e/) → conteúdo. */
+  testes: ReadonlyMap<string, string>
+  tsconfig?: string
+}
+
 // Onde mora teste, em qualquer repo da frota: `test/` (Comarka), `apps/web/test/` (CI), `*.test.ts`.
 const RE_ARQ_TESTE = /(^|\/)(test|tests|__tests__)\/|\.(test|spec)\.[^/]*$/
-const PATHSPEC_TESTES = [':(glob)**/test/**', ':(glob)**/tests/**', ':(glob)**/__tests__/**', ':(glob)**/*.test.*', ':(glob)**/*.spec.*']
+/** O arquivo de teste que a C11 lê: o `_EH_TESTE` do validar-fila do Comarka, sem e2e. */
+const RE_TESTE_CODIGO = /\.(test|spec)\.[cm]?[jt]sx?$/
+
+/** Uma árvore por (repo, commit) por processo: `--pendentes` valida N tickets na mesma árvore. */
+const ARVORES = new Map<string, ArvoreAlvo>()
+
+/**
+ * Lê a árvore da `branch` sem tocar o disco do checkout: `ls-tree` para os
+ * caminhos e UM `cat-file --batch` para o conteúdo dos testes e do tsconfig.
+ */
+export function lerArvoreAlvo(raiz: string, branch: string, filaRel: string): ArvoreAlvo | undefined {
+  const sha = spawnSync('git', ['-C', raiz, 'rev-parse', '--verify', '--quiet', `${branch}^{commit}`], { encoding: 'utf8' })
+  if (sha.status !== 0) return undefined
+  const chave = `${raiz}\0${sha.stdout.trim()}\0${filaRel}`
+  const pronta = ARVORES.get(chave)
+  if (pronta) return pronta
+  const ls = spawnSync('git', ['-C', raiz, 'ls-tree', '-r', '-z', '--name-only', sha.stdout.trim()], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 })
+  if (ls.status !== 0) return undefined
+  const arquivos = new Set(ls.stdout.split('\0').filter(Boolean))
+  // Os tickets da própria fila não são teste, nem quando a fila mora dentro de um `test/`.
+  const nomesTeste = [...arquivos].filter(
+    (f) => RE_TESTE_CODIGO.test(f) && !/(^|\/)e2e\//.test(f) && (filaRel === '' || !f.startsWith(`${filaRel}/`)),
+  )
+  const pedir = [...nomesTeste, ...(arquivos.has('tsconfig.json') ? ['tsconfig.json'] : [])]
+  const cat = spawnSync('git', ['-C', raiz, 'cat-file', '--batch'], {
+    input: pedir.map((f) => `${sha.stdout.trim()}:${f}`).join('\n') + '\n',
+    maxBuffer: 1024 * 1024 * 1024,
+  })
+  if (cat.status !== 0) return undefined
+  const conteudo = new Map<string, string>()
+  const buf = cat.stdout as Buffer
+  let pos = 0
+  for (const f of pedir) {
+    const fim = buf.indexOf(10, pos)
+    const cab = buf.subarray(pos, fim).toString('utf8').split(' ')
+    pos = fim + 1
+    if (cab[1] === 'missing') continue
+    const n = Number(cab[2])
+    conteudo.set(f, buf.subarray(pos, pos + n).toString('utf8'))
+    pos += n + 1
+  }
+  const tsconfig = conteudo.get('tsconfig.json')
+  conteudo.delete('tsconfig.json')
+  const arvore: ArvoreAlvo = { arquivos, testes: conteudo, ...(tsconfig !== undefined ? { tsconfig } : {}) }
+  ARVORES.set(chave, arvore)
+  return arvore
+}
 
 /**
  * O contexto real: o repositório que contém a fila, a `branch_alvo` do config
- * para C9/C12 e o disco do checkout para C9, C11 e C4 (é o que o pre-commit do
- * Comarka lê). Fora de repositório git, null: as regras de árvore não rodam.
+ * para C9, C11 (etapa 8a: a árvore da branch, não o disco) e C12, e o disco do
+ * checkout para C9 e C4 (é o que o pre-commit do Comarka lê). Fora de repositório git, null: as regras de árvore não rodam.
  */
 export function contextoGit(filaDir: string, cfg: GateCfg): ContextoRepo | null {
   const r = spawnSync('git', ['-C', filaDir, 'rev-parse', '--show-toplevel'], { encoding: 'utf8' })
@@ -1103,7 +1162,6 @@ export function contextoGit(filaDir: string, cfg: GateCfg): ContextoRepo | null 
   const filaRel = relative(realpathSync(raiz), realpathSync(filaDir))
   const branch = cfg.branch_alvo
   const alvo = new Map<string, 'arquivo' | 'diretorio' | null | undefined>()
-  const testes = new Map<string, string[]>()
   let palavras: Set<string> | null = null
   return {
     naAlvo(caminho) {
@@ -1117,14 +1175,7 @@ export function contextoGit(filaDir: string, cfg: GateCfg): ContextoRepo | null 
       return alvo.get(caminho)
     },
     noDisco: (caminho) => existsSync(join(raiz, caminho)),
-    testesQueCitam(texto) {
-      if (!testes.has(texto)) {
-        const g = spawnSync('git', ['-C', raiz, 'grep', '-l', '-F', '-e', texto, '--', ...PATHSPEC_TESTES], { encoding: 'utf8' })
-        const achados = g.status === 0 ? g.stdout.split('\n').filter(Boolean) : []
-        testes.set(texto, achados.filter((f) => filaRel === '' || !f.startsWith(`${filaRel}/`)))
-      }
-      return testes.get(texto)!
-    },
+    arvoreAlvo: () => (branch ? lerArvoreAlvo(raiz, branch, filaRel) : undefined),
     palavrasAcentuadas() {
       if (palavras) return palavras
       palavras = new Set()
@@ -1373,15 +1424,145 @@ export function regexComAcento(cmd: string, palavras: () => Set<string>): string
 const DICA_ACENTO =
   "o loop roda em locale C, onde '.' casa 1 byte e acento tem 2 (533 do Comarka). Forma segura: âncora ASCII da mesma palavra, '.{1,2}' no lugar do acento, ou o literal acentuado sem -i e sem [...]"
 
+// ─── C11 v2: teste vizinho (etapa 8a) ──────────────────────────────────────
+//
+// Porte da camada 15 do validar-fila do Comarka (457856c): arquivo de src/ da
+// allowlist importado DIRETO (relativo ou pelos `paths` do tsconfig, resolvido
+// contra a árvore) ou citado pelo caminho por um teste fora da allowlist. A C11
+// antiga procurava o basename como texto; o controle 844 mostra a diferença.
+
+const EXT_RESOLVE = ['', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '/index.ts', '/index.tsx', '/index.js']
+const RE_SPEC = /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*|\bvi\.\w+\(\s*)['"]([^'"\n]+)['"]/g
+const RE_JOIN = /\b(?:join|resolve)\(([^()]*)\)/g
+const RE_LITERAL = /(['"`])([^'"`\n]*)\1/g
+const RE_LISTA_PASTA = /\b(readdirSync|readdir|globSync|fg\.sync)\b/
+const escRe = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** O JSON do tsconfig sem comentários e sem vírgula final (o `/*` dentro de "@/*" é string). */
+function jsonComComentarios(txt: string): unknown {
+  let out = ''
+  for (let i = 0; i < txt.length; i++) {
+    const c = txt[i]!
+    if (c === '"') {
+      let j = i + 1
+      while (j < txt.length && txt[j] !== '"') j += txt[j] === '\\' ? 2 : 1
+      out += txt.slice(i, j + 1)
+      i = j
+    } else if (c === '/' && txt[i + 1] === '/') {
+      while (i < txt.length && txt[i] !== '\n') i++
+    } else if (c === '/' && txt[i + 1] === '*') {
+      i = txt.indexOf('*/', i + 2)
+      if (i < 0) break
+      i++
+    } else out += c
+  }
+  return JSON.parse(out.replace(/,(\s*[}\]])/g, '$1'))
+}
+
+/** `compilerOptions.paths` do tsconfig como (prefixo do alias, alvos relativos à raiz). */
+export function aliasesDoTsconfig(tsconfig: string | undefined): { de: string; para: string[]; curinga: boolean }[] {
+  if (!tsconfig) return []
+  let co: { baseUrl?: unknown; paths?: unknown }
+  try {
+    co = ((jsonComComentarios(tsconfig) as { compilerOptions?: typeof co }).compilerOptions ?? {}) as typeof co
+  } catch {
+    return []
+  }
+  const base = typeof co.baseUrl === 'string' ? co.baseUrl : '.'
+  if (!co.paths || typeof co.paths !== 'object') return []
+  return Object.entries(co.paths as Record<string, unknown>).map(([k, v]) => ({
+    de: k.replace(/\*$/, ''),
+    curinga: k.endsWith('*'),
+    para: (Array.isArray(v) ? v.map(String) : []).map((x) => posix.normalize(posix.join(base, x.replace(/\*$/, '')))),
+  }))
+}
+
+/** O arquivo da árvore que `spec`, importado de `origem`, resolve — ou null (pacote, não achado). */
+export function resolverImport(origem: string, spec: string, arvore: ArvoreAlvo, aliases: ReturnType<typeof aliasesDoTsconfig>): string | null {
+  const bases: string[] = []
+  if (spec.startsWith('.')) bases.push(posix.normalize(posix.join(posix.dirname(origem), spec)))
+  else {
+    for (const a of aliases) {
+      if (a.curinga ? spec.startsWith(a.de) : spec === a.de) {
+        for (const p of a.para) bases.push(posix.normalize(posix.join(p, a.curinga ? spec.slice(a.de.length) : '')))
+      }
+    }
+  }
+  for (const b of bases) {
+    const limpo = b.replace(/^\.\//, '')
+    for (const e of EXT_RESOLVE) if (arvore.arquivos.has(limpo + e)) return limpo + e
+  }
+  return null
+}
+
+/**
+ * O que um teste trata como caminho (`citacao` do Comarka): os literais fora de
+ * `join()`/`resolve()` e cada `join("src","x","y.ts")` remontado, sem `./`,
+ * `../` nem prefixo de template. Devolve também o texto com os joins remontados.
+ */
+function citacaoDoTeste(txt: string): { texto: string; caminhos: Set<string> } {
+  const extra: string[] = []
+  const dentro: [number, number][] = []
+  for (const m of txt.matchAll(RE_JOIN)) {
+    const partes = [...m[1]!.matchAll(RE_LITERAL)].map((l) => l[2]!)
+    dentro.push([m.index!, m.index! + m[0].length])
+    if (partes.length > 0) extra.push(posix.normalize(partes.join('/')))
+  }
+  const soltos = [...txt.matchAll(RE_LITERAL)].filter((l) => !dentro.some(([a, b]) => a <= l.index! && l.index! < b)).map((l) => l[2]!)
+  const caminhos = new Set<string>()
+  for (let c of [...soltos, ...extra]) {
+    c = c.replace(/^.*\}/, '').replace(/^(?:\.{1,2}\/|\/)+/, '').replace(/\/+$/, '')
+    if (c) caminhos.add(c)
+  }
+  return { texto: `${txt}\n${extra.join('\n')}\n`, caminhos }
+}
+
+/** O teste cita o caminho, ou a pasta dele (≥ 2 níveis) junto com o nome entre aspas ou uma listagem (`citam` do Comarka). */
+function testeCita(cit: { texto: string; caminhos: Set<string> }, caminho: string): boolean {
+  if (new RegExp(`(?<![\\w-])${escRe(caminho)}(?![\\w.-])`).test(cit.texto)) return true
+  const pasta = posix.dirname(caminho)
+  if (!pasta.includes('/') || !cit.caminhos.has(pasta)) return false
+  return new RegExp(`['"\`/]${escRe(posix.basename(caminho))}['"\`]`).test(cit.texto) || RE_LISTA_PASTA.test(cit.texto)
+}
+
+/**
+ * Os testes vizinhos de cada item de src/ da allowlist (glob expandido contra a
+ * árvore): fora da allowlist (`matchesAllowlist`, a mesma do enforcement) e que
+ * importam o item direto ou o citam. `testes_conferidos` NÃO isenta (decisão da
+ * 8a): o teste conferido só é marcado.
+ */
+export function testesVizinhos(allow: string[], arvore: ArvoreAlvo): Map<string, string[]> {
+  const aliases = aliasesDoTsconfig(arvore.tsconfig)
+  const itens: string[] = []
+  for (const a of allow) {
+    const casa = a.includes('*') ? [...arvore.arquivos].filter((f) => globToRegExp(a).test(f)) : [a]
+    for (const f of casa) if (/(^|\/)src\//.test(f) && !RE_ARQ_TESTE.test(f) && !itens.includes(f)) itens.push(f)
+  }
+  const out = new Map<string, string[]>()
+  if (itens.length === 0) return out
+  for (const [t, txt] of arvore.testes) {
+    if (matchesAllowlist(t, allow)) continue
+    const importa = new Set<string>()
+    for (const m of txt.matchAll(RE_SPEC)) {
+      const r = resolverImport(t, m[1]!, arvore, aliases)
+      if (r) importa.add(r)
+    }
+    const cit = citacaoDoTeste(txt)
+    for (const item of itens) {
+      if ((importa.has(item) || testeCita(cit, item)) && !(out.get(item) ?? []).includes(t)) out.set(item, [...(out.get(item) ?? []), t])
+    }
+  }
+  return out
+}
+
 /** C9, C11 e C12: a allowlist contra a árvore. */
-function checarArvore(t: Cru, ctx: ContextoRepo, achado: (regra: string, campo: string, mensagem: string) => void, branch: string) {
+function checarArvore(t: Cru, ctx: ContextoRepo, achado: (regra: string, campo: string, mensagem: string, extra?: Partial<Violacao>) => void, branch: string) {
   const allow = ehArray(t.pathspec_allowlist) ? t.pathspec_allowlist.map(String) : []
   const itens = allow.filter((p) => !p.includes('*') && !p.endsWith('/'))
   const crs = ehArray(t.criterios_aceite) ? t.criterios_aceite : []
   const blob = `${typeof t.objetivo === 'string' ? t.objetivo : JSON.stringify(t.objetivo ?? '')} ${crs
     .map((c) => String(((c ?? {}) as Cru).cmd ?? ''))
     .join(' ')}`
-  const cria = new Set(ehArray(t.cria_novo) ? t.cria_novo.map(String) : [])
 
   // C9 — topologia (392a/393a/394a do Comarka, 16-17/09): o arquivo existe no
   // checkout e não na branch de onde a worktree nasce. O ticket que DECLARA
@@ -1393,19 +1574,21 @@ function checarArvore(t: Cru, ctx: ContextoRepo, achado: (regra: string, campo: 
     }
   }
 
-  // C11 — colisão de teste (HARDENING do Comarka, 24/09): o arquivo que o
-  // ticket toca é citado em 1 a 4 testes fora da allowlist. Basename curto
-  // (< 6) é ruído; mais de 4 testes é arquivo "hub", não pista.
-  for (const src of itens) {
-    if (RE_ARQ_TESTE.test(src) || cria.has(src)) continue
-    const nome = basename(src).replace(/\.[^.]*$/, '')
-    if (nome.length < 6) continue
-    const fora = ctx.testesQueCitam(nome).filter((tf) => !allow.includes(tf))
-    if (fora.length > 0 && fora.length <= 4) {
+  // C11 v2 — teste vizinho (etapa 8a): o arquivo de src/ que o ticket toca é
+  // importado direto ou citado por teste fora da allowlist, lido da árvore da
+  // branch alvo. O conferido não isenta: em 13 de 19 resgates de allowlist
+  // medidos (04-17/10) o teste quebrado estava em `testes_conferidos`.
+  const arvore = ctx.arvoreAlvo()
+  if (arvore) {
+    const tc = ehArray(t.testes_conferidos) ? t.testes_conferidos : []
+    const conferidos = new Set(tc.map((c) => String(((c ?? {}) as Cru).teste ?? '')))
+    for (const [src, testes] of testesVizinhos(allow, arvore)) {
+      const nomes = [...testes].sort().map((x) => (conferidos.has(x) ? `${x} (declarado conferido; em 13 de 19 resgates medidos o conferido quebrou)` : x))
       achado(
         'C11',
         'pathspec_allowlist',
-        `a allowlist toca ${src} (basename '${nome}'), citado em ${[...fora].sort().join(', ')} — fora da allowlist. Se a mudança quebrar esse teste, o executor não pode corrigi-lo: declare o teste na allowlist (com critério anti-afrouxamento) ou confirme que a mudança não o afeta`,
+        `a allowlist toca ${src}, importado ou citado por ${nomes.join(', ')} — fora da allowlist. Se a mudança quebrar esse teste, o executor não pode corrigi-lo: declare o teste na allowlist (com critério anti-afrouxamento) ou confirme que a mudança não o afeta`,
+        { vizinhos: [...testes].sort() },
       )
     }
   }
@@ -1438,12 +1621,12 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
   const obterCtx = (): ContextoRepo | null => (ctx === undefined ? (ctx = contextoGit(dirname(alvo.arquivo), cfg)) : ctx)
   // Todo achado passa por aqui: a tabela `REGRAS`, por cima dela o config,
   // decidem se ele é violação, aviso ou nada (etapa 7d-1b).
-  const achado = (regra: string, campo: string, mensagem: string, isencao = false) => {
+  const achado = (regra: string, campo: string, mensagem: string, isencao = false, extra: Partial<Violacao> = {}) => {
     const sev = severidadeDe(regra, cfg)
     if (sev === 'off') return
-    if (isencao) v.push({ arquivo: arq, campo, mensagem, regra, isencao: true })
-    else if (sev === 'aviso') v.push({ arquivo: arq, campo, mensagem, regra, aviso: true })
-    else v.push({ arquivo: arq, campo, mensagem, regra })
+    if (isencao) v.push({ arquivo: arq, campo, mensagem, regra, isencao: true, ...extra })
+    else if (sev === 'aviso') v.push({ arquivo: arq, campo, mensagem, regra, aviso: true, ...extra })
+    else v.push({ arquivo: arq, campo, mensagem, regra, ...extra })
   }
 
   // 1. bloco ```json parseável.
@@ -1634,7 +1817,7 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
   // C9, C11, C12: a allowlist contra a árvore (peça 4).
   if (pendente && ehArray(t.pathspec_allowlist)) {
     const c = obterCtx()
-    if (c) checarArvore(t, c, (regra, campo, mensagem) => achado(regra, campo, mensagem), cfg.branch_alvo ?? '?')
+    if (c) checarArvore(t, c, (regra, campo, mensagem, extra) => achado(regra, campo, mensagem, false, extra), cfg.branch_alvo ?? '?')
   }
 
   // 9. contexto_juiz — só em ticket pendente, como 5–8: é o que ainda vai rodar.
@@ -1793,6 +1976,9 @@ function main(argv: string[]): number {
       const erros = meus.filter((a) => !a.isencao && !a.aviso)
       process.stdout.write(`${arq}  ${erros.length === 0 ? 'OK' : `${erros.length} violação(ões)`}\n`)
       for (const a of meus) process.stdout.write(`  ${linha(a)}\n`)
+      // Insumo da etapa 8b (testes_vizinhos como allowlist condicionada a falha).
+      const viz = [...new Set(meus.flatMap((a) => a.vizinhos ?? []))].sort()
+      if (viz.length > 0) process.stdout.write(`  testes_vizinhos (C11): ${JSON.stringify(viz)}\n`)
     }
     const isencoes = achados.filter((a) => a.isencao).length
     const avisos = achados.filter((a) => a.aviso).length

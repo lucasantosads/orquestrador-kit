@@ -1,0 +1,10 @@
+// 111a043:test/cron-paths-vercel.test.ts (só as linhas de import e de citação)
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { NextRequest } from "next/server";
+import { middleware } from "@/middleware";
+  it("nps-disparo passa direto e é mensal (887)", async () => {
+    const res = await middleware(reqCron("/api/cron/nps-disparo"));
+      new NextRequest("http://localhost/api/cron/nps-disparo", {
+    const nps = (vercel.crons ?? []).filter((c) => c.path === "/api/cron/nps-disparo");

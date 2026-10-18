@@ -1,0 +1,24 @@
+950-entrada/docs/fila/950-motor-cascata-marcos.md	378e359:docs/fila/950-motor-cascata-marcos.md	ticket verbatim
+950-entrada/tsconfig.json.fixture	5611e08:tsconfig.json	verbatim
+950-entrada/test/etapa2-funil-motor.test.ts.fixture	5611e08:test/etapa2-funil-motor.test.ts	4 de 94 linhas
+950-entrada/test/etapa2-motor-fases.test.ts.fixture	5611e08:test/etapa2-motor-fases.test.ts	4 de 243 linhas
+1006-entrada/docs/fila/1006-token-meta-pela-conexao.md	b6905eb:docs/fila/1006-token-meta-pela-conexao.md	ticket verbatim
+1006-entrada/tsconfig.json.fixture	d1a62a6:tsconfig.json	verbatim
+1006-entrada/test/quem-cuida.test.ts.fixture	d1a62a6:test/quem-cuida.test.ts	14 de 191 linhas
+840-prevoo/docs/fila/840-sai-resolver-chave-api-e.md	7787af3^:docs/fila/840-sai-resolver-chave-api-e.md	ticket verbatim
+840-prevoo/tsconfig.json.fixture	ba78cc9:tsconfig.json	verbatim
+840-prevoo/test/nps-reacao-resposta.test.ts.fixture	ba78cc9:test/nps-reacao-resposta.test.ts	10 de 224 linhas
+840-prevoo/test/leitura-relacao-cron-sem-base.test.ts.fixture	ba78cc9:test/leitura-relacao-cron-sem-base.test.ts	11 de 109 linhas
+840-prevoo/test/leitura-relacao-gatilhos.test.ts.fixture	ba78cc9:test/leitura-relacao-gatilhos.test.ts	9 de 258 linhas
+840-prevoo/test/chave-unica-cliente-id.test.ts.fixture	ba78cc9:test/chave-unica-cliente-id.test.ts	6 de 110 linhas
+840-prevoo/test/resolver-chave.test.ts.fixture	ba78cc9:test/resolver-chave.test.ts	9 de 227 linhas
+840-prevoo/test/resolver-cliente.test.ts.fixture	ba78cc9:test/resolver-cliente.test.ts	9 de 291 linhas
+844-controle/docs/fila/844-sai-resolver-chave-lib-i.md	00b8ef7:docs/fila/844-sai-resolver-chave-lib-i.md	ticket verbatim
+844-controle/tsconfig.json.fixture	111a043:tsconfig.json	verbatim
+844-controle/test/cron-paths-vercel.test.ts.fixture	111a043:test/cron-paths-vercel.test.ts	9 de 124 linhas
+844-controle/test/chave-leitura.test.ts.fixture	111a043:test/chave-leitura.test.ts	10 de 103 linhas
+844-controle/test/cron-registro-rotas.test.ts.fixture	111a043:test/cron-registro-rotas.test.ts	14 de 116 linhas
+844-controle/test/nps-disparo.test.ts.fixture	111a043:test/nps-disparo.test.ts	6 de 242 linhas
+844-controle/test/health-snapshot-compose.test.ts.fixture	111a043:test/health-snapshot-compose.test.ts	5 de 91 linhas
+844-controle/test/wpp-resumo-semanal.test.ts.fixture	111a043:test/wpp-resumo-semanal.test.ts	19 de 451 linhas
+844-controle/test/sai-resolver-chave-lib-i.test.ts.fixture	111a043:test/sai-resolver-chave-lib-i.test.ts	10 de 50 linhas
