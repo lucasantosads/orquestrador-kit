@@ -171,7 +171,7 @@ describe('8a-P1 · C11 v2: import direto resolvido (relativo e paths do tsconfig
     expect(msg).not.toContain('le-vercel');
   });
 
-  it('--relatorio lista os testes vizinhos do ticket (insumo da 8b)', () => {
+  it('--relatorio lista os testes vizinhos do ticket (insumo da 8c)', () => {
     const raiz = repoDoCaso('950-entrada');
     const r = spawnSync(join(REPO_ROOT, 'node_modules', '.bin', 'tsx'), [join(REPO_ROOT, 'scripts', 'orquestrador', 'gate-ticket.ts'), '--fila', join(raiz, 'docs', 'fila'), '--relatorio', '950'], { encoding: 'utf8' });
     expect(r.status, r.stderr).toBe(0);

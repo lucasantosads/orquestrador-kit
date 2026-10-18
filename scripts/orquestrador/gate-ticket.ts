@@ -1976,7 +1976,7 @@ function main(argv: string[]): number {
       const erros = meus.filter((a) => !a.isencao && !a.aviso)
       process.stdout.write(`${arq}  ${erros.length === 0 ? 'OK' : `${erros.length} violação(ões)`}\n`)
       for (const a of meus) process.stdout.write(`  ${linha(a)}\n`)
-      // Insumo da etapa 8b (testes_vizinhos como allowlist condicionada a falha).
+      // Insumo da etapa 8c (testes_vizinhos como allowlist condicionada a falha).
       const viz = [...new Set(meus.flatMap((a) => a.vizinhos ?? []))].sort()
       if (viz.length > 0) process.stdout.write(`  testes_vizinhos (C11): ${JSON.stringify(viz)}\n`)
     }

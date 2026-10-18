@@ -1053,12 +1053,12 @@
 
 ## PENDENTES
 
-- **8b · `testes_vizinhos` como allowlist de teste condicionada a falha.** Porte do
+- **8c · `testes_vizinhos` como allowlist de teste condicionada a falha.** Porte do
   457856c do Comarka: a C11 v2 só avisa, porque nenhuma variante estática chega a zero FP
   (c15 180/368 sem isenção, 87/368 com a isenção de `testes_conferidos`; c6 272/115;
   `teste_cita` 163/82; híbrida 262/98 — relatório 8a §4b) e o defeito real é o conferido
   errado (13 de 19 resgates de allowlist tinham o teste quebrado em `testes_conferidos`,
-  §3a). A 8b: o ticket ganha `testes_vizinhos` (a lista que o `--relatorio` já imprime);
+  §3a). A 8c: o ticket ganha `testes_vizinhos` (a lista que o `--relatorio` já imprime);
   o executor deixa o agente editar um deles só quando ele falha, uma vez por ticket, com a
   regra anti-afrouxamento no prompt e no juiz (`teste_cita`, `vitest_vizinhos` e
   `--allowlist-extra` do Comarka, `lib.sh:771-850`, `executor.sh:440-451`, `:681-692`).

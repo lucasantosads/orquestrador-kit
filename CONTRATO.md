@@ -1026,7 +1026,7 @@ C11 v2, como decide:
 - `testes_conferidos` **não isenta**: o teste conferido sai marcado na mensagem
   ("declarado conferido; em 13 de 19 resgates medidos o conferido quebrou"). Com a
   isenção, o FP seria 87/368 e ela pegaria 3 de 19;
-- `--relatorio` imprime `testes_vizinhos (C11): [...]` por ticket: o insumo da 8b.
+- `--relatorio` imprime `testes_vizinhos (C11): [...]` por ticket: o insumo da 8c.
 
 Fora do alcance, por decisão: 856 e 854 (teste que varre diretório, sem citar o
 arquivo), 711a (critério que contradiz teste), 762 (o teste cita `vercel.json`, item

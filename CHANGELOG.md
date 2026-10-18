@@ -1108,7 +1108,7 @@ régua de FP é a P1r (368 done aprovados de primeira, na versão que rodou). CO
   (950, 1006 na entrada, 840 no pré-voo; 180/368 FP). `ContextoRepo.testesQueCitam` virou
   `arvoreAlvo()`.
 - **8a-4**: CONTRATO §12.6 (e a tabela de §12.1), este registro e `docs/PECAS.md` (8a
-  feita; 8b e a classe "teste que varre diretório" pendentes).
+  feita; 8c e a classe "teste que varre diretório" pendentes).
 
 Asserções existentes que mudaram: (8a-1, 8a-2) a tabela de severidade de
 `orquestrador-gate-severidade.test.ts` ganha `C13: 'aviso'` e `C14: 'erro'`. (8a-3) em
