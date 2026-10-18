@@ -16,12 +16,15 @@
  *   vizinhos                  -> stdin = {gatesTxt, arquivosDoDiff, allowlist, worktree, base};
  *                                lê a árvore de <base> na worktree e imprime
  *                                {amplia, testes, pares, motivo, bloco} (etapa 8c)
+ *   criterios-ampliados       -> stdin = {criterios, allowlist, ampliados}; os critérios
+ *                                com o cmd de lista fechada aceitando os ampliados (8c)
  */
 import { readFileSync } from 'node:fs'
 import {
   arquivosBaseVermelha,
   avaliaRestricaoExecucao,
   blocoFailVitest,
+  cmdComAmpliados,
   decidirVizinhos,
   decidirDesfecho,
   decidirRetry,
@@ -134,6 +137,11 @@ switch (sub) {
     }
     const d = decidirVizinhos({ ...e, vizinhos: testesVizinhos(e.allowlist, arvore) })
     out({ ...d, bloco: d.amplia ? blocoFailVitest(e.gatesTxt, d.pares) : '' })
+    break
+  }
+  case 'criterios-ampliados': {
+    const e = stdin() as { criterios: { cmd?: unknown }[]; allowlist: string[]; ampliados: string[] }
+    out(e.criterios.map((c) => (typeof c.cmd === 'string' ? { ...c, cmd: cmdComAmpliados(c.cmd, e.allowlist, e.ampliados) } : c)))
     break
   }
   default:

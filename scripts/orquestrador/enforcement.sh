@@ -5,6 +5,11 @@
 # tabela, aplica migration ou carrega credencial.
 #
 # Uso: enforcement.sh --worktree <wt> --ticket <f> --base <sha> --out <json>
+#                     [--allowlist-extra <arquivo>]
+# --allowlist-extra (etapa 8c): caminhos, um por linha, somados à allowlist SÓ
+# nesta execução (o teste vizinho ampliado, rundir/allowlist-ampliada.txt). Vão
+# também em `ampliados`, para as regras que valem só neles. Arquivo ausente ou
+# vazio = nada muda.
 # Saída: 0 ok | 1 violação. Escreve o resultado JSON em --out.
 #
 # PORTE (ORQ-03): casca vinda de comarka-os. Mudou só o payload — lá ele carrega
@@ -30,13 +35,14 @@ ORQ_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "$ORQ_LIB_DIR/lib.sh"
 
-WT=""; TICKET=""; BASE=""; OUT=""
+WT=""; TICKET=""; BASE=""; OUT=""; EXTRA=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --worktree) WT="$2"; shift ;;
     --ticket) TICKET="$2"; shift ;;
     --base) BASE="$2"; shift ;;
     --out) OUT="$2"; shift ;;
+    --allowlist-extra) EXTRA="$2"; shift ;;
     *) die "arg desconhecido: $1" ;;
   esac
   shift
@@ -46,13 +52,18 @@ done
 
 changed="$(git -C "$WT" diff --name-only "$BASE"...HEAD)"
 diff_content="$(git -C "$WT" diff "$BASE"...HEAD)"
+extra='[]'
+if [ -n "$EXTRA" ] && [ -s "$EXTRA" ]; then
+  extra="$(jq -Rn '[inputs | select(length > 0)]' < "$EXTRA")"
+fi
 
 payload="$(jq -n \
   --argjson changedFiles "$(printf '%s' "$changed" | jq -Rn '[inputs | select(length>0)]')" \
-  --argjson allowlist "$(ticket_json "$TICKET" | jq '.pathspec_allowlist')" \
+  --argjson allowlist "$(ticket_json "$TICKET" | jq --argjson x "$extra" '.pathspec_allowlist + $x')" \
+  --argjson ampliados "$extra" \
   --arg diff "$diff_content" \
   --argjson config "$(cfg '.')" \
-  '{changedFiles:$changedFiles, allowlist:$allowlist, diff:$diff, config:$config}')"
+  '{changedFiles:$changedFiles, allowlist:$allowlist, ampliados:$ampliados, diff:$diff, config:$config}')"
 
 set +e
 result="$(printf '%s' "$payload" | ( cd "$ROOT" && "${ORQ_TSX[@]}" scripts/orquestrador/enforcement-core.ts --run-cli ))"

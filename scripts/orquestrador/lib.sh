@@ -1603,3 +1603,18 @@ write_meta() {
     rm -f "$tmp"
   fi
 }
+
+# --- Versão do ticket e teste vizinho (etapa 8c) -----------------------------
+# ticket_versao <arquivo> -> 12 hex do bloco JSON SEM as chaves que o motor
+# reescreve (campos-do-motor.json, 8b): editar o ticket gera versão nova. É a
+# régua do "uma vez por versão" do aviso do gate de ticket e da ampliação.
+ticket_versao() {
+  ticket_json "$1" | jq -S -c --slurpfile c "$CAMPOS_DO_MOTOR_FILE" 'reduce $c[0][] as $k (.; del(.[$k]))' 2>/dev/null \
+    | shasum -a 256 | cut -c1-12
+}
+
+# vizinho_ja_ampliado <id> <versao> -> 0 se a trilha já tem VIZINHO_AMPLIADO
+# desta versão do ticket (a ampliação é uma vez por versão, decisão da 8c).
+vizinho_ja_ampliado() {
+  grep -F " $1 VIZINHO_AMPLIADO " "$EVENTS_FILE" 2>/dev/null | grep -qE " hash=$2( |\$)"
+}

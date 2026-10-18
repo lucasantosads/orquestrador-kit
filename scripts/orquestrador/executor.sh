@@ -445,9 +445,30 @@ EOF
 # \e]0;...\a) e escape simples de um caractere. Texto UTF-8 passa intacto.
 strip_ansi() { LC_ALL=C sed -E $'s/\x1b\\[[0-9;:?]*[\x20-\x2f]*[\x40-\x7e]//g; s/\x1b\\][^\x07]*\x07//g; s/\x1b[\x20-\x2f]*[\x30-\x7e]//g'; }
 CRITERIOS_FALHOS=""; CRITERIOS_TOTAL=0; CRITERIOS_NAO_EXECUTADOS='[]'
+# criterios_da_tentativa <arquivo-ticket> <rundir> -> o array `criterios_aceite`.
+# Com teste vizinho ampliado nesta tentativa (rundir/allowlist-ampliada.txt,
+# etapa 8c), o critério de lista fechada (cmd que lista a allowlist inteira entre
+# aspas) aceita os ampliados SÓ nesta execução; o ticket não muda. Sem isto a
+# tentativa ampliada do 1373 do Comarka consertou o teste e reprovou com
+# FORA_<teste>. Falha do CLI devolve rc != 0 (quem chama derruba o executor).
+criterios_da_tentativa() {
+  local file="$1" rundir="$2"
+  if [ ! -s "$rundir/allowlist-ampliada.txt" ]; then
+    ticket_json "$file" | jq '.criterios_aceite // []'
+    return 0
+  fi
+  ticket_json "$file" | jq --argjson a "$(jq -Rn '[inputs | select(length > 0)]' < "$rundir/allowlist-ampliada.txt")" \
+      '{criterios: (.criterios_aceite // []), allowlist: (.pathspec_allowlist // []), ampliados: $a}' \
+    | decisao criterios-ampliados
+}
+
 run_criterios() {
-  local file="$1" wt="$2" rundir="$3" n=0 desc cmd esp out rc_cmd tmp_out
+  local file="$1" wt="$2" rundir="$3" n=0 desc cmd esp out rc_cmd tmp_out crits
   CRITERIOS_FALHOS=""; CRITERIOS_TOTAL=0; CRITERIOS_NAO_EXECUTADOS='[]'
+  # FORA do `< <(...)`: erro dentro da substituição morreria no subshell, e o
+  # laço veria zero critérios — "passou por não ter rodado".
+  crits="$(criterios_da_tentativa "$file" "$rundir")" \
+    || { log "ERRO: critérios da tentativa (lista fechada com a ampliação) não puderam ser montados — o executor não segue"; exit 1; }
   while IFS=$'\x1f' read -r desc cmd esp; do
     [ -z "${desc:-}" ] && continue
     [ "$esp" = "avaliador" ] && continue
@@ -492,7 +513,7 @@ run_criterios() {
   # o que corrompe qualquer cmd com regex escapado (ex.: grep -E 'fetch\(') —
   # confirmado reproduzindo o pipeline isolado (ticket 005). join() concatena cru,
   # sem escapar; \x1f (unit separator) evita colisao com conteudo real de campo.
-  done < <(ticket_json "$file" | jq -r '.criterios_aceite[]? | [.descricao, .cmd, (.espera|tostring)] | join("\u001f")')
+  done < <(printf '%s' "$crits" | jq -r '.[]? | [.descricao, .cmd, (.espera|tostring)] | join("\u001f")')
   CRITERIOS_TOTAL="$n"
   log "  critérios avaliados: $n"
 }
@@ -934,6 +955,11 @@ grava_diff_patch() {
 # — nunca o trabalho inteiro que vai ser mergeado. Vazio = comportamento antigo
 # (HEAD atual), que é o certo quando a worktree acabou de nascer.
 RESULT=""; MOTIVO=""; DIFF_LINES=0; DUR=0; ENF_OK=1; AGENTE_RC=0
+# Teste vizinho (etapa 8c). VIZ_AMPLIADA: os testes ampliados, um por linha,
+# valendo da tentativa seguinte à decisão até o fim do drive (o drive_ticket zera
+# no começo e arma depois de um retry). VIZ_DECIDIU / VIZ_JA: o que a seção 7a
+# desta tentativa achou (ampliar agora / vizinho de novo, ampliação já usada).
+VIZ_AMPLIADA=""; VIZ_DECIDIU=""; VIZ_JA=""
 # RETRY SEM MUDANÇA (ticket 623): `$8` (rundir_anterior) é o diretório de
 # evidência da tentativa ANTERIOR do mesmo ciclo de retry — vazio na primeira
 # tentativa, que não muda. Se o diff.patch novo tem o MESMO sha256 do anterior,
@@ -953,6 +979,10 @@ run_attempt() {
   local prompt saida rc=0 t0 base sinal veredito tools
   mkdir -p "$rundir"
   prompt="$rundir/prompt.txt"; saida="$rundir/claude.txt"
+  # Teste vizinho ampliado (etapa 8c): vale da tentativa seguinte à decisão até o
+  # fim do drive. Fica no rundir: o enforcement, os critérios, o juiz e o triador
+  # leem daqui.
+  [ -z "$VIZ_AMPLIADA" ] || printf '%s\n' "$VIZ_AMPLIADA" > "$rundir/allowlist-ampliada.txt"
   # DERIVADA UMA VEZ, usada nas duas bocas (peça 0e-c): o bloco "COMO RODAR
   # COMANDOS" do prompt e o `--allowedTools` da chamada. Duas derivações seriam
   # duas listas, e o dia em que divergissem seria o dia em que o agente gastaria
@@ -1039,7 +1069,7 @@ run_attempt() {
   ENF_OK=1
   fase enforcement
   if ! "$ORQ_LIB_DIR/enforcement.sh" --worktree "$wt" --ticket "$file" --base "$base" \
-        --out "$rundir/enforcement.json" >/dev/null 2>&1; then
+        --out "$rundir/enforcement.json" --allowlist-extra "$rundir/allowlist-ampliada.txt" >/dev/null 2>&1; then
     ENF_OK=0
     log "  enforcement: VIOLAÇÃO (ver $rundir/enforcement.json)"
   else
@@ -1071,6 +1101,38 @@ run_attempt() {
   run_criterios "$file" "$wt" "$rundir"
   event_gate "$(ticket_field "$file" '.id')" "$rundir" "$ENF_OK"
 
+  # 7a · TESTE VIZINHO (etapa 8c, porte do 457856c do Comarka). ANTES da base
+  # vermelha, porque o vizinho tem a mesma forma dela: FAIL só em teste fora do
+  # diff e da allowlist. Diferença: o teste importa ou cita um item de src/ da
+  # allowlist (C11 na árvore do base_ticket). Aí a tentativa reprova como mérito
+  # (gates reprovados, retry normal) e a seguinte ganha escrita nesses testes.
+  # Não exige critério verde (o retry conserta os dois). Uma vez por versão do
+  # ticket: com a ampliação desta versão já usada, o vizinho também não é base
+  # vermelha, e o ticket reprova pelo caminho de hoje.
+  VIZ_DECIDIU=""; VIZ_JA=""
+  if [ "$ENF_OK" = 1 ] && [ "$gates_rc" != 0 ] && [ -z "$VIZ_AMPLIADA" ] \
+     && ! grep -qi 'reexecutar' "$rundir/gates.txt" && so_testes_reprovaram "$rundir/gates.txt"; then
+    jq -n --rawfile g "$rundir/gates.txt" \
+        --argjson d "$(git -C "$wt" diff --name-only "$base"...HEAD | jq -Rn '[inputs | select(length > 0)]')" \
+        --argjson al "$(ticket_json "$file" | jq '.pathspec_allowlist // []')" \
+        --arg w "$wt" --arg b "$base" \
+        '{gatesTxt:$g, arquivosDoDiff:$d, allowlist:$al, worktree:$w, base:$b}' \
+      | decisao vizinhos > "$rundir/vizinhos.json" \
+      || { log "ERRO: decisao vizinhos falhou — o executor não segue sem saber se o FAIL é de teste vizinho"; exit 1; }
+    if [ "$(jq -r '.amplia' "$rundir/vizinhos.json")" = true ]; then
+      jq -r '.bloco' "$rundir/vizinhos.json" > "$rundir/vizinhos.txt"
+      if vizinho_ja_ampliado "$(ticket_field "$file" '.id')" "$(ticket_versao "$file")"; then
+        VIZ_JA="$(jq -r '.testes | join(",")' "$rundir/vizinhos.json")"
+        log "  teste vizinho ($VIZ_JA), mas a ampliação desta versão do ticket já foi usada — reprova pelo caminho de hoje"
+      else
+        VIZ_DECIDIU="$(jq -r '.testes | join("\n")' "$rundir/vizinhos.json")"
+        log "  teste vizinho: $(jq -r '.motivo' "$rundir/vizinhos.json") — a próxima tentativa pode editá-lo"
+      fi
+    else
+      log "  teste vizinho: não amplia ($(jq -r '.motivo' "$rundir/vizinhos.json"))"
+    fi
+  fi
+
   # 7b · BASE VERMELHA (ticket 632, decisão do Lucas de 23/09/2026). Enforcement
   # ok, critérios verdes, só gate de papel `testes` reprovado e TODOS os arquivos
   # FAIL fora do diff e da allowlist: a base está vermelha, não o ticket. Bloqueia
@@ -1079,12 +1141,13 @@ run_attempt() {
   # duas tentativas pagas por um hook timeout do 0283, arquivo fora do ticket.
   # Lista vazia (FAIL não reconhecido) ou arquivo próprio = caminho de hoje. O
   # CLI que falha derruba o executor: erro não vira "não é base vermelha".
-  if [ "$ENF_OK" = 1 ] && [ "$gates_rc" != 0 ] && [ -z "$CRITERIOS_FALHOS" ] \
+  if [ "$ENF_OK" = 1 ] && [ "$gates_rc" != 0 ] && [ -z "$CRITERIOS_FALHOS" ] && [ -z "$VIZ_DECIDIU$VIZ_JA" ] \
      && ! grep -qi 'reexecutar' "$rundir/gates.txt" && so_testes_reprovaram "$rundir/gates.txt"; then
     local bv_json
     bv_json="$(jq -n --rawfile g "$rundir/gates.txt" \
         --argjson d "$(git -C "$wt" diff --name-only "$base"...HEAD | jq -Rn '[inputs | select(length > 0)]')" \
-        --argjson al "$(ticket_json "$file" | jq '.pathspec_allowlist // []')" \
+        --argjson al "$(ticket_json "$file" | jq --argjson x "$(printf '%s' "$VIZ_AMPLIADA" | jq -Rn '[inputs | select(length > 0)]')" \
+                         '(.pathspec_allowlist // []) + $x')" \
         '{gatesTxt:$g, arquivosDoDiff:$d, allowlist:$al}' | decisao base-vermelha)" \
       || { log "ERRO: decisao base-vermelha falhou — o executor não segue sem saber se a base está vermelha"; exit 1; }
     BASE_VERMELHA="$(printf '%s' "$bv_json" | jq -r 'join(",")')"
@@ -1149,6 +1212,8 @@ run_attempt() {
   veredito="$(printf '%s' "$sinal" | decisao desfecho)"
   RESULT="$(printf '%s' "$veredito" | jq -r '.desfecho')"
   MOTIVO="$(printf '%s' "$veredito" | jq -r '.motivo')"
+  [ -z "$VIZ_DECIDIU" ] || MOTIVO="$MOTIVO; suíte vermelha só em teste vizinho ($(printf '%s' "$VIZ_DECIDIU" | paste -sd, - | sed 's/,/, /g')): a próxima tentativa pode editá-lo (ver $rundir/vizinhos.txt)"
+  [ -z "$VIZ_JA" ] || MOTIVO="$MOTIVO; teste vizinho já ampliado nesta versão do ticket: ${VIZ_JA//,/, }"
   printf '%s\n' "$veredito" > "$rundir/veredito.json"
   log "  desfecho: $RESULT — $MOTIVO"
 }
@@ -1280,6 +1345,7 @@ drive_ticket() {
   # virar ponto de partida nem destino de escrita. Reaproveitar worktree é
   # decisão TOMADA DENTRO deste laço, entre um retry e o seguinte, e só ali.
   local reusar=0 base_ticket="" slot attempt0 sub
+  VIZ_AMPLIADA=""   # a ampliação de teste vizinho nunca passa de um drive a outro (8c)
   id="$(ticket_field "$file" '.id')"
   slug="$(ticket_field "$file" '.slug')"
 
@@ -1333,7 +1399,7 @@ drive_ticket() {
     # SEM os campos que o próprio loop reescreve (status, nota, tentativas,
     # adiamentos): editar o ticket gera versão nova e aviso novo.
     local versao
-    versao="$(ticket_json "$file" | jq -S -c --slurpfile c "$CAMPOS_DO_MOTOR_FILE" 'reduce $c[0][] as $k (.; del(.[$k]))' 2>/dev/null | shasum -a 256 | cut -c1-12)"
+    versao="$(ticket_versao "$file")"
     if grep -F " $id GATE_TICKET_AVISO " "$EVENTS_FILE" 2>/dev/null | grep -qE " hash=$versao( |\$)"; then
       log "  gate de ticket: aviso desta versão já está na trilha (hash=$versao) — não repete"
     else
@@ -1509,6 +1575,7 @@ drive_ticket() {
 
     plano="$(printf '%s' "$(cat "$rundir/veredito.json")" | decisao retry "$attempt" "$modelo")"
     if [ "$(printf '%s' "$plano" | jq -r '.deveTentar')" != true ]; then
+      [ -z "$VIZ_DECIDIU" ] || log "  teste vizinho sem tentativa para ampliar: a decisão não é usada nem registrada (a versão segue elegível)"
       ticket_set_status "$file" "bloqueado"
       ticket_set_nota "$file" "$MOTIVO ($(printf '%s' "$plano" | jq -r '.motivo'))"
       ticket_commit "$file" "fila: $id bloqueado"
@@ -1517,6 +1584,13 @@ drive_ticket() {
       DESFECHO_NOMEADO=1; log "BLOQUEADO: $MOTIVO"; cleanup_worktree "$id" "$wt"; return 0
     fi
     modelo="$(printf '%s' "$plano" | jq -r '.modelo')"
+    # Teste vizinho (8c): a ampliação decidida nesta tentativa vale da próxima até
+    # o fim do drive. Registrada só quando há tentativa para usá-la: é ela que
+    # torna a versão do ticket inelegível para outra ampliação.
+    if [ -n "$VIZ_DECIDIU" ]; then
+      VIZ_AMPLIADA="$VIZ_DECIDIU"
+      event "$id" VIZINHO_AMPLIADO "testes=$(printf '%s' "$VIZ_AMPLIADA" | paste -sd, -)" "hash=$(ticket_versao "$file")" "attempt=$((attempt + 1))"
+    fi
     # DIAGNÓSTICO ESTRUTURADO no lugar do texto livre (custo-e-contexto §6): o
     # motivo em prosa dizia O QUE caiu, nunca onde. Aqui vai gate, arquivo,
     # linha, esperado vs obtido, trecho e — a lição do 201 — os arquivos de
