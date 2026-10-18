@@ -1051,7 +1051,31 @@
   *Teste:* `orquestrador-gate-8a.test.ts` (fixtures `test/fixtures/gate-ticket-8a/`,
   verbatim do Comarka, `ORIGEM.md`), `orquestrador-gate-corpus.test.ts`.
 
+- **8b · riscos ativos do lado do kit.** O commit do loop leva só as chaves do motor
+  (`EDICAO_ALHEIA`, `Orq-Loop`, `campos-do-motor.json`), o resolvedor só commita na branch
+  esperada (`branch_inesperada`), pausa com dono é intocável e "humano mexeu" (Vigia, humano,
+  edição sem commit) antes de agir. Commits `9b0addc`, `b2f9547`, `2495d4a`, `fc11aea`.
+  CONTRATO §19.
+  *Evidência:* `~/orq-sessoes/relatorio-kit-etapa8b.md`, `~/orq-sessoes/convergencia-comarka-kit.md`
+  (F5, F6, F8), ba731d8 do Comarka.
+  *Teste:* `orquestrador-edicao-alheia.test.ts`, `orquestrador-resolvedor-branch.test.ts`,
+  `orquestrador-resolvedor-pausa-dono-intocavel.test.ts`,
+  `orquestrador-resolvedor-humano-mexeu.test.ts`.
+
 ## PENDENTES
+
+- **8b · janela entre o sha e o `rm` na retomada da pausa de gate.** O resolvedor confere o
+  sha do sentinela e chama o `orq-pause.sh --off` do repo, que apaga sem olhar o conteúdo
+  (Comarka). Uma pausa com dono gravada nesse intervalo sairia junto. Fechar exige um `--off`
+  que confira o conteúdo (ex.: `--off-se <sha>`) no motor do repo.
+  *Evidência:* CONTRATO §19.3; 0 retomadas no ledger até 18/10.
+  *Teste:* o `--off-se` com o sentinela trocado no meio, sentinela intacto.
+
+- **8b · commit antigo do loop com edição alheia passa como "do loop".** O "humano mexeu"
+  reconhece o loop pelo assunto exato nos commits sem `Orq-Loop`; um commit como o ba731d8 do
+  Comarka (status + edição alheia) não conta como edição humana. Fecha sozinho quando o
+  Comarka tiver o conserto do C4 e o trailer.
+  *Evidência:* CONTRATO §19.4; `docs/migracao-comarka.md` (Etapa 8b).
 
 - **8c · `testes_vizinhos` como allowlist de teste condicionada a falha.** Porte do
   457856c do Comarka: a C11 v2 só avisa, porque nenhuma variante estática chega a zero FP

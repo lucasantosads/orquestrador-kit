@@ -1118,3 +1118,25 @@ o 402, porque `vercel.json` não é item de `src/` e o corpus não tem a árvore
 de "dentro da allowlist" foi para `orquestrador-gate-8a.test.ts`, com árvore real. O teste
 do CLI troca a mensagem esperada da C11 (`importado ou citado por`). O contexto do corpus
 devolve `arvoreAlvo: undefined`.
+
+### Etapa 8b · riscos ativos do lado do kit (18/10/2026)
+
+Os riscos F5, F6 e F8 do relatório de convergência Comarka × kit e a coordenação com a Vigia
+da fila. CONTRATO §19.
+
+- **8b-1** `9b0addc`: o commit do loop leva só as chaves do motor. `ticket_commit` e o
+  autocommit passam por `commit_motor` (índice temporário a partir da HEAD); edição alheia
+  fica no working tree com `EDICAO_ALHEIA`; trailer `Orq-Loop: <id>`; lista única
+  `campos-do-motor.json` (o `desfecho.ts` ganha `adiado_ate`); o preflight recusa sem ela.
+  Vermelho com o 1361, o 1371 e o 1377 reais do ba731d8.
+- **8b-2** `b2f9547`: o resolvedor só commita na branch esperada (`branch` do item, senão
+  `branch_protegida`, senão `main`); `branch_inesperada` no ledger e um aviso.
+- **8b-3** `2495d4a`: pausa com dono é intocável: a pausa de gate é só o sentinela que começa
+  pela linha de gate e não tem `dono:`, e o `--off` não roda com outro sentinela presente.
+- **8b-4** `fc11aea`: humano mexeu antes de agir (commit `Orq-Vigia`, commit humano, edição
+  sem commit, depois de `bloqueio.quando`): o resolvedor não age e grava `humano_mexeu`.
+- **8b-5**: CONTRATO §19 e §4.1 (`EDICAO_ALHEIA`), este registro, `docs/PECAS.md` e a nota do
+  C4 em `docs/migracao-comarka.md`.
+
+Asserções existentes que mudaram: nenhuma. O `test-fixture-executor.sh` passou a copiar
+também `*.json` do motor, por causa de `campos-do-motor.json`.

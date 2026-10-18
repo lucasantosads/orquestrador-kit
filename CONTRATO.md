@@ -199,6 +199,7 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `OCIOSO` | `local-loop.sh:drenar` (peça 7a-4) | `pendentes=` e um `<id>=<razão>` por pendente; ver abaixo |
 | `AMBIENTE` | `local-loop.sh:drenar` (peça 7a-8) | `tickets=<id>,<id>` `causa=<normalizada>` (a causa vai até o fim da linha); ver abaixo |
 | `AMBIENTE_ADIAMENTO_DESFEITO` | `local-loop.sh:adiamentos_ambiente_desfazer` (porte-actus j2) | `adiamentos_ambiente=<antes>-><depois>` — a drenagem terminou em `AMBIENTE` e o `adiamentos_ambiente` que o executor somou no ticket nesta drenagem volta ao valor de antes (commitado); um por ticket ainda pendente cujo valor mudou |
+| `EDICAO_ALHEIA` | `lib.sh:_aviso_edicao_alheia`, chamada por `commit_motor` (ticket_commit e autocommit; etapa 8b, §19) | `arquivo=<nome do ticket>` `campos=<chave>,…\|prosa\|nao_rastreado` `hash=<12 hex>` — o ticket tinha edição que não é do motor; o commit do loop levou só as chaves do motor e a edição ficou no working tree. Uma vez por edição (`hash` do ticket sem os campos do motor) |
 | `PAUSA` | `lib.sh:pausa_registrar`, chamada por `orq pausar`, pelo `orq-pause.sh` (514, §11) e pelo painel (peças K12-C, K12-F) | `motivo=<token>` `por=terminal\|painel` |
 | `RETOMADA` | `lib.sh:retomada_registrar`, chamada por `orq retomar` e pelo painel (peças K12-C, K12-F) | `por=terminal\|painel` `dur=<N>min` |
 
@@ -1804,6 +1805,76 @@ só ele a sombra, e o 1006 segue aplicando) e
 `orquestrador-resolvedor-pausa-dono.test.ts` (as 17 pausas reais de 17 e 18/10, fixture
 `test/fixtures/pausas-7f7`: 2 notificações, eram 17; o limite; o FALHOU; a pausa sem dono;
 as chaves do item).
+
+## 19. Etapa 8b: riscos ativos do lado do kit (18/10/2026)
+
+Origem: relatório de convergência Comarka × kit de 18/10 (F5, F6, F8 e a coordenação com a
+Vigia da fila). Relatório da etapa: `~/orq-sessoes/relatorio-kit-etapa8b.md`.
+
+### 19.1 O commit do loop leva só as chaves do motor (`lib.sh:commit_motor`)
+
+`scripts/orquestrador/campos-do-motor.json` é a lista ÚNICA dos campos que o motor escreve
+no ticket: `status`, `notas_status`, `tentativas`, `adiamentos_ambiente`, `adiado_ate`. Ela é
+lida pelo `lib.sh`, pelo hash de versão do gate de ticket (`executor.sh`) e pelo
+`desfecho.ts`. O preflight recusa sem ela.
+
+`ticket_commit` e `autocommit_status_fila` passam por `commit_motor <msg> <arquivo>…`, que
+monta o commit num índice temporário a partir da HEAD:
+
+- ticket sem edição alheia (o bloco sem os campos do motor e a prosa iguais à HEAD): entra o
+  arquivo do working tree;
+- com edição alheia: entra a HEAD com só os campos do motor do working tree; a edição fica no
+  working tree, sem commit; o índice real volta a casar a HEAD; `EDICAO_ALHEIA` na trilha
+  (§4.1) e um aviso no log, uma vez por edição (`runs/<id>/.edicao-alheia`);
+- ticket fora da HEAD: não entra (`campos=nao_rastreado`).
+
+O commit é `git commit` (os hooks do repo rodam; nunca `--no-verify`) e leva um trailer
+`Orq-Loop: <id>` por ticket. No kit o loop roda no checkout principal: a edição alheia
+deixada no working tree faz o preflight seguinte recusar por árvore suja, o que é AMBIENTE
+(§4.1) e não queima ticket, até o dono da edição commitar.
+
+### 19.2 O resolvedor só commita na branch esperada (`repo.ts:branchEsperada`)
+
+Branch esperada: `branch` do item no repos.json; senão `branch_protegida` de
+`docs/fila/000-config.json` do repo; senão `main`. O `escreverEComitar` confere
+`rev-parse --abbrev-ref HEAD` logo antes de escrever; fora dela não escreve e devolve
+`branch_inesperada: checkout em 'X', esperada 'Y'`.
+
+### 19.3 Pausa com dono é intocável (`gate-streak.ts`)
+
+A pausa de gate sistêmico (§17.4) é só o sentinela cuja primeira linha não vazia COMEÇA por
+`gate sistemico: "<gate>" reprovou N tickets seguidos (…)` e não tem `dono:`. A retomada não
+chama o `--off` do repo se outro sentinela (`pausar_file`, `PAUSAR`, `.orq-pause`) existir:
+o `--off` do kit apaga os dois. Fica de fora a janela entre a conferência do sha e o `rm` do
+script do repo (o script é do repo cliente).
+
+### 19.4 Humano mexeu, antes de agir (`humano.ts`)
+
+O R1/R5 em `auto` não age se, depois de `bloqueio.quando` (trilha no kit, `meta.json` no
+legado), o arquivo do ticket recebeu um commit que muda algo fora dos campos do motor e não é
+do loop (trailer `Orq-Loop`, ou o assunto exato do motor nos commits antigos) nem do
+resolvedor (`Orq-Resolvedor`, `Orq-Resolvedor-Desfaz`), ou se há edição sem commit no working
+tree fora dos campos do motor. O commit com `Orq-Vigia:` é `quem: vigia`; o resto, `humano`.
+O commit que cria o arquivo não conta.
+
+### 19.5 Ledger: tipos novos
+
+| tipo | quando | campos |
+|---|---|---|
+| `branch_inesperada` | o checkout do repo não está na branch esperada (§19.2) | `repo`, `id`, `branch`, `esperada`, `notificacao` (só na primeira vez do repo naquela branch) |
+| `humano_mexeu` | alguém mexeu depois do bloqueio (§19.4) | `repo`, `id`, `classe`, `regra`, `assinatura`, `acao`, `quem` (`vigia`, `humano`, `nao_commitado`), `commit`, `assunto`, `bloqueado_em` |
+| `nao_agiu` | também a retomada recusada por outro sentinela (§19.3) | `motivo: outra pausa presente: …` |
+
+O `humano_mexeu` do desfecho (§14.6) passa a ignorar `adiado_ate`, que é campo do motor.
+
+### 19.6 Testes
+
+`orquestrador-edicao-alheia.test.ts` (1361, 1371 e 1377 reais de ba731d8^ e ba731d8, fixture
+`test/fixtures/edicao-alheia-8b`), `orquestrador-resolvedor-branch.test.ts` (o 840 real com o
+checkout em outra branch), `orquestrador-resolvedor-pausa-dono-intocavel.test.ts` (a pausa de
+gate real de 12/10 e a pausa com dono real de 16/10) e
+`orquestrador-resolvedor-humano-mexeu.test.ts` (o 840 real com commit `Orq-Vigia`, commit
+humano e edição sem commit; controles: edição antes do bloqueio e commit do loop).
 
 ## 10. Divergências conhecidas
 

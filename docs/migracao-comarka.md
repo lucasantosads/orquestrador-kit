@@ -188,3 +188,16 @@ Mais 5 opcionais pequenos. Do lado do comarka são 10 frentes de adaptação, a 
 
 Classificação: grupo (a) e (c) do comarka lidos arquivo a arquivo; (b) agrupado por capacidade. As afirmações
 "quebra depois da troca" sobre `orq-server.py` e os `test-*.sh` são inferência por leitura, não execução.
+
+## Etapa 8b: o conserto do autocommit, sugerido ao Comarka (C4)
+
+O kit fechou na 8b o defeito do F5 da convergência (CONTRATO §19.1, commit `9b0addc`): o
+commit do loop leva só as chaves do motor, e a edição alheia fica no working tree com
+`EDICAO_ALHEIA`. O Comarka tem o mesmo defeito em `scripts/orquestrador/local-loop.sh:376-393`
+(`autocommit_status_fila`) e em `:350` (`rebase_status_fila`), que fazem `git add` do arquivo
+inteiro; o caso real é o ba731d8 (18/10 07:39: o `objetivo` do 1361 e o `cmd` do 1371 e do
+1377). O mesmo conserto foi sugerido ao chat do Comarka como C4 do relatório de convergência
+(`~/orq-sessoes/convergencia-comarka-kit.md`, seção C), com PORTE-PENDENTE. Lá as chaves do
+motor são só `status` e `notas_status` (`lib.sh:150-151`), e o conserto precisa cobrir também
+o rebase. Até ele entrar, o "humano mexeu" do resolvedor (§19.4) reconhece o autocommit do
+Comarka pelo assunto, e um autocommit com edição alheia passa como do loop.
