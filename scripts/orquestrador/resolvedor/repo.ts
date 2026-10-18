@@ -193,15 +193,30 @@ export function branchEsperada(raiz: string, doItem?: string): string {
  */
 export function escreverEComitar(raiz: string, id: string, rel: string, antes: string, novo: string, mensagem: string, retrato?: Retrato, branch?: string): Escrita {
   const real = confereTicket(raiz, id, rel)
+  // a última releitura antes da troca: tentativa nova do loop, desiste (7f-b5)
+  return comitarUmArquivo(raiz, rel, real, antes, novo, mensagem, () => (retrato ? tentativaNova(raiz, id, rel, retrato) : null), 'o ticket', branchEsperada(raiz, branch))
+}
+
+/**
+ * A porta genérica de um arquivo só (etapa MIG-A: o aplicador de migrations a
+ * usa para o arquivo de liberação). Quem chama já conferiu o caminho (`real`
+ * é o caminho real de `rel` dentro de `raiz`). Espera o git livre, roda
+ * `conferir` (a última releitura de quem chama; um texto é o motivo para
+ * desistir), exige o arquivo ainda igual a `antes`, escreve, `git commit
+ * --only -- <rel>` sem `--no-verify`, desfaz o arquivo se o commit falha e
+ * confere que o commit tem só ele, com o pai certo. Com `esperada`, exige o
+ * checkout nessa branch antes de escrever (8b; o resolvedor sempre passa).
+ */
+export function comitarUmArquivo(raiz: string, rel: string, real: string, antes: string, novo: string, mensagem: string, conferir?: () => string | null, oQue = 'o ticket', esperada?: string): Escrita {
   const esperando = esperarGit(raiz)
   if (esperando) return { ok: false, motivo: `git rodando: ${esperando}` }
-  // a última releitura antes da troca: tentativa nova do loop, desiste (7f-b5)
-  const nova = retrato ? tentativaNova(raiz, id, rel, retrato) : null
-  if (nova) return { ok: false, motivo: nova }
-  if (readFileSync(real, 'utf8') !== antes) return { ok: false, motivo: 'o ticket mudou desde a leitura: outro processo mexeu' }
-  const esperada = branchEsperada(raiz, branch)
-  const atual = gitLeitura(raiz, ['rev-parse', '--abbrev-ref', 'HEAD']).stdout.trim()
-  if (atual !== esperada) return { ok: false, motivo: `branch_inesperada: checkout em '${atual}', esperada '${esperada}'`, branch: { atual, esperada } }
+  const outra = conferir?.() ?? null
+  if (outra) return { ok: false, motivo: outra }
+  if (readFileSync(real, 'utf8') !== antes) return { ok: false, motivo: `${oQue} mudou desde a leitura: outro processo mexeu` }
+  if (esperada !== undefined) {
+    const atual = gitLeitura(raiz, ['rev-parse', '--abbrev-ref', 'HEAD']).stdout.trim()
+    if (atual !== esperada) return { ok: false, motivo: `branch_inesperada: checkout em '${atual}', esperada '${esperada}'`, branch: { atual, esperada } }
+  }
   const headAntes = gitLeitura(raiz, ['rev-parse', 'HEAD']).stdout.trim()
   writeFileSync(real, novo)
   const c = gitEscrita(raiz, ['commit', '--only', '-q', '-m', mensagem, '--', rel])

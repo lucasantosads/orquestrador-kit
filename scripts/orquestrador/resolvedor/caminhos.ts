@@ -41,8 +41,9 @@ export class GuardaResolvedor {
   private readonly repos: string
   private readonly protegidos: string[]
 
-  constructor(protegidosExtra: string[] = []) {
-    this.raiz = caminhoReal(raizResolvedor())
+  /** `raiz` (etapa MIG-A): o aplicador de migrations usa a mesma guarda sobre ~/.orq/migrations. */
+  constructor(protegidosExtra: string[] = [], raiz: string = raizResolvedor()) {
+    this.raiz = caminhoReal(raiz)
     this.repos = caminhoReal(arquivoRepos())
     this.protegidos = [...lerRepos().map((r) => r.caminho), ...protegidosExtra].map((p) => caminhoReal(p))
     for (const p of this.protegidos) {

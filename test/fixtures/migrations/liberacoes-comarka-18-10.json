@@ -1,0 +1,1953 @@
+{
+  "descricao": "Tokens de liberação humana. Uma dependência 'humano:<token>' de um ticket é considerada RESOLVIDA quando um objeto com esse token aparece em 'liberadas'. Só um humano edita este arquivo.",
+  "liberadas": [
+    {
+      "token": "aplicar-migration-contratual",
+      "em": "2026-08-13",
+      "por": "lucas",
+      "nota": "arq_documentos revisada: RLS + policy service_role + revoke anon/authenticated"
+    },
+    {
+      "token": "sessao-serial-nav",
+      "em": "2026-08-14",
+      "por": "lucas",
+      "nota": "062 liberado; gate visual do 063 sera feito no preview antes do merge em main"
+    },
+    {
+      "token": "migration-220-wpp-grupo-aplicada",
+      "em": "2026-08-25",
+      "por": "lucas",
+      "nota": "20260825000000_wpp_grupo aplicada e verificada: 13 colunas, UNIQUE (cliente_id, group_jid), indice em cliente_id, RLS habilitada com 1 policy service_role e 0 grants para anon/authenticated. Destrava o ticket 222."
+    },
+    {
+      "token": "migration-224-papel-aplicada",
+      "em": "2026-08-25",
+      "por": "lucas",
+      "nota": "20260825000001_responsavel_padrao_papel aplicada e verificada: coluna nullable em ops_template_etapas + CHECK nomeada com os 5 papeis. Destrava o ticket 225."
+    },
+    {
+      "token": "migration-227-clientes-teses-fk-aplicada",
+      "em": "2026-08-25",
+      "por": "lucas",
+      "nota": "migration 20260825000002_clientes_teses_fk_catalogo aplicada e verificada no banco: 5 colunas nullable (tese_id, nicho_id, cliente_id, ticket_medio numeric, ltv_meses integer), 3 FKs ON DELETE SET NULL para perf_teses/perf_nichos/clientes, 3 indices. clientes_teses tinha 0 linhas, zero risco de violacao. Destrava o ticket 230."
+    },
+    {
+      "token": "migration-196-cs-wpp-mensagem-aplicada",
+      "em": "2026-08-26",
+      "por": "lucas",
+      "nota": "20260824000000_cs_wpp_mensagem aplicada e verificada: 14 colunas, 4 indices (PK + UNIQUE parcial em wpp_message_id + 2 compostos por enviada_em desc), CHECK de 7 valores em tipo_conteudo, RLS habilitada com 1 policy service_role e 0 grants para anon/authenticated, 0 linhas. Tabela OS-owned, zero FK/leitura C0. O create policy do arquivo nao era idempotente - aplicado dentro de DO/pg_policies; portar a correcao para o .sql do repo."
+    },
+    {
+      "token": "migration-215-temperatura-aplicada",
+      "em": "2026-08-26",
+      "por": "lucas",
+      "nota": "20260825000004_temperatura_comercial_mirror aplicada e verificada: 5 colunas nullable em clientes_notion_mirror (temperatura_comercial text, temperatura_justificativa text, temperatura_sinais_upsell jsonb, temperatura_riscos jsonb, temperatura_calculada_em timestamptz), sem constraint, sem indice. Tabela passou de 36 para 41 colunas. Nao e C0. Destrava 216 e em cascata 217."
+    },
+    {
+      "token": "migration-242-ia-leitura-comercial-aplicada",
+      "em": "2026-08-26",
+      "por": "lucas",
+      "nota": "20260825000005_ia_leitura_comercial aplicada e verificada: 11 colunas, 2 indices (PK + composto cliente_id/gerado_em desc), CHECK de 3 valores em temperatura, 1 FK para public.clientes(id) ON DELETE CASCADE, jsonb default '[]' em sinais_upsell e riscos, RLS habilitada com 1 policy service_role e 0 grants para anon/authenticated, 0 linhas. clientes tem 217 linhas e nao e C0. create policy aplicado dentro de DO/pg_policies para idempotencia (terceiro .sql com o mesmo defeito — padronizar no repo). Destrava o 243."
+    },
+    {
+      "token": "decisao-cron-alertas",
+      "em": "2026-08-28",
+      "por": "lucas",
+      "nota": "Motor de alertas deve rodar. Registrar alertas-avaliar no vercel.json com schedule diario. perf_alerta_regras tem 3 regras e perf_alerta_ocorrencias esta vazia."
+    },
+    {
+      "token": "decisao-C1",
+      "em": "2026-09-04",
+      "por": "lucas",
+      "nota": "EXCECAO EXPLICITA a regra 19: '% de receita perdida' fica na aba Churn de Saude, como RAZAO, sem cifra em R$. Razao nao expoe MRR nem mensalidade, entao o objetivo da regra 19 (nao mostrar dinheiro da agencia em tela) segue preservado. Esta e a unica excecao aberta ate agora — qualquer nova exige decisao propria, nao herda desta. Churn continua reportado em % de CLIENTES sobre a fonte do 037; benchmarks so com n>=3. Destrava 314 quando as 7 dependencias de ticket fecharem."
+    },
+    {
+      "token": "decisao-D1",
+      "em": "2026-09-04",
+      "por": "lucas",
+      "nota": "Precedencia de qualificacao: cliente > tese > global. Mais especifico vence; global e ultimo recurso. Hoje ha 1 regra (tese/estagio_pipeline/MQL), zero conflito real. Destrava 307 e 311."
+    },
+    {
+      "token": "decisao-D16",
+      "em": "2026-09-04",
+      "por": "lucas",
+      "nota": "Metas: eu defino, cadencia mensal, por assistente de 3 passos (mes -> metrica -> valor sugerido pelo realizado do mes anterior via perf_insights_daily), gravando em ops_metas_negocio. A grade de 30 celulas 'definir' nunca foi usada e vira visao de leitura com 'sem meta' explicito. 'Distribuir igualmente' sai. Meta por cliente nasce na ficha, fora deste escopo. Destrava 345 e, com contas-meta, o 318a/346."
+    },
+    {
+      "token": "decisao-D29",
+      "em": "2026-09-04",
+      "por": "lucas",
+      "nota": "Higiene do kanban aprovada: soft-delete de 3 tarefas de teste ('teste' x2, 'tutut') e encerramento de cronometros em_andamento ha mais de 12h — inclui o de ~1.257h aberto desde 14/07. Script 365a e dry-run por padrao, imprime 'candidatos=<n> apply=<bool>', toca so tarefas_kanban (nao e C0), deleted_at em vez de DELETE. O --apply continua gate humano. Destrava 365a e 365b."
+    },
+    {
+      "token": "decisao-D31",
+      "em": "2026-09-04",
+      "por": "lucas",
+      "nota": "clientes e a entidade canonica do OS; o OS cria a linha faltante. Recon 04/09: 78 ativos em clientes_receita, so 36 resolvem uuid, 42 ausentes (35 com notion_id). Script 370 e dry-run por padrao, idempotente por nome normalizado + notion_id, NUNCA escreve em clientes_receita. Os 20 divergentes (ativo no OS sem receita ativa) so entram no relatorio, sem alteracao. O --apply contra o banco continua sendo gate humano. Destrava 370, 371, 373."
+    },
+    {
+      "token": "decisao-D4",
+      "em": "2026-09-04",
+      "por": "lucas",
+      "nota": "Taxonomia de nicho unica: rotulos livres de clientes_receita.nicho (MEDICO, SAUDE, TRANSITO, 'BANCARIO, PREVIDENCIARIO') sao MAPEADOS para os 11 de perf_nichos; nicho novo so se juntar >=3 clientes. Escrita vai para ops_cliente_nichos (PK cliente_id+nicho_id), NUNCA em clientes_receita.nicho. String com dois nichos vira duas linhas. Rotulo sem mapa entra no relatorio, nao inventa nicho. Benchmark por nicho mostra 'sem amostra suficiente' abaixo de n=3. Destrava 319 e, com D8, o 330."
+    },
+    {
+      "token": "decisao-D8",
+      "em": "2026-09-04",
+      "por": "lucas",
+      "nota": "Propriedade de nicho/tese: o CLIENTE e o dono; a conta de anuncio herda dele; a campanha sobrescreve pontualmente. Mesma logica de precedencia do D1 (mais especifico vence). Config funde Taxonomia + Classificacao numa aba 'Nichos e Teses'; abas antigas somem com redirect de ?view=. ticket_medio/ltv_meses de clientes_teses sao dinheiro DO CLIENTE — permitidos em tela, rotulados como 'do cliente' para nao colidir com a regra 19. Destrava 330 e, em cascata, 319/312/331."
+    },
+    {
+      "token": "lote-identidade-370",
+      "em": "2026-09-05",
+      "por": "lucas",
+      "nota": "Script 370 aplicado contra o banco. Relatorio dry-run conferido: 78 ativos, 36 ja resolvidos, 42 criados em clientes, 20 divergentes (ativo no OS sem receita ativa) apenas listados, sem alteracao. ATENCAO: 7 dos criados ficaram com data_inicio = data do apply porque clientes_receita.mes_fechamento estava nulo e clientes.data_inicio e NOT NULL — sao rastreaveis por observacao='criado por identidade-370' AND data_inicio = a data do apply. Corrigir upstream (preencher mes_fechamento) antes do 314 usar tempo de casa. Destrava 308, 309a, 313, 315b1, 315b2, 316, 347, 351, 355, 371, 373."
+    },
+    {
+      "token": "ddl-372",
+      "em": "2026-09-06",
+      "por": "lucas",
+      "nota": "20260905000000_372_etapa_churn_default aplicada e verificada. Cruzamento read-only antes de aplicar: 95 ativos com etapa_churn='aviso_recebido', dos quais 0 com risco alto/critico, 0 com data_cancelamento, 0 com churn_validado, 0 com status_anterior. Unico com motivo_cancelamento e Poliana Bastos Advogada, cuja nota diz 'sinal + reembolso, nao virou cliente' — nao e churn. Pipeline real de churn intacto: 29 aviso + 2 juridico, todos status='cancelado', fora do WHERE da migration. Destrava o 315a."
+    },
+    {
+      "token": "migration-049-os-audit-log-aplicada",
+      "em": "2026-09-06",
+      "por": "lucas",
+      "nota": "20260817000000_os_audit_log aplicada e verificada. ACHADO: a tabela JA EXISTIA em producao com 9 linhas de ago/set (cliente_extra, cliente_crm_config) — o CREATE TABLE foi no-op. O que a migration realmente adicionou foi seguranca e indices: RLS habilitada, policy only_service_role, REVOKE ALL de anon/authenticated (antes a tabela de auditoria estava sem RLS), 2 indices (entidade+entidade_id+quando desc, quando desc). FK quem->employees ON DELETE SET NULL presente. CREATE POLICY envolvido em DO/pg_policies para idempotencia (correcao do token migration-196 portada). CONSEQUENCIA: as rotas do 049 (orcamento, forma-pagamento-trafego) nunca estiveram em 503 — ja gravavam; o que falta e UI que as chame. Nenhum evento de orcamento_trafego ou forma_pagamento_trafego no log ate hoje."
+    },
+    {
+      "token": "onboarding-tracking-nao-c0",
+      "em": "2026-09-06",
+      "por": "lucas",
+      "nota": "Confirmado: onboarding_tracking nao e zona C0. A lista C0 e clientes_receita, leads_crm, leads_crm_historico, trafego_*, ads_metadata, ads_performance, vw_*, fn_mql_sql_by_month — onboarding_tracking nao consta. O proprio 309a ja registrava 'A6 confirmou que onboarding_tracking nao e C0'; o token so nao tinha sido escrito aqui. Destrava 309a e, por consequencia, 309b e 316."
+    },
+    {
+      "token": "ddl-309a",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "Migration 20260906000000_309a_onboarding_cliente_id aplicada via MCP em 07/09 e verificada: onboarding_tracking.cliente_id uuid nullable + idx + FK para clientes(id). Aditiva, tabela nao-C0. Backfill e do script 309a-onboarding-match.ts (dry-run padrao): medido no banco, 127 de 289 casam por nome unico e 2 sao ambiguos, que vao para nao_casados. Destrava 309b e 316."
+    },
+    {
+      "token": "ddl-373",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "Migration 20260907000000_373_cliente_id_nps_reunioes aplicada via MCP em 07/09 e verificada: cliente_id uuid nullable + idx + FK em perf_nps_tokens, perf_nps_respostas e reunioes_cliente. Aditiva, tres tabelas do OS. ATENCAO ao alcance do backfill via clientes_notion_mirror: perf_nps_tokens 6 de 6 resolvem, perf_nps_respostas tem 0 linhas, e reunioes_cliente resolve 0 de 83 porque cliente_notion_id e nulo nas 83 (a fonte e tl;dv, nao o Notion) - quem resolve o cliente_id dessa tabela e o ticket 357, pelo convidado externo do Calendar. A coluna e pre-requisito do 357, nao alvo deste backfill. Destrava 335, 336, 337 e 357."
+    },
+    {
+      "token": "decisao-D3",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "Enunciado recuperado de ~/fila-v41/LEIA-ME.md: D3 = universo unico = fonte 037 (78 ativos, clientes_receita.status='ativo'). Ja e a regra (8) embutida em todos os tickets da fila; nenhuma tela conta ativo por conta propria. Destrava 313 e 314."
+    },
+    {
+      "token": "decisao-D30",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "Ja respondida no corpo do ticket 347: 'D30 respondida (ferramenta de tarefa do time)'. O token so nao tinha sido escrito aqui — mesmo caso do C1 e do onboarding-tracking-nao-c0. Destrava 347."
+    },
+    {
+      "token": "decisao-D32",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "D32 = onboarding canonico. Resposta: NOTION (onboarding_tracking, 289 linhas medidas em 07/09) contra ops_onboarding, que tem 1. O 367 vira 'briefing como item do motor + link publico na ficha', sem ops_onboarding_etapas."
+    },
+    {
+      "token": "decisao-D33",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "D33 = FICA. /dashboard/super-admin permanece em ALLOWLIST_REGRA19 com rationale explicito: e tela de leitura executiva atras de bypass de super-admin (src/lib/rbac/resolver.ts:88) e fora da navegacao — nenhum link para ela em componente de menu. O guardrail 14 protege a operacao de ver receita da agencia; quem alcanca essa tela nao e operacao. Difere do C2 (financeiro e custos SAEM) porque aquelas duas estao no menu e sao alcancaveis por papel de operacao. NAO e excecao permanente: se algum dia a tela entrar no menu ou perder o gate de super-admin, a entrada da allowlist deve cair junto. O ticket 369 nao toca o Dashboard Comercial — so cria redirect saindo do OS para NEXT_PUBLIC_DASHBOARD_COMERCIAL_URL."
+    },
+    {
+      "token": "decisao-D34",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "D34 = canal do disparo de NPS (335). Verificado no n8n em 07/09: os 18 workflows existentes nao tem nenhum fluxo de NPS. Pelo default do proprio 335 ('n8n se o fluxo ja roda; senao fila de envio manual'), a resposta e FILA DE ENVIO MANUAL: o cron monta {cliente, telefone, link} e grava 'pendente de envio', exibido na pagina NPS. O webhook n8n fica atras de env e passa a valer quando o fluxo existir. credencial-evolution nao entra no caminho critico."
+    },
+    {
+      "token": "decisao-D35",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "D35 = casa do CRM na navegacao (341/343). Resposta: CRM fica sob o grupo Clientes, visivel SO para admin. Head e gestor nao veem. Excecao consciente a Regra 12 ('tela que so le e card'): o CRM le leads_crm (C0) e continua somente leitura, mas o volume de lead justifica tela propria em vez de card. Se algum dia head ou gestor precisar consultar lead, a decisao se reabre."
+    },
+    {
+      "token": "decisao-D7",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "Enunciado estava so em revisao-plano-v4-04set.md (agora em docs/planos/). D7 = o tile 'em saida' do 313. Resposta: os 31 do pipeline sao churn ja consumado na receita e NAO sao subconjunto dos 78 ativos, entao o tile vira 'saidas em andamento (fora dos 78)' com denominador proprio, nunca somado ao universo de ativos."
+    },
+    {
+      "token": "migration-196-aplicada",
+      "em": "2026-09-07",
+      "por": "lucas",
+      "nota": "Alias de migration-196-cs-wpp-mensagem-aplicada (liberado 26/08). O ticket 360 declara a dependencia com o nome curto; o registro usa o nome longo. Mesma migration: 20260824000000_cs_wpp_mensagem, ja aplicada e verificada. Destrava 360."
+    },
+    {
+      "token": "ddl-374",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "Migration do 374 aplicada via MCP em 08/09 e verificada: ops_tarefa_template ganhou por_cliente (bool, default false) e fonte_evidencia (text com CHECK nas 6 fontes, incluindo sem_fonte); ops_tarefa_ocorrencia ganhou cliente_id uuid FK->clientes ON DELETE RESTRICT, evidencia jsonb e estado (CHECK ok|atrasado|sem_fonte). O UNIQUE antigo (template_id, responsavel_id, data_ref) foi DROPADO e substituido pelo indice unico com COALESCE(cliente_id), que comporta multiplos clientes no mesmo template/responsavel/data. DROP autorizado porque as duas tabelas tinham 0 linhas e o indice novo e superconjunto do antigo. Destrava 353 e 360."
+    },
+    {
+      "token": "decisao-D10",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "migrado da lista .tokens em 08/09: o loop le SO .liberadas (lib.sh:114), entao token que vivia so em .tokens travava ticket em silencio. Liberacao original preservada; so o formato mudou."
+    },
+    {
+      "token": "decisao-D11",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "migrado da lista .tokens em 08/09: o loop le SO .liberadas (lib.sh:114), entao token que vivia so em .tokens travava ticket em silencio. Liberacao original preservada; so o formato mudou."
+    },
+    {
+      "token": "decisao-D12",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "tl;dv fica; Fathom sai; n8n so o que roda; Plaud so se ja houver rota. Texto original em ~/fila-v41/LEIA-ME.md:67, nota generica revisada e confirmada por Lucas em 15/09."
+    },
+    {
+      "token": "decisao-D13",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "migrado da lista .tokens em 08/09: o loop le SO .liberadas (lib.sh:114), entao token que vivia so em .tokens travava ticket em silencio. Liberacao original preservada; so o formato mudou."
+    },
+    {
+      "token": "decisao-D17",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "migrado da lista .tokens em 08/09: o loop le SO .liberadas (lib.sh:114), entao token que vivia so em .tokens travava ticket em silencio. Liberacao original preservada; so o formato mudou."
+    },
+    {
+      "token": "decisao-D2",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "migrado da lista .tokens em 08/09: o loop le SO .liberadas (lib.sh:114), entao token que vivia so em .tokens travava ticket em silencio. Liberacao original preservada; so o formato mudou."
+    },
+    {
+      "token": "decisao-D20",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "migrado da lista .tokens em 08/09: o loop le SO .liberadas (lib.sh:114), entao token que vivia so em .tokens travava ticket em silencio. Liberacao original preservada; so o formato mudou."
+    },
+    {
+      "token": "decisao-D21",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "migrado da lista .tokens em 08/09: o loop le SO .liberadas (lib.sh:114), entao token que vivia so em .tokens travava ticket em silencio. Liberacao original preservada; so o formato mudou."
+    },
+    {
+      "token": "decisao-D22",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "migrado da lista .tokens em 08/09: o loop le SO .liberadas (lib.sh:114), entao token que vivia so em .tokens travava ticket em silencio. Liberacao original preservada; so o formato mudou."
+    },
+    {
+      "token": "decisao-D23",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "daily = reuniao do time; presenca via Calendar. Texto original em ~/fila-v41/LEIA-ME.md:74, nota generica revisada e confirmada por Lucas em 15/09."
+    },
+    {
+      "token": "decisao-D24",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "interacao no grupo = 48h uteis sem mensagem da equipe. Texto original em ~/fila-v41/LEIA-ME.md:75, nota generica revisada e confirmada por Lucas em 15/09."
+    },
+    {
+      "token": "decisao-D25",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "saude do gestor = obrigacoes + risco + capacidade. Texto original em ~/fila-v41/LEIA-ME.md:76, nota generica revisada e confirmada por Lucas em 15/09."
+    },
+    {
+      "token": "decisao-D27",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "reunioes de alinhamento em todos os clientes; vinculo por convidado. Texto original em ~/fila-v41/LEIA-ME.md:77, nota generica revisada e confirmada por Lucas em 15/09."
+    },
+    {
+      "token": "decisao-D28",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "migrado da lista .tokens em 08/09: o loop le SO .liberadas (lib.sh:114), entao token que vivia so em .tokens travava ticket em silencio. Liberacao original preservada; so o formato mudou."
+    },
+    {
+      "token": "decisao-D5",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "migrado da lista .tokens em 08/09: o loop le SO .liberadas (lib.sh:114), entao token que vivia so em .tokens travava ticket em silencio. Liberacao original preservada; so o formato mudou."
+    },
+    {
+      "token": "decisao-D6",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "migrado da lista .tokens em 08/09: o loop le SO .liberadas (lib.sh:114), entao token que vivia so em .tokens travava ticket em silencio. Liberacao original preservada; so o formato mudou."
+    },
+    {
+      "token": "decisao-D9",
+      "em": "2026-09-08",
+      "por": "lucas",
+      "nota": "migrado da lista .tokens em 08/09: o loop le SO .liberadas (lib.sh:114), entao token que vivia so em .tokens travava ticket em silencio. Liberacao original preservada; so o formato mudou."
+    },
+    {
+      "token": "pessoas-a10",
+      "em": "2026-09-09",
+      "por": "lucas",
+      "nota": "cargo Customer Success criado em ops_cargo (nivel 50, role_base operacao) em 09/09; gestor_id do Eduardo fica NULO por decisao do Lucas, unico gestor ativo fora da hierarquia do Head"
+    },
+    {
+      "token": "backfill-clientes-receita-cliente-id",
+      "em": "2026-09-15",
+      "por": "lucas",
+      "nota": "Backfill aplicado pelo Lucas no SQL Editor em 15/09 (escrita C0, gate humano). Vinculou clientes_receita.cliente_id para os 30 clientes do pipeline ativo de churn (29 aviso_recebido + 1 juridico). Dry-run previo provou 30/30 com exatamente 1 candidato por nome normalizado (unaccent+lower+trim+colapso de espaco), zero ambiguo, zero sem match, zero ja vinculado a outro cliente; todos os registros de receita estavam churned. Triggers conferidos antes: trg_resolve_lead_clientes_receita e INSERT-only (nao dispara); trg_entrada_to_clientes_mirror_upd so age quando status_financeiro VIRA ativo, entao foi no-op (os 30 seguem churned) e o espelho do Notion nao foi tocado. Transacao com guarda que abortaria se o total nao fosse 30. Read-back: pipeline com vinculo 30/30, clientes_receita com cliente_id 91 -> 121 (+30), total 289 inalterado. Destrava 315a4 e, em cascata, 315a5 -> 315a6 -> 317. NAO cobre os demais 168 registros de receita sem vinculo: fora do pipeline ativo, ficam para um backfill proprio."
+    },
+    {
+      "token": "contas-meta-vinculadas",
+      "em": "2026-09-15",
+      "por": "lucas",
+      "nota": "Conta do cliente Aquino vinculada. Provisorio -- ponto de partida ate mais contas serem conectadas, nao e o estado final esperado. Destrava 318a e 318b (funil por tese e ranking de criativos, ambos degradam bem com poucos dados: n<3 cliente na tese vira \"sem amostra\", nao erro). 346d fica de fora desta liberacao -- ele remove a aba Comparativo que funciona hoje e so tem sentido com mais contas vinculadas; marcado bloqueado manualmente em separado."
+    },
+    {
+      "token": "decisao-obrigacoes-lista",
+      "em": "2026-09-15",
+      "por": "lucas",
+      "nota": "Decisao: a lista de obrigacoes do gestor NAO fica em arquivo, vira TELA. Recon de 15/09 mostrou que o CRUD ja existe: /api/ops/tarefas-recorrentes (GET/POST + [id] PATCH/DELETE) escreve em ops_tarefa_template com Zod, guard admin-ou-lideranca (ops_cargo.eh_lideranca) e normalizacao de alvo; a UI ja consome em dashboard/admin/organizacao/OrganizacaoAdmin.tsx. Gap real e pequeno: a rota e o form nao aceitam por_cliente nem fonte_evidencia, as duas colunas que o 374 adicionou. Portanto o 353 precisa ser REESCRITO para ler do banco (nao de docs/obrigacoes/LISTA.md) e a LISTA.md sai; o seed idempotente de arquivo deixa de fazer sentido. Ticket novo para estender rota+form entra em duas fatias (backend+teste, depois UI) porque OrganizacaoAdmin.tsx tem 1846 linhas e estouraria o cap de diff. Enquanto o 353 nao for reescrito, ele NAO deve rodar como esta."
+    },
+    {
+      "token": "lote-onboarding-309b",
+      "em": "2026-09-15",
+      "por": "lucas",
+      "nota": "Script scripts/dados/309b-onboarding-higiene.ts rodado com --apply em 15/09: concluidos=97, cancelados=0. Os 97 sao a D2 (>45d em 'Passagem de bastao'/'Acoes finais' viram concluidos com finalizado_em = etapa_entrada_em + 45d), sobre universo de 277 abertos. Cancelados=0 porque a regra depende de onboarding_tracking.cliente_id (309a) e o vinculo ainda nao esta preenchido -- nao e ausencia de caso, e falta de dado; o script e idempotente e uma segunda rodada pega os cancelamentos depois do backfill. Idempotencia verificada: dry-run apos o apply devolveu concluidos=0. Sem espelho no Notion por decisao do Lucas (equipe consulta o Comarka OS; o OS ainda nao esta em uso pela equipe, entao aplicar agora nao gera divergencia visivel). Destrava 316."
+    },
+    {
+      "token": "merge-auditoria-acoes-em-staging-auto",
+      "em": "2026-09-16",
+      "por": "lucas",
+      "nota": "harness (auditar-acoes.py, a11y-acoes.test.ts, a11y-baseline.json) mergeado em staging-auto no commit e0a3586"
+    },
+    {
+      "token": "ddl-400",
+      "em": "2026-09-17",
+      "por": "lucas",
+      "nota": "ops_jobs/ops_job_eventos + fn_ops_job_claim + fn_ops_job_reaper aplicados e verificados (ledger 20260917135226); .sql versionado; zona ops_, fora da C0"
+    },
+    {
+      "token": "ghl-oauth-marketplace",
+      "em": "2026-09-19",
+      "por": "lucas",
+      "nota": "GHL_CLIENT_ID/SECRET, GHL_API_BASE_URL e APP_BASE_URL (https://project-sp5ze.vercel.app) em Production na Vercel; redirect URI registrada na v2.0.0 do app; /login responde 200"
+    },
+    {
+      "token": "ghl-locations-mapeadas",
+      "em": "2026-09-19",
+      "por": "lucas",
+      "nota": "475 done e em producao (b41ed66): callback do OAuth e o produtor de perf_ghl_locations. Liberado para 306/306b/320/367 rodarem. Entrada de lead ainda depende do 475c: perf_leads = 0 em 19/09"
+    },
+    {
+      "token": "ddl-visao-status",
+      "em": "2026-09-19",
+      "por": "lucas",
+      "nota": "20260919100005_d5_status_historico_clientes aplicada e verificada via MCP em 19/09. NAO criou trigger: o trigger que o D5 pedia (trg_registrar_historico_status, BEFORE UPDATE OF status) ja existia e estava correto. O que travava era trg_log_status_change / fn_log_status_change(), que inseriam em activity_log_clientes — tabela inexistente em todos os schemas — fazendo TODA mudanca de status de cliente levantar 42P01 e voltar atras (historico congelado em 30/04/2026, status_anterior NULL nos 274 clientes). Excecao a CREATE-only autorizada pelo Lucas. Read-back: clientes de 7 para 6 triggers, fn_log_status_change ausente, trg_registrar_historico_status presente e tgenabled='O' como trilha unica. Zero leitor de activity_log_clientes nos dois repos (grep em src/supabase/migrations/sql/scripts/test). Destrava V10 (popover de historico de status)."
+    },
+    {
+      "token": "ddl-triggers-activity-log",
+      "em": "2026-09-19",
+      "por": "lucas",
+      "nota": "20260919100006_d6_drop_triggers_activity_log aplicada e verificada via MCP em 19/09. Irmao do D5: derruba os outros 4 triggers/funcoes da migration 20260421_briefing_activity_log.sql do dashboard-comercial, todos AFTER INSERT inserindo na mesma tabela inexistente — trg_log_avaliacao_interna (clientes_avaliacoes_internas, 0 linhas), trg_log_feedback_gestor (clientes_feedbacks_gestores, 0 linhas), trg_log_nova_tese (teses, 0 linhas), trg_log_nova_tarefa (tarefas, 1 linha). Os tres zeros nao eram 'ninguem usou', eram 'ninguem conseguiu': o 42P01 derrubava o INSERT inteiro. avaliacao_interna e feedback_gestor nao tinham guarda nenhuma; tese e tarefa so quebravam com cliente_id nao nulo. PRIMEIRA TENTATIVA FALHOU na guarda, antes de qualquer DROP, por erro de tipo meu (text || \"char\" ambiguo em tgenabled); corrigido com ::text e reaplicado. Read-back: 4 triggers e 4 funcoes ausentes, e ZERO funcao no banco ainda cita activity_log_clientes."
+    },
+    {
+      "token": "ddl-visao-funil",
+      "em": "2026-09-19",
+      "por": "lucas",
+      "nota": "20260919100001_d1_funil_check_direct_ligacao aplicada e verificada via MCP em 19/09, com ensaio previo em BEGIN/ROLLBACK. CHECK de config_funil_campanha.tipo_funil passou de 5 para 7 valores (+direct, +ligacao) e as 2 linhas de perf_campanha_tipo foram copiadas com mensagem->mensagens (de-para explicito, sem else mudo; ON CONFLICT (campaign_id) DO NOTHING). Read-back: 56 para 58 linhas, 120241218817450088 e 120243481777000765 como 'mensagens', zero campanha de perf_campanha_tipo faltando. O arquivo tambem ESPELHA o schema de config_funil_campanha em CREATE TABLE IF NOT EXISTS: a tabela nao existia em nenhum arquivo do repo. ATENCAO: o plano dizia 55 linhas; medido no banco sao 56 (a propria distribuicao 30+15+10+1 ja somava 56) — corrigido no .sql e no PLANO. As 2 policies abertas da tabela (SELECT e ALL 'to public', using true) NAO foram tocadas: pertencem a fila de revoke anon. Destrava V01."
+    },
+    {
+      "token": "ddl-visao-alertas",
+      "em": "2026-09-19",
+      "por": "lucas",
+      "nota": "20260919100002_d2_alerta_regra_metrica_limite aplicada e verificada via MCP em 19/09, com ensaio previo em BEGIN/ROLLBACK. CHECK perf_alerta_regras_tipo_check (nome e _tipo_check, nao _tipo_regra_check) passou de 5 para 6 valores (+metrica_limite). O contrato do config ficou como COMMENT ON COLUMN, NAO como CHECK de jsonb: travar a forma do jsonb agora rejeitaria a primeira regra do V04 e o erro apareceria na API, longe da migration; a validacao e do V04 com zod. Read-back: as outras 3 CHECKs da tabela (coerencia, escopo, severidade) intactas; 1 regra existente, nao afetada. Destrava V04 e, em cascata, V05."
+    },
+    {
+      "token": "ddl-visao-relacao",
+      "em": "2026-09-19",
+      "por": "lucas",
+      "nota": "20260919100003_d3_interacoes_relacao aplicada e verificada via MCP em 19/09, com ensaio previo em BEGIN/ROLLBACK. NAO criou tabela nova: o plano registrava 'Relacao | nenhuma tabela | inexistente', mas client_interaction_records (ticket 002) ja e a tabela de registro do cliente — 0 linhas, porem lida e escrita por 9 rotas + webhook Evolution + 10 arquivos de teste. Criar cliente_relacao_registros ao lado faria o motor de risco ler metade. Excecao a CREATE-only autorizada pelo Lucas. CHECK de tipo de 4 para 8 valores (+temperatura, combinado, compromisso, pendencia_comarka); colunas nullable status (CHECK aberta|concluida, NULL passa por construcao), valor (temperatura: quente|morna|fria) e deleted_at. Read-back: 8 para 11 colunas, FK autor_id->employees(id) ON DELETE SET NULL intacta, RLS e grants inalterados. DUAS DIVIDAS REGISTRADAS: (1) cliente_id e TEXT sem FK para clientes, o plano pedia uuid — trocar tipo de coluna em uso e outra ordem de grandeza, nao feito; (2) os 9 leitores NAO filtram deleted_at, entao soft delete so vira soft delete de verdade quando o V06 ajustar os SELECTs. Destrava V06."
+    },
+    {
+      "token": "ddl-visao-prefs",
+      "em": "2026-09-19",
+      "por": "lucas",
+      "nota": "20260919100004_d4_usuario_preferencias_ui aplicada e verificada via MCP em 19/09, com ensaio previo em BEGIN/ROLLBACK. Tabela nova CREATE-only, PK (user_id, chave), valor jsonb default '{}', RLS ligada com policy only_service_role e REVOKE explicito de anon/authenticated, indice extra por chave. user_id ganhou FK -> employees(id) ON DELETE CASCADE: a ambiguidade employees (12 linhas) x usuarios (5 linhas) foi resolvida lendo o codigo — SessionPayload tem um unico id de pessoa (employeeId), o login busca em employees, /api/auth/me resolve contra employees e client_interaction_records.autor_id ja aponta para la. Read-back: 4 colunas, 2 constraints, grants so service_role, 2 indices. Destrava V07."
+    },
+    {
+      "token": "decisao-perfil-cliente-obs",
+      "em": "2026-09-21",
+      "por": "lucas",
+      "nota": "D-perfil. A tabela de perfil de relacionamento que fica e cliente_perfil_obs; client_cs_profile sera aposentada. Medido em 21/09 (leitura): as duas existem e tem 0 linhas, nao ha dado a migrar. Primeiro passo e so codigo (296b: zero leitura e escrita de client_cs_profile em src/, aba Perfil monta PerfilObsBloco, inverte o ticket 300). O DROP TABLE de client_cs_profile fica para ticket de migration futuro, sob token humano proprio: esta liberacao NAO cobre DDL."
+    },
+    {
+      "token": "decisao-painel-para-campanhas",
+      "em": "2026-09-21",
+      "por": "lucas",
+      "nota": "O bloco PAINEL da Visao (ClientePerfPanel, montado em page.tsx no AnchorBlock id=painel: KPIs antigos, pacing de verba, metas, performance por tipo, contas de anuncio, Analisar com IA) sai da Visao e vai para a aba Campanhas (grupo performance), sem perder funcao: mesmo componente, mesmas props (period, setupNotionId), mesma linha de estado do 492 quando nao ha conteudo. A key 'painel' continua no union ChildTab; so muda de grupo em TAB_GROUPS. Destrava 512."
+    },
+    {
+      "token": "decisao-visao-sem-cockpit-antigo",
+      "em": "2026-09-21",
+      "por": "lucas",
+      "nota": "Os blocos Health, Midia 30 dias, Negocio e Acao (CockpitVisaoGeral, montado no geral-tab) saem da Visao. O score de saude vira UM chip no cartao do topo (IdentidadeCliente), com UMA fonte: o composto de GET /api/perf/cockpit/[id] resolvido uma vez no shell (ticket 296). clientes_notion_mirror.score_saude (que o Resumo antigo mostrava como 32/100) nao e fonte de tela. LTV e 'Vincular receita' so existiam no Negocio: vao para a aba Conta antes (513), nunca somem sem destino. Destrava 513 e 514."
+    },
+    {
+      "token": "ddl-407a0",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. 20260919900000_churn_log_cliente_receita_id: churn_log.cliente_receita_id + indice. Destrava (em parte) o 407a."
+    },
+    {
+      "token": "ddl-475c0",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. 20260919000000_perf_leads_ghl_contact_id: perf_leads.ghl_contact_id + indice unico parcial; integration_tokens UNIQUE(provider) trocada por (provider, coalesce(location_id,'')). Destrava (em parte) o 475c."
+    },
+    {
+      "token": "ddl-306b0",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. 20260919000001_perf_fechamentos_origem_ghl: origem aceita 'ghl' + indice unico parcial por lead. Destrava (em parte) o 306b."
+    },
+    {
+      "token": "migration-335b-nps-disparo-fila-aplicada",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. 20260909000000_335b_nps_disparo_fila: perf_nps_disparo_fila com RLS only_service_role. Registro: nenhum ticket depende de token humano para o 335b (dependentes apontam para o ticket 335b, ja done)."
+    },
+    {
+      "token": "decisao-relatorio-modelo-mockup",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "O relatorio ao cliente segue EXATAMENTE docs/roadmap/mockups/relatorio-cliente.pdf. Pagina 1: visao geral com 8 cards (investimento total, impressoes, CTR medio, total de leads, visitas ao perfil, campanhas ativas, seguidores gerados, custo por seguidor), resumo financeiro da captacao, campanhas de captacao, investimento mensal, gasto por campanha, evolucao do CPL. Pagina 2: distribuicao do investimento, campanhas de trafego/perfil, 'Leitura da Comarka'. Correcoes ao mockup: subtitulo das linhas de trafego e 'Campanha de trafego' (o mockup diz 'Campanha de captacao'); sem '+' solto nos valores; a faixa de atencao do CPL e um limite configuravel por cliente; a 'Leitura da Comarka' e escrita pelo gestor (ou rascunho de IA revisado) e nunca sai sem revisao. Sem comparativo com periodo anterior (decisao 16/06). Metrica sem dado: 'sem base'. Destrava R1-R5."
+    },
+    {
+      "token": "decisao-relatorio-blocos-opcionais",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "Funil de negocio (Leads, RM, RM>RR, RR, RR>V, Vendas, CPV, ticket medio, faturamento, ROAS) e 'O que fizemos no periodo' sao blocos OPCIONAIS que o gestor liga ao gerar o relatorio; o padrao e o mockup puro, com os dois desligados. Destrava R4."
+    },
+    {
+      "token": "decisao-teses-manual",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "A tese do cliente e cadastrada manualmente, escolhida do catalogo perf_teses; sem sugestao automatica. Tese fora do catalogo so entra depois que um admin a adiciona ao catalogo. Destrava T1 e T2."
+    },
+    {
+      "token": "decisao-otimizacoes-autor-meta",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "Otimizacao importada da Meta guarda o autor exatamente como vem da Meta (actor_name) mais a conta de anuncio; nao tenta casar com funcionario. Destrava O1 e O2."
+    },
+    {
+      "token": "decisao-metricas-por-tipo",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "Indicadores diarios por campanha adaptados ao tipo (Mensagens, Landing/Typebot, Formulario, Perfil), com seletor de campanha com busca e destaque de variacao forte contra a media dos 7 dias anteriores: limite padrao 30%, configuravel; volume minimo para destacar: gasto do dia >= R$ 30 e, para CPL, >= 3 leads no dia; a cor segue o sentido da metrica (custo que sobe e vermelho, conversao que sobe e verde). Destrava M1 e M2."
+    },
+    {
+      "token": "decisao-relacao-registro-unico",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "Um so botao 'Registrar' com todos os tipos (reuniao, contato, temperatura, combinado, compromisso, pendencia do cliente, pendencia da Comarka, reclamacao, elogio, observacao, NPS manual), gravando em client_interaction_records (a mesma tabela que o bloco Relacao da Visao le, ticket 486). Observacoes (client_cs_observations) e Notas de acompanhamento (cliente_perfil_obs.notas) deixam de ser tabelas/blocos proprios. Medido em 22/09: as duas estao com 0 linhas, nao ha dado a copiar. Destrava RL1 (com ddl-relacao-tipos)."
+    },
+    {
+      "token": "decisao-relacao-timeline-unica",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "Uma linha do tempo unica na aba Relacao (registros + reunioes + resumos de WhatsApp + mudancas de status), filtro por tipo, periodo da barra, compactada por dia. Reunioes com transcricao ficam como sub-bloco proprio. Destrava RL2."
+    },
+    {
+      "token": "decisao-relacao-ia-unica",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "Resumos Semanais, Resumo da Relacao, Leitura Comercial e 'Resumir periodo' saem; entra UMA 'Leitura da relacao' persistida com historico (perf_leituras_relacao). O texto legivel e montado do JSON por codigo (template), nunca por uma segunda chamada de IA: 1 chamada ao modelo por leitura. Destrava RL3, RL4, RL5 e RL8 (com ddl-leitura-relacao)."
+    },
+    {
+      "token": "decisao-relacao-config-para-conta",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "Contatos, CRM (GHL), link de coleta do NPS e grupo de WhatsApp vao para a aba Conta (secoes Conexoes e Cadastro da decisao-conta-estrutura). Satisfacao percebida (estrelas) sai. Perfil de comunicacao e pontos de atencao ficam na Relacao, compactos. Destrava RL6."
+    },
+    {
+      "token": "decisao-conta-estrutura",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "A aba Conta tem 5 secoes nesta ordem: (1) Contrato e entregas; (2) Resultados do escritorio; (3) Conexoes; (4) Cadastro; (5) Operacao (recolhido). A2 e RL6 entregam seus blocos ja dentro desta estrutura; CT1-CT7 consolidam. Tarefas sai da aba Conta (esta na Visao). Destrava A2, RL6 e CT1-CT7."
+    },
+    {
+      "token": "decisao-adv-premium-e-pacote",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "ADV PREMIUM e um PACOTE (escopo que reune produtos), como o Metodo AdvPro: vive em ops_produtos (is_metodo), com composicao em ops_produto_composicao e vinculo ao cliente em ops_cliente_produtos. Ainda NAO esta cadastrado; o Lucas cadastra a mao depois. Medido em 22/09: contratos.modelo_contrato e nulo em 200 de 200 linhas, nenhum 'ADV PREMIUM' em lugar nenhum; ops_cliente_produtos tem 1 linha. O segundo catalogo 'produtos' (ADV PRO, ADV Lite) e conceito duplicado: nao usar (backlog). O comportamento e decidido por FLAG do pacote (ops_produtos.tem_etapas_contratuais e consultorias_incluidas, D10), nunca pelo nome: o codigo nao contem o literal 'ADV PREMIUM'. Enquanto nenhum pacote estiver marcado, CT8 e CT9 nao mostram nada para ninguem, e isso e esperado. Destrava CT8, CT9 e CT14 (com ddl-pacote-flags)."
+    },
+    {
+      "token": "decisao-contrato-etapas-so-adv-premium",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "Etapas do contrato com amortizacao (percentual por etapa, Termo de Conclusao) e contador de consultorias so aparecem para cliente com pacote vinculado que tenha tem_etapas_contratuais = true (CT8) e consultorias_incluidas > 0 (CT9); regra do Lucas 22/09 corrigida no mesmo dia pela decisao-adv-premium-e-pacote (flag do pacote, nunca o nome). Para os demais os blocos nao aparecem (nem 'sem base'); no maximo uma linha 'Etapas contratuais: nao se aplica ao pacote <nome>'. 'Valor amortizado comprovado' = soma dos percentuais das etapas concluidas COM termo anexado; sem termo nao conta. Prazo das consultorias contado da Reuniao de START, hoje 60 dias, configuravel por cliente. Destrava CT8 e CT9."
+    },
+    {
+      "token": "decisao-compromissos-cliente-depois",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "Compromissos do cliente (tempo de resposta a leads, uso do CRM, acesso concedido) ficam para DEPOIS do Analista Comercial, e so para clientes com a garantia ativada. Sem ticket nesta leva; registrado no BACKLOG-MAPEADO.md."
+    },
+    {
+      "token": "decisao-documentos-ligados-onboarding",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "O checklist de documentos obrigatorios se liga as etapas do onboarding: cada etapa de template declara os documentos que exige (arquivo ou acesso); etapa com documento obrigatorio faltando fica 'pendente de documento'; na aba Conta o checklist agrupa por etapa. Nunca guardar senha: acesso e so 'concedido/pendente'. Medido em 22/09: ops_template_etapas (30 linhas) nao tem lista de documentos. Destrava CT13 (com ddl-documentos-etapa)."
+    },
+    {
+      "token": "ddl-metricas",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100001_d1_metricas_por_tipo.sql"
+    },
+    {
+      "token": "ddl-otimizacoes",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100002_d2_perf_otimizacoes.sql"
+    },
+    {
+      "token": "ddl-relatorio",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100003_d3_relatorio_gerado.sql"
+    },
+    {
+      "token": "ddl-relacao-tipos",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100004_d4_relacao_tipos.sql"
+    },
+    {
+      "token": "ddl-leitura-relacao",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100005_d5_leitura_relacao.sql"
+    },
+    {
+      "token": "ddl-qualificacao",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100006_d6_qualificacao_etapas.sql"
+    },
+    {
+      "token": "ddl-contrato-etapas",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100007_d7_contrato_etapas.sql"
+    },
+    {
+      "token": "ddl-fechamentos-cliente",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100008_d8_fechamentos_cliente.sql"
+    },
+    {
+      "token": "ddl-documentos-etapa",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100009_d9_documentos_etapa.sql"
+    },
+    {
+      "token": "ddl-pacote-flags",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100010_d10_pacote_flags.sql"
+    },
+    {
+      "token": "ddl-fechamento-campanha",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100011_d11_fechamento_campanha.sql"
+    },
+    {
+      "token": "ddl-marco-onboarding",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100012_d12_marco_onboarding.sql"
+    },
+    {
+      "token": "mockups-ficha-na-staging",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "main vai para a staging-auto no mesmo bloco de push deste commit. Mockups oficiais docs/roadmap/mockups/ficha/{campanhas,relacao,conta}.dc.html (84f8779)."
+    },
+    {
+      "token": "decisao-ajustes-mockup-22set",
+      "em": "2026-09-22",
+      "por": "lucas",
+      "nota": "Rodada de 22/09 depois do alinhamento aos mockups da ficha: (1) o rename do 541 que entrou no commit do 530b (8977bce) fica como esta, sem reescrever historico; (2) chip de Temperatura no cartao do topo fica no backlog (o cartao tem aceite proprio, 522); (3) respostas de NPS continuam na coluna lateral da Relacao (550/551); (4) no 567, pessoas do escritorio = 'sem base' quando nao der para separar equipe Comarka de escritorio."
+    },
+    {
+      "token": "credencial-evolution",
+      "em": "2026-09-24",
+      "por": "lucas",
+      "nota": "24/09: env EVOLUTION_* gravadas no Vercel (instancia Suporte), connectionState=open, 138 grupos visiveis"
+    },
+    {
+      "token": "revisao-wpp-24set",
+      "em": "2026-09-24",
+      "por": "lucas",
+      "nota": "tickets 616-620 revisados"
+    },
+    {
+      "token": "wpp-grupos-mapeados",
+      "em": "2026-09-24",
+      "por": "lucas",
+      "nota": "seletor de grupos em producao (616b/616c); Aquino revinculado"
+    },
+    {
+      "token": "ligar-cron-ia",
+      "em": "2026-09-25",
+      "por": "lucas",
+      "nota": "aprovado gasto recorrente de IA nos crons 386 (analise-risco diaria, temperatura-comercial semanal) e 549c (leitura-relacao diaria). Modelo padrao do registro (src/lib/ia/funcoes.ts): analise_risco = gemini-3-flash; lente_comercial_cliente e leitura_relacao_cliente = claude-haiku-4-5, salvo override em /api/ia/config. Estimativa ~US$ 25-60/mes com 81 clientes ativos, a medir no primeiro mes."
+    },
+    {
+      "token": "decisao-relatorio-publico-sem-sem-base",
+      "em": "2026-09-25",
+      "por": "lucas",
+      "nota": "25/09: no relatorio PUBLICO ao cliente (/r/[token]: pagina 1, pagina 2 e blocos opcionais) bloco ou cartao sem dado NAO aparece, em vez de mostrar \"sem base\". \"sem base\" continua valendo so nas telas internas. Aplica ao funil de negocio (etapa sem dado some) e ao card de alcance (some quando nao houver dado; alcance do periodo via Meta fica para ticket separado)."
+    },
+    {
+      "token": "decisao-setup-lista-canonica",
+      "em": "2026-09-26",
+      "por": "lucas",
+      "nota": "26/09: 6 itens, mockup de aceite; WhatsApp por wpp_grupo"
+    },
+    {
+      "token": "decisao-cpl-por-objetivo",
+      "em": "2026-09-26",
+      "por": "lucas",
+      "nota": "26/09: CPL so em campanha de captacao (form, mensagem, LP); engajamento sai do CPL e mostra metrica propria na mesma tabela, com objetivo visivel"
+    },
+    {
+      "token": "decisao-onboarding-complementar",
+      "em": "2026-09-26",
+      "por": "lucas",
+      "nota": "26/09: kanban = implantacao operacional de todos os clientes; Motor = jornada do contrato so ADV PREMIUM; card do kanban concluido fecha a etapa START do Motor"
+    },
+    {
+      "token": "decisao-comercial-cliente",
+      "em": "2026-09-26",
+      "por": "lucas",
+      "nota": "26/09: CRM de vendas da Comarka sai do menu Clientes para menu Comercial; ficha ganha Comercial do cliente: resumo na Visao + 5a aba propria, funil dos leads do escritorio via GHL dele e analises para trafego (CPMQL, CAC, campanha que gera lead que fecha)"
+    },
+    {
+      "token": "decisao-chave-oficial-cliente-id",
+      "em": "2026-09-26",
+      "por": "lucas",
+      "nota": "26/09: cliente_id (uuid do OS) e a chave oficial; notion_id vira apelido aceito so em URLs legadas; codigo novo nao depende de notion_id"
+    },
+    {
+      "token": "decisao-apolo-com-dados",
+      "em": "2026-09-26",
+      "por": "lucas",
+      "nota": "26/09: Apolo recebe contexto da tela e ferramentas de leitura dos dados do cliente"
+    },
+    {
+      "token": "decisao-C2",
+      "em": "2026-09-29",
+      "por": "lucas",
+      "nota": "29/09: C2 = entram. /dashboard/financeiro e /dashboard/custos viram redirect para o dashboard comercial (decisao registrada em docs/HANDOFF-16set-1400.md:114: 'financeiro e custos viram redirect, e so quem tem acesso ao dashboard comercial pode ver. Falta escrever o token.'). Destrava 369."
+    },
+    {
+      "token": "excecao-c0-churn-reativar",
+      "em": "2026-09-29",
+      "por": "lucas",
+      "nota": "29/09: registra a autorizacao de 19/09 que ja estava na prosa do ticket 407a ('EXCECAO C0 AUTORIZADA (Lucas, 19/09): a unica escrita em clientes_receita em todo o OS e o UPDATE de status dentro desta funcao'). Vale so para fn_reativar_churn. Nao libera aplicar: humano:ddl-407a segue pendente (revisao do .sql antes)."
+    },
+    {
+      "token": "ddl-407a",
+      "em": "2026-09-29",
+      "por": "lucas",
+      "nota": "29/09: liberado pelo Lucas na sessao interativa ('libero o ddl-407a'), depois do 407b reescrito passar no validar-fila.py sem erro (688021c). Destrava a cadeia 407a -> 407b. O 407a so ESCREVE supabase/migrations/20260920000000_fn_reativar_churn.sql e para: aplicar a funcao no banco continua humano, com revisao do .sql. ATENCAO: o 407b depende deste mesmo token e chama rpc fn_reativar_churn; enquanto o .sql nao for aplicado, a funcao nao existe no banco, entao o 407b nao pode ser promovido para main antes da aplicacao."
+    },
+    {
+      "token": "mockups-portal-gestor-na-staging",
+      "em": "2026-09-30",
+      "por": "lucas",
+      "nota": "mockups no commit 94a46ba; em 01/10 descoberto que renderizavam placeholders sem o support.js; corrigido no a8ead2a (support.js md5 951ae391b8ae72ef12e671c2fad23353), 4 mockups conferidos pelo Lucas"
+    },
+    {
+      "token": "fix-cron-paths-na-main",
+      "em": "2026-09-30",
+      "por": "lucas",
+      "nota": "branch fix/cron-paths mergeado em main e staging-auto; destrava 689 e 722"
+    },
+    {
+      "token": "decisao-cs-inicio",
+      "em": "2026-09-30",
+      "por": "lucas",
+      "nota": "CS vê todos os clientes ativos no Início (há uma CS só)"
+    },
+    {
+      "token": "modelo-ia-promessas",
+      "em": "2026-09-30",
+      "por": "lucas",
+      "nota": "gpt-5.4-mini, o padrão atual do OS; teto de chamadas por execução definido no 716"
+    },
+    {
+      "token": "ddl-portal-inicio",
+      "em": "2026-10-01",
+      "por": "lucas",
+      "nota": "migration do 691 aplicada (ledger 20261001220801 = arquivo 20261001090000_portal_inicio.sql); 4 tabelas com RLS e only_service_role conferidas"
+    },
+    {
+      "token": "relacao-perf-os-5",
+      "em": "2026-10-01",
+      "por": "lucas",
+      "nota": "683 so gera recon da aba Relacao, sem codigo e sem producao; autorizado"
+    },
+    {
+      "token": "tempo-de-tarefa-recon",
+      "em": "2026-10-01",
+      "por": "lucas",
+      "nota": "721b so gera recon das fontes de tempo de tarefa; autorizado"
+    },
+    {
+      "token": "n8n-1",
+      "em": "2026-10-01",
+      "por": "lucas",
+      "nota": "682 so escreve o roteiro em docs/integracoes/n8n-chave-service-role.md; execucao no n8n e humana e posterior"
+    },
+    {
+      "token": "kanban-cronometro-teto",
+      "em": "2026-10-01",
+      "por": "lucas",
+      "nota": "teto de 8h por sessao esquecida, decisao de 30/09"
+    },
+    {
+      "token": "anon-os-1",
+      "em": "2026-10-01",
+      "por": "lucas",
+      "nota": "OS-1 do recon exposicao-anon-30set autorizado (nome do editor do portal pelo servidor)"
+    },
+    {
+      "token": "anon-os-2",
+      "em": "2026-10-01",
+      "por": "lucas",
+      "nota": "OS-2 autorizado (origem do painel da Fila pelo servidor)"
+    },
+    {
+      "token": "anon-os-3",
+      "em": "2026-10-01",
+      "por": "lucas",
+      "nota": "OS-3 autorizado (comunicados sem Realtime anon)"
+    },
+    {
+      "token": "esconde-funcao-sem-papel",
+      "em": "2026-10-01",
+      "por": "lucas",
+      "nota": "regra decidida em 30/09: seletor mostra a carteira de quem esta logado; execucao autorizada"
+    },
+    {
+      "token": "ddl-vacuo-promessa",
+      "em": "2026-10-02",
+      "por": "lucas",
+      "nota": "02/10: liberado pelo Lucas na sessao interativa ('libero o ddl-vacuo-promessa'). Pre-condicoes: (1) migration 20261002190000_vacuo_promessa.sql aplicada via MCP em 02/10 (ledger 20261002171226, registrada em docs/migrations-aplicadas.md, 9d203e6); (2) 728b aprovado (contatosEfetivosDoCliente exportada, f7c3981). Destrava 731 a 738. 739 a 742 seguem em _hold ate validar o vacuo no AQUINO ADV. Feriados 2027: so nacionais aplicados (ledger 20261002174902); municipais nao contam."
+    },
+    {
+      "token": "ddl-ops-automacoes",
+      "em": "2026-10-03",
+      "por": "lucas",
+      "nota": "tabela criada pela migration ops_automacoes_por_cliente (28/09); 3 automacoes: relatorio_semanal, relatorio_mensal, alerta_saldo"
+    },
+    {
+      "token": "anon-os-4",
+      "em": "2026-10-03",
+      "por": "lucas",
+      "nota": "OS-4 autorizado (teste que congela o uso do anon no navegador; 678, 679 e 680 done)"
+    },
+    {
+      "token": "mql-cliente-crm",
+      "em": "2026-10-05",
+      "por": "lucas",
+      "nota": "AQUINO ADV conectado em 03/10 (7 pipelines, 50 etapas); libera ingestao GHL 760-763 e regra MQL 743-748"
+    },
+    {
+      "token": "migration-8-tabelas-anon-aplicada",
+      "em": "2026-10-03",
+      "por": "lucas",
+      "nota": "20261003182558_fecha_escrita_public_8_tabelas_os aplicada via MCP. Escrita efetiva do anon (grant + policy) caiu de 13 para 5 tabelas, todas do comercial (D-a). Sobram 18 policies ALL to public inertes por falta de grant, 12 chamadas service_role_only; retarget vira P2."
+    },
+    {
+      "token": "ddl-751",
+      "em": "2026-10-05",
+      "por": "lucas",
+      "nota": "CHECK de gatilho ampliado com cron_diario, aplicado via MCP em 05/10/2026 (ledger 20261005135437); arquivo renomeado para supabase/migrations/20261005135437_leitura_relacao_gatilho_cron_diario.sql"
+    },
+    {
+      "token": "decisao-telas-gemeas",
+      "em": "2026-10-05",
+      "por": "lucas",
+      "nota": "D-h: ficam portal/equipe, equipe/[id] e admin/super. Saem equipe-geral (depende do Notion), dashboard/team/[id] (le pelo anon e volta vazio) e super-admin. / passa a levar para o portal."
+    },
+    {
+      "token": "ddl-auditoria-dupla",
+      "em": "2026-10-05",
+      "por": "lucas",
+      "nota": "D-l: sistema_auditoria e o sink oficial (lido pelo comercial em api/admin/auditoria). audit_log para de receber: caem os triggers audit_clientes, audit_contratos e audit_config_mensal. O 859 escreve o .sql; aplicacao via MCP depois."
+    },
+    {
+      "token": "ddl-penalizacoes-fk",
+      "em": "2026-10-05",
+      "por": "lucas",
+      "nota": "FK penalizacoes.gestor_id -> employees aplicada e versionada (7f8e543); destrava 739"
+    },
+    {
+      "token": "briefing-modelo-escrito",
+      "em": "2026-10-05",
+      "por": "lucas",
+      "nota": "docs/briefing/MODELO.md escrito pelo Lucas: 8 seções, 33 perguntas, 16 obrigatórias; todas texto livre"
+    },
+    {
+      "token": "c0-guard-pasta-super-admin-857",
+      "em": "2026-10-06",
+      "por": "lucas",
+      "nota": "Opcao A, vinculada ao ticket 857 (apaga src/app/dashboard/super-admin/components.tsx). Motivo: a rota /dashboard/super-admin foi removida no 856, entao a assercao de test/c0-guard.test.ts que exige a pasta com conteudo protege algo que nao existe mais. Escopo: o 857 pode editar SOMENTE test/c0-guard.test.ts e SOMENTE para apagar as 2 linhas do it('super-admin está de fato excluído da varredura (exceção Lucas)'): o comentario '// confirma que a pasta existe e tem conteúdo...' e expect(walk(REVENUE_SURFACE_EXCLUDE).length).toBeGreaterThan(0). Proibido: qualquer outra alteracao em arquivo C0, inclusive nas outras assercoes do c0-guard (a assercao revenueSurfaceFiles.some(...super-admin...) fica, o it fica, REVENUE_SURFACE_EXCLUDE e o comentario da excecao ficam, nenhuma linha adicionada). A frase de RESTRICTED_RATIONALE que cita test/c0-guard mora em test/rotas-orfas.test.ts e sai no 856, nao aqui."
+    },
+    {
+      "token": "revoga-d33-super-admin",
+      "em": "2026-10-06",
+      "por": "lucas",
+      "nota": "Revoga a liberação D33 = FICA. Vale a decisao-telas-gemeas: a rota /dashboard/super-admin é removida nos tickets 856 e 857."
+    },
+    {
+      "token": "f1-rotas-go",
+      "em": "2026-10-06",
+      "por": "lucas",
+      "nota": "849 a 852 done na staging-auto. Libera 801 a 825 (rotas F1)."
+    },
+    {
+      "token": "ddl-perf-leads-tags-aplicada",
+      "em": "2026-10-07",
+      "por": "lucas",
+      "nota": "migration 20261003200000 aplicada via MCP em 07/10, perf_leads.tags conferida no banco"
+    },
+    {
+      "token": "temporada-q4-criada",
+      "em": "2026-10-07",
+      "por": "lucas",
+      "nota": "temporada 1 (2026 Q4, 01/10 a 31/12) criada em comarka_pro_temporadas em 07/10"
+    },
+    {
+      "token": "decisao-formula-lead",
+      "em": "2026-10-07",
+      "por": "lucas",
+      "nota": "D-b: leads_shadow (lead_grouped + msg_first_reply) vira a formula oficial de lead no Meta Ads Sync do n8n; a antiga (lead + lead_grouped + msg_first_reply) sai. Troca feita no n8n, sem ticket."
+    },
+    {
+      "token": "decisao-migrations-baseline",
+      "em": "2026-10-07",
+      "por": "lucas",
+      "nota": "D-c: o ledger do banco e a verdade. Baseline do schema vivo como migration unica; supabase/migrations atual vai para supabase/migrations_legado/. Ticket so escreve o arquivo; aplicar e migration repair sao gate humano."
+    },
+    {
+      "token": "decisao-onboarding-motor",
+      "em": "2026-10-07",
+      "por": "lucas",
+      "nota": "D-e: o motor (ops_onboarding) e o onboarding canonico. Supera a D32 de 07/09. Legado (onboarding_tracking, onboarding_notion_mirror, onboarding_checklist_items) migra por backfill e vira leitura."
+    },
+    {
+      "token": "decisao-liga-remover",
+      "em": "2026-10-07",
+      "por": "lucas",
+      "nota": "D-f: Liga Comarka sai (telas, rotas, lib/liga-conquistas.ts, 17 tabelas liga_*). Comarka Pro fica. DDL de drop e gate humano depois do codigo sair."
+    },
+    {
+      "token": "decisao-cron-sync-clientes",
+      "em": "2026-10-07",
+      "por": "lucas",
+      "nota": "D-g: /api/cron/sync-clientes sai do vercel.json e a rota devolve 410 como as outras rotas Notion. test/cron-paths-vercel.test.ts atualizado no mesmo ticket."
+    },
+    {
+      "token": "decisao-anon-comercial",
+      "em": "2026-10-07",
+      "por": "lucas",
+      "nota": "D-a: fechar escrita anon em creative_scores, ghl_user_map, lancamentos_diarios_eventos, sistema_fila_erros e n8n_error_log; o comercial passa a gravar por rota com service role. Ticket no repo do comercial. Ate la, risco aceito."
+    },
+    {
+      "token": "decisao-employees-public",
+      "em": "2026-10-07",
+      "por": "lucas",
+      "nota": "D-k: employees_public perde email e telefone; segue SECURITY DEFINER com SELECT para anon. Advisor 0010 vira excecao documentada no CLAUDE.md."
+    },
+    {
+      "token": "867-botoes-reuniao-escolhidos",
+      "em": "2026-10-07",
+      "por": "lucas",
+      "nota": "Opcao 1: o '+' e o 'Agendar' do Pulso saem; as linhas ficam 'sem base' e 'nenhuma agendada' em cinza. Autorizadas tambem acao-unica-ficha-controles.test.tsx:77 e :118 (22 para 21), :87 (PUBLICADOS 16 para 15, sai executandoCriarReuniao) e :119 (Set de mutacoes 13 para 12, sai criarReuniao), e acao-unica-ficha-mutacoes.test.tsx:240 e :246 (16 para 15)."
+    },
+    {
+      "token": "carteira-distribuida",
+      "em": "2026-10-07",
+      "por": "lucas",
+      "nota": "carteira parcial 07/10: 59 de 98 ativos com gestor principal em perf_cliente_gestor (Fernando 21, Yago 20, Bhrenno 18; apoio Heber 5, Lucas Augusto 1). Pendentes em claude/carteira-distribuida-07out.md"
+    },
+    {
+      "token": "tldv-operacional-recebendo",
+      "em": "2026-10-07",
+      "por": "lucas",
+      "nota": "07/10: webhook recebe (2 reunioes em perf_reuniao), match nao_identificado; 865 trata o casamento"
+    },
+    {
+      "token": "aprovar-desenho-contato-unico",
+      "em": "2026-10-08",
+      "por": "lucas",
+      "nota": "Desenho aprovado em 07/10 19h. (a) aprovado: cliente tem varias pessoas (socio, secretaria, comercial); a fatia 2 grava cada autor do grupo como contato proprio, com a funcao na coluna cargo de ops_cliente_contatos, sem principal alem da semente. (b) aprovado: perf_equipe_telefones fica como numeros extras. (c) aprovado: semente 'Contato do cadastro' com principal = true. (d) NAO aprovado: contato de origem grupo recebe NPS mesmo pendente. NPS vai para todos os contatos vivos do cliente, uma resposta por pessoa; nota do cliente no mes = media das respostas. Fatia 1 (migration) sem mudanca; 887 e 888 sem mudanca de codigo."
+    },
+    {
+      "token": "ddl-897",
+      "em": "2026-10-08",
+      "por": "lucas",
+      "nota": "migration aplicada via MCP 08/10"
+    },
+    {
+      "token": "ddl-relacao-crise-aplicada",
+      "em": "2026-10-08",
+      "por": "lucas",
+      "nota": "migration aplicada via MCP 08/10"
+    },
+    {
+      "token": "ddl-898",
+      "em": "2026-10-08",
+      "por": "lucas",
+      "nota": "perf_cliente_verba aplicada via MCP em 08/10 18h14, ledger 20261008211455; RLS, policy only_service_role, FKs e revoke conferidos no banco"
+    },
+    {
+      "token": "inicio-conferido-por-gestor",
+      "em": "2026-10-08",
+      "por": "lucas",
+      "nota": "conferido por Fernando em 08/10: carteira, Responder agora e renovacoes ok"
+    },
+    {
+      "token": "comercial-vincula-call-venda",
+      "em": "2026-10-09",
+      "por": "lucas",
+      "nota": "Comercial confirma que cadastra e vincula a call de venda no dashboard comercial (reunioes_cliente.lead_id -> leads_crm.cliente_id). Libera o 866 (bloco Reunião de venda na Conta, só leitura)."
+    },
+    {
+      "token": "ddl-portal-aplicada",
+      "em": "2026-10-11",
+      "por": "lucas",
+      "nota": "20261011100000_portal_escritorio.sql aplicada via MCP 11/10: perf_portal_tokens, perf_portal_venda_confirmacoes, publico_rate_limit + fn_publico_rate_limit (EXECUTE so service_role), canal portal e resolucoes aprovada/ajuste_pedido; RLS e policy only_service_role conferidas"
+    },
+    {
+      "token": "ddl-perf-leads-origem-aplicada",
+      "em": "2026-10-11",
+      "por": "lucas",
+      "nota": "perf_leads_origem aplicada via MCP em 11/10 00h37, ledger 20261011033743; colunas origem e ultimo_toque, check e indice conferidos no banco"
+    },
+    {
+      "token": "ddl-972",
+      "em": "2026-10-11",
+      "por": "lucas",
+      "nota": "alerta_regra_coleta_conta_falhando aplicada via MCP em 11/10 00h37, ledger 20261011033749; CHECK com 8 tipos e regra global P1 ativa (dias 2) conferidos no banco"
+    },
+    {
+      "token": "ddl-ranking-foto-aplicada",
+      "em": "2026-10-11",
+      "por": "lucas",
+      "nota": "20261011140147_perf_ranking_foto_mensal aplicada via MCP e conferida: 10 colunas, unique (escopo, escopo_id, mes), 4 checks, RLS com 1 policy only_service_role, 0 grants para anon/authenticated, 0 linhas. Destrava 934 (e 933 junto com cron-ranking-mensal)."
+    },
+    {
+      "token": "ddl-criativos-aplicada",
+      "em": "2026-10-11",
+      "por": "lucas",
+      "nota": "20261011140149_criativos_fundacao aplicada via MCP e conferida: 8 colunas video_* em perf_insights_ad_daily, 5 colunas + check de formato em perf_meta_ad_map, perf_criativos (25 colunas, unique act_id+video_id, RLS com only_service_role, 0 grants anon/authenticated, trigger atualizado_em), video_3s preenchido em 643 linhas. Destrava 961, 963b, 965."
+    },
+    {
+      "token": "decisao-mql-tabela",
+      "em": "2026-10-11",
+      "por": "lucas",
+      "nota": "Na tabela de campanhas o MQL conta pela data de entrada do lead (coorte, mqls_coorte), mesma base de L.CRM, para %MQL e CPMQL ficarem coerentes no periodo. Funil comercial segue R4 (data do marco). Registrado no ticket 982."
+    },
+    {
+      "token": "cron-desvio-tese",
+      "em": "2026-10-11",
+      "por": "lucas",
+      "nota": "Lucas 11/10: sim, construir a rota /api/cron/desvio-tese (935). Ligar no vercel.json/CRON_PATHS fica para o deploy, com gate do Lucas."
+    },
+    {
+      "token": "cron-ranking-mensal",
+      "em": "2026-10-11",
+      "por": "lucas",
+      "nota": "Lucas 11/10: sim, gravar a foto do ranking no dia 1 de cada mes (933). Ligar no vercel.json/CRON_PATHS fica para o deploy, com gate do Lucas."
+    },
+    {
+      "token": "ddl-marcos-prazo-aplicada",
+      "em": "2026-10-12",
+      "por": "lucas",
+      "nota": "aplicada via MCP em 12/10 (ledger 20261012142126 marcos_prazo; arquivo ainda 20261009190000_marcos_prazo.sql, rename pendente com o teste) e conferida: 2 etapas marco_prazo, 2 prazos (START assinatura+5d, Ativacao START+7d), bucket privado 52428800 png/jpeg/mp4, 3 policies only_service_role, RLS on, 0 grants anon/authenticated"
+    },
+    {
+      "token": "dep-modern-screenshot",
+      "em": "2026-10-12",
+      "por": "lucas",
+      "nota": "modern-screenshot 4.7.0 no package.json e package-lock.json da main (022aac1, versao exata, sem ^). Destrava o 1019."
+    },
+    {
+      "token": "ddl-feedback-aplicada",
+      "em": "2026-10-12",
+      "por": "lucas",
+      "nota": "DDL 20261012200000_ops_feedback_prints aplicada em 12/10 (ledger 20261012231832) e conferida no banco: anexo_url removida, 4 colunas novas, check, FK e bucket privado feedback-prints sem policy"
+    },
+    {
+      "token": "ddl-1050-aplicada",
+      "em": "2026-10-13",
+      "por": "lucas",
+      "nota": "ops_cliente_negocio aplicada 13/10 (ledger 20261013142151)"
+    },
+    {
+      "token": "ddl-1082-aplicada",
+      "em": "2026-10-13",
+      "por": "lucas",
+      "nota": "fn_registrar_churn_receita aplicada 13/10 (ledger 20261013142159)"
+    },
+    {
+      "token": "decisao-criativos-fase2",
+      "em": "2026-10-13",
+      "por": "lucas",
+      "nota": "ok 13/10"
+    },
+    {
+      "token": "decisao-consultorias",
+      "em": "2026-10-13",
+      "por": "lucas",
+      "nota": "ok 13/10: 90 dias + no-show"
+    },
+    {
+      "token": "decisao-conta-parada",
+      "em": "2026-10-13",
+      "por": "lucas",
+      "nota": "ok 13/10: regra P2 conta_parada"
+    },
+    {
+      "token": "decisao-resumo-semanal",
+      "em": "2026-10-13",
+      "por": "lucas",
+      "nota": "ok 13/10"
+    },
+    {
+      "token": "decisao-criativos-carteira",
+      "em": "2026-10-13",
+      "por": "lucas",
+      "nota": "ok 13/10"
+    },
+    {
+      "token": "ligar-ia-reuniao-resumo",
+      "em": "2026-10-13",
+      "por": "lucas",
+      "nota": "ok 13/10: 1 chamada por reuniao"
+    },
+    {
+      "token": "adr-007-aceita",
+      "em": "2026-10-14",
+      "por": "lucas",
+      "nota": "worker do Apolo como cron do Next a cada 10 min"
+    },
+    {
+      "token": "ghl-escopo-conversas",
+      "em": "2026-10-14",
+      "por": "lucas",
+      "nota": "escopos de conversas marcados no app do GHL"
+    },
+    {
+      "token": "adr-008-aceita",
+      "em": "2026-10-14",
+      "por": "lucas",
+      "nota": "promocao staging-apolo por script"
+    },
+    {
+      "token": "ddl-1100-aplicada",
+      "em": "2026-10-14",
+      "por": "lucas",
+      "nota": "perf_hook_tipos aplicada 14/10, 8 tipos, RLS service_role"
+    },
+    {
+      "token": "ddl-1110-aplicada",
+      "em": "2026-10-14",
+      "por": "lucas",
+      "nota": "prazo consultorias 90 dias aplicado 14/10, 5 vinculos 60->90"
+    },
+    {
+      "token": "migration-5019-aplicada",
+      "em": "2026-10-14",
+      "por": "lucas",
+      "nota": "schema inteligencia + role apolo nologin aplicados 14/10, 10 tabelas so SELECT"
+    },
+    {
+      "token": "ddl-1111-aplicada",
+      "em": "2026-10-14",
+      "por": "lucas",
+      "nota": "alerta_regra_conta_parada aplicada 14/10 (ledger 20261014224841): CHECK com 10 tipos, conta_parada global P2 ativa dias=2, pix_sem_investimento global P2 desligada"
+    },
+    {
+      "token": "ghl-aquino-reconectado",
+      "em": "2026-10-14",
+      "por": "lucas",
+      "nota": "BAs5Fw46Xz3uvTtq6Gmz reconectada 14/10 22:29 UTC com conversations.readonly e conversations/message.readonly (conferido no banco pelo Lucas)"
+    },
+    {
+      "token": "migration-5020-aplicada",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "5020 aplicada 14/10 via MCP, versao 20261014230607; contagens 4/8/6/2, sombra 100%, RLS 4/4"
+    },
+    {
+      "token": "decisao-base-pct-mql",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "Lucas 15/10: A com volume. % MQL segue coorte; cartao mostra lado a lado os MQL marcados no periodo e 'X de Y leads do periodo viraram MQL' (spec do 1144 ajustada no mesmo commit)"
+    },
+    {
+      "token": "revisao-escritor-5045",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "lido e aprovado 15/10"
+    },
+    {
+      "token": "revisao-escritor-5046",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "lido e aprovado 15/10"
+    },
+    {
+      "token": "revisao-escritor-5047",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "lido e aprovado 15/10"
+    },
+    {
+      "token": "apolo-def-desistiu",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "desistiu = etapa ou tag do CRM; motivo por catalogo + sugestao do Apolo com evidencia (ADR-009)"
+    },
+    {
+      "token": "migration-5021-aplicada",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "inteligencia_ledger aplicada 15/10 via MCP, ledger 20261015200955; 6 tabelas RLS, 4 triggers append-only"
+    },
+    {
+      "token": "migration-5022-aplicada",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "inteligencia_autonomia_kill_orcamento aplicada 15/10, ledger 20261015201031; playbook 8, kill switch global desligado, teto 200000"
+    },
+    {
+      "token": "migration-5029-aplicada",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "inteligencia_agente_versao aplicada 15/10, ledger 20261015201952; RLS e trigger"
+    },
+    {
+      "token": "migration-5032-aplicada",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "inteligencia_ledger_ticket aplicada 15/10, ledger 20261015202027; RLS e trigger"
+    },
+    {
+      "token": "migration-5033-aplicada",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "inteligencia_pergunta_tipada aplicada 15/10, ledger 20261015202500; 3 perguntas, RLS e trigger"
+    },
+    {
+      "token": "migration-5035-aplicada",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "inteligencia_raw_ghl_conversas aplicada 15/10, ledger 20261015202634; piloto Aquino ativo, RLS 3/3"
+    },
+    {
+      "token": "migration-5060-aplicada",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "inteligencia_comercial_config_fato aplicada 15/10, ledger 20261015202728; config Aquino, 8 motivos, RLS 4/4"
+    },
+    {
+      "token": "migration-5061-aplicada",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "inteligencia_comercial_fn_recalcular aplicada 15/10, ledger 20261015202823; minutos uteis 20/0/30, coortes somam 1499, recalcular idempotente"
+    },
+    {
+      "token": "migration-5062-aplicada",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "inteligencia_comercial_fn_leitura aplicada 15/10, ledger 20261015202937; 5 funcoes so service_role, resumo atendimento@1 com 10 chaves"
+    },
+    {
+      "token": "ddl-1163-aplicada",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "alerta_regra_captura_conversa aplicada 15/10, ledger 20261015203001; CHECK 11 valores, regra global P1 horas 2 ativa"
+    },
+    {
+      "token": "apolo-schema-exposto",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "inteligencia exposto na API pelo Lucas 15/10; reload schema; service_role le e chama rpc, anon recebe 42501"
+    },
+    {
+      "token": "apolo-5063-na-main",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "ADR-008 C1-C3 ok: promocao 241ddc9, ritual plataforma b9562ac; atendimento.ts exporta recalcularAtendimentoTodos"
+    },
+    {
+      "token": "apolo-5065-na-main",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "ADR-008 C1-C3 ok: promocao 241ddc9, ritual plataforma b9562ac; sugestao-motivo.ts exporta sugerirMotivosTodos"
+    },
+    {
+      "token": "revisao-escritor-5040",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "lido e aprovado 15/10"
+    },
+    {
+      "token": "revisao-escritor-5041",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "lido e aprovado 15/10"
+    },
+    {
+      "token": "revisao-escritor-5042",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "lido e aprovado 15/10"
+    },
+    {
+      "token": "revisao-escritor-5043",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "lido e aprovado 15/10"
+    },
+    {
+      "token": "revisao-escritor-5044",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "lido e aprovado 15/10"
+    },
+    {
+      "token": "revisao-escritor-5048",
+      "em": "2026-10-15",
+      "por": "lucas",
+      "nota": "lido e aprovado 15/10"
+    },
+    {
+      "token": "ddl-revoke-notificacoes-aplicada",
+      "em": "2026-10-13",
+      "por": "lucas",
+      "nota": "aplicada via MCP em 13/10 (ledger 20261013032425 revoke_anon_notificacoes; arquivo ainda 20261012200100_revoke_anon_notificacoes.sql na staging-auto, rename pendente da promocao) e conferida: 0 grants de anon/authenticated em notificacoes e notifications, has_table_privilege SELECT/INSERT/TRUNCATE false para os dois papeis, service_role le notificacoes (0 linhas). QUEM LE corrigido: gerar_alertas_leads_frios (invoker, chave anon, ja falhava antes) e ticket 060 do dashboard-comercial."
+    },
+    {
+      "token": "migration-5067-aplicada",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "inteligencia_comercial_julgamento aplicada 16/10, ledger 20261016234146 (arquivo 20261016030100 na staging-apolo, rename pendente da promocao); 16 perguntas com_ (abertura 6, qualif 3, agendamento 3, desfecho 4), 16 em pergunta_momento, 4 momentos, 13 motivos, RLS nas 3 tabelas, 0 grant anon/authenticated, triggers ativos; aplicada sem os 2 drop trigger if exists (tabelas novas)"
+    },
+    {
+      "token": "migration-5068-aplicada",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "inteligencia_comercial_fn_conversa aplicada 16/10, ledger 20261016234352 (arquivo 20261016030200 na staging-apolo, rename pendente da promocao); conversa@1 com 7 chaves, Aquino sem_conversa true, 0 pendentes, lead de fora levanta erro, execute so service_role"
+    },
+    {
+      "token": "ddl-1190-aplicada",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "perf_reuniao_registro_manual aplicada 16/10, ledger 20261016232052 (arquivo 20261016170000 na staging-auto, rename pendente da promocao); tldv_meeting_id nullable, 9 colunas, 6 constraints, indice de dedupe, gatilho aceita reuniao, cliente.reunioes ver para 5 cargos (5 gestores + head ativos), 15 linhas origem tldv"
+    },
+    {
+      "token": "apolo-5023-na-main",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "ADR-008 C1-C3 ok: promocao a79e253, ritual plataforma 1d16b66, merge c253ba7"
+    },
+    {
+      "token": "apolo-5036-na-main",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "ADR-008 C1-C3 ok: promocao a79e253, ritual plataforma 1d16b66, merge 9f26696"
+    },
+    {
+      "token": "apolo-5036b-na-main",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "ADR-008 C1-C3 ok: promocao a79e253, ritual plataforma 1d16b66, merge 1ccc07e"
+    },
+    {
+      "token": "apolo-5071-na-main",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "ADR-008 C1-C3 ok: promocao a79e253, ritual plataforma 1d16b66, merge 84929d8"
+    },
+    {
+      "token": "apolo-5072-na-main",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "ADR-008 C1-C3 ok: promocao a79e253, ritual plataforma 1d16b66, merge de5a6ad"
+    },
+    {
+      "token": "apolo-5085-na-main",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "ADR-008 C1-C3 ok: promocao a79e253, ritual plataforma 1d16b66, merge a34459b"
+    },
+    {
+      "token": "migration-5069-aplicada",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "aplicada 16/10 via MCP: inteligencia_comercial_fn_padroes, ledger 20261017003314; padroes@1, 2 pares x 16 perguntas x 9 sinais, venda_sem_reuniao null no par no_show, uuid de fora levanta erro; execute so service_role; arquivo com nome antigo, rename pendente"
+    },
+    {
+      "token": "migration-5080-aplicada",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "aplicada 16/10 via MCP: inteligencia_comercial_hipotese, ledger 20261017003437; 11 hipoteses, 18 medidas, RLS, 0 grant anon/authenticated, trigger de imutabilidade; execute so service_role; arquivo com nome antigo, rename pendente"
+    },
+    {
+      "token": "migration-5081-aplicada",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "aplicada 16/10 via MCP: inteligencia_comercial_fn_hipoteses, ledger 20261017003511; hipoteses@1 com 11 hipoteses, hoje todas sem_dado; execute so service_role; arquivo com nome antigo, rename pendente"
+    },
+    {
+      "token": "migration-5082-aplicada",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "aplicada 16/10 via MCP: inteligencia_comercial_fn_onde_morre, ledger 20261017003526; morte@1, total 0 sem conversa capturada; execute so service_role; arquivo com nome antigo, rename pendente"
+    },
+    {
+      "token": "migration-5083-aplicada",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "aplicada 16/10 via MCP: inteligencia_comercial_modelo_honorario, ledger 20261017003528; coluna e check so_exito/honorario_inicial/misto; execute so service_role; arquivo com nome antigo, rename pendente"
+    },
+    {
+      "token": "migration-5084-aplicada",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "aplicada 16/10 via MCP: inteligencia_comercial_fn_feedback, ledger 20261017003546; feedback@1 com 10 chaves, Aquino 30d: 361 leads, 67 MQL, 13 RM, 5 RR, 2 contratos; execute so service_role; arquivo com nome antigo, rename pendente"
+    },
+    {
+      "token": "migration-5086-aplicada",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "inteligencia_comercial_revisao aplicada 16/10 via MCP, ledger 20261017010758 (arquivo 20261016050600, rename pendente); revisao_julgamento com RLS, 0 grant, trigger e check de motivo; concordancia@1 com 16 perguntas e pct null; execute so service_role"
+    },
+    {
+      "token": "migration-5088-aplicada",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "inteligencia_comercial_followup aplicada 16/10 via MCP, ledger 20261017010817 (arquivo 20261016050700, rename pendente); sugestao_followup e avaliacao com RLS, 0 grant, 2 triggers, check de motivo ao rejeitar; followup@1 com pct null, null sem comercial_config; execute so service_role"
+    },
+    {
+      "token": "migration-5070-aplicada",
+      "em": "2026-10-16",
+      "por": "lucas",
+      "nota": "dataset aplicado 16/10 (ledger 20261017003403) e mascara corrigida 17/10 (ledger 20261017012033): telefone inteiro vira [TELEFONE], +55 antes do CPF, CEP com fronteira; dataset Aquino 0 linhas, execute so service_role"
+    },
+    {
+      "token": "migration-5144-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_qualidade_quarentena_sla aplicada 17/10 via MCP, ledger 20261017042931 (arquivo 20261016151500, rename pendente); fonte_sla 4 linhas, 3 tipos de caso em sombra, RLS nas 3 tabelas, 0 grant anon/authenticated, trigger de imutabilidade, indice unico parcial da quarentena"
+    },
+    {
+      "token": "migration-5148-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_criterios_tipo aplicada 17/10 via MCP, ledger 20261017042943 (arquivo 20261016151900, rename pendente); 5 funcoes, caso inexistente devolve null, execute so service_role e apolo"
+    },
+    {
+      "token": "revisao-escritor-5049",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "liberado a pedido do Lucas em 17/10 01:27; revisao do agente: ticket reescrito na revisao humana de 15/10, deps reais (done ou na cadeia 5052 > 5050 > 5051), versao de migration unica na main e na staging-apolo"
+    },
+    {
+      "token": "revisao-escritor-5050",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "liberado a pedido do Lucas em 17/10 01:27; revisao do agente: ticket reescrito na revisao humana de 15/10, deps reais (done ou na cadeia 5052 > 5050 > 5051), versao de migration unica na main e na staging-apolo"
+    },
+    {
+      "token": "revisao-escritor-5051",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "liberado a pedido do Lucas em 17/10 01:27; revisao do agente: ticket reescrito na revisao humana de 15/10, deps reais (done ou na cadeia 5052 > 5050 > 5051), versao de migration unica na main e na staging-apolo"
+    },
+    {
+      "token": "revisao-escritor-5052",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "liberado a pedido do Lucas em 17/10 01:27; revisao do agente: ticket reescrito na revisao humana de 15/10, deps reais (done ou na cadeia 5052 > 5050 > 5051), versao de migration unica na main e na staging-apolo"
+    },
+    {
+      "token": "apolo-5087-na-main",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "ADR-008 C1-C3 ok: promocao 09a492f, ritual plataforma 263f554, merge 77bcde6"
+    },
+    {
+      "token": "apolo-5089-na-main",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "ADR-008 C1-C3 ok: promocao 09a492f, ritual plataforma 263f554, merge 263b88c"
+    },
+    {
+      "token": "apolo-5090-na-main",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "ADR-008 C1-C3 ok: promocao 09a492f, ritual plataforma 263f554, merge b18d539"
+    },
+    {
+      "token": "migration-5147-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_ciclo_dados_diario aplicada 17/10 03:41 via MCP na vigia noturna, ledger 20261017064136 (arquivo 20261016151800, rename pendente); funcao criada, execute so service_role e apolo, invoker. ATENCAO: os passos que ela chama (5135 a 5146) ainda nao estao aplicados; rodar agora grava passos com ok=false. Liberado sem commit no checkout principal (handoff 17/10)"
+    },
+    {
+      "token": "migration-5177-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_qualidade_dado_tratar aplicada 17/10 06:00 via MCP na vigia noturna, ledger 20261017090044 (arquivo 20261016153300, rename pendente); caso inexistente devolve resolvido false, invoker, execute so service_role e apolo. Os fatos e contratos que ela chama (5140 a 5145) ainda nao estao no banco. Liberado sem commit no checkout principal (handoff 17/10)"
+    },
+    {
+      "token": "migration-5040-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_raw_meta_insights_dia aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143036 (arquivo renomeado para a versao do ledger); drop trigger if exists omitido na aplicacao (tabela nova, efeito identico)"
+    },
+    {
+      "token": "migration-5041-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_raw_meta_entidades aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143048 (arquivo renomeado para a versao do ledger); drop trigger if exists omitido na aplicacao (tabela nova, efeito identico)"
+    },
+    {
+      "token": "migration-5042-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_raw_evolution_mensagens aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143052 (arquivo renomeado para a versao do ledger); drop trigger if exists omitido na aplicacao (tabela nova, efeito identico)"
+    },
+    {
+      "token": "migration-5043-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_raw_os_snapshot aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143108 (arquivo renomeado para a versao do ledger); drop trigger if exists omitido na aplicacao (tabela nova, efeito identico)"
+    },
+    {
+      "token": "migration-5044-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_dim_tese aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143120 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5045-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_dim_nicho aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143110 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5046-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_dim_funil_tipo aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143123 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5047-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_metrica_versao aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143126 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5048-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_cliente_ativo aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143134 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5049-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fato_midia_dia aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143140 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5050-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fato_crm_dia aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143143 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5051-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_pct_mql aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143150 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5052-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_raw_ghl_crm aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143104 (arquivo renomeado para a versao do ledger); drop trigger if exists omitido na aplicacao (tabela nova, efeito identico)"
+    },
+    {
+      "token": "migration-5054-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fato_grupo_dia aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143200 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5055-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fato_cliente_dia aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143204 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5056-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_cpl aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143210 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5057-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_cpmql aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143215 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5058-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_cac aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143219 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5130-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_minutos_uteis_comarka aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143233 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5131-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_vacuo_aberto aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143310 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5132-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_temperatura aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143240 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5133-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_hook_body_rate aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143246 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5134-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_breakeven aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143256 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5135-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_ingerir_raw_meta_insights aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143324 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5136-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_ingerir_raw_meta_entidades aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143336 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5137-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_ingerir_raw_evolution aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143341 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5138-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_ingerir_raw_ghl_crm aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143350 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5139-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_ingerir_raw_os_snapshot aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143406 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5141-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_fato_grupo_dia_calcular aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143428 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5142-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_fato_crm_dia_calcular aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143510 (arquivo renomeado para a versao do ledger); ATENCAO: a funcao quebra na chamada com round(double precision, integer) (mediana e pct sem contato), conserto no 5179"
+    },
+    {
+      "token": "migration-5143-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_fato_cliente_dia_calcular aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143526 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5145-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_contratos_rodar aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143547 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5146-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_reconciliar_dia aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143601 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5149-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_medir_previsoes aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143616 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5150-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_relatorio_sombra aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143637 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5151-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_falhas_taxonomia aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143646 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5152-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_playbook_recalcular aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143658 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5168-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_evento_negocio aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143718 (arquivo renomeado para a versao do ledger); drop trigger if exists omitido na aplicacao (tabela nova, efeito identico)"
+    },
+    {
+      "token": "migration-5169-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_eventos_detectar aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143751 (arquivo renomeado para a versao do ledger); ATENCAO: a funcao quebra no bloco verba_variou_30pct com round(double precision, integer), conserto no 5180"
+    },
+    {
+      "token": "migration-5171-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_benchmark aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143843 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5172-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_padrao_assinatura aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143906 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5173-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_score_risco aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017144006 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5174-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_playbook_lift aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143919 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5175-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_padrao_coocorrencia aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143928 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5176-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_auditoria_semanal aplicada 17/10 entre 11h30 e 11h40 via MCP no lote do apolo e conferida, ledger 20261017143945 (arquivo renomeado para a versao do ledger)"
+    },
+    {
+      "token": "migration-5140-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_fn_fato_midia_dia_calcular aplicada 17/10 pela skill aplicar-migration-ddl com ok do Lucas ao SQL, ledger 20261017170517 (arquivo renomeado de 20261016151100); invoker, execute so service_role e apolo; pos-aplicacao: roda para 2026-10-16 sem erro, 0 linhas nas 2 rodadas porque raw_meta_insights_dia e raw_meta_entidades ainda estao vazias"
+    },
+    {
+      "token": "migration-5170-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "inteligencia_evento_contexto aplicada 17/10 pela skill aplicar-migration-ddl com ok do Lucas ao SQL, ledger 20261017170613 (arquivo renomeado de 20261016152600); RLS ligada, 0 policy, 0 grant anon/authenticated, 2 funcoes invoker com execute so service_role e apolo; pos-aplicacao: fn_evento_contexto_pendentes(10) devolve processados 0 (evento_negocio vazio)"
+    },
+    {
+      "token": "migration-5179-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "fn_fato_crm_dia_calcular v2 (round numeric), ledger 20261017172646; aplicada 17/10 14h26-14h30 via MCP pelo chat (Lucas autorizou), conferida: RLS em todas, anon/authenticated sem privilegio, teste a seco do pipeline 16/10 sem erro. Liberado sem commit no checkout principal (handoff 17/10 tarde migrations lote38); .sql ainda com nome antigo, renomear no prompt B"
+    },
+    {
+      "token": "migration-5180-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "fn_eventos_detectar v2 (round numeric), ledger 20261017172722; aplicada 17/10 14h26-14h30 via MCP pelo chat (Lucas autorizou), conferida: RLS em todas, anon/authenticated sem privilegio, teste a seco do pipeline 16/10 sem erro. Liberado sem commit no checkout principal (handoff 17/10 tarde migrations lote38); .sql ainda com nome antigo, renomear no prompt B"
+    },
+    {
+      "token": "migration-5181-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "fn_coerencia_tese_cliente/campanha, ledger 20261017172756; aplicada 17/10 14h26-14h30 via MCP pelo chat (Lucas autorizou), conferida: RLS em todas, anon/authenticated sem privilegio, teste a seco do pipeline 16/10 sem erro. Liberado sem commit no checkout principal (handoff 17/10 tarde migrations lote38); .sql ainda com nome antigo, renomear no prompt B"
+    },
+    {
+      "token": "migration-5182-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "fn_mutirao_sugestoes (50 campanhas sem tese no teste), ledger 20261017172804; aplicada 17/10 14h26-14h30 via MCP pelo chat (Lucas autorizou), conferida: RLS em todas, anon/authenticated sem privilegio, teste a seco do pipeline 16/10 sem erro. Liberado sem commit no checkout principal (handoff 17/10 tarde migrations lote38); .sql ainda com nome antigo, renomear no prompt B"
+    },
+    {
+      "token": "migration-5184-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "caso_dourado + suite_dourada_rodada + fn_suite_dourada_resultado, ledger 20261017172821; aplicada 17/10 14h26-14h30 via MCP pelo chat (Lucas autorizou), conferida: RLS em todas, anon/authenticated sem privilegio, teste a seco do pipeline 16/10 sem erro. Liberado sem commit no checkout principal (handoff 17/10 tarde migrations lote38); .sql ainda com nome antigo, renomear no prompt B"
+    },
+    {
+      "token": "migration-5186-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "rascunho_amarelo + fn_rascunhos_pendentes + fn_rascunho_marcar, ledger 20261017172839; aplicada 17/10 14h26-14h30 via MCP pelo chat (Lucas autorizou), conferida: RLS em todas, anon/authenticated sem privilegio, teste a seco do pipeline 16/10 sem erro. Liberado sem commit no checkout principal (handoff 17/10 tarde migrations lote38); .sql ainda com nome antigo, renomear no prompt B"
+    },
+    {
+      "token": "migration-5191-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "fn_incidente_detectar, ledger 20261017172854; aplicada 17/10 14h26-14h30 via MCP pelo chat (Lucas autorizou), conferida: RLS em todas, anon/authenticated sem privilegio, teste a seco do pipeline 16/10 sem erro. Liberado sem commit no checkout principal (handoff 17/10 tarde migrations lote38); .sql ainda com nome antigo, renomear no prompt B"
+    },
+    {
+      "token": "migration-5193-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "fn_padroes_base + fn_padroes_comerciais_tese, ledger 20261017172943; aplicada 17/10 14h26-14h30 via MCP pelo chat (Lucas autorizou), conferida: RLS em todas, anon/authenticated sem privilegio, teste a seco do pipeline 16/10 sem erro. Liberado sem commit no checkout principal (handoff 17/10 tarde migrations lote38); .sql ainda com nome antigo, renomear no prompt B"
+    },
+    {
+      "token": "migration-5194-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "pergunta_momento.tese_id/so_modelo_honorario + 4 perguntas + fn_perguntas_do_momento, ledger 20261017172952; aplicada 17/10 14h26-14h30 via MCP pelo chat (Lucas autorizou), conferida: RLS em todas, anon/authenticated sem privilegio, teste a seco do pipeline 16/10 sem erro. Liberado sem commit no checkout principal (handoff 17/10 tarde migrations lote38); .sql ainda com nome antigo, renomear no prompt B"
+    },
+    {
+      "token": "migration-5197-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "conhecimento_comercial + fn_conhecimento_ler (controle OAB recusa 23514), ledger 20261017173016; aplicada 17/10 14h26-14h30 via MCP pelo chat (Lucas autorizou), conferida: RLS em todas, anon/authenticated sem privilegio, teste a seco do pipeline 16/10 sem erro. Liberado sem commit no checkout principal (handoff 17/10 tarde migrations lote38); .sql ainda com nome antigo, renomear no prompt B"
+    },
+    {
+      "token": "migration-5183-aplicada",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "Aplicada via MCP em 17/10 (ledger 20261017215016, inteligencia_fn_calibrar_limiares). Dry run p_gravar=false ok (amostra_insuficiente). ATENCAO: p_gravar=true falha hoje (PK de limiar_confianca e check de origem), gravar exige ticket proprio + ADR."
+    },
+    {
+      "token": "apolo-5205-na-main",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "adaptador do Clef no formato real, promovido em e0d7189"
+    },
+    {
+      "token": "apolo-5202-na-main",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "lib dos padroes por tese, promovida em e0d7189"
+    },
+    {
+      "token": "decisao-tipada-provedor-configurado",
+      "em": "2026-10-17",
+      "por": "lucas",
+      "nota": "CLEF_API_URL e CLEF_API_TOKEN na Vercel desde 17/10; adaptador 5205 na main em e0d7189"
+    },
+    {
+      "token": "migration-5196-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "Aplicada via MCP em 18/10 (ledger 20261017161100, inteligencia_comercial_fn_limiar_pergunta, alinhado ao arquivo). fn_limiar_pergunta_calcular(null,false): 23 perguntas amostra_insuficiente, gravou=false; historico 0; update em pergunta_tipada barrado (23001). Trava do historico nao exercitada: tabela vazia."
+    },
+    {
+      "token": "migration-5207-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "Aplicada via MCP em 18/10 (ledger 20261017230400, inteligencia_fn_relatorio_cliente, alinhado ao arquivo). Cliente 7837ac12, 11-17/10: totais.cpl 12.424375 = fn_cpl; soma campanhas.gasto 446.06 = gasto_total; cobertura 2/7 dias, completa=false."
+    },
+    {
+      "token": "harness-out26-publicado",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "pacote do harness de 18/10 na main e na staging-auto"
+    },
+    {
+      "token": "adr-020-aceita",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "ADR-020 aceito pelo Lucas em 18/10/2026"
+    },
+    {
+      "token": "migration-5204-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "aplicada 18/10/2026 via apply_migration com ok do Lucas; ledger alinhado ao nome do arquivo; POS-APLICACAO conferido"
+    },
+    {
+      "token": "migration-5221-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "aplicada 18/10/2026 via apply_migration com ok do Lucas; ledger alinhado ao nome do arquivo; POS-APLICACAO conferido"
+    },
+    {
+      "token": "migration-5228-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "aplicada 18/10/2026 via apply_migration com ok do Lucas; ledger alinhado ao nome do arquivo; POS-APLICACAO conferido"
+    },
+    {
+      "token": "migration-1338-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "aplicada 18/10/2026 via apply_migration com ok do Lucas; ledger alinhado ao nome do arquivo; POS-APLICACAO conferido"
+    },
+    {
+      "token": "migration-1343-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "aplicada 18/10/2026 via apply_migration com ok do Lucas; ledger alinhado ao nome do arquivo; POS-APLICACAO conferido"
+    },
+    {
+      "token": "migration-1348-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "aplicada 18/10/2026 via apply_migration com ok do Lucas; ledger alinhado ao nome do arquivo; POS-APLICACAO conferido"
+    },
+    {
+      "token": "migration-5231-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "aplicada 18/10/2026 via apply_migration com ok do Lucas; ledger alinhado ao nome do arquivo; POS-APLICACAO conferido"
+    },
+    {
+      "token": "migration-1371-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "aplicada 18/10/2026 via apply_migration com ok do Lucas; ledger alinhado ao nome do arquivo; POS-APLICACAO conferido"
+    },
+    {
+      "token": "migration-5223-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "aplicada 18/10/2026 via apply_migration com ok do Lucas; ledger alinhado ao nome do arquivo; POS-APLICACAO conferido"
+    },
+    {
+      "token": "migration-1320-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "aplicada 18/10/2026 via apply_migration com ok do Lucas; ledger alinhado ao nome do arquivo; POS-APLICACAO conferido"
+    },
+    {
+      "token": "migration-5225-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "aplicada 18/10/2026 via apply_migration com ok do Lucas; ledger alinhado ao nome do arquivo; POS-APLICACAO conferido"
+    },
+    {
+      "token": "migration-1326-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "aplicada 18/10/2026 via apply_migration com ok do Lucas; ledger alinhado ao nome do arquivo; POS-APLICACAO conferido; PRE-CHECAGEM 0/0/0"
+    },
+    {
+      "token": "migration-1377-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "aplicada 18/10/2026 via apply_migration com ok do Lucas; ledger alinhado ao nome do arquivo; POS-APLICACAO conferido; rag_chunks com 0 linhas antes"
+    },
+    {
+      "token": "promocao-segura-publicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "pacote da promocao segura na origin/main (ab2d4eb, c2c3f63); liberado pelo Lucas 18/10/2026"
+    },
+    {
+      "token": "ui-lote-18out",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "lote de UI 18/10 (1380 a 1392) aprovado pelo Lucas apos revisao e validador com 0 erro"
+    },
+    {
+      "token": "adr-014-aceita",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "ADR-014 aceito pelo Lucas em 18/10/2026, inclui item 5 (nota de follow-up no GHL)"
+    },
+    {
+      "token": "adr-015-aceita",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "ADR-015 aceito pelo Lucas em 18/10/2026"
+    },
+    {
+      "token": "adr-016-aceita",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "ADR-016 aceito pelo Lucas em 18/10/2026"
+    },
+    {
+      "token": "adr-017-aceita",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "ADR-017 aceito pelo Lucas em 18/10/2026"
+    },
+    {
+      "token": "adr-018-aceita",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "ADR-018 aceito pelo Lucas em 18/10/2026"
+    },
+    {
+      "token": "migration-5242-aplicada",
+      "em": "2026-10-18",
+      "por": "lucas",
+      "nota": "20261018010000 aplicada via MCP em 18/10 12h50; ledger alinhado; CPL 7837ac12 11-17/10 = 8,92"
+    }
+  ],
+  "tokens": [],
+  "_schema": "fonte unica = .liberadas (objetos). .tokens fica vazia por compatibilidade; NUNCA voltar a escrever nela — lib.sh:114 nao a le.",
+  "_pendentes_ddl": "Tokens de DDL escritos e NAO aplicados. E um OBJETO indexado por token, nunca lista: lib.sh le so .liberadas, mas orq-server.py (tokens_liberados) conta como liberado token de QUALQUER lista do topo. Para liberar: o humano aplica o .sql, verifica, apaga a chave daqui e acrescenta {token, em, por, nota} em .liberadas.",
+  "pendentes_ddl": {}
+}
