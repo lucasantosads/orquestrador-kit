@@ -1,0 +1,4 @@
+ src/lib/ia/funcoes.ts                       | 25 +++++++++++++++
+ test/ia-funcoes-agentes-atendimento.test.ts |  4 +--
+ test/ia-funcoes-sem-cadastro.test.ts        | 50 +++++++++++++++++++++++++++++
+ 3 files changed, 77 insertions(+), 2 deletions(-)

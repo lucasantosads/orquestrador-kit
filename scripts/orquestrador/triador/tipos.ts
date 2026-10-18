@@ -106,6 +106,11 @@ export interface Tentativa {
   diff_stat: Arquivo | null
   /** fonte em `head` de cada teste vermelho que o diff não tocou; null = não deu para ler */
   fontes: Record<string, string | null>
+  /**
+   * testes vizinhos que o executor ampliou NESTA tentativa (`allowlist-ampliada.txt`,
+   * etapa 8c). Ausente quando o arquivo não existe: a tentativa sai como antes.
+   */
+  ampliados?: string[]
 }
 
 export interface Vizinho {

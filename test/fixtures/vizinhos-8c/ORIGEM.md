@@ -69,3 +69,26 @@ resultado que nas árvores inteiras do Comarka (conferido caso a caso no PASSO 0
 | allowlist-ampliada.txt | runs/1373/attempt-2/allowlist-ampliada.txt | o teste que o 457856c ampliou |
 | criterio-lista-fechada.txt | runs/1373/attempt-2/criterios.txt, linhas 9-16 | o critério `SO_ALLOWLIST` que reprovou a tentativa ampliada com `FORA_test/ia-funcoes-agentes-atendimento.test.ts` |
 | diff-arquivos.txt | runs/1373/attempt-2/diff.raw | os 3 caminhos do diff |
+
+## 1373-triador/ (P2c · o triador e o teste já ampliado)
+
+No formato de `test/fixtures/triador-7f/` (lido por `lerCasoDeFixture`). É a série do 1373 que
+bloqueou às 11:24 de 18/10, a que o R1 D6 do resolvedor consertou às 14:25Z.
+
+| arquivo | origem |
+|---|---|
+| serie.json | `runs/1373/attempt-1.prev2` (11:14), `attempt-2` (11:16, ampliada), `attempt-3` (11:24) |
+| meta.json | `runs/1373/meta.json`, as entradas 4 a 6 (a 2ª série) |
+| ticket.json | `6f94e84:docs/fila/1373-ia-registro-funcoes-sem-cadastro.md`, o bloco JSON (a versão que rodou) |
+| config.json | `docs/fila/000-config.json` do Comarka (`main b01d9d5`): `diff_cap_linhas` e `claude_timeout_secs` |
+| log.txt | `runs/local-loop.log`, linhas 119981 a 120024 (do `drenagem: ticket 1373` ao `reprovado após 2 retries — BLOQUEADO`), com o número original |
+| attempt-k/ | os arquivos que o leitor legado lê, da tentativa real; `gate-vitest.txt` e `criterios.txt` recortados por `recortarVitest`/`recortarCriterios`, com o mapa de linhas em `*.linhas.json`; `presenca.json` = `ls` do diretório real; `attempt-2/allowlist-ampliada.txt` é o que o 457856c gravou |
+| fontes/ | `git show <head>:test/ia-funcoes-agentes-atendimento.test.ts` de cada `head.txt` |
+| vizinhos.tsv | `fonteRepoLegado(comarka, '1373').vizinhos()` (FAIL de outros tickets nas ±6 h) |
+
+## triador-sem-ampliacao.json (P2c · byte a byte)
+
+O sha256 (16 hex) de `JSON.stringify` da evidência e da extração dos 65 casos reais sem
+ampliação (todo caso com `caso.json` em `triador-7f/`, mais os dois repos `conteudos-243`
+pelo leitor kit, sem o `mtime_ns` de `lidos`, que muda a cada checkout), gravado com o
+triador do commit `8b4c6e1`, antes da P2c.

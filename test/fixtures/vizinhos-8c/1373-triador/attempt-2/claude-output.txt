@@ -1,0 +1,10 @@
+As 5 entradas novas estão no fim de `IA_FUNCOES` e o commit saiu como `ec2fb62`. `npm run build` e a suíte inteira do `vitest` não foram rodados, nem os critérios de aceite do ticket, um a um. O que rodei passou.
+
+- **Registro:** `promessas`, `apolo_leitor`, `apolo_analista`, `apolo_decisor` e `apolo_juiz` entraram em `src/lib/ia/funcoes.ts`, depois de `agente_atendimento_avaliar`. Usei aspas duplas e só as chaves `funcao`, `label` e `descricao`, sem provedor, modelo nem esforço.
+- **Teste novo:** `test/ia-funcoes-sem-cadastro.test.ts` cobre as 5 funções, a ordem no fim, a ausência de repetição e das chaves extras, as anteriores ainda presentes e a ausência de U+2014.
+- **Teste vizinho:** o `test/ia-funcoes-agentes-atendimento.test.ts` falhava porque olhava as 4 últimas entradas. Troquei `slice(-4)` por `slice(-9, -5)`. Ele continua exigindo as 4 do 1304 em sequência e na mesma ordem, só que agora antes das 5 novas. Nenhuma asserção saiu nem foi afrouxada.
+- **`tsc`:** 3 erros, o mesmo baseline.
+- **`vitest`:** passaram 8 arquivos, 60 testes. Entre eles estão o novo, o vizinho e as guardas globais do ticket (`c0-guard`, `fetch-json-teto`, `travessao-mudo`, `ia-funcoes-comercial`, `ia-default-do-banco`, `ia-provider-unico`).
+- **Tamanho do diff:** 77 linhas adicionadas e 2 removidas, dentro do teto de 140.
+
+O critério "só arquivos da allowlist" lista apenas `funcoes.ts` e o teste novo. Como o commit inclui o teste vizinho, esse critério vai acusar `FORA_test/ia-funcoes-agentes-atendimento.test.ts`. A ampliação da allowlist nesta tentativa autoriza o arquivo, então é um desencontro do comando do critério. Não o contornei.

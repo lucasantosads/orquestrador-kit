@@ -101,6 +101,7 @@ function tentativa(fonte: FonteLegado, k: number, dir: string, meta: MetaLegado 
   const vd = ler('verdict.json')
   const co = ler('claude-output.txt')
   const hd = ler('head.txt')
+  const amp = ler('allowlist-ampliada.txt')
   const v = vit ? vermelhosDe(vit) : { vermelhos: [], arquivos: [], falhas: [], maquina: [] }
   const ds = stat ? diffStat(stat) : { arquivos: [], linhas: null, ref: null }
   let enforcement: Tentativa['enforcement'] = null
@@ -142,6 +143,7 @@ function tentativa(fonte: FonteLegado, k: number, dir: string, meta: MetaLegado 
     recorte_criterios: crit,
     diff_stat: stat,
     fontes,
+    ...(amp ? { ampliados: amp.linhas.map((l) => l.t.trim()).filter(Boolean) } : {}),
   }
 }
 
@@ -246,7 +248,7 @@ function lidos(fonte: FonteLegado, tk: TicketLido | null, ts: Tentativa[]): Lido
     out.push({ arquivo: tk.arquivo, tamanho: st?.tamanho ?? 0, mtime_ns: st?.mtime_ns ?? '0', conteudo: JSON.stringify(fonte.ticket()?.json ?? null, null, 1) })
   }
   for (const t of ts) {
-    for (const f of ['verdict.json', 'avaliador-claude.txt', 'claude-output.txt', 'enforcement.json', 'head.txt', 'gate-tsc.txt']) {
+    for (const f of ['verdict.json', 'avaliador-claude.txt', 'claude-output.txt', 'enforcement.json', 'head.txt', 'gate-tsc.txt', 'allowlist-ampliada.txt']) {
       if ((fonte.presenca(t.dir) ?? []).includes(f)) add(fonte.ler(`${t.dir}/${f}`))
     }
     add(t.recorte_vitest)

@@ -1,0 +1,126 @@
+{
+  "id": "1373",
+  "slug": "ia-registro-funcoes-sem-cadastro",
+  "loop": "plataforma",
+  "perfil": "lib",
+  "objetivo": "ORCAMENTO DE DIFF: teto de 140 linhas. Se passar do teto, pare e reporte. DECISAO DO LUCAS: ADR-020 (docs/plano/apolo/adr/ADR-020-ia-claude-por-tarefa.md, contexto item 3). DEPENDE do 1304, que acrescenta 4 funcoes no fim do mesmo arquivo. PASSO 1: leia src/lib/ia/funcoes.ts inteiro (como o 1304 deixou), test/ia-funcoes-comercial.test.ts (MOLDE), test/ia-default-do-banco.test.ts (o caso que exige as chaves descricao, funcao e label) e confirme os nomes no codigo: grep -rn 'funcao: \"promessas\"' src/lib/promessas; grep -rn 'funcao: \"apolo_' src/lib/apolo/agentes; grep -n 'apolo_juiz' src/lib/apolo/agentes/juiz.ts. REABERTO 18/10/2026: a 1a rodada reprovou porque as entradas entraram antes de critica_mensagem_comercial e com aspas simples; o criterio antigo exigia 'promessas' entre aspas simples, erro da spec, corrigido. FAZER: (1) em src/lib/ia/funcoes.ts, DEPOIS da ultima entrada de IA_FUNCOES (agente_atendimento_avaliar, a ultima das 4 do 1304) e imediatamente antes do ']' que fecha o array, 5 entradas novas so com funcao, label e descricao, na MESMA formatacao das vizinhas (objeto em varias linhas, strings entre aspas DUPLAS, virgula final); o texto abaixo usa aspas simples so para delimitar o valor: { funcao: 'promessas', label: 'Promessas da equipe', descricao: 'Acha no grupo do cliente o compromisso da equipe que responde a um pedido do cliente e confere se foi cumprido' }; { funcao: 'apolo_leitor', label: 'Leitor do Apolo', descricao: 'Lê os sinais do caso e monta o dossiê' }; { funcao: 'apolo_analista', label: 'Analista do Apolo', descricao: 'Diagnostica o caso a partir do dossiê, com severidade e evidência' }; { funcao: 'apolo_decisor', label: 'Decisor do Apolo', descricao: 'Escolhe a ação recomendada do caso; troca de modelo passa pela suíte dourada' }; { funcao: 'apolo_juiz', label: 'Juiz do Apolo', descricao: 'Confere a saída de um agente do Apolo contra a rubrica' }. Nada mais muda no arquivo. (2) NOVO test/ia-funcoes-sem-cadastro.test.ts (molde test/ia-funcoes-comercial.test.ts): as 5 funcoes existem com label e descricao nao vazios; IA_FUNCOES nao repete funcao; dossie_extracao, motivo_desistencia_comercial e as 4 do 1304 (critica_mensagem_comercial, agente_atendimento_montar, agente_atendimento_responder, agente_atendimento_avaliar) continuam presentes; toda entrada tem so as chaves descricao, funcao e label; nenhum texto usa U+2014. FORA DE ESCOPO: provider.ts, telas, rotas, banco. Regras do repo: sem travessao (U+2014); nenhuma escrita nem DDL em zona C0 (clientes_receita, leads_crm*, trafego_*, ads_metadata, ads_performance, vw_*, fn_mql_sql_by_month), nem nome dessas tabelas em comentario de .sql; sem .json() novo em src (use res.text() com JSON.parse, ou fetchJson, parseJsonResponse ou lerCorpoJson de src/lib/fetch-json.ts); falha de leitura nunca vira zero, lista vazia nem verde; mensagem de tela ou de erro em portugues claro, sem nome de tabela, coluna ou view; chave de API nunca vai em URL, log, erro nem teste; PROIBIDO remover assercao, trocar matcher por toBeDefined, usar .skip, .only ou .todo.",
+  "cria_novo": [
+    "test/ia-funcoes-sem-cadastro.test.ts"
+  ],
+  "pathspec_allowlist": [
+    "src/lib/ia/funcoes.ts",
+    "test/ia-funcoes-sem-cadastro.test.ts"
+  ],
+  "dependencias": [
+    "1304"
+  ],
+  "prioridade": 32,
+  "recon_esperado": [
+    {
+      "descricao": "test/ia-funcoes-sem-cadastro.test.ts ainda nao existe",
+      "cmd": "test -e 'test/ia-funcoes-sem-cadastro.test.ts' && echo EXISTE || echo AUSENTE",
+      "espera": "AUSENTE"
+    },
+    {
+      "descricao": "o registro ainda nao tem as funcoes do Apolo",
+      "cmd": "grep -c \"apolo_\" 'src/lib/ia/funcoes.ts' || true",
+      "espera": "0"
+    }
+  ],
+  "criterios_aceite": [
+    {
+      "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+      "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+      "espera": "OK",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "so arquivos da allowlist foram tocados",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do printf '%s\\n' 'src/lib/ia/funcoes.ts' 'test/ia-funcoes-sem-cadastro.test.ts' | grep -Fxq \"$f\" || r=FORA_$f; done; echo $r",
+      "espera": "SO_ALLOWLIST",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "diff dentro do orcamento (<= 140 linhas somando adicoes e remocoes)",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 140 ] && echo NO_TETO || echo ESTOUROU_$t",
+      "espera": "NO_TETO",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "nenhum .sql novo (zero DDL)",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+      "espera": "SEM_SQL",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "guardas globais seguem verdes (test/c0-guard.test.ts, test/fetch-json-teto.test.ts, test/travessao-mudo.test.ts, test/ia-funcoes-comercial.test.ts, test/ia-default-do-banco.test.ts, test/ia-provider-unico.test.ts)",
+      "cmd": "npx vitest run 'test/c0-guard.test.ts' 'test/fetch-json-teto.test.ts' 'test/travessao-mudo.test.ts' 'test/ia-funcoes-comercial.test.ts' 'test/ia-default-do-banco.test.ts' 'test/ia-provider-unico.test.ts' >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+      "espera": "VERDE",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "testes verdes (test/ia-funcoes-sem-cadastro.test.ts)",
+      "cmd": "test -f test/ia-funcoes-sem-cadastro.test.ts && npx vitest run test/ia-funcoes-sem-cadastro.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+      "espera": "VERDE",
+      "tipo": "alvo"
+    },
+    {
+      "descricao": "as 5 funcoes no registro, sem provedor fixo",
+      "cmd": "f='src/lib/ia/funcoes.ts'; k=0; for y in 'funcao: \"promessas\"' 'funcao: \"apolo_leitor\"' 'funcao: \"apolo_analista\"' 'funcao: \"apolo_decisor\"' 'funcao: \"apolo_juiz\"'; do grep -qF \"$y\" \"$f\" && k=$((k+1)); done; p=$(grep -ciE 'openai|gpt|claude|gemini|esforco' \"$f\"); [ \"$k\" = 5 ] && [ \"$p\" = 0 ] && echo REGISTRO_OK || echo ST_funcoes${k}_provedor${p}",
+      "espera": "REGISTRO_OK",
+      "tipo": "alvo"
+    },
+    {
+      "descricao": "as 5 entradas novas sao as ultimas do registro, na ordem, logo depois de agente_atendimento_avaliar, com aspas duplas",
+      "cmd": "f='src/lib/ia/funcoes.ts'; u=$(grep -oE 'funcao: \"[a-z_]+\"' \"$f\" | tail -6 | sed -E 's/funcao: \"([a-z_]+)\"/\\1/' | tr '\\n' ' '); s=$(grep -cE \"funcao: '\" \"$f\"); [ \"$u\" = 'agente_atendimento_avaliar promessas apolo_leitor apolo_analista apolo_decisor apolo_juiz ' ] && [ \"$s\" = 0 ] && echo ORDEM_OK || echo ST_ultimas_${u// /,}_aspassimples${s}",
+      "espera": "ORDEM_OK",
+      "tipo": "alvo"
+    },
+    {
+      "descricao": "avaliador: 5 entradas novas no fim, com label e descricao em portugues claro, sem provedor, modelo nem esforco. REPROVE se: muda entrada existente; acrescenta chave alem de funcao, label e descricao; afrouxa teste.",
+      "cmd": "true",
+      "espera": "avaliador",
+      "tipo": "avaliador"
+    }
+  ],
+  "testes_conferidos": [
+    {
+      "teste": "test/cliente-atendimento-desistencia-rota.test.ts",
+      "motivo": "le ou importa src/lib/ia/funcoes.ts; as 5 entradas novas so acrescentam itens no fim de IA_FUNCOES sem mudar os existentes"
+    },
+    {
+      "teste": "test/criativos-classificar.test.ts",
+      "motivo": "le ou importa src/lib/ia/funcoes.ts; as 5 entradas novas so acrescentam itens no fim de IA_FUNCOES sem mudar os existentes"
+    },
+    {
+      "teste": "test/criativos-roteiros.test.tsx",
+      "motivo": "le ou importa src/lib/ia/funcoes.ts; as 5 entradas novas so acrescentam itens no fim de IA_FUNCOES sem mudar os existentes"
+    },
+    {
+      "teste": "test/feedback-rascunho-ticket.test.ts",
+      "motivo": "le ou importa src/lib/ia/funcoes.ts; as 5 entradas novas so acrescentam itens no fim de IA_FUNCOES sem mudar os existentes"
+    },
+    {
+      "teste": "test/ia-default-do-banco.test.ts",
+      "motivo": "le ou importa src/lib/ia/funcoes.ts; as 5 entradas novas so acrescentam itens no fim de IA_FUNCOES sem mudar os existentes"
+    },
+    {
+      "teste": "test/ia-funcoes-comercial.test.ts",
+      "motivo": "le ou importa src/lib/ia/funcoes.ts; as 5 entradas novas so acrescentam itens no fim de IA_FUNCOES sem mudar os existentes"
+    },
+    {
+      "teste": "test/ia-provider-unico.test.ts",
+      "motivo": "le ou importa src/lib/ia/funcoes.ts; as 5 entradas novas so acrescentam itens no fim de IA_FUNCOES sem mudar os existentes"
+    },
+    {
+      "teste": "test/produto-personal-removido.test.ts",
+      "motivo": "le ou importa src/lib/ia/funcoes.ts; as 5 entradas novas so acrescentam itens no fim de IA_FUNCOES sem mudar os existentes"
+    },
+    {
+      "teste": "test/reuniao-operacional-resumo-ia-job.test.ts",
+      "motivo": "le ou importa src/lib/ia/funcoes.ts; as 5 entradas novas so acrescentam itens no fim de IA_FUNCOES sem mudar os existentes"
+    }
+  ],
+  "status": "pendente",
+  "notas_status": ""
+}

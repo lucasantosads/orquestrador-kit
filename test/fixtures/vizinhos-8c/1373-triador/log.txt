@@ -1,0 +1,44 @@
+119981	[2026-10-18 11:10:48-0300] drenagem: ticket 1373 (4 pendentes restantes)
+119982	[orq 14:10:48] orquestrador iniciando · modo: real · once
+119983	[orq 14:10:48] preflight: validando infra (scripts, fila, env, claude)...
+119984	[orq 14:10:53] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+119985	[orq 14:10:59] preflight: ok
+119986	[orq 14:11:27]   evidência anterior preservada em attempt-1.prev1
+119987	[orq 14:11:27] === ticket 1373 (ia-registro-funcoes-sem-cadastro) — tentativa 1 · modo: real ===
+119988	[orq 14:11:28]   recon_esperado: ok (2 comando(s))
+119989	[orq 14:11:28] aviso allowlist: src/lib/ia/funcoes.ts já existe no worktree — o agente vai EDITAR, não criar
+119990	[orq 14:11:28]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1373/attempt-1/prompt.txt
+119991	[orq 14:11:28]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+119992	[orq 14:12:20]   diff cru salvo (74 linhas alteradas) · HEAD julgado 2d14fc2e
+119993	[orq 14:12:20]   enforcement: ok
+119994	[orq 14:12:48]   gate tsc: ok (baseline)
+119995	[orq 14:14:09]   gate vitest: FALHA
+119996	[orq 14:14:09]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha só em teste vizinho que cita arquivo da allowlist (test/ia-funcoes-agentes-atendimento.test.ts); próxima tentativa com allowlist ampliada (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1373/attempt-1/vizinhos.txt)
+119997	[orq 14:14:10] ticket 1373: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha só em teste vizinho que cita arquivo da allowlist (test/ia-funcoes-agentes-atendimento.test.ts); próxima tentativa com allowlist ampliada (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1373/attempt-1/vizinhos.txt)
+119998	[orq 14:14:10]   evidência anterior preservada em attempt-2.prev1
+119999	[orq 14:14:10]   allowlist ampliada nesta tentativa (teste vizinho): test/ia-funcoes-agentes-atendimento.test.ts
+120000	[orq 14:14:10] === ticket 1373 (ia-registro-funcoes-sem-cadastro) — tentativa 2 · modo: real ===
+120001	[orq 14:14:12]   recon_esperado: ok (2 comando(s))
+120002	[orq 14:14:12] aviso allowlist: src/lib/ia/funcoes.ts já existe no worktree — o agente vai EDITAR, não criar
+120003	[orq 14:14:12]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1373/attempt-2/prompt.txt
+120004	[orq 14:14:12]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+120005	[orq 14:15:23]   diff cru salvo (79 linhas alteradas) · HEAD julgado ec2fb626
+120006	[orq 14:15:24]   enforcement: ok
+120007	[orq 14:15:49]   gate tsc: ok (baseline)
+120008	[orq 14:16:58]   gate vitest: ok
+120009	[orq 14:17:29]   criterios mecânicos: FALHA — criterio[1] mecânico: esperado 'SO_ALLOWLIST', obteve 'FORA_test/ia-funcoes-agentes-atendimento.test.ts'
+120010	[orq 14:17:29]   REPROVA (mecânica, sem Opus): criterio[1] mecânico: esperado 'SO_ALLOWLIST', obteve 'FORA_test/ia-funcoes-agentes-atendimento.test.ts'
+120011	[orq 14:17:30] ticket 1373: reprovado — retry 2/2. motivo: criterio[1] mecânico: esperado 'SO_ALLOWLIST', obteve 'FORA_test/ia-funcoes-agentes-atendimento.test.ts'
+120012	[orq 14:17:30]   evidência anterior preservada em attempt-3.prev1
+120013	[orq 14:17:30] === ticket 1373 (ia-registro-funcoes-sem-cadastro) — tentativa 3 · modo: real ===
+120014	[orq 14:17:31]   recon_esperado: ok (2 comando(s))
+120015	[orq 14:17:31] aviso allowlist: src/lib/ia/funcoes.ts já existe no worktree — o agente vai EDITAR, não criar
+120016	[orq 14:17:32]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1373/attempt-3/prompt.txt
+120017	[orq 14:17:32]   tentativa final: escalando modelo do executor para 'opus'
+120018	[orq 14:17:32]   chamando claude -p (headless, --model opus, timeout 1500s) no worktree...
+120019	[orq 14:22:34]   diff cru salvo (74 linhas alteradas) · HEAD julgado a8c2cbba
+120020	[orq 14:22:34]   enforcement: ok
+120021	[orq 14:22:59]   gate tsc: ok (baseline)
+120022	[orq 14:24:13]   gate vitest: FALHA
+120023	[orq 14:24:13]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha só em teste vizinho que cita arquivo da allowlist (test/ia-funcoes-agentes-atendimento.test.ts); próxima tentativa com allowlist ampliada (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1373/attempt-3/vizinhos.txt)
+120024	[orq 14:24:14] ticket 1373: reprovado após 2 retries — BLOQUEADO

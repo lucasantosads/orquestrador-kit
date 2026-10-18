@@ -181,6 +181,7 @@ export function lerRepoKit(raiz: string, id: string): Evidencia {
       }
     }
     const jz = lerArq(`${dirRel}/juiz.veredito.json`)
+    const amp = lerArq(`${dirRel}/allowlist-ampliada.txt`)
     const cl = lerArq(`${dirRel}/claude.txt`)
     let agente: string | null = null
     if (cl) {
@@ -192,7 +193,7 @@ export function lerRepoKit(raiz: string, id: string): Evidencia {
         agente = txt
       }
     }
-    for (const a of [gates, crit, enf, jz, patch]) if (a) lido(a)
+    for (const a of [gates, crit, enf, jz, patch, amp]) if (a) lido(a)
     const m = meta.find((x) => x.dir === dirNome) ?? meta.find((x) => x.attempt === N - 1)
     return {
       n: k + 1,
@@ -215,6 +216,7 @@ export function lerRepoKit(raiz: string, id: string): Evidencia {
       recorte_criterios: crit,
       diff_stat: null,
       fontes: Object.fromEntries(v.arquivos.filter((a) => !(dp?.arquivos ?? []).includes(a)).map((a) => [a, null])),
+      ...(amp ? { ampliados: amp.linhas.map((l) => l.t.trim()).filter(Boolean) } : {}),
     }
   })
 

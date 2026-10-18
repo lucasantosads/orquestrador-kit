@@ -1,0 +1,3 @@
+ src/lib/ia/funcoes.ts                | 25 ++++++++++++++++++
+ test/ia-funcoes-sem-cadastro.test.ts | 49 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 74 insertions(+)

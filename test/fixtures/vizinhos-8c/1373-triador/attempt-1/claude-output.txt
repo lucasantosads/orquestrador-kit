@@ -1,0 +1,8 @@
+As 5 funções (`promessas`, `apolo_leitor`, `apolo_analista`, `apolo_decisor`, `apolo_juiz`) estão no fim de `IA_FUNCOES`, logo depois de `agente_atendimento_avaliar`. Commitei tudo em `2d14fc2`, sem push.
+
+- **Entradas novas:** em `src/lib/ia/funcoes.ts`, com só `funcao`, `label` e `descricao`, aspas duplas e o mesmo formato das vizinhas. Nenhuma entrada existente mudou.
+- **Teste novo:** `test/ia-funcoes-sem-cadastro.test.ts` cobre os itens do ticket: as 5 funções existem com label e descrição, sem repetição, as anteriores seguem presentes, só as 3 chaves por entrada e nenhum travessão.
+- **Diff:** 74 linhas adicionadas, dentro do teto de 140.
+- **tsc:** 3 erros, igual ao baseline.
+- **Vitest:** rodei só o teste novo e `ia-funcoes-comercial`, `ia-default-do-banco`, `ia-provider-unico` e `travessao-mudo`, e os 5 arquivos passaram (27 testes).
+- **Não rodei:** `c0-guard` e `fetch-json-teto`, que fazem parte do critério de guardas globais. Também não rodei a suíte completa, o `npm run build` nem os critérios de allowlist, SQL e ordem do registro.

@@ -20,7 +20,7 @@ import { matchesAllowlist } from '../enforcement-core.js'
 import { noDiff } from './leitor-legado-comarka.js'
 import type { Evidencia, Ref, Tentativa, Vizinho } from './tipos.js'
 
-export type Regra = 'D0' | 'D1' | 'D2' | 'D3' | 'D4' | 'D5' | 'D6' | 'D6b' | 'D7' | 'D8' | 'D9' | 'D10' | 'D11' | 'D12'
+export type Regra = 'D0' | 'D1' | 'D2' | 'D3' | 'D4' | 'D5' | 'D6' | 'D6b' | 'D6v' | 'D7' | 'D8' | 'D9' | 'D10' | 'D11' | 'D12'
 
 export interface Extracao {
   /** `R1`..`R7` quando firme; palpite leva `?` (`R5?`, `R1|R2?`); `null` = nenhuma regra casou */
@@ -69,6 +69,7 @@ const ROTULO: Record<string, string> = {
   R7: 'humano: só o dono decide',
 }
 export const ROTULO_D0 = 'bloqueado sem tentativa'
+export const ROTULO_D6V = 'teste já ampliado pelo executor'
 export const rotuloDe = (classe: string | null): string => {
   if (!classe) return 'sem regra'
   const cs = classe.replace('?', '').split('|')
@@ -130,7 +131,8 @@ export function extrair(ev: Evidencia): Extracao {
   const vermelhos: Detalhe['vermelhos'] = []
   for (const t of ts) {
     for (const f of t.arquivos_vermelhos) {
-      const dentro = cobre(f)
+      // o teste vizinho que o executor ampliou nesta tentativa (8c) conta como coberto nela
+      const dentro = cobre(f) || (t.ampliados ?? []).includes(f)
       const nd = noDiff(f, t.diff_arquivos)
       const loc = t.vermelhos.find((v) => v.arquivo === f)
       vermelhos.push({ tentativa: t.n, arquivo: f, linha: loc?.linha ?? null, dentro_allowlist: dentro, no_diff: nd })
@@ -245,6 +247,24 @@ export function extrair(ev: Evidencia): Extracao {
     ]
     const ids = [...new Set(base.flatMap((x) => x.viz.map((v) => v.ticket)))].sort()
     return sai('R5', 'D5', provas, `consertar a base: ${local(vermelhoRefs(b.t, b.arquivo), b.arquivo)} vermelho também em ${ids.join(', ')}, fora do diff`, `sim_apos:base_verde:${b.arquivo}`)
+  }
+
+  // D6v · vermelho fora da allowlist que o executor já ampliou nesta série
+  // (etapa 8c): a ampliação teve sua tentativa e não fechou. Pôr o teste na
+  // allowlist de novo, agora pelo R1, seria a segunda ação sobre o mesmo teste
+  // (o 1373 do Comarka: ampliado na tentativa 2, R1 D6 às 14:25Z). Firme, para o
+  // triador não chamar modelo, e sem regra de ação no resolvedor: vira aviso.
+  const ampliadosSerie = new Set(ts.flatMap((t) => t.ampliados ?? []))
+  const jaAmpliados = [...new Set(fora.map((x) => x.arquivo))].filter((f) => ampliadosSerie.has(f))
+  if (jaAmpliados.length) {
+    const quando = ts.filter((t) => (t.ampliados ?? []).some((f) => jaAmpliados.includes(f))).map((t) => t.n)
+    const r = sai(
+      'R1',
+      'D6v',
+      fora.filter((x) => jaAmpliados.includes(x.arquivo)).flatMap((x) => vermelhoRefs(x.t, x.arquivo)),
+      `${ROTULO_D6V}: ${jaAmpliados.join(', ')} (tentativa ${quando.join(', ')}); a ampliação não fechou: decisão humana, o R1 não age`,
+    )
+    return { ...r, rotulo: ROTULO_D6V }
   }
 
   // D6b · o enforcement da última tentativa barrou só um arquivo, por

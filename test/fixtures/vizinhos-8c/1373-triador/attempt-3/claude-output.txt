@@ -1,0 +1,23 @@
+O ticket 1373 está commitado (`a8c2cbb`, sem push) e todos os critérios mecânicos dele passam. Mas o `npx vitest run` completo tem 1 falha que eu não consigo corrigir dentro da allowlist: a spec se contradiz.
+
+**O que mudou**
+- `src/lib/ia/funcoes.ts`: as 5 entradas (`promessas`, `apolo_leitor`, `apolo_analista`, `apolo_decisor`, `apolo_juiz`) entraram depois de `agente_atendimento_avaliar`, logo antes do `]`. Usam aspas duplas e só têm `funcao`, `label` e `descricao`. Nada mais no arquivo mudou. Antes confirmei que os 5 nomes são os que o código de fato chama, em `promessas/detectar.ts:229` e `fechar.ts:124`, nos três agentes e em `juiz.ts:122`.
+- Arquivo novo `test/ia-funcoes-sem-cadastro.test.ts`, com os 5 casos pedidos.
+
+**Critérios do ticket**
+- tsc: 3 erros, os 3 do baseline em `qualificacao*`.
+- Só os 2 arquivos da allowlist foram tocados: `SO_ALLOWLIST`. O motivo da reprovação anterior está resolvido.
+- Diff de 74 linhas (25 + 49), dentro do teto de 140, e nenhum `.sql`.
+- As 5 estão no registro sem citar provedor (0 menções) e em ordem. As 6 últimas são `agente_atendimento_avaliar promessas apolo_leitor apolo_analista apolo_decisor apolo_juiz`, com zero aspas simples.
+- As 6 guardas e o teste novo: 7 arquivos, 53 testes verdes.
+
+**Onde fica vermelho**
+- `npx vitest run` completo: 1 falha em 12.361 testes. É `test/ia-funcoes-agentes-atendimento.test.ts:29`, do 1304: o teste exige que as 4 últimas entradas do registro sejam as 4 do 1304. Ele quebra com qualquer entrada nova no fim, que é justamente o que o 1373 pede. A rodada anterior editou esse teste e reprovou por estar fora da allowlist; desta vez não toquei nele.
+- **Precisa de decisão sua:** pôr esse teste na allowlist do 1373 e recalcular a linha 29 para cobrar a ordem relativa (as 4 juntas, logo depois de `followup_comercial`), com comentário explicando. Sem isso, um gate que rode o vitest inteiro reprova o ticket.
+
+**Não rodou**
+- `npm run build`: o comando com `SESSION_SECRET` inline precisa de aprovação, e esta sessão não tem como pedir.
+- `rm -rf .next` (passos 1 e 6 do `verificar`) foi negado. A contagem do tsc já descarta `.next/`, então o 3 não depende disso.
+- Lint: passou, só com avisos que já existiam.
+
+Salvei essa armadilha na memória (`registro-ia-slice-pinado-pelo-1304`) para os próximos tickets que mexerem no registro de IA.

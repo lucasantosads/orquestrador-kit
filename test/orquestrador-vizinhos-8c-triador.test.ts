@@ -1,0 +1,110 @@
+/**
+ * Etapa 8c · P2c — o triador sabe que o teste foi ampliado pelo executor.
+ *
+ * Caso real: o 1373 do Comarka (`test/fixtures/vizinhos-8c/1373-triador/`, no
+ * formato de `triador-7f/`), a série que bloqueou às 11:24 de 18/10. A tentativa
+ * 1 falhou só no teste vizinho, a 2 veio ampliada (o 457856c gravou
+ * `allowlist-ampliada.txt`), consertou o teste e reprovou na lista fechada, e a 3
+ * voltou vermelha no mesmo teste. Às 14:25Z o resolvedor agiu: R1 D6. Era a
+ * segunda ação sobre o mesmo teste.
+ *
+ * Sem `allowlist-ampliada.txt`, leitor e extração ficam byte a byte iguais ao de
+ * antes da 8c: a régua é o sha256 da evidência e da extração dos 65 casos reais
+ * (`triador-sem-ampliacao.json`, gravado com o triador de antes desta peça).
+ */
+import { describe, it, expect } from 'vitest';
+import { createHash } from 'node:crypto';
+import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { REPO_ROOT } from './fixtures/orq-harness.js';
+import { lerCasoDeFixture } from '../scripts/orquestrador/triador/leitor-legado-comarka.js';
+import { lerRepoKit } from '../scripts/orquestrador/triador/leitor-kit.js';
+import { extrair } from '../scripts/orquestrador/triador/extrair.js';
+import { decidir } from '../scripts/orquestrador/resolvedor/decidir.js';
+import type { Evidencia } from '../scripts/orquestrador/triador/tipos.js';
+
+const FIXT = join(REPO_ROOT, 'test', 'fixtures');
+const CASO_1373 = join(FIXT, 'vizinhos-8c', '1373-triador');
+const TESTE = 'test/ia-funcoes-agentes-atendimento.test.ts';
+const MODOS = { padrao: 'diagnostico', R1: 'auto' } as const;
+const decide = (x: ReturnType<typeof extrair>) => decidir({ classe: x.classe, regra: x.regra, firme: x.firme, fonte: 'extracao' }, MODOS);
+
+describe('8c-P2c · sem allowlist-ampliada.txt, leitor e extração ficam byte a byte iguais (65 casos reais)', () => {
+  const h = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 16);
+  const semMtime = (ev: Evidencia) => ({ ...ev, lidos: ev.lidos.map(({ mtime_ns: _m, ...r }) => r) });
+  const base = JSON.parse(readFileSync(join(FIXT, 'vizinhos-8c', 'triador-sem-ampliacao.json'), 'utf8')) as Record<
+    string,
+    { evidencia: string; extracao: string }
+  >;
+
+  it('a régua tem os casos do legado (triador-7f) e do kit', () => {
+    expect(Object.keys(base).filter((k) => k.startsWith('legado:')).length).toBeGreaterThanOrEqual(60);
+    expect(Object.keys(base).some((k) => k.startsWith('kit:'))).toBe(true);
+  });
+
+  it.each(Object.entries(base))('%s', (chave, esperado) => {
+    const [leitor, rel] = chave.split(/:(.*)/) as [string, string];
+    const ev = leitor === 'legado' ? lerCasoDeFixture(join(FIXT, rel)) : lerRepoKit(join(FIXT, rel), '243');
+    expect(ev.tentativas.every((t) => !('ampliados' in t))).toBe(true);
+    expect({ evidencia: h(leitor === 'kit' ? semMtime(ev) : ev), extracao: h(extrair(ev)) }).toEqual(esperado);
+  });
+});
+
+describe('8c-P2c · 1373 (caso real): bloqueio depois de ampliação que não fechou vira aviso, nunca R1', () => {
+  it('o leitor legado lê a ampliação da tentativa 2, e só dela', () => {
+    const ev = lerCasoDeFixture(CASO_1373);
+    expect(ev.tentativas.map((t) => t.arquivos_vermelhos)).toEqual([[TESTE], [], [TESTE]]);
+    expect(ev.tentativas.map((t) => t.ampliados)).toEqual([undefined, [TESTE], undefined]);
+  });
+
+  it('a extração não fecha D6 nem D6b: R1 D6v firme, "teste já ampliado pelo executor", sem r1_testes', () => {
+    const x = extrair(lerCasoDeFixture(CASO_1373));
+    expect(x.regra).toBe('D6v');
+    expect(x.classe).toBe('R1');
+    expect(x.firme).toBe(true); // firme: o triador não chama modelo
+    expect(x.rotulo).toBe('teste já ampliado pelo executor');
+    expect(x.remedio).toContain('teste já ampliado pelo executor');
+    expect(x.remedio).toContain(TESTE);
+    expect(x.r1_testes).toBeUndefined();
+  });
+
+  it('o resolvedor em auto para R1 só avisa (antes desta peça: r1_allowlist, a ação de 14:25Z)', () => {
+    const d = decide(extrair(lerCasoDeFixture(CASO_1373)));
+    expect(d.acao).toBe('aviso');
+    expect(d.acao).not.toBe('r1_allowlist');
+  });
+
+  it('o teste ampliado conta como coberto naquela tentativa (e só nela)', () => {
+    const ev = lerCasoDeFixture(CASO_1373);
+    const t3 = ev.tentativas[2]!;
+    const comT3 = { ...ev, tentativas: [ev.tentativas[0]!, ev.tentativas[1]!, { ...t3, ampliados: [TESTE] }] };
+    const vs = extrair(comT3).detalhe.vermelhos;
+    expect(vs.find((v) => v.tentativa === 3)?.dentro_allowlist).toBe(true);
+    expect(vs.find((v) => v.tentativa === 1)?.dentro_allowlist).toBe(false);
+  });
+
+  it('contra-teste: o mesmo 1373 sem o arquivo de ampliação segue R1 D6 (o caminho de hoje)', () => {
+    const ev = lerCasoDeFixture(CASO_1373);
+    const sem = { ...ev, tentativas: ev.tentativas.map(({ ampliados: _a, ...t }) => t) };
+    const x = extrair(sem);
+    expect([x.classe, x.regra, x.firme]).toEqual(['R1', 'D6', true]);
+    expect(decide(x).acao).toBe('r1_allowlist');
+  });
+});
+
+describe('8c-P2c · o leitor kit lê attempt-N/allowlist-ampliada.txt', () => {
+  it('um repo do kit com a ampliação gravada pelo executor na tentativa 2', () => {
+    const raiz = mkdtempSync(join(tmpdir(), 'orq-8c-kit-'));
+    cpSync(join(FIXT, 'triador-custo-real', 'conteudos-243'), raiz, { recursive: true });
+    const dirs = readdirSync(join(raiz, 'docs', 'fila', 'runs', '243')).filter((d) => statSync(join(raiz, 'docs', 'fila', 'runs', '243', d)).isDirectory());
+    expect(dirs).toContain('attempt-1');
+    writeFileSync(join(raiz, 'docs', 'fila', 'runs', '243', 'attempt-1', 'allowlist-ampliada.txt'), 'test/vizinho.test.ts\n');
+    const ev = lerRepoKit(raiz, '243');
+    const t = ev.tentativas.find((x) => x.dir.endsWith('/attempt-1'));
+    expect(t, JSON.stringify(ev.tentativas.map((x) => x.dir))).toBeDefined();
+    expect(t!.ampliados).toEqual(['test/vizinho.test.ts']);
+    expect(ev.tentativas.filter((x) => x !== t).every((x) => !('ampliados' in x))).toBe(true);
+    expect(existsSync(join(FIXT, 'triador-custo-real', 'conteudos-243', 'docs', 'fila', 'runs', '243', 'attempt-1', 'allowlist-ampliada.txt'))).toBe(false);
+  });
+});
