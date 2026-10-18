@@ -45,7 +45,8 @@ export interface Pausa {
 
 const SENTINELAS = ['docs/fila/PAUSAR', 'docs/fila/.orq-pause']
 
-export function lerPausa(raiz: string): Pausa | null {
+/** Os sentinelas de pausa do repo, na ordem de leitura: `pausar_file` do config, depois os dois conhecidos. */
+export function sentinelas(raiz: string): string[] {
   let cfg: string | null = null
   try {
     const c = (JSON.parse(readFileSync(join(raiz, 'docs/fila/000-config.json'), 'utf8')) as { pausar_file?: unknown }).pausar_file
@@ -53,7 +54,11 @@ export function lerPausa(raiz: string): Pausa | null {
   } catch {
     cfg = null
   }
-  for (const rel of [...new Set([...(cfg ? [cfg] : []), ...SENTINELAS])]) {
+  return [...new Set([...(cfg ? [cfg] : []), ...SENTINELAS])]
+}
+
+export function lerPausa(raiz: string): Pausa | null {
+  for (const rel of sentinelas(raiz)) {
     const p = join(raiz, rel)
     if (!existsSync(p)) continue
     let conteudo = ''

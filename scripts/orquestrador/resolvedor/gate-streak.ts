@@ -23,6 +23,10 @@
  * (`scripts/orquestrador/orq-pause.sh --off`, nunca `rm`), no máximo uma por
  * repo a cada 6 h, nunca de novo para o mesmo par de tickets, e só se o
  * sentinela ainda é o mesmo (sha) na hora. SÓ LEITURA do repo fora disso.
+ *
+ * Pausa com dono é intocável (8b): a pausa de gate é só o sentinela que COMEÇA
+ * pela linha de gate e não tem `dono:`, e o `--off` não roda com outro
+ * sentinela presente (o `--off` do kit apaga os dois).
  */
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -34,7 +38,7 @@ import type { GuardaResolvedor } from './caminhos.js'
 import { interruptor } from './caminhos.js'
 import { lerLedger, registrar, type Entrada } from './ledger.js'
 import type { Modo } from './modos.js'
-import type { Pausa } from './pausa.js'
+import { sentinelas, type Pausa } from './pausa.js'
 
 export const RUNS_LEGADO = 'docs/fila/runs'
 export const JANELA_RETOMADA_MS = 6 * 3600 * 1000
@@ -49,7 +53,9 @@ export interface PausaGate {
 
 /** O sentinela da pausa de gate sistêmico, ou null (pausa manual, outro formato). */
 export function lerPausaGate(conteudo: string): PausaGate | null {
-  const m = /gate sistemico: "([^"]+)" reprovou \d+ tickets seguidos \(([^)]+)\)(?: em (\S+))?/.exec(conteudo)
+  const primeira = conteudo.split('\n').map((l) => l.trim()).find(Boolean) ?? ''
+  if (/(?:^|\|)\s*dono:/.test(primeira)) return null
+  const m = /^gate sistemico: "([^"]+)" reprovou \d+ tickets seguidos \(([^)]+)\)(?: em (\S+))?/.exec(primeira)
   if (!m) return null
   return { gate: m[1]!, tickets: m[2]!.split(',').map((s) => s.trim()).filter(Boolean), em: m[3] ?? null }
 }
@@ -205,6 +211,8 @@ export function retomar(g: GuardaResolvedor, repo: { nome: string; caminho: stri
   }
   if (agoraConteudo === null) return nao('a pausa já saiu (sentinela ausente)')
   if (sha(agoraConteudo) !== p.sha) return nao('o sentinela mudou desde a leitura: outra pausa')
+  const outras = sentinelas(repo.caminho).filter((rel) => rel !== p.arquivo && existsSync(join(repo.caminho, rel)))
+  if (outras.length) return nao(`outra pausa presente: ${outras.join(', ')} (o --off apagaria junto)`)
   const script = join(repo.caminho, 'scripts/orquestrador/orq-pause.sh')
   const r = spawnSync('bash', [script, '--off'], { cwd: repo.caminho, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 30_000 })
   const saida = `${r.stdout ?? ''}${r.stderr ?? ''}`.trim().slice(0, 300)
