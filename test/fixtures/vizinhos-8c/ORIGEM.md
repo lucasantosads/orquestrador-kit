@@ -92,3 +92,32 @@ O sha256 (16 hex) de `JSON.stringify` da evidência e da extração dos 65 casos
 ampliação (todo caso com `caso.json` em `triador-7f/`, mais os dois repos `conteudos-243`
 pelo leitor kit, sem o `mtime_ns` de `lidos`, que muda a cada checkout), gravado com o
 triador do commit `8b4c6e1`, antes da P2c.
+
+## afrouxamento/ (P3 · os consertos reais passam)
+
+Cada `<id>.diff` é o recorte do `diff.raw` da tentativa APROVADA depois do resgate (o
+conserto real), só com as seções dos arquivos de teste medidos no item 4 do PASSO 0: nos
+resgates, os testes que o resgate liberou; em 966, 854, 867 e 840 (os consertos
+legítimos), todo teste editado que já existia. São 33 arquivos em 18 tickets. Seções
+verbatim; arquivo novo fica de fora.
+
+| caso | tentativa (runs/) | arquivos |
+|---|---|---|
+| 856 | 856/attempt-1 | test/rotas-orfas.test.ts |
+| 711a | 711a/attempt-1 | test/sem-insumo.test.ts |
+| 950 | 950/attempt-1 | test/etapa2-funil-motor.test.ts |
+| 1006 | 1006/attempt-1 | test/quem-cuida.test.ts |
+| 840 | 840/attempt-1 | test/chave-unica-cliente-id.test.ts, test/nps-reacao-resposta.test.ts, test/rate-limit-publico.test.ts, test/resolver-chave.test.ts |
+| 924a | 924a/attempt-1 | test/conta-entregas-vazio-unico.test.ts, test/visao-aceite-mockup.test.tsx |
+| 1054 | 1054/attempt-1 | test/resolver-cliente-rota-diagnostico.test.ts, test/resolver-cliente-rota-resumo.test.ts |
+| 1055b | 1055b/attempt-1 | test/acoes-recomendadas-chave.test.ts, test/relatorio-sem-cliente-id.test.ts |
+| 1058 | 1058/attempt-1 | test/negocio-temperatura.test.ts, test/quem-cuida.test.ts |
+| 854 | 854/attempt-1 | test/error-boundaries-rotas-lote5.test.ts, test/rotas-orfas.test.ts |
+| 966 | 966/attempt-1 | test/campanhas-sem-duplicatas.test.ts, test/ficha-nav-colapsavel.test.ts |
+| 830 | 830/attempt-1 | test/dono-dry-run.test.ts |
+| 855 | 855/attempt-1 | test/adocao-predicado.test.ts |
+| 1059 | 1059/attempt-3 | test/leitores-carteira-casa-nova.test.ts, test/leitores-ficha-casa-nova.test.ts |
+| 1195 | 1195/attempt-1 | test/reuniao-manual-registro.test.ts |
+| 711b3 | 711b3/attempt-2 | test/saude-motivo-sem-base.test.ts, test/sem-insumo.test.ts |
+| 1053 | 1053/attempt-1 | test/papel-nas-escritas.test.ts |
+| 867 | 867/attempt-1 | test/acao-unica-ficha-controles.test.tsx, test/acao-unica-ficha-mutacoes.test.tsx, test/ficha-relacao-estados.test.tsx, test/relacao-aceite.test.tsx, test/timeline-relacao.test.tsx |

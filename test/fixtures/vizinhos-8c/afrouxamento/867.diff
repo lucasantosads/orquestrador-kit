@@ -1,0 +1,133 @@
+diff --git a/test/acao-unica-ficha-controles.test.tsx b/test/acao-unica-ficha-controles.test.tsx
+index dfd9ebd..692aaa0 100644
+--- a/test/acao-unica-ficha-controles.test.tsx
++++ b/test/acao-unica-ficha-controles.test.tsx
+@@ -74,7 +74,7 @@ const CONTROLES: Array<[string, string, string]> = [
+   ["deleteEntregavel", sheet, "disabled={executandoDeleteEntregavel}"],
+   // 541b: select de tese, excluir e adicionar saíram; o Salvar do Informar trava pela chave tese+campo.
+   ["gravarPremissa — Salvar", teses, "disabled={gravando(chave)}"],
+-  ["criarReuniao", reunioes, "disabled={executandoCriarReuniao}"],
++  // 867: o formulário "Salvar Reunião" saiu da aba (o OS não grava reunião); a entrada criarReuniao saiu.
+   ["gerarResumoReuniao", reunioes, "disabled={executandoGerarResumoReuniao}"],
+   ["gerarResumoSemanal", resumos, "disabled={gerandoResumo}"],
+ ];
+@@ -84,7 +84,8 @@ describe("410a publica um estado por mutação; o 410b consome", () => {
+     // 13 campos `executando*` (3 predicados por chave + 10 booleanos) mais
+     // iaLoading/savingOtim/gerandoResumo, que são o `executando` de gerarAnalise/
+     // salvarOtimizacao/gerarResumoSemanal com o nome antigo mantido: uma por mutação.
+-    expect(PUBLICADOS.length).toBe(16);
++    // 867: a interface do contexto perde executandoCriarReuniao: 16 - 1 = 15.
++    expect(PUBLICADOS.length).toBe(15);
+     for (const nome of ["executandoCampoCliente", "executandoTese", "executandoEntregavel", "iaLoading", "savingOtim", "gerandoResumo"]) {
+       expect(PUBLICADOS).toContain(nome);
+     }
+@@ -115,8 +116,9 @@ describe("cada controle trava pelo estado da SUA mutação", () => {
+     // 541b: 7 campos do cliente + 2 campos de tese + Salvar + 12 demais = 22
+     // casos; as 15 mutações perdem atualizarTese/deletarTese/adicionarTese e
+     // ganham gravarPremissa: 15 - 3 + 1 = 13.
+-    expect(CONTROLES.length).toBe(22);
+-    expect(new Set(CONTROLES.map(([r]) => r.split(" — ")[0])).size).toBe(13);
++    // 867: sai a entrada criarReuniao: 22 - 1 = 21 casos e 13 - 1 = 12 mutações distintas.
++    expect(CONTROLES.length).toBe(21);
++    expect(new Set(CONTROLES.map(([r]) => r.split(" — ")[0])).size).toBe(12);
+   });
+ });
+ 
+diff --git a/test/acao-unica-ficha-mutacoes.test.tsx b/test/acao-unica-ficha-mutacoes.test.tsx
+index 5b4151d..6a12264 100644
+--- a/test/acao-unica-ficha-mutacoes.test.tsx
++++ b/test/acao-unica-ficha-mutacoes.test.tsx
+@@ -237,13 +237,15 @@ describe("fiação das 16 mutações no shell", () => {
+   // Guarda booleana: ação única, um alvo só.
+   const BOOLEANAS = [
+     "confirmarEdicaoOtim", "salvarOtimizacao", "salvarExtra", "addEntregavel",
+-    "deleteEntregavel", "adicionarTese", "deletarTese", "criarReuniao",
++    "deleteEntregavel", "adicionarTese", "deletarTese",
++    // 867: criarReuniao (POST de reunião) saiu de page.tsx; 13 - 1 = 12 booleanas.
+     "gerarResumoReuniao", "gerarResumoSemanal", "registrarVerificacao",
+     "deletarOtimizacaoDb", "gerarAnalise",
+   ];
+ 
+-  it("são 16: 3 por chave + 13 booleanas", () => {
+-    expect(POR_CHAVE.length + BOOLEANAS.length).toBe(16);
++  it("são 15: 3 por chave + 12 booleanas", () => {
++    // 867: 16 - 1 (criarReuniao) = 15.
++    expect(POR_CHAVE.length + BOOLEANAS.length).toBe(15);
+   });
+ 
+   it("cada mutação é o `executar` de um hook — nenhuma sobrou como async solta", () => {
+diff --git a/test/ficha-relacao-estados.test.tsx b/test/ficha-relacao-estados.test.tsx
+index b1232dd..a80d350 100644
+--- a/test/ficha-relacao-estados.test.tsx
++++ b/test/ficha-relacao-estados.test.tsx
+@@ -198,7 +198,7 @@ describe("critério 4b: NPS sem resposta", () => {
+ describe("Pulso da relação", () => {
+   const cargas = (extra: Record<string, unknown> = {}) => ({
+     temp: { estado: "ok", dado: [] }, grupo: { estado: "ok", dado: { conectado: false, ultima_mensagem_em: null } },
+-    reunioes: { estado: "ok", dado: [] }, agora: AGORA.getTime(), abrirReuniao: () => {}, onRegistrarTemp: () => {},
++    reunioes: { estado: "ok", dado: [] }, agora: AGORA.getTime(), onRegistrarTemp: () => {},
+     onTentarTemp: () => {}, onTentarGrupo: () => {}, ...extra,
+   });
+ 
+@@ -222,9 +222,11 @@ describe("Pulso da relação", () => {
+     expect(t).toContain("Contato no grupo grupo não conectado");
+     expect(t).not.toContain("Último contato");
+     expect(t).toContain("Última reunião sem base");
+-    expect(t).toContain("Próxima reunião nenhuma agendada Agendar");
++    // 867: o botão Agendar saiu do Pulso; a linha termina em "nenhuma agendada".
++    expect(t).toContain("Próxima reunião nenhuma agendada");
+     expect(h).toContain('aria-label="Registrar temperatura"');
+-    expect(h).toContain('aria-label="Registrar reunião"');
++    // 867: o "+" de Registrar reunião saiu do Pulso (o OS não grava reunião).
++    expect(h).not.toContain('aria-label="Registrar reunião"');
+   });
+ 
+   it("com dado: temperatura do registro, último contato relativo e datas das reuniões", () => {
+diff --git a/test/relacao-aceite.test.tsx b/test/relacao-aceite.test.tsx
+index b81c417..7f1305a 100644
+--- a/test/relacao-aceite.test.tsx
++++ b/test/relacao-aceite.test.tsx
+@@ -382,7 +382,8 @@ describe("presente: coluna lateral", () => {
+     // 29/09 (decisão do Lucas): sem "Nova reunião" no cabeçalho do Pulso; o "+" de Última reunião
+     // (Dica "Registrar reunião") abre o formulário como realizada. O mockup antigo segue com o texto.
+     expect(fonte.reunioes).not.toContain("Nova reunião");
+-    expect(fonte.pulso).toContain('dica="Registrar reunião" onClick={() => abrirReuniao("realizada")}');
++    // 867 (decisão do Lucas, 07/10): o OS só lê reunião; o "+" que abria o formulário saiu do Pulso.
++    expect(fonte.pulso).not.toContain('dica="Registrar reunião"');
+     expect(MOCKUP_TEXTO).toContain("Nova reunião");
+   });
+ 
+@@ -390,7 +391,8 @@ describe("presente: coluna lateral", () => {
+     expect(MOCKUP_TEXTO).toContain("Próxima reunião");
+     // 29/09: a linha Próxima reunião mora no Pulso; sem futura diz "nenhuma agendada" com Agendar em Button outline sm.
+     expect(fonte.pulso).toContain('rotulo="Próxima reunião"');
+-    expect(fonte.pulso).toMatch(/nenhuma agendada<\/span><Button variant="outline" size="sm" onClick=\{\(\) => abrirReuniao\("agendada"\)\}>Agendar<\/Button>/);
++    // 867: o botão Agendar saiu; sem futura a linha é só o texto cinza "nenhuma agendada".
++    expect(fonte.pulso).toMatch(/<span className=\{MUTED\}>nenhuma agendada<\/span>\}/);
+   });
+ 
+   it("presente: Perfil e pontos de atencao com Perfil, Preferencias e Pontos de atencao", () => {
+diff --git a/test/timeline-relacao.test.tsx b/test/timeline-relacao.test.tsx
+index d26e329..313dea3 100644
+--- a/test/timeline-relacao.test.tsx
++++ b/test/timeline-relacao.test.tsx
+@@ -131,7 +131,8 @@ describe("montagem (546)", () => {
+     // 29/09: o botão "Nova reunião" saiu do cabeçalho do Pulso; registrar reunião é o "+" com Dica
+     // "Registrar reunião" (pulso-relacao.tsx), que abre o mesmo formulário como realizada.
+     expect(reunioes).not.toContain("Nova reunião");
+-    expect(readFileSync(join(DIR, "_components", "pulso-relacao.tsx"), "utf8")).toContain('dica="Registrar reunião" onClick={() => abrirReuniao("realizada")}');
++    // 867: o "+" de Registrar reunião saiu do Pulso; o OS só lê reunião.
++    expect(readFileSync(join(DIR, "_components", "pulso-relacao.tsx"), "utf8")).not.toContain('dica="Registrar reunião"');
+     expect(reunioes).not.toContain("Nova Reunião");
+   });
+ 
+@@ -140,6 +141,8 @@ describe("montagem (546)", () => {
+     const pulso = readFileSync(join(DIR, "_components", "pulso-relacao.tsx"), "utf8");
+     expect(reunioes).toContain("<PulsoRelacao");
+     expect(pulso).toContain("Próxima reunião");
+-    expect(pulso).toContain("Agendar");
++    // 867: o botão Agendar saiu; a linha mostra só o texto "nenhuma agendada".
++    expect(pulso).not.toContain("Agendar");
++    expect(pulso).toContain("nenhuma agendada");
+   });
+ });

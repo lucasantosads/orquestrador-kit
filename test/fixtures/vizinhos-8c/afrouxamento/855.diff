@@ -1,0 +1,13 @@
+diff --git a/test/adocao-predicado.test.ts b/test/adocao-predicado.test.ts
+index 532ba9a..2eaa5db 100644
+--- a/test/adocao-predicado.test.ts
++++ b/test/adocao-predicado.test.ts
+@@ -21,7 +21,7 @@ const ROTAS_CONTAGEM_ATIVO = [
+   join('src', 'app', 'api', 'clientes', 'automacoes-status', 'route.ts'),
+   join('src', 'app', 'api', 'clientes', 'renovacoes', 'route.ts'),
+   // adoção Ticket 092
+-  join('src', 'app', 'dashboard', 'team', '[id]', 'page.tsx'),
++  // Ticket 855: tela virou stub (decisao-telas-gemeas); o predicado segue coberto nas outras rotas
+   join('src', 'app', 'dashboard', 'clientes', '_components', 'mutations.ts'),
+   join('src', 'app', 'dashboard', 'clientes', 'page.tsx'),
+   join('src', 'app', 'api', 'meta', 'overview', 'route.ts'),

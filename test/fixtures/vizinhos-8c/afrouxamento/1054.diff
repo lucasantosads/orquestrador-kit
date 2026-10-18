@@ -1,0 +1,60 @@
+diff --git a/test/resolver-cliente-rota-diagnostico.test.ts b/test/resolver-cliente-rota-diagnostico.test.ts
+index 3786bdc..7630dda 100644
+--- a/test/resolver-cliente-rota-diagnostico.test.ts
++++ b/test/resolver-cliente-rota-diagnostico.test.ts
+@@ -28,7 +28,7 @@ const RECEITA = "22222222-2222-4222-8222-222222222222";
+ 
+ function cadeia(resultado: unknown, tabela: string) {
+   const c: Record<string, unknown> = {};
+-  for (const m of ["select", "eq", "is", "order", "limit"]) c[m] = () => c;
++  for (const m of ["select", "eq", "is", "order", "limit", "in"]) c[m] = () => c;
+   c.or = (f: string) => {
+     if (tabela === "reunioes_cliente") filtros.or.push(f);
+     return c;
+@@ -38,10 +38,11 @@ function cadeia(resultado: unknown, tabela: string) {
+   return c;
+ }
+ 
++// Ticket 1054: a lib le LISTA por select().in() e agrupa pela ponte entrada_id; a linha do dublê carrega entrada_id.
+ function montar(opts: { entrada: unknown; mirror?: unknown }) {
+   mockFrom.mockImplementation((t: string) => {
+     if (t === "clientes_receita") return cadeia({ data: opts.entrada, error: null }, t);
+-    if (t === "clientes_notion_mirror") return cadeia({ data: opts.mirror ?? null, error: null }, t);
++    if (t === "clientes_notion_mirror") return cadeia({ data: opts.mirror ? [opts.mirror] : [], error: null }, t);
+     return cadeia({ data: [], error: null }, t);
+   });
+ }
+@@ -63,9 +64,9 @@ describe("diagnostico: resolverCliente", () => {
+   it("(a)(b) chave em uuid e em notion_id chegam à mesma consulta por cliente_id", async () => {
+     // O resolver devolve o mesmo par nos dois casos; a consulta de reuniões é a mesma.
+     mockResolver.mockResolvedValue({ cliente_id: CLIENTE, notion_id: NOTION });
+-    montar({ entrada: ENTRADA, mirror: { notion_id: NOTION, nicho: null, analista: null, cliente_id: CLIENTE } });
++    montar({ entrada: ENTRADA, mirror: { notion_id: NOTION, entrada_id: RECEITA, nicho: null, analista: null, cliente_id: CLIENTE } });
+     expect((await chamar()).status).toBe(200);
+-    montar({ entrada: { ...ENTRADA, cliente_id: null }, mirror: { notion_id: NOTION, nicho: null, analista: null, cliente_id: null } });
++    montar({ entrada: { ...ENTRADA, cliente_id: null }, mirror: { notion_id: NOTION, entrada_id: RECEITA, nicho: null, analista: null, cliente_id: null } });
+     expect((await chamar()).status).toBe(200);
+     expect(mockResolver).toHaveBeenCalledTimes(2);
+     expect(mockResolver.mock.calls[0][0]).toBe(CLIENTE);
+@@ -85,7 +86,7 @@ describe("diagnostico: resolverCliente", () => {
+ 
+   it("(c2) par sem cliente_id mas com ponte ainda lê pela ponte, como antes", async () => {
+     mockResolver.mockResolvedValue({ cliente_id: null, notion_id: NOTION });
+-    montar({ entrada: { ...ENTRADA, cliente_id: null }, mirror: { notion_id: NOTION, nicho: null, analista: null, cliente_id: null } });
++    montar({ entrada: { ...ENTRADA, cliente_id: null }, mirror: { notion_id: NOTION, entrada_id: RECEITA, nicho: null, analista: null, cliente_id: null } });
+     expect((await chamar()).status).toBe(200);
+     expect(filtros.or[0]).toContain(`cliente_notion_id.eq."${NOTION}"`);
+   });
+diff --git a/test/resolver-cliente-rota-resumo.test.ts b/test/resolver-cliente-rota-resumo.test.ts
+index 647817c..b72e93a 100644
+--- a/test/resolver-cliente-rota-resumo.test.ts
++++ b/test/resolver-cliente-rota-resumo.test.ts
+@@ -23,7 +23,7 @@ vi.mock("@supabase/supabase-js", () => ({
+         catch: (f: never) => promise.catch(f),
+         maybeSingle: () => promise,
+       };
+-      for (const metodo of ["select", "eq", "or", "order", "limit", "is", "gte", "lte", "insert"]) {
++      for (const metodo of ["select", "eq", "or", "order", "limit", "is", "gte", "lte", "insert", "in"]) {
+         chain[metodo] = (...args: unknown[]) => {
+           chamadas.push({ tabela, metodo, args });
+           return chain;

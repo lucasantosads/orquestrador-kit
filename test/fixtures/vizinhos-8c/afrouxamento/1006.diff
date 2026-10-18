@@ -1,0 +1,30 @@
+diff --git a/test/quem-cuida.test.ts b/test/quem-cuida.test.ts
+index aa50f6c..4f1ba55 100644
+--- a/test/quem-cuida.test.ts
++++ b/test/quem-cuida.test.ts
+@@ -20,6 +20,9 @@ vi.mock("@supabase/supabase-js", async () => {
+   const { clienteMemoria } = await import("./helpers/supabase-memoria");
+   return { createClient: () => clienteMemoria(mem) };
+ });
++vi.mock("@/lib/perf/conn-resolver", () => ({
++  resolveMetaConnAgencia: vi.fn(async () => ({ connectionId: "c1", token: "token-teste", origem: "system_user", tokenExpiraEm: null })),
++}));
+ vi.mock("@/lib/session", () => ({ getSession: vi.fn(async () => sessao.atual) }));
+ vi.mock("@/lib/evolution", () => ({
+   sendWhatsAppText: vi.fn(async (tel: string, msg: string) => {
+@@ -122,7 +125,6 @@ describe("portal: meus clientes", () => {
+ describe("alerta de campanha: destinatário é quem cuida, sempre interno", () => {
+   it("manda para o telefone do gestor principal ou do head; nunca para quem saiu", async () => {
+     process.env.CRON_SECRET = "segredo-teste";
+-    process.env.META_ADS_ACCESS_TOKEN = "token-teste";
+     const fetchOriginal = globalThis.fetch;
+     globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ data: [{ spend: "120" }] }), { status: 200 })) as never;
+     try {
+@@ -138,7 +140,6 @@ describe("alerta de campanha: destinatário é quem cuida, sempre interno", () =
+       expect(tels).not.toContain("5571999990003");
+     } finally {
+       globalThis.fetch = fetchOriginal;
+-      delete process.env.META_ADS_ACCESS_TOKEN;
+     }
+   });
+ });

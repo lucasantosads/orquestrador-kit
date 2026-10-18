@@ -95,7 +95,7 @@ export type CausaInfra =
   | 'gate_crash'
   | 'juiz_ilegivel'
   | 'ambiente'
-export type CausaMerito = 'diff_cap' | 'enforcement' | 'criterio_qualidade' | 'arquivo_solto'
+export type CausaMerito = 'diff_cap' | 'enforcement' | 'criterio_qualidade' | 'arquivo_solto' | 'afrouxamento'
 export type Desfecho = 'aprovado' | 'adiado' | 'reprovado' | 'refatiar'
 
 /**
@@ -457,6 +457,20 @@ export function decidirDesfecho(config: DecisaoConfig, sinal: SinalTentativa): V
     }
   }
   if (sinal.enforcementViolado) {
+    // Etapa 8c: afrouxamento num teste vizinho ampliado manda sobre qualquer
+    // outra violação. Mérito (a ampliação era a chance de ajustar o teste), mas
+    // sem retry: nenhuma regra de retry nomeia a causa, e `decidirRetry` bloqueia.
+    // Nunca `refatiar`: a pergunta "ampliar ou fatiar?" já foi respondida.
+    const afrouxa = (sinal.violacoesEnforcement ?? []).filter((x) => x.tipo === 'afrouxamento')
+    if (afrouxa.length > 0) {
+      return {
+        desfecho: 'reprovado',
+        causa: 'afrouxamento',
+        motivo: `afrouxamento em teste vizinho ampliado: ${afrouxa.map((x) => x.detalhe ?? '').join('; ')}`,
+        contaComoRetry: true,
+        cooldown: false,
+      }
+    }
     // Ticket 631 (513, 23/09/2026): TODA violação é fora_do_pathspec de arquivo
     // que estava solto antes do `add -A` do harness. Não é escopo: é sujeira que
     // o agente conserta sabendo o nome. Mérito, com retry e o nome no

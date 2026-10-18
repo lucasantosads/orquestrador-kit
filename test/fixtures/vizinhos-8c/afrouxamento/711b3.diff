@@ -1,0 +1,49 @@
+diff --git a/test/saude-motivo-sem-base.test.ts b/test/saude-motivo-sem-base.test.ts
+index d02a735..3190ac8 100644
+--- a/test/saude-motivo-sem-base.test.ts
++++ b/test/saude-motivo-sem-base.test.ts
+@@ -62,11 +62,14 @@ describe("ticket 599: motivo da saúde sem base", () => {
+   });
+ 
+   it("shell passa o motivo ao cartão e mantém uma só busca do cockpit", () => {
+-    expect(PAGE).toContain("motivoSaude={motivoSaudeSemBase(health)}");
++    // Ticket 711b3 RECALCULA: o shell passa o chip da regra do Início (chipSaude via
++    // ler-sinal-cliente) em vez de motivoSaude={motivoSaudeSemBase(health)}.
++    expect(PAGE).toContain("chip={chipSaude}");
+     expect(PAGE.split("fetch(`/api/perf/cockpit/").length - 1).toBe(1);
+   });
+ 
+   it("o cartão usa motivoSaude na Dica do chip de saúde", () => {
+-    expect(GERAL).toContain("<Dica texto={motivoSaude ?? score.motivo}>{chipSaude}</Dica>");
++    // Ticket 711b3 RECALCULA: a Dica usa chip.dica, o texto que chipSaude devolve (motivo da regra do Início).
++    expect(GERAL).toContain("<Dica texto={chip.dica}>{chipSaude}</Dica>");
+   });
+ });
+diff --git a/test/sem-insumo.test.ts b/test/sem-insumo.test.ts
+index 378db02..4a858af 100644
+--- a/test/sem-insumo.test.ts
++++ b/test/sem-insumo.test.ts
+@@ -216,7 +216,10 @@ describe('fiação — superfície 1 na ficha e em /clientes/risco', () => {
+     // ticket 296 RECALCULA esta asserção: a fonte do prompt deixou de ser
+     // clientes_extra.saude_score — é o mesmo health do cockpit, resolvido uma
+     // única vez no shell (mesmo valor que alimenta o cabeçalho).
+-    expect(ficha).toContain('estadoScoreSaude(health?.score ?? null)')
++    // ticket 711b3 RECALCULA de novo: a fonte do prompt é o chip da regra do Início
++    // (lerSinalCliente → chipSaude), o mesmo do cabeçalho; nenhum score fabricado entra.
++    expect(ficha).toContain('const scoreTxt = `${chipSaude.rotulo} (${chipSaude.dica})`')
++    expect(ficha).not.toContain('estadoScoreSaude(health?.score')
+   })
+ 
+   it('o header recebe estado resolvido, não um número cru', () => {
+@@ -224,7 +227,10 @@ describe('fiação — superfície 1 na ficha e em /clientes/risco', () => {
+     // substituiu este header, ver ticket 268) passou a receber o health
+     // resolvido uma única vez no shell, não mais clientes_extra.saude_score
+     // lido isolado por esta tela.
+-    expect(ficha).toContain('score={estadoScoreSaude(health?.score ?? null)}')
++    // ticket 711b3 RECALCULA: o cartão recebe o chip já resolvido (lerSinalCliente → chipSaude),
++    // com rótulo, dica e tom; continua sendo estado resolvido no shell, nunca número cru.
++    expect(ficha).toContain('chip={chipSaude}')
++    expect(ficha).not.toContain('estadoScoreSaude(health?.score')
+     // ticket 390 RECALCULA: header-cliente.tsx foi excluído (sem importador
+     // desde o ticket 268 — IdentidadeCliente, em geral-tab.tsx, é quem
+     // recebe o score/corScoreSaude/SemDado hoje). O objeto desta asserção

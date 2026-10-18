@@ -1,0 +1,33 @@
+diff --git a/test/conta-entregas-vazio-unico.test.ts b/test/conta-entregas-vazio-unico.test.ts
+index 48ca8d8..1bf679f 100644
+--- a/test/conta-entregas-vazio-unico.test.ts
++++ b/test/conta-entregas-vazio-unico.test.ts
+@@ -21,8 +21,10 @@ describe("636: vazio único em Contrato e entregas", () => {
+     expect(entregaveis).toContain("ficha:configurar:entregaveis");
+   });
+   it("a linha do Escopo continua e Adicionar abre a escolha", () => {
+-    expect(financeiro).toContain('"nenhum cadastrado"');
+-    expect(financeiro).toContain('classList.remove("hidden")');
++    // Ticket 924a (spec 09/10): a linha do Escopo saiu do financeiro-tab (o vazio e o Adicionar são do 924b);
++    // o gatilho de adicionar segue coberto pelo it 'a escolha de tipo e o gatilho do topo seguem em entregaveis-tab'.
++    expect(financeiro).not.toContain("<EscopoBloco");
++    expect(financeiro).not.toContain('"nenhum cadastrado"');
+   });
+   it("contratual tem no máximo uma das duas frases antigas de vazio", () => {
+     const a = contratual.split("Sem prova de entrega").length - 1;
+diff --git a/test/visao-aceite-mockup.test.tsx b/test/visao-aceite-mockup.test.tsx
+index bea0b14..c9ada99 100644
+--- a/test/visao-aceite-mockup.test.tsx
++++ b/test/visao-aceite-mockup.test.tsx
+@@ -756,7 +756,10 @@ describe("outras abas", () => {
+     expect(ramoComercial).toMatch(/<AnchorBlock id="comercial"[^]*?<CockpitNegocio /);
+     const cards = carregar(caminhoComp("cockpit-cards"));
+     const CockpitNegocio = cards.CockpitNegocio as React.ComponentType<Record<string, unknown>>;
+-    expect(textoDe(html(React.createElement(CockpitNegocio, { negocio: null })))).toContain("LTV");
++    // Ticket 924a (spec 09/10): o LTV está na faixa do ContratoMarcos (contrato-marcos.tsx, montado no ramo conta); o CockpitNegocio não mostra LTV.
++    expect(ramoConta).toMatch(/<ContratoMarcos /);
++    expect(textoDe(html(React.createElement(CockpitNegocio, { negocio: null })))).not.toContain("LTV");
++    expect(lerArq(caminhoComp("contrato-marcos"))).toContain('rotulo="LTV"');
+   });
+ 
+   it("outras abas: Vincular receita na aba Conta", () => {

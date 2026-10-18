@@ -1,0 +1,13 @@
+diff --git a/test/dono-dry-run.test.ts b/test/dono-dry-run.test.ts
+index 4983689..9558152 100644
+--- a/test/dono-dry-run.test.ts
++++ b/test/dono-dry-run.test.ts
+@@ -51,7 +51,7 @@ describe("montarRelatorioDono (ticket 685)", () => {
+     expect(beta?.alcancadoPelaDistribuicao).toBe(true);
+   });
+ 
+-  it("alcance e sugestao usam resolverUuid, inclusive por nome", () => {
++  it("alcance e sugestao seguem a ordem cliente_id, espelho e nome, inclusive por nome", () => {
+     const gama = montarRelatorioDono(entrada()).find((l) => l.nome === "Gama");
+     expect(gama?.alcancadoPelaDistribuicao).toBe(true);
+     expect(gama?.analista).toBe("  gestora   ativa ");

@@ -1,0 +1,75 @@
+diff --git a/test/acoes-recomendadas-chave.test.ts b/test/acoes-recomendadas-chave.test.ts
+index eda600f..72f302e 100644
+--- a/test/acoes-recomendadas-chave.test.ts
++++ b/test/acoes-recomendadas-chave.test.ts
+@@ -65,17 +65,22 @@ import { GET } from "@/app/api/acoes-recomendadas/route";
+ const mockGetSession = vi.mocked(getSession);
+ const SESSION = { employeeId: "emp-1", role: "admin" as const, entityId: null, nome: "Teste" };
+ 
++// Ticket 1055b: a lib do espelho só aceita uuid (uuidsUnicos filtra), então as fixtures usam uuids RFC-4122.
++const A = "a0000000-0000-4000-8000-000000000001";
++const B = "a0000000-0000-4000-8000-000000000002";
++const C = "a0000000-0000-4000-8000-000000000003";
++
+ // A tem ponte (clientes_notion_mirror.cliente_id = 'A'); B e C não têm
+ // nenhuma linha no mirror para o cliente_id delas — "sem cadastro no OS".
+ function configurarFixturePadrao() {
+   for (const k of Object.keys(state.tables)) delete state.tables[k];
+-  setTable("perf_ad_accounts", [{ cliente_id: "A" }, { cliente_id: "B" }, { cliente_id: "C" }]);
++  setTable("perf_ad_accounts", [{ cliente_id: A }, { cliente_id: B }, { cliente_id: C }]);
+   setTable("clientes", [
+-    { id: "A", nome: "Cliente A" },
+-    { id: "B", nome: "Cliente B" },
+-    { id: "C", nome: "Cliente C" },
++    { id: A, nome: "Cliente A" },
++    { id: B, nome: "Cliente B" },
++    { id: C, nome: "Cliente C" },
+   ]);
+-  setTable("clientes_notion_mirror", [{ cliente_id: "A", notion_id: "notion-A" }]);
++  setTable("clientes_notion_mirror", [{ cliente_id: A, notion_id: "notion-A" }]);
+ }
+ 
+ beforeEach(() => {
+@@ -92,12 +97,12 @@ describe("gerarAcoesRecomendadas — chave via clientes_notion_mirror (ticket 09
+     const out = await gerarAcoesRecomendadas();
+     // B e C não têm linha em clientes_notion_mirror para o cliente_id delas.
+     expect(out.sem_cadastro_os).toBe(2);
+-    expect(out.acoes.every((a) => a.cliente_id !== "B" && a.cliente_id !== "C")).toBe(true);
++    expect(out.acoes.every((a) => a.cliente_id !== B && a.cliente_id !== C)).toBe(true);
+   });
+ 
+   it("cliente com ponte resolvida continua gerando ações normalmente", async () => {
+     const out = await gerarAcoesRecomendadas();
+-    expect(out.acoes.some((a) => a.cliente_id === "A")).toBe(true);
++    expect(out.acoes.some((a) => a.cliente_id === A)).toBe(true);
+   });
+ });
+ 
+diff --git a/test/relatorio-sem-cliente-id.test.ts b/test/relatorio-sem-cliente-id.test.ts
+index 4e253f7..effa03e 100644
+--- a/test/relatorio-sem-cliente-id.test.ts
++++ b/test/relatorio-sem-cliente-id.test.ts
+@@ -14,9 +14,12 @@ vi.mock("@supabase/supabase-js", () => ({
+   createClient: () => ({
+     from: (tabela: string) => {
+       const q: Record<string, unknown> = {};
+-      for (const m of ["select", "order", "insert", "update", "upsert", "delete"]) {
++      for (const m of ["select", "order", "in", "insert", "update", "upsert", "delete"]) {
+         q[m] = () => { metodosChamados.push(m); return q; };
+       }
++      // Ticket 1055b: a lib do espelho lê por select().in() e aguarda o chain; range segue para as leituras paginadas.
++      q.then = (ok: (v: unknown) => unknown, ko: (e: unknown) => unknown) =>
++        Promise.resolve({ data: dados[tabela] ?? [], error: null }).then(ok, ko);
+       q.range = (from: number, to: number) => {
+         metodosChamados.push("range");
+         return Promise.resolve({ data: (dados[tabela] ?? []).slice(from, to + 1), error: null });
+@@ -115,7 +118,8 @@ describe("GET /api/admin/clientes-sem-cliente-id", () => {
+     expect(body.total_ativos).toBe(4);
+     expect(body.sem_cliente_id).toBe(2);
+     expect(metodosChamados.length).toBeGreaterThan(0);
+-    for (const m of metodosChamados) expect(["select", "order", "range"]).toContain(m);
++    for (const m of metodosChamados) // Ticket 1055b: a leitura do espelho pela lib usa select (e in quando filtra).
++    expect(["select", "order", "range", "in"]).toContain(m);
+     for (const proibido of ["insert", "update", "upsert", "delete"]) expect(metodosChamados).not.toContain(proibido);
+   });
+ });

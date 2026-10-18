@@ -1,0 +1,68 @@
+diff --git a/test/negocio-temperatura.test.ts b/test/negocio-temperatura.test.ts
+index 51bbc74..7f1204f 100644
+--- a/test/negocio-temperatura.test.ts
++++ b/test/negocio-temperatura.test.ts
+@@ -74,12 +74,19 @@ describe("temperatura comercial grava em ops_cliente_negocio (ticket 1052)", ()
+         { cliente_id: ID_RECENTE, temperatura_em: new Date(Date.now() - 1 * dia).toISOString() },
+         { cliente_id: ID_ANTIGO, temperatura_em: new Date(Date.now() - 30 * dia).toISOString() },
+       ];
++      const ENTRADA_RECENTE = "00000000-0000-4000-8000-0000000000e1";
++      const ENTRADA_ANTIGO = "00000000-0000-4000-8000-0000000000e2";
++      const entradas = [
++        { id: ENTRADA_RECENTE, nome: "Mock", status: "ativo" },
++        { id: ENTRADA_ANTIGO, nome: "Mock", status: "ativo" },
++      ];
+       const espelho = [
+-        { notion_id: "n-recente", cliente_id: ID_RECENTE, cliente: "Recente", status: "Ativo" },
+-        { notion_id: "n-antigo", cliente_id: ID_ANTIGO, cliente: "Antigo", status: "Ativo" },
++        { notion_id: "n-recente", cliente_id: ID_RECENTE, entrada_id: ENTRADA_RECENTE, cliente: "Recente", status: "Ativo" },
++        { notion_id: "n-antigo", cliente_id: ID_ANTIGO, entrada_id: ENTRADA_ANTIGO, cliente: "Antigo", status: "Ativo" },
+       ];
+       mockFrom.mockImplementation((table: string) => {
+-        if (table === "clientes_receita") return cadeia([{ id: "entrada-1", nome: "Mock", status: "ativo" }]);
++        // Ticket 1058: entrada_id UUID porque a lib descarta id nao-UUID; uma entrada por cliente do espelho.
++        if (table === "clientes_receita") return cadeia(entradas);
+         if (table === "clientes_notion_mirror") return cadeia(espelho);
+         if (table === "ops_cliente_negocio") {
+           const chain = cadeia(negocio);
+diff --git a/test/quem-cuida.test.ts b/test/quem-cuida.test.ts
+index 8b36743..f68ed23 100644
+--- a/test/quem-cuida.test.ts
++++ b/test/quem-cuida.test.ts
+@@ -43,6 +43,10 @@ const SAIU = "00000000-0000-4000-8000-0000000000e3";
+ const CLI_COM = "00000000-0000-4000-8000-0000000000c1";
+ const CLI_SEM = "00000000-0000-4000-8000-0000000000c2";
+ const CLI_EX = "00000000-0000-4000-8000-0000000000c3";
++// Ticket 1058: entrada_id UUID porque a lib descarta id nao-UUID.
++const ENT_COM = "00000000-0000-4000-8000-0000000000f1";
++const ENT_SEM = "00000000-0000-4000-8000-0000000000f2";
++const ENT_EX = "00000000-0000-4000-8000-0000000000f3";
+ const sb = () => clienteMemoria(mem) as never;
+ 
+ function semear() {
+@@ -62,9 +66,9 @@ function semear() {
+   ];
+   db.clientes_notion_mirror = [
+     // o analista do espelho diz "Gestora Ana" em todos: não pode decidir nada
+-    { notion_id: "n-com", cliente: "Com Gestor", cliente_id: CLI_COM, analista: "Flavio Head", entrada_id: "r1", status: "Ativo", nicho: "Trabalhista", meta_campaign_id: "camp-1" },
+-    { notion_id: "n-sem", cliente: "Sem Gestor", cliente_id: CLI_SEM, analista: "Gestora Ana", entrada_id: "r2", status: "Ativo", nicho: "Previdenciário", meta_campaign_id: "camp-2" },
+-    { notion_id: "n-ex", cliente: "Gestor Saiu", cliente_id: CLI_EX, analista: "Bruno Ribeiro", entrada_id: "r3", status: "Ativo", nicho: null, meta_campaign_id: "camp-3" },
++    { notion_id: "n-com", cliente: "Com Gestor", cliente_id: CLI_COM, analista: "Flavio Head", entrada_id: ENT_COM, status: "Ativo", nicho: "Trabalhista", meta_campaign_id: "camp-1" },
++    { notion_id: "n-sem", cliente: "Sem Gestor", cliente_id: CLI_SEM, analista: "Gestora Ana", entrada_id: ENT_SEM, status: "Ativo", nicho: "Previdenciário", meta_campaign_id: "camp-2" },
++    { notion_id: "n-ex", cliente: "Gestor Saiu", cliente_id: CLI_EX, analista: "Bruno Ribeiro", entrada_id: ENT_EX, status: "Ativo", nicho: null, meta_campaign_id: "camp-3" },
+   ];
+   // Ticket 1055b: o portal parte de clientes (casa nova); a receita é lida por cliente_id.
+   db.clientes = [
+@@ -73,9 +77,9 @@ function semear() {
+     { id: CLI_EX, nome: "Gestor Saiu", status: "ativo" },
+   ];
+   db.clientes_receita = [
+-    { id: "r1", cliente_id: CLI_COM, nome: "Com Gestor", status: "ativo", status_financeiro: "ativo", valor_mensal: 1000, risco_churn: null },
+-    { id: "r2", cliente_id: CLI_SEM, nome: "Sem Gestor", status: "ativo", status_financeiro: "ativo", valor_mensal: 2000, risco_churn: null },
+-    { id: "r3", cliente_id: CLI_EX, nome: "Gestor Saiu", status: "ativo", status_financeiro: "ativo", valor_mensal: 3000, risco_churn: null },
++    { id: ENT_COM, cliente_id: CLI_COM, nome: "Com Gestor", status: "ativo", status_financeiro: "ativo", valor_mensal: 1000, risco_churn: null },
++    { id: ENT_SEM, cliente_id: CLI_SEM, nome: "Sem Gestor", status: "ativo", status_financeiro: "ativo", valor_mensal: 2000, risco_churn: null },
++    { id: ENT_EX, cliente_id: CLI_EX, nome: "Gestor Saiu", status: "ativo", status_financeiro: "ativo", valor_mensal: 3000, risco_churn: null },
+   ];
+   db.clientes_extra = [{ notion_id: "n-ex", nicho: "Bancário" }];
+   db.alertas_cliente = [];

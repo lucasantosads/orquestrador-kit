@@ -1,0 +1,23 @@
+diff --git a/test/papel-nas-escritas.test.ts b/test/papel-nas-escritas.test.ts
+index 9809e82..d83192c 100644
+--- a/test/papel-nas-escritas.test.ts
++++ b/test/papel-nas-escritas.test.ts
+@@ -147,10 +147,17 @@ describe("ticket 876: papel nas escritas", () => {
+   }
+ 
+   it("gestor passa na carteira", async () => {
++    h.state.tabelas.clientes_notion_mirror = [{ notion_id: "n1", cliente_id: ID(8) }];
+     logar(GESTOR);
+     const r = await rotas.carteira();
+     expect(r.status).toBe(200);
+-    expect(h.state.escritas).toEqual(["update:clientes_notion_mirror"]);
++    expect(h.state.escritas).toEqual(["upsert:ops_cliente_negocio"]);
++  });
++
++  it("carteira sem cadastro no OS -> 409 e nenhuma escrita", async () => {
++    logar(GESTOR);
++    expect((await rotas.carteira()).status).toBe(409);
++    expect(h.state.escritas).toEqual([]);
+   });
+ 
+   it("gestor no extrair-dossie -> 403", async () => {

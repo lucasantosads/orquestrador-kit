@@ -16,7 +16,11 @@ import {
   arquivosBaseVermelha,
   blocoFailVitest,
   cmdComAmpliados,
+  decidirDesfecho,
+  decidirRetry,
   decidirVizinhos,
+  type DecisaoConfig,
+  type SinalTentativa,
 } from '../scripts/orquestrador/decisao.js';
 import { testesVizinhos, type ArvoreAlvo } from '../scripts/orquestrador/gate-ticket.js';
 import { montarDiagnostico } from '../scripts/orquestrador/diagnostico.js';
@@ -250,5 +254,98 @@ describe('8c-P2a · decisao-cli vizinhos: lê a árvore do base_ticket e decide'
     } finally {
       rmSync(d, { recursive: true, force: true });
     }
+  });
+});
+
+// ─── P3 · anti-afrouxamento mecânico, só nos testes ampliados ─────────────────
+
+/** Um diff de um arquivo só, com as linhas removidas e acrescentadas. */
+function diffDe(arquivo: string, rem: string[], add: string[], extra = ''): string {
+  return [
+    `diff --git a/${arquivo} b/${arquivo}`,
+    ...(extra ? [extra] : []),
+    'index 1111111..2222222 100644',
+    `--- a/${arquivo}`,
+    `+++ ${extra.startsWith('deleted') ? '/dev/null' : `b/${arquivo}`}`,
+    `@@ -1,${rem.length} +1,${add.length} @@`,
+    ...rem.map((l) => `-${l}`),
+    ...add.map((l) => `+${l}`),
+    '',
+  ].join('\n');
+}
+const afrouxa = (arquivo: string, diff: string, ampliados = [arquivo]) =>
+  enforce({ changedFiles: [arquivo], allowlist: [arquivo], ampliados, diff, config: cfg }).violations.filter((v) => v.tipo === 'afrouxamento');
+
+describe('8c-P3 · as 6 regras líquidas reprovam o afrouxamento num teste ampliado', () => {
+  const T = 'test/vizinho.test.ts';
+  it.each([
+    ['remove it/test', diffDe(T, ["  it('conta 2', () => {", '    expect(f()).toBe(2)', '  })'], [])],
+    ['remove expect', diffDe(T, ['    expect(f()).toBe(2)', '    expect(g()).toBe(3)'], ['    expect(f()).toBe(2)'])],
+    ['acrescenta .skip/.only/.todo', diffDe(T, ["  it('conta 2', () => {"], ["  it.skip('conta 2', () => {"])],
+    ['acrescenta matcher genérico', diffDe(T, ['    expect(r).toEqual({ a: 1 })'], ['    expect(r).toBeDefined()'])],
+    ['comenta it/test/expect', diffDe(T, ['    expect(f()).toBe(2)'], ['    // expect(f()).toBe(2)', '    expect(f()).toBe(2)'])],
+    ['apaga o arquivo de teste', diffDe(T, ["  it('x', () => { expect(1).toBe(1) })"], [], 'deleted file mode 100644')],
+  ])('%s', (regra, diff) => {
+    // pode disparar mais de uma (it.skip( não conta como it(: some um it e entra um skip); a nomeada tem de estar
+    const v = afrouxa(T, diff);
+    expect(v.length, JSON.stringify(v)).toBeGreaterThanOrEqual(1);
+    expect(v.every((x) => x.detalhe.startsWith(`${T}: `))).toBe(true);
+    expect(v.some((x) => x.detalhe.includes(regra)), JSON.stringify(v)).toBe(true);
+  });
+
+  it('a mesma mudança num teste da allowlist que NÃO foi ampliado não dispara (as regras valem só nos ampliados)', () => {
+    expect(afrouxa(T, diffDe(T, ['    expect(f()).toBe(2)'], []), [])).toEqual([]);
+    expect(afrouxa(T, diffDe(T, ['    expect(f()).toBe(2)'], []), ['test/outro.test.ts'])).toEqual([]);
+  });
+
+  it('valor recalculado (troca a linha do expect, mesma contagem) não é afrouxamento', () => {
+    expect(afrouxa(T, diffDe(T, ['    expect(n).toBe(20)'], ['    // 1: a rota nova entra na contagem', '    expect(n).toBe(21)']))).toEqual([]);
+  });
+});
+
+describe('8c-P3 · os consertos reais do PASSO 0 passam (33 arquivos, 18 tickets: resgates e 966, 854, 867, 840)', () => {
+  const dir = join(FIX, 'afrouxamento');
+  const casos = readdirSync(dir).filter((f) => f.endsWith('.diff')).map((f) => f.replace(/\.diff$/, ''));
+  it('são os 18 tickets e os 33 arquivos medidos', () => {
+    expect(casos).toHaveLength(18);
+    const n = casos.reduce((a, c) => a + (readFileSync(join(dir, `${c}.diff`), 'utf8').match(/^diff --git /gm) ?? []).length, 0);
+    expect(n).toBe(33);
+  });
+  it.each(casos)('%s: nenhum teste do conserto reprova como afrouxamento', (c) => {
+    const diff = readFileSync(join(dir, `${c}.diff`), 'utf8');
+    const arquivos = [...diff.matchAll(/^diff --git a\/\S+ b\/(\S+)$/gm)].map((m) => m[1]!);
+    const r = enforce({ changedFiles: arquivos, allowlist: arquivos, ampliados: arquivos, diff, config: cfg });
+    expect(r.violations.filter((v) => v.tipo === 'afrouxamento')).toEqual([]);
+  });
+});
+
+describe('8c-P3 · decisão: afrouxamento reprova sem retry (nunca refatiar)', () => {
+  const dcfg = JSON.parse(readFileSync(join(REPO_ROOT, 'test', 'fixtures', 'checkout', 'docs', 'fila', '000-config.json'), 'utf8')) as DecisaoConfig;
+  const sinal = (violacoes: { tipo: string; detalhe: string }[]): SinalTentativa => ({
+    exitCode: 0,
+    saida: '',
+    diffLines: 10,
+    gateInterrompido: false,
+    enforcementViolado: true,
+    criteriosFalhos: [],
+    violacoesEnforcement: violacoes,
+  });
+  it('só afrouxamento: reprovado, causa afrouxamento, e o plano de retry bloqueia', () => {
+    const v = decidirDesfecho(dcfg, sinal([{ tipo: 'afrouxamento', detalhe: 'test/a.test.ts: remove expect (2 → 1)' }]));
+    expect(v.desfecho).toBe('reprovado');
+    expect(v.causa).toBe('afrouxamento');
+    expect(v.motivo).toContain('test/a.test.ts: remove expect');
+    const p = decidirRetry(dcfg, v, 0, 'sonnet');
+    expect(p.deveTentar).toBe(false);
+  });
+  it('afrouxamento junto com fora_do_pathspec: o afrouxamento manda (não vira refatiar)', () => {
+    const v = decidirDesfecho(dcfg, sinal([
+      { tipo: 'fora_do_pathspec', detalhe: 'src/x.ts' },
+      { tipo: 'afrouxamento', detalhe: 'test/a.test.ts: acrescenta .skip/.only/.todo (0 → 1)' },
+    ]));
+    expect([v.desfecho, v.causa]).toEqual(['reprovado', 'afrouxamento']);
+  });
+  it('contra-teste: sem afrouxamento, enforcement segue refatiar como hoje', () => {
+    expect(decidirDesfecho(dcfg, sinal([{ tipo: 'fora_do_pathspec', detalhe: 'src/x.ts' }])).desfecho).toBe('refatiar');
   });
 });

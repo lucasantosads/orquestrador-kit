@@ -1,0 +1,15 @@
+diff --git a/test/etapa2-funil-motor.test.ts b/test/etapa2-funil-motor.test.ts
+index bb947d9..157e824 100644
+--- a/test/etapa2-funil-motor.test.ts
++++ b/test/etapa2-funil-motor.test.ts
+@@ -88,7 +88,8 @@ describe("funil e motor dão o mesmo número para o mesmo lead", () => {
+       expect(linha?.quantidade).toBe(peloMotor.length);
+       expect(linha?.leads.map((x) => x.id).sort()).toEqual(peloMotor);
+     }
+-    // Lead a: MQL, RM, RR. Lead b: MQL. Lead c: VENDA só. Lead d: nada.
+-    expect(gravados.map((g) => marcasDoLead(g))).toEqual([["MQL", "RM", "RR"], ["MQL"], ["VENDA"], []]);
++    // Ticket 950 (cascata aprovada pelo Lucas em 09/10): marco maior marca os anteriores com a mesma data.
++    // Lead a: MQL, RM, RR. Lead b: MQL. Lead c: só VENDA no CRM, a cascata marca MQL, RM e RR. Lead d: nada.
++    expect(gravados.map((g) => marcasDoLead(g))).toEqual([["MQL", "RM", "RR"], ["MQL"], ["MQL", "RM", "RR", "VENDA"], []]);
+   });
+ });

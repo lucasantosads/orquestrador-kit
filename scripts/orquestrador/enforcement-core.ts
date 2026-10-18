@@ -106,6 +106,12 @@ export interface EnforceConfig {
 export interface EnforceInput {
   changedFiles: string[]
   allowlist: string[]
+  /**
+   * Testes vizinhos ampliados nesta tentativa (etapa 8c, `--allowlist-extra`).
+   * Já estão em `allowlist`; aqui é só para as regras de afrouxamento, que
+   * valem SÓ neles. Ausente = nenhum.
+   */
+  ampliados?: string[]
   diff: string
   config: EnforceConfig
 }
@@ -135,6 +141,8 @@ export type TipoViolacao =
   // para não virar "nenhum padrão casou" em silêncio.
   | 'padrao_regex_invalida'
   | 'teste_sql_invalido'
+  // --- Etapa 8c: afrouxamento num teste vizinho ampliado (só neles).
+  | 'afrouxamento'
 
 export interface Violation {
   tipo: TipoViolacao
@@ -647,6 +655,64 @@ export function violacoesDePadrao(arquivo: string, texto: string, config: Enforc
   return v
 }
 
+// ─── Etapa 8c · anti-afrouxamento nos testes vizinhos ampliados ───────────────
+// Contagem LÍQUIDA por linha no diff do arquivo (removidas com o padrão >
+// acrescentadas com o padrão), a mesma régua da guarda do R1 (resolvedor/r1.ts).
+// Medida no PASSO 0 da 8c contra os 33 testes dos consertos reais (os resgates
+// e os legítimos 966, 854, 867, 840): 0 reprovados. A forma ingênua ("apagou
+// linha com expect") reprovaria 19. O que muda o DADO e não a asserção (o 762:
+// pôr a rota na lista de pendências do teste) não é mecânico: fica com o juiz.
+const REGRAS_AFROUXAMENTO: { nome: string; re: RegExp; cai: boolean }[] = [
+  { nome: 'remove it/test', re: /\b(it|test)\s*\(/, cai: true },
+  { nome: 'remove expect', re: /\bexpect\s*\(/, cai: true },
+  { nome: 'acrescenta .skip/.only/.todo', re: /\.(skip|only|todo)\s*\(|\b(xit|xtest|xdescribe)\s*\(/, cai: false },
+  {
+    nome: 'acrescenta matcher genérico',
+    re: /\.(toBeDefined|toBeTruthy|toBeFalsy)\s*\(\s*\)|expect\.(any|anything|objectContaining|arrayContaining|stringContaining)\s*\(|\.toMatchObject\s*\(/,
+    cai: false,
+  },
+  { nome: 'comenta it/test/expect', re: /^\s*\/\/.*\b(it|test|expect)\s*\(/, cai: false },
+]
+
+/** Linhas removidas e acrescentadas por arquivo, e se o arquivo foi apagado. */
+function linhasPorArquivo(diff: string): Map<string, { add: string[]; rem: string[]; apagado: boolean }> {
+  const out = new Map<string, { add: string[]; rem: string[]; apagado: boolean }>()
+  let atual: { add: string[]; rem: string[]; apagado: boolean } | undefined
+  for (const l of diff.split('\n')) {
+    const cab = /^diff --git a\/\S+ b\/(\S+)$/.exec(l)
+    if (cab) {
+      atual = { add: [], rem: [], apagado: false }
+      out.set(cab[1]!, atual)
+    } else if (!atual) continue
+    else if (l.startsWith('deleted file')) atual.apagado = true
+    else if (l.startsWith('+++') || l.startsWith('---')) continue
+    else if (l.startsWith('+')) atual.add.push(l.slice(1))
+    else if (l.startsWith('-')) atual.rem.push(l.slice(1))
+  }
+  return out
+}
+
+export function violacoesDeAfrouxamento(diff: string, ampliados: string[]): Violation[] {
+  if (ampliados.length === 0) return []
+  const v: Violation[] = []
+  for (const [arquivo, { add, rem, apagado }] of linhasPorArquivo(diff)) {
+    if (!ampliados.includes(arquivo)) continue
+    if (apagado) {
+      v.push({ tipo: 'afrouxamento', detalhe: `${arquivo}: apaga o arquivo de teste` })
+      continue
+    }
+    const n = (ls: string[], re: RegExp) => ls.filter((l) => re.test(l)).length
+    for (const r of REGRAS_AFROUXAMENTO) {
+      const antes = n(rem, r.re)
+      const depois = n(add, r.re)
+      if (r.cai ? antes > depois : depois > antes) {
+        v.push({ tipo: 'afrouxamento', detalhe: `${arquivo}: ${r.nome} (removidas ${antes}, acrescentadas ${depois})` })
+      }
+    }
+  }
+  return v
+}
+
 export function enforce(input: EnforceInput): EnforceResult {
   const v: Violation[] = []
   const zp = input.config.zona_proibida
@@ -769,6 +835,8 @@ export function enforce(input: EnforceInput): EnforceResult {
       }
     }
   }
+
+  v.push(...violacoesDeAfrouxamento(input.diff, input.ampliados ?? []))
 
   return { ok: v.length === 0, violations: v }
 }

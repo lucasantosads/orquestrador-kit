@@ -1,0 +1,62 @@
+diff --git a/test/leitores-carteira-casa-nova.test.ts b/test/leitores-carteira-casa-nova.test.ts
+index f001de1..ad58cca 100644
+--- a/test/leitores-carteira-casa-nova.test.ts
++++ b/test/leitores-carteira-casa-nova.test.ts
+@@ -29,7 +29,7 @@ vi.mock("@/lib/clientes/espelho-legado", async (orig) => {
+ import { GET as getDashboard } from "@/app/api/dashboard/clientes/route";
+ import { GET as getCarteira } from "@/app/api/carteira/route";
+ import { GET as getGestores } from "@/app/api/clientes/kpis/gestores/route";
+-import { GET as getFiltrados } from "@/app/api/notion/clientes-filtrados/route";
++import { GET as getFiltrados } from "@/app/api/clientes/filtrados/route";
+ import { GET as getEquipe } from "@/app/api/equipe/carteira/route";
+ import { calcularP1Basico } from "@/lib/setup/p1-basico";
+ 
+@@ -220,7 +220,7 @@ describe("os 6 arquivos nao citam mais a tabela do espelho (ticket 1055)", () =>
+     "src/app/api/carteira/route.ts",
+     "src/app/api/clientes/kpis/gestores/route.ts",
+     "src/app/api/equipe/carteira/route.ts",
+-    "src/app/api/notion/clientes-filtrados/route.ts",
++    "src/app/api/clientes/filtrados/route.ts",
+     "src/lib/setup/p1-basico.ts",
+   ];
+   it.each(arquivos)("%s", (f) => {
+diff --git a/test/leitores-ficha-casa-nova.test.ts b/test/leitores-ficha-casa-nova.test.ts
+index 2644233..a962b6d 100644
+--- a/test/leitores-ficha-casa-nova.test.ts
++++ b/test/leitores-ficha-casa-nova.test.ts
+@@ -24,7 +24,7 @@ vi.mock("@/lib/clientes/resolver-cliente", async () => {
+ });
+ 
+ import { getClienteById, getClientes, getClientesDoEmployee } from "@/lib/data";
+-import { GET as getFicha } from "@/app/api/notion/clientes/[id]/route";
++import { GET as getFicha } from "@/app/api/clientes/[id]/ficha/route";
+ import { POST as postDiagnostico } from "@/app/api/clientes/[id]/diagnostico/route";
+ import { GET as getEntregaveis } from "@/app/api/clientes/entregaveis/route";
+ 
+@@ -112,7 +112,7 @@ describe("getClientes e getClientesDoEmployee", () => {
+ });
+ 
+ describe("rotas", () => {
+-  it("GET /api/notion/clientes/[id] por uuid devolve os campos da casa nova", async () => {
++  it("GET /api/clientes/[id]/ficha por uuid devolve os campos da casa nova", async () => {
+     db.clientes_notion_mirror = [];
+     const r = await getFicha(new NextRequest(`http://localhost/api/notion/clientes/${CLI}`), { params: { id: CLI } });
+     expect(r.status).toBe(200);
+@@ -120,7 +120,7 @@ describe("rotas", () => {
+     expect(body).toMatchObject({ status: "Planejamento", situacao: "Estavel", resultados: "Leads", analista: "Gestora Ana", nicho: "Bancario, Trabalhista", ultimo_feedback: "2026-02-01", plataformas: "" });
+   });
+ 
+-  it("GET /api/notion/clientes/[id] por uuid com espelho: 404 com o notion_id da ponte", async () => {
++  it("GET /api/clientes/[id]/ficha por uuid com espelho: 404 com o notion_id da ponte", async () => {
+     const r = await getFicha(new NextRequest(`http://localhost/api/notion/clientes/${CLI}`), { params: { id: CLI } });
+     expect(r.status).toBe(404);
+     expect(await r.json()).toEqual({ error: "Not found", notion_id: "n-com" });
+@@ -165,7 +165,7 @@ describe("rotas", () => {
+ describe("fonte unica", () => {
+   const ARQUIVOS = [
+     "src/lib/data.ts",
+-    "src/app/api/notion/clientes/[id]/route.ts",
++    "src/app/api/clientes/[id]/ficha/route.ts",
+     "src/app/api/clientes/[id]/resumo/route.ts",
+     "src/app/api/clientes/[id]/diagnostico/route.ts",
+     "src/app/api/clientes/entregaveis/route.ts",

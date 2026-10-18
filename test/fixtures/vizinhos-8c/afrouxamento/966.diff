@@ -1,0 +1,27 @@
+diff --git a/test/campanhas-sem-duplicatas.test.ts b/test/campanhas-sem-duplicatas.test.ts
+index 6ed6a3e..473147a 100644
+--- a/test/campanhas-sem-duplicatas.test.ts
++++ b/test/campanhas-sem-duplicatas.test.ts
+@@ -109,6 +109,7 @@ describe("ticket 530: Campanhas sem duplicatas", () => {
+     const filhos = TAB_GROUPS.find((g) => g.key === "performance")!.children;
+     // Ticket 531: meta-ads e entregaveis foram para a Conta; restam as 10 antigas menos essas 2, na mesma ordem.
+     // Ticket 646: "relatorio" saiu; os 7 filhos restantes seguem na mesma ordem.
+-    expect(filhos).toEqual(["metricas", "otimizacoes", "painel", "teses", "analise", "alertas-meta", "calculadora"]);
++    // Ticket 966: criativos entra depois de teses
++    expect(filhos).toEqual(["metricas", "otimizacoes", "painel", "teses", "criativos", "analise", "alertas-meta", "calculadora"]);
+   });
+ });
+diff --git a/test/ficha-nav-colapsavel.test.ts b/test/ficha-nav-colapsavel.test.ts
+index fcc31c4..d974f9d 100644
+--- a/test/ficha-nav-colapsavel.test.ts
++++ b/test/ficha-nav-colapsavel.test.ts
+@@ -112,7 +112,8 @@ describe("comportamento visual — sub-seções em sequência, sempre, com títu
+     expect(n("visao-geral")).toBe(3);
+     // Ticket 531: meta-ads e entregaveis saíram de Campanhas para a Conta (10 -> 8: os 10 menos os 2 movidos).
+     // Ticket 646: o relatório antigo saiu de Campanhas (8 -> 7: metricas, otimizacoes, painel, teses, analise, alertas-meta, calculadora).
+-    expect(n("performance")).toBe(7);
++    // Ticket 966: aba criativos em Campanhas (7 -> 8)
++    expect(n("performance")).toBe(8);
+     // Ticket 550: contatos e crm foram para a Conta; sobram 6 (reunioes, whatsapp, resumos, registros, perfil, nps).
+     expect(n("relacao")).toBe(6);
+     expect(n("conta")).toBeGreaterThanOrEqual(6);

@@ -1,0 +1,48 @@
+diff --git a/test/error-boundaries-rotas-lote5.test.ts b/test/error-boundaries-rotas-lote5.test.ts
+index ff86524..7fbba54 100644
+--- a/test/error-boundaries-rotas-lote5.test.ts
++++ b/test/error-boundaries-rotas-lote5.test.ts
+@@ -5,7 +5,6 @@ import { join } from "node:path";
+ const ARQUIVOS: Array<{ caminho: string; titulo: string }> = [
+   { caminho: "src/app/visao-geral/error.tsx", titulo: "Não foi possível carregar a visão geral" },
+   { caminho: "src/app/produtividade/error.tsx", titulo: "Não foi possível carregar a produtividade" },
+-  { caminho: "src/app/equipe-geral/error.tsx", titulo: "Não foi possível carregar a equipe geral" },
+   { caminho: "src/app/meu-portal/error.tsx", titulo: "Não foi possível carregar o seu portal" },
+   { caminho: "src/app/time/liga-comarka/error.tsx", titulo: "Não foi possível carregar a Liga Comarka" },
+ ];
+diff --git a/test/rotas-orfas.test.ts b/test/rotas-orfas.test.ts
+index b4f03c0..94dd06f 100644
+--- a/test/rotas-orfas.test.ts
++++ b/test/rotas-orfas.test.ts
+@@ -208,6 +208,14 @@ const COMUNICADOS_EQUIPE = ['/dashboard/equipe/comunicados']
+ const COMUNICADOS_EQUIPE_RATIONALE =
+   'Ticket 342b: Comunicados saiu da sidebar (item de topo com zero controles) e o tracking de leitura virou card dentro de /portal/equipe; a rota antiga é hoje só casca de redirect para /portal/equipe, sem nenhum href de sidebar.tsx apontando pra ela.'
+ 
++// Ticket 854 / 710 — a lista /equipe-geral (único href para
++// /dashboard/team/${id}) saiu. A page fica no disco por decisão do 710, cujo
++// layout redireciona para o Inicio antes de ela renderizar; é órfã de fato
++// pro scanner e nunca recebe link por desenho.
++const TEAM_ID_710 = ['/dashboard/team/[id]']
++const TEAM_ID_710_RATIONALE =
++  'Ticket 854: a lista /equipe-geral (unico href para /dashboard/team/${id}) saiu; a rota fica no disco por decisao do 710, cujo layout redireciona para o Inicio antes de a page renderizar. Sem href por desenho, nunca recebe link.'
++
+ // Ticket 343b — a sidebar passa a ser os 5 grupos de src/lib/nav/papel.ts mais
+ // Comarka Pro. Saem do menu Operação (Semana, Espaços; "carteira" era path do
+ // grupo), Onboarding (Status) e os demais hubs antigos. Medido com o scanner
+@@ -225,6 +233,7 @@ addAll(RECORTE_CARTEIRA, RECORTE_CARTEIRA_RATIONALE)
+ addAll(LEGACY_DINAMICA, LEGACY_DINAMICA_RATIONALE)
+ addAll(LEGAL_CONFIG, LEGAL_CONFIG_RATIONALE)
+ addAll(COMUNICADOS_EQUIPE, COMUNICADOS_EQUIPE_RATIONALE)
++addAll(TEAM_ID_710, TEAM_ID_710_RATIONALE)
+ 
+ describe('rotas órfãs em src/app/dashboard', () => {
+   it('encontra páginas de dashboard para escanear', () => {
+@@ -254,7 +263,7 @@ describe('rotas órfãs em src/app/dashboard', () => {
+     // Ticket 343b: REORGANIZACAO_5_GRUPOS entra aqui porque as 4 rotas são
+     // órfãs de fato pro scanner (nenhum literal sobra em src/), e sem elas a
+     // invariante 1:1 abaixo não bate: 18 órfãs antes + 4 = 22.
+-    for (const route of [...CONFIG_PENDENTE, ...OPERACIONAL_PENDENTE, ...RECORTE_CARTEIRA, ...RESTRICTED_ROUTES, ...LEGACY_DINAMICA, ...COMUNICADOS_EQUIPE, ...REORGANIZACAO_5_GRUPOS]) {
++    for (const route of [...CONFIG_PENDENTE, ...OPERACIONAL_PENDENTE, ...RECORTE_CARTEIRA, ...RESTRICTED_ROUTES, ...LEGACY_DINAMICA, ...COMUNICADOS_EQUIPE, ...TEAM_ID_710, ...REORGANIZACAO_5_GRUPOS]) {
+       expect(orphansSemAllowlist, route).toContain(route)
+     }
+     // /dashboard/admin/legal (LEGAL_CONFIG, ticket 342a) é a única entrada da

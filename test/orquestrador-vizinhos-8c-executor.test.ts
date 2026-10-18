@@ -144,12 +144,14 @@ function vitestDaBase(tmp: string, base: Base): string {
   return f;
 }
 
-function drenagem(fx: string, tmp: string, ajustaTeste: boolean, base: Base = 'verde'): string {
-  // Conta as tentativas fora do repo; da 2ª em diante, ajusta o teste vizinho se pedido.
+function drenagem(fx: string, tmp: string, ajustaTeste: boolean | 'skip', base: Base = 'verde'): string {
+  // Conta as tentativas fora do repo; da 2ª em diante, ajusta o teste vizinho se
+  // pedido ('skip': ajusta e ainda põe um it.skip — o afrouxamento da P3).
+  const ajuste = ajustaTeste === 'skip' ? `echo '// AJUSTADO'; echo "it.skip('o motor marca', () => {})"` : `echo '// AJUSTADO ao comportamento novo'`;
   const stub =
     `n=$(cat '${tmp}/n' 2>/dev/null || echo 0); n=$((n+1)); echo $n > '${tmp}/n'; ` +
     `echo "// tentativa $n" >> ${MOTOR}; ` +
-    (ajustaTeste ? `if [ $n -ge 2 ]; then echo '// AJUSTADO ao comportamento novo' >> ${VIZINHO}; fi` : 'true');
+    (ajustaTeste ? `if [ $n -ge 2 ]; then { ${ajuste}; } >> ${VIZINHO}; fi` : 'true');
   const script = `
     source '${EXECUTOR}'
     set +e
@@ -280,5 +282,22 @@ describe('8c-P2b · teste vizinho no drive_ticket: amplia na tentativa seguinte,
     expect(ev.find((l) => / VIZINHO_BASE /.test(l)) ?? '', log).toContain('resultado=inconclusivo');
     expect(ev.some((l) => / VIZINHO_AMPLIADO /.test(l))).toBe(false);
     expect(ev.find((l) => / BLOQUEADO /.test(l)) ?? '', log).toContain('motivo=base_vermelha');
+  }, 240_000);
+
+  it('P3 · a tentativa ampliada que põe it.skip no teste vizinho: enforcement reprova por afrouxamento e bloqueia sem 3ª tentativa', () => {
+    const { fx, tmp } = fixtureRepo();
+    const log = drenagem(fx, tmp, 'skip');
+    const ev = trilha(fx);
+
+    const enf = JSON.parse(readFileSync(run(fx, 1, 'enforcement.json'), 'utf8')) as { ok: boolean; violations: { tipo: string; detalhe: string }[] };
+    expect(enf.ok, log).toBe(false);
+    expect(enf.violations.map((v) => v.tipo)).toEqual(['afrouxamento']);
+    expect(enf.violations[0]!.detalhe).toContain(VIZINHO);
+    expect(ev.find((l) => / REPROVADO /.test(l) && /attempt=2/.test(l)) ?? '', log).toContain('motivo=afrouxamento');
+    expect(ev.find((l) => / BLOQUEADO /.test(l)) ?? '').toContain('motivo=afrouxamento');
+    expect(existsSync(join(fx, 'docs', 'fila', 'runs', '901', 'attempt-2'))).toBe(false);
+    expect(ev.join('\n')).not.toContain('REFATIAR');
+    expect(juiz(fx)).toBe(0);
+    expect(String(ticket(fx).notas_status)).toContain('afrouxamento');
   }, 240_000);
 });

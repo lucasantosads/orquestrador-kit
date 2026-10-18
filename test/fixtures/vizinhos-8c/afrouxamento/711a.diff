@@ -1,0 +1,15 @@
+diff --git a/test/sem-insumo.test.ts b/test/sem-insumo.test.ts
+index 0b6b8a8..378db02 100644
+--- a/test/sem-insumo.test.ts
++++ b/test/sem-insumo.test.ts
+@@ -234,7 +234,9 @@ describe('fiação — superfície 1 na ficha e em /clientes/risco', () => {
+ 
+   it('/clientes/risco renderiza score e risco ausentes com motivo', () => {
+     expect(risco).toContain('estadoScoreSaude(c.score_saude)')
+-    expect(risco).toContain('corScoreSaude(c.score_saude)')
++    // ticket 711a RECALCULA: o score antigo na tela de risco perdeu a cor (o sinal de cor
++    // agora vem so da regra do Inicio); a asserção passa a exigir a AUSENCIA de corScoreSaude.
++    expect(risco).not.toContain('corScoreSaude')
+     expect(risco).toContain('MOTIVO_NAO_AVALIADO')
+     // O travessão solto (sem motivo, sem cinza garantido) saiu das colunas
+     // de score e de risco.

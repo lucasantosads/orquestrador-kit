@@ -1,0 +1,14 @@
+diff --git a/test/reuniao-manual-registro.test.ts b/test/reuniao-manual-registro.test.ts
+index 4cc74d5..bc06d90 100644
+--- a/test/reuniao-manual-registro.test.ts
++++ b/test/reuniao-manual-registro.test.ts
+@@ -124,7 +124,8 @@ describe("registrarReuniaoManual", () => {
+   it("insere manual sem link, com participantes no formato pedido", async () => {
+     const { db, chamadas } = fakeDb({ employees: colabs });
+     const r = await registrarReuniaoManual(db, { clienteId: CLI, input: { ...base, colaboradores: [C1, C2], observacao: "nota" }, autor });
+-    expect(r).toEqual({ id: "nova", acao: "inserida", analise: "transcricao_curta" });
++    // 1195: o retorno ganhou transcricao; aqui o texto foi informado pelo operador.
++    expect(r).toEqual({ id: "nova", acao: "inserida", analise: "transcricao_curta", transcricao: "informada" });
+     const p = escritas(chamadas)[0].payload!;
+     expect(p).toMatchObject({ origem: "manual", tldv_meeting_id: null, link_gravacao: null, cliente_id: CLI, match_status: "auto", match_metodo: "manual", titulo_externo: null, registrado_por: autor.id });
+     expect(p.participantes).toEqual({ colaboradores: colabs, invitees: [], organizer: null });
