@@ -207,3 +207,70 @@ export function comEnv(env: Record<string, string>): () => void {
     }
   }
 }
+
+/**
+ * Vários casos do legado num repo só (7f-b7, peça 5: o rebaixamento conta os
+ * desfechos do repo, então as ações têm de cair no mesmo repo). Como no
+ * `repoDoCaso`: os heads de cada série, a `staging-auto` (aqui com os fontes
+ * do head de cada caso juntos) e a `main` com os tickets. O `local-loop.log`
+ * junta os trechos de cada caso nas linhas originais: todos vêm do mesmo log
+ * real do Comarka.
+ */
+export function repoDeCasos(base: string, ids: string[], nome: string): { raiz: string; casos: Record<string, RepoCaso> } {
+  const raiz = join(base, nome)
+  mkdirSync(raiz, { recursive: true })
+  git(raiz, 'init', '-q', '-b', 'main')
+  git(raiz, 'config', 'user.name', 'resolvedor-teste')
+  git(raiz, 'config', 'user.email', 'r@t')
+  const shas = new Map<string, string>()
+  const alvo = new Map<string, Buffer>()
+  for (const id of ids) {
+    const d = CASO[id]!
+    if (!existsSync(join(d, 'fontes'))) continue
+    const hs = readdirSync(join(d, 'fontes'))
+    for (const h of hs) shas.set(h, commitDe(raiz, `head-${h.slice(0, 7)}`, fontes(join(d, 'fontes', h))))
+    for (const [rel, txt] of fontes(join(d, 'fontes', hs.at(-1)!))) alvo.set(rel, txt)
+  }
+  const alvoSha = alvo.size ? commitDe(raiz, 'alvo', [...alvo]) : null
+  git(raiz, 'checkout', '-q', '--orphan', 'main')
+  git(raiz, 'rm', '-rq', '--cached', '--ignore-unmatch', '.')
+  const linhas = new Map<number, string>()
+  const casos: Record<string, RepoCaso> = {}
+  const tickets: string[] = []
+  for (const id of ids) {
+    const d = CASO[id]!
+    materializar(d, raiz)
+    for (const l of readFileSync(join(d, 'log.txt'), 'utf8').split('\n').filter(Boolean)) linhas.set(Number(l.slice(0, l.indexOf('\t'))), l.slice(l.indexOf('\t') + 1))
+    const caso = JSON.parse(readFileSync(join(d, 'caso.json'), 'utf8')) as { arquivo_ticket: string }
+    const serie = JSON.parse(readFileSync(join(d, 'serie.json'), 'utf8')) as { k: number; dir: string }[]
+    const gab = gabaritoDe(id)
+    const antes = readFileSync(join(gab, 'antes.md'), 'utf8')
+    writeFileSync(join(raiz, caso.arquivo_ticket), antes)
+    for (const s of serie) {
+      const p = join(raiz, s.dir, 'head.txt')
+      if (!existsSync(p)) continue
+      const velho = readFileSync(p, 'utf8').trim()
+      if (!shas.has(velho)) continue
+      const st = statSync(p)
+      writeFileSync(p, `${shas.get(velho)}\n`)
+      utimesSync(p, st.atime, st.mtime)
+    }
+    tickets.push(caso.arquivo_ticket)
+    casos[id] = { raiz, ticket: caso.arquivo_ticket, antes, depois: readFileSync(join(gab, 'depois.md'), 'utf8'), alvo: join(base, '_worktrees', 'staging-auto') }
+  }
+  const ultima = Math.max(...linhas.keys())
+  writeFileSync(join(raiz, 'docs/fila/runs/local-loop.log'), Array.from({ length: ultima }, (_, i) => linhas.get(i + 1) ?? '').join('\n') + '\n')
+  writeFileSync(join(raiz, '.gitignore'), 'docs/fila/runs/\n')
+  git(raiz, 'add', '--', '.gitignore', 'docs/fila/000-config.json', ...tickets)
+  git(raiz, 'commit', '-q', '-m', 'fila')
+  git(raiz, 'branch', 'staging-auto', alvoSha ?? 'HEAD')
+  const wt = join(base, '_worktrees', 'staging-auto')
+  if (!existsSync(wt)) {
+    mkdirSync(wt, { recursive: true })
+    git(wt, 'init', '-q', '-b', 'staging-auto')
+    writeFileSync(join(wt, 'LEIA.md'), 'alvo\n')
+    git(wt, 'add', 'LEIA.md')
+    git(wt, 'commit', '-q', '-m', 'alvo')
+  }
+  return { raiz, casos }
+}

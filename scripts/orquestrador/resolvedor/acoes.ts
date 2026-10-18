@@ -23,6 +23,7 @@ import { dirTicket, type GuardaResolvedor } from './caminhos.js'
 import type { Decisao } from './decidir.js'
 import { diffLinhas } from './diff.js'
 import { acoesDe, lerLedger, registrar } from './ledger.js'
+import { modoDaChave, R1_MULTI, type Modos } from './modos.js'
 import { planejarR1, type Plano } from './r1.js'
 import { planejarR2 } from './r2.js'
 import { planejarR5 } from './r5.js'
@@ -37,7 +38,7 @@ export interface Feito {
 }
 
 export interface Alvo {
-  repo: { nome: string; caminho: string }
+  repo: { nome: string; caminho: string; modos?: Modos }
   id: string
   diag: Diagnostico
   decisao: Decisao
@@ -79,18 +80,25 @@ function oQueMudou(tipo: 'r1_allowlist' | 'r5_reabrir', p: { testes?: { teste: s
   return `${ts} na allowlist${lista}; guarda${gs.length > 1 ? 's' : ''} de contagem em criterio[${gs.join('], criterio[')}]; reabriu (status pendente, nota vazia)`
 }
 
+/** As travas de ação no ticket (mesmo bloqueio; teto), ou `null` se pode agir. */
+function travaDoTicket(a: Alvo): Feito | null {
+  const feitas = acoesDe(lerLedger(), a.repo.nome, a.id)
+  const quando = a.diag.bloqueio.quando
+  if (feitas.some((e) => e.assinatura === a.diag.assinatura || (quando !== null && e.bloqueado_em === quando))) {
+    return { feito: 'nao_consegui', motivo: 'segunda vez bloqueado no mesmo bloqueio (mesma assinatura ou mesma série) depois de uma ação do resolvedor: vai para humano' }
+  }
+  if (feitas.length >= TETO_ACOES_TICKET) {
+    return { feito: 'aviso', motivo: `teto de ${TETO_ACOES_TICKET} ações do resolvedor no ticket: só diagnóstico e aviso` }
+  }
+  return null
+}
+
 export function agirR1R5(a: Alvo, tipo: 'r1_allowlist' | 'r5_reabrir'): Feito {
   const { repo, id, diag } = a
-  const sombra = a.decisao.acao === 'sombra'
+  let sombra = a.decisao.acao === 'sombra'
   if (!sombra) {
-    const feitas = acoesDe(lerLedger(), repo.nome, id)
-    const quando = diag.bloqueio.quando
-    if (feitas.some((e) => e.assinatura === diag.assinatura || (quando !== null && e.bloqueado_em === quando))) {
-      return { feito: 'nao_consegui', motivo: 'segunda vez bloqueado no mesmo bloqueio (mesma assinatura ou mesma série) depois de uma ação do resolvedor: vai para humano' }
-    }
-    if (feitas.length >= TETO_ACOES_TICKET) {
-      return { feito: 'aviso', motivo: `teto de ${TETO_ACOES_TICKET} ações do resolvedor no ticket: só diagnóstico e aviso` }
-    }
+    const t = travaDoTicket(a)
+    if (t) return t
   }
   const rel = arquivoDoTicket(repo.caminho, id)
   if (!rel) return { feito: 'nao_consegui', motivo: `não achei um arquivo docs/fila/${id}-*.md só` }
@@ -100,7 +108,20 @@ export function agirR1R5(a: Alvo, tipo: 'r1_allowlist' | 'r5_reabrir'): Feito {
   const plano: Plano<{ novo: string; testes?: { teste: string }[]; criteriosLista?: number[]; guardas?: number[]; condicao?: string }> =
     tipo === 'r1_allowlist' ? planejarR1(repo.caminho, diag, antes, a.agora) : planejarR5(repo.caminho, diag, antes)
   if (!plano.ok) return { feito: 'nao_consegui', motivo: plano.motivo }
-  const mudou = oQueMudou(tipo, plano.plano)
+  // R1 com 2 ou mais testes: o modo é o do r1_multi (7f-b7; ausente, o do R1)
+  let prefixo = ''
+  if ((plano.plano.testes?.length ?? 0) >= 2 && repo.modos) {
+    const m = modoDaChave(repo.modos, R1_MULTI)
+    if (m !== 'auto') prefixo = `${R1_MULTI} em ${m}: `
+    if (m === 'diagnostico') return { feito: 'aviso', motivo: `${prefixo}${plano.plano.testes!.map((t) => t.teste).join(' e ')} ficariam na allowlist; nada proposto` }
+    if (m === 'sombra') sombra = true
+    else if (sombra) {
+      const t = travaDoTicket(a)
+      if (t) return t
+      sombra = false
+    }
+  }
+  const mudou = `${prefixo}${oQueMudou(tipo, plano.plano)}`
   const diff = diffLinhas(antes, plano.plano.novo, rel)
   if (a.dryRun) return { feito: 'faria', motivo: mudou, diff }
   if (sombra) {

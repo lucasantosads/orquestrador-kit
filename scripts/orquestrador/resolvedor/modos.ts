@@ -5,7 +5,8 @@
  * Campo `resolvedor` de cada item do repos.json:
  *   - ausente                          → "diagnostico" em toda classe (o padrão);
  *   - uma string ("diagnostico", "sombra" ou "auto") → a mesma em toda classe;
- *   - um objeto {"padrao": …, "R1": …, "R2": …, …} → por classe, `padrao` no resto.
+ *   - um objeto {"padrao": …, "R1": …, "R2": …, …} → por classe, `padrao` no resto;
+ *     `r1_multi` (7f-b7): a ação de R1 com 2 ou mais testes; ausente, o modo do R1.
  *
  *   diagnostico  só tria (o diagnóstico vai para ~/.orq/diagnosticos, como o `orq triar`)
  *   sombra       tria e grava a PROPOSTA em ~/.orq/resolvedor; nunca toca o repo
@@ -56,10 +57,16 @@ export function modosDe(campo: unknown): Modos {
   if (ehModo(campo)) return { padrao: campo }
   const out: Modos = { padrao: 'diagnostico' }
   if (campo && typeof campo === 'object' && !Array.isArray(campo)) {
-    for (const [k, v] of Object.entries(campo)) if (ehModo(v) && (k === 'padrao' || /^R[1-7]$/.test(k))) out[k] = v
+    for (const [k, v] of Object.entries(campo)) if (ehModo(v) && (k === 'padrao' || k === R1_MULTI || /^R[1-7]$/.test(k))) out[k] = v
   }
   return out
 }
+
+/** A subclasse do R1 com 2 ou mais testes numa ação (7f-b7): modo e contador de desfecho próprios. */
+export const R1_MULTI = 'r1_multi'
+
+/** O modo de uma chave de modo: uma classe, ou `r1_multi` (ausente: o do R1). */
+export const modoDaChave = (m: Modos, chave: string): Modo => (chave === R1_MULTI ? (m[R1_MULTI] ?? modoDe(m, 'R1')) : modoDe(m, chave))
 
 /** O modo de uma classe (`R1`, `R5?`, `R1|R2?` → a do primeiro nome). */
 export function modoDe(m: Modos, classe: string | null): Modo {

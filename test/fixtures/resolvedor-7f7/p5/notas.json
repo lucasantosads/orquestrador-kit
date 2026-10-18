@@ -1,0 +1,11 @@
+{
+  "$origem": "LEIA.md",
+  "limite": {
+    "1054": "motivo repetido: provável defeito de spec/harness, não do código — criterio[3] mecânico: esperado 'NO_TETO', obteve 'ESTOUROU_735'",
+    "1055b": "reprovado apos 2 retries: criterio[3] mecânico: esperado 'NO_TETO', obteve 'ESTOUROU_668'"
+  },
+  "ruim": {
+    "1054": "reprovado apos 2 retries: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1054/attempt-3/gate-vitest.txt)",
+    "1055b": "reprovado apos 2 retries: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1055b/attempt-3/gate-vitest.txt)"
+  }
+}

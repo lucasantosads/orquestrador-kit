@@ -120,7 +120,7 @@ export interface AvisoPausa {
 const iso = (t: number) => new Date(t).toISOString().replace(/\.\d{3}Z$/, 'Z')
 
 /** O aviso pelo macOS e pelo iMessage (se configurado). */
-function notificar(titulo: string, corpo: string): { macos: Envio; imessage: Envio } {
+export function notificar(titulo: string, corpo: string): { macos: Envio; imessage: Envio } {
   const macos = notificarMac(titulo, corpo)
   const destinos = destinosImessage()
   const envios = destinos.map((d) => enviarImessage(d, `${titulo}: ${corpo}`))

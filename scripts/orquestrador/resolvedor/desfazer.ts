@@ -23,6 +23,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { gitLeitura } from '../triador/git.js'
 import { GuardaResolvedor } from './caminhos.js'
+import { subclasseDe } from './desfecho.js'
 import { acoesDe, lerLedger, registrar } from './ledger.js'
 import { acharRepo } from './modos.js'
 import { escreverEComitar, retratoDoLoop, trailer } from './repo.js'
@@ -62,6 +63,6 @@ export function desfazer(o: { repo: string; id: string; agora?: number }): Desfe
   const g = new GuardaResolvedor([repo.caminho])
   const base = { ts: iso(agora), repo: repo.nome, id: o.id, classe: a.classe ?? null, regra: a.regra ?? null, assinatura: a.assinatura }
   registrar(g, { ...base, tipo: 'desfeito', commit_desfeito: sha, commit: e.commit, arquivo: rel })
-  registrar(g, { ...base, tipo: 'desfecho', acao: a.acao, commit: sha, acao_ts: a.ts, desfecho: 'desfeito', bom: false, tempo_ate_destravar_s: a.tempo_ate_destravar_s ?? null, tempo_ate_desfecho_s: Math.round((agora - Date.parse(a.ts)) / 1000) })
+  registrar(g, { ...base, tipo: 'desfecho', acao: a.acao, commit: sha, acao_ts: a.ts, desfecho: 'desfeito', subclasse: subclasseDe(a), bom: false, tempo_ate_destravar_s: a.tempo_ate_destravar_s ?? null, tempo_ate_desfecho_s: Math.round((agora - Date.parse(a.ts)) / 1000) })
   return { ok: true, commit: e.commit, desfez: sha }
 }
