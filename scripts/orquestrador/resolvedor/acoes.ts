@@ -23,6 +23,7 @@ import { dirTicket, type GuardaResolvedor } from './caminhos.js'
 import type { Decisao } from './decidir.js'
 import { diffLinhas } from './diff.js'
 import { acoesDe, lerLedger, registrar } from './ledger.js'
+import { humanoMexeu } from './humano.js'
 import { modoDaChave, R1_MULTI, type Modos } from './modos.js'
 import { notificar } from './pausa.js'
 import { planejarR1, type Plano } from './r1.js'
@@ -148,6 +149,12 @@ export function agirR1R5(a: Alvo, tipo: 'r1_allowlist' | 'r5_reabrir'): Feito {
     a.g.escrever(join(dir, 'proposta.json'), JSON.stringify({ repo: repo.nome, id, tipo, classe: diag.classe, regra: diag.regra, assinatura: diag.assinatura, gerada_em: iso(a.agora), arquivo: rel, antes, depois: plano.plano.novo }, null, 2) + '\n')
     registrarProposta(a, tipo, mudou, p)
     return { feito: 'proposto', motivo: mudou, proposta: p, diff }
+  }
+  // alguém mexeu no ticket depois do bloqueio (Vigia, humano, edição sem commit): não age por cima (8b)
+  const h = humanoMexeu(repo.caminho, rel, diag.bloqueio.quando)
+  if (h) {
+    registrar(a.g, { ts: iso(a.agora), tipo: 'humano_mexeu', repo: repo.nome, id, classe: diag.classe, regra: diag.regra, assinatura: diag.assinatura, acao: tipo, quem: h.quem, commit: h.commit, assunto: h.assunto, bloqueado_em: diag.bloqueio.quando })
+    return { feito: 'nao_consegui', motivo: `humano_mexeu: ${h.quem}${h.commit ? ` (${h.commit.slice(0, 12)} ${h.assunto})` : ' (edição sem commit no working tree)'} depois do bloqueio; o resolvedor não age por cima` }
   }
   const classe = diag.classe!
   const regra = diag.regra!
