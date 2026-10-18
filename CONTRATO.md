@@ -1686,6 +1686,34 @@ Troca a regra de §14.5 ("uma ação por ticket"):
   do resolvedor no ticket`);
 - o rebaixamento segue: 2 desfechos ruins seguidos em auto devolvem a classe a sombra (§14).
 
+### 18.2b O R1 com vários testes isolado: `r1_multi` e `limite_apos_r1` (peça 5)
+
+A ação de R1 com 2 ou mais testes (§18.1) é a subclasse **`r1_multi`**:
+
+- modo próprio: `resolvedor.r1_multi` no item do repos.json, opcional; ausente, vale o
+  modo do R1 do repo (`modoDaChave`, `modos.ts`). Em sombra, a ação de 2 ou mais testes
+  vira proposta (com o prefixo `r1_multi em sombra:`), e a de um teste segue o R1; em
+  diagnostico, só aviso;
+- contador de desfecho próprio: o desfecho (e o `desfeito` do `orq desfazer`) leva
+  `subclasse` (`r1_multi` quando a ação tem `testes` com 2 ou mais, senão a classe), e o
+  rebaixamento (§14) conta por ela: 2 desfechos ruins seguidos de `r1_multi` devolvem só
+  `r1_multi` a sombra (`rebaixamento` com `classe: r1_multi`; o repos.json ganha
+  `resolvedor.r1_multi: sombra`); o R1 de um teste segue em auto.
+
+Ticket que o resolvedor reabriu e que bloqueia de novo por **limite de linhas** é o
+desfecho **`limite_apos_r1`** (`limiteDaNota`, `desfecho.ts`): a nota do bloqueio traz
+`criterio[i] … obteve '…ESTOUROU_<n>'` (o limite é o `-le <L>` do cmd desse critério; no
+Comarka, o `NO_TETO`) ou `diff grande (<n> linhas > <L>)` (o diff_cap). Ele:
+
+- tem `bom: null` e não conta como ruim (nem como bom) para nenhuma subclasse;
+- notifica uma vez (macOS e iMessage, como a pausa), quando o desfecho é apurado;
+- grava no ledger `proposta_limite` com `criterio`, `limite_atual`, `diff_reprovou` e o
+  texto da proposta. **Só proposta**: o resolvedor nunca altera limite de linhas.
+
+Motivo (PASSO 0 e replay da P2): nos 3 resgates reais de dois vermelhos, o humano também
+subiu o `NO_TETO` em 40 a 60 linhas; o R1 não sobe. Sem isso, a reprova por limite de um
+ticket reaberto rebaixaria o R1 inteiro.
+
 ### 18.3 Pausa com dono silenciosa (`pausa.ts`, `modos.ts`)
 
 Chaves novas no ITEM do repo no repos.json:
@@ -1723,6 +1751,9 @@ pausa não estava registrada em lugar nenhum.
 | `pausa_longa` | pausa com dono passou do limite | `arquivo`, `sha`, `dono`, `motivo`, `minutos`, `limite_min`, `notificacao` |
 | `pausa_fim` | o sentinela sumiu ou mudou | `arquivo`, `sha`, `dono`, `motivo`, `inicio`, `duracao_s` |
 | `acao` | também o R1 com mais de um vermelho | mais `testes` |
+| `desfecho` | também `limite_apos_r1` (§18.2b) | mais `subclasse`; `bom: null` no limite |
+| `proposta_limite` | reprova por limite de ticket reaberto (§18.2b) | `id`, `commit`, `acao`, `subclasse`, `criterio`, `limite_atual`, `diff_reprovou`, `proposta`, `notificacao` |
+| `rebaixamento` | também `classe: r1_multi` (§18.2b) | idem §14.6 |
 | `aviso` | também o teto de 2 ações por ticket | idem §14.6 |
 
 ### 18.5 Testes
@@ -1733,6 +1764,10 @@ bloqueio com o ticket reescrito; a 2ª ação numa série nova; o teto de 2),
 `orquestrador-resolvedor-replay-allowlist.test.ts` (os 13 resgates humanos de allowlist
 depois de 11/10, fixture `test/fixtures/resolvedor-7f7`, `montar.py` só lê o Comarka: 4
 ações idênticas às do humano, zero divergente, 10 sem ação com o motivo) e
+`orquestrador-resolvedor-r1-multi-isolado.test.ts` (1054, 1055b, 1006 e 1058 reais num repo
+só; nota do bloqueio seguinte em `test/fixtures/resolvedor-7f7/p5`: 2 reprovas por limite
+depois de `r1_multi` não rebaixam nada e gravam a proposta; 2 ruins de `r1_multi` devolvem
+só ele a sombra, e o 1006 segue aplicando) e
 `orquestrador-resolvedor-pausa-dono.test.ts` (as 17 pausas reais de 17 e 18/10, fixture
 `test/fixtures/pausas-7f7`: 2 notificações, eram 17; o limite; o FALHOU; a pausa sem dono;
 as chaves do item).

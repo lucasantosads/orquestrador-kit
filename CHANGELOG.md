@@ -1077,9 +1077,16 @@ sem launchctl, sem escrita em repo da frota nem em `~/.orq`. CONTRATO §18.
   `promocao-apolo`; `pausa_dono_max_min`, padrão 30, provisório), `pausa_longa`, FALHOU
   notifica na hora com o passo, `pausa_fim` com `duracao_s` e o dono. As 17 pausas reais de
   17 e 18/10 notificariam 2 vezes (eram 17). Fixture `test/fixtures/pausas-7f7`.
-- **7f-b7-4**: CONTRATO §18 (e a nota em §14.5), este registro e `docs/PECAS.md`.
+- **7f-b7-4** `a00e999`: CONTRATO §18 (e a nota em §14.5), este registro e `docs/PECAS.md`.
+- **7f-b7-5** `1d59ce6` (peça 5): `r1_multi`, a ação de R1 com 2 ou mais testes, com modo
+  (`resolvedor.r1_multi`, padrão o do R1) e contador de desfecho próprios: 2 ruins seguidos
+  devolvem só ele a sombra. Reprova por limite de linhas de ticket reaberto pelo
+  resolvedor: `limite_apos_r1` (não conta como ruim), uma notificação e `proposta_limite`
+  no ledger; o limite nunca é alterado.
+- **7f-b7-6**: CONTRATO §18.2b, este registro e `docs/PECAS.md` com o sha da peça 5.
 
 Asserções existentes que mudaram: nenhuma. O motivo do segundo bloqueio passou a
 "segunda vez bloqueado no mesmo bloqueio …", e os testes antigos que conferem "segunda vez
 bloqueado" seguem passando sem mudança. A ação de R1 com um teste só grava o mesmo `.md` de
-antes; o ledger `acao` ganha `testes`.
+antes; o ledger `acao` ganha `testes`. Na 7f-b7-5, o desfecho ganha `subclasse` e o
+rebaixamento conta por ela; nenhuma asserção existente mudou.

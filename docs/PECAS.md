@@ -1029,12 +1029,16 @@
   uma guarda por teste; um commit); uma ação por bloqueio, no máximo 2 por ticket; replay
   dos 13 resgates humanos de allowlist depois de 11/10 (4 idênticas, zero divergente); pausa
   com dono silenciosa até `pausa_dono_max_min`, FALHOU na hora, `pausa_fim` com a duração.
+  Depois, a peça 5: `r1_multi` isolado do R1 de um teste (modo e contador próprios) e a
+  reprova por limite de ticket reaberto como `limite_apos_r1` (não conta como ruim; só
+  `proposta_limite`, nunca altera limite).
   Commits `8264ad1` (R1 com mais de um vermelho), `04ad1e7` (replay), `37320b8` (pausa com
-  dono).
+  dono), `a00e999` (docs), `1d59ce6` (r1_multi e limite).
   *Evidência:* `~/orq-sessoes/relatorio-kit-etapa7f-b7.md`, `~/orq-sessoes/7f-b7/`
   (vermelhos, replay, medições) e `~/orq-sessoes/medicao-comarka/out/14d/`.
   *Teste:* `orquestrador-resolvedor-r1-multi.test.ts`,
-  `orquestrador-resolvedor-replay-allowlist.test.ts`, `orquestrador-resolvedor-pausa-dono.test.ts`.
+  `orquestrador-resolvedor-replay-allowlist.test.ts`, `orquestrador-resolvedor-pausa-dono.test.ts`,
+  `orquestrador-resolvedor-r1-multi-isolado.test.ts`.
 
 ## PENDENTES
 
@@ -1048,12 +1052,12 @@
   dias de `pausa_fim` no ledger, o p95 de `duracao_s` das pausas com dono.
   *Evidência:* `~/.orq/resolvedor/ledger.jsonl` (`pausa_fim`), CONTRATO §18.3.
 
-- **7f-b7 · o 924a e o teto do diff.** O 924a fica sem ação pelo tudo ou nada
-  (`test/conta-entregas-vazio-unico.test.ts` vermelho só na tentativa 1). Nos 3 casos de dois
-  vermelhos, o humano também subiu o teto do diff (`NO_TETO`, +40 a +60 linhas) e escreveu a
-  guarda anti-afrouxamento numa forma só; o R1 não mexe no teto. O desfecho das ações reais
-  dirá se o teto reprova o ticket reaberto.
-  *Evidência:* `~/orq-sessoes/7f-b7/p2-replay.json` (`humano_alem`).
+- **7f-b7 · o teto do diff depois do `r1_multi`.** Nos 3 casos de dois vermelhos, o humano
+  também subiu o `NO_TETO` (+40 a +60 linhas); o resolvedor não sobe (decisão: nunca altera
+  limite). A reprova por limite vira `limite_apos_r1` com `proposta_limite` no ledger: o
+  humano decide. As propostas acumuladas dirão se vale uma regra (por exemplo, o teto mais
+  as linhas dos testes). O 924a fica sem ação pelo tudo ou nada, por decisão.
+  *Evidência:* `~/orq-sessoes/7f-b7/p2-replay.json` (`humano_alem`), `proposta_limite` no ledger.
 
 - **7f-b4 · reinstalar o job com o `claude` no PATH (humano).** Depois do merge, do
   checkout principal: `bash scripts/orquestrador/resolvedor/instalar-job.sh --dry-run`
