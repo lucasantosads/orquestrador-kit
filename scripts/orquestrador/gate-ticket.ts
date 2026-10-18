@@ -129,6 +129,7 @@ export const REGRAS: Readonly<Record<string, Regra>> = {
   'C2c': { severidade: 'aviso', oque: "grep -c … || echo com a saída indo direto ao resultado ('0 0')", porque: 'Comarka: 0/1/4 FP; causal 3 (CI 003, 407a0, 486); os FP são o mesmo defeito latente' },
   'C2v': { severidade: 'aviso', oque: 'espera numérica com test/[ encadeado por && antes do número (saída vazia)', porque: 'Comarka (executado): 5/0/0 FP, 0 causal; aqui na forma estática' },
   'C2P': { severidade: 'erro', oque: 'grep -P, que o /usr/bin/grep do macOS não tem', porque: '0 disparo em (a) e (b); erro de plataforma' },
+  'C14': { severidade: 'erro', oque: 'v=$(grep -c …) encadeado por && com v podendo valer 0 no estado certo', porque: 'etapa 8a: 0/368 FP nos done aprovados de primeira do Comarka (04-17/10, versão que rodou); 1 disparo nos 1266 done (1116, done manual que nunca rodou, com o defeito); causal 924b e 924c (+924d, 924f)' },
   'C3': { severidade: 'aviso', oque: 'ausência com padrão amplo sem exceção nem teto', porque: 'Comarka: 3/0/9 FP; causal 1 (523b)' },
   'C4': { severidade: 'aviso', oque: 'regex que casa diferente em locale C e em UTF-8 (acento)', porque: 'Comarka: 0/0/12 FP, 0 causal; o kit roda sob launchd com a mesma exposição' },
   'C9': { severidade: 'aviso', oque: 'item da allowlist no checkout e fora da branch alvo (topologia)', porque: 'Comarka: 0/1/0 FP, 0 causal' },
@@ -1233,6 +1234,33 @@ export function saidaVaziaPossivel(cmd: string, espera: string): boolean {
   return elos.length > 1 && elos.slice(0, -1).some((e) => /^\s*[{(]?\s*(test|\[\[?)\s/.test(e))
 }
 
+/**
+ * C14 (etapa 8a): `v=$(… grep -c …) &&` em que 0 é valor certo de `v`. Com
+ * zero matches o grep -c imprime 0 e sai 1; a atribuição herda o rc e o `&&`
+ * corta a cadeia: o critério reprova exatamente no estado certo (924b, 924c do
+ * Comarka, 13/10). Não é a forma do `set -e` herdado (P0): sem `set -e` o corte
+ * acontece igual. Só acusa quando:
+ *   - o grep -c é o ÚLTIMO comando do `$( )` (`| awk`, `; true`, `|| true`
+ *     depois dele dão rc 0 — 922b);
+ *   - `v` é comparada com 0 (`=`, `-eq`) ou com teto (`-le`, `-lt`). Variável
+ *     que precisa ser ≥ 1 reprova certo quando a cadeia corta (926b).
+ */
+export function grepCEncadeado(cmd: string): string[] {
+  const achados: string[] = []
+  const re = /\b(\w+)=\$\((?:(?!\|\|)[^()])*grep\s+-[a-zA-Z]*c[a-zA-Z]*\b(?:(?!\|\|)[^()])*\)\s*&&/g
+  for (const m of cmd.matchAll(re)) {
+    const sub = m[0]
+    const g = /grep\s+-[a-zA-Z]*c/.exec(sub)!
+    const depois = sub.slice(g.index + g[0].length, sub.lastIndexOf(')'))
+    if (/[|;]|&&/.test(depois)) continue
+    const v = m[1]!
+    const zero = new RegExp(`\\$\\{?${v}\\}?"?\\s*(?:=|==|-eq)\\s*"?0(?!\\d)`)
+    const teto = new RegExp(`\\$\\{?${v}\\}?"?\\s*-(?:le|lt)\\s`)
+    if ((zero.test(cmd) || teto.test(cmd)) && !achados.includes(v)) achados.push(v)
+  }
+  return achados
+}
+
 /** C2P: `grep -P` (ou `--perl-regexp`) — não existe no /usr/bin/grep do macOS. */
 export function grepPerl(cmd: string): boolean {
   for (const seg of segmentarCmd(cmd)) {
@@ -1498,6 +1526,10 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
             achado('C2v', campo, `espera numérica ('${esp}'), mas um test/[ encadeado por && vem antes do número: se ele falhar a saída sai vazia e o critério reprova por forma, não por número`)
           }
           if (grepPerl(cr.cmd)) achado('C2P', campo, 'grep -P não existe no /usr/bin/grep do macOS — use -E')
+          const encadeados = grepCEncadeado(cr.cmd)
+          if (encadeados.length > 0) {
+            achado('C14', campo, `${encadeados.map((x) => `${x}=$(grep -c …)`).join(', ')} encadeado por && e comparado com 0 (ou teto): com zero matches o grep -c sai 1, a atribuição herda o rc e o && corta a cadeia — o critério reprova no estado certo (924b do Comarka). Use $(grep -c … || true)`)
+          }
           const amplos = ausenciaAmpla(cr.cmd, esp, typeof cr.descricao === 'string' ? cr.descricao : '')
           if (amplos.length > 0) {
             achado('C3', campo, `ausência com padrão amplo (${amplos.join(', ')}) sem exceção nem teto medido — liste os usos legítimos que já existem (ex.: EXCETO NEXT_PUBLIC_SUPABASE_URL, teto 1); senão o executor escolhe entre reprovar e esconder (523b do Comarka)`)

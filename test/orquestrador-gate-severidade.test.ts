@@ -99,6 +99,8 @@ describe('7d1b-2 · a tabela única', () => {
       C9: 'aviso',
       C11: 'aviso',
       C12: 'aviso',
+      // etapa 8a
+      C14: 'erro',
     });
   });
 
