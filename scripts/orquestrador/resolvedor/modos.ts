@@ -13,6 +13,8 @@
  *
  * No topo do repos.json, `teto_reserva_auto` (7f-b4, `lerTetoReservaAuto`).
  * No item, `pausa_gate` (7f-b5, `pausaGateDe`): diagnostico | sombra | auto, padrão sombra.
+ * No item, `pausa_donos` e `pausa_dono_max_min` (7f-b7, pausa.ts): os donos de
+ * pausa planejada, que não notificam até passar do limite.
  *
  * O nome e o caminho saem de `lerRepos` (triador/saida.ts), a mesma leitura do
  * painel; este arquivo só acrescenta o campo. A promoção e o rebaixamento
@@ -32,7 +34,18 @@ export interface RepoResolvedor extends RepoListado {
   modos: Modos
   /** `pausa_gate` do item (7f-b5, peça 7): o que fazer com a pausa de gate sistêmico; padrão sombra */
   pausaGate?: Modo
+  /** `pausa_donos` do item (7f-b7): pausa com `dono: X`, X na lista, não notifica até o limite */
+  pausaDonos?: string[]
+  /** `pausa_dono_max_min` do item (7f-b7): o limite, em minutos */
+  pausaDonoMaxMin?: number
 }
+
+export const PAUSA_DONOS_PADRAO = ['publicar.sh', 'promocao-apolo']
+/** Provisório (7f-b7): recalibrar pelo p95 de `pausa_fim.duracao_s` depois de 7 dias. */
+export const PAUSA_DONO_MAX_MIN_PADRAO = 30
+export const pausaDonosDe = (campo: unknown): string[] =>
+  Array.isArray(campo) ? campo.filter((x): x is string => typeof x === 'string' && x.trim() !== '').map((x) => x.trim()) : PAUSA_DONOS_PADRAO
+export const pausaDonoMaxMinDe = (campo: unknown): number => (typeof campo === 'number' && Number.isFinite(campo) && campo >= 0 ? campo : PAUSA_DONO_MAX_MIN_PADRAO)
 
 export const PAUSA_GATE_PADRAO: Modo = 'sombra'
 export const pausaGateDe = (campo: unknown): Modo => (ehModo(campo) ? campo : PAUSA_GATE_PADRAO)
@@ -91,8 +104,14 @@ export function lerReposResolvedor(): RepoResolvedor[] {
   const crus = itensCrus().filter((it) => caminhoDoItem(it) !== null)
   return listados.map((r, i) => {
     const it = crus[i]
-    const obj = it && typeof it === 'object' ? (it as { resolvedor?: unknown; pausa_gate?: unknown }) : undefined
-    return { ...r, modos: modosDe(obj?.resolvedor), pausaGate: pausaGateDe(obj?.pausa_gate) }
+    const obj = it && typeof it === 'object' ? (it as { resolvedor?: unknown; pausa_gate?: unknown; pausa_donos?: unknown; pausa_dono_max_min?: unknown }) : undefined
+    return {
+      ...r,
+      modos: modosDe(obj?.resolvedor),
+      pausaGate: pausaGateDe(obj?.pausa_gate),
+      pausaDonos: pausaDonosDe(obj?.pausa_donos),
+      pausaDonoMaxMin: pausaDonoMaxMinDe(obj?.pausa_dono_max_min),
+    }
   })
 }
 
