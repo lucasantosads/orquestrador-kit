@@ -15,7 +15,7 @@
  * PURO: recebe o conteúdo dos artefatos, não os lê do disco.
  */
 import { readFileSync } from 'node:fs'
-import { globToRegExp } from './enforcement-core.js'
+import { matchesAllowlist } from './enforcement-core.js'
 
 export interface Diagnostico {
   gate: string
@@ -231,8 +231,10 @@ export function montarDiagnostico(e: EntradaDiagnostico): Diagnostico {
   return base
 }
 
+// A mesma régua do enforcement (`dir/` vale `dir/**`, etapa 8c): o retry não pode
+// dizer "fora da allowlist" de um teste que o enforcement aceita.
 function cobre(allowlist: string[], arquivo: string): boolean {
-  return allowlist.some((g) => globToRegExp(g).test(arquivo))
+  return matchesAllowlist(arquivo, allowlist)
 }
 
 function recorta(linhas: string[]): string {

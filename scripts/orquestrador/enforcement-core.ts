@@ -175,8 +175,17 @@ export function globToRegExp(glob: string): RegExp {
   return new RegExp(re + '$')
 }
 
+/**
+ * `dir/` na allowlist vale `dir/**` (etapa 8c, porte do `normalizarEntradaAllowlist`
+ * do Comarka). Sem isto, o 295 do Comarka (`src/app/dashboard/clientes/[id]/tabs/`)
+ * dava 31 `fora_do_pathspec`, um por arquivo do diretório que o ticket podia editar.
+ */
+export function normalizarEntradaAllowlist(entrada: string): string {
+  return entrada.endsWith('/') ? entrada + '**' : entrada
+}
+
 export function matchesAllowlist(file: string, allowlist: string[]): boolean {
-  return allowlist.some((g) => globToRegExp(g).test(file))
+  return allowlist.some((g) => globToRegExp(normalizarEntradaAllowlist(g)).test(file))
 }
 
 /**
