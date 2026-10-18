@@ -1876,6 +1876,133 @@ gate real de 12/10 e a pausa com dono real de 16/10) e
 `orquestrador-resolvedor-humano-mexeu.test.ts` (o 840 real com commit `Orq-Vigia`, commit
 humano e edição sem commit; controles: edição antes do bloqueio e commit do loop).
 
+## 20. Aplicador de migrations, etapa MIG-A (18/10/2026)
+
+Recon (`~/orq-sessoes/relatorio-recon-migrations.md`): no banco `ogfnojbbvumujzfklkhh` só o
+conector do Supabase do claude.ai aplicava (`apply_migration` ou `execute_sql`), por chat,
+sessão ou pela skill `aplicar-migration-ddl` do Comarka. A fila do Comarka travava esperando
+`humano:migration-<id>-aplicada` (122 tokens liberados à mão em 14 dias). Decisões de 18/10:
+um caminho só aplica (este); a escrita vai pela API de gestão com a credencial do `.env.local`
+do repo, lida só pelo script; a linha de base de 18/10 é a verdade; o aplicador libera o token
+sozinho depois de conferir no ledger; aplicador por banco, não por repo. Código em
+`scripts/orquestrador/migrations/`, verbo `orq migrations` (despachado antes do lib.sh, como o
+`resolver`). Relatório: `~/orq-sessoes/relatorio-kit-mig-a.md`.
+
+### 20.1 Config por banco (`config.ts`)
+
+Bloco de TOPO `migrations.bancos` no `~/.orq/repos.json`, e não em cada item de `.repos[]`
+(E1): o dashboard-comercial escreve no mesmo banco do Comarka, não tem fila, e em `.repos[]`
+seria varrido pelo resolvedor e pelo painel. Por banco: `ferramenta` (só `supabase`),
+`banco_id`, `timeouts` (`lock_timeout_s` 5, `statement_timeout_s` 60, `http_timeout_s` 120) e
+`repos`. Cada repo: `repo` (nome em `.repos[]`) ou `caminho`, `dir`, `refs` (padrão `HEAD`),
+`somente_leitura`; o escritor (no máximo um por banco) leva ainda `credencial_env` (o NOME),
+`env_arquivo` (`.env.local`), `token` (`formato` `liberadas` ou `v2`, `molde` com `{id}`, `por`)
+e `pre_check` (comando do repo, `{arquivo}` vira o `.sql` extraído). Erro por campo; um
+`banco_id` em dois bancos e um repo em dois bancos são recusados. Nada no `000-config.json`.
+
+### 20.2 O SQL e a API (`sql.ts`, `supabase.ts`)
+
+Tudo por `POST /v1/projects/<ref>/database/query`. O `POST /database/migrations`, que o
+`apply_migration` usa, não recebe versão e grava a hora da aplicação (OpenAPI conferido no
+PASSO 0), por isso não é usado (E4). Um texto só, transação IMPLÍCITA (o Postgres roda as
+instruções de uma mensagem Query como uma transação):
+
+    select set_config('lock_timeout', '<n>s', true);
+    select set_config('statement_timeout', '<n>s', true);
+    <corpo do arquivo>
+    ;
+    insert into supabase_migrations.schema_migrations(version, name, statements, created_by)
+      values (<versão do arquivo>, <nome do arquivo>, array[<instruções>], 'orq-aplicador:<usuário>');
+
+Os literais vão em dollar-quote com etiqueta aleatória que não aparece no texto. A tabela tem
+`version`, `statements`, `name`, `created_by`, `idempotency_key` e `rollback`, sem default nem
+trigger (medido pelo chat em 18/10); o aplicador grava as quatro primeiras.
+
+O ENVELOPE `begin;` (primeira instrução) e `commit;` (última), que 77 de 77 migrations do
+Comarka desde 16/10 trazem, é tirado; o resto vai byte a byte. Recusa: begin, commit, end,
+rollback, savepoint ou release no meio; envelope pela metade; `CONCURRENTLY`; `VACUUM`;
+`ALTER SYSTEM`; literal ou comentário sem fim. O leitor conhece `--`, `/* */` aninhado,
+`'...'`, `E'...'`, `"..."` e `$tag$...$tag$`: `;` e `commit` dentro de corpo de função não contam.
+
+Respostas: 2xx legível = ok; 4xx = erro certo (o Postgres recusou, nada ficou); 5xx, timeout,
+rede ou corpo ilegível = INCERTO. A credencial sai do `env_arquivo` do repo pelo nome e toda
+mensagem passa por `mascarar` (o valor, o miolo sem `sbp_` e qualquer `sbp_...`). Com
+`ORQ_TESTE=1` só fala com `http://127.0.0.1:<porta>` (`ORQ_MIGRATIONS_API`); sem ele, só com
+`https://api.supabase.com`.
+
+**Sonda** (`QUERY_SONDA`): `set_config('orq.sonda', txid_current()::text, true)` e, na mesma
+mensagem, `current_setting('orq.sonda')::bigint = txid_current()`. Obrigatória por banco
+(`<banco>.sonda.json` com `mesma_transacao: true`), porque o aplicador é genérico. No
+`ogfnojbbvumujzfklkhh` o chat mediu verde em 18/10.
+
+### 20.3 Linha de base e plano (`plano.ts`)
+
+`orq migrations linha-base <banco> [--corte V] [--herdados-desde V] [--substituir]` grava
+`~/.orq/migrations/<banco>.json`: o corte (padrão: a maior versão de produção), as linhas do
+ledger naquele momento, os `pendentes_herdados` (E2, opção b: arquivos com piso < versão <=
+corte sem linha no ledger) e `antigos_sem_ledger` (só contados). Sem `--herdados-desde`, nenhum
+herdado: no Comarka, "todo arquivo sem linha até o corte" dá 36, e 31 são de maio a setembro,
+que a decisão 3 manda não cobrar. Trocar a linha de base pede `--substituir`.
+
+O plano, contra o ledger de agora: **pendente** = arquivo de qualquer repo do banco com versão
+> corte sem linha que case; **herdado** = os da linha de base que ainda não casam; **drift** =
+linha com versão > corte sem arquivo que case em nenhum repo; mais as aplicadas desde o corte,
+com `created_by`. Casar: a mesma versão, ou o mesmo nome (sem o prefixo, ou o nome base inteiro:
+o dashboard grava `20261006_<nome>`, e 7 arquivos do Comarka de 27-29/09 também). Versão de 8
+dígitos é completada com zeros. Os arquivos saem dos `refs` por `gitLeitura` (`ls-tree`,
+`show`): 5 dos 6 pendentes de 18/10 só existiam nas stagings. O mesmo caminho com blob
+diferente entre refs é `divergente`.
+
+### 20.4 Aplicar (`aplicar.ts`, `liberacao.ts`, `caminhos.ts`)
+
+Recusas, todas antes de qualquer escrita: `~/.orq/MIGRATIONS_PAUSADO`; repo `somente_leitura`;
+sem TTY; sem sonda verde; sem linha de base; repo pausado (`pausar_file` do config ou
+`docs/fila/.orq-pause`); arquivo de liberação modificado na árvore (E5); a trava
+`<banco>.lock` (O_EXCL com o pid) segura por processo vivo (órfã: assume); arquivo fora do plano
+ou divergente; token ausente, duplo ou já liberado (o token sai do `.sql`, pelo molde, ou do
+`--token`, conferido contra o molde); SQL recusado; `pre_check` com rc diferente de 0;
+confirmação que não é a versão digitada. Depois de mostrar o SQL e o aviso de classe (DROP,
+TRUNCATE, DELETE, RENAME, GRANT, REVOKE, POLICY, SECURITY DEFINER, ALTER COLUMN, SET NOT NULL;
+só aviso nesta etapa), aplica e CONFERE no `schema_migrations` que a versão entrou com o nome.
+
+| Resposta da API | Linha no ledger depois | O que acontece |
+|---|---|---|
+| ok | sim | `aplicada`, token escrito (`token_emitido`) |
+| ok | não | `conferencia_falhou`, sem token |
+| erro (4xx) | não | `falhou`, sem token |
+| incerto | sim | `aplicada` com `incerto_resolvido`, token escrito |
+| incerto, ou conferência sem resposta | não | `incerto`, sem token: `orq migrations plano` decide depois |
+
+O token (a única escrita num repo): formato `liberadas` acrescenta `{token sem 'humano:', em,
+por, nota}` em `.liberadas[]` (Comarka: `por: lucas`, nota `aplicador do kit, versão X, arquivo
+Y, ref Z, usuário $USER`, E6); formato `v2` usa a decisão do `orq liberar`. O commit é o da
+porta `comitarUmArquivo` de `resolvedor/repo.ts` (espera o git livre, só o arquivo,
+`--only`, nunca `--no-verify`, desfaz se o hook recusa, confere um arquivo e o pai), com
+`Orq-Aplicador: <banco> <versão> <arquivo>`. Nunca push (E7): o loop do Comarka lê o arquivo
+local do checkout principal (`lib.sh:64`), e o push segue no ritual. Ledger em
+`~/.orq/migrations/ledger.jsonl` (`aplicar_inicio`, `aplicada`, `token_emitido`,
+`token_falhou`, `falhou`, `incerto`, `conferencia_falhou`), escrito pela `GuardaResolvedor`
+com a raiz `~/.orq/migrations`.
+
+### 20.5 O que o aplicador nunca faz
+
+Push; merge; escrever no repo outro arquivo que não o de liberação; usar `POST
+/database/migrations` ou `execute_sql` do MCP; imprimir ou gravar a credencial; aplicar sem
+TTY, sem a versão digitada ou sem sonda verde; emitir token sem a linha conferida; renomear
+arquivo ou mexer em linha antiga do ledger. A troca da skill e do `banco.md` do Comarka para
+`orq migrations aplicar` é frente do Comarka, depois do merge (E8).
+
+### 20.6 Testes
+
+`orquestrador-migrations-config.test.ts` (a config real do Comarka e do dashboard; erro por
+campo), `orquestrador-migrations-supabase.test.ts` (stub HTTP: sucesso, erro, incerto,
+recusas do SQL, envelope do 1377, sonda, mascaramento, `ORQ_TESTE`),
+`orquestrador-migrations-plano.test.ts` (fixture real `test/fixtures/migrations/`: corte
+20261004 → 6 pendentes e 29 de drift; corte de hoje com herdados desde 20261004 → drift zero,
+5 herdados e 1 pendente) e `orquestrador-migrations-aplicar.test.ts` (cada recusa, a trava,
+o `pre_check`, a conferência, o commit de um arquivo e o replay no `liberacoes.json` real do
+Comarka de 18/10).
+
 ## 10. Divergências conhecidas
 
 O que este contrato **não** descreve como gostaria, e a peça que fecha cada uma.

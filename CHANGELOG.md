@@ -1140,3 +1140,29 @@ da fila. CONTRATO §19.
 
 Asserções existentes que mudaram: nenhuma. O `test-fixture-executor.sh` passou a copiar
 também `*.json` do motor, por causa de `campos-do-motor.json`.
+
+### Etapa MIG-A · aplicador de migrations, linha de base e aplicação manual (18/10/2026)
+
+Um caminho só aplica migration: `orq migrations aplicar`, pela API de gestão do Supabase,
+com a credencial lida só pelo script, conferência no `schema_migrations` e o token liberado
+sozinho no formato do repo. Nada aplicado em banco nesta etapa; o primeiro uso real é do
+Lucas, no terminal, depois do merge. CONTRATO §20, `docs/aplicador-migrations.md`.
+
+- **P1** `a69698d`: bloco de topo `migrations.bancos` no `~/.orq/repos.json` (E1).
+- **P2** `7031a2e`: `POST /database/query` numa transação implícita com o insert da versão
+  e do nome do arquivo e `created_by: orq-aplicador:<usuário>` (E4); envelope `begin;/commit;`
+  tirado (77 de 77 migrations recentes do Comarka o têm); sonda obrigatória por banco.
+- **P3** `63cb9b7`: linha de base com `pendentes_herdados` (E2, opção b) e plano com drift e
+  `created_by`. Fixture real: corte 20261004 → 6 pendentes e 29 de drift; corte de hoje com
+  herdados desde 20261004 → drift zero, 5 herdados e 1 pendente.
+- **P4** `6cdcb62`: `orq migrations status|plano|linha-base|sonda|aplicar`; recusas (E5),
+  trava, `pre_check`, token em `.liberadas` com `por: lucas` e a nota do aplicador (E6),
+  commit só do arquivo de liberação com `Orq-Aplicador:`, nunca push (E7).
+- **P5**: CONTRATO §20, a seção ETAPA MIG-A do `docs/PECAS.md`, este registro e o manual.
+
+Mudança em código existente: `resolvedor/repo.ts` ganha a porta genérica `comitarUmArquivo`
+(o `escreverEComitar` passa a chamá-la, com o comportamento e as mensagens iguais) e a
+`GuardaResolvedor` aceita a raiz por parâmetro. Nenhuma asserção existente mudou.
+No rebase sobre a 8b, a checagem de branch do 8b-2 foi para dentro de `comitarUmArquivo`,
+por um parâmetro opcional `esperada`: o `escreverEComitar` sempre passa
+`branchEsperada(raiz, branch)`; o aplicador não passa, e o commit do token não confere branch.

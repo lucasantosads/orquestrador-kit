@@ -1306,3 +1306,41 @@
   `max_tickets_por_passada`, NO-GO num repo pula para o próximo; plists por repo saem na adoção.
   *Evidência:* inventário §4 decisão 5, §6 item 14 (plists `.bak`/`.repo-noturno` soltos).
   *Teste:* dois repos no `repos.json`, NO-GO no primeiro, o segundo drena.
+
+## ETAPA MIG-A · aplicador de migrations (18/10/2026)
+
+Seção própria desta etapa (as etapas 8a e 8b mexem em FEITAS e PENDENTES em paralelo).
+
+### Feitas
+
+- **MIG-A P1 · config por banco.** Bloco de topo `migrations.bancos` no `~/.orq/repos.json`,
+  um escritor por banco, o resto `somente_leitura`; o dashboard-comercial fica fora de
+  `.repos[]`. Commit `a69698d`. CONTRATO §20.1.
+  *Teste:* `orquestrador-migrations-config.test.ts`.
+- **MIG-A P2 · adaptador supabase.** `POST /database/query` numa transação implícita, com o
+  insert no `schema_migrations` (versão e nome do arquivo, `created_by`); envelope
+  `begin;/commit;` tirado; recusas; incerto; sonda; credencial mascarada. Commit `7031a2e`.
+  CONTRATO §20.2.
+  *Teste:* `orquestrador-migrations-supabase.test.ts`.
+- **MIG-A P3 · linha de base e plano.** Corte, herdados com piso (E2, opção b), drift com
+  `created_by`; fixture real de 18/10 (`test/fixtures/migrations/`). Commit `63cb9b7`.
+  CONTRATO §20.3.
+  *Teste:* `orquestrador-migrations-plano.test.ts`.
+- **MIG-A P4 · `orq migrations status|plano|linha-base|sonda|aplicar`.** Recusas, trava por
+  banco, `pre_check`, conferência antes do token, commit só do arquivo de liberação com
+  `Orq-Aplicador:`; `comitarUmArquivo` em `resolvedor/repo.ts`. Commit `6cdcb62`. CONTRATO §20.4.
+  *Teste:* `orquestrador-migrations-aplicar.test.ts`.
+- **MIG-A P5 · documentação.** CONTRATO §20, esta seção, CHANGELOG e
+  `docs/aplicador-migrations.md`.
+  *Evidência:* `~/orq-sessoes/relatorio-kit-mig-a.md`.
+
+### Pendentes
+
+- **Primeiro uso real (Lucas, no terminal, depois do merge):** pôr o bloco no
+  `~/.orq/repos.json`, rodar `sonda`, `linha-base comarka --herdados-desde 20261004` e
+  `plano`, e aplicar o primeiro herdado.
+- **Frente do Comarka (E8):** trocar a skill `aplicar-migration-ddl` e o `banco.md:33-34`
+  para `orq migrations aplicar`, e proibir DDL por `execute_sql`.
+- **Aviso de classe vira trava** (MIG-6/MIG-8 do recon): nesta etapa ele só avisa.
+- **Arquivo com mais de um token do molde** (ex.: cita o token de outra migration como
+  dependência) pede `--token`; se ficar comum, o molde ganha uma marca de "este arquivo libera".
