@@ -16,12 +16,14 @@
  *   vizinhos                  -> stdin = {gatesTxt, arquivosDoDiff, allowlist, worktree, base};
  *                                lê a árvore de <base> na worktree e imprime
  *                                {amplia, testes, pares, motivo, bloco} (etapa 8c)
+ *   base-vermelha-arquivos    -> stdin = saída do vitest (string JSON); os arquivos com FAIL, um por linha (8c)
  *   criterios-ampliados       -> stdin = {criterios, allowlist, ampliados}; os critérios
  *                                com o cmd de lista fechada aceitando os ampliados (8c)
  */
 import { readFileSync } from 'node:fs'
 import {
   arquivosBaseVermelha,
+  arquivosFalhosDoVitest,
   avaliaRestricaoExecucao,
   blocoFailVitest,
   cmdComAmpliados,
@@ -137,6 +139,10 @@ switch (sub) {
     }
     const d = decidirVizinhos({ ...e, vizinhos: testesVizinhos(e.allowlist, arvore) })
     out({ ...d, bloco: d.amplia ? blocoFailVitest(e.gatesTxt, d.pares) : '' })
+    break
+  }
+  case 'base-vermelha-arquivos': {
+    for (const f of arquivosFalhosDoVitest(String(stdin()))) process.stdout.write(f + '\n')
     break
   }
   case 'criterios-ampliados': {

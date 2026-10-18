@@ -13,7 +13,11 @@
  *     origin);
  *   - o agente é o STUB nativo: a cada tentativa mexe no motor e, se
  *     `AJUSTA_TESTE=1`, ajusta o teste vizinho a partir da 2ª;
- *   - o juiz é interceptado e `claude_run` falha alto.
+ *   - o juiz é interceptado e `claude_run` falha alto;
+ *   - a conferência na base (P2b-2) roda um vitest falso (`VIZINHO_CMD_BASE`):
+ *     verde, vermelho (imprime o mesmo FAIL real) ou inconclusivo (runner ausente).
+ *     Ele grava onde rodou e com que argumentos, para provar que foi na árvore do
+ *     base_ticket e só nos arquivos falhos.
  */
 import { describe, it, expect } from 'vitest';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -122,7 +126,25 @@ function fixtureRepo(caso: Caso = {}): { fx: string; tmp: string } {
   return { fx, tmp };
 }
 
-function drenagem(fx: string, tmp: string, ajustaTeste: boolean): string {
+type Base = 'verde' | 'vermelho' | 'inconclusivo';
+
+function vitestDaBase(tmp: string, base: Base): string {
+  const f = join(tmp, 'vitest-base.sh');
+  const corpo =
+    base === 'verde'
+      ? "echo ' Test Files  1 passed (1)'; exit 0"
+      : base === 'vermelho'
+        ? `cat '${join(tmp, 'saida-testes.txt')}'; exit 1`
+        : "echo 'sh: vitest: command not found'; exit 127";
+  writeFileSync(
+    f,
+    `#!/bin/bash\n{ echo "cwd=$PWD"; echo "args=$*"; echo "motor=$(grep -c tentativa ${MOTOR})"; } >> '${join(tmp, 'base-chamadas')}'\n${corpo}\n`,
+    { mode: 0o755 },
+  );
+  return f;
+}
+
+function drenagem(fx: string, tmp: string, ajustaTeste: boolean, base: Base = 'verde'): string {
   // Conta as tentativas fora do repo; da 2ª em diante, ajusta o teste vizinho se pedido.
   const stub =
     `n=$(cat '${tmp}/n' 2>/dev/null || echo 0); n=$((n+1)); echo $n > '${tmp}/n'; ` +
@@ -132,6 +154,7 @@ function drenagem(fx: string, tmp: string, ajustaTeste: boolean): string {
     source '${EXECUTOR}'
     set +e
     STUB="$ORQ_TESTE_STUB"
+    VIZINHO_CMD_BASE='${vitestDaBase(tmp, base)}'
     claude_run() { echo 'TESTE: claude_run REAL chamado' >&2; exit 97; }
     ticket_commit() { return 0; }
     cooldown_arm() { return 0; }
@@ -176,6 +199,14 @@ describe('8c-P2b · teste vizinho no drive_ticket: amplia na tentativa seguinte,
     expect(ev.find((l) => / APROVADO /.test(l)) ?? '', log).toContain('attempt=2');
 
     expect(readFileSync(run(fx, 0, 'vizinhos.txt'), 'utf8')).toContain(`local: ${VIZINHO}:92:50`);
+    // P2b-2: antes de ampliar, só o arquivo falho rodou na árvore do base_ticket (sem a mudança do agente)
+    const vb = ev.filter((l) => / VIZINHO_BASE /.test(l));
+    expect(vb, log).toHaveLength(1);
+    expect(vb[0]).toContain('resultado=verde');
+    expect(vb[0]).toContain(`testes=${VIZINHO}`);
+    const chamadas = readFileSync(join(tmp, 'base-chamadas'), 'utf8');
+    expect(chamadas).toContain(`args=${VIZINHO}\n`);
+    expect(chamadas).toContain('motor=0');
     expect(existsSync(run(fx, 0, 'allowlist-ampliada.txt'))).toBe(false);
     expect(readFileSync(run(fx, 1, 'allowlist-ampliada.txt'), 'utf8').trim()).toBe(VIZINHO);
     expect(JSON.parse(readFileSync(run(fx, 1, 'enforcement.json'), 'utf8')).ok).toBe(true);
@@ -226,5 +257,28 @@ describe('8c-P2b · teste vizinho no drive_ticket: amplia na tentativa seguinte,
     expect(ev.find((l) => / BLOQUEADO /.test(l)) ?? '', log).toContain('motivo=base_vermelha');
     expect(ev.some((l) => / VIZINHO_AMPLIADO /.test(l))).toBe(false);
     expect(JSON.parse(readFileSync(run(fx, 0, 'vizinhos.json'), 'utf8')).amplia).toBe(false);
+  }, 240_000);
+
+  it('base vermelha verdadeira cujo teste importa arquivo da allowlist: o vizinho falha também no base_ticket → não amplia, segue base_vermelha, e a trilha diz', () => {
+    const { fx, tmp } = fixtureRepo();
+    const log = drenagem(fx, tmp, true, 'vermelho');
+    const ev = trilha(fx);
+
+    expect(JSON.parse(readFileSync(run(fx, 0, 'vizinhos.json'), 'utf8')).amplia).toBe(true); // a C11 liga o teste
+    expect(ev.find((l) => / VIZINHO_BASE /.test(l)) ?? '', log).toContain('resultado=vermelho');
+    expect(ev.some((l) => / VIZINHO_AMPLIADO /.test(l))).toBe(false);
+    expect(ev.find((l) => / BLOQUEADO /.test(l)) ?? '', log).toContain('motivo=base_vermelha');
+    expect(readFileSync(run(fx, 0, 'vizinhos-base.txt'), 'utf8').replace(/\x1b\[[0-9;]*m/g, '')).toContain(`FAIL  ${VIZINHO}`);
+    expect(ticket(fx).tentativas ?? 0).toBe(0);
+  }, 240_000);
+
+  it('runner que não roda na base (inconclusivo): não amplia; a base vermelha decide como hoje', () => {
+    const { fx, tmp } = fixtureRepo();
+    const log = drenagem(fx, tmp, true, 'inconclusivo');
+    const ev = trilha(fx);
+
+    expect(ev.find((l) => / VIZINHO_BASE /.test(l)) ?? '', log).toContain('resultado=inconclusivo');
+    expect(ev.some((l) => / VIZINHO_AMPLIADO /.test(l))).toBe(false);
+    expect(ev.find((l) => / BLOQUEADO /.test(l)) ?? '', log).toContain('motivo=base_vermelha');
   }, 240_000);
 });

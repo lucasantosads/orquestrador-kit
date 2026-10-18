@@ -945,6 +945,36 @@ grava_diff_patch() {
   return 0
 }
 
+# --- 7g · TESTE VIZINHO NA BASE (etapa 8c, decisão 9) -----------------------
+# vizinho_na_base <wt> <base> <rundir> <teste>... -> ecoa verde|vermelho|inconclusivo.
+# Antes de ampliar, roda SÓ os arquivos falhos na árvore do base_ticket (uma
+# worktree destacada, temporária). Falha também lá = a base está vermelha e o
+# teste não é do ticket: segue a base vermelha de hoje, sem ampliar. Runner que
+# não rodou (sem linha FAIL desses arquivos e rc != 0) = inconclusivo: também não
+# amplia. A saída fica em rundir/vizinhos-base.txt.
+# VIZINHO_CMD_BASE: o runner (os arquivos vão no fim). O teste o troca depois do
+# source, como faz com o STUB.
+VIZINHO_CMD_BASE="npx --no-install vitest run"
+vizinho_na_base() {
+  local wt="$1" base="$2" rundir="$3" tmp rc=0 falhos f
+  shift 3
+  tmp="$WORKTREES_BASE/$(basename "$wt").base-vizinho"
+  git -C "$ROOT" worktree remove --force "$tmp" >/dev/null 2>&1 || true
+  if ! git -C "$ROOT" worktree add --detach "$tmp" "$base" >/dev/null 2>&1; then
+    echo inconclusivo; return 0
+  fi
+  linkar_node_modules "$tmp"
+  # shellcheck disable=SC2086 # o runner é uma linha de comando com argumentos
+  ( cd "$tmp" && NO_COLOR=1 FORCE_COLOR=0 $VIZINHO_CMD_BASE "$@" ) > "$rundir/vizinhos-base.txt" 2>&1 || rc=$?
+  git -C "$ROOT" worktree remove --force "$tmp" >/dev/null 2>&1 || true
+  if [ "$rc" = 0 ]; then echo verde; return 0; fi
+  falhos="$(jq -n --rawfile g "$rundir/vizinhos-base.txt" '$g' | decisao base-vermelha-arquivos 2>/dev/null || true)"
+  for f in "$@"; do
+    if printf '%s\n' "$falhos" | grep -Fxq -- "$f"; then echo vermelho; return 0; fi
+  done
+  echo inconclusivo
+}
+
 # --- 8 · UMA TENTATIVA ------------------------------------------------------
 # Ordem fixa: agente -> diff -> enforcement -> gates -> critérios -> decisão.
 # Enforcement ANTES dos gates de propósito: diff que sai do escopo ou toca zona
@@ -1125,8 +1155,17 @@ run_attempt() {
         VIZ_JA="$(jq -r '.testes | join(",")' "$rundir/vizinhos.json")"
         log "  teste vizinho ($VIZ_JA), mas a ampliação desta versão do ticket já foi usada — reprova pelo caminho de hoje"
       else
-        VIZ_DECIDIU="$(jq -r '.testes | join("\n")' "$rundir/vizinhos.json")"
-        log "  teste vizinho: $(jq -r '.motivo' "$rundir/vizinhos.json") — a próxima tentativa pode editá-lo"
+        local viz_base viz_testes
+        viz_testes="$(jq -r '.testes | join(",")' "$rundir/vizinhos.json")"
+        # shellcheck disable=SC2046 # os testes, um argumento cada (caminhos sem espaço)
+        viz_base="$(vizinho_na_base "$wt" "$base" "$rundir" $(jq -r '.testes[]' "$rundir/vizinhos.json"))"
+        event "$(ticket_field "$file" '.id')" VIZINHO_BASE "resultado=$viz_base" "testes=$viz_testes"
+        if [ "$viz_base" = verde ]; then
+          VIZ_DECIDIU="$(jq -r '.testes | join("\n")' "$rundir/vizinhos.json")"
+          log "  teste vizinho: $(jq -r '.motivo' "$rundir/vizinhos.json"); verde na base — a próxima tentativa pode editá-lo"
+        else
+          log "  teste vizinho ($viz_testes), mas $viz_base na árvore do base_ticket (ver $rundir/vizinhos-base.txt) — não amplia"
+        fi
       fi
     else
       log "  teste vizinho: não amplia ($(jq -r '.motivo' "$rundir/vizinhos.json"))"
