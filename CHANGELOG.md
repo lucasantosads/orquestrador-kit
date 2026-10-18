@@ -1056,3 +1056,30 @@ corpo da notificação igual à 1ª linha do motivo; com o veredito da pausa de 
 dela, confere que a 1ª linha abre o corpo. Nenhuma de etapa anterior mudou. A
 assinatura do 243 da fixture `triador-custo-real` muda (o `attempt-0` não é mais lido duas
 vezes); os testes que a usam não dependem do valor.
+
+### Etapa 7f-b7 · R1 com mais de um vermelho e pausa com dono silenciosa (18/10/2026)
+
+O PASSO 0 mostrou que no Comarka a reprova vira retry no mesmo processo, com o ticket em
+`em_execucao`, e que os 22 resgates de allowlist de 04 a 17/10 foram todos em ticket já
+bloqueado: a ação na reprova (`na_reprova`) saiu do escopo. Ficaram o R1 com mais de um
+vermelho (o humano pôs exatamente os mesmos testes em 1054, 1055b, 1058 e 924a) e o
+barulho das pausas (69 notificações em 7 dias, 37 de `publicar.sh`). Sem chamada de API,
+sem launchctl, sem escrita em repo da frota nem em `~/.orq`. CONTRATO §18.
+
+- **7f-b7-1** `8264ad1`: R1 com mais de um vermelho fora da allowlist, tudo ou nada (cada
+  um tem de cumprir D6 ou D6b sozinho; uma guarda por teste; um commit); uma ação por
+  bloqueio (mesma assinatura ou mesmo `bloqueado_em`), no máximo 2 por ticket, a 3ª só
+  aviso. Fixture `test/fixtures/resolvedor-7f7` (14 bloqueios reais do Comarka).
+- **7f-b7-2** `04ad1e7`: replay sem custo dos 13 resgates humanos de allowlist depois de
+  11/10: 4 ações idênticas às do humano (1006, 1054, 1055b, 1058), zero divergente, 10 sem
+  ação com o motivo (924a pelo tudo ou nada).
+- **7f-b7-3** `37320b8`: pausa com dono silenciosa (`pausa_donos`, padrão `publicar.sh` e
+  `promocao-apolo`; `pausa_dono_max_min`, padrão 30, provisório), `pausa_longa`, FALHOU
+  notifica na hora com o passo, `pausa_fim` com `duracao_s` e o dono. As 17 pausas reais de
+  17 e 18/10 notificariam 2 vezes (eram 17). Fixture `test/fixtures/pausas-7f7`.
+- **7f-b7-4**: CONTRATO §18 (e a nota em §14.5), este registro e `docs/PECAS.md`.
+
+Asserções existentes que mudaram: nenhuma. O motivo do segundo bloqueio passou a
+"segunda vez bloqueado no mesmo bloqueio …", e os testes antigos que conferem "segunda vez
+bloqueado" seguem passando sem mudança. A ação de R1 com um teste só grava o mesmo `.md` de
+antes; o ledger `acao` ganha `testes`.

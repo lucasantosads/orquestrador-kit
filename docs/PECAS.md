@@ -1024,7 +1024,36 @@
   `orquestrador-resolvedor-pausa-gate.test.ts`, `orquestrador-resolvedor-tentativa-nova.test.ts`,
   `orquestrador-resolvedor-sobreposicao.test.ts`.
 
+- **Etapa 7f-b7 · R1 com mais de um vermelho e pausa com dono silenciosa** (18/10/2026). R1
+  com mais de um vermelho fora da allowlist, tudo ou nada (cada um cumpre D6 ou D6b sozinho;
+  uma guarda por teste; um commit); uma ação por bloqueio, no máximo 2 por ticket; replay
+  dos 13 resgates humanos de allowlist depois de 11/10 (4 idênticas, zero divergente); pausa
+  com dono silenciosa até `pausa_dono_max_min`, FALHOU na hora, `pausa_fim` com a duração.
+  Commits `8264ad1` (R1 com mais de um vermelho), `04ad1e7` (replay), `37320b8` (pausa com
+  dono).
+  *Evidência:* `~/orq-sessoes/relatorio-kit-etapa7f-b7.md`, `~/orq-sessoes/7f-b7/`
+  (vermelhos, replay, medições) e `~/orq-sessoes/medicao-comarka/out/14d/`.
+  *Teste:* `orquestrador-resolvedor-r1-multi.test.ts`,
+  `orquestrador-resolvedor-replay-allowlist.test.ts`, `orquestrador-resolvedor-pausa-dono.test.ts`.
+
 ## PENDENTES
+
+- **7f-b7 · `na_reprova` adiado.** Só faz sentido em motor que solta o ticket entre
+  tentativas; volta na fase de sombra. No Comarka a reprova vira retry no mesmo processo,
+  com o ticket em `em_execucao` (`executor.sh:554`, `:799-803`); no loop do kit o ticket
+  fica `pendente` durante a série e exigiria "série encerrada" pelo `events.log`.
+  *Evidência:* PASSO 0 em `~/orq-sessoes/relatorio-kit-etapa7f-b7.md`.
+
+- **7f-b7 · recalibrar `pausa_dono_max_min`.** O padrão de 30 min é provisório: depois de 7
+  dias de `pausa_fim` no ledger, o p95 de `duracao_s` das pausas com dono.
+  *Evidência:* `~/.orq/resolvedor/ledger.jsonl` (`pausa_fim`), CONTRATO §18.3.
+
+- **7f-b7 · o 924a e o teto do diff.** O 924a fica sem ação pelo tudo ou nada
+  (`test/conta-entregas-vazio-unico.test.ts` vermelho só na tentativa 1). Nos 3 casos de dois
+  vermelhos, o humano também subiu o teto do diff (`NO_TETO`, +40 a +60 linhas) e escreveu a
+  guarda anti-afrouxamento numa forma só; o R1 não mexe no teto. O desfecho das ações reais
+  dirá se o teto reprova o ticket reaberto.
+  *Evidência:* `~/orq-sessoes/7f-b7/p2-replay.json` (`humano_alem`).
 
 - **7f-b4 · reinstalar o job com o `claude` no PATH (humano).** Depois do merge, do
   checkout principal: `bash scripts/orquestrador/resolvedor/instalar-job.sh --dry-run`

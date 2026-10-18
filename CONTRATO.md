@@ -1300,6 +1300,7 @@ a comparação), uma por assinatura. Nunca aplica, nem no modo `auto`.
 
 - **Uma ação por ticket**: com uma `acao` no ledger, o próximo bloqueio do mesmo ticket vai
   para humano ("não consegui: segunda vez bloqueado"), mesmo depois de `orq desfazer`.
+  **Trocada na 7f-b7 (§18.2)**: uma ação por bloqueio, no máximo 2 por ticket.
 - **Interruptor** e **trava global**: §14.1.
 - **Espera git** (`esperarGit`, `repo.ts:66`): nem `index.lock`/`HEAD.lock` no git dir, nem
   processo `git` (`pgrep -x git`; `ORQ_RESOLVEDOR_PGREP` nos testes), até
@@ -1644,6 +1645,97 @@ retomada), `orquestrador-resolvedor-tentativa-nova.test.ts` (a corrida: a tentat
 aparece no `pgrep` da espera do git, entre a leitura e a troca; o ticket fica intacto) e
 `orquestrador-resolvedor-sobreposicao.test.ts` (os pares, fecho transitivo, ciclo, glob, o
 ledger uma vez por par, o repo intocado).
+
+## 18. Etapa 7f-b7: R1 com mais de um vermelho e pausa com dono silenciosa (18/10/2026)
+
+O PASSO 0 (`~/orq-sessoes/relatorio-kit-etapa7f-b7.md`) mostrou que no Comarka não há
+janela `pendente` entre tentativas: a reprova vira retry no mesmo processo, com o ticket em
+`em_execucao` (`executor.sh:554`, `:799-803`), e `fora_do_pathspec` bloqueia direto
+(`:627-652`). Os 22 resgates humanos de allowlist de 04 a 17/10 foram todos em ticket já
+bloqueado. A ação "na reprova" (`na_reprova`) saiu do escopo (PECAS, PENDENTES). O que
+ficou: o R1 com mais de um vermelho fora da allowlist (4 dos 13 resgates depois de 11/10
+recusados por isso, com o humano pondo exatamente os mesmos testes) e o barulho das pausas.
+
+### 18.1 R1 com mais de um vermelho, tudo ou nada (`r1.ts`, `extrair.ts`)
+
+A extração grava, para R1 (D6 ou D6b), `extracao.r1_testes`: cada vermelho fora da
+allowlist e do diff com a regra que ele cumpre SOZINHO: `D6b` (o arquivo que o enforcement
+barrou, vermelho nessa tentativa ou na anterior), `D6` (acoplado ao diff e vermelho fora em
+pelo menos 2 tentativas) ou `null`. Fica fora do `detalhe`, que vai literal ao prompt do
+modelo (o prompt não muda).
+
+Com mais de um vermelho fora, o R1 age só se TODOS cumprem D6 ou D6b; se um só não cumpre,
+nenhuma ação (`não consegui: … tudo ou nada: <arquivo> não cumpre D6 nem D6b sozinho`).
+Cumprindo, num commit só (uma ação): todos no fim da `pathspec_allowlist`, todos no critério
+que lista os arquivos permitidos, UMA guarda de contagem por teste (a do 840, medida no
+branch alvo) e o ticket reabre. O ledger `acao` ganha `testes` (a lista). Diagnóstico
+gravado antes desta etapa (sem `r1_testes`) continua recusando mais de um vermelho até ser
+triado de novo.
+
+### 18.2 Uma ação por bloqueio, no máximo 2 por ticket (`acoes.ts`)
+
+Troca a regra de §14.5 ("uma ação por ticket"):
+
+- o MESMO bloqueio com ação no ledger vai para humano: mesma `assinatura`, ou mesmo
+  `bloqueado_em` (o `bloqueio.quando`, fim da série pelo `meta.json`). A assinatura sozinha
+  não basta: ela lê o mtime do arquivo do ticket, e o `orq desfazer` (ou o writeback do
+  loop) a troca sem série nova, o que faria o resolvedor agir de novo no que o humano
+  desfez;
+- uma série nova (outro bloqueio do ticket reaberto) pode ter a 2ª ação;
+- com `TETO_ACOES_TICKET` (2) ações no ticket, só aviso (`aviso` no ledger, `teto de 2 ações
+  do resolvedor no ticket`);
+- o rebaixamento segue: 2 desfechos ruins seguidos em auto devolvem a classe a sombra (§14).
+
+### 18.3 Pausa com dono silenciosa (`pausa.ts`, `modos.ts`)
+
+Chaves novas no ITEM do repo no repos.json:
+
+| chave | padrão | o quê |
+|---|---|---|
+| `pausa_donos` | `["publicar.sh", "promocao-apolo"]` | donos de pausa planejada |
+| `pausa_dono_max_min` | `30` | minutos até a pausa com dono notificar |
+
+Para a pausa nova (o sha do sentinela, §17.3):
+
+- motivo com `FALHOU`: notifica na hora, com ou sem dono; o corpo leva `FALHOU no passo
+  <passo>` e o ledger `falhou_passo`;
+- motivo com `dono: X |` e X em `pausa_donos`: linha `pausa` no ledger com `dono`,
+  `silenciosa: true` e `notificacao: {macos: silenciada, imessage: silenciada}`, sem aviso.
+  Se a mesma pausa (o mesmo sha) ainda está lá `pausa_dono_max_min` depois de vista,
+  notifica uma vez: `pausa_longa` (`dono`, `minutos`, `limite_min`, `notificacao`);
+- o resto (sem dono, ou dono fora da lista): notifica como na §17.3, com `dono` no ledger.
+
+Quando o sentinela some, ou passa a ser outra pausa, a pausa aberta (a última `pausa` do
+repo sem `pausa_fim`) fecha: `pausa_fim` com `arquivo`, `sha`, `dono`, `motivo`, `inicio`
+(o `ts` da `pausa`) e `duracao_s` (de quando a pausa foi vista até a passada que viu o fim:
+resolução de uma passada, 300 s). Só fecha pausa registrada a partir desta etapa (a que tem
+`dono` no ledger, mesmo nulo): as de antes não têm hora confiável de fim.
+
+**O limite de 30 min é provisório**: será recalibrado pelo p95 de `pausa_fim.duracao_s` das
+pausas com dono depois de 7 dias de `pausa_fim` no ledger. Antes desta etapa a duração da
+pausa não estava registrada em lugar nenhum.
+
+### 18.4 Ledger: tipos e campos novos
+
+| tipo | quando | campos |
+|---|---|---|
+| `pausa` | também a silenciosa (§18.3) | mais `dono`, `silenciosa`, `falhou_passo` |
+| `pausa_longa` | pausa com dono passou do limite | `arquivo`, `sha`, `dono`, `motivo`, `minutos`, `limite_min`, `notificacao` |
+| `pausa_fim` | o sentinela sumiu ou mudou | `arquivo`, `sha`, `dono`, `motivo`, `inicio`, `duracao_s` |
+| `acao` | também o R1 com mais de um vermelho | mais `testes` |
+| `aviso` | também o teto de 2 ações por ticket | idem §14.6 |
+
+### 18.5 Testes
+
+`orquestrador-resolvedor-r1-multi.test.ts` (1054, 1055b e 1058 reais: os dois testes do
+humano, um commit, uma guarda por teste; 924a: tudo ou nada, ticket intacto; o mesmo
+bloqueio com o ticket reescrito; a 2ª ação numa série nova; o teto de 2),
+`orquestrador-resolvedor-replay-allowlist.test.ts` (os 13 resgates humanos de allowlist
+depois de 11/10, fixture `test/fixtures/resolvedor-7f7`, `montar.py` só lê o Comarka: 4
+ações idênticas às do humano, zero divergente, 10 sem ação com o motivo) e
+`orquestrador-resolvedor-pausa-dono.test.ts` (as 17 pausas reais de 17 e 18/10, fixture
+`test/fixtures/pausas-7f7`: 2 notificações, eram 17; o limite; o FALHOU; a pausa sem dono;
+as chaves do item).
 
 ## 10. Divergências conhecidas
 
