@@ -1,0 +1,12 @@
+{
+ "id": "1006",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/1006-token-meta-pela-conexao.md",
+ "ticket_sha": "b6905eba0aca864fa112a9059ecbad0fb26fdfb1",
+ "ticket_antes": true,
+ "linha_bloqueio": 88744,
+ "log_inicio": 88713,
+ "fim": "2026-10-11T15:08:52Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/1006"
+}

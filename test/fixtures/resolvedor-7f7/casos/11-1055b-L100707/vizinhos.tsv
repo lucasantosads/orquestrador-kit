@@ -1,0 +1,5 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+1055b	docs/fila/runs/1055b/attempt-1.prev1	test/acoes-recomendadas-chave.test.ts	2604	2026-10-13T22:54:37Z	1
+1055b	docs/fila/runs/1055b/attempt-1.prev1	test/relatorio-sem-cliente-id.test.ts	2661	2026-10-13T22:54:37Z	1
+1055b	docs/fila/runs/1055b/attempt-3	test/acoes-recomendadas-chave.test.ts	2630	2026-10-13T23:13:15Z	1
+1055b	docs/fila/runs/1055b/attempt-3	test/relatorio-sem-cliente-id.test.ts	2687	2026-10-13T23:13:15Z	1

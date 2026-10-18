@@ -1,0 +1,42 @@
+[
+ {
+  "attempt": 1,
+  "model": "sonnet",
+  "claude_dur_secs": 184,
+  "diff_lines": 496,
+  "resultado": "reprovado",
+  "ts": "2026-10-13T18:28:59Z"
+ },
+ {
+  "attempt": 2,
+  "model": "sonnet",
+  "claude_dur_secs": 348,
+  "diff_lines": 499,
+  "resultado": "reprovado",
+  "ts": "2026-10-13T18:36:01Z"
+ },
+ {
+  "attempt": 1,
+  "model": "sonnet",
+  "claude_dur_secs": 194,
+  "diff_lines": 469,
+  "resultado": "reprovado",
+  "ts": "2026-10-13T19:24:47Z"
+ },
+ {
+  "attempt": 2,
+  "model": "sonnet",
+  "claude_dur_secs": 214,
+  "diff_lines": 520,
+  "resultado": "reprovado",
+  "ts": "2026-10-13T19:29:31Z"
+ },
+ {
+  "attempt": 3,
+  "model": "opus",
+  "claude_dur_secs": 249,
+  "diff_lines": 520,
+  "resultado": "reprovado",
+  "ts": "2026-10-13T19:35:16Z"
+ }
+]

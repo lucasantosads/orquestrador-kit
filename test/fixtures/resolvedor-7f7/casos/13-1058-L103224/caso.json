@@ -1,0 +1,12 @@
+{
+ "id": "1058",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/1058-negocio-leitores-crons-score-risco-temperatura-alertas.md",
+ "ticket_sha": "3718afa1ce04a6ddd079222b53df50e3909c7ddf",
+ "ticket_antes": true,
+ "linha_bloqueio": 103224,
+ "log_inicio": 103187,
+ "fim": "2026-10-14T23:18:23Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/1058"
+}

@@ -1,0 +1,199 @@
+/**
+ * T3 da opção (b), 29/09: "quem cuida?" vem de perf_cliente_gestor (gestor principal ativo);
+ * sem gestor, o head operacional. O analista do espelho não decide mais: portal "meus
+ * clientes", lista de performance, página do membro, alerta de campanha (destinatário),
+ * filtro da carteira e capacidade por gestor. Passo 1 do setup calculado no código.
+ * Supabase em memória; rotas reais onde dá.
+ */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { NextRequest } from "next/server";
+
+type Row = Record<string, unknown>;
+const mem = vi.hoisted(() => ({ db: {} as Record<string, Row[]>, falharInsert: new Set<string>(), falharSelect: new Set<string>() }));
+const { db } = mem;
+const sessao = vi.hoisted(() => ({ atual: null as null | Record<string, unknown> }));
+const enviados = vi.hoisted(() => [] as { tel: string; msg: string }[]);
+
+vi.mock("@supabase/supabase-js", async () => {
+  const { clienteMemoria } = await import("./helpers/supabase-memoria");
+  return { createClient: () => clienteMemoria(mem) };
+});
+vi.mock("@/lib/perf/conn-resolver", () => ({
+  resolveMetaConnAgencia: vi.fn(async () => ({ connectionId: "c1", token: "token-teste", origem: "system_user", tokenExpiraEm: null })),
+}));
+vi.mock("@/lib/session", () => ({ getSession: vi.fn(async () => sessao.atual) }));
+vi.mock("@/lib/evolution", () => ({
+  sendWhatsAppText: vi.fn(async (tel: string, msg: string) => {
+    enviados.push({ tel, msg });
+    return { success: true };
+  }),
+}));
+
+import { carregarQuemCuida, responsaveisDoCliente, cuidaDoCliente, nomeDeQuemCuida } from "@/lib/clientes/quem-cuida";
+import { calcularP1Basico, aplicarP1 } from "@/lib/setup/p1-basico";
+import { clienteMemoria } from "./helpers/supabase-memoria";
+import { GET as meusClientes } from "@/app/api/portal/meus-clientes/route";
+import { GET as alertasCampanha } from "@/app/api/clientes/alertas-campanha/route";
+
+const GESTORA = "00000000-0000-4000-8000-0000000000e1";
+const HEAD = "00000000-0000-4000-8000-0000000000e2";
+const SAIU = "00000000-0000-4000-8000-0000000000e3";
+const CLI_COM = "00000000-0000-4000-8000-0000000000c1";
+const CLI_SEM = "00000000-0000-4000-8000-0000000000c2";
+const CLI_EX = "00000000-0000-4000-8000-0000000000c3";
+const sb = () => clienteMemoria(mem) as never;
+
+function semear() {
+  for (const k of Object.keys(db)) delete db[k];
+  mem.falharSelect.clear();
+  mem.falharInsert.clear();
+  enviados.length = 0;
+  db.employees = [
+    { id: GESTORA, nome: "Gestora Ana", telefone: "5571999990001", ativo: true, is_head_operacional: false },
+    { id: HEAD, nome: "Flavio Head", telefone: "5571999990002", ativo: true, is_head_operacional: true },
+    { id: SAIU, nome: "Bruno Ribeiro", telefone: "5571999990003", ativo: false, is_head_operacional: false },
+  ];
+  db.perf_cliente_gestor = [
+    { cliente_id: CLI_COM, gestor_id: GESTORA, principal: true, ativo: true },
+    // gestor que saiu (inativo): não conta, o cliente cai para o head
+    { cliente_id: CLI_EX, gestor_id: SAIU, principal: true, ativo: true },
+  ];
+  db.clientes_notion_mirror = [
+    // o analista do espelho diz "Gestora Ana" em todos: não pode decidir nada
+    { notion_id: "n-com", cliente: "Com Gestor", cliente_id: CLI_COM, analista: "Flavio Head", entrada_id: "r1", status: "Ativo", nicho: "Trabalhista", meta_campaign_id: "camp-1" },
+    { notion_id: "n-sem", cliente: "Sem Gestor", cliente_id: CLI_SEM, analista: "Gestora Ana", entrada_id: "r2", status: "Ativo", nicho: "Previdenciário", meta_campaign_id: "camp-2" },
+    { notion_id: "n-ex", cliente: "Gestor Saiu", cliente_id: CLI_EX, analista: "Bruno Ribeiro", entrada_id: "r3", status: "Ativo", nicho: null, meta_campaign_id: "camp-3" },
+  ];
+  // Ticket 1055b: o portal parte de clientes (casa nova); a receita é lida por cliente_id.
+  db.clientes = [
+    { id: CLI_COM, nome: "Com Gestor", status: "ativo" },
+    { id: CLI_SEM, nome: "Sem Gestor", status: "ativo" },
+    { id: CLI_EX, nome: "Gestor Saiu", status: "ativo" },
+  ];
+  db.clientes_receita = [
+    { id: "r1", cliente_id: CLI_COM, nome: "Com Gestor", status: "ativo", status_financeiro: "ativo", valor_mensal: 1000, risco_churn: null },
+    { id: "r2", cliente_id: CLI_SEM, nome: "Sem Gestor", status: "ativo", status_financeiro: "ativo", valor_mensal: 2000, risco_churn: null },
+    { id: "r3", cliente_id: CLI_EX, nome: "Gestor Saiu", status: "ativo", status_financeiro: "ativo", valor_mensal: 3000, risco_churn: null },
+  ];
+  db.clientes_extra = [{ notion_id: "n-ex", nicho: "Bancário" }];
+  db.alertas_cliente = [];
+  db.leads_crm = [];
+}
+
+beforeEach(semear);
+
+describe("quem cuida (fonte única)", () => {
+  it("gestor principal ativo; sem gestor ou com gestor que saiu, o head; o analista do espelho não entra", async () => {
+    const q = await carregarQuemCuida(sb());
+    expect(responsaveisDoCliente(q, CLI_COM)).toEqual({ pessoas: [expect.objectContaining({ id: GESTORA })], origem: "gestor" });
+    expect(responsaveisDoCliente(q, CLI_SEM)).toEqual({ pessoas: [expect.objectContaining({ id: HEAD })], origem: "head" });
+    expect(responsaveisDoCliente(q, CLI_EX).origem).toBe("head");
+    expect(responsaveisDoCliente(q, null)).toEqual({ pessoas: [], origem: "ninguem" });
+    expect(nomeDeQuemCuida(q, CLI_COM)).toBe("Gestora Ana");
+    expect(nomeDeQuemCuida(q, CLI_SEM)).toBe("Flavio Head");
+  });
+
+  it("carteira: a gestora só tem o cliente dela; o head tem os sem gestor", async () => {
+    const q = await carregarQuemCuida(sb());
+    expect([CLI_COM, CLI_SEM, CLI_EX].filter((c) => cuidaDoCliente(q, GESTORA, c))).toEqual([CLI_COM]);
+    expect([CLI_COM, CLI_SEM, CLI_EX].filter((c) => cuidaDoCliente(q, HEAD, c))).toEqual([CLI_SEM, CLI_EX]);
+  });
+
+  it("leitura que falha lança (nunca 'ninguém cuida')", async () => {
+    mem.falharSelect.add("perf_cliente_gestor");
+    await expect(carregarQuemCuida(sb())).rejects.toThrow(/gestor principal/);
+  });
+});
+
+describe("portal: meus clientes", () => {
+  it("vem do gestor principal, não do primeiro nome no analista", async () => {
+    sessao.atual = { employeeId: GESTORA, role: "sdr", entityId: null, nome: "Gestora Ana" };
+    const res = await meusClientes();
+    expect(res.status).toBe(200);
+    expect((await res.json()).map((c: { nome: string }) => c.nome)).toEqual(["Com Gestor"]);
+  });
+
+  it("head vê os clientes sem gestor", async () => {
+    sessao.atual = { employeeId: HEAD, role: "sdr", entityId: null, nome: "Flavio Head" };
+    const nomes = (await (await meusClientes()).json()).map((c: { nome: string }) => c.nome);
+    expect(nomes).toEqual(["Gestor Saiu", "Sem Gestor"]);
+  });
+
+  it("falha de leitura é 500, nunca lista vazia", async () => {
+    sessao.atual = { employeeId: GESTORA, role: "sdr", entityId: null, nome: "Gestora Ana" };
+    // Ticket 1055b: o universo do portal é clientes; é essa leitura que falha agora.
+    mem.falharSelect.add("clientes");
+    expect((await meusClientes()).status).toBe(500);
+  });
+});
+
+describe("alerta de campanha: destinatário é quem cuida, sempre interno", () => {
+  it("manda para o telefone do gestor principal ou do head; nunca para quem saiu", async () => {
+    process.env.CRON_SECRET = "segredo-teste";
+    const fetchOriginal = globalThis.fetch;
+    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ data: [{ spend: "120" }] }), { status: 200 })) as never;
+    try {
+      const d = new Date("2026-09-30T12:00:00Z"); // quarta
+      vi.useFakeTimers();
+      vi.setSystemTime(d);
+      const res = await alertasCampanha(new NextRequest("http://x/api/clientes/alertas-campanha", { headers: { authorization: "Bearer segredo-teste" } }));
+      vi.useRealTimers();
+      expect(res.status).toBe(200);
+      const tels = enviados.map((e) => e.tel).sort();
+      // Com Gestor → Gestora (…0001); Sem Gestor e Gestor Saiu → Head (…0002). Bruno (…0003) nunca.
+      expect(tels).toEqual(["5571999990001", "5571999990002", "5571999990002"]);
+      expect(tels).not.toContain("5571999990003");
+    } finally {
+      globalThis.fetch = fetchOriginal;
+    }
+  });
+});
+
+describe("passo 1 do setup no código", () => {
+  it("nicho (espelho ou dados extras) + gestor principal ativo; head ou analista não completam", async () => {
+    const p1 = await calcularP1Basico(sb());
+    expect(p1.get("n-com")).toBe(true); // nicho + gestora
+    expect(p1.get("n-sem")).toBe(false); // nicho, analista preenchido, mas sem gestor
+    expect(p1.get("n-ex")).toBe(false); // nicho nos extras, mas o gestor saiu
+  });
+
+  it("aplicarP1 troca o passo e refaz a soma (denominador 5)", () => {
+    const p1 = new Map([["n-sem", false], ["n-com", true]]);
+    // view dizia p1=true pelo analista: perde 1 passo
+    expect(aplicarP1({ notion_id: "n-sem", p1_basico: true, passos_concluidos: 3, setup_pct: 60 }, p1)).toMatchObject({ p1_basico: false, passos_concluidos: 2, setup_pct: 40 });
+    // view dizia p1=false (sem analista), mas tem gestor: ganha 1 passo
+    expect(aplicarP1({ notion_id: "n-com", p1_basico: false, passos_concluidos: 4, setup_pct: 80 }, p1)).toMatchObject({ p1_basico: true, passos_concluidos: 5, setup_pct: 100 });
+    // sem cálculo para a linha: intacta
+    expect(aplicarP1({ notion_id: "outro", p1_basico: true, passos_concluidos: 1, setup_pct: 20 }, p1)).toMatchObject({ p1_basico: true, passos_concluidos: 1 });
+  });
+});
+
+describe("telas e rotas: o analista do espelho não decide", () => {
+  const ler = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
+  it("performance filtra pela carteira de quem cuida", () => {
+    const src = ler("src/app/api/clientes/performance/route.ts");
+    expect(src).toContain("cuidaDoCliente(quemCuida, filtroGestorEmpId, c.cliente_id)");
+    expect(src).not.toContain("filtroAnalistaNome");
+  });
+  it("página do membro usa a carteira do employee", () => {
+    expect(ler("src/app/api/notion/member/[id]/route.ts")).toContain("getClientesDoEmployee(member.notion_id)");
+    expect(ler("src/lib/data.ts")).not.toContain("getClientesByAnalista");
+  });
+  it("capacidade agrupa por quem cuida; carteira sem filtro por analista", () => {
+    expect(ler("src/components/gestor-capacidade.tsx")).toContain("c.gestor_nome");
+    expect(ler("src/app/api/notion/clientes-filtrados/route.ts")).toContain("gestor_nome: nomeDeQuemCuida(");
+    expect(ler("src/app/dashboard/clientes/page.tsx")).not.toContain("filtroAnalista");
+  });
+  it("assistente de setup: passo 1 grava o gestor principal pelo caminho da ficha", () => {
+    const src = ler("src/app/dashboard/clientes/[id]/setup/page.tsx");
+    expect(src).toContain("gravarGestorPrincipal(clienteIdRef.current, fGestorId)");
+    expect(src).not.toContain('savePasso("basico", { analista');
+  });
+  it("as 3 rotas de setup trocam o passo 1 da view pelo cálculo do código", () => {
+    for (const p of ["src/app/api/perf/setup/route.ts", "src/app/api/perf/setup/[clienteId]/route.ts", "src/app/api/perf/setup/[clienteId]/passo/route.ts"]) {
+      expect(ler(p)).toContain("calcularP1Basico(supabase");
+    }
+  });
+});

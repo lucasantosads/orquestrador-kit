@@ -1,0 +1,11 @@
+A tela `/equipe-geral` foi removida e a mudança está commitada (9b763de, sem push). O diff tem 239 linhas contra o teto de 300.
+
+- **Tela removida:** apaguei `src/app/equipe-geral/page.tsx` e `src/app/equipe-geral/error.tsx`.
+- **Redirect:** `src/app/dashboard/team/page.tsx` agora faz `redirect("/portal/equipe")`, e o comentário não cita mais a rota antiga. Nada em `src` cita `/equipe-geral`.
+- **Teste de error boundary:** em `test/error-boundaries-rotas-lote5.test.ts` saiu só a entrada da tela removida.
+- **Teste novo:** `test/remove-equipe-geral.test.ts` confere três coisas. A rota removida não existe, nenhum arquivo de `src` cita `/equipe-geral`, e `/dashboard/team` vai para `/portal/equipe`.
+
+**Verificações**
+- O `tsc` ficou nos 3 erros do baseline.
+- Rodei os três arquivos de teste ligados à mudança: o teste novo, `error-boundaries-rotas-lote5` e `entrada-inicio-papel`. Os 44 testes passaram.
+- Não rodei o `vitest` completo, o `npm run build` nem as sete guardas globais. Não editei nenhuma delas, e `/api/notion/team` e `src/app/portal/equipe/page.tsx` ficaram intocados.

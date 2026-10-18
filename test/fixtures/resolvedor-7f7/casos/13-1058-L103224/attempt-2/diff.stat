@@ -1,0 +1,8 @@
+ src/app/api/clientes/alertas-campanha/route.ts     |  21 ++-
+ src/app/api/clientes/analise-risco/route.ts        |  40 ++++-
+ src/app/api/clientes/calcular-score/route.ts       |  30 +++-
+ .../api/clientes/temperatura-comercial/route.ts    |  17 ++-
+ test/crons-get-ia.test.ts                          |  10 +-
+ test/leitores-crons-casa-nova.test.ts              | 168 +++++++++++++++++++++
+ test/temperatura-comercial-cron.test.ts            |  13 +-
+ 7 files changed, 263 insertions(+), 36 deletions(-)

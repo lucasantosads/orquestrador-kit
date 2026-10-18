@@ -1,0 +1,16 @@
+O ticket 1195 está implementado e commitado em três commits, o último `9cc062e`, sem push. Rodei `tsc` (3 erros, o baseline) e o vitest nas guardas globais e nos quatro testes do critério, mais o novo; os 81 testes passaram. Não rodei `npm run build` nem o `vitest run` completo. Também não conferi à mão os critérios de allowlist e `.sql`. Pela soma das adições e remoções de cada arquivo, o diff dá cerca de 460 linhas, abaixo do teto de 600.
+
+- **`ingest.ts`**:
+  - `mapPayload` devolve `duracao_seg`. `JANELA_DEDUPE_MS` e `flattenTranscript` agora são exportados.
+  - Na reentrega, o `participantes` do patch mantém os `colaboradores` da linha existente.
+  - Na primeira entrega, só procura reunião manual se o matching achou cliente e há data. A mais próxima na janela de 2h é completada, com `match_status` `dedupe_manual`.
+  - Duas ou mais na janela: completa a mais próxima e dá um `console.warn` sem dado pessoal.
+  - Data, categoria, observação, cliente e origem da linha manual não mudam.
+- **`tldv-api.ts` (novo)**: `buscarTranscricaoTldv` segue o contrato do ticket (`sem_chave`, `indisponivel`, `falhou`, `ok`). Usa `parseJsonResponse`, reaproveita `flattenTranscript` e nunca loga a chave.
+- **`manual.ts`**: registro com link do tl;dv e sem transcrição busca na API. Se vier `ok`, grava e enfileira. Senão a reunião fica salva e o retorno traz `aguardando_tldv`.
+- **`types.ts`**: `duration` adicionado ao schema.
+- **`test/reuniao-dedupe-tldv.test.ts` (novo)**: 15 testes cobrindo os cenários pedidos.
+
+**Desvio do pedido:** o retorno de `registrarReuniaoManual` não tem `transcricao: "informada"`. Quando a transcrição vem no próprio registro, o campo fica ausente. O motivo é que `test/reuniao-manual-registro.test.ts:127` compara o retorno com `toEqual` exato, e esse arquivo está fora da allowlist, então não pude atualizá-lo. Com `"informada"` o teste quebrava e reprovava o critério de testes verdes. O tipo ficou `"buscada_tldv" | "aguardando_tldv" | "sem_link_tldv"`, com o campo opcional. Se você preferir `"informada"` explícito, é só ampliar a allowlist para esse teste.
+
+A busca de reunião manual filtra a janela de 2h em JS, depois de consultar por cliente, origem e `tldv_meeting_id` nulo. Evitei `.gte` e `.lte` no banco porque o dublê do `test/reuniao-tldv-envelope-e-contato.test.ts` não os tem, e esse arquivo também está fora da allowlist.

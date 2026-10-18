@@ -1,0 +1,121 @@
+/**
+ * Ticket 668 — relatório de ativos sem cliente_id resolvível (só leitura).
+ */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("@/lib/session", () => ({ getSession: vi.fn(), isSuperAdmin: vi.fn() }));
+
+const { metodosChamados, dados } = vi.hoisted(() => ({
+  metodosChamados: [] as string[],
+  dados: {} as Record<string, unknown[]>,
+}));
+
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: () => ({
+    from: (tabela: string) => {
+      const q: Record<string, unknown> = {};
+      for (const m of ["select", "order", "insert", "update", "upsert", "delete"]) {
+        q[m] = () => { metodosChamados.push(m); return q; };
+      }
+      q.range = (from: number, to: number) => {
+        metodosChamados.push("range");
+        return Promise.resolve({ data: (dados[tabela] ?? []).slice(from, to + 1), error: null });
+      };
+      return q;
+    },
+  }),
+}));
+
+import { getSession, isSuperAdmin } from "@/lib/session";
+import { classificarSemClienteId } from "@/lib/clientes/sem-cliente-id";
+import { GET } from "@/app/api/admin/clientes-sem-cliente-id/route";
+
+const U = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+
+const receitas = [
+  { id: "r1", nome: "Direto", status_financeiro: "ativo", cliente_id: U(1), notion_id: null },
+  { id: "r2", nome: "Pelo Espelho", status_financeiro: "pausado", cliente_id: null, notion_id: "n2" },
+  { id: "r3", nome: "  Sem   Vinculo ", status_financeiro: "parceria", cliente_id: null, notion_id: "n3" },
+  { id: "r4", nome: "Sem Notion", status_financeiro: "ativo", cliente_id: null, notion_id: null },
+  { id: "r5", nome: "Churned", status_financeiro: "churned", cliente_id: null, notion_id: null },
+];
+const espelhos = [
+  { notion_id: "n2", cliente: "Pelo Espelho", cliente_id: U(2) },
+  { notion_id: "n3", cliente: "outro", cliente_id: null },
+  { notion_id: "n9", cliente: "SEM VINCULO", cliente_id: U(9) },
+];
+const clientes = [
+  { id: U(3), nome: "sem vinculo", status: "Ativo" },
+  { id: U(4), nome: "Alguem", status: "Ativo" },
+];
+
+describe("classificarSemClienteId", () => {
+  const rel = classificarSemClienteId(receitas, espelhos, clientes);
+
+  it("conta os universos pela regra canônica de ativo", () => {
+    // 4 ativos (churned fora): 1 direto, 1 pelo espelho, 2 sem resolução.
+    expect(rel.total_ativos).toBe(4);
+    expect(rel.resolvidos_direto).toBe(1);
+    expect(rel.resolvidos_pelo_espelho).toBe(1);
+    expect(rel.sem_cliente_id).toBe(2);
+    expect(rel.casos.map((c) => c.id)).toEqual(["r3", "r4"]);
+  });
+
+  it("espelho sem vínculo traz candidatos por nome normalizado (caixa e espaços)", () => {
+    const c = rel.casos[0];
+    expect(c.motivo).toBe("espelho_sem_vinculo");
+    expect(c.candidatos_clientes).toEqual([{ id: U(3), nome: "sem vinculo", status: "Ativo" }]);
+    expect(c.candidatos_espelhos).toEqual([{ notion_id: "n9", cliente_id: U(9) }]);
+  });
+
+  it("sem notion_id e sem candidato", () => {
+    const c = rel.casos[1];
+    expect(c.motivo).toBe("sem_notion_id");
+    expect(c.notion_id).toBeNull();
+    expect(c.candidatos_clientes).toEqual([]);
+    expect(c.candidatos_espelhos).toEqual([]);
+  });
+
+  it("notion_id sem linha no espelho é sem_espelho", () => {
+    const r = classificarSemClienteId(
+      [{ id: "x", nome: "X", status_financeiro: "ativo", cliente_id: null, notion_id: "zz" }], [], [],
+    );
+    expect(r.casos[0].motivo).toBe("sem_espelho");
+  });
+});
+
+describe("GET /api/admin/clientes-sem-cliente-id", () => {
+  beforeEach(() => {
+    metodosChamados.length = 0;
+    dados.clientes_receita = receitas;
+    dados.clientes_notion_mirror = espelhos;
+    dados.clientes = clientes;
+    vi.mocked(getSession).mockReset();
+    vi.mocked(isSuperAdmin).mockReset();
+  });
+
+  it("401 sem sessão", async () => {
+    vi.mocked(getSession).mockResolvedValue(null);
+    expect((await GET()).status).toBe(401);
+  });
+
+  it("403 sem superadmin", async () => {
+    vi.mocked(getSession).mockResolvedValue({ employeeId: "e" } as never);
+    vi.mocked(isSuperAdmin).mockReturnValue(false);
+    expect((await GET()).status).toBe(403);
+    expect(metodosChamados).toEqual([]);
+  });
+
+  it("superadmin recebe o relatório e só há select", async () => {
+    vi.mocked(getSession).mockResolvedValue({ employeeId: "e" } as never);
+    vi.mocked(isSuperAdmin).mockReturnValue(true);
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.total_ativos).toBe(4);
+    expect(body.sem_cliente_id).toBe(2);
+    expect(metodosChamados.length).toBeGreaterThan(0);
+    for (const m of metodosChamados) expect(["select", "order", "range"]).toContain(m);
+    for (const proibido of ["insert", "update", "upsert", "delete"]) expect(metodosChamados).not.toContain(proibido);
+  });
+});

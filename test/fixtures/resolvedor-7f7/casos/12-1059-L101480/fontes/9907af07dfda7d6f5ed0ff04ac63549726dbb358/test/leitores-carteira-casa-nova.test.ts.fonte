@@ -1,0 +1,229 @@
+/**
+ * Ticket 1055: os leitores da carteira partem da casa nova (negocio, perfil, nichos, clientes) e
+ * fazem a ponte com o Notion pela lib do espelho. supabase, sessao e guardas sempre mockados.
+ */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+
+const { mockFrom, mockSession, espelhoSpy } = vi.hoisted(() => ({
+  mockFrom: vi.fn(),
+  mockSession: vi.fn(),
+  espelhoSpy: { todo: vi.fn(), porNotion: vi.fn(), porCliente: vi.fn() },
+}));
+vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ from: mockFrom }) }));
+vi.mock("@/lib/session", () => ({ getSession: mockSession }));
+vi.mock("@/lib/auth/exigir-papel", () => ({ exigirPapel: async () => ({ session: { employeeId: "x" } }) }));
+vi.mock("@/lib/ops/onboarding/db", () => ({
+  supabaseAdmin: { from: mockFrom },
+  guardGestor: async () => ({ res: null }),
+}));
+vi.mock("@/lib/db/commercial-readonly", () => ({ getActiveClients: async () => [], getChurnedClients: async () => [] }));
+vi.mock("@/lib/clientes/espelho-legado", async (orig) => {
+  const real = await orig<typeof import("@/lib/clientes/espelho-legado")>();
+  espelhoSpy.todo.mockImplementation(real.lerEspelhoTodo);
+  espelhoSpy.porNotion.mockImplementation(real.lerEspelhoPorNotion);
+  espelhoSpy.porCliente.mockImplementation(real.pontePorCliente);
+  return { ...real, lerEspelhoTodo: espelhoSpy.todo, lerEspelhoPorNotion: espelhoSpy.porNotion, pontePorCliente: espelhoSpy.porCliente };
+});
+
+import { GET as getDashboard } from "@/app/api/dashboard/clientes/route";
+import { GET as getCarteira } from "@/app/api/carteira/route";
+import { GET as getGestores } from "@/app/api/clientes/kpis/gestores/route";
+import { GET as getFiltrados } from "@/app/api/notion/clientes-filtrados/route";
+import { GET as getEquipe } from "@/app/api/equipe/carteira/route";
+import { calcularP1Basico } from "@/lib/setup/p1-basico";
+
+const CLI_V = "20000000-0000-4000-8000-000000000001";
+const CLI_B = "20000000-0000-4000-8000-000000000002";
+const ENT_V = "10000000-0000-4000-8000-000000000001";
+const ENT_L = "10000000-0000-4000-8000-000000000002";
+const GESTOR = "30000000-0000-4000-8000-000000000001";
+
+let fixtures: Record<string, Record<string, unknown>[]>;
+let erros: Record<string, string>;
+
+function chain(table: string) {
+  const filtros: Array<[string, unknown[]]> = [];
+  const c: Record<string, unknown> = {};
+  for (const m of ["select", "is", "not", "order", "gte", "limit", "or", "eq"]) c[m] = () => c;
+  c.in = (col: string, vals: unknown[]) => {
+    filtros.push([col, vals]);
+    return c;
+  };
+  let janela: [number, number] | null = null;
+  c.range = (a: number, b: number) => {
+    janela = [a, b];
+    return c;
+  };
+  c.then = (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => {
+    let linhas = fixtures[table] ?? [];
+    for (const [col, vals] of filtros) linhas = linhas.filter((l) => vals.includes(l[col]));
+    if (janela) linhas = linhas.slice(janela[0], janela[1] + 1);
+    const r = erros[table] ? { data: null, error: { message: erros[table] } } : { data: linhas, error: null };
+    return Promise.resolve(r).then(resolve, reject);
+  };
+  return c;
+}
+
+function espelho(notion_id: string, cliente: string, cliente_id: string | null, entrada_id: string, extra: Record<string, unknown> = {}) {
+  return {
+    notion_id, cliente, cliente_id, entrada_id, status: "LEGADO-STATUS", nicho: "LEGADO-NICHO", analista: "LEGADO-ANALISTA",
+    orcamento: null, orcamento_inicial: null, orcamento_atualizado_em: null, dia_otimizar: "LEGADO-DIA", otimizacao: "LEGADO-OTIM",
+    pagamento: null, fb_url: null, gads_url: null, tiktok_url: null, meta_campaign_id: null,
+    raw_properties: { situacao: "LEGADO-SITUACAO" }, ...extra,
+  };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  erros = {};
+  fixtures = {
+    clientes_notion_mirror: [
+      espelho("notion-v", "Vinculado", CLI_V, ENT_V, { ultimo_feedback: "LEGADO-FEEDBACK" }),
+      espelho("notion-l", "Legado", null, ENT_L),
+    ],
+    clientes_receita: [
+      { id: ENT_V, nome: "Vinculado", status_financeiro: "ativo", categoria: "Advogados", cliente_id: CLI_V },
+      { id: ENT_L, nome: "Legado", status_financeiro: "ativo", categoria: "Advogados", cliente_id: null },
+    ],
+    ops_cliente_negocio: [{ cliente_id: CLI_V, fase: "Planejamento" }],
+    ops_cliente_perfil: [{ cliente_id: CLI_V, situacao: "Estável", resultados: "Bons", atencao: "Baixa", analista: "Ana", dia_otimizar: "Segunda", ultimo_feedback: "2026-10-01", data_otimizacao: "2026-10-02" }],
+    ops_cliente_nichos: [{ cliente_id: CLI_V, nicho_id: "n1" }],
+    perf_nichos: [{ id: "n1", nome: "Trabalhista" }],
+    employees: [{ id: GESTOR, nome: "Gestora Ana", telefone: null, ativo: true, is_head_operacional: false }],
+    perf_cliente_gestor: [{ cliente_id: CLI_V, gestor_id: GESTOR, principal: true, ativo: true }],
+    clientes: [
+      { id: CLI_V, nome: "Vinculado", status: "ativo" },
+      { id: CLI_B, nome: "Outro", status: "ativo" },
+    ],
+  };
+  mockFrom.mockImplementation((t: string) => chain(t));
+  mockSession.mockResolvedValue({ employeeId: GESTOR, role: "admin" });
+});
+
+type Linha = Record<string, unknown>;
+
+describe("GET /api/dashboard/clientes (ticket 1055)", () => {
+  it("linha vinculada mostra fase, perfil e nicho da casa nova, nao os do espelho", async () => {
+    const corpo = (await (await getDashboard()).json()) as Linha[];
+    const v = corpo.find((l) => l.notion_id === "notion-v");
+    expect(v?.status).toBe("Planejamento");
+    expect(v?.situacao).toBe("Estável");
+    expect(v?.resultados).toBe("Bons");
+    expect(v?.analista).toBe("Ana");
+    expect(v?.dia_otimizacao).toBe("Segunda");
+    expect(v?.ultimo_feedback).toBe("2026-10-01");
+    expect(v?.ultima_otimizacao).toBe("2026-10-02");
+    expect(v?.nicho).toBe("Trabalhista");
+  });
+
+  it("linha sem cliente_id continua com o legado", async () => {
+    const corpo = (await (await getDashboard()).json()) as Linha[];
+    const l = corpo.find((x) => x.notion_id === "notion-l");
+    expect(l?.status).toBe("LEGADO-STATUS");
+    expect(l?.situacao).toBe("LEGADO-SITUACAO");
+    expect(l?.analista).toBe("LEGADO-ANALISTA");
+    expect(l?.nicho).toBe("LEGADO-NICHO");
+  });
+
+  it("erro do espelho, do negocio ou do perfil vira 500, nunca lista", async () => {
+    for (const tabela of ["clientes_notion_mirror", "ops_cliente_negocio", "ops_cliente_perfil"]) {
+      erros = { [tabela]: "falha simulada" };
+      const res = await getDashboard();
+      expect(res.status).toBe(500);
+      expect(Array.isArray(await res.json())).toBe(false);
+    }
+  });
+});
+
+describe("leitores da ponte pela lib (ticket 1055)", () => {
+  it("/api/carteira monta o NPS pela ponte da lib", async () => {
+    fixtures.client_nps = [{ cliente_id: null, cliente_notion_id: "notion-v", nps_score: 9, mes_referencia: "2026-10-01" }];
+    fixtures.perf_nps_respostas = [];
+    const res = await getCarteira();
+    expect(res.status).toBe(200);
+    expect(espelhoSpy.porCliente).toHaveBeenCalled();
+    const corpo = (await res.json()) as { clientes: Array<{ cliente_id: string; nps: number | null }> };
+    expect(corpo.clientes.find((c) => c.cliente_id === CLI_V)?.nps).toBe(9);
+  });
+
+  it("/api/carteira: erro do espelho e 500", async () => {
+    erros = { clientes_notion_mirror: "falha simulada" };
+    const res = await getCarteira();
+    expect(res.status).toBe(500);
+  });
+
+  it("kpis por gestor faz a ponte com lerEspelhoTodo", async () => {
+    const res = await getGestores();
+    expect(res.status).toBe(200);
+    expect(espelhoSpy.todo).toHaveBeenCalledWith(expect.anything(), []);
+    const corpo = (await res.json()) as { gestor_map: Record<string, string | null>; cliente_id_map: Record<string, string | null> };
+    expect(corpo.cliente_id_map["notion-v"]).toBe(CLI_V);
+    expect(corpo.gestor_map["notion-v"]).toBe("Gestora Ana");
+    expect(corpo.gestor_map["notion-l"]).toBeNull();
+  });
+
+  it("clientes-filtrados usa lerEspelhoTodo para a ponte", async () => {
+    const res = await getFiltrados();
+    expect(res.status).toBe(200);
+    expect(espelhoSpy.todo).toHaveBeenCalledWith(expect.anything(), []);
+  });
+});
+
+describe("GET /api/equipe/carteira (ticket 1055)", () => {
+  const req = (id: string) => new Request(`http://localhost/api/equipe/carteira?employee_id=${id}`);
+
+  it("lista por clientes e quem-cuida, com perfil, ponte e receita por cliente_id", async () => {
+    fixtures.clientes_receita = [{ cliente_id: CLI_V, status_financeiro: "ativo" }];
+    const res = await getEquipe(req(GESTOR));
+    const corpo = (await res.json()) as { clientes: Linha[]; sem_vinculo: boolean };
+    expect(corpo.sem_vinculo).toBe(false);
+    expect(corpo.clientes).toHaveLength(1);
+    expect(corpo.clientes[0]).toMatchObject({
+      cliente_id: CLI_V, notion_id: "notion-v", nome: "Vinculado", situacao: "Estável",
+      resultados: "Bons", ultimo_feedback: "2026-10-01", entrada_status_financeiro: "ativo",
+    });
+  });
+
+  it("sem clientes da pessoa: sem_vinculo", async () => {
+    fixtures.clientes = [];
+    const corpo = (await (await getEquipe(req(GESTOR))).json()) as { clientes: Linha[]; sem_vinculo: boolean };
+    expect(corpo.sem_vinculo).toBe(true);
+    expect(corpo.clientes).toEqual([]);
+  });
+});
+
+describe("calcularP1Basico (ticket 1055)", () => {
+  it("com notionIds usa lerEspelhoPorNotion", async () => {
+    const p1 = await calcularP1Basico({ from: mockFrom }, ["notion-v"]);
+    expect(espelhoSpy.porNotion).toHaveBeenCalledWith(expect.anything(), ["notion-v"], []);
+    expect(espelhoSpy.todo).not.toHaveBeenCalled();
+    expect(p1.get("notion-v")).toBe(true);
+    expect(p1.has("notion-l")).toBe(false);
+  });
+
+  it("sem notionIds usa lerEspelhoTodo", async () => {
+    const p1 = await calcularP1Basico({ from: mockFrom });
+    expect(espelhoSpy.todo).toHaveBeenCalledWith(expect.anything(), []);
+    expect(p1.get("notion-l")).toBe(false);
+  });
+
+  it("erro do espelho lanca com o prefixo da lib", async () => {
+    erros = { clientes_notion_mirror: "falha simulada" };
+    await expect(calcularP1Basico({ from: mockFrom })).rejects.toThrow(/espelho:/);
+  });
+});
+
+describe("os 6 arquivos nao citam mais a tabela do espelho (ticket 1055)", () => {
+  const arquivos = [
+    "src/app/api/dashboard/clientes/route.ts",
+    "src/app/api/carteira/route.ts",
+    "src/app/api/clientes/kpis/gestores/route.ts",
+    "src/app/api/equipe/carteira/route.ts",
+    "src/app/api/notion/clientes-filtrados/route.ts",
+    "src/lib/setup/p1-basico.ts",
+  ];
+  it.each(arquivos)("%s", (f) => {
+    expect(readFileSync(f, "utf8")).not.toContain("clientes_notion_mirror");
+  });
+});

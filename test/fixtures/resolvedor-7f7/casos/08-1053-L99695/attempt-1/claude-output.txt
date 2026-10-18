@@ -1,0 +1,13 @@
+O ticket 1053 está implementado e commitado em `frente/1053`, mas não rodei `npm run build` nem a suíte completa do `vitest`. Rodei o `tsc` e os 18 arquivos de teste dos critérios de aceite (mais o novo), todos verdes (252 testes). O `tsc` deu 3 erros, o baseline. O diff tem cerca de 443 linhas, dentro do teto de 650.
+
+- **Feedbacks:** o POST grava `ultimo_feedback` no perfil operacional e responde `perfil_atualizado`.
+- **Situação:** o POST resolve o cliente e responde 409 se ele não tem cadastro no OS. Com cadastro, grava a situação no perfil e insere o histórico com `situacao_anterior` lida do perfil, origem `gestor_manual` e gestor da sessão.
+- **Carteira (PATCH):** `DESTINO_CAMPO` manda `status` para `gravarNegocio` e os demais campos para o perfil. Campo fora do mapa dá 400 com mensagem humana. Sem `cliente_id`, 409. O insert de `local_<uuid>` e o update no espelho saíram. Para `pending_<entrada>`, o cliente vem de `clientes_receita` (só leitura) ou da ponte por entrada.
+- **`recalcNichoPrincipal`:** só deriva o nome, sem persistir.
+- **Testes:** `nicho-principal-manual` e `papel-nas-escritas` foram recalculados como o ticket pediu. O `escritas-team-carteira-casa-nova.test.ts` é novo, com 20 testes.
+
+Dois desvios do ticket, ambos para manter a suíte verde:
+- Em `src/app/api/dashboard/clientes/route.ts`, importei `pontePorEntrada` sob demanda, dentro do ramo `pending_`, em vez de no topo. O módulo importa `server-only`, e com o import estático `test/carteira-membro.test.ts` e `test/agregacoes-truncadas-ficha.test.ts` quebravam. Os dois estão fora da allowlist.
+- Em `test/papel-nas-escritas.test.ts` acrescentei `vi.mock("server-only", ...)`. A carteira passou a puxar o `resolver-cliente`, e o teste não carregava sem isso.
+
+A lista de arquivos permitidos do critério "só arquivos da allowlist" não inclui `test/papel-nas-escritas.test.ts`, que está na allowlist do ticket e foi alterado. Se o avaliador usar a lista curta, esse critério reprova só por causa dele.

@@ -1,0 +1,6 @@
+ src/lib/perf/reunioes/ingest.ts   |  88 ++++++++++-
+ src/lib/perf/reunioes/manual.ts   |  24 ++-
+ src/lib/perf/reunioes/tldv-api.ts |  37 +++++
+ src/lib/perf/reunioes/types.ts    |   1 +
+ test/reuniao-dedupe-tldv.test.ts  | 310 ++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 454 insertions(+), 6 deletions(-)

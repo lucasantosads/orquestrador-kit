@@ -1,0 +1,9 @@
+ src/app/api/clientes/[id]/diagnostico/route.ts |  76 +++----
+ src/app/api/clientes/[id]/resumo/route.ts      |  77 ++++---
+ src/app/api/clientes/entregaveis/route.ts      |  22 +-
+ src/app/api/notion/clientes/[id]/route.ts      |  40 ++--
+ src/lib/clientes/nichos-catalogo.ts            |  39 ++++
+ src/lib/data.ts                                | 135 ++++++------
+ test/leitores-ficha-casa-nova.test.ts          | 271 +++++++++++++++++++++++++
+ test/resumo-cliente.test.ts                    |  29 ++-
+ 8 files changed, 516 insertions(+), 173 deletions(-)

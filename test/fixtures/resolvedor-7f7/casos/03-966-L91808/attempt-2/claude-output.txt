@@ -1,0 +1,27 @@
+A aba Criativos está implementada e commitada (`639d917`), mas a suíte completa do vitest continua com 1 falha. Ela está num arquivo fora da allowlist deste ticket.
+
+A reprovação anterior tinha essa mesma causa. Nada da tentativa anterior estava na worktree, então refiz tudo.
+
+**A falha restante**
+- `test/ficha-nav-colapsavel.test.ts:115` espera 7 `AnchorBlock` no grupo performance e agora há 8. O oitavo é o do `criativos`, que o ticket manda montar.
+- A correção é trocar `7` por `8` nessa asserção e acrescentar um comentário "Ticket 966", como o 646 fez ao passar de 8 para 7. A regra de testes do repo pede esse recálculo.
+- Esse arquivo não está na allowlist. Editá-lo reprovaria o critério `SO_ALLOWLIST`, então não toquei nele.
+- Para fechar o gate, preciso que você inclua `test/ficha-nav-colapsavel.test.ts` na allowlist do 966 ou autorize eu a editar essa asserção.
+
+**O que foi feito**
+- `ficha-types.ts`: `criativos` entra no `ChildTab`, vem depois de `teses` nos filhos de performance e ganha o rótulo "Criativos". `TAB_GROUPS` continua com 5 grupos.
+- `page.tsx`: import da aba e um `AnchorBlock id="criativos"` logo depois de `teses`.
+- `criativos-tab.tsx` (novo): `CriativosTabView` com cartões, tabela, ordenação, filtro e painel lateral, e `CriativosTab` que lê `useFicha()`. Não tem seletor de período próprio.
+- `campanhas-aba-criativos.test.tsx` (novo): 9 testes, que carregam a view por esbuild + vm, como o `campanhas-aceite-mockup`.
+- `campanhas-sem-duplicatas.test.ts`: `criativos` entra na lista esperada do teste (h), com o comentário pedido. Mais nada mudou no arquivo.
+
+**Verificação**
+- Os 14 arquivos de teste do critério de guardas passam (207 testes).
+- `tsc` dá 3 erros, o baseline.
+- Mudei a tabela de `text-xs` para `text-sm` porque o `ui-guard` barra corpo de tabela abaixo de 13,5px.
+- O diff é de 478 linhas adicionadas e 3 removidas, dentro do teto de 600.
+- Não rodei `npm run build` nem os critérios do `git diff` contra `staging-auto`.
+
+Dois pontos de implementação que divergem do que o ticket descreve:
+- **Duração:** a resposta da rota não traz duração do vídeo, então o painel sempre mostra "duração não informada".
+- **Comparação de CPMQL:** o benchmark da tese só tem hook e body. Usei a mediana de CPMQL dos vídeos do próprio cliente para a cor laranja e para a "leitura" do painel.

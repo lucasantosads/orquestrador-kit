@@ -17,6 +17,8 @@ import { materializar } from './triador-repo-legado.js'
 
 export const FX_RES = join(import.meta.dirname, 'fixtures', 'resolvedor-7f')
 export const FX_TRI = join(import.meta.dirname, 'fixtures', 'triador-7f')
+/** Os resgates humanos de allowlist do Comarka depois de 11/10 (7f-b7). */
+export const FX_7F7 = join(import.meta.dirname, 'fixtures', 'resolvedor-7f7')
 export const GIT_REAL = execFileSync('bash', ['-c', 'command -v git'], { encoding: 'utf8' }).trim()
 
 /** Onde está a evidência de cada caso do gabarito. */
@@ -27,7 +29,14 @@ export const CASO: Record<string, string> = {
   '932': join(FX_TRI, '37-932-L85272'),
   // R5 máquina (D4), sem gabarito humano: o ticket da fixture, posto em bloqueado
   '801': join(FX_TRI, '20-801-L72121'),
+  // 7f-b7: os casos de ../fixtures/resolvedor-7f7 (gabarito ao lado)
+  ...Object.fromEntries(
+    (existsSync(join(FX_7F7, 'casos')) ? readdirSync(join(FX_7F7, 'casos')) : []).map((d) => [d.split('-')[1]!, join(FX_7F7, 'casos', d)]),
+  ),
 }
+
+/** O gabarito (antes.md, depois.md) de um caso: o da 7f-b2 ou o da 7f-b7. */
+const gabaritoDe = (id: string): string => (existsSync(join(FX_7F7, 'gabarito', id)) ? join(FX_7F7, 'gabarito', id) : join(FX_RES, 'gabarito', id))
 
 export interface Ambiente {
   base: string
@@ -139,7 +148,7 @@ export function repoDoCaso(base: string, id: string, o: { nome?: string; arvoreS
   git(raiz, 'checkout', '-q', '--orphan', 'main')
   git(raiz, 'rm', '-rq', '--cached', '--ignore-unmatch', '.')
   materializar(d, raiz)
-  const gab = join(FX_RES, 'gabarito', id)
+  const gab = gabaritoDe(id)
   const tk = JSON.parse(readFileSync(join(d, 'ticket.json'), 'utf8')) as Record<string, unknown>
   const antes = existsSync(gab)
     ? readFileSync(join(gab, 'antes.md'), 'utf8')

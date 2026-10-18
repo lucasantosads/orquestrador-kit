@@ -1,0 +1,20 @@
+O ticket 1053b está implementado e commitado em 4 commits na `frente/1053b`, sem push. `npm run build` não rodou: o comando foi negado por permissão, então o build segue sem verificação. Também não rodei `npx vitest run` inteiro, só os 10 arquivos de teste dos critérios. Esses 10 passam (123 testes), e o `tsc` ficou em 3 erros, os mesmos do baseline (arquivos `qualificacao*`).
+
+- **`espelho-legado.ts`:** só o `import "server-only"` virou o comentário pedido.
+- **`espelho-status.ts`:** `gravarFaseNoEspelho` grava a fase em `ops_cliente_negocio` só quando ela muda. Audita com a entidade `ops_cliente_negocio`, o campo `fase` e o valor anterior. Cliente sem cadastro devolve `ok: false` com o motivo. `receitaIdPelaChave` e `clienteIdDaReceita` não leem mais o espelho. O arquivo não cita mais `clientes_notion_mirror`, e os nomes exportados não mudaram.
+- **Rota do passo:**
+  - Sem `cliente_id` devolve 409.
+  - O passo basico grava o analista no perfil e vincula o nicho pelo catálogo.
+  - A transição para `Ativo` passa por `lerNegocio`/`gravarNegocio`.
+  - `ensureClienteId` saiu, e a rota também não cita mais `clientes_notion_mirror`.
+- **`test/espelho-fase-churn.test.ts`:** recalculado para `ops_cliente_negocio`, sem remover nenhum `it` nem `expect`. Quatro cenários mudaram de fixture, cada um com comentário "Ticket 1053b":
+  - O fixture agora dá `cliente_id` à receita; os cenários "sem chave" e "sem espelho" precisaram zerá-lo.
+  - No cenário do homônimo, o pipeline agora é achado pela chave, então `avisos` passou de uma lista com 1 aviso para `undefined`.
+- **`test/fase-e-setup-casa-nova.test.ts`:** novo, com 10 testes verdes. Cobrem perfil, nicho, o 409, a transição e as fontes sem o espelho.
+
+O diff total é de 469 linhas, abaixo do teto de 690.
+
+Dois pontos que podem pesar na avaliação:
+
+- **Critério `SO_ALLOWLIST`:** ele lista só 4 arquivos e deixa `espelho-legado.ts` de fora, mas a allowlist em pathspec e o passo (0) do ticket o incluem. Segui o ticket, então esse critério deve acusar `FORA_src/lib/clientes/espelho-legado.ts`.
+- **`notionIds` no retorno:** quando a receita já tem `cliente_id` mas não tem `notion_id`, `notionIds` vem da ponte por entrada. Acrescentei essa leitura, que o ticket não previa, para o retorno continuar `["n-acme"]`.

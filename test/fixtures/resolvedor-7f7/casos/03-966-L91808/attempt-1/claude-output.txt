@@ -1,0 +1,17 @@
+A aba Criativos está pronta e commitada em dois commits (`fef02b4` para a aba e os registros, `9649df2` para o teste novo). Não rodei `npm run build` nem a suíte completa do vitest, só o `tsc` e as 13 suítes de guarda do critério mais o teste novo.
+
+- **`tsc`:** 3 erros, o mesmo número de antes, todos em arquivos de qualificação.
+- **Vitest:** 14 arquivos e 207 testes passaram: os 13 do critério de guardas mais `test/campanhas-aba-criativos.test.tsx`.
+- **Diff:** 468 linhas contra a `staging-auto`, dentro do teto de 600. Só os 5 arquivos da allowlist foram tocados e não há `.sql`.
+- **O que foi feito:**
+  - `criativos` entrou em `ficha-types.ts` depois de `teses`, com o rótulo "Criativos".
+  - `page.tsx` monta o `AnchorBlock` logo depois do de `teses`, com o comentário do ticket 966.
+  - `criativos-tab.tsx` tem os cartões do topo, a tabela com ordenação e filtro, e o painel com `<video>` pela rota de mídia.
+  - `test/campanhas-sem-duplicatas.test.ts` ganhou `criativos` na lista de filhos de `performance` (uma linha de comentário e uma linha alterada, sem remover asserção).
+- **Desvios do spec:**
+  - **Linha do tabelão:** as linhas são um `<button>` em grid, não um `<table>`, para o botão ocupar a linha inteira.
+  - **Duração:** o painel sempre mostra "duração não informada", porque o contrato da rota não traz duração.
+  - **Referência do CPMQL:** a mediana vem dos vídeos do cliente, porque o benchmark da tese só tem hook e body. O laranja do CPMQL e o "Prende e qualifica" usam essa mediana e só aparecem quando há benchmark.
+  - **Painel de imagem:** abre sem `<video>` e sem leitura contra a tese.
+
+Corrigi uma asserção do meu teste antes do commit: o "30,0%" casava com a busca por "0,0%".

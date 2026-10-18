@@ -1,0 +1,30 @@
+109648	[2026-10-17 02:57:30-0300] drenagem: ticket 1195 (17 pendentes restantes)
+109649	[orq 05:57:30] orquestrador iniciando · modo: real · once
+109650	[orq 05:57:30] preflight: validando infra (scripts, fila, env, claude)...
+109651	[orq 05:57:34] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+109652	[orq 05:57:40] preflight: ok
+109653	[orq 05:58:07] === ticket 1195 (reuniao-dedupe-tldv) — tentativa 1 · modo: real ===
+109654	[orq 05:58:08]   recon_esperado: ok (3 comando(s))
+109655	[orq 05:58:08] aviso allowlist: src/lib/perf/reunioes/ingest.ts já existe no worktree — o agente vai EDITAR, não criar
+109656	[orq 05:58:08] aviso allowlist: src/lib/perf/reunioes/types.ts já existe no worktree — o agente vai EDITAR, não criar
+109657	[orq 05:58:08] aviso allowlist: src/lib/perf/reunioes/manual.ts já existe no worktree — o agente vai EDITAR, não criar
+109658	[orq 05:58:08]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1195/attempt-1/prompt.txt
+109659	[orq 05:58:08]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+109660	[orq 06:00:58]   diff cru salvo (460 linhas alteradas) · HEAD julgado 9cc062e2
+109661	[orq 06:00:58]   enforcement: ok
+109662	[orq 06:01:23]   gate tsc: ok (baseline)
+109663	[orq 06:02:24]   gate vitest: ok
+109664	[orq 06:02:59]   criterios mecânicos: ok
+109665	[orq 06:03:49]   gate build: ok
+109666	[orq 06:04:00] avaliador: REPROVADO — Dedupe, colaboradores, chave, flattenTranscript e parseJsonResponse ok. Mas o objetivo exige transcricao 'informada'|'buscada_tldv'|'aguardando_tldv'|'sem_link_tldv'; o diff omite 'informada' (fica undefined) e o teste fixa toBeUndefined. Contrato do retorno que a tela 1196 consome diverge.
+109667	[orq 06:04:01] ticket 1195: reprovado — retry 1/2. motivo: Dedupe, colaboradores, chave, flattenTranscript e parseJsonResponse ok. Mas o objetivo exige transcricao 'informada'|'buscada_tldv'|'aguardando_tldv'|'sem_link_tldv'; o diff omite 'informada' (fica undefined) e o teste fixa toBeUndefined. Contrato do retorno que a tela 1196 consome diverge.
+109668	[orq 06:04:01] === ticket 1195 (reuniao-dedupe-tldv) — tentativa 2 · modo: real ===
+109669	[orq 06:04:02]   recon_esperado: ok (3 comando(s))
+109670	[orq 06:04:02] aviso allowlist: src/lib/perf/reunioes/ingest.ts já existe no worktree — o agente vai EDITAR, não criar
+109671	[orq 06:04:02] aviso allowlist: src/lib/perf/reunioes/types.ts já existe no worktree — o agente vai EDITAR, não criar
+109672	[orq 06:04:02] aviso allowlist: src/lib/perf/reunioes/manual.ts já existe no worktree — o agente vai EDITAR, não criar
+109673	[orq 06:04:02]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1195/attempt-2/prompt.txt
+109674	[orq 06:04:02]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+109675	[orq 06:06:53]   diff cru salvo (404 linhas alteradas) · HEAD julgado 6d7e9ecf
+109676	[orq 06:06:53]   ENFORCEMENT BLOQUEOU: fora_do_pathspec: test/reuniao-manual-registro.test.ts
+109677	[orq 06:06:53] ticket 1195: BLOQUEADO (enforcement)

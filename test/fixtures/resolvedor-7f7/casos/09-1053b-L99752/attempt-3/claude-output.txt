@@ -1,0 +1,21 @@
+O ticket 1053b está implementado e commitado em `frente/1053b`, mas o critério que reprovou da última vez vai reprovar de novo. O próprio ticket se contradiz e nenhuma implementação consegue passar em todos os critérios mecânicos.
+
+**A contradição.** O passo (0) do ticket e a allowlist mandam trocar o `import "server-only"` em `src/lib/clientes/espelho-legado.ts`, e o critério [5] (`SEM_SERVER_ONLY`) exige essa troca. Já o critério [2] (`SO_ALLOWLIST`) tem uma lista própria de 4 arquivos que deixa esse arquivo de fora. Se eu não tocasse o arquivo, falhariam o [5] e o [4]: sem a troca, os testes das rotas de churn quebram com `Cannot find package server-only`. Segui o ticket e mudei só aquela linha, então o [2] vai dar `FORA_src/lib/clientes/espelho-legado.ts`. Para destravar, basta acrescentar `'src/lib/clientes/espelho-legado.ts'` à lista do `printf` no critério [2].
+
+Fora isso, a implementação é a mesma da tentativa 2, que passou em todos os outros critérios. Não consegui reaplicar o diff dela por `git apply` nem por `patch` (permissão negada), então reescrevi tudo à mão.
+
+**Commits:**
+- `7f27a69`, código:
+  - `espelho-status.ts`: a fase agora é lida e gravada em `ops_cliente_negocio`. Só grava quando muda, e a auditoria registra o valor anterior. Cliente sem cadastro no OS volta com erro explicando o motivo. O arquivo não lê mais o espelho e os 3 nomes exportados continuam iguais.
+  - Rota do passo do setup: analista vai para o perfil, nicho para o catálogo e a fase vira Ativo na transição. Cliente sem cadastro recebe 409. Saíram `ensureClienteId` e toda leitura ou escrita do espelho.
+- `69055aa`, testes: `test/espelho-fase-churn.test.ts` recalculado, com 100 `expect(` contra 99 antes e nenhum `it` removido, e o teste novo `test/fase-e-setup-casa-nova.test.ts`.
+
+**Verificação:**
+- `tsc`: 3 erros, o baseline.
+- Suíte inteira do vitest: 1029 arquivos e 10254 testes passando, incluindo os 9 do critério [4] e o teste novo.
+- `npm run build`: compilou e gerou as 116 páginas.
+- Diff: 520 linhas, dentro do teto de 690. Nenhum `.sql`.
+
+Não rodei os critérios [5], [6] e [7] pelo comando exato, porque o script combinado precisava de aprovação. Os números que conferi à mão batem com eles.
+
+Nada foi enviado com push.

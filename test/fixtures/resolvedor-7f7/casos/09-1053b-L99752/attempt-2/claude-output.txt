@@ -1,0 +1,25 @@
+A passada anterior reprovou no gate do vitest. Agora a suíte inteira passa: 1029 arquivos e 10254 testes verdes. Não consegui rodar o `npm run build`: o comando foi bloqueado por permissão e não tentei de novo.
+
+- **Causa da reprovação:** `test/churn-pipeline-por-id.test.ts` esperava o aviso `espelho por entrada` quando a leitura da ponte falha. Em `clienteIdDaReceita`, o erro vindo da lib passou a ser reescrito para esse texto, então o teste e a rota ficaram como estavam.
+- **`espelho-status.ts`:**
+  - `gravarFaseNoEspelho` resolve o cliente pela chave e grava a fase em `ops_cliente_negocio` só quando ela muda.
+  - Cada mudança é auditada com o valor anterior. Cliente sem cadastro no OS volta como `ok: false` com a mensagem de sem cadastro.
+  - `receitaIdPelaChave` e `clienteIdDaReceita` não leem mais o espelho.
+  - `espelho-legado.ts` ficou só com a troca do `import "server-only"` pelo comentário.
+- **Rota do passo do setup:**
+  - O passo `basico` grava o analista no perfil e vincula o nicho do catálogo.
+  - Cliente sem `cliente_id` recebe 409.
+  - A transição grava a fase `Ativo` em `ops_cliente_negocio`.
+  - Não há mais `clientes_notion_mirror` nem `ensureClienteId` na rota.
+- **Testes:**
+  - `espelho-fase-churn.test.ts` foi recalculado, sem remover nenhum `it` nem `expect`.
+  - O novo `fase-e-setup-casa-nova.test.ts` tem 11 testes.
+- **Gates:** `tsc` está no baseline de 3 erros, todos em arquivos de qualificação. O diff total é 520 linhas (teto 690), em 5 arquivos.
+
+O critério de allowlist (`SO_ALLOWLIST`) lista só 4 arquivos e não inclui `espelho-legado.ts`. A instrução do ticket manda alterá-lo e o cabeçalho da allowlist o inclui, então esse critério deve reportar `FORA_src/lib/clientes/espelho-legado.ts`. É a mesma divergência que derrubou as tentativas anteriores. Vale conferir se isso é aceito.
+
+Dois testes de `test/espelho-fase-churn.test.ts` mudaram além do que o ticket descreve, porque o fixture agora tem `cliente_id` na receita e no espelho:
+- Quatro testes que dependiam de "cliente sem ponte nenhuma" ganharam um helper que zera os `cliente_id`.
+- O teste do homônimo no churn-log ganhou um aviso esperado: `espelho: cliente sem cadastro no OS: fase operacional não atualizada`. Esse aviso aparece junto do aviso do pipeline que já existia.
+
+Fiz quatro commits, sem push: `b667a9a`, o da rota, o de `espelho-fase-churn` e `d34b2f6`.

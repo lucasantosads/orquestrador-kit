@@ -1,0 +1,23 @@
+ src/app/api/clientes/[id]/ficha/route.ts       |  91 ++++++++++++++++++++
+ src/app/api/clientes/filtrados/route.ts        | 109 ++++++++++++++++++++++++
+ src/app/api/notion/clientes-filtrados/route.ts | 111 +------------------------
+ src/app/api/notion/clientes/[id]/route.ts      |  91 +-------------------
+ src/app/api/notion/clientes/route.ts           |  18 ----
+ src/app/api/notion/gestores/route.ts           |  41 ---------
+ src/app/api/notion/member/[id]/route.ts        |  28 -------
+ src/app/api/notion/onboarding/[id]/route.ts    |  18 +---
+ src/app/api/notion/onboarding/route.ts         |  17 ----
+ src/app/api/notion/sync/route.ts               |   8 --
+ src/app/api/notion/team/route.ts               |  16 ----
+ src/app/api/notion/update/route.ts             |  10 ---
+ src/app/api/onboarding/legado/[id]/route.ts    |  18 ++++
+ src/app/dashboard/clientes/[id]/page.tsx       |   4 +-
+ src/app/dashboard/onboarding/[id]/page.tsx     |   2 +-
+ src/components/gestor-capacidade.tsx           |   2 +-
+ test/c0-guard.test.ts                          |   4 +-
+ test/ficha-por-uuid.test.ts                    |   5 +-
+ test/getsession-notion-clientes.test.ts        |  30 ++-----
+ test/getsession-notion-onboarding-team.test.ts |  19 +----
+ test/notion-rotas-renomeadas.test.ts           |  82 ++++++++++++++++++
+ test/quem-cuida.test.ts                        |   9 +-
+ 22 files changed, 337 insertions(+), 396 deletions(-)

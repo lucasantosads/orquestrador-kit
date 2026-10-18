@@ -1,0 +1,4 @@
+ .../performance/nichos-teses/drill-tese.tsx        |   7 +-
+ .../performance/nichos-teses/ranking-criativos.tsx | 148 +++++++++++++++++++++
+ test/performance-ranking-criativos-tela.test.ts    |  51 +++++++
+ 3 files changed, 205 insertions(+), 1 deletion(-)

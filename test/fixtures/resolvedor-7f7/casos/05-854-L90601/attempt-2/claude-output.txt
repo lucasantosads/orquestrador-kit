@@ -1,0 +1,18 @@
+O ticket 854 está implementado e commitado (`1d74332`), mas a suíte vitest continua vermelha com 2 falhas. As duas estão em `test/rotas-orfas.test.ts`, que fica fora da allowlist.
+
+**Por que falha:** `src/app/equipe-geral/page.tsx` era o único arquivo de `src` que linkava `/dashboard/team/${notion_id}`. Sem essa tela, a página `src/app/dashboard/team/[id]/page.tsx` perde o último link e vira rota órfã. É o mesmo erro da reprovação anterior.
+- `toda página de dashboard tem href real ou está na allowlist` recebe `['/dashboard/team/[id]']` onde esperava `[]`.
+- A invariante 1:1 da allowlist (`:267`) recebe 21 onde esperava 20. Os dois erros vêm da mesma rota órfã nova.
+
+**O que foi feito:**
+- Apaguei `src/app/equipe-geral/page.tsx` e `src/app/equipe-geral/error.tsx`.
+- `src/app/dashboard/team/page.tsx` agora redireciona para `/portal/equipe`, sem citar `/equipe-geral`.
+- Tirei de `test/error-boundaries-rotas-lote5.test.ts` só a entrada da tela removida.
+- Criei `test/remove-equipe-geral.test.ts` com 3 testes.
+- O `tsc` ficou em 3 erros. O novo teste, `test/error-boundaries-rotas-lote5.test.ts` e `test/entrada-inicio-papel.test.ts` passam. Não rodei a suíte inteira nem o `npm run build` depois da mudança.
+
+**Parei aqui, como o ticket manda quando um teste fora da allowlist quebra.** Há duas saídas, e as duas precisam da sua decisão:
+1. Incluir `test/rotas-orfas.test.ts` na allowlist para registrar `/dashboard/team/[id]` na `ALLOWLIST` como órfã conhecida, com motivo.
+2. Remover ou redirecionar `/dashboard/team/[id]`, o que amplia o escopo do ticket.
+
+Há ainda outro conflito pequeno: o critério "nada em src cita /equipe-geral" é atendido, mas o teste `entrada-inicio-papel.test.ts:31` continua afirmando `not.toContain('/equipe-geral')`, o que é compatível.

@@ -1,0 +1,14 @@
+Parei sem implementar o 1059 e não fiz nenhum commit. A reprovação do attempt-2 não tem conserto dentro da allowlist do ticket: qualquer execução que siga o ticket à risca vai deixar o gate vitest vermelho de novo.
+
+**Por quê.** Os três casos que reprovaram estão em dois testes do ticket 1055 que não estão na allowlist. Os dois importam direto os handlers das rotas antigas, e o 1059 manda transformar essas rotas em redirect 308:
+
+- `test/leitores-carteira-casa-nova.test.ts:32` importa `@/app/api/notion/clientes-filtrados/route`. O caso das linhas 166–170 ("clientes-filtrados usa lerEspelhoTodo para a ponte") espera status 200 e a chamada `lerEspelhoTodo`. O redirect devolve 308 sem ler nada.
+- `test/leitores-ficha-casa-nova.test.ts:27` importa `@/app/api/notion/clientes/[id]/route`. Os casos das linhas 115 e 123 (GET por uuid) esperam os campos do cliente e um 404 com `notion_id`, e o redirect devolve só 308.
+
+As listas de arquivos na linha 223 do primeiro teste e na linha 168 do segundo só verificam que o arquivo não cita o espelho. Elas continuariam passando, mas também deveriam passar a apontar para o caminho novo. Conferi o resto de `test/` com grep e esses dois são os únicos fora da allowlist que dependem das rotas antigas. `test/onboarding-sync-toast.test.ts` só exige que a página não cite `/api/notion/sync`, e isso continua valendo.
+
+Fazer o gate passar sem mexer nesses testes exigiria manter lógica no arquivo do redirect ou pôr o literal num comentário. As duas coisas contrariam o ticket e seriam afrouxar o teste.
+
+**Decisão sua:** para destravar, inclua os dois arquivos na allowlist do 1059. O recálculo é só de caminho: cada import passa a apontar para `@/app/api/clientes/filtrados/route` e `@/app/api/clientes/[id]/ficha/route`, e as entradas das linhas 223 e 168 trocam para o caminho novo. O orçamento cresce umas 8 linhas, bem abaixo do teto de 760. Com isso o resto do ticket pode seguir como está escrito.
+
+Também salvei esse caso na memória do projeto, para a próxima execução já começar sabendo disso.

@@ -1,0 +1,12 @@
+{
+ "id": "966",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/966-campanhas-aba-criativos.md",
+ "ticket_sha": "f01a98953774489642f6584383fda3a9932bba3a",
+ "ticket_antes": true,
+ "linha_bloqueio": 91808,
+ "log_inicio": 91777,
+ "fim": "2026-10-12T08:52:44Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/966"
+}

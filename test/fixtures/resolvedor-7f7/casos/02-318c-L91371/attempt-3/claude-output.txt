@@ -1,0 +1,17 @@
+The ticket can't pass yet. The ranking of creatives is committed (`dea5d32`), but the funnel-type filter from the tab still doesn't reach it. That's the exact reason attempts 1 and 2 were rejected, and this run's allowlist still doesn't include the file that needs the fix.
+
+**Why it's blocked:** the "Tipo de funil" filter is local state inside `nichos-teses-aba.tsx`. It isn't in the URL, unlike the period. Line 372 of that file mounts `<DrillTese tese={tese} />` without the type, so the drill has no way to get it. That file is still outside the allowlist in `docs/fila/318c-nichos-teses-ranking-criativos-tela.md`. Editing it would fail the "only allowlist files" check, so I left it alone.
+
+**What's committed** (3 allowlist files, 206 lines against `staging-auto`, budget is 400):
+- **`ranking-criativos.tsx` (new):** it calls the 318b route `/api/perf/nicho-tese/criativos` with period, tese and type, under the title "Criativos da tese".
+  - The table has the requested columns, and each row shows "decidido por …" in small text.
+  - Creatives without a sample show as one line of text, a tese with no base shows the route's reason in one line, and missing values show "s/ dado".
+  - A failed request shows an error with "Tentar novamente".
+- **`drill-tese.tsx`:** it mounts `<RankingCriativos>` below the clients table. It gets the period from the same URL selector as the tab, and takes `tipo` as an optional prop that defaults to "todos". That default is why the filter is still ignored.
+- **`test/performance-ranking-criativos-tela.test.ts` (new):** 6 tests.
+
+**Checks:** `tsc` is at the baseline of 3 errors, all in `qualificacao*` files. The full `vitest run` passed (949 files, 9490 tests), including the 8 global guards. `npm run build` succeeded. I didn't run lint or the `verificar` skill.
+
+**To close it:** add `src/app/dashboard/performance/nichos-teses/nichos-teses-aba.tsx` to the ticket's `pathspec_allowlist`. The change there is to pass `tipo` through `TeseLinhas` and mount `<DrillTese tese={tese} tipo={tipo} />`. A criterion that greps for `tipo={tipo}` in the tab file would catch this next time. Rerunning without that change will be rejected a fourth time. I saved this to memory so it isn't forgotten.
+
+Nothing was pushed.

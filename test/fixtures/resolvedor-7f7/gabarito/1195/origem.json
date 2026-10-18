@@ -1,0 +1,7 @@
+{
+ "id": "1195",
+ "arquivo": "docs/fila/1195-reuniao-dedupe-tldv.md",
+ "commit_humano": "75db690c013337a6a64f43fb608e39e4b1101618",
+ "depois": "75db690c0:docs/fila/1195-reuniao-dedupe-tldv.md",
+ "antes": "75db690c0^:docs/fila/1195-reuniao-dedupe-tldv.md com status bloqueado e a nota do motor"
+}

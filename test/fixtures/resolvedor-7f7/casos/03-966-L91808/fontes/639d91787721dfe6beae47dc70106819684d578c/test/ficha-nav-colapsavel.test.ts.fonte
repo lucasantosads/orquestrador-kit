@@ -1,0 +1,125 @@
+/**
+ * Testes — Ticket 267, recalculados no Ticket 480. O 267 travava o índice
+ * lateral colapsável da ficha; o 480 removeu o menu inteiro. Cada asserção
+ * migrou de alvo: a mecânica do colapso virou a asserção inversa (não existe
+ * mais), a regra de renderização dos blocos continua valendo. Todos os
+ * AnchorBlock do grupo ativo renderizam em sequência, sempre, com título
+ * visível; ?sub= rola até #bloco-<key> pelo próprio AnchorBlock.
+ *
+ * Import direto do page.tsx não é possível neste projeto: vitest.config.ts
+ * não registra transform de JSX (sem @vitejs/plugin-react) e o tsconfig usa
+ * "jsx": "preserve". Mesmo padrão de test/aba-na-url.test.ts e
+ * test/registrar-verificacao-rotulo.test.ts: asserções estáticas sobre o
+ * texto-fonte de page.tsx.
+ */
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+const PAGE_PATH = fileURLToPath(new URL("../src/app/dashboard/clientes/[id]/page.tsx", import.meta.url));
+const SOURCE = readFileSync(PAGE_PATH, "utf-8");
+
+describe("estado colapsável — removido junto com o menu", () => {
+  // Antes: a chave existia. Agora o menu saiu, então a chave não pode sobrar.
+  it("não existe mais chave de localStorage para o estado da nav", () => {
+    expect(SOURCE).not.toContain("ficha-nav-colapsada");
+  });
+
+  // Antes: useState(true) padrão colapsado. Agora o estado não existe.
+  it("não existe mais estado navColapsada", () => {
+    expect(SOURCE).not.toMatch(/navColapsada/);
+  });
+
+  // Antes: lia localStorage.getItem e checava 'false'. Agora nada lê a chave.
+  it("nada lê o estado da nav de localStorage", () => {
+    expect(SOURCE).not.toMatch(/localStorage\.getItem\(["']ficha-nav-colapsada["']\)/);
+    expect(SOURCE).not.toMatch(/saved === ["']false["']/);
+  });
+
+  // Antes: o toggle gravava com setItem. Agora não há toggle nem gravação.
+  it("não existe toggle nem gravação do estado em localStorage", () => {
+    expect(SOURCE).not.toMatch(/toggleNavColapsada/);
+    expect(SOURCE).not.toMatch(/localStorage\.setItem\(["']ficha-nav-colapsada["']/);
+  });
+});
+
+describe("o índice lateral saiu — sem <nav>, sem links de âncora, sem dropdown", () => {
+  // Antes: links href=#bloco-${c}. Agora nenhum link de menu; o id #bloco-<key> mora no AnchorBlock.
+  it("não há links de menu apontando para #bloco-*", () => {
+    expect(SOURCE).not.toMatch(/href=\{`#bloco-\$\{c\}`\}/);
+  });
+
+  // Antes: o clique do menu chamava setActiveTab(c as ActiveTab). Agora esse cast do menu não existe.
+  it("o clique de menu com setActiveTab(c as ActiveTab) não existe mais", () => {
+    expect(SOURCE).not.toMatch(/setActiveTab\(c as ActiveTab\)/);
+  });
+
+  // Antes: nenhum <select> substituía a nav. Continua valendo: nenhum dropdown.
+  it("não há <select> nem elemento de dropdown substituindo o menu", () => {
+    expect(SOURCE).not.toMatch(/<select[\s>]/i);
+  });
+
+  // Antes: nav escondida com <=1 filho. Sem nav, essa condição não existe.
+  it("a condição de esconder a nav com <=1 filho saiu com a nav", () => {
+    expect(SOURCE).not.toMatch(/parent\.children\.length <= 1\) return null/);
+  });
+});
+
+describe("todos os AnchorBlock continuam presentes e renderizando incondicionalmente por grupo", () => {
+  // Antes: >= 10 no total. Continua >= 10; a contagem exata por grupo está no último describe.
+  it("nenhum AnchorBlock foi removido (contagem preservada, ticket não mexe em blocos)", () => {
+    const count = (SOURCE.match(/<AnchorBlock\b/g) || []).length;
+    expect(count).toBeGreaterThanOrEqual(10);
+  });
+
+  // Antes: filhosVisiveis carregava a regra do painel. Agora a regra vive no AnchorBlock do painel:
+  // sem perfClienteId o filho é null e o bloco inteiro some (childVisivel guarda a mesma regra).
+  it("o bloco 'painel' continua condicionado a perfClienteId (filho null sem conta perf)", () => {
+    expect(SOURCE).toMatch(/<AnchorBlock id="painel"[^>]*>\s*\{perfClienteId \? <ClientePerfPanel[^\n]*\/> : null\}\s*<\/AnchorBlock>/);
+    expect(SOURCE).toMatch(/return child !== "painel" \|\| !!perfClienteId/);
+  });
+});
+
+describe("comportamento visual — sub-seções em sequência, sempre, com título visível", () => {
+  const trechoDoGrupo = (grupo: string) => {
+    const ini = SOURCE.indexOf(`grupoAtivo === "${grupo}" && (<>`);
+    const fim = SOURCE.indexOf("</>)}", ini);
+    return SOURCE.slice(ini, fim);
+  };
+
+  // Antes: existia um branch if (navColapsada). Agora nenhum branch de colapso.
+  it("não existe mais branch dedicado ao estado colapsado", () => {
+    expect(SOURCE).not.toMatch(/if \(navColapsada\) \{/);
+  });
+
+  // Antes: colapsada não reservava w-44. Agora nenhuma coluna lateral de 176px é reservada.
+  it("nenhuma coluna lateral w-44 é reservada; os blocos ocupam a largura toda", () => {
+    expect(SOURCE).not.toContain("w-44");
+    expect(SOURCE).toContain('className="flex-1 min-w-0 space-y-8"');
+  });
+
+  // Antes: expandida mantinha w-44 gap-0.5 sticky top-4. Agora essa classe do menu não existe.
+  it("a classe do menu expandido (sticky top-4 text-fs-label) não existe mais", () => {
+    expect(SOURCE).not.toContain("sticky top-4 text-fs-label");
+  });
+
+  // Antes: botão de colapsar no menu expandido. Agora, contagem por grupo (4 visão, 9 campanhas,
+  // 8 relação, o restante em conta) e todo bloco traz o título via CHILD_LABELS.
+  it("cada grupo renderiza seus AnchorBlock em sequência, com label vindo de CHILD_LABELS", () => {
+    const n = (g: string) => (trechoDoGrupo(g).match(/<AnchorBlock\b/g) || []).length;
+    // Ticket 512: o AnchorBlock do painel saiu da Visão (4 -> 3: geral, resumo-antigo, alertas-antigo)
+    // e entrou em Campanhas (9 -> 10: painel + os 9 anteriores).
+    expect(n("visao-geral")).toBe(3);
+    // Ticket 531: meta-ads e entregaveis saíram de Campanhas para a Conta (10 -> 8: os 10 menos os 2 movidos).
+    // Ticket 646: o relatório antigo saiu de Campanhas (8 -> 7: metricas, otimizacoes, painel, teses, analise, alertas-meta, calculadora).
+    expect(n("performance")).toBe(7);
+    // Ticket 550: contatos e crm foram para a Conta; sobram 6 (reunioes, whatsapp, resumos, registros, perfil, nps).
+    expect(n("relacao")).toBe(6);
+    expect(n("conta")).toBeGreaterThanOrEqual(6);
+    for (const g of ["visao-geral", "performance", "relacao", "conta"]) {
+      const blocos = trechoDoGrupo(g).match(/<AnchorBlock\b/g) || [];
+      const labels = trechoDoGrupo(g).match(/label=\{CHILD_LABELS/g) || [];
+      expect(labels.length).toBe(blocos.length);
+    }
+  });
+});

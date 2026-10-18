@@ -1,0 +1,1 @@
+{"aprovado": false, "motivo": "resumo e diagnostico leem o espelho direto via from(TABELA_ESPELHO), driblando o grep, sem pontePorEntrada/lerEspelhoPorNotion; diagnostico perdeu meta_campaign_id (sem lerEspelhoPorCliente); data.ts sem fallback legado de situacao/resultados/atencao/ultimo_feedback e fora de COLUNAS_CLIENTE."}

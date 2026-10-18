@@ -1,0 +1,31 @@
+Implementei o ticket 1055b e está tudo commitado, mas dois testes fora da allowlist ficam vermelhos. O critério do vitest ("guardas globais e testes diretos") fica por isso em VERMELHO.
+
+Os dois testes quebram porque os dublês deles são incompatíveis com a lib do espelho. Nenhum dos dois está na allowlist:
+- **`test/acoes-recomendadas-chave.test.ts` (3 its):** usa ids `"A"`, `"B"` e `"C"`. `pontePorCliente` descarta ids que não são UUID, então `sem_cadastro_os` dá 3 em vez de 2. O teste precisa de UUIDs RFC-4122.
+- **`test/relatorio-sem-cliente-id.test.ts` (1 it):** o dublê só devolve linhas via `.range()`. `lerEspelhoTodo` faz `await` direto no select, então o espelho chega vazio e `sem_cliente_id` dá 3 em vez de 2. O dublê precisa de um `then` no select.
+
+Os dois arquivos precisam entrar na allowlist para eu ajustar os dublês; não os toquei.
+
+## O que mudou
+
+- **`team/nps`:** o espelho vem de `lerEspelhoTodo`; o gestor sai do perfil para quem tem `cliente_id` e do analista legado só sem vínculo. Falha na leitura do espelho ou do perfil devolve 500.
+- **`meta/overview`:** o casamento por nome saiu. `clientUuidToNotionId` vem de `pontePorCliente`.
+- **`nps/layout`:** usa `lerEspelhoPorNotion` dentro de try. Se falhar, `nomePorNotion` fica vazio e a tela mostra "sem base".
+- **`portal/meus-clientes`:**
+  - **Universo:** parte de `clientes` filtrado por `cuidaDoCliente`.
+  - **Fontes:** fase de `lerNegocios`, perfil de `lerPerfisOperacionais`, notion_id de `pontePorCliente` e receita por `cliente_id` (só leitura).
+  - **Resposta:** os campos são os mesmos de antes.
+  - **Teste pinado:** `funcao-escondida-sem-papel` exige o literal `cliente_id: m.cliente_id`, então mapeei `clientes` para `{ cliente_id, nome }`.
+- **`acoes/motor`:** usa `pontePorCliente`, e os dois comentários foram atualizados.
+- **Relatório admin:** o espelho vem de `lerEspelhoTodo`; `truncated` considera só receitas e clientes.
+- **Testes:**
+  - **`quem-cuida.test.ts`:** recalculado com `db.clientes` semeado, receita por `cliente_id` e a falha de leitura agora em `clientes`. Nenhum it removido.
+  - **`leitores-equipe-nps-portal-casa-nova.test.ts`:** novo, com 14 its.
+
+## Critérios
+
+- **tsc:** 3 erros, o baseline.
+- **Diff:** 326 linhas contra o teto de 640.
+- **Testes novos e `quem-cuida`:** verdes.
+- **Rodei:** só o tsc, a contagem do diff e esses testes.
+- **Não rodei:** o `npm run build` e os demais critérios por script (SQL, allowlist, grep).

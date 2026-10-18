@@ -1,0 +1,32 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059
+sanear_tsc: nao
+cmd:    n=0; for f in src/app/api/clientes/filtrados/route.ts 'src/app/api/clientes/[id]/ficha/route.ts' 'src/app/api/onboarding/legado/[id]/route.ts'; do test -e "$f" && n=$((n+1)); done; r=$(grep -l 'redirect(' src/app/api/notion/clientes-filtrados/route.ts 'src/app/api/notion/clientes/[id]/route.ts' 'src/app/api/notion/onboarding/[id]/route.ts' 2>/dev/null | wc -l | tr -d ' '); e=0; for f in src/app/api/notion/clientes/route.ts src/app/api/notion/gestores/route.ts 'src/app/api/notion/member/[id]/route.ts' src/app/api/notion/team/route.ts src/app/api/notion/update/route.ts src/app/api/notion/sync/route.ts src/app/api/notion/onboarding/route.ts; do test -e "$f" && e=$((e+1)); done; c=$(grep -rln 'api/notion/' src --include=*.ts --include=*.tsx | grep -v '^src/app/api/notion' | grep -v 'src/app/api/clientes/situacao/route.ts' | wc -l | tr -d ' '); [ "$n" = 3 ] && [ "$r" = 3 ] && [ "$e" = 0 ] && [ "$c" = 0 ] && echo RENOMEADAS || echo ST_${n}_${r}_${e}_${c}
+espera: RENOMEADAS
+-- saida --
+ST_0_0_7_3
+
+### criterio[6] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059
+sanear_tsc: nao
+cmd:    b="$(git merge-base HEAD staging-auto)"; r=RECALCULADO_1059; f=test/c0-guard.test.ts; rem=$(git diff "$b" HEAD -- "$f" | grep -cE '^-[^-]'); novo=$(grep -c "join('src', 'app', 'api', 'clientes', 'filtrados', 'route.ts')" "$f"); velho=$(grep -c "join('src', 'app', 'api', 'notion', 'clientes-filtrados', 'route.ts')" "$f"); [ "$rem" -le 2 ] && [ "$novo" = 1 ] && [ "$velho" = 0 ] || r=C0_${rem}_${novo}_${velho}; for t in test/getsession-notion-clientes.test.ts test/getsession-notion-onboarding-team.test.ts test/ficha-por-uuid.test.ts test/quem-cuida.test.ts; do sk=$(grep -cE '\.(skip|only|todo)\(' "$t"); d0=$(git show "$b:$t" | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' "$t"); [ "$sk" = 0 ] && [ "$d1" -le "$d0" ] || r=AFROUXOU_$t; done; q=$(grep -c 'src/app/api/clientes/filtrados/route.ts' test/quem-cuida.test.ts); g=$(grep -c 'gestor_nome: nomeDeQuemCuida(' test/quem-cuida.test.ts); [ "$q" -ge 1 ] && [ "$g" -ge 1 ] || r=QUEM_CUIDA_${q}_${g}; echo $r
+espera: RECALCULADO_1059
+-- saida --
+QUEM_CUIDA_0_1
+
+### criterio[7] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059
+sanear_tsc: nao
+cmd:    test -f test/notion-rotas-renomeadas.test.ts && npx vitest run test/notion-rotas-renomeadas.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO
+espera: VERDE
+-- saida --
+VERMELHO
+
+### criterio[8] (qualitativo — julgado pelo Opus)
+descricao: avaliador: as 3 rotas com consumidor mudam so de caminho (handler identico) e ganham redirect 308 no caminho antigo preservando [id] e query; as 7 sem consumidor sao removidas com prova por grep; os 3 consumidores apontam para as URLs novas; os testes sao recalculados sem perder caso de rota que continua existindo e o c0-guard so troca o caminho de uma entrada. REPROVE se: handler alterado; redirect sem preservar [id] ou query; rota removida com consumidor em src; c0-guard com qualquer mudanca alem do caminho e da rationale daquela entrada; caso de rota existente removido; lib/data.ts mexido; skip/only.
+

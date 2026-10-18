@@ -1,0 +1,12 @@
+{
+ "id": "318c",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/318c-nichos-teses-ranking-criativos-tela.md",
+ "ticket_sha": "f01a98953774489642f6584383fda3a9932bba3a",
+ "ticket_antes": true,
+ "linha_bloqueio": 91371,
+ "log_inicio": 91327,
+ "fim": "2026-10-12T07:26:16Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/318c"
+}

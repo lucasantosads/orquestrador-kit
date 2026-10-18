@@ -1,0 +1,11 @@
+ .../clientes/[id]/_components/bloco-contrato.tsx   | 51 +---------------
+ .../clientes/[id]/_components/cockpit-cards.tsx    | 23 +++----
+ src/app/dashboard/clientes/[id]/page.tsx           | 27 +++++++--
+ .../clientes/[id]/tabs/financeiro-tab.tsx          | 70 ++--------------------
+ test/cockpit-blocos-null.test.ts                   | 28 +++++----
+ test/conta-aceite.test.tsx                         | 27 ++++++---
+ test/conta-contrato-e-entregas.test.ts             | 14 +++--
+ test/conta-quadro-contrato-aberto.test.ts          | 23 ++++---
+ test/contrato-escopo-implementacoes.test.ts        |  5 +-
+ test/ltv-na-conta.test.ts                          |  9 +++
+ 10 files changed, 106 insertions(+), 171 deletions(-)

@@ -1,0 +1,7 @@
+{
+ "id": "1053b",
+ "arquivo": "docs/fila/1053b-fase-churn-e-setup-param-de-gravar-no-espelho.md",
+ "commit_humano": "b7a3eea2fdfde88f537867d3e1cfb499f4c2e149",
+ "depois": "b7a3eea2f:docs/fila/1053b-fase-churn-e-setup-param-de-gravar-no-espelho.md",
+ "antes": "b7a3eea2f^:docs/fila/1053b-fase-churn-e-setup-param-de-gravar-no-espelho.md com status bloqueado e a nota do motor"
+}

@@ -1,0 +1,4 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+924a	docs/fila/runs/924a/attempt-1.prev1	test/conta-entregas-vazio-unico.test.ts	2492	2026-10-13T03:22:56Z	1
+924a	docs/fila/runs/924a/attempt-1.prev1	test/visao-aceite-mockup.test.tsx	2588	2026-10-13T03:22:56Z	1
+924a	docs/fila/runs/924a/attempt-2	test/visao-aceite-mockup.test.tsx	2493	2026-10-13T03:30:13Z	1

@@ -32,6 +32,17 @@ export interface Extracao {
   remedio: string
   requeue: string
   detalhe: Detalhe
+  /**
+   * R1 (D6/D6b): cada vermelho fora da allowlist e do diff e a regra que ele
+   * cumpre SOZINHO (`null`: nenhuma), para o R1 com mais de um vermelho, tudo
+   * ou nada (7f-b7). Fica fora do `detalhe`, que vai literal ao prompt do modelo.
+   */
+  r1_testes?: R1Teste[]
+}
+
+export interface R1Teste {
+  arquivo: string
+  regra: 'D6' | 'D6b' | null
 }
 
 export interface Detalhe {
@@ -247,15 +258,23 @@ export function extrair(ev: Evidencia): Extracao {
   const barrado = barrados.length === 1 ? /^fora_do_pathspec: (\S+)$/.exec(barrados[0]!)?.[1] : undefined
   const ant = ts.at(-2)
   const vermelhoBarrado = barrado ? fora.filter((x) => x.arquivo === barrado && (x.t === ult || x.t === ant)).at(-1) : undefined
+  // cada vermelho fora, por si: D6b (o barrado), D6 (acoplado e em ≥ 2 tentativas) ou nada
+  const r1Testes = (): R1Teste[] =>
+    [...new Set(fora.map((x) => x.arquivo))].map((arquivo) => {
+      if (u === 'enforcement' && vermelhoBarrado?.arquivo === arquivo) return { arquivo, regra: 'D6b' }
+      const vezes = new Set(fora.filter((x) => x.arquivo === arquivo).map((x) => x.t.n)).size
+      return { arquivo, regra: acoplados.some((x) => x.arquivo === arquivo) && vezes >= 2 ? 'D6' : null }
+    })
+  const comTestes = (e: Extracao): Extracao => ({ ...e, r1_testes: r1Testes() })
   if (u === 'enforcement' && vermelhoBarrado) {
     const { t, arquivo } = vermelhoBarrado
     const onde = local(vermelhoRefs(t, arquivo), arquivo)
-    return sai(
+    return comTestes(sai(
       'R1',
       'D6b',
       [...vermelhoRefs(t, arquivo), ult.enforcement!.ref],
       `pôr ${arquivo} na allowlist com guarda (mesma contagem de it/expect, sem skip); vermelho em ${onde} na tentativa ${t.n} e barrado pelo enforcement na ${ult.n}`,
-    )
+    ))
   }
 
   // D6 · vermelho fora da allowlist e do diff, acoplado ao que o ticket mudou.
@@ -269,7 +288,7 @@ export function extrair(ev: Evidencia): Extracao {
     const provas = acoplados.flatMap((x) => vermelhoRefs(x.t, x.arquivo))
     const onde = local(vermelhoRefs(a.t, a.arquivo), a.arquivo)
     if (persistentes.length) {
-      return sai('R1', 'D6', provas, `pôr ${a.arquivo} na allowlist com guarda (mesma contagem de it/expect, sem skip); vermelho em ${onde}`)
+      return comTestes(sai('R1', 'D6', provas, `pôr ${a.arquivo} na allowlist com guarda (mesma contagem de it/expect, sem skip); vermelho em ${onde}`))
     }
     return sai('R1?', 'D6', provas, `conferir ${a.arquivo}: vermelho fora da allowlist numa tentativa só (${onde}); se for acoplado, pôr na allowlist com guarda`)
   }

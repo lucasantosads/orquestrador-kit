@@ -1,0 +1,12 @@
+{
+ "id": "1195",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/1195-reuniao-dedupe-tldv.md",
+ "ticket_sha": "52898bb58c78f288791af2d2e0fb3b9ae5a575b7",
+ "ticket_antes": true,
+ "linha_bloqueio": 109677,
+ "log_inicio": 109648,
+ "fim": "2026-10-17T06:06:53Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/1195"
+}

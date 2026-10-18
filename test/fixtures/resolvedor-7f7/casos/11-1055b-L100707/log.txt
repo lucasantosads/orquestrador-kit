@@ -1,0 +1,59 @@
+100649	[2026-10-13 19:49:33-0300] drenagem: ticket 1055b (3 pendentes restantes)
+100650	[orq 22:49:33] orquestrador iniciando · modo: real · once
+100651	[orq 22:49:33] preflight: validando infra (scripts, fila, env, claude)...
+100652	[orq 22:49:38] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+100653	[orq 22:49:44] preflight: ok
+100654	[orq 22:50:03] === ticket 1055b (negocio-leitores-equipe-nps-portal) — tentativa 1 · modo: real ===
+100655	[orq 22:50:05]   recon_esperado: ok (4 comando(s))
+100656	[orq 22:50:05] aviso allowlist: src/app/api/team/nps/route.ts já existe no worktree — o agente vai EDITAR, não criar
+100657	[orq 22:50:05] aviso allowlist: src/app/api/meta/overview/route.ts já existe no worktree — o agente vai EDITAR, não criar
+100658	[orq 22:50:05] aviso allowlist: src/app/dashboard/clientes/nps/layout.tsx já existe no worktree — o agente vai EDITAR, não criar
+100659	[orq 22:50:05] aviso allowlist: src/app/api/portal/meus-clientes/route.ts já existe no worktree — o agente vai EDITAR, não criar
+100660	[orq 22:50:05] aviso allowlist: src/lib/acoes/motor.ts já existe no worktree — o agente vai EDITAR, não criar
+100661	[orq 22:50:05] aviso allowlist: src/app/api/admin/clientes-sem-cliente-id/route.ts já existe no worktree — o agente vai EDITAR, não criar
+100662	[orq 22:50:05] aviso allowlist: test/quem-cuida.test.ts já existe no worktree — o agente vai EDITAR, não criar
+100663	[orq 22:50:05]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1055b/attempt-1/prompt.txt
+100664	[orq 22:50:05]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+100665	[orq 22:53:05]   diff cru salvo (326 linhas alteradas) · HEAD julgado 4576d5fc
+100666	[orq 22:53:06]   enforcement: ok
+100667	[orq 22:53:31]   gate tsc: ok (baseline)
+100668	[orq 22:54:37]   gate vitest: FALHA
+100669	[orq 22:54:37]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1055b/attempt-1/gate-vitest.txt)
+100670	[orq 22:54:37] ticket 1055b: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1055b/attempt-1/gate-vitest.txt)
+100671	[orq 22:54:37] === ticket 1055b (negocio-leitores-equipe-nps-portal) — tentativa 2 · modo: real ===
+100672	[orq 22:54:39]   recon_esperado: ok (4 comando(s))
+100673	[orq 22:54:39] aviso allowlist: src/app/api/team/nps/route.ts já existe no worktree — o agente vai EDITAR, não criar
+100674	[orq 22:54:39] aviso allowlist: src/app/api/meta/overview/route.ts já existe no worktree — o agente vai EDITAR, não criar
+100675	[orq 22:54:39] aviso allowlist: src/app/dashboard/clientes/nps/layout.tsx já existe no worktree — o agente vai EDITAR, não criar
+100676	[orq 22:54:39] aviso allowlist: src/app/api/portal/meus-clientes/route.ts já existe no worktree — o agente vai EDITAR, não criar
+100677	[orq 22:54:39] aviso allowlist: src/lib/acoes/motor.ts já existe no worktree — o agente vai EDITAR, não criar
+100678	[orq 22:54:39] aviso allowlist: src/app/api/admin/clientes-sem-cliente-id/route.ts já existe no worktree — o agente vai EDITAR, não criar
+100679	[orq 22:54:39] aviso allowlist: test/quem-cuida.test.ts já existe no worktree — o agente vai EDITAR, não criar
+100680	[orq 22:54:39]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1055b/attempt-2/prompt.txt
+100681	[orq 22:54:40]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+100682	[orq 23:02:03]   diff cru salvo (353 linhas alteradas) · HEAD julgado 86644647
+100683	[orq 23:02:03]   enforcement: ok
+100684	[orq 23:02:34]   gate tsc: ok (baseline)
+100685	[orq 23:03:42]   gate vitest: ok
+100686	[orq 23:04:17]   criterios mecânicos: ok
+100687	[orq 23:05:03]   gate build: ok
+100688	[orq 23:05:29] avaliador: REPROVADO — nps/layout: falha da lib retorna null, esconde a fila pendente e mostra 'aguardando migração'; o ticket manda nomePorNotion vazio com os itens visíveis. Motor ganhou leitura total do espelho fora do pedido. Admin usa adaptador falso com cast. Resto ok.
+100689	[orq 23:05:30] ticket 1055b: reprovado — retry 2/2. motivo: nps/layout: falha da lib retorna null, esconde a fila pendente e mostra 'aguardando migração'; o ticket manda nomePorNotion vazio com os itens visíveis. Motor ganhou leitura total do espelho fora do pedido. Admin usa adaptador falso com cast. Resto ok.
+100690	[orq 23:05:30] === ticket 1055b (negocio-leitores-equipe-nps-portal) — tentativa 3 · modo: real ===
+100691	[orq 23:05:31]   recon_esperado: ok (4 comando(s))
+100692	[orq 23:05:31] aviso allowlist: src/app/api/team/nps/route.ts já existe no worktree — o agente vai EDITAR, não criar
+100693	[orq 23:05:31] aviso allowlist: src/app/api/meta/overview/route.ts já existe no worktree — o agente vai EDITAR, não criar
+100694	[orq 23:05:31] aviso allowlist: src/app/dashboard/clientes/nps/layout.tsx já existe no worktree — o agente vai EDITAR, não criar
+100695	[orq 23:05:31] aviso allowlist: src/app/api/portal/meus-clientes/route.ts já existe no worktree — o agente vai EDITAR, não criar
+100696	[orq 23:05:31] aviso allowlist: src/lib/acoes/motor.ts já existe no worktree — o agente vai EDITAR, não criar
+100697	[orq 23:05:31] aviso allowlist: src/app/api/admin/clientes-sem-cliente-id/route.ts já existe no worktree — o agente vai EDITAR, não criar
+100698	[orq 23:05:31] aviso allowlist: test/quem-cuida.test.ts já existe no worktree — o agente vai EDITAR, não criar
+100699	[orq 23:05:31]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1055b/attempt-3/prompt.txt
+100700	[orq 23:05:31]   tentativa final: escalando modelo do executor para 'opus'
+100701	[orq 23:05:31]   chamando claude -p (headless, --model opus, timeout 1500s) no worktree...
+100702	[orq 23:11:59]   diff cru salvo (417 linhas alteradas) · HEAD julgado b7878032
+100703	[orq 23:12:00]   enforcement: ok
+100704	[orq 23:12:20]   gate tsc: ok (baseline)
+100705	[orq 23:13:15]   gate vitest: FALHA
+100706	[orq 23:13:15]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1055b/attempt-3/gate-vitest.txt)
+100707	[orq 23:13:16] ticket 1055b: reprovado após 2 retries — BLOQUEADO

@@ -1,0 +1,21 @@
+Parei no PASSO 1 sem mudar nenhum arquivo e sem commit. O ticket não fecha dentro da allowlist e é a terceira tentativa que trava no mesmo ponto.
+
+**Por que o gate do vitest reprovou a tentativa 2.** A tentativa 2 desfez as mudanças no resolver, mas deixou para trás, sem commit, o arquivo `test/sai-identidade-removido.test.ts`. Esse teste exige que `resolverUuid` não exista mais, e a função continuava no resolver, então ele quebrou. Essa worktree está limpa agora: o `git status` não mostra nada.
+
+**O que impede o ticket:**
+1. **Dois scripts usam a função.** O grep do PASSO 1 só olha `src` e `test`, então não pega estes:
+   - `scripts/dados/370-identidade.ts:26` importa `resolverUuid` e a reexporta na linha 290.
+   - `scripts/dados/685-dono-dry-run.ts:25` importa a função e a chama na linha 73.
+
+   O `tsconfig` exclui `scripts/`, mas `test/identidade-resolver.test.ts:16` importa o 370 e `test/dono-dry-run.test.ts:2` importa o 685. Por isso o tsc confere os dois scripts mesmo assim. Tirar a função leva o tsc de 3 para 5 erros (a tentativa 2 mediu isso) e quebra `test/dono-dry-run.test.ts`, que está fora da allowlist.
+2. **O PASSO 1 já sobra outro arquivo.** O grep acha `test/dono-dry-run.test.ts:54`, no título de um `it`. Pela regra do ticket, isso já é motivo para parar.
+3. **Só apagar não basta.** `planejarIdentidade` chama `resolverUuid` por dentro (`src/lib/identidade/resolver.ts:228`). Para o critério `REMOVIDO` passar, a lógica teria que ir para um helper privado com outro nome.
+
+**Decisão sua.** O que eu recomendo é reescrever o ticket:
+- Ampliar a allowlist com `scripts/dados/370-identidade.ts` e `scripts/dados/685-dono-dry-run.ts`. O 370 só perde a reexportação. O 685 passa a usar um substituto na linha 73: um helper que já exista, ou um novo exportado de `src/lib/clientes/resolver-cliente`.
+- Permitir que `planejarIdentidade` use um helper privado no lugar da chamada.
+- Avisar que `test/dono-dry-run.test.ts:54` continua citando `resolverUuid` no título, ou incluir esse arquivo também.
+
+Isso deve caber no teto de 200 linhas, mas deixa de ser "só remoção". A outra saída é manter o export e mudar o critério `REMOVIDO`.
+
+Salvei essa armadilha na memória (`remocao-de-export-usado-por-scripts.md`): o grep de tickets "sai X" precisa cobrir `scripts/` também.

@@ -1,0 +1,17 @@
+A implementação do 1054 está pronta e commitada, mas o critério de testes verdes não fecha: 5 testes falham, em dois arquivos fora da allowlist. Não rodei `npm run build`. Não rodei os critérios de `grep` nem os guards de allowlist e de SQL.
+
+Das 328 provas do critério global, 323 passam e 5 falham, em `test/resolver-cliente-rota-diagnostico.test.ts` (4) e `test/resolver-cliente-rota-resumo.test.ts` (1). O `tsc` não mostra erro fora de `qualificacao*`. O diff somou 504 linhas contra `staging-auto`, dentro do teto de 720.
+
+**Commits (sem push):**
+- `8b9e31a`: `nichos-catalogo.ts` novo e `data.ts` com `montarClientes`.
+  - `getClientes` agora lança em erro.
+  - `data.ts` não cita mais o espelho.
+  - Com `cliente_id`, os campos vêm de negócio, perfil e catálogo; o legado do espelho só entra na linha sem `cliente_id`.
+- `aa7690f`: `/api/notion/clientes/[id]`. A ficha por uuid devolve fase, perfil e nicho da casa nova, e a ponte vem de `pontePorCliente`.
+- `9e55840`: `resumo`, `diagnostico` e `entregaveis` leem pelas libs. `meta_campaign_id` entra no objeto do diagnóstico, mas o contexto da IA não o usa (a rota já não o usava).
+- `5fed00a`: `resumo-cliente.test.ts` recalculado, sem remover nenhum `it` nem `expect`.
+- `c375e7c`: `leitores-ficha-casa-nova.test.ts` novo, com 16 testes verdes.
+
+**Os 5 que falham:** os dublês desses dois arquivos não têm `.in`. As libs `pontePorEntrada`, `lerEspelhoPorNotion` e `lerEspelhoPorCliente` consultam com `.in`, e o ticket manda usá-las nesses caminhos. O erro é `base.in is not a function`, e a rota responde 500. Corrigir pede adicionar `c.in = ...` nos dublês, o que viola a allowlist (`SO_ALLOWLIST`). Preferi não editar. Os dois arquivos precisam entrar na allowlist ou ir para um ticket à parte.
+
+**Mudança de comportamento:** a leitura de receita no `resumo` agora lança em erro. Antes ela ignorava o erro silenciosamente. `GET /api/clientes/entregaveis` também passa a dar 500 em erro de leitura, em vez de devolver `[]`.

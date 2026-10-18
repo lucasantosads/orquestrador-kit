@@ -1,0 +1,35 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> PASS
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-830
+sanear_tsc: nao
+cmd:    n=$(grep -rn 'resolverUuid' src | grep -vE ':[0-9]+:\s*(//|\*|/\*)' | cut -d: -f1 | sort -u | wc -l | tr -d ' '); [ "$n" = 0 ] && echo REMOVIDO || echo SOBRA_$n
+espera: REMOVIDO
+-- saida --
+SOBRA_1
+
+### criterio[9] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-830
+sanear_tsc: nao
+cmd:    b="$(git merge-base HEAD staging-auto)"; a=$(git show "$b:test/identidade-resolver.test.ts" | grep -c 'it('); n=$(grep -c 'it(' test/identidade-resolver.test.ts); [ "$n" = $((a-7)) ] && echo SO_O_DESCRIBE || echo IT_${a}_${n}
+espera: SO_O_DESCRIBE
+-- saida --
+IT_28_28
+
+### criterio[10] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-830
+sanear_tsc: nao
+cmd:    test -f test/sai-identidade-removido.test.ts && npx vitest run test/sai-identidade-removido.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO
+espera: VERDE
+-- saida --
+VERMELHO
+
+### criterio[11] (qualitativo — julgado pelo Opus)
+descricao: avaliador: so resolverUuid e o describe dela sairam; resto da identidade igual. REPROVE se: outro describe mudou; outra exportacao sumiu.
+

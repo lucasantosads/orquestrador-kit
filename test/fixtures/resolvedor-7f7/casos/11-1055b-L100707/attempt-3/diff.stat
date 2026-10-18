@@ -1,0 +1,9 @@
+ src/app/api/admin/clientes-sem-cliente-id/route.ts |  14 +-
+ src/app/api/meta/overview/route.ts                 |  16 +-
+ src/app/api/portal/meus-clientes/route.ts          |  78 ++++---
+ src/app/api/team/nps/route.ts                      |  30 ++-
+ src/app/dashboard/clientes/nps/layout.tsx          |  19 +-
+ src/lib/acoes/motor.ts                             |  19 +-
+ test/leitores-equipe-nps-portal-casa-nova.test.ts  | 225 +++++++++++++++++++++
+ test/quem-cuida.test.ts                            |  16 +-
+ 8 files changed, 345 insertions(+), 72 deletions(-)

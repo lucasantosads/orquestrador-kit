@@ -1,0 +1,4 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+1053b	docs/fila/runs/1053b/attempt-1.prev1	test/churn-pipeline-por-id.test.ts	2449	2026-10-13T18:28:59Z	1
+1053b	docs/fila/runs/1053b/attempt-2.prev1	test/churn-pipeline-por-id.test.ts	2510	2026-10-13T18:36:01Z	1
+1053b	docs/fila/runs/1053b/attempt-1.prev2	test/churn-pipeline-por-id.test.ts	2499	2026-10-13T19:24:47Z	1

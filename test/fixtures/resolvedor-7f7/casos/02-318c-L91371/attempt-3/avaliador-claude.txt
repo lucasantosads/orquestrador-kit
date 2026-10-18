@@ -1,0 +1,1 @@
+{"aprovado": false, "motivo": "O filtro de tipo não chega ao drill: nichos-teses-aba.tsx:372 monta <DrillTese tese={tese} /> sem tipo e o default 'todos' fica fixo, então o ranking ignora o filtro de funil. O critério exige o tipo do filtro. O arquivo que chama está fora da allowlist; ampliar a allowlist."}

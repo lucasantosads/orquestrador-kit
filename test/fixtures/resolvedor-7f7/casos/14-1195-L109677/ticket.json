@@ -1,0 +1,178 @@
+{
+ "id": "1195",
+ "slug": "reuniao-dedupe-tldv",
+ "lane": "produto",
+ "perfil": "api",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 600 linhas (~90 em ingest.ts, ~110 em tldv-api.ts NOVO, ~5 em types.ts, ~40 em manual.ts, ~330 no teste NOVO). Se passar do teto, pare e reporte. DEPENDE do 1191 (manual.ts, campos novos em types.ts) e do 1194 (enfileirarResumoReuniao grava analise_status), ambos atras do 1190 aplicado. A coluna duracao_seg e escrita aqui, mas fica fora de colunas_escritas porque so existe depois do 1190, que a cria e confere. RECON DE 16/10 (banco vivo): perf_reuniao.tldv_meeting_id e NOT NULL + UNIQUE; categoria_interna e text sem CHECK (o vocabulario vive no app, src/lib/perf/reunioes/types.ts); as 15 linhas atuais tem categoria_interna, health e cliente_id nulos (match_status nao_identificado); perf_leituras_relacao_gatilho_check aceita semanal, manual, nps_baixo, reclamacao, cpl_alto, renovacao, cron_diario (nao aceita reuniao); RLS ligada nas 3 tabelas; trigger trg_perf_reuniao_updated. O participantes que o sync do tl;dv grava hoje e {\"organizer\":{\"name\",\"email\"},\"invitees\":[...]}. Nao existe coluna de duracao, de origem nem de estado de analise. PASSO 1: leia src/lib/perf/reunioes/ingest.ts inteiro, src/lib/perf/reunioes/manual.ts, src/lib/perf/reunioes/types.ts (tldvConteudoSchema), src/lib/perf/reunioes/matching.ts e test/reuniao-tldv-envelope-e-contato.test.ts (dublê do supabase do ingest). FAZER: (1) src/lib/perf/reunioes/types.ts: conteudoShape ganha duration: z.union([z.number(), z.string()]).nullish() (segundos). (2) src/lib/perf/reunioes/ingest.ts: m",
+ "cria_novo": [
+  "src/lib/perf/reunioes/tldv-api.ts",
+  "test/reuniao-dedupe-tldv.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/lib/perf/reunioes/ingest.ts",
+  "src/lib/perf/reunioes/tldv-api.ts",
+  "src/lib/perf/reunioes/types.ts",
+  "src/lib/perf/reunioes/manual.ts",
+  "test/reuniao-dedupe-tldv.test.ts"
+ ],
+ "dependencias": [
+  "1191",
+  "1194"
+ ],
+ "prioridade": 45,
+ "recon_esperado": [
+  {
+   "descricao": "src/lib/perf/reunioes/tldv-api.ts ainda nao existe",
+   "cmd": "test -e 'src/lib/perf/reunioes/tldv-api.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "test/reuniao-dedupe-tldv.test.ts ainda nao existe",
+   "cmd": "test -e 'test/reuniao-dedupe-tldv.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "o ingest ainda nao deduplica com reuniao manual nem preserva colaboradores",
+   "cmd": "f='src/lib/perf/reunioes/ingest.ts'; a=$(grep -c 'JANELA_DEDUPE_MS' \"$f\"); b=$(grep -c 'colaboradores' \"$f\"); [ \"$a\" = 0 ] && [ \"$b\" = 0 ] && echo SEM_DEDUPE || echo ST_${a}_${b}",
+   "espera": "SEM_DEDUPE"
+  }
+ ],
+ "colunas_escritas": [
+  "perf_reuniao.tldv_meeting_id",
+  "perf_reuniao.tldv_url",
+  "perf_reuniao.titulo_externo",
+  "perf_reuniao.transcript_text",
+  "perf_reuniao.resumo",
+  "perf_reuniao.participantes"
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do printf '%s\\n' 'src/lib/perf/reunioes/ingest.ts' 'src/lib/perf/reunioes/tldv-api.ts' 'src/lib/perf/reunioes/types.ts' 'src/lib/perf/reunioes/manual.ts' 'test/reuniao-dedupe-tldv.test.ts' | grep -Fxq \"$f\" || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 600 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 600 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais seguem verdes (test/c0-guard.test.ts, test/fetch-json-teto.test.ts, test/travessao-mudo.test.ts)",
+   "cmd": "npx vitest run 'test/c0-guard.test.ts' 'test/fetch-json-teto.test.ts' 'test/travessao-mudo.test.ts' >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "ingest deduplica na janela de 2h e preserva colaboradores; cliente da API usa x-api-key sem .json() cru",
+   "cmd": "f='src/lib/perf/reunioes/ingest.ts'; t='src/lib/perf/reunioes/tldv-api.ts'; test -f \"$t\" || { echo SEM_ARQUIVO; exit 0; }; a=$(grep -c 'JANELA_DEDUPE_MS' \"$f\"); b=$(grep -c 'colaboradores' \"$f\"); c=$(grep -c 'x-api-key' \"$t\"); d=$(grep -c '[.]json()' \"$t\"); e=$(grep -c 'TLDV_API_KEY' \"$t\"); [ \"$a\" -ge 2 ] && [ \"$b\" -ge 1 ] && [ \"$c\" -ge 1 ] && [ \"$d\" = 0 ] && [ \"$e\" -ge 1 ] && echo DEDUPE_OK || echo ST_${a}_${b}_${c}_${d}_${e}",
+   "espera": "DEDUPE_OK",
+   "tipo": "alvo"
+  },
+  {
+   "descricao": "testes verdes (test/reuniao-dedupe-tldv.test.ts, test/reuniao-tldv-envelope-e-contato.test.ts, test/webhook-segredo-freio.test.ts, test/reuniao-manual-registro.test.ts)",
+   "cmd": "test -f 'test/reuniao-dedupe-tldv.test.ts' && npx vitest run 'test/reuniao-dedupe-tldv.test.ts' 'test/reuniao-tldv-envelope-e-contato.test.ts' 'test/webhook-segredo-freio.test.ts' 'test/reuniao-manual-registro.test.ts' >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "avaliador: o sync completa a reuniao manual do mesmo cliente a +/-2h em vez de duplicar, preserva colaboradores, e o registro com link do tl;dv busca a transcricao sem travar o salvamento. REPROVE se: deduplica sem cliente do matching; muda data, tipo ou cliente da linha manual; apaga colaboradores; loga a chave; .json() cru; duplica flattenTranscript; assercao removida ou afrouxada.",
+   "cmd": "true",
+   "espera": "avaliador",
+   "tipo": "avaliador"
+  }
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/reuniao-tldv-envelope-e-contato.test.ts",
+   "motivo": "mapPayload ganha duracao_seg; o teste afirma campos de participantes, nao o objeto inteiro; o dublê do supabase precisa responder ao select do dedupe; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/webhook-segredo-freio.test.ts",
+   "motivo": "a rota do webhook nao muda; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/reuniao-manual-registro.test.ts",
+   "motivo": "teste do 1191; o retorno de registrarReuniaoManual ganha o campo transcricao; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/reuniao-operacional-resumo-ia-job.test.ts",
+   "motivo": "o job nao muda aqui; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/relacao-reuniao-operacional.test.ts",
+   "motivo": "fixture PerfReuniao; types.ts so ganha duration opcional no schema do payload; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/reunioes-sem-cliente.test.ts",
+   "motivo": "fixture PerfReuniao; schema do payload nao afeta; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/reuniao-operacional-termometro.test.ts",
+   "motivo": "fixture PerfReuniao; schema do payload nao afeta; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/visao-apolo-reuniao-operacional.test.ts",
+   "motivo": "nao usa o payload do tl;dv; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/rbac-visual.test.ts",
+   "motivo": "transitivo; nao muda; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/leitores-ficha-libs-casa-nova.test.ts",
+   "motivo": "le libs por caminho; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/apolo-ferramentas-cliente.test.ts",
+   "motivo": "transitivo por types.ts; nao usa o payload; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/apolo-ferramentas.test.ts",
+   "motivo": "transitivo por types.ts; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/apolo-contexto.test.ts",
+   "motivo": "transitivo por types.ts; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/apolo-ferramenta-atendimento.test.ts",
+   "motivo": "transitivo por types.ts; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/jobs-worker.test.ts",
+   "motivo": "transitivo pelo registro de jobs; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/jobs-motor-geral.test.ts",
+   "motivo": "transitivo pelo registro de jobs; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/ghl-backfill-job.test.ts",
+   "motivo": "transitivo pelo registro de jobs; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/criativos-classificar.test.ts",
+   "motivo": "transitivo pelo registro de jobs; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/criativos-transcrever.test.ts",
+   "motivo": "transitivo pelo registro de jobs; se quebrar, PARE e descreva"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 5711
+}

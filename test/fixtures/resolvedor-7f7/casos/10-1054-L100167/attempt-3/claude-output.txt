@@ -1,0 +1,31 @@
+Implementei o ticket 1054 pela spec, mas um critério mecânico continua vermelho. Quatro testes que estão fora da allowlist quebram, e não dá para resolver sem mexer neles. O `npm run build` foi negado pela permissão do ambiente e não rodou.
+
+**Critérios**
+- **tsc:** 3 erros, os de `qualificacao*` do baseline.
+- **Sem `.sql` e só arquivos da allowlist:** ok.
+- **Diff:** 689 linhas, dentro do teto de 720.
+- **Espelho nos 6 arquivos de src:** zero citações a `clientes_notion_mirror`, e também nenhuma a `TABELA_ESPELHO`. Os leitores passam pelas libs.
+- **`test/resumo-cliente.test.ts`:** recalculado sem perder nenhum `expect(` nem `it(`. Tem o dublê do perfil e nenhum skip/only/todo.
+- **`test/leitores-ficha-casa-nova.test.ts`:** 21 de 21 verdes.
+- **Lista de testes do critério: VERMELHO.** A suíte inteira dá 4 falhas e 10.292 testes verdes, e as 4 falhas são estas.
+
+**Por que os 4 quebram.** Os dublês desses dois testes não têm `.in`, e as libs (`pontePorEntrada`, `lerEspelhoPorCliente`, `lerEspelhoPorNotion`, nichos) sempre filtram com `.in`. A tentativa anterior contornou isso lendo o espelho direto e foi reprovada por isso. Desta vez não contornei.
+- `test/resolver-cliente-rota-resumo.test.ts:26`: falta `"in"` na lista de métodos. Testei a mudança sem commitar e o teste passa.
+- `test/resolver-cliente-rota-diagnostico.test.ts:31` e `:41-43`: falta o `"in"`, e o fixture `mirror` precisa virar uma lista de linhas com `entrada_id`, porque a lib espera lista e não um objeto.
+
+**Para fechar:** os dois testes precisam entrar na allowlist de um 1054 refeito, ou de um ticket irmão, com esses recálculos. Isso precisa da sua decisão.
+
+**O que foi entregue (6 commits em `frente/1054`, sem push):**
+- **`nichos-catalogo.ts`** (novo): lê os nichos pelo catálogo e une os nomes em ordem alfabética. Erro de leitura lança.
+- **`data.ts`:** `montarClientes` monta a ficha com a fase do negócio, o perfil e o nicho do catálogo. O valor do espelho só entra na linha sem `cliente_id`. Com `cliente_id`, o campo sem dado na casa nova fica vazio, nunca com o valor do espelho.
+  - `getClientes` agora lança em erro, em vez de devolver lista vazia.
+  - `getClientesDoEmployee` filtra por quem cuida sem chamar `getClientes` de novo.
+  - As funções exportadas mantêm o mesmo nome.
+- **Ficha por uuid:** a ponte vem de `pontePorCliente`, e fase, perfil e nicho são preenchidos pelas casas novas. Quando o cliente ainda não tem fase gravada, o status cai no `clientes.status`, para manter `test/ficha-por-uuid.test.ts` verde.
+- **Resumo:** o gestor vem do perfil, o nicho do catálogo e a receita é lida por `cliente_id`. Sem `cliente_id`, a linha antiga é lida por `lerEspelhoPorNotion` e a receita pela ponte da entrada. Erro na leitura da receita agora lança, o que antes era ignorado.
+- **Diagnóstico:** a ponte vem de `pontePorEntrada`. Score e risco vêm do negócio, o analista do perfil e o nicho do catálogo. O `meta_campaign_id` vem de `lerEspelhoPorCliente` e agora entra no contexto da IA.
+- **Entregáveis:** lidos por `lerEspelhoPorNotion`. Falha de leitura no GET vira 500, em vez de lista vazia.
+
+**Desvio do texto do ticket.** `situacao`, `resultados`, `atencao` e `ultimo_feedback` não fazem parte de `ColunaLegada` na lib, e `espelho-legado.ts` está fora da allowlist. Para incluí-las em `COLUNAS_CLIENTE` e ter o valor do espelho na linha sem vínculo, como a reprovação pediu, usei um cast com comentário. Isso parte do princípio de que essas colunas ainda existem no espelho: o código antigo as lia com `select("*")`.
+
+Salvei uma memória sobre os dublês sem `.in`.

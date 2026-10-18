@@ -1,0 +1,12 @@
+{
+ "id": "854",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/854-remove-equipe-geral.md",
+ "ticket_sha": "f01a98953774489642f6584383fda3a9932bba3a",
+ "ticket_antes": true,
+ "linha_bloqueio": 90601,
+ "log_inicio": 90568,
+ "fim": "2026-10-12T04:18:06Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/854"
+}

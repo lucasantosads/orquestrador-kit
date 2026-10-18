@@ -1,0 +1,73 @@
+/**
+ * Ticket 092 — adoção real do predicado canônico de "cliente ativo" (Ticket 037,
+ * src/lib/clientes/ativo.ts, export isClienteAtivo).
+ *
+ * O gate de varredura (test/consistencia-contagens.test.ts) só prova AUSÊNCIA de
+ * comparação ad-hoc. Este teste prova PRESENÇA: cada rota/superfície que conta ou
+ * agrupa "cliente ativo" precisa importar e usar isClienteAtivo — não basta
+ * silenciar o regex do gate com uma constante renomeada.
+ */
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+const IMPORT_PATH = '@/lib/clientes/ativo'
+
+// Rotas/superfícies que definem o universo de "cliente ativo" — precisam do
+// predicado canônico (isClienteAtivo), não de um recorte ad-hoc equivalente.
+const ROTAS_CONTAGEM_ATIVO = [
+  // adoção anterior (Ticket 037)
+  join('src', 'app', 'api', 'clientes', 'kpis', 'route.ts'),
+  join('src', 'app', 'api', 'clientes', 'automacoes-status', 'route.ts'),
+  join('src', 'app', 'api', 'clientes', 'renovacoes', 'route.ts'),
+  // adoção Ticket 092
+  join('src', 'app', 'dashboard', 'team', '[id]', 'page.tsx'),
+  join('src', 'app', 'dashboard', 'clientes', '_components', 'mutations.ts'),
+  join('src', 'app', 'dashboard', 'clientes', 'page.tsx'),
+  join('src', 'app', 'api', 'meta', 'overview', 'route.ts'),
+  join('src', 'app', 'api', 'carteira', 'route.ts'),
+  join('src', 'app', 'api', 'portal-cliente', 'atribuicao', 'route.ts'),
+  join('src', 'app', 'api', 'clientes', 'resumo-cs', 'route.ts'),
+  join('src', 'app', 'api', 'clientes', 'alertas-detalhados', 'route.ts'),
+  join('src', 'app', 'api', 'visao-geral', 'route.ts'),
+]
+
+// Ocorrências que o gate Ticket 090 pinou por casar com o regex, mas que são de
+// outra entidade (status de desafio/temporada da Liga Comarka, status de
+// contrato) — não contam "cliente ativo" e por isso NÃO usam isClienteAtivo.
+// A renomeação para constante local documenta essa distinção.
+const RECORTES_RENOMEADOS = [
+  { file: join('src', 'app', 'time', 'liga-comarka', 'admin', 'page.tsx'), constante: 'DESAFIO_STATUS_ATIVO' },
+  { file: join('src', 'app', 'api', 'liga-comarka', 'placar', 'route.ts'), constante: 'DESAFIO_STATUS_ATIVO' },
+  { file: join('src', 'app', 'api', 'admin', 'sync-status', 'route.ts'), constante: 'CONTRATO_STATUS_ATIVO' },
+  { file: join('src', 'lib', 'db', 'commercial-readonly.ts'), constante: 'CONTRATO_STATUS_ATIVO' },
+  { file: join('src', 'lib', 'jobs', 'onboarding-creator.ts'), constante: 'CONTRATO_STATUS_ATIVO' },
+]
+
+describe('Ticket 092 — rotas de contagem de "cliente ativo" importam o módulo canônico', () => {
+  it('lista de rotas de contagem não está vazia (anti no-op)', () => {
+    expect(ROTAS_CONTAGEM_ATIVO.length).toBeGreaterThan(0)
+  })
+
+  for (const file of ROTAS_CONTAGEM_ATIVO) {
+    it(`${file} importa isClienteAtivo de ${IMPORT_PATH}`, () => {
+      const content = readFileSync(file, 'utf8')
+      expect(content).toContain(IMPORT_PATH)
+      expect(content).toMatch(/isClienteAtivo/)
+    })
+  }
+})
+
+describe('Ticket 092 — recortes de outra entidade (desafio/temporada/contrato) ficam documentados, não adotam o predicado', () => {
+  for (const { file, constante } of RECORTES_RENOMEADOS) {
+    it(`${file} usa constante nomeada (${constante}) em vez do literal "ativo" cru`, () => {
+      const content = readFileSync(file, 'utf8')
+      expect(content).toContain(constante)
+      // Não deve reintroduzir o literal comparado inline com "status" (o que faria
+      // o gate de varredura pegar de novo) — a comparação passa pela constante.
+      expect(content).not.toMatch(/\.ilike\(\s*["']status["']\s*,\s*["']ativo["']\s*\)/i)
+      expect(content).not.toMatch(/\.eq\(\s*["']status["']\s*,\s*["']ativo["']\s*\)/i)
+      expect(content).not.toMatch(/\bstatus\s*[!=]==\s*["'][Aa]tivo["']/)
+    })
+  }
+})

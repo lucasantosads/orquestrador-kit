@@ -1,0 +1,6 @@
+ src/app/dashboard/clientes/[id]/page.tsx           |   3 +
+ .../dashboard/clientes/[id]/tabs/criativos-tab.tsx | 319 +++++++++++++++++++++
+ .../dashboard/clientes/[id]/tabs/ficha-types.ts    |   5 +-
+ test/campanhas-aba-criativos.test.tsx              | 151 ++++++++++
+ test/campanhas-sem-duplicatas.test.ts              |   3 +-
+ 5 files changed, 478 insertions(+), 3 deletions(-)

@@ -1,0 +1,12 @@
+{
+ "id": "1053b",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/1053b-fase-churn-e-setup-param-de-gravar-no-espelho.md",
+ "ticket_sha": "3718afa1ce04a6ddd079222b53df50e3909c7ddf",
+ "ticket_antes": true,
+ "linha_bloqueio": 99752,
+ "log_inicio": 99700,
+ "fim": "2026-10-13T19:35:16Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/1053b"
+}

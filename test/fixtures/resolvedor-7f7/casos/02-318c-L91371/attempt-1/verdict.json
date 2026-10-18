@@ -1,0 +1,4 @@
+{
+  "aprovado": false,
+  "motivo": "Tipo de funil do filtro não chega ao ranking: nichos-teses-aba.tsx:372 monta <DrillTese tese={tese} /> sem tipo e o tipo do filtro vive num useState da aba; criativos ficam sempre em 'todos'. A allowlist precisa incluir nichos-teses-aba.tsx. Resto OK: tese, degrau, s/ dado, erro."
+}

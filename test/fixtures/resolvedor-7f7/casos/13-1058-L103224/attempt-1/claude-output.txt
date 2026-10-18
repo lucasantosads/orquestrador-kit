@@ -1,0 +1,20 @@
+Os 4 crons agora leem o espelho pela lib, mas um critério de aceite ainda falha: `test/quem-cuida.test.ts` está vermelho e não posso corrigi-lo dentro da allowlist. As edições estão em 2 commits na `frente/1058`, sem push, e o diff soma 342 linhas, dentro do teto de 480.
+
+**O que mudou**
+- **Universo pela lib:** `calcular-score`, `analise-risco`, `temperatura-comercial` e `alertas-campanha` leem o espelho com `lerEspelhoPorEntrada`. Nenhum dos 4 cita mais `clientes_notion_mirror`.
+- **Erro de leitura:** vira 500 com `{ error }` e nunca lista vazia.
+- **`calcular-score`:** a leitura do espelho entrou na mesma guarda de `try/catch` da leitura do universo. Quando falha na etapa do espelho, devolve "Não foi possível ler os clientes do espelho". A razão é que `test/erro-string-crons-score-campanha.test.ts` exige a mensagem antiga no catch do 500.
+- **`analise-risco`:** o nicho vem de `lerNomesNichosPorCliente` e `nichoTexto`. O contexto da IA não tinha o campo `nicho`, então ele foi adicionado. Falha na leitura de nichos vira 500.
+- **`alertas-campanha`:** o filtro `.not('meta_campaign_id', 'is', null)` virou `.filter((c) => c.meta_campaign_id)` em código.
+- **Testes novos:** `test/leitores-crons-casa-nova.test.ts` tem 15 its e passa. Cobre `.in('entrada_id', ids)` sem `.not`, 500 por erro de leitura, o filtro de `alertas-campanha`, o nicho do catálogo contra o legado e os checks estáticos.
+- **Testes existentes:**
+  - **Fixtures:** `crons-get-ia` e `temperatura-comercial-cron` ganharam fixtures com `entrada_id` e ids de entrada em formato uuid. A lib ignora ids que não são uuid e indexa o espelho por `entrada_id`.
+  - **Valor esperado:** a lib ordena por `notion_id` como texto, então o 41º cliente que fica fora do cap passou de `cliente-41` para `cliente-9`, com comentário no teste.
+  - **Contagem:** nenhum `it` foi removido e nenhum `expect` foi afrouxado.
+
+**Resultado dos checks**
+- `tsc` fica em 3 erros, todos em `qualificacao*`.
+- Dos 15 arquivos da bateria de guardas, 14 passam. O que falha é `test/quem-cuida.test.ts`: "alerta de campanha: destinatário é quem cuida".
+- Não rodei a suíte completa nem o `npm run build`.
+
+**Por que o `quem-cuida.test.ts` falha:** as fixtures dele usam `entrada_id` `"r1"`, `"r2"` e `"r3"`, que não são uuid. A lib descarta esses ids antes de consultar, então o cron não vê nenhuma linha e nenhum WhatsApp é enviado. O teste não está na allowlist e a correção é trocar essas fixtures por uuids. Para fechar o ticket, ele precisa entrar na allowlist.

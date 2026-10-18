@@ -1,0 +1,45 @@
+91327	[2026-10-12 04:14:31-0300] drenagem: ticket 318c (7 pendentes restantes)
+91328	[orq 07:14:31] orquestrador iniciando · modo: real · once
+91329	[orq 07:14:31] preflight: validando infra (scripts, fila, env, claude)...
+91330	[orq 07:14:34] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+91331	[orq 07:14:40] preflight: ok
+91332	[orq 07:14:55] === ticket 318c (nichos-teses-ranking-criativos-tela) — tentativa 1 · modo: real ===
+91333	[orq 07:14:56]   recon_esperado: ok (1 comando(s))
+91334	[orq 07:14:56] aviso allowlist: src/app/dashboard/performance/nichos-teses/drill-tese.tsx já existe no worktree — o agente vai EDITAR, não criar
+91335	[orq 07:14:56]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/318c/attempt-1/prompt.txt
+91336	[orq 07:14:56]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+91337	[orq 07:16:36]   diff cru salvo (215 linhas alteradas) · HEAD julgado da2bc486
+91338	[orq 07:16:36]   enforcement: ok
+91339	[orq 07:16:52]   gate tsc: ok (baseline)
+91340	[orq 07:17:14]   gate vitest: ok
+91341	[orq 07:17:32]   criterios mecânicos: ok
+91342	[orq 07:17:56]   gate build: ok
+91343	[orq 07:18:12] avaliador: REPROVADO — Tipo de funil do filtro não chega ao ranking: nichos-teses-aba.tsx:372 monta <DrillTese tese={tese} /> sem tipo e o tipo do filtro vive num useState da aba; criativos ficam sempre em 'todos'. A allowlist precisa incluir nichos-teses-aba.tsx. Resto OK: tese, degrau, s/ dado, erro.
+91344	[orq 07:18:12] ticket 318c: reprovado — retry 1/2. motivo: Tipo de funil do filtro não chega ao ranking: nichos-teses-aba.tsx:372 monta <DrillTese tese={tese} /> sem tipo e o tipo do filtro vive num useState da aba; criativos ficam sempre em 'todos'. A allowlist precisa incluir nichos-teses-aba.tsx. Resto OK: tese, degrau, s/ dado, erro.
+91345	[orq 07:18:12] === ticket 318c (nichos-teses-ranking-criativos-tela) — tentativa 2 · modo: real ===
+91346	[orq 07:18:13]   recon_esperado: ok (1 comando(s))
+91347	[orq 07:18:13] aviso allowlist: src/app/dashboard/performance/nichos-teses/drill-tese.tsx já existe no worktree — o agente vai EDITAR, não criar
+91348	[orq 07:18:13]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/318c/attempt-2/prompt.txt
+91349	[orq 07:18:13]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+91350	[orq 07:19:48]   diff cru salvo (206 linhas alteradas) · HEAD julgado 24386667
+91351	[orq 07:19:48]   enforcement: ok
+91352	[orq 07:20:04]   gate tsc: ok (baseline)
+91353	[orq 07:20:24]   gate vitest: ok
+91354	[orq 07:20:42]   criterios mecânicos: ok
+91355	[orq 07:21:07]   gate build: ok
+91356	[orq 07:21:20] avaliador: REPROVADO — A tela ignora o filtro de tipo de funil. nichos-teses-aba.tsx:372 monta DrillTese só com tese, sem tipo, então os criativos sempre usam 'todos'. Esse arquivo está fora da allowlist: falha de spec, corrigir a allowlist. Resto ok: degrau decisivo, sem amostra em texto, motivo, ErrorState e s/ dado.
+91357	[orq 07:21:20] ticket 318c: reprovado — retry 2/2. motivo: A tela ignora o filtro de tipo de funil. nichos-teses-aba.tsx:372 monta DrillTese só com tese, sem tipo, então os criativos sempre usam 'todos'. Esse arquivo está fora da allowlist: falha de spec, corrigir a allowlist. Resto ok: degrau decisivo, sem amostra em texto, motivo, ErrorState e s/ dado.
+91358	[orq 07:21:20] === ticket 318c (nichos-teses-ranking-criativos-tela) — tentativa 3 · modo: real ===
+91359	[orq 07:21:21]   recon_esperado: ok (1 comando(s))
+91360	[orq 07:21:21] aviso allowlist: src/app/dashboard/performance/nichos-teses/drill-tese.tsx já existe no worktree — o agente vai EDITAR, não criar
+91361	[orq 07:21:21]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/318c/attempt-3/prompt.txt
+91362	[orq 07:21:21]   tentativa final: escalando modelo do executor para 'opus'
+91363	[orq 07:21:21]   chamando claude -p (headless, --model opus, timeout 1500s) no worktree...
+91364	[orq 07:24:17]   diff cru salvo (206 linhas alteradas) · HEAD julgado dea5d329
+91365	[orq 07:24:17]   enforcement: ok
+91366	[orq 07:24:38]   gate tsc: ok (baseline)
+91367	[orq 07:25:15]   gate vitest: ok
+91368	[orq 07:25:36]   criterios mecânicos: ok
+91369	[orq 07:26:03]   gate build: ok
+91370	[orq 07:26:16] avaliador: REPROVADO — O filtro de tipo não chega ao drill: nichos-teses-aba.tsx:372 monta <DrillTese tese={tese} /> sem tipo e o default 'todos' fica fixo, então o ranking ignora o filtro de funil. O critério exige o tipo do filtro. O arquivo que chama está fora da allowlist; ampliar a allowlist.
+91371	[orq 07:26:16] ticket 318c: reprovado após 2 retries — BLOQUEADO

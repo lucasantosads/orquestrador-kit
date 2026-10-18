@@ -1,0 +1,934 @@
+/**
+ * Ticket 522: ACEITE da aba Visão da ficha do cliente contra o mockup
+ * docs/roadmap/mockups/visao-geral-ficha-cliente.html.
+ *
+ * Este arquivo não corrige tela: codifica o aceite. Item que falha fica
+ * vermelho e a lista dos testes vermelhos é o entregável do ticket.
+ *
+ * Sem jsdom e sem transformação de JSX no vitest do repo: nenhum JSX aqui, só
+ * React.createElement. Onde o componente renderiza sem contexto nem fetch, o
+ * arquivo real é compilado com esbuild e renderizado com renderToStaticMarkup
+ * (mesma técnica de test/kpis-visao.test.tsx e test/cadastro-colapsavel.test.ts).
+ * Onde não dá, a prova é sobre o código-fonte lido do disco.
+ *
+ * As listas de período, KPIs e colunas vêm do HTML do mockup, lido em runtime;
+ * o que o mockup deixou para trás entra só pelo mapa TROCAS abaixo.
+ */
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { Module, createRequire } from "node:module";
+import vm from "node:vm";
+import { transformSync } from "esbuild";
+import React from "react";
+import { TAB_GROUPS } from "../src/app/dashboard/clientes/[id]/tabs/ficha-types";
+import { isClienteAtivo } from "../src/lib/clientes/ativo";
+import { chipSaude } from "../src/lib/clientes/chip-saude";
+
+const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/server") as {
+  renderToStaticMarkup: (element: React.ReactElement) => string;
+};
+
+// ─── Trocas: onde o mockup foi superado ─────────────────────────────────────
+// Cada entrada é aplicada sobre o texto lido do mockup. O rótulo do mockup NÃO
+// é aceito como alternativa nestes casos.
+const TROCAS: Record<string, string> = {
+  // Decisão de 21/09: o mockup diz Custom, a tela diz Personalizado.
+  "Custom": "Personalizado",
+  // Ticket 520: a coluna é o lead do Meta; Leads CRM não tem fonte.
+  "Leads CRM": "Leads",
+  // Regra de copy da leva: ausência é "sem base", nunca "s/ dado".
+  "s/ dado": "sem base",
+  // Regra de copy da leva: idem para o NPS sem resposta do mockup.
+  "s/ resposta": "sem base",
+};
+const trocar = (t: string): string => (t in TROCAS ? TROCAS[t] : t);
+
+// ─── Leitura de arquivos ────────────────────────────────────────────────────
+const RAIZ = resolve(__dirname, "..");
+const DIR = resolve(RAIZ, "src/app/dashboard/clientes/[id]");
+const lerArq = (p: string): string => readFileSync(p, "utf8");
+
+const MOCKUP_PATH = resolve(RAIZ, "docs/roadmap/mockups/visao-geral-ficha-cliente.html");
+const mockup = lerArq(MOCKUP_PATH);
+
+const PAGE_PATH = resolve(DIR, "page.tsx");
+const GERAL_PATH = resolve(DIR, "tabs/geral-tab.tsx");
+const page = lerArq(PAGE_PATH);
+const geral = lerArq(GERAL_PATH);
+
+const COMPONENTES = [
+  "barra-visao", "kpis-visao", "drawer-metricas", "tabela-campanhas", "bloco-relacao",
+  "bloco-tarefas", "bloco-alertas", "timeline-visao", "bloco-otimizacoes", "analise-ia",
+  "perfil-chip", "cockpit-cards",
+] as const;
+const MONTADOS_NA_VISAO = COMPONENTES.filter((c) => c !== "cockpit-cards");
+const caminhoComp = (c: string) => resolve(DIR, `_components/${c}.tsx`);
+const fonte: Record<string, string> = {};
+for (const c of COMPONENTES) fonte[c] = lerArq(caminhoComp(c));
+
+/** Remove comentários de linha e de bloco: comentário não é tela. `://` de URL sobrevive. */
+function semComentarios(src: string): string {
+  return src.replace(/\/\*[^]*?\*\//g, "").replace(/(^|\s)\/\/[^\n]*/g, "$1");
+}
+const geralCodigo = semComentarios(geral);
+const pageCodigo = semComentarios(page);
+
+/** Recorte [ini, fim) por marcadores; marcador ausente derruba o teste com mensagem. */
+function recorte(src: string, ini: string, fim?: string): string {
+  const i = src.indexOf(ini);
+  if (i < 0) throw new Error(`marcador não encontrado: ${ini}`);
+  const f = fim === undefined ? src.length : src.indexOf(fim, i + ini.length);
+  if (f < 0) throw new Error(`marcador não encontrado: ${fim}`);
+  return src.slice(i, f);
+}
+const RAMO_VISAO = 'grupoAtivo === "visao-geral" &&';
+const RAMO_PERF = 'grupoAtivo === "performance" &&';
+const RAMO_RELACAO = 'grupoAtivo === "relacao" &&';
+const RAMO_CONTA = 'grupoAtivo === "conta" &&';
+const ramoVisao = semComentarios(recorte(page, RAMO_VISAO, RAMO_PERF));
+const ramoPerformance = semComentarios(recorte(page, RAMO_PERF, RAMO_RELACAO));
+const RAMO_COMERCIAL = 'grupoAtivo === "comercial" &&';
+const ramoConta = semComentarios(recorte(page, RAMO_CONTA, RAMO_COMERCIAL));
+// Ticket 925 (spec 09/10): Fechamentos e Negócio foram para a aba Comercial.
+const ramoComercial = semComentarios(recorte(page, RAMO_COMERCIAL));
+
+/** Tudo do page.tsx que aparece na Visão: o shell fora dos ramos das outras abas + o ramo da Visão. */
+const shellDaVisao = semComentarios(
+  page.slice(0, page.indexOf(RAMO_PERF)) + page.slice(page.lastIndexOf("</>)}") + "</>)}".length),
+);
+/** O que monta na Visão: shell + ramo + a aba Geral (GeralTab). */
+const corpoDaVisao = `${shellDaVisao}\n${geralCodigo}`;
+
+// ─── Análise de montagem ────────────────────────────────────────────────────
+function ocorrencias(src: string, nome: string): number[] {
+  const re = new RegExp(`<${nome}(?![A-Za-z0-9_])`, "g");
+  const idx: number[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(src)) !== null) idx.push(m.index);
+  return idx;
+}
+/** Ocorrências de <Nome que NÃO vêm imediatamente atrás da guarda dada (ou seja, montam sem condição). */
+function semCondicao(src: string, nome: string, guarda: RegExp): number[] {
+  return ocorrencias(src, nome).filter((i) => !guarda.test(src.slice(Math.max(0, i - 240), i).trimEnd()));
+}
+const NUNCA = /(?!)/;
+const guardaAba = (chave: string) => new RegExp(`activeTab === "${chave}"\\s*(\\?|&&)\\s*\\(?$`);
+const GUARDA_NAO_ATIVO = /!isClienteAtivo\([^)]*\)\s*&&\s*\(?$/;
+
+/** Especificadores de import de valor (import type não conta). */
+function importsDeValor(src: string): string[] {
+  const cod = semComentarios(src).replace(/import type [^;]*;/g, "");
+  const out: string[] = [];
+  const re = /(?:from|import\(|require\()\s*"([^"]+)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(cod)) !== null) out.push(m[1]);
+  return out;
+}
+
+// ─── Leitura do mockup ──────────────────────────────────────────────────────
+function textoDe(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+}
+function todos(re: RegExp, src: string): string[] {
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(src)) !== null) out.push(m[1]);
+  return out;
+}
+const mockupTopo = recorte(mockup, "<!-- TOPO -->", "<!-- CARTÃO DO CLIENTE -->");
+const mockupCartao = recorte(mockup, '<section class="client">', "<!-- ABAS + PERÍODO ÚNICO -->");
+const mockupAbas = recorte(mockup, '<div class="tabs">', '<div class="period"');
+const mockupPeriodo = recorte(mockup, '<div class="period" id="period">', "</div>");
+const mockupKpis = recorte(mockup, '<div class="kpis has-data">', '<div class="kpis no-data">');
+const mockupTabela = recorte(mockup, '<table class="has-data">', "</tr></thead>");
+
+const ABAS_MOCKUP = todos(/<button class="tab[^"]*">([^<]+)<\/button>/g, mockupAbas);
+const PERIODOS_MOCKUP = todos(/<button[^>]*>([^<]+)<\/button>/g, mockupPeriodo);
+const KPIS_MOCKUP = todos(/<div class="l">([^<]+)<\/div>/g, mockupKpis);
+const COLUNAS_MOCKUP = todos(/<th[^>]*>([^<]+)<\/th>/g, mockupTabela);
+// Fora do aceite por decisão do ticket: sem fonte hoje.
+const COLUNAS_FORA_DO_ACEITE = ["R. agend.", "Contratos"];
+
+// ─── Carregador de módulos reais (esbuild + vm) ─────────────────────────────
+type Overrides = Record<string, unknown>;
+const cache = new Map<string, Record<string, unknown>>();
+
+function nomeDoImportDinamico(loader: unknown): string {
+  const m = /(?:import|require)\("([^"]+)"\)/.exec(String(loader));
+  return m ? m[1].split("/").pop() ?? "" : "";
+}
+/** next/dynamic: renderiza um marcador com o nome do módulo e os filhos (a Dica vira <span data-dica>). */
+const dynamicStub = {
+  __esModule: true,
+  default: (loader: unknown) => {
+    const nome = nomeDoImportDinamico(loader);
+    return function Dinamico(props: Record<string, unknown>) {
+      return React.createElement(
+        "span",
+        { "data-dinamico": nome, "data-dica": typeof props.texto === "string" ? props.texto : undefined },
+        props.children as React.ReactNode,
+      );
+    };
+  },
+};
+
+function carregar(arquivo: string, overrides: Overrides = {}): Record<string, unknown> {
+  const chave = `${arquivo}|${Object.keys(overrides).join(",")}`;
+  const pronto = cache.get(chave);
+  if (pronto) return pronto;
+  const { code } = transformSync(lerArq(arquivo), {
+    loader: arquivo.endsWith(".tsx") ? "tsx" : "ts", jsx: "automatic", format: "cjs", target: "node18", sourcefile: arquivo,
+  });
+  const mod = new Module(arquivo, module);
+  mod.filename = arquivo;
+  mod.paths = (Module as unknown as { _nodeModulePaths(dir: string): string[] })._nodeModulePaths(dirname(arquivo));
+  cache.set(chave, mod.exports);
+  const req = (id: string): unknown => {
+    if (id in overrides) return overrides[id];
+    const base = id.startsWith("@/") ? resolve(RAIZ, "src", id.slice(2)) : id.startsWith(".") ? resolve(dirname(arquivo), id) : null;
+    if (!base) return mod.require(id);
+    for (const ext of [".tsx", ".ts"]) {
+      try { lerArq(base + ext); } catch { continue; }
+      return carregar(base + ext, overrides);
+    }
+    return mod.require(id);
+  };
+  const wrapper = vm.runInThisContext(Module.wrap(code), { filename: arquivo });
+  wrapper.call(mod.exports, mod.exports, req, mod, arquivo, dirname(arquivo));
+  cache.set(chave, mod.exports);
+  return mod.exports;
+}
+
+const sonnerStub = { toast: { success() {}, error() {} } };
+const linkStub = {
+  __esModule: true,
+  default: (p: { href: string; children?: React.ReactNode }) => React.createElement("a", { href: p.href }, p.children),
+};
+const html = (el: React.ReactElement): string => renderToStaticMarkup(el);
+const contar = (src: string, re: RegExp): number => (src.match(re) || []).length;
+
+// ─── Cartão do topo (IdentidadeCliente) renderizado ─────────────────────────
+interface FichaOverrides {
+  contratoData?: { fidelidade_fim: string } | null;
+  npsToken?: string | null;
+  fechamento?: Record<string, unknown> | null;
+  teses?: unknown[];
+  entregaveis?: { progresso: number }[];
+}
+let fichaAtual: Record<string, unknown> = {};
+const geralMod = carregar(GERAL_PATH, {
+  "next/dynamic": dynamicStub,
+  sonner: sonnerStub,
+  "./ficha-context": { useFicha: () => fichaAtual },
+});
+const IdentidadeCliente = geralMod.IdentidadeCliente as React.ComponentType<{ chip: unknown; risco: string | null; perfResolved: boolean }>;
+
+function fichaCom(o: FichaOverrides): Record<string, unknown> {
+  return {
+    id: "00000000-0000-4000-8000-000000000522",
+    cliente: { nome: "AQUINO ADV", status: "Ativo", analista: "Fernando", situacao: "Em dia", atencao: "Verde", nicho: "Previdenciário" },
+    update: async () => {}, setCliente: () => {}, gestores: [],
+    extra: { whatsapp_group_url: "https://chat.whatsapp.com/grupo-aquino" },
+    fechamento: o.fechamento === undefined ? null : o.fechamento,
+    perfClienteId: "p1",
+    editingPlataforma: false, setEditingPlataforma: () => {}, editingNicho: false, setEditingNicho: () => {},
+    nichoOpts: [], salvarExtra: async () => {}, executandoCampoCliente: false,
+    npsToken: o.npsToken === undefined ? "token-nps" : o.npsToken, setNpsToken: () => {},
+    npsTokenBusy: false, setNpsTokenBusy: () => {},
+    contratoData: o.contratoData === undefined ? null : o.contratoData,
+    setActiveTab: () => {},
+    teses: o.teses ?? [], entregaveis: o.entregaveis ?? [],
+    statusHistorico: [], showHistorico: false, setShowHistorico: () => {},
+  };
+}
+// Ticket 711b3: mesma função que o shell usa para resolver o chip da Saúde (page.tsx via lerSinalCliente).
+function cartao(o: FichaOverrides = {}, chip: unknown = chipSaude({ cor: "verde", sinal: "ok", motivo: "Sem alertas", faltando: [] })): string {
+  fichaAtual = fichaCom(o);
+  return html(React.createElement(IdentidadeCliente, { chip, risco: "Baixo", perfResolved: true }));
+}
+const diaIso = (delta: number): string => {
+  const d = new Date();
+  d.setDate(d.getDate() + delta);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const TESES_3 = [{ id: "t1" }, { id: "t2" }, { id: "t3" }];
+const ENTREGAVEIS_4_DE_7 = [100, 100, 100, 100, 20, 0, 0].map((progresso) => ({ progresso }));
+
+/** Corpo de uma função exportada do geral-tab, até o próximo `export function`. */
+function corpoDaFuncao(src: string, nome: string): string {
+  const ini = src.indexOf(`export function ${nome}(`);
+  if (ini < 0) throw new Error(`função ${nome} não encontrada`);
+  const prox = src.indexOf("\nexport function ", ini + 1);
+  return src.slice(ini, prox < 0 ? undefined : prox);
+}
+const corpoCartao = semComentarios(corpoDaFuncao(geral, "IdentidadeCliente"));
+
+// ═══════════════════════════════════════════════════════════════════════════
+describe("cabeçalho: tudo dentro do cartão do topo", () => {
+  it("cabecalho: nome do cliente", () => {
+    const h = cartao();
+    expect(h).toMatch(/<h2[^>]*>AQUINO ADV<\/h2>/);
+    expect(mockupCartao).toContain('<span class="c-name">');
+  });
+
+  it("cabecalho: chip de status", () => {
+    const h = cartao();
+    expect(mockupCartao).toContain('<span class="badge b-ok">Ativo</span>');
+    expect(h).toMatch(/<(span|div)[^>]*>Ativo<\/(span|div)>/);
+    expect(textoDe(h)).toContain("AQUINO ADV Ativo");
+  });
+
+  it("cabecalho: gestor", () => {
+    expect(mockupCartao).toContain("Gestor <b>");
+    // RECALCULA (ticket 648): o rótulo renderizado usa ponto médio, "Gestor · Fernando".
+    expect(textoDe(cartao())).toMatch(/Gestor ·\s*Fernando/);
+  });
+
+  it("cabecalho: chip de perfil", () => {
+    expect(mockupCartao).toContain('id="perfilChip"');
+    expect(cartao()).toContain('data-dinamico="perfil-chip"');
+    expect(corpoCartao).toContain("<PerfilChip clienteId={notionId} />");
+    expect(fonte["perfil-chip"]).toContain("export function PerfilChip(");
+  });
+
+  it("cabecalho: chip de NPS", () => {
+    expect(mockupCartao).toContain('id="npsChip"');
+    const h = cartao();
+    const el = /<button[^>]*data-testid="nps-chip"[^>]*>([^]*?)<\/button>/.exec(h);
+    expect(el, "botão nps-chip não renderizado no cartão").not.toBeNull();
+    const texto = textoDe(el![1]);
+    expect(texto).toMatch(/^NPS( -?[0-9]{1,3}| · sem base)?$/);
+    // 29/09: o chip abre o popover com as ações do link (Copiar e Regenerar); a Dica diz isso.
+    expect(h).toMatch(/<span[^>]*data-dica="Ver ações do link de NPS"[^>]*>(?:(?!<\/span>)[^])*<button[^>]*data-testid="nps-chip"/);
+  });
+
+  it("cabecalho: chip de saude com fonte unica do 296", () => {
+    expect(mockupCartao).not.toContain("Saúde");
+    const h = cartao();
+    const el = /data-testid="chip-saude"[^>]*>([^<]*(?:<span[^>]*>[^<]*<\/span>[^<]*)*)<\/span>/.exec(h);
+    expect(el, "chip-saude não renderizado").not.toBeNull();
+    // Ticket 711b3: o rótulo vem de chipSaude (cor verde = "Saúde · Verde"), não mais "Saúde 78/100".
+    expect(textoDe(el![1]).replace(/\s+/g, "")).toBe("Saúde·Verde");
+    // Ticket 711b3: o shell resolve o chip uma única vez pela regra do Início (lerSinalCliente)
+    expect(page).toContain("chip={chipSaude}");
+    expect(page).toContain("lerSinalCliente(String(id))");
+    expect(contar(page, /fetch\(`\/api\/perf\/cockpit\//g)).toBe(1);
+    // sem segundo fetch de /api/perf/cockpit no cartão nem nos componentes montados na Visão
+    expect(geralCodigo).not.toContain("/api/perf/cockpit");
+    for (const c of MONTADOS_NA_VISAO.filter((x) => x !== "analise-ia")) {
+      expect(semComentarios(fonte[c]), c).not.toContain("/api/perf/cockpit");
+    }
+    // analise-ia lê o mesmo endpoint só para a última análise (acao.ultima_analise_ia), nunca o score
+    const ia = semComentarios(fonte["analise-ia"]);
+    expect(ia).toContain("acao?: { ultima_analise_ia?");
+    expect(ia).not.toMatch(/health|saude|score/i);
+    expect(corpoCartao).not.toContain("fetchJson<{ health");
+    // e o cartão sem base diz "sem base", nunca um número
+    // Ticket 711b3: sem item na rota de sinais, chipSaude(null) devolve o rótulo "Saúde · sem base".
+    expect(textoDe(cartao({}, chipSaude(null)))).toContain("Saúde · sem base");
+  });
+
+  it("cabecalho: badge de renovacao ou sem base", () => {
+    expect(mockupCartao).toContain('id="renov"');
+    // com fidelidade_fim dentro de 45 dias: o badge existe e o texto casa
+    const com = cartao({ contratoData: { fidelidade_fim: diaIso(12) } });
+    const el = /<[^>]*data-testid="badge-renovacao"[^>]*>([^<]*)</.exec(com);
+    expect(el, "badge-renovacao não renderizado").not.toBeNull();
+    expect(el![1].trim()).toMatch(/^(Renova em [0-9]+ dias?|Renova hoje|Fidelidade vencida)$/);
+    expect(el![1].trim()).toBe("Renova em 12 dias");
+    // sem contratoData (e além de 45 dias): nenhum badge com número, nenhum 0, nenhum travessão no lugar
+    for (const sem of [cartao({ contratoData: null }), cartao({ contratoData: { fidelidade_fim: diaIso(46) } })]) {
+      const t = textoDe(sem);
+      expect(sem).not.toContain("badge-renovacao");
+      expect(t).not.toContain("Renova");
+      expect(t).not.toMatch(/Fidelidade/);
+      expect(t).not.toMatch(/(^|\s)0(\s|$)/);
+      expect(sem).not.toMatch(/[—–]/);
+    }
+  });
+
+  it("cabecalho: linha de teses", () => {
+    expect(mockupCartao).toContain("Nicho <b>");
+    const t = textoDe(cartao({ teses: TESES_3 }));
+    expect(t).toMatch(/Nicho Previdenciário, 3 teses/);
+    expect(cartao({ teses: TESES_3 })).toContain('data-testid="linha-teses"');
+    // sem tese: a linha continua lá dizendo sem base, nunca 0
+    const vazio = textoDe(cartao({ teses: [] }));
+    // RECALCULA (ticket 648): o texto redundante saiu; sem tese a linha diz
+    // "Teses · nenhuma" (rótulo + palavra), ainda nunca 0.
+    expect(vazio).toMatch(/Teses · nenhuma/);
+  });
+
+  it("cabecalho: linha de entregaveis", () => {
+    expect(mockupCartao).toContain("Entregáveis <b");
+    const h = cartao({ entregaveis: ENTREGAVEIS_4_DE_7 });
+    expect(h).toContain('data-testid="linha-entregaveis"');
+    expect(textoDe(h)).toMatch(/Entregáveis\s*4\s*de\s*7/);
+    // RECALCULA (ticket 648): sem entregável a linha diz "Entregáveis · nenhum".
+    expect(textoDe(cartao({ entregaveis: [] }))).toMatch(/Entregáveis · nenhum/);
+  });
+
+  it("cabecalho: status com historico", () => {
+    expect(mockupCartao).toContain("histórico</button>");
+    const h = cartao();
+    expect(h).toContain('data-testid="historico-status-popover"');
+    expect(h).toMatch(/<button[^>]*data-testid="historico-status-gatilho"[^>]*>\s*Histórico/);
+  });
+
+  it("cabecalho: grupo de WhatsApp", () => {
+    expect(mockupCartao).toContain("Grupo WhatsApp");
+    const h = cartao();
+    expect(h).toMatch(/<a href="https:\/\/chat\.whatsapp\.com\/grupo-aquino"[^>]*>[^]*?Grupo WhatsApp/);
+    expect(h).toContain("Grupo WhatsApp");
+  });
+
+  it("cabecalho: editar cadastro", () => {
+    expect(mockupCartao).toContain("Editar cadastro");
+    const h = cartao();
+    expect(h).toMatch(/<button[^>]*data-testid="cadastro-editar-toggle"[^>]*>[^]*?Editar cadastro<\/button>/);
+  });
+
+  it("cabecalho: Briefing", () => {
+    // no mockup fica na barra do topo, acima do cartão
+    expect(mockupTopo).toContain(">Briefing</button>");
+    expect(mockupCartao).not.toContain("Briefing");
+    expect(page).toMatch(/<Button[^>]*onClick=\{\(\) => setShowBriefing\(true\)\}[^>]*>[^]*?Briefing[^]*?<\/Button>/);
+    expect(page.indexOf("setShowBriefing(true)")).toBeLessThan(page.indexOf("<IdentidadeCliente"));
+    expect(corpoCartao).not.toContain("Briefing");
+  });
+
+  it("cabecalho: Marcar como revisado", () => {
+    expect(mockupTopo).toContain("Marcar como revisado");
+    expect(mockupCartao).not.toContain("Marcar como revisado");
+    expect(page).toMatch(/<Button[^>]*onClick=\{registrarVerificacao\}[^>]*>[^]*?Marcar como revisado[^]*?<\/Button>/);
+    expect(page.indexOf("Marcar como revisado")).toBeLessThan(page.indexOf("<IdentidadeCliente"));
+    expect(corpoCartao).not.toContain("Marcar como revisado");
+  });
+
+  it("cabecalho: linha do Closer dentro do cartao", () => {
+    const rotulo = "Closer que fechou e Tempo de casa";
+    // sem fonte de fechamento: a linha existe e mora dentro do cartão
+    expect(textoDe(cartao({ fechamento: null }))).toContain(rotulo);
+    expect(corpoCartao).toContain(`rotulo="${rotulo}"`);
+    // e não solta em page.tsx nem na aba
+    expect(pageCodigo).not.toContain(rotulo);
+    expect(semComentarios(corpoDaFuncao(geral, "GeralTab"))).not.toContain(rotulo);
+  });
+});
+
+describe("abas", () => {
+  const aba = (i: number, rotuloEsperado: string) => {
+    // Ticket 671 (decisão de 26/09): Comercial é a 5ª aba (mockup e TAB_GROUPS); 4 + 1 = 5.
+    expect(ABAS_MOCKUP).toHaveLength(5);
+    expect(ABAS_MOCKUP[i]).toBe(rotuloEsperado);
+    expect(TAB_GROUPS).toHaveLength(5);
+    expect(TAB_GROUPS.map((g) => g.label)).toEqual(ABAS_MOCKUP);
+    expect(TAB_GROUPS[i].label).toBe(ABAS_MOCKUP[i]);
+    // a ficha desenha as abas a partir de TAB_GROUPS
+    expect(pageCodigo).toMatch(/TAB_GROUPS\.filter[^]*?\{g\.label\}/);
+  };
+  it("abas: Visao", () => aba(0, "Visão"));
+  it("abas: Campanhas", () => aba(1, "Campanhas"));
+  it("abas: Relacao", () => aba(2, "Relação"));
+  it("abas: Conta", () => aba(3, "Conta"));
+  it("abas: Comercial", () => aba(4, "Comercial"));
+});
+
+describe("barra da Visão", () => {
+  const barraMod = carregar(caminhoComp("barra-visao"), { "next/link": linkStub });
+  const BarraVisao = barraMod.BarraVisao as React.ComponentType<Record<string, unknown>>;
+  const barra = html(React.createElement(BarraVisao, {
+    clienteId: null, resolvido: false, setupHref: "/x", modoPeriodo: "30d", setModoPeriodo: () => {},
+    customInicio: "", setCustomInicio: () => {}, customFim: "", setCustomFim: () => {},
+    avisoPersonalizado: null, contaSel: "all", setContaSel: () => {},
+  }));
+
+  it("barra: seletor de conta", () => {
+    expect(mockup).toContain('<span class="muted">Conta</span>');
+    expect(mockup).toContain("Todas as contas");
+    expect(barra).toMatch(/<select[^>]*data-testid="barra-visao-conta"/);
+    expect(textoDe(barra)).toMatch(/Conta\s+Todas as contas/);
+    expect(ocorrencias(ramoVisao, "BarraVisao")).toHaveLength(1);
+  });
+
+  it("barra: nicho da conta", () => {
+    expect(mockup).toContain("Nicho da conta");
+    expect(textoDe(barra)).toContain("Nicho da conta");
+    // com conta em foco vira seletor que grava por PUT
+    expect(semComentarios(fonte["barra-visao"])).toMatch(/data-testid="barra-visao-nicho"/);
+    expect(fonte["barra-visao"]).toContain("/api/perf/contas/${contaId}/nicho");
+  });
+
+  it("barra: um seletor de periodo com os seis presets do seletor padrão", () => {
+    // Lote B (29/09): a especificação do seletor padrão do OS substitui as oito
+    // opções do mockup (que continua com 8, documento dos tickets 491/521) por
+    // seis presets, nesta ordem; 14d, 30d, 90d e "Mês ant." saem.
+    expect(PERIODOS_MOCKUP.map(trocar)).toEqual(["Hoje", "7d", "14d", "30d", "Este mês", "Mês ant.", "90d", "Personalizado"]);
+    const esperado = ["Hoje", "Esta semana", "Este mês", "Mês passado", "Últimos 7 dias", "Personalizado"];
+    const grupo = /<div[^>]*role="group"[^>]*aria-label="Período da aba"[^>]*>([^]*?)<\/div>/.exec(barra);
+    expect(grupo, "grupo de período não renderizado").not.toBeNull();
+    expect(todos(/<button[^>]*>([^<]*)<\/button>/g, grupo![1])).toEqual(esperado);
+    expect(barra).not.toContain(">Custom<");
+    // exatamente um seletor de período na Visão
+    expect(contar(barra, /aria-label="Período da aba"/g)).toBe(1);
+    expect(contar(barra, /data-testid="barra-visao-periodo"/g)).toBe(1);
+    expect(geralCodigo).not.toMatch(/MODOS_PERIODO|aria-label="Período|setModoPeriodo/);
+    for (const c of MONTADOS_NA_VISAO.filter((x) => x !== "barra-visao")) {
+      expect(semComentarios(fonte[c]), c).not.toMatch(/MODOS_PERIODO|aria-label="Período|Mês ant\./);
+    }
+  });
+});
+
+describe("KPIs", () => {
+  const kpisMod = carregar(caminhoComp("kpis-visao"), { sonner: sonnerStub });
+  const montarKpis = kpisMod.montarKpis as (e: unknown) => { chave: string; rotulo: string }[];
+  const FaixaKpis = kpisMod.FaixaKpis as React.ComponentType<{ kpis: unknown }>;
+  const MaisMetricas = kpisMod.MaisMetricas as React.ComponentType<Record<string, unknown>>;
+  const SEM_CONTA = {
+    contaVinculada: false, midiaCarregando: false, midia: null, crmCarregando: false, crmConexao: "desconectado", crm: null,
+  };
+  const COM_BASE = {
+    contaVinculada: true, midiaCarregando: false,
+    midia: { gasto: 3000, leads: 60, impressoes: 100000, cliques: 1500, dias: 30 },
+    crmCarregando: false, crmConexao: "conectado", crm: { leads: 50, mql: 20, anterior: null },
+  };
+  const faixa = html(React.createElement(FaixaKpis, { kpis: montarKpis(COM_BASE) }));
+  const faixaSemConta = html(React.createElement(FaixaKpis, { kpis: montarKpis(SEM_CONTA) }));
+
+  const kpi = (i: number, rotuloEsperado: string) => {
+    expect(KPIS_MOCKUP).toHaveLength(6);
+    expect(KPIS_MOCKUP[i]).toBe(rotuloEsperado);
+    const rotulo = trocar(KPIS_MOCKUP[i]);
+    expect(montarKpis(COM_BASE).map((k) => k.rotulo)).toEqual(KPIS_MOCKUP.map(trocar));
+    expect(textoDe(faixa)).toContain(rotulo);
+    expect(faixa).toMatch(new RegExp(`data-testid="kpi-${montarKpis(COM_BASE)[i].chave}"`));
+    // montada na Visão
+    expect(geralCodigo).toMatch(/<KpisVisao[^]*?\/>/);
+  };
+  /** CAC e ROAS: o "s/ dado" do mockup vira "sem base" com motivo. */
+  const ausenciaTrocada = (i: number) => {
+    const chave = montarKpis(COM_BASE)[i].chave;
+    const cel = new RegExp(`data-testid="kpi-${chave}"[^>]*>([^]*?)(?=<div[^>]*data-testid="kpi-|$)`).exec(faixa);
+    expect(cel).not.toBeNull();
+    const t = textoDe(cel![1]);
+    expect(t).toContain(trocar("s/ dado"));
+    expect(t).not.toContain("s/ dado");
+    expect(t).not.toMatch(/R\$\s*0/);
+  };
+
+  it("kpis: Investimento", () => kpi(0, "Investimento"));
+  it("kpis: CPL", () => kpi(1, "CPL"));
+  it("kpis: % MQL", () => kpi(2, "% MQL"));
+  it("kpis: CPMQL", () => kpi(3, "CPMQL"));
+  it("kpis: CAC", () => { kpi(4, "CAC"); ausenciaTrocada(4); });
+  it("kpis: ROAS", () => { kpi(5, "ROAS"); ausenciaTrocada(5); });
+
+  it("kpis: Mais metricas", () => {
+    expect(mockup).toContain("Mais métricas (");
+    const h = html(React.createElement(MaisMetricas, { entrada: COM_BASE, escolhidas: ["ctr"], aoEscolher: () => {} }));
+    expect(h).toMatch(/<button[^>]*data-testid="mais-metricas-toggle"[^>]*>[^]*?Mais métricas/);
+    // nasce colapsada, como no mockup (bloco .extra vazio até clicar)
+    expect(h).toContain('aria-expanded="false"');
+    expect(h).not.toContain('data-testid="mais-metricas-corpo"');
+    expect(faixaSemConta).toContain("sem base");
+  });
+
+  it("kpis: Escolher metricas", () => {
+    expect(mockup).toContain("⚙ Escolher métricas");
+    expect(mockup).toContain('aria-label="Escolher métricas"');
+    const h = html(React.createElement(MaisMetricas, { entrada: COM_BASE, escolhidas: ["ctr"], aoEscolher: () => {} }));
+    // 29/09: botão só de ícone (Settings2, ghost) com a dica "Escolher métricas", que é
+    // também o nome acessível, como o aria-label do mockup.
+    expect(h).toMatch(/<button[^>]*aria-label="Escolher métricas"[^>]*data-testid="escolher-metricas"|<button[^>]*data-testid="escolher-metricas"[^>]*aria-label="Escolher métricas"/);
+    expect(h).toMatch(/data-testid="escolher-metricas"[^>]*>\s*<svg[^>]*lucide-settings2/);
+    // o drawer aberto traz o mesmo título
+    const drawerMod = carregar(caminhoComp("drawer-metricas"));
+    const Drawer = drawerMod.DrawerMetricas as React.ComponentType<Record<string, unknown>>;
+    const d = html(React.createElement(Drawer, { aberto: true, escolhidas: ["ctr"], aoFechar: () => {}, aoSalvar: () => {} }));
+    expect(d).toContain('data-testid="drawer-metricas"');
+    expect(textoDe(d)).toContain("Escolher métricas");
+  });
+});
+
+describe("tabela de campanhas", () => {
+  const tabMod = carregar(caminhoComp("tabela-campanhas"), {
+    sonner: sonnerStub,
+    "../tabs/ficha-context": { useFicha: () => ({}) },
+  });
+  const CorpoTabela = tabMod.CorpoTabela as React.ComponentType<Record<string, unknown>>;
+  const celulasMetricas = tabMod.celulasMetricas as (c: unknown, s?: string, rastreado?: boolean) => Record<string, { texto: string; ausente: boolean }>;
+  const COLUNAS = tabMod.COLUNAS_CAMPANHAS as readonly string[];
+  const chaveConjunto = tabMod.chaveConjunto as (c: string, a: string) => string;
+  const estado = { tipos: { c1: "lp" }, teseDe: {}, catalogo: [], statusDe: { c1: "ACTIVE" } };
+  const contas = [{
+    // 649: rastreia MQL; sem o sinal as colunas de CRM não são renderizadas.
+    ad_account_id: "a1", act_id: "act_1", nicho: null, mql_rastreado: true,
+    // Lote C: L.Meta vem do resultado da Meta; os 10 leads viram 10 conversas em `resultados`.
+    campaigns: [{
+      campaign_id: "c1", campaign_nome: "Campanha LT2", gasto: 1000, impressoes: 100, cliques: 10, leads: 10, mqls: 4, pct_mql: 40,
+      resultados: [{ indicador: "actions:onsite_conversion.messaging_conversation_started_7d", qtd: 10 }],
+    }],
+  }];
+  const nop = () => {};
+
+  it("tabela: colunas do mockup com fonte", () => {
+    const doMockup = COLUNAS_MOCKUP.filter((c) => !COLUNAS_FORA_DO_ACEITE.includes(c)).map(trocar);
+    expect(COLUNAS_MOCKUP).toHaveLength(12);
+    expect(doMockup).toEqual(["Campanha", "Funil", "Tese", "Status", "Investido", "Leads", "CPL", "MQL", "% MQL", "CPMQL"]);
+    // Lote C (29/09): ordem aprovada com 16 colunas. Leads virou L.Meta e % MQL
+    // virou %MQL só nesta tabela (o KPI do topo segue "% MQL", por isso a troca é
+    // local e não entra em TROCAS). As colunas do mockup continuam em ordem.
+    const renomeiaLoteC: Record<string, string> = { Leads: "L.Meta", "% MQL": "%MQL" };
+    const esperado = [
+      "Campanha", "Funil", "Tese", "Status", "Investido", "L.Meta", "L.CRM", "Div%",
+      "CPL", "MQL", "%MQL", "CPMQL", "R.Ag", "R.Feita", "Vendas", "CAC",
+    ];
+    let i = 0;
+    const doMockupRenomeado = doMockup.map((c) => renomeiaLoteC[c] ?? c);
+    for (const c of esperado) if (c === doMockupRenomeado[i]) i++;
+    expect(i).toBe(doMockupRenomeado.length);
+    expect([...COLUNAS]).toEqual(esperado);
+    const h = html(React.createElement(CorpoTabela, { contas, estado, filtro: "todos", salvandoId: null, onTipo: nop, onTese: nop }));
+    expect(todos(/<th[^>]*>([^<]*)<\/th>/g, h)).toEqual(esperado);
+    // "Leads CRM" não tem fonte: nunca aparece na tela
+    expect(semComentarios(fonte["tabela-campanhas"])).not.toContain("Leads CRM");
+    // cada coluna de número vem do payload da campanha
+    // Ticket 634: com fonte de MQL (sinal true) os valores seguem medidos; sem o sinal seriam sem base.
+    const cel = celulasMetricas(contas[0].campaigns[0], "ACTIVE", true);
+    expect(cel.status.texto).toBe("Ativa");
+    expect(cel.investimento.texto).toMatch(/1\.000,00/);
+    // Lote C: a coluna Leads virou L.Meta (chave l_meta): 10 conversas.
+    expect(cel.l_meta.texto).toBe("10");
+    expect(cel.cpl.texto).toMatch(/100,00/);
+    expect(cel.mql.texto).toBe("4");
+    // Lote C: 4 MQL / 10 conversas (L.Meta de captação) = 40,0%.
+    expect(cel.pct_mql.texto).toBe("40,0%");
+    expect(cel.cpmql.texto).toMatch(/250,00/);
+    // sem fonte de MQL: sem base, nunca "s/ dado" nem 0
+    const semMql = celulasMetricas({ ...contas[0].campaigns[0], mqls: undefined }, "ACTIVE");
+    expect(semMql.mql.texto).toBe(trocar("s/ dado"));
+    expect(semMql.cpmql.texto).toBe("sem base");
+  });
+
+  it("tabela: expansao ate anuncio", () => {
+    function pronto<T>(dados: T) { return { tipo: "pronto" as const, dados }; }
+    const expansao = {
+      podeExpandir: true,
+      campanhasAbertas: { c1: true },
+      conjuntosAbertos: { [chaveConjunto("c1", "as1")]: true },
+      breakdown: pronto([{ campaign_id: "c1", adsets: [{
+        adset_id: "as1", gasto: 500, impressoes: 10, cliques: 1, leads: 5, mqls: 2, pct_mql: 40,
+        ads: [{ ad_id: "ad1", gasto: 200, impressoes: 5, cliques: 1, leads: 2, mqls: 1, pct_mql: 50 }],
+      }] }]),
+      conjuntos: { c1: pronto([{ id: "as1", nome: "Conjunto Broad", status: "ACTIVE" }]) },
+      anuncios: { as1: pronto([{ id: "ad1", nome: "Anuncio 01", status: "ACTIVE" }]) },
+      onCampanha: nop, onConjunto: nop,
+    };
+    const h = html(React.createElement(CorpoTabela, { contas, estado, filtro: "todos", salvandoId: null, onTipo: nop, onTese: nop, expansao }));
+    // campanha (aria-expanded) -> conjunto (nível 1) -> anúncio (nível 2)
+    expect(contar(h, /<button[^>]*aria-expanded="true"/g)).toBeGreaterThanOrEqual(2);
+    expect(h).toContain("Campanha LT2");
+    expect(h).toMatch(/data-nivel="1"[^]*?Conjunto Broad/);
+    expect(h).toMatch(/data-nivel="2"[^]*?Anuncio 01/);
+    // sem expansão a tabela é plana e o botão fica desabilitado
+    const plana = html(React.createElement(CorpoTabela, { contas, estado, filtro: "todos", salvandoId: null, onTipo: nop, onTese: nop }));
+    expect(plana).toMatch(/<button[^>]*aria-expanded="false"[^>]*disabled/);
+    // o período da barra chega à tabela
+    expect(geralCodigo).toMatch(/<TabelaCampanhas[^]*?periodo=\{metricasData\?\.period\}/);
+  });
+});
+
+describe("blocos da Visão", () => {
+  /** O bloco monta sem condição própria dentro da aba Geral, e a aba Geral monta sem condição na Visão. */
+  const montadoNaVisao = (nome: string) => {
+    expect(semCondicao(geralCodigo, nome, NUNCA).length, `<${nome} não montado em geral-tab`).toBeGreaterThan(0);
+    expect(ramoVisao).toMatch(/<AnchorBlock id="geral"[^>]*>\s*<GeralTab \/>\s*<\/AnchorBlock>/);
+  };
+  const timelineMod = carregar(caminhoComp("timeline-visao"));
+  const TimelineVisaoView = timelineMod.TimelineVisaoView as React.ComponentType<Record<string, unknown>>;
+  const vazias = () => {
+    const ok = { estado: "ok", itens: [] };
+    return { status: ok, reunioes: ok, alertas: ok, combinados: ok };
+  };
+
+  it("blocos: Relacao com titulo", () => {
+    expect(mockup).toContain("Relação");
+    expect(semComentarios(fonte["bloco-relacao"])).toMatch(/<h3[^>]*>Relação<\/h3>/);
+    montadoNaVisao("BlocoRelacao");
+  });
+
+  it("blocos: Sinais de risco", () => {
+    const relMod = carregar(caminhoComp("bloco-relacao"));
+    const SinaisDeRisco = relMod.SinaisDeRisco as React.ComponentType<{ estado: unknown }>;
+    const lido = html(React.createElement(SinaisDeRisco, { estado: { tipo: "lido", dados: { risco_churn: "alto", risco_churn_motivo: null } } }));
+    expect(textoDe(lido)).toContain("Sinais de risco");
+    expect(textoDe(lido)).toContain("Risco de churn alto");
+    const semBase = html(React.createElement(SinaisDeRisco, { estado: { tipo: "lido", dados: { risco_churn: null } } }));
+    expect(textoDe(semBase)).toMatch(/Sinais de risco · sem base/);
+    expect(semBase).not.toMatch(/[—–]/);
+    montadoNaVisao("BlocoRelacao");
+  });
+
+  it("blocos: Tarefas", () => {
+    expect(mockup).toContain("<h3>Tarefas</h3>");
+    const cod = semComentarios(fonte["bloco-tarefas"]);
+    expect(cod).toMatch(/>Tarefas<\//);
+    expect(cod).toContain('data-testid="bloco-tarefas"');
+    montadoNaVisao("BlocoTarefas");
+  });
+
+  it("blocos: Alertas", () => {
+    expect(mockup).toContain("<h3>Alertas</h3>");
+    const cod = semComentarios(fonte["bloco-alertas"]);
+    expect(cod).toMatch(/>Alertas<\//);
+    expect(cod).toContain('data-testid="bloco-alertas"');
+    expect(cod).toContain("Criar alerta");
+    montadoNaVisao("BlocoAlertas");
+  });
+
+  it("blocos: Timeline", () => {
+    // o título do mockup é "Linha do tempo", sem troca no mapa
+    expect(mockup).toContain("<h3>Linha do tempo</h3>");
+    expect(TROCAS["Linha do tempo"]).toBeUndefined();
+    // 650: vazio é linha sem heading; o h3 do mockup volta com pelo menos um evento.
+    const h = html(React.createElement(TimelineVisaoView, { cargas: vazias(), otimizacoes: [] }));
+    expect(h).not.toMatch(/<h3/);
+    const umaOtim = { id: "o1", notion_id: "n1", data: "2026-09-15", feito: "Orçamento", comentarios: null, proxima_vez: null, solicitado: null, deleted_at: null };
+    const comEvento = html(React.createElement(TimelineVisaoView, { cargas: vazias(), otimizacoes: [umaOtim] }));
+    expect(comEvento).toMatch(/<h3[^>]*>Linha do tempo<\/h3>/);
+    expect(h).not.toMatch(/>Timeline<\/(h3|span)>/);
+    expect(fonte["timeline-visao"]).not.toMatch(/>Timeline<\/(h3|span)>/);
+    // 29/09: na Visão a Linha do tempo é a primeira linha do cartão Atividade do período.
+    montadoNaVisao("AtividadePeriodo");
+  });
+
+  it("blocos: Otimizacoes", () => {
+    expect(mockup).toContain("<h3>Otimizações</h3>");
+    const Bloco = carregar(caminhoComp("bloco-otimizacoes")).BlocoOtimizacoes as React.ComponentType<Record<string, unknown>>;
+    const item = { id: "o1", data: "2026-09-15", feito: "Pausados ADS 01, 02 e 04", comentarios: null, deleted_at: null };
+    const com = html(React.createElement(Bloco, { otimizacoes: [item], onAbrir: () => {} }));
+    // 29/09: linha do cartão Atividade do período; o rótulo "Otimizações" é texto (o
+    // cartão dá o título da seção). Sem período por prop, conta todas: 1 no período.
+    // O item vira "15/09 · <tipo> · <autor>": "Pausados..." não casa tipo conhecido,
+    // daí "alteração"; sem autor na fixture, "s/ autor".
+    expect(com).not.toMatch(/<h[1-6]/);
+    expect(textoDe(com)).toContain("Otimizações");
+    expect(textoDe(com)).toContain("1 no período");
+    expect(textoDe(com)).toContain("15/09 · alteração · s/ autor");
+    const sem = html(React.createElement(Bloco, { otimizacoes: [], onAbrir: () => {} }));
+    expect(sem).not.toMatch(/<h[1-6]/);
+    expect(textoDe(sem)).toContain("Otimizações Nenhuma no período Registrar otimização");
+    montadoNaVisao("BlocoOtimizacoes");
+  });
+
+  it("blocos: Analise IA colapsada", () => {
+    expect(mockup).toContain("<b>Análise IA</b>");
+    expect(mockup).toContain('id="iaBody"');
+    const AnaliseIAView = carregar(caminhoComp("analise-ia"), { sonner: sonnerStub }).AnaliseIAView as React.ComponentType<Record<string, unknown>>;
+    const analise = {
+      id: "00000000-0000-4000-8000-0000000000bb", created_at: "2026-09-20T12:00:00Z", resumo: "CPMQL acima do teto.",
+      status: "concluida", tarefa_id: null,
+      diagnostico: [{ area: "Custo", severidade: "P0", observacao: "Gasto sem MQL", evidencia: "x" }],
+      plano_acao: [{ acao: "Pausar conjunto", motivo: "sem MQL", impacto: "alto", prioridade: "P0" }],
+    };
+    const fechada = html(React.createElement(AnaliseIAView, { analise, credencial: true, contaVinculada: true }));
+    expect(textoDe(fechada)).toContain("Análise IA");
+    expect(fechada).toContain('aria-expanded="false"');
+    expect(fechada).not.toContain("Transformar em tarefas");
+    // aberta mostra o corpo: prova que o "fechada por padrão" não é só ausência de conteúdo
+    const aberta = html(React.createElement(AnaliseIAView, { analise, credencial: true, contaVinculada: true, abertoInicial: true }));
+    expect(aberta).toContain("Transformar em tarefas");
+    montadoNaVisao("AnaliseIA");
+  });
+});
+
+describe("outras abas", () => {
+  it("outras abas: Painel na aba Campanhas", () => {
+    expect(ramoPerformance).toMatch(/<AnchorBlock id="painel"[^]*?<ClientePerfPanel /);
+    expect(ocorrencias(ramoPerformance, "ClientePerfPanel").length).toBeGreaterThan(0);
+  });
+
+  it("outras abas: LTV na aba Conta", () => {
+    // Ticket 925 (spec 09/10): Fechamentos e Negócio foram para a aba Comercial.
+    expect(ramoConta).toMatch(/<AnchorBlock id="financeiro"/);
+    expect(ocorrencias(ramoConta, "CockpitNegocio")).toEqual([]);
+    expect(ramoComercial).toMatch(/<AnchorBlock id="comercial"[^]*?<CockpitNegocio /);
+    const cards = carregar(caminhoComp("cockpit-cards"));
+    const CockpitNegocio = cards.CockpitNegocio as React.ComponentType<Record<string, unknown>>;
+    expect(textoDe(html(React.createElement(CockpitNegocio, { negocio: null })))).toContain("LTV");
+  });
+
+  it("outras abas: Vincular receita na aba Conta", () => {
+    // Ticket 925 (spec 09/10): Fechamentos e Negócio foram para a aba Comercial.
+    expect(ocorrencias(ramoComercial, "CockpitNegocio").length).toBeGreaterThan(0);
+    const cards = carregar(caminhoComp("cockpit-cards"));
+    const CockpitNegocio = cards.CockpitNegocio as React.ComponentType<Record<string, unknown>>;
+    expect(textoDe(html(React.createElement(CockpitNegocio, { negocio: null, onConfig: () => {} })))).toContain("Vincular receita");
+  });
+});
+
+describe("ausentes da Visão (nada monta sem condição)", () => {
+  /** Nem o geral-tab nem os componentes montados na Visão importam o módulo. */
+  const naoImportado = (...modulos: string[]) => {
+    const imports = [...importsDeValor(geral), ...MONTADOS_NA_VISAO.flatMap((c) => importsDeValor(fonte[c]))];
+    for (const mod of modulos) expect(imports.filter((i) => i.includes(mod)), `import de ${mod} na Visão`).toEqual([]);
+  };
+  const semNaVisao = (nome: string) => {
+    expect(semCondicao(corpoDaVisao, nome, NUNCA), `<${nome} montado na Visão`).toEqual([]);
+    for (const c of MONTADOS_NA_VISAO) expect(ocorrencias(semComentarios(fonte[c]), nome), `${nome} em ${c}`).toEqual([]);
+  };
+  const painel = semComentarios(lerArq(resolve(RAIZ, "src/app/dashboard/clientes/perf/_components/ClientePerfPanel.tsx")));
+  const textoAusente = (texto: string) => {
+    expect(geralCodigo).not.toContain(texto);
+    for (const c of MONTADOS_NA_VISAO) expect(semComentarios(fonte[c]), c).not.toContain(texto);
+  };
+
+  it("ausente da Visao: ClientePerfPanel", () => {
+    semNaVisao("ClientePerfPanel");
+    naoImportado("ClientePerfPanel");
+    expect(ocorrencias(ramoPerformance, "ClientePerfPanel").length).toBeGreaterThan(0);
+  });
+
+  it("ausente da Visao: Pacing de verba", () => {
+    // vive dentro do ClientePerfPanel: sai com ele
+    expect(painel).toContain("Pacing de verba");
+    semNaVisao("ClientePerfPanel");
+    textoAusente("Pacing de verba");
+  });
+
+  it("ausente da Visao: Metas", () => {
+    expect(painel).toMatch(/Metas/);
+    semNaVisao("ClientePerfPanel");
+    expect(geralCodigo).not.toMatch(/\bMetas\b/);
+    for (const c of MONTADOS_NA_VISAO) expect(semComentarios(fonte[c]), c).not.toMatch(/\bMetas\b/);
+  });
+
+  it("ausente da Visao: Performance por tipo de campanha", () => {
+    expect(painel).toContain("Performance por tipo de campanha");
+    semNaVisao("ClientePerfPanel");
+    textoAusente("Performance por tipo de campanha");
+  });
+
+  it("ausente da Visao: Contas de anuncio", () => {
+    expect(painel).toContain("Contas de anúncio");
+    semNaVisao("ClientePerfPanel");
+    textoAusente("Contas de anúncio");
+  });
+
+  it("ausente da Visao: bloco Health", () => {
+    semNaVisao("CockpitVisaoGeral");
+    semNaVisao("CockpitHealthBar");
+    naoImportado("cockpit-visao-geral", "cockpit-health-bar");
+    expect(geralCodigo).not.toMatch(/\bHealth\b/);
+  });
+
+  it("ausente da Visao: Midia 30 dias", () => {
+    semNaVisao("CockpitMidia");
+    naoImportado("cockpit-cards");
+    textoAusente("Mídia · 30 dias");
+  });
+
+  it("ausente da Visao: Negocio", () => {
+    semNaVisao("CockpitNegocio");
+    naoImportado("cockpit-cards");
+    // Ticket 925 (spec 09/10): só a aba Comercial monta o Negócio, fora do ramo conta.
+    expect(ocorrencias(ramoConta, "CockpitNegocio")).toEqual([]);
+    expect(ocorrencias(ramoComercial, "CockpitNegocio").length).toBeGreaterThan(0);
+    expect(ocorrencias(ramoPerformance, "CockpitNegocio")).toEqual([]);
+  });
+
+  it("ausente da Visao: Acao", () => {
+    semNaVisao("CockpitAcao");
+    naoImportado("cockpit-cards");
+    expect(ocorrencias(pageCodigo, "CockpitAcao")).toEqual([]);
+  });
+
+  it("ausente da Visao: Resumo", () => {
+    // o bloco antigo só monta atrás do link direto ?sub=resumo; fora dele o AnchorBlock fica sem filho
+    expect(semCondicao(corpoDaVisao, "ResumoTab", guardaAba("resumo"))).toEqual([]);
+    expect(ocorrencias(corpoDaVisao, "ResumoTab").length).toBe(1);
+    expect(ramoVisao).toMatch(/<AnchorBlock id="resumo-antigo"[^>]*>\s*\{activeTab === "resumo" \? <ResumoTab[^]*?\/> : null\}\s*<\/AnchorBlock>/);
+    for (const c of MONTADOS_NA_VISAO) expect(ocorrencias(semComentarios(fonte[c]), "ResumoTab"), c).toEqual([]);
+    naoImportado("resumo-tab");
+    expect(geralCodigo).not.toContain("ResumoTab");
+  });
+
+  it("ausente da Visao: Linha do tempo antiga", () => {
+    // a única timeline montada na Visão é a timeline-visao
+    const tags = todos(/<([A-Za-z]*Timeline[A-Za-z]*)(?![A-Za-z0-9_])/g, corpoDaVisao);
+    expect(tags.filter((t) => t !== "TimelineVisao")).toEqual([]);
+    expect(semCondicao(corpoDaVisao, "RegistrosTimelineTab", NUNCA)).toEqual([]);
+    naoImportado("registros-tab");
+    // Ticket 546: a aba Relação troca a lista antiga (RegistrosTimelineTab) pela
+    // linha do tempo única (TimelineRelacao); o valor esperado veio do ticket:
+    // a antiga some do ramo (lista vazia) e a nova monta pelo menos uma vez.
+    expect(ocorrencias(semComentarios(recorte(page, RAMO_RELACAO, RAMO_CONTA)), "RegistrosTimelineTab")).toEqual([]);
+    expect(ocorrencias(semComentarios(recorte(page, RAMO_RELACAO, RAMO_CONTA)), "TimelineRelacao").length).toBeGreaterThan(0);
+  });
+
+  it("ausente da Visao: Alertas de Performance antigos", () => {
+    expect(semCondicao(corpoDaVisao, "AlertasClienteTab", guardaAba("alertas"))).toEqual([]);
+    expect(ocorrencias(corpoDaVisao, "AlertasClienteTab").length).toBe(1);
+    expect(ramoVisao).toMatch(/<AnchorBlock id="alertas-antigo"[^>]*>\s*\{activeTab === "alertas" \? <AlertasClienteTab[^]*?\/> : null\}\s*<\/AnchorBlock>/);
+    for (const c of MONTADOS_NA_VISAO) expect(ocorrencias(semComentarios(fonte[c]), "AlertasClienteTab"), c).toEqual([]);
+    naoImportado("alertas-cliente-tab");
+    expect(geralCodigo).not.toContain("AlertasClienteTab");
+  });
+
+  it("ausente da Visao: Selecionar pacote e Iniciar onboarding com cliente ativo", () => {
+    // o botão traz o seletor de pacote e a ação de iniciar
+    const botao = lerArq(resolve(RAIZ, "src/components/onboarding/iniciar-onboarding-button.tsx"));
+    expect(botao).toContain("Selecionar pacote");
+    expect(botao).toMatch(/Iniciar onboarding/i);
+    // toda montagem está atrás de !isClienteAtivo(...)
+    expect(ocorrencias(corpoDaVisao, "IniciarOnboardingButton").length).toBe(1);
+    expect(semCondicao(corpoDaVisao, "IniciarOnboardingButton", GUARDA_NAO_ATIVO)).toEqual([]);
+    expect(pageCodigo).toContain("!isClienteAtivo(cliente?.status) && <IniciarOnboardingButton");
+    // e a guarda é falsa para cliente ativo
+    expect(isClienteAtivo("Ativo")).toBe(true);
+    // nem o cartão nem a aba nem os blocos mencionam pacote ou onboarding-button
+    expect(geralCodigo).not.toContain("IniciarOnboardingButton");
+    textoAusente("Selecionar pacote");
+    naoImportado("iniciar-onboarding-button");
+    // e o cartão renderizado de um cliente ativo não traz nenhum dos dois textos
+    const t = textoDe(cartao());
+    expect(t).not.toContain("Selecionar pacote");
+    expect(t).not.toMatch(/Iniciar onboarding/i);
+  });
+});
+
+describe("copy", () => {
+  const telas: [string, string][] = [
+    ["geral-tab", geralCodigo],
+    ...COMPONENTES.map((c): [string, string] => [c, semComentarios(fonte[c])]),
+  ];
+
+  it("copy: nenhum travessao na Visao e no cartao", () => {
+    const achados = telas.filter(([, src]) => src.includes(" — ")).map(([nome]) => nome);
+    expect(achados).toEqual([]);
+    expect(cartao({ teses: TESES_3, entregaveis: ENTREGAVEIS_4_DE_7 })).not.toContain(" — ");
+  });
+
+  it("copy: nenhum s/ dado", () => {
+    const achados = telas.filter(([, src]) => src.includes("s/ dado")).map(([nome]) => nome);
+    expect(achados).toEqual([]);
+    expect(textoDe(cartao())).not.toContain("s/ dado");
+  });
+
+  it("copy: Timeline vazia renderiza uma linha de estado vazio", () => {
+    const TimelineVisaoView = carregar(caminhoComp("timeline-visao")).TimelineVisaoView as React.ComponentType<Record<string, unknown>>;
+    const ok = { estado: "ok", itens: [] };
+    const h = html(React.createElement(TimelineVisaoView, {
+      cargas: { status: ok, reunioes: ok, alertas: ok, combinados: ok }, otimizacoes: [],
+    }));
+    // uma linha só: não uma por origem, nem card com heading no lugar do vazio
+    expect(contar(h, /data-testid="timeline-sem-base"/g)).toBe(1);
+    expect(contar(h, /data-testid="timeline-origem-sem-base"/g)).toBe(0);
+    expect(contar(h, /<p[\s>]/g)).toBe(1);
+    expect(h).not.toContain("<ul");
+    // 650: vazio nunca é heading (antes 1), e o texto é 'nenhum evento no período' em vez de 'sem base, nenhum evento'.
+    expect(contar(h, /<h[1-6][\s>]/g)).toBe(0);
+    expect(textoDe(h)).toContain("nenhum evento no período");
+  });
+});

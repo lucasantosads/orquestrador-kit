@@ -1,0 +1,12 @@
+{
+ "id": "1059",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/1059-notion-rotas-renomeadas.md",
+ "ticket_sha": "3718afa1ce04a6ddd079222b53df50e3909c7ddf",
+ "ticket_antes": true,
+ "linha_bloqueio": 101480,
+ "log_inicio": 101391,
+ "fim": "2026-10-14T14:46:19Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/1059"
+}

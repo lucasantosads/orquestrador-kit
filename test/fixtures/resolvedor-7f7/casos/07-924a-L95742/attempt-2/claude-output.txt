@@ -1,0 +1,19 @@
+A mudança do 924a está feita e commitada, mas a suíte do gate ainda tem uma falha que não consigo corrigir dentro da allowlist.
+
+A falha é `test/visao-aceite-mockup.test.tsx:759` ("outras abas: LTV na aba Conta"). Esse teste exige que o `CockpitNegocio` renderize o texto "LTV". O ticket manda tirar o LTV desse card, e um dos critérios confere por grep que `CockpitNegocio` não tem "LTV". Os dois não cabem juntos. O arquivo não está na allowlist e não o editei. A saída é o Lucas autorizar o ajuste desse teste (provavelmente passando a conferir o LTV na faixa do `ContratoMarcos`) ou decidir que o card mantém o LTV.
+
+Na última tentativa a suíte tinha duas falhas. A outra, `conta-entregas-vazio-unico`, passa agora: mantive a linha "Entregáveis · N cadastrados · Adicionar" no `financeiro-tab`, que ela exige.
+
+Rodei a suíte completa: 997 arquivos passam e 1 falha (o acima). `tsc` fica no baseline de 3 erros e as guardas `c0-guard`, `fetch-json-teto` e `travessao-mudo` estão verdes. O diff soma 296 linhas, dentro do teto de 360. Não rodei `npm run build`.
+
+O que mudou, em dois commits (`3eb6bf6` e `0f30c31`):
+- **`page.tsx`:** o `<ContratoMarcos>` é o primeiro bloco da seção 1 da Conta, antes do `FinanceiroTab`. O `<BlocoRadarRenovacao>` e o import saíram.
+- **`financeiro-tab.tsx`:** saíram o quadro de 5 células e a coluna "Escopo e entregáveis" com o `<EscopoBloco>`. Ficam Observações do Closer e o slot de documentos.
+- **`bloco-contrato.tsx`:** saíram o `MarcosView`, o `CAMPO_MARCO`, o PATCH de marcos e o import do tipo.
+- **`cockpit-cards.tsx`:** o `CockpitNegocio` não mostra mais o LTV. Ficam o NPS e o "Vincular receita".
+- **Testes:** os seis testes da allowlist foram recalculados, cada um com comentário "Ticket 924a (spec 09/10)". Nenhuma asserção foi removida: as contagens de `expect(` ficaram iguais ou maiores.
+
+Três campos da faixa vêm de fontes diferentes do que o ticket descreve:
+- **Pacote:** vai `null`, porque a ficha não tem esse dado no `page.tsx` (antes vinha de um callback do `EscopoBloco`).
+- **Cobrança:** o `cockpitData.negocio` não tem esse campo, então uso o dia de pagamento do contrato ("Dia N"), e `null` quando não há.
+- **Status:** é "Ativo" quando existe `contratoData`, igual ao quadro antigo, e `null` caso contrário.

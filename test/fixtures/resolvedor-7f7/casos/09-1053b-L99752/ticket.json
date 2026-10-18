@@ -1,0 +1,159 @@
+{
+ "id": "1053b",
+ "slug": "fase-churn-e-setup-param-de-gravar-no-espelho",
+ "lane": "dados",
+ "perfil": "backend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 680 linhas (~110 em src/lib/clientes/espelho-status.ts, ~80 em src/app/api/perf/setup/[clienteId]/passo/route.ts, ~90 de recalculo em test/espelho-fase-churn.test.ts, ~220 em test/fase-e-setup-casa-nova.test.ts NOVO). Se passar do teto, pare e reporte. CONTEXTO (frente saida do Notion): src/lib/clientes/negocio.ts (1051: lerNegocio(db, id), gravarNegocio(db, id, { fase }, atualizadoPor), FASES_OPERACIONAIS), src/lib/clientes/perfil-operacional.ts (1052b: gravarPerfilOperacional, vincularNichoPeloNome), src/lib/clientes/resolver-cliente.ts (resolverCliente(id) -> { cliente_id, notion_id }; erro lanca); src/lib/clientes/espelho-legado.ts (1050b: pontePorEntrada, pontePorNotion; a unica porta de leitura do espelho). Depende de 1050b, 1051 e 1052b. PASSO 1: leia src/lib/clientes/espelho-status.ts inteiro, as 4 rotas que o importam (src/app/api/churn-log/route.ts linhas 55-110 e 190-210, src/app/api/financeiro/churnar-cliente/route.ts linhas 85-125, src/app/api/churn/remover/route.ts linhas 60-75, src/app/api/financeiro/churn-aprovacoes/route.ts linhas 105-125), src/app/api/perf/setup/[clienteId]/passo/route.ts inteiro, test/espelho-fase-churn.test.ts inteiro e test/helpers/supabase-memoria.ts (suporta upsert com onConflict). FAZER: (1) src/lib/clientes/espelho-status.ts (o nome do arquivo e das funcoes exportadas NAO muda, para nao tocar as 4 rotas nem os mocks por nome): o cabecalho passa a dizer 'fase operacional em ops_cliente_negocio.fase (frente sa",
+ "cria_novo": [
+  "test/fase-e-setup-casa-nova.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/lib/clientes/espelho-status.ts",
+  "src/app/api/perf/setup/[clienteId]/passo/route.ts",
+  "test/espelho-fase-churn.test.ts",
+  "test/fase-e-setup-casa-nova.test.ts"
+ ],
+ "dependencias": [
+  "1051",
+  "1052b",
+  "1050b"
+ ],
+ "prioridade": 33,
+ "recon_esperado": [
+  {
+   "descricao": "test/fase-e-setup-casa-nova.test.ts ainda nao existe",
+   "cmd": "test -e 'test/fase-e-setup-casa-nova.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "espelho-status.ts ainda grava status no espelho e audita a entidade clientes_notion_mirror",
+   "cmd": "f=src/lib/clientes/espelho-status.ts; a=$(grep -c 'update({ status, editado_em' $f); b=$(grep -c 'entidade: \"clientes_notion_mirror\"' $f); c=$(grep -c 'clientes_notion_mirror' $f); d=$(grep -c 'export async function gravarFaseNoEspelho' $f); [ \"$a\" = 1 ] && [ \"$b\" = 1 ] && [ \"$c\" -ge 6 ] && [ \"$d\" = 1 ] && echo GRAVA_NO_ESPELHO || echo ST_${a}_${b}_${c}_${d}",
+   "espera": "GRAVA_NO_ESPELHO"
+  },
+  {
+   "descricao": "o passo do setup ainda le e grava o espelho (basico e transicao) e usa ensureClienteId",
+   "cmd": "f='src/app/api/perf/setup/[clienteId]/passo/route.ts'; a=$(grep -c 'clientes_notion_mirror' \"$f\"); b=$(grep -c 'update({ status: \"Ativo\" })' \"$f\"); c=$(grep -c 'ensureClienteId' \"$f\"); [ \"$a\" -ge 4 ] && [ \"$b\" = 1 ] && [ \"$c\" -ge 2 ] && echo SETUP_NO_ESPELHO || echo ST_${a}_${b}_${c}",
+   "espera": "SETUP_NO_ESPELHO"
+  },
+  {
+   "descricao": "as 4 rotas de churn importam gravarFaseNoEspelho/receitaIdPelaChave/clienteIdDaReceita por esses nomes",
+   "cmd": "n=$(grep -l 'from \"@/lib/clientes/espelho-status\"' src/app/api/churn-log/route.ts src/app/api/financeiro/churnar-cliente/route.ts src/app/api/churn/remover/route.ts src/app/api/financeiro/churn-aprovacoes/route.ts | wc -l | tr -d ' '); m=$(grep -c 'espelho.notionIds\\[0\\]' src/app/api/financeiro/churnar-cliente/route.ts); [ \"$n\" = 4 ] && [ \"$m\" = 1 ] && echo CONTRATO_EM_USO || echo ST_${n}_${m}",
+   "espera": "CONTRATO_EM_USO"
+  },
+  {
+   "descricao": "o teste de fase do churn ainda espera o espelho em memoria",
+   "cmd": "f=test/espelho-fase-churn.test.ts; a=$(grep -c 'a.entidade === \"clientes_notion_mirror\"' $f); b=$(grep -c 'ops_cliente_negocio' $f); [ \"$a\" = 1 ] && [ \"$b\" = 0 ] && echo ESPERA_ESPELHO || echo ST_${a}_${b}",
+   "espera": "ESPERA_ESPELHO"
+  }
+ ],
+ "colunas_escritas": [
+  "ops_cliente_negocio.fase",
+  "ops_cliente_negocio.atualizado_em",
+  "ops_cliente_negocio.atualizado_por",
+  "ops_cliente_perfil.analista",
+  "ops_cliente_perfil.updated_at",
+  "ops_cliente_nichos.cliente_id",
+  "ops_cliente_nichos.nicho_id",
+  "os_audit_log.entidade",
+  "os_audit_log.entidade_id",
+  "os_audit_log.campo",
+  "os_audit_log.valor_anterior",
+  "os_audit_log.valor_novo"
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do printf '%s\\n' 'src/lib/clientes/espelho-status.ts' 'src/app/api/perf/setup/[clienteId]/passo/route.ts' 'test/espelho-fase-churn.test.ts' 'test/fase-e-setup-casa-nova.test.ts' | grep -Fxq \"$f\" || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 680 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 680 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais e os testes que leem os 2 arquivos e as 4 rotas de churn seguem verdes (inclui test/espelho-fase-churn.test.ts recalculado)",
+   "cmd": "npx vitest run test/c0-guard.test.ts test/fetch-json-teto.test.ts test/travessao-mudo.test.ts test/churn-log-auth.test.ts test/churn-reativar-rota.test.ts test/quem-cuida.test.ts test/sai-cockpit-id-api-c.test.ts test/setup-cinco-passos.test.ts test/espelho-fase-churn.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "os dois arquivos nao citam mais o espelho; a fase vai para ops_cliente_negocio com auditoria; o setup grava analista no perfil, nicho no catalogo e fase via lib; o contrato das 4 rotas de churn fica (nomes exportados)",
+   "cmd": "e=src/lib/clientes/espelho-status.ts; p='src/app/api/perf/setup/[clienteId]/passo/route.ts'; a=$(grep -c 'clientes_notion_mirror' $e \"$p\" | awk -F: '{s+=$2} END {print s+0}'); b=$(grep -c 'gravarNegocio(' $e); c=$(grep -cE \"entidade: ['\\\"]ops_cliente_negocio['\\\"]\" $e); d=$(grep -cE 'export async function (gravarFaseNoEspelho|receitaIdPelaChave|clienteIdDaReceita)\\(' $e); f=$(grep -c 'gravarNegocio(' \"$p\"); g=$(grep -c 'gravarPerfilOperacional(' \"$p\"); h=$(grep -c 'vincularNichoPeloNome(' \"$p\"); i=$(grep -c 'ensureClienteId' \"$p\"); j=$(grep -c 'setup.p1_basico && setup.p3_meta && setup.p5_crm && setup.p6_whatsapp && setup.p7_metas' \"$p\"); [ \"$a\" = 0 ] && [ \"$b\" -ge 1 ] && [ \"$c\" -ge 1 ] && [ \"$d\" = 3 ] && [ \"$f\" -ge 1 ] && [ \"$g\" -ge 1 ] && [ \"$h\" -ge 1 ] && [ \"$i\" = 0 ] && [ \"$j\" = 1 ] && echo CASA_NOVA || echo ST_${a}_${b}_${c}_${d}_${f}_${g}_${h}_${i}_${j}",
+   "espera": "CASA_NOVA",
+   "tipo": "alvo"
+  },
+  {
+   "descricao": "anti-afrouxamento em test/espelho-fase-churn.test.ts: nenhum expect(/it( a menos, passa a semear ops_cliente_negocio e a auditar essa entidade, nenhum skip/only/todo",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; f=test/espelho-fase-churn.test.ts; a=$(git show \"$b:$f\" | grep -cF 'expect('); n=$(grep -cF 'expect(' \"$f\"); ia=$(git show \"$b:$f\" | grep -cF 'it('); ni=$(grep -cF 'it(' \"$f\"); o=$(grep -c 'ops_cliente_negocio' \"$f\"); v=$(grep -c 'a.entidade === \"clientes_notion_mirror\"' \"$f\"); sk=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"$n\" -ge \"$a\" ] && [ \"$ni\" -ge \"$ia\" ] && [ \"$o\" -ge 3 ] && [ \"$v\" = 0 ] && [ \"$sk\" = 0 ] && echo RECALCULADO_1053B || echo ST_${a}_${n}_${ia}_${ni}_${o}_${v}_${sk}",
+   "espera": "RECALCULADO_1053B",
+   "tipo": "alvo"
+  },
+  {
+   "descricao": "testes verdes (test/fase-e-setup-casa-nova.test.ts)",
+   "cmd": "test -f test/fase-e-setup-casa-nova.test.ts && npx vitest run test/fase-e-setup-casa-nova.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "avaliador: gravarFaseNoEspelho resolve o cliente pela chave (receita por id so leitura; resolver unico), grava a fase em ops_cliente_negocio so quando muda, audita entidade ops_cliente_negocio/campo fase com valor anterior, devolve o mesmo formato (notionIds da ponte) e explica cliente sem cadastro; receitaIdPelaChave e clienteIdDaReceita param de ler o espelho; o passo do setup grava analista no perfil, nicho no catalogo, fase Ativo na transicao, recusa cliente sem cadastro (409) e nao linka mais cliente_id no espelho. REPROVE se: resta leitura ou escrita do espelho nos 2 arquivos; nome exportado de espelho-status renomeado ou removido; rota de churn ou teste mockado por nome mexido; escrita nova em clientes_receita; cliente sem cadastro grava ou some em silencio; auditoria sem valor anterior; assercao removida ou afrouxada; skip/only.",
+   "cmd": "true",
+   "espera": "avaliador",
+   "tipo": "avaliador"
+  }
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/churn-log-auth.test.ts",
+   "motivo": "mocka gravarFaseNoEspelho e receitaIdPelaChave por nome e testa a rota churn-log; nomes e formato de retorno preservados"
+  },
+  {
+   "teste": "test/churn-reativar-rota.test.ts",
+   "motivo": "mocka gravarFaseNoEspelho por nome e confere a chamada com { notionId: 'n-1' } e 'Ativo'; a assinatura nao muda"
+  },
+  {
+   "teste": "test/quem-cuida.test.ts",
+   "motivo": "testa calcularP1Basico (p1-basico.ts, fora da allowlist) e le a fonte do passo apenas para o aplicarP1; a chamada calcularP1Basico(supabase, [notionId]) continua"
+  },
+  {
+   "teste": "test/sai-cockpit-id-api-c.test.ts",
+   "motivo": "prova que a rota do passo importa '@/lib/clientes/resolver-cliente' e nao o resolve-cockpit-id; o import continua"
+  },
+  {
+   "teste": "test/setup-cinco-passos.test.ts",
+   "motivo": "le a fonte do passo: calcularP3Contas(supabase, aplicarP3( antes de const obrigatoriosOk e a expressao dos 5 obrigatorios; tudo preservado literalmente"
+  },
+  {
+   "teste": "test/espelho-fase-churn.test.ts",
+   "motivo": "entra na allowlist: semeia o espelho em memoria e espera status/auditoria nele; recalculado para ops_cliente_negocio (criterio anti-afrouxamento)"
+  },
+  {
+   "teste": "test/churn-gate-admin.test.ts",
+   "motivo": "importa as rotas churn-aprovacoes e churnar-cliente (que importam espelho-status) e testa so o gate de admin; os nomes exportados e o formato de retorno nao mudam"
+  },
+  {
+   "teste": "test/churn-motivo-obrigatorio.test.ts",
+   "motivo": "importa churn-aprovacoes e churn/remover (que importam espelho-status) e testa o motivo obrigatorio; contrato preservado"
+  },
+  {
+   "teste": "test/churn-pipeline-por-id.test.ts",
+   "motivo": "importa churn-log e churnar-cliente com supabase em memoria; gravarFaseNoEspelho passa a gravar em ops_cliente_negocio (tabela ausente na memoria e aceita pelo helper) e o teste olha o pipeline de clientes, nao o espelho; se quebrar, PARE e descreva"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 8593
+}

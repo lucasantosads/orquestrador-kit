@@ -1,0 +1,1 @@
+{"aprovado": false, "motivo": "nps/layout: falha da lib retorna null, esconde a fila pendente e mostra 'aguardando migração'; o ticket manda nomePorNotion vazio com os itens visíveis. Motor ganhou leitura total do espelho fora do pedido. Admin usa adaptador falso com cast. Resto ok."}

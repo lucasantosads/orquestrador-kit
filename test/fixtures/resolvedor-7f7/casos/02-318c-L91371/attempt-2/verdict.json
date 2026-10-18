@@ -1,0 +1,4 @@
+{
+  "aprovado": false,
+  "motivo": "A tela ignora o filtro de tipo de funil. nichos-teses-aba.tsx:372 monta DrillTese só com tese, sem tipo, então os criativos sempre usam 'todos'. Esse arquivo está fora da allowlist: falha de spec, corrigir a allowlist. Resto ok: degrau decisivo, sem amostra em texto, motivo, ErrorState e s/ dado."
+}

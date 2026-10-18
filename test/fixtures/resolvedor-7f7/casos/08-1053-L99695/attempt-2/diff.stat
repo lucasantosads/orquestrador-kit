@@ -1,0 +1,8 @@
+ src/app/api/dashboard/clientes/route.ts       | 102 ++++++----
+ src/app/api/team/feedbacks/route.ts           |  20 +-
+ src/app/api/team/situation-history/route.ts   |  60 +++---
+ src/lib/perf/nicho-principal.ts               |  16 +-
+ test/escritas-team-carteira-casa-nova.test.ts | 266 ++++++++++++++++++++++++++
+ test/nicho-principal-manual.test.ts           |   3 +-
+ test/papel-nas-escritas.test.ts               |   9 +-
+ 7 files changed, 393 insertions(+), 83 deletions(-)

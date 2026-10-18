@@ -2,8 +2,12 @@
  * acoes.ts — as ações R1 e R5 com as travas (etapa 7f-b2, peça 3).
  *
  * Travas (decisões do chat do programa):
- *   - UMA ação por ticket: se o ledger já tem uma ação aplicada nele, o
- *     segundo bloqueio vai para humano (não age de novo, registra);
+ *   - UMA ação por ticket POR BLOQUEIO (7f-b7; antes, uma por ticket): a
+ *     mesma assinatura, ou o mesmo `bloqueio.quando` (o fim da série, do
+ *     meta.json), depois de uma ação vai para humano. A assinatura sozinha
+ *     não basta: ela lê o mtime do ticket, e o `orq desfazer` (ou o writeback
+ *     do loop) a troca sem série nova. Uma série nova pode ter a segunda
+ *     ação; com 2 ações no ticket, só aviso (TETO_ACOES_TICKET);
  *   - interruptor e trava global: passada.ts, antes de qualquer coisa;
  *   - escrita no repo só por repo.ts (espera git, só o arquivo do ticket,
  *     commit com trailer, nunca --no-verify, nunca push);
@@ -25,7 +29,7 @@ import { planejarR5 } from './r5.js'
 import { arquivoDoTicket, escreverEComitar, retratoDoLoop, trailer } from './repo.js'
 
 export interface Feito {
-  feito: 'aplicado' | 'proposto' | 'faria' | 'nao_consegui'
+  feito: 'aplicado' | 'proposto' | 'faria' | 'nao_consegui' | 'aviso'
   motivo: string
   commit?: string
   proposta?: string
@@ -63,25 +67,37 @@ function registrarProposta(a: Alvo, acao: string, mudou: string, proposta: strin
 }
 const carimbo = (t: number) => iso(t).replace(/[-:]/g, '')
 
+/** Ações do resolvedor num ticket, no total (7f-b7): na terceira, só aviso. */
+export const TETO_ACOES_TICKET = 2
+
 /** O que mudou, em uma linha, para o ledger e a mensagem do commit. */
-function oQueMudou(tipo: 'r1_allowlist' | 'r5_reabrir', p: { teste?: string; criteriosLista?: number[]; guarda?: number; condicao?: string }): string {
+function oQueMudou(tipo: 'r1_allowlist' | 'r5_reabrir', p: { testes?: { teste: string }[]; criteriosLista?: number[]; guardas?: number[]; condicao?: string }): string {
   if (tipo === 'r5_reabrir') return `reabriu (status pendente, nota vazia): ${p.condicao}`
-  const lista = p.criteriosLista?.length ? `; ${p.teste} na lista de criterio[${p.criteriosLista.join('], criterio[')}]` : ''
-  return `${p.teste} na allowlist${lista}; guarda de contagem em criterio[${p.guarda}]; reabriu (status pendente, nota vazia)`
+  const ts = (p.testes ?? []).map((t) => t.teste).join(' e ')
+  const lista = p.criteriosLista?.length ? `; ${ts} na lista de criterio[${p.criteriosLista.join('], criterio[')}]` : ''
+  const gs = p.guardas ?? []
+  return `${ts} na allowlist${lista}; guarda${gs.length > 1 ? 's' : ''} de contagem em criterio[${gs.join('], criterio[')}]; reabriu (status pendente, nota vazia)`
 }
 
 export function agirR1R5(a: Alvo, tipo: 'r1_allowlist' | 'r5_reabrir'): Feito {
   const { repo, id, diag } = a
   const sombra = a.decisao.acao === 'sombra'
-  if (!sombra && acoesDe(lerLedger(), repo.nome, id).length) {
-    return { feito: 'nao_consegui', motivo: 'segunda vez bloqueado depois de uma ação do resolvedor: vai para humano' }
+  if (!sombra) {
+    const feitas = acoesDe(lerLedger(), repo.nome, id)
+    const quando = diag.bloqueio.quando
+    if (feitas.some((e) => e.assinatura === diag.assinatura || (quando !== null && e.bloqueado_em === quando))) {
+      return { feito: 'nao_consegui', motivo: 'segunda vez bloqueado no mesmo bloqueio (mesma assinatura ou mesma série) depois de uma ação do resolvedor: vai para humano' }
+    }
+    if (feitas.length >= TETO_ACOES_TICKET) {
+      return { feito: 'aviso', motivo: `teto de ${TETO_ACOES_TICKET} ações do resolvedor no ticket: só diagnóstico e aviso` }
+    }
   }
   const rel = arquivoDoTicket(repo.caminho, id)
   if (!rel) return { feito: 'nao_consegui', motivo: `não achei um arquivo docs/fila/${id}-*.md só` }
   const antes = readFileSync(join(repo.caminho, rel), 'utf8')
   // o loop agora: conferido de novo imediatamente antes da troca (repo.ts, 7f-b5)
   const retrato = retratoDoLoop(repo.caminho, id)
-  const plano: Plano<{ novo: string; teste?: string; criteriosLista?: number[]; guarda?: number; condicao?: string }> =
+  const plano: Plano<{ novo: string; testes?: { teste: string }[]; criteriosLista?: number[]; guardas?: number[]; condicao?: string }> =
     tipo === 'r1_allowlist' ? planejarR1(repo.caminho, diag, antes, a.agora) : planejarR5(repo.caminho, diag, antes)
   if (!plano.ok) return { feito: 'nao_consegui', motivo: plano.motivo }
   const mudou = oQueMudou(tipo, plano.plano)
@@ -120,6 +136,7 @@ export function agirR1R5(a: Alvo, tipo: 'r1_allowlist' | 'r5_reabrir'): Feito {
     assinatura: diag.assinatura,
     acao: tipo,
     mudou,
+    ...(plano.plano.testes ? { testes: plano.plano.testes.map((t) => t.teste) } : {}),
     commit: e.commit,
     arquivo: rel,
     copia,

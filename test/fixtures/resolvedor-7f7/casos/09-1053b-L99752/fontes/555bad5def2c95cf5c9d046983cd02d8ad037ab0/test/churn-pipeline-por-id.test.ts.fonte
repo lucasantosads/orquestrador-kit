@@ -1,0 +1,164 @@
+/**
+ * Pipeline `clientes` nas saídas, por id (29/09/2026).
+ *
+ * POST /api/churn-log e POST /api/financeiro/churnar-cliente marcavam o cliente no pipeline
+ * com upsert onConflict "nome". `clientes` só tem único em id e asaas_customer_id: o Postgres
+ * recusava (42P10) e a falha sumia — a saída gravava, o pipeline não, sem aviso. Agora: update
+ * pelo cliente_id, sem criar cliente, falha em avisos, mrr e data_inicio intocados.
+ * O Supabase em memória recusa onConflict sem índice único (mem.unicos), como o banco.
+ */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+
+type Row = Record<string, unknown>;
+const mem = vi.hoisted(() => ({
+  db: {} as Record<string, Row[]>,
+  falharInsert: new Set<string>(),
+  falharSelect: new Set<string>(),
+  checks: {} as Record<string, Record<string, readonly unknown[]>>,
+  // índices únicos reais de public.clientes (pg_index, 29/09)
+  unicos: { clientes: [["id"], ["asaas_customer_id"]] } as Record<string, string[][]>,
+}));
+const { db } = mem;
+
+vi.mock("@supabase/supabase-js", async () => {
+  const { clienteMemoria } = await import("./helpers/supabase-memoria");
+  return { createClient: () => clienteMemoria(mem) };
+});
+
+const ADMIN = { employeeId: "00000000-0000-4000-8000-000000000001", role: "admin" as const, entityId: null, nome: "Lucas Santos", usuario: "lucas.santos" };
+vi.mock("@/lib/session", () => ({
+  getSession: vi.fn(async () => ADMIN),
+  isSuperAdmin: (s: { usuario?: string } | null) => !!s && s.usuario === "lucas.santos",
+}));
+
+import { POST as churnLogPost } from "@/app/api/churn-log/route";
+import { POST as churnar } from "@/app/api/financeiro/churnar-cliente/route";
+
+const RECEITA = "00000000-0000-4000-8000-0000000000a1";
+const CLI = "00000000-0000-4000-8000-0000000000c1";
+const HOMONIMO = "00000000-0000-4000-8000-0000000000c2";
+const cliente = (id: string) => (db.clientes as Row[]).find((c) => c.id === id);
+
+function semear() {
+  for (const k of Object.keys(db)) delete db[k];
+  mem.falharSelect.clear();
+  mem.falharInsert.clear();
+  for (const k of Object.keys(mem.checks)) delete mem.checks[k];
+  db.clientes_receita = [
+    { id: RECEITA, nome: "ACME ADVOCACIA LTDA", valor_mensal: 1500, closer: null, status_financeiro: "ativo", status: "ativo", notion_id: null, cliente_id: CLI },
+  ];
+  db.clientes_notion_mirror = [{ notion_id: "n-acme", cliente: "Acme Advocacia", status: "Ativo", entrada_id: RECEITA, cliente_id: CLI }];
+  db.clientes = [
+    { id: CLI, nome: "Acme Advocacia", mrr: 1500, data_inicio: "2025-03-10", status: "ativo", data_cancelamento: null, motivo_cancelamento: null, etapa_churn: null, observacao: "obs do cliente" },
+    // mesmo nome do registro de saída, outro cliente: o casamento por nome pegaria este
+    { id: HOMONIMO, nome: "ACME ADVOCACIA LTDA", mrr: 900, data_inicio: "2024-01-01", status: "ativo", data_cancelamento: null, motivo_cancelamento: null, etapa_churn: null },
+  ];
+  db.os_audit_log = [];
+  db.contratos = [];
+  db.churn_log = [];
+  db.churn_monthly_summary = [];
+}
+beforeEach(semear);
+
+const postLog = (body: Row) => churnLogPost(new NextRequest("http://x/api/churn-log", {
+  method: "POST", body: JSON.stringify(body), headers: { "content-type": "application/json" },
+}));
+const postChurnar = (body: Row) => churnar(new NextRequest("http://x/api/financeiro/churnar-cliente", {
+  method: "POST", body: JSON.stringify(body), headers: { "content-type": "application/json" },
+}));
+
+describe("POST /api/churn-log: pipeline pelo cliente_id", () => {
+  it("marca cancelado a linha do cliente pelo id; mrr e data_inicio intocados; homônimo intocado", async () => {
+    const res = await postLog({ cliente_notion_id: "n-acme", cliente_nome: "ACME ADVOCACIA LTDA", motivo: "Sumiu", data_saida: "2026-09-20", mensalidade: 0 });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.avisos ?? []).not.toContainEqual(expect.stringMatching(/pipeline/));
+    expect(cliente(CLI)).toMatchObject({
+      status: "cancelado", data_cancelamento: "2026-09-20", motivo_cancelamento: "Sumiu", etapa_churn: "aviso_recebido",
+      mrr: 1500, data_inicio: "2025-03-10",
+    });
+    expect(cliente(HOMONIMO)).toMatchObject({ status: "ativo", data_cancelamento: null, mrr: 900 });
+    expect(db.clientes).toHaveLength(2);
+  });
+
+  it("saída sem cliente_id: não cria cliente e avisa", async () => {
+    db.clientes_notion_mirror = [{ notion_id: "n-sem", cliente: "Sem Cadastro", status: "Ativo", entrada_id: null, cliente_id: null }];
+    const res = await postLog({ cliente_notion_id: "n-sem", cliente_nome: "Sem Cadastro", motivo: "Sumiu" });
+    expect(res.status).toBe(200);
+    expect((await res.json()).avisos).toContainEqual("pipeline não atualizado: saída sem cadastro do cliente (cliente_id)");
+    expect(db.clientes).toHaveLength(2);
+    expect((db.clientes as Row[]).some((c) => c.nome === "Sem Cadastro")).toBe(false);
+  });
+
+  it("cliente_id sem linha em clientes: avisa, não cria", async () => {
+    const res = await postLog({ cliente_notion_id: "n-acme", cliente_nome: "X", motivo: "Sumiu", cliente_id: "00000000-0000-4000-8000-0000000000ff" });
+    expect((await res.json()).avisos).toContainEqual("pipeline não atualizado: cliente_id sem linha em clientes");
+    expect(db.clientes).toHaveLength(2);
+  });
+
+  it("escrita no pipeline que falha: aparece em avisos", async () => {
+    mem.checks.clientes = { status: ["ativo"] };
+    const res = await postLog({ cliente_notion_id: "n-acme", cliente_nome: "Acme", motivo: "Sumiu" });
+    expect((await res.json()).avisos.join(" ")).toMatch(/pipeline não atualizado: .*check constraint/);
+    expect(cliente(CLI)).toMatchObject({ status: "ativo" });
+  });
+});
+
+describe("POST /api/financeiro/churnar-cliente: pipeline pelo cliente_id da receita", () => {
+  it("marca cancelado pelo id da receita; mrr, data_inicio e homônimo intocados; churn_log leva o mesmo id", async () => {
+    const res = await postChurnar({ cliente_receita_id: RECEITA, motivo: "Sumiu", observacao: "pediu por email" });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.warnings.join(" ")).not.toMatch(/pipeline/);
+    expect(cliente(CLI)).toMatchObject({
+      status: "cancelado", motivo_cancelamento: "Sumiu", etapa_churn: "aviso_recebido", observacao: "pediu por email",
+      mrr: 1500, data_inicio: "2025-03-10",
+    });
+    expect(cliente(HOMONIMO)).toMatchObject({ status: "ativo", mrr: 900 });
+    expect(db.clientes).toHaveLength(2);
+    expect((db.churn_log as Row[])[0]).toMatchObject({ cliente_id: CLI });
+  });
+
+  it("sem observação: mantém a do cliente", async () => {
+    await postChurnar({ cliente_receita_id: RECEITA, motivo: "Sumiu" });
+    expect(cliente(CLI)).toMatchObject({ status: "cancelado", observacao: "obs do cliente" });
+  });
+
+  it("receita sem cliente pela chave: não cria cliente e avisa", async () => {
+    (db.clientes_receita as Row[])[0].cliente_id = null;
+    db.clientes_notion_mirror = [];
+    const res = await postChurnar({ cliente_receita_id: RECEITA, motivo: "Sumiu" });
+    expect((await res.json()).warnings).toContainEqual("pipeline não atualizado: saída sem cadastro do cliente (cliente_id)");
+    expect(db.clientes).toHaveLength(2);
+    expect(cliente(HOMONIMO)).toMatchObject({ status: "ativo" });
+  });
+
+  it("leitura da chave que falha: avisa, não grava no pipeline", async () => {
+    mem.falharSelect.add("clientes_notion_mirror");
+    (db.clientes_receita as Row[])[0].cliente_id = null;
+    const res = await postChurnar({ cliente_receita_id: RECEITA, motivo: "Sumiu" });
+    expect((await res.json()).warnings.join(" ")).toMatch(/pipeline não atualizado: espelho por entrada/);
+    expect(cliente(CLI)).toMatchObject({ status: "ativo" });
+  });
+});
+
+describe("nenhum upsert em clientes por nome", () => {
+  it("src/ não tem from(\"clientes\") com onConflict", () => {
+    const achados: string[] = [];
+    const varrer = (dir: string) => {
+      for (const f of readdirSync(dir)) {
+        const p = join(dir, f);
+        if (statSync(p).isDirectory()) varrer(p);
+        else if (/\.(ts|tsx)$/.test(f)) {
+          const src = readFileSync(p, "utf8");
+          if (/from\("clientes"\)[\s\S]{0,400}?onConflict/.test(src)) achados.push(p);
+        }
+      }
+    };
+    varrer(join(__dirname, "../src"));
+    expect(achados).toEqual([]);
+  });
+});

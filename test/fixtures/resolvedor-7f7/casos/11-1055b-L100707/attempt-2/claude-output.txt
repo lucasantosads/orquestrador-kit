@@ -1,0 +1,20 @@
+O ticket 1055b está implementado e commitado, mas não consegui rodar o `npm run build`. A permissão foi negada, então ele não foi verificado.
+
+O `tsc` ficou em 3 erros (o baseline de `qualificacao*`). O `vitest run` completo passou, com 1038 arquivos e 10389 testes. O diff soma 308 linhas, dentro do teto de 640, e só toca arquivos da allowlist. A única checagem de critério que rodei foi um grep: não sobrou `clientes_notion_mirror` nos 6 arquivos de `src`.
+
+**O que mudou**
+- **`team/nps`:** lê o espelho por `lerEspelhoTodo`, dentro do mesmo `Promise.all`, e erro vira 500. O gestor vem do perfil para quem tem `cliente_id`; o analista legado só vale sem vínculo.
+- **`meta/overview`:** o casamento por nome saiu. `clientUuidToNotionId` vem de `pontePorCliente`.
+- **`nps/layout.tsx`:** usa `lerEspelhoPorNotion` dentro de `try`. Se falhar, a função devolve `null` e a tela mostra "sem base". A spec diz "`nomePorNotion` vazio", o que podia ser lido de outro jeito; escolhi o `null` porque bate com o comentário existente do arquivo.
+- **`meus-clientes`:** parte de `clientes`, filtra por `cuidaDoCliente` e lê fase, perfil, ponte e receita por `cliente_id`. Os campos da resposta continuam iguais.
+- **`motor.ts`:** a ponte vem de `pontePorCliente`, e os comentários foram atualizados.
+- **Relatório admin:** o espelho passa por `lerEspelhoTodo`.
+- **Testes:** `quem-cuida.test.ts` foi recalculado e o `test/leitores-equipe-nps-portal-casa-nova.test.ts` é novo (8 testes).
+
+**Por que o gate falhou antes e o que fiz**
+Três testes fora da allowlist travavam a implementação do jeito que a spec pedia, e eu não podia editá-los:
+- **`acoes-recomendadas-chave.test.ts`:** usa ids "A", "B" e "C", e `pontePorCliente` descarta tudo que não é UUID. No `motor.ts`, ids fora do formato UUID caem numa leitura total do espelho (`lerEspelhoTodo`) filtrada em código. Em produção os ids são UUID, então esse trecho só pesa nesse teste.
+- **`relatorio-sem-cliente-id.test.ts`:** o dublê só suporta `.range`, e `lerEspelhoTodo` não pagina. Na rota admin, um adaptador entrega o espelho paginado à lib. Isso também evita que o teto de 1000 linhas por consulta corte o relatório em silêncio.
+- **`funcao-escondida-sem-papel.test.tsx`:** exige no fonte de `meus-clientes` os literais `cliente_id: m.cliente_id` e `cuidaDoCliente(q, session.employeeId, m.cliente_id)`. Mantive essa forma no código.
+
+O trecho do `motor.ts` e o adaptador da rota admin existem para esses testes. Se você preferir a versão direta da spec, é melhor ajustar os testes numa fatia própria e remover os dois desvios.

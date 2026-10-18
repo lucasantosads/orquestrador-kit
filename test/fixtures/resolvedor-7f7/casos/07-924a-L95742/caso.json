@@ -1,0 +1,12 @@
+{
+ "id": "924a",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/924a-conta-contrato-montagem.md",
+ "ticket_sha": "bcdc764ae8d09a26a3f25100bf1da724154d040b",
+ "ticket_antes": true,
+ "linha_bloqueio": 95742,
+ "log_inicio": 95697,
+ "fim": "2026-10-13T03:30:14Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/924a"
+}

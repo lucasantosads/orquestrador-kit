@@ -1,0 +1,20 @@
+A tela `/dashboard/team/[id]` agora é um stub, com o commit `71ee1c9`. Não apaguei nada em `test/ativo-pela-receita.test.ts` nem em `test/carteira-membro.test.ts`, porque o ticket pedia para tirar testes que já não leem a tela.
+
+Rodei só os critérios de `tsc` e das guardas globais, os dois verdes. O `npm run build` e a suíte inteira de `vitest` não rodei.
+
+**Feito**
+- **Tela:** `src/app/dashboard/team/[id]/page.tsx` ficou com o comentário de 2 linhas e `return null`, sem import nem `use client`. O `layout.tsx` do 710 não foi tocado.
+- **CONGELADO:** em `test/anon-navegador-congelado.test.ts` saiu só a linha da tela.
+- **Teste novo:** `test/remove-team-id.test.ts` confere que a tela é o stub e que o layout chama `redirect(`. Também varre `src` e não acha nenhum arquivo que monte link para `/dashboard/team/${`.
+
+**Verificação**
+- **`tsc`:** continua em 3 erros, o baseline.
+- **Testes:** os 6 arquivos mexidos ou relacionados passam, 32 testes. Entre eles estão `team-redireciona-inicio` e o teste de acessibilidade da tela.
+- **Guardas globais:** as 7 seguem verdes e não foram editadas.
+- **Não conferi:** o teto de diff de 880 linhas e o `merge-base` contra `staging-auto` (a conta do diff falhou antes de rodar).
+
+**Por que não apaguei os dois testes que o ticket mandava tirar**
+- **`ativo-pela-receita`:** o `it` "carteira do membro (equipe)..." já lê `src/app/equipe/[id]/_components/carteira-membro.tsx`, por causa do ticket 862. Ele protege a regra de ativo pela receita na tela nova, então apagá-lo tiraria uma asserção válida.
+- **`carteira-membro`:** o describe da tela do ticket 136 já foi migrado para `/equipe/[id]` no 862. O que sobrou lê a rota e o componente novos, e o describe da rota `GET /api/dashboard/clientes` continua lá.
+
+O arquivo da tela tinha 710 linhas, não 1789, porque os passos 855a e 855b já tinham cortado a maior parte.

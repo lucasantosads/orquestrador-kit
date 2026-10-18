@@ -1,0 +1,12 @@
+{
+ "id": "1055b",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/1055b-negocio-leitores-equipe-nps-portal.md",
+ "ticket_sha": "3718afa1ce04a6ddd079222b53df50e3909c7ddf",
+ "ticket_antes": true,
+ "linha_bloqueio": 100707,
+ "log_inicio": 100649,
+ "fim": "2026-10-13T23:13:15Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/1055b"
+}

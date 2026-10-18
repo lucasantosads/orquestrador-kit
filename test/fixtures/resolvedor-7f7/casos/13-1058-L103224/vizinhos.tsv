@@ -1,0 +1,5 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+1058	docs/fila/runs/1058/attempt-1.prev1	test/negocio-temperatura.test.ts	2728	2026-10-14T23:13:51Z	1
+1058	docs/fila/runs/1058/attempt-1.prev1	test/quem-cuida.test.ts	2747	2026-10-14T23:13:51Z	1
+1058	docs/fila/runs/1058/attempt-2	test/negocio-temperatura.test.ts	2783	2026-10-14T23:18:23Z	1
+1058	docs/fila/runs/1058/attempt-2	test/quem-cuida.test.ts	2802	2026-10-14T23:18:23Z	1

@@ -43,7 +43,7 @@ export interface Diagnostico {
   remedio: string
   requeue: string
   arvore_alvo_agora: string
-  extracao: Extracao['detalhe'] & { classe: string | null; regra: string | null; firme: boolean }
+  extracao: Extracao['detalhe'] & { classe: string | null; regra: string | null; firme: boolean; r1_testes?: Extracao['r1_testes'] }
   modelo: unknown
   falta: string[]
   copia_evidencia: string
@@ -113,7 +113,7 @@ function montar(repo: string, ev: Evidencia, ext: Extracao, assin: string, agora
     remedio: ext.remedio,
     requeue: ext.requeue,
     arvore_alvo_agora: arvoreAlvoAgora(raiz, ext),
-    extracao: { ...ext.detalhe, classe: ext.classe, regra: ext.regra, firme: ext.firme },
+    extracao: { ...ext.detalhe, classe: ext.classe, regra: ext.regra, firme: ext.firme, ...(ext.r1_testes ? { r1_testes: ext.r1_testes } : {}) },
     modelo: null,
     falta: ev.falta,
     copia_evidencia: copia,

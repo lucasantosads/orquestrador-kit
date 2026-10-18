@@ -1,0 +1,32 @@
+91777	[2026-10-12 05:44:41-0300] drenagem: ticket 966 (3 pendentes restantes)
+91778	[orq 08:44:41] orquestrador iniciando · modo: real · once
+91779	[orq 08:44:41] preflight: validando infra (scripts, fila, env, claude)...
+91780	[orq 08:44:44] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+91781	[orq 08:44:52] preflight: ok
+91782	[orq 08:45:08] === ticket 966 (campanhas-aba-criativos) — tentativa 1 · modo: real ===
+91783	[orq 08:45:09]   recon_esperado: ok (4 comando(s))
+91784	[orq 08:45:09] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/ficha-types.ts já existe no worktree — o agente vai EDITAR, não criar
+91785	[orq 08:45:09] aviso allowlist: src/app/dashboard/clientes/[id]/page.tsx já existe no worktree — o agente vai EDITAR, não criar
+91786	[orq 08:45:09] aviso allowlist: test/campanhas-sem-duplicatas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+91787	[orq 08:45:09]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/966/attempt-1/prompt.txt
+91788	[orq 08:45:09]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+91789	[orq 08:47:47]   diff cru salvo (471 linhas alteradas) · HEAD julgado 9649df2e
+91790	[orq 08:47:47]   enforcement: ok
+91791	[orq 08:48:03]   gate tsc: ok (baseline)
+91792	[orq 08:48:23]   gate vitest: FALHA
+91793	[orq 08:48:23]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/966/attempt-1/gate-vitest.txt)
+91794	[orq 08:48:24] ticket 966: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/966/attempt-1/gate-vitest.txt)
+91795	[orq 08:48:24] === ticket 966 (campanhas-aba-criativos) — tentativa 2 · modo: real ===
+91796	[orq 08:48:24]   recon_esperado: ok (4 comando(s))
+91797	[orq 08:48:24] aviso allowlist: src/app/dashboard/clientes/[id]/tabs/ficha-types.ts já existe no worktree — o agente vai EDITAR, não criar
+91798	[orq 08:48:24] aviso allowlist: src/app/dashboard/clientes/[id]/page.tsx já existe no worktree — o agente vai EDITAR, não criar
+91799	[orq 08:48:24] aviso allowlist: test/campanhas-sem-duplicatas.test.ts já existe no worktree — o agente vai EDITAR, não criar
+91800	[orq 08:48:24]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/966/attempt-2/prompt.txt
+91801	[orq 08:48:24]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+91802	[orq 08:52:08]   diff cru salvo (481 linhas alteradas) · HEAD julgado 639d9178
+91803	[orq 08:52:08]   enforcement: ok
+91804	[orq 08:52:24]   gate tsc: ok (baseline)
+91805	[orq 08:52:44]   gate vitest: FALHA
+91806	[orq 08:52:44]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/966/attempt-2/gate-vitest.txt)
+91807	[orq 08:52:45] ticket 966: motivo de reprova REPETIU — circuit breaker (por ticket)
+91808	[orq 08:52:45] ticket 966: BLOQUEADO sem gastar a próxima volta

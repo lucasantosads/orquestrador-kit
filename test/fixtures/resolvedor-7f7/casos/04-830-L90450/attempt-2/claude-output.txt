@@ -1,0 +1,17 @@
+Parei sem commitar: remover `resolverUuid` aumenta o tsc de 3 para 5 erros, e os dois arquivos que quebram estão fora da allowlist.
+
+O grep do PASSO 1 só cobre `src` e `test`, então não pegou esses dois scripts:
+- `scripts/dados/370-identidade.ts:26` importa `resolverUuid` e a reexporta na linha 290.
+- `scripts/dados/685-dono-dry-run.ts:25` importa `resolverUuid` e a chama na linha 73.
+
+Sem a exportação, os dois dão `TS2305` ("has no exported member"). Isso derruba o critério do tsc (esperado 3, deu 5) e puxa `test/identidade-resolver.test.ts` e `test/dono-dry-run.test.ts`, que importam o script 370 e o 685. O ticket proíbe tocar qualquer outro arquivo, e a regra é parar quando sobra um uso.
+
+A reprovação anterior, `SOBRA_1`, vinha da chamada dentro de `planejarIdentidade` (`resolver.ts:228`). Isso eu resolvi: troquei a função exportada por uma função interna `resolverPorMetodos`, sem exportar. Com isso o critério 8 voltou a `REMOVIDO`, e o describe de 7 `it` saiu (28 para 21), mas o tsc continua em 5.
+
+Desfiz as mudanças em `src/lib/identidade/resolver.ts` e `test/identidade-resolver.test.ts` com `git restore`, então a worktree está como o HEAD. O Bash negou o `rm` do arquivo novo `test/sai-identidade-removido.test.ts`, que continua lá, não rastreado, e importa o módulo sem erro. Vale apagá-lo ou commitá-lo junto com o resto, conforme a decisão abaixo.
+
+Para fechar o ticket, preciso de uma destas decisões:
+1. Ampliar a allowlist com `scripts/dados/370-identidade.ts` e `scripts/dados/685-dono-dry-run.ts`, trocando o uso por um resolver existente.
+2. Manter `resolverUuid` como `export` e só tirar as chamadas dentro do `src`. Isso não atende o critério `REMOVIDO`.
+
+Minha recomendação é a opção 1, mas o orçamento de 200 linhas e a regra "só remoção" ficam apertados, porque o script 685 precisa de substituto para a chamada na linha 73.

@@ -1,0 +1,16 @@
+### criterio[0] -> PASS
+### criterio[1] -> PASS
+### criterio[2] -> FALHA
+cwd:    /Users/lucasantos/Projetos/_worktrees/orq-comarka-1053b
+sanear_tsc: nao
+cmd:    b="$(git merge-base HEAD staging-auto)"; r=SO_ALLOWLIST; for f in $(git diff --name-only "$b" HEAD); do printf '%s\n' 'src/lib/clientes/espelho-status.ts' 'src/app/api/perf/setup/[clienteId]/passo/route.ts' 'test/espelho-fase-churn.test.ts' 'test/fase-e-setup-casa-nova.test.ts' | grep -Fxq "$f" || r=FORA_$f; done; echo $r
+espera: SO_ALLOWLIST
+-- saida --
+FORA_src/lib/clientes/espelho-legado.ts
+
+### criterio[3] -> PASS
+### criterio[4] -> PASS
+### criterio[5] -> PASS
+### criterio[6] -> PASS
+### criterio[7] -> PASS
+### criterio[8] -> PASS

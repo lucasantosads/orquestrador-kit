@@ -1,0 +1,179 @@
+/**
+ * Ticket 1054 (saida do Notion, leva B): os leitores da ficha leem negocio, perfil e catalogo
+ * de nichos; o espelho so entra pela lib, e como fallback de linha SEM cliente_id.
+ * Supabase em memoria; sessao e provider de IA sao dublês; nada toca banco.
+ */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { NextRequest } from "next/server";
+
+type Row = Record<string, unknown>;
+const mem = vi.hoisted(() => ({ db: {} as Record<string, Row[]>, falharInsert: new Set<string>(), falharSelect: new Set<string>() }));
+const { db } = mem;
+const { mockProvider, mockResolver } = vi.hoisted(() => ({ mockProvider: vi.fn(), mockResolver: vi.fn() }));
+
+vi.mock("@supabase/supabase-js", async () => {
+  const { clienteMemoria } = await import("./helpers/supabase-memoria");
+  return { createClient: () => clienteMemoria(mem) };
+});
+vi.mock("@/lib/session", () => ({ getSession: vi.fn(async () => ({ employeeId: "e", role: "admin", entityId: null, nome: "X" })) }));
+vi.mock("@/lib/ia/provider", () => ({ chamarProvider: mockProvider }));
+vi.mock("@/lib/clientes/resolver-cliente", async () => {
+  const real = await vi.importActual<typeof import("@/lib/clientes/resolver-cliente")>("@/lib/clientes/resolver-cliente");
+  return { ...real, resolverCliente: mockResolver };
+});
+
+import { getClienteById, getClientes, getClientesDoEmployee } from "@/lib/data";
+import { GET as getFicha } from "@/app/api/notion/clientes/[id]/route";
+import { POST as postDiagnostico } from "@/app/api/clientes/[id]/diagnostico/route";
+import { GET as getEntregaveis } from "@/app/api/clientes/entregaveis/route";
+
+const CLI = "00000000-0000-4000-8000-0000000000c1";
+const CLI_B = "00000000-0000-4000-8000-0000000000c2";
+const GESTORA = "00000000-0000-4000-8000-0000000000e1";
+const NICHO_A = "00000000-0000-4000-8000-0000000000a1";
+const NICHO_B = "00000000-0000-4000-8000-0000000000a2";
+const RECEITA = "00000000-0000-4000-8000-0000000000d1";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  for (const k of Object.keys(db)) delete db[k];
+  mem.falharSelect.clear();
+  mockProvider.mockResolvedValue({ texto: "ok" });
+  db.clientes_notion_mirror = [
+    // o espelho diz outra coisa em tudo que a casa nova tem: nao pode aparecer
+    { notion_id: "n-com", cliente: "Com Vinculo", cliente_id: CLI, entrada_id: RECEITA, status: "Ativo", situacao: "Legado", analista: "Legado", nicho: "Legado", fb_url: "https://fb", meta_campaign_id: "camp-1", entregaveis: [{ id: "x", tipo: "Site", deletado_em: null }, { id: "y", tipo: "Velho", deletado_em: "2026-01-01" }] },
+    { notion_id: "n-sem", cliente: "Sem Vinculo", cliente_id: null, entrada_id: null, status: "Pausado", situacao: "Em ajuste", resultados: "Bons", atencao: "Verba", analista: "Ana Legada", nicho: "Previdenciario", dia_otimizar: "Segunda", ultimo_feedback: "2026-01-02", otimizacao: "2026-01-03" },
+  ];
+  db.ops_cliente_negocio = [{ cliente_id: CLI, fase: "Planejamento", score_saude: 72, risco_churn: "alto", risco_churn_motivo: "Atraso" }];
+  db.ops_cliente_perfil = [
+    { cliente_id: CLI, analista: "Gestora Ana", situacao: "Estavel", resultados: "Leads", atencao: "Nenhuma", dia_otimizar: "Terca", ultimo_feedback: "2026-02-01", data_otimizacao: "2026-02-02" },
+  ];
+  db.ops_cliente_nichos = [{ cliente_id: CLI, nicho_id: NICHO_B }, { cliente_id: CLI, nicho_id: NICHO_A }];
+  db.perf_nichos = [{ id: NICHO_A, nome: "Trabalhista" }, { id: NICHO_B, nome: "Bancario" }];
+  db.clientes = [{ id: CLI, nome: "Com Vinculo", status: "ativo" }];
+  db.clientes_receita = [{ id: RECEITA, nome: "Com Vinculo", valor_mensal: 1, categoria: "x", status_financeiro: "ok", cliente_id: CLI }];
+  db.employees = [{ id: GESTORA, nome: "Gestora Ana", telefone: "5571999990001", ativo: true, is_head_operacional: false }];
+  db.perf_cliente_gestor = [{ cliente_id: CLI, gestor_id: GESTORA, principal: true, ativo: true }];
+});
+
+describe("getClienteById", () => {
+  it("com cliente_id: status da fase, situacao e analista do perfil, nicho do catalogo", async () => {
+    const c = await getClienteById("n-com");
+    // Ticket 1054: fase "Planejamento" (nao "Ativo" do espelho); nichos em ordem alfabetica.
+    expect(c?.status).toBe("Planejamento");
+    expect(c?.situacao).toBe("Estavel");
+    expect(c?.analista).toBe("Gestora Ana");
+    expect(c?.nicho).toBe("Bancario, Trabalhista");
+    expect(c?.dia_otimizacao).toBe("Terca");
+    expect(c?.ultima_otimizacao).toBe("2026-02-02");
+    // legado sem casa continua vindo do espelho
+    expect(c?.plataformas).toBe("Meta");
+    expect(c?.fb).toBe("https://fb");
+  });
+
+  it("sem cliente_id: usa o legado do espelho", async () => {
+    const c = await getClienteById("n-sem");
+    expect(c).toMatchObject({ status: "Pausado", situacao: "Em ajuste", resultados: "Bons", atencao: "Verba", analista: "Ana Legada", nicho: "Previdenciario", dia_otimizacao: "Segunda", ultima_otimizacao: "2026-01-03" });
+  });
+
+  it("com cliente_id e sem perfil, o valor e '' (nunca o do espelho)", async () => {
+    db.ops_cliente_perfil = [];
+    db.ops_cliente_negocio = [];
+    db.ops_cliente_nichos = [];
+    const c = await getClienteById("n-com");
+    expect(c).toMatchObject({ status: "", situacao: "", analista: "", nicho: "" });
+  });
+
+  it("notion_id desconhecido: null; leitura que falha lanca", async () => {
+    expect(await getClienteById("n-nao-existe")).toBeNull();
+    mem.falharSelect.add("clientes_notion_mirror");
+    await expect(getClienteById("n-com")).rejects.toThrow(/espelho/);
+  });
+});
+
+describe("getClientes e getClientesDoEmployee", () => {
+  it("getClientes lanca quando o espelho falha (nunca [])", async () => {
+    mem.falharSelect.add("clientes_notion_mirror");
+    await expect(getClientes()).rejects.toThrow(/espelho/);
+  });
+
+  it("getClientes monta a lista inteira, a casa nova para quem tem vinculo", async () => {
+    const lista = await getClientes();
+    expect(lista.map((c) => [c.nome, c.status])).toEqual([["Com Vinculo", "Planejamento"], ["Sem Vinculo", "Pausado"]]);
+  });
+
+  it("getClientesDoEmployee filtra por cuidaDoCliente", async () => {
+    db.clientes_notion_mirror.push({ notion_id: "n-b", cliente: "Outro", cliente_id: CLI_B, entrada_id: null });
+    const meus = await getClientesDoEmployee(GESTORA);
+    expect(meus.map((c) => c.notion_id)).toEqual(["n-com"]);
+    expect(meus[0].analista).toBe("Gestora Ana");
+  });
+});
+
+describe("rotas", () => {
+  it("GET /api/notion/clientes/[id] por uuid devolve os campos da casa nova", async () => {
+    db.clientes_notion_mirror = [];
+    const r = await getFicha(new NextRequest(`http://localhost/api/notion/clientes/${CLI}`), { params: { id: CLI } });
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body).toMatchObject({ status: "Planejamento", situacao: "Estavel", resultados: "Leads", analista: "Gestora Ana", nicho: "Bancario, Trabalhista", ultimo_feedback: "2026-02-01", plataformas: "" });
+  });
+
+  it("GET /api/notion/clientes/[id] por uuid com espelho: 404 com o notion_id da ponte", async () => {
+    const r = await getFicha(new NextRequest(`http://localhost/api/notion/clientes/${CLI}`), { params: { id: CLI } });
+    expect(r.status).toBe(404);
+    expect(await r.json()).toEqual({ error: "Not found", notion_id: "n-com" });
+  });
+
+  it("diagnostico usa score e risco do negocio e meta_campaign_id pela lib", async () => {
+    mockResolver.mockResolvedValue({ cliente_id: CLI, notion_id: "n-com" });
+    const r = await postDiagnostico(
+      new NextRequest(`http://localhost/api/clientes/${RECEITA}/diagnostico`, { method: "POST", body: "{}" }),
+      { params: Promise.resolve({ id: RECEITA }) },
+    );
+    expect(r.status).toBe(200);
+    const prompt = String(mockProvider.mock.calls[0][0].prompt);
+    expect(prompt).toContain("72");
+    expect(prompt).toContain("alto");
+    expect(prompt).toContain("Atraso");
+    expect(prompt).toContain("Gestora Ana");
+    expect(prompt).toContain("Bancario, Trabalhista");
+    expect(prompt).toContain("camp-1");
+    expect(prompt).not.toContain("Legado");
+  });
+
+  it("diagnostico sem vinculo mantem 'nao calculado'", async () => {
+    db.clientes_receita = [{ ...db.clientes_receita[0], cliente_id: null }];
+    db.clientes_notion_mirror = [];
+    const r = await postDiagnostico(
+      new NextRequest(`http://localhost/api/clientes/${RECEITA}/diagnostico`, { method: "POST", body: "{}" }),
+      { params: Promise.resolve({ id: RECEITA }) },
+    );
+    expect(r.status).toBe(200);
+    expect(String(mockProvider.mock.calls[0][0].prompt)).toContain("não calculado");
+  });
+
+  it("entregaveis GET le pela lib e filtra os deletados", async () => {
+    const r = await getEntregaveis(new NextRequest("http://localhost/api/clientes/entregaveis?cliente_id=n-com"));
+    expect((await r.json()).map((e: { id: string }) => e.id)).toEqual(["x"]);
+    const vazio = await getEntregaveis(new NextRequest("http://localhost/api/clientes/entregaveis?cliente_id=n-nao-existe"));
+    expect(await vazio.json()).toEqual([]);
+  });
+});
+
+describe("fonte unica", () => {
+  const ARQUIVOS = [
+    "src/lib/data.ts",
+    "src/app/api/notion/clientes/[id]/route.ts",
+    "src/app/api/clientes/[id]/resumo/route.ts",
+    "src/app/api/clientes/[id]/diagnostico/route.ts",
+    "src/app/api/clientes/entregaveis/route.ts",
+    "src/lib/clientes/nichos-catalogo.ts",
+  ];
+  it.each(ARQUIVOS)("%s nao cita o espelho (nem pelo nome nem por TABELA_ESPELHO)", (arq) => {
+    const src = readFileSync(arq, "utf8");
+    expect(src).not.toContain("clientes_notion_mirror");
+    expect(src).not.toContain("TABELA_ESPELHO");
+  });
+});

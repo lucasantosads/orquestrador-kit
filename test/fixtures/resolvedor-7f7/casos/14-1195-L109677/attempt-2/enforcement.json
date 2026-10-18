@@ -1,0 +1,9 @@
+{
+  "ok": false,
+  "violations": [
+    {
+      "tipo": "fora_do_pathspec",
+      "detalhe": "test/reuniao-manual-registro.test.ts"
+    }
+  ]
+}

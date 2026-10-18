@@ -1,0 +1,10 @@
+[
+ "claude-output.txt",
+ "diff.raw",
+ "diff.stat",
+ "enforcement.json",
+ "gate-tsc.txt",
+ "head.txt",
+ "prompt.txt",
+ "recon.txt"
+]

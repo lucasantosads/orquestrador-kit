@@ -1,0 +1,188 @@
+{
+ "id": "1053",
+ "slug": "negocio-team-e-carteira-param-de-gravar-no-espelho",
+ "lane": "dados",
+ "perfil": "backend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 620 linhas (~20 em src/app/api/team/feedbacks/route.ts, ~45 em src/app/api/team/situation-history/route.ts, ~70 em src/app/api/dashboard/clientes/route.ts, ~12 em src/lib/perf/nicho-principal.ts, ~15 de recalculo em test/nicho-principal-manual.test.ts, ~260 em test/escritas-team-carteira-casa-nova.test.ts NOVO). Se passar do teto, pare e reporte. CONTEXTO (frente saida do Notion): src/lib/clientes/negocio.ts (1051: gravarNegocio(db, clienteId, { fase }, atualizadoPor)) e src/lib/clientes/perfil-operacional.ts (1052b: lerPerfilOperacional(db, id), gravarPerfilOperacional(db, id, patch)) sao as portas das casas novas; src/lib/clientes/resolver-cliente.ts tem resolverCliente(id) -> { cliente_id, notion_id } e clienteIdParaGravar(id); src/lib/clientes/espelho-legado.ts (1050b) tem pontePorEntrada(db, entradaIds). Depende de 1050b, 1051, 1052b e 1032 (que tambem edita a rota da carteira). PASSO 1: leia as duas libs, src/app/api/team/feedbacks/route.ts linhas 60-95, src/app/api/team/situation-history/route.ts inteiro, src/app/api/dashboard/clientes/route.ts linhas 160-185 e 295-344, src/lib/perf/nicho-principal.ts inteiro, test/nicho-principal-manual.test.ts linhas 1-70 e test/papel-nas-escritas.test.ts linhas 70-100. FAZER: (1) src/app/api/team/feedbacks/route.ts: o bloco das linhas 87-91 (update no espelho) SAI; no lugar: `let perfilAtualizado = false; if (insert.cliente_id) { try { await gravarPerfilOperacional(supabase, insert.cliente_id, { ultimo_fee",
+ "cria_novo": [
+  "test/escritas-team-carteira-casa-nova.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/app/api/team/feedbacks/route.ts",
+  "src/app/api/team/situation-history/route.ts",
+  "src/app/api/dashboard/clientes/route.ts",
+  "src/lib/perf/nicho-principal.ts",
+  "test/nicho-principal-manual.test.ts",
+  "test/escritas-team-carteira-casa-nova.test.ts"
+ ],
+ "dependencias": [
+  "1051",
+  "1052b",
+  "1032",
+  "1050b",
+  "1063"
+ ],
+ "prioridade": 33,
+ "recon_esperado": [
+  {
+   "descricao": "test/escritas-team-carteira-casa-nova.test.ts ainda nao existe",
+   "cmd": "test -e 'test/escritas-team-carteira-casa-nova.test.ts' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "feedbacks e situation-history ainda fazem update no espelho",
+   "cmd": "a=$(grep -A2 'from(\"clientes_notion_mirror\")' src/app/api/team/feedbacks/route.ts | grep -c '\\.update('); b=$(grep -A2 'from(\"clientes_notion_mirror\")' src/app/api/team/situation-history/route.ts | grep -c '\\.update('); [ \"$a\" = 1 ] && [ \"$b\" = 1 ] && echo DOIS_UPDATES || echo ST_${a}_${b}",
+   "espera": "DOIS_UPDATES"
+  },
+  {
+   "descricao": "o PATCH da carteira ainda tem MIRROR_FIELD com 11 campos, insere local_ e faz update por notion_id",
+   "cmd": "f=src/app/api/dashboard/clientes/route.ts; a=$(sed -n '/^const MIRROR_FIELD/,/^};/p' $f | grep -cE '^  [a-z_]+: \"'); b=$(grep -c 'local_\\${crypto.randomUUID()}' $f); c=$(grep -c 'from(\"clientes_notion_mirror\").update(update).eq(\"notion_id\", notion_id)' $f); [ \"$a\" = 11 ] && [ \"$b\" = 1 ] && [ \"$c\" = 1 ] && echo PATCH_NO_ESPELHO || echo ST_${a}_${b}_${c}",
+   "espera": "PATCH_NO_ESPELHO"
+  },
+  {
+   "descricao": "recalcNichoPrincipal ainda grava nicho no espelho e o teste fixa isso",
+   "cmd": "a=$(grep -c 'update({ nicho: nome })' src/lib/perf/nicho-principal.ts); b=$(grep -c 'valores: { nicho: \"Bancário\" }' test/nicho-principal-manual.test.ts); [ \"$a\" = 1 ] && [ \"$b\" = 1 ] && echo GRAVA_NICHO || echo ST_${a}_${b}",
+   "espera": "GRAVA_NICHO"
+  }
+ ],
+ "colunas_escritas": [
+  "ops_cliente_negocio.fase",
+  "ops_cliente_negocio.atualizado_em",
+  "ops_cliente_negocio.atualizado_por",
+  "ops_cliente_perfil.situacao",
+  "ops_cliente_perfil.resultados",
+  "ops_cliente_perfil.atencao",
+  "ops_cliente_perfil.analista",
+  "ops_cliente_perfil.dia_otimizar",
+  "ops_cliente_perfil.ultimo_feedback",
+  "ops_cliente_perfil.data_otimizacao",
+  "ops_cliente_perfil.updated_at",
+  "client_situation_history.cliente_notion_id",
+  "client_situation_history.cliente_id",
+  "client_situation_history.situacao_anterior",
+  "client_situation_history.situacao_nova",
+  "client_situation_history.origem",
+  "client_situation_history.contexto",
+  "client_situation_history.gestor_id"
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do printf '%s\\n' 'src/app/api/team/feedbacks/route.ts' 'src/app/api/team/situation-history/route.ts' 'src/app/api/dashboard/clientes/route.ts' 'src/lib/perf/nicho-principal.ts' 'test/nicho-principal-manual.test.ts' 'test/escritas-team-carteira-casa-nova.test.ts' | grep -Fxq \"$f\" || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 620 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 620 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais e os testes que leem os 4 arquivos seguem verdes (inclui test/nicho-principal-manual.test.ts recalculado)",
+   "cmd": "npx vitest run test/c0-guard.test.ts test/fetch-json-teto.test.ts test/travessao-mudo.test.ts test/getsession-churn-feedbacks.test.ts test/getsession-legados-onboarding-churn.test.ts test/sai-resolver-chave-api-f.test.ts test/getsession-team-situacao-nps.test.ts test/agregacoes-truncadas-ficha.test.ts test/carteira-edicao.test.ts test/carteira-membro.test.ts test/erro-string-carteira-perfil-disputa.test.ts test/nps-lote-links.test.tsx test/nps-universo-ativo.test.tsx test/papel-nas-escritas.test.ts test/sem-insumo.test.ts test/json-malformado-perf-contas.test.ts test/nicho-principal-manual.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum dos 4 arquivos escreve mais no espelho; feedbacks e situacao gravam no perfil; a carteira grava fase e perfil pelas libs e nao cria mais linha local_",
+   "cmd": "f1=src/app/api/team/feedbacks/route.ts; f2=src/app/api/team/situation-history/route.ts; f3=src/app/api/dashboard/clientes/route.ts; f4=src/lib/perf/nicho-principal.ts; a=$(grep -A3 'from(\"clientes_notion_mirror\")' $f1 $f2 $f3 $f4 | grep -cE '\\.(update|insert|upsert)\\('); b=$(grep -c 'gravarPerfilOperacional(' $f1); c=$(grep -c 'gravarPerfilOperacional(' $f2); d=$(grep -cE 'from\\(\"client_situation_history\"\\)\\.insert|\\.insert\\(\\{' $f2); e=$(grep -c 'gravarNegocio(' $f3); g=$(grep -c 'gravarPerfilOperacional(' $f3); h=$(grep -c 'local_' $f3); i=$(grep -c 'DESTINO_CAMPO' $f3); j=$(grep -c 'update({ nicho: nome })' $f4); [ \"$a\" = 0 ] && [ \"$b\" -ge 1 ] && [ \"$c\" -ge 1 ] && [ \"$d\" -ge 1 ] && [ \"$e\" -ge 1 ] && [ \"$g\" -ge 1 ] && [ \"$h\" = 0 ] && [ \"$i\" -ge 2 ] && [ \"$j\" = 0 ] && echo CASA_NOVA || echo ST_${a}_${b}_${c}_${d}_${e}_${g}_${h}_${i}_${j}",
+   "espera": "CASA_NOVA",
+   "tipo": "alvo"
+  },
+  {
+   "descricao": "anti-afrouxamento em test/nicho-principal-manual.test.ts: so a assercao do update mudou para lista vazia com o comentario do 1053; nenhuma linha a menos de expect/it, nenhum skip/only/todo",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; f=test/nicho-principal-manual.test.ts; a=$(git show \"$b:$f\" | grep -cF 'expect('); n=$(grep -cF 'expect(' \"$f\"); v=$(grep -c 'expect(banco.updates).toEqual(\\[\\]);' \"$f\"); o=$(grep -c 'valores: { nicho: \"Bancário\" }' \"$f\"); c=$(grep -c 'Ticket 1053 (N6)' \"$f\"); sk=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"$n\" -ge \"$a\" ] && [ \"$v\" -ge 2 ] && [ \"$o\" = 0 ] && [ \"$c\" -ge 1 ] && [ \"$sk\" = 0 ] && echo RECALCULADO_1053 || echo ST_${a}_${n}_${v}_${o}_${c}_${sk}",
+   "espera": "RECALCULADO_1053",
+   "tipo": "alvo"
+  },
+  {
+   "descricao": "testes verdes (test/escritas-team-carteira-casa-nova.test.ts)",
+   "cmd": "test -f test/escritas-team-carteira-casa-nova.test.ts && npx vitest run test/escritas-team-carteira-casa-nova.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "avaliador: feedbacks grava ultimo_feedback no perfil (best-effort sinalizado); situation-history grava a situacao no perfil e insere a linha do historico com situacao_anterior lida do perfil, origem gestor_manual, cliente_id e gestor da sessao, sem depender de gatilho; o PATCH da carteira resolve cliente_id (pending_ por clientes_receita so leitura; senao resolver unico), grava fase via gravarNegocio e perfil via gravarPerfilOperacional, recusa nicho/orcamento/pagamento com mensagem humana e nao cria mais linha no espelho; recalcNichoPrincipal so deriva. REPROVE se: resta insert/update no espelho em qualquer dos 4 arquivos; cliente sem cliente_id grava ou falha em silencio; escrita nova em clientes_receita; historico de situacao sem situacao_anterior; GET da carteira mexido; assercao removida ou afrouxada; skip/only.",
+   "cmd": "true",
+   "espera": "avaliador",
+   "tipo": "avaliador"
+  }
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/getsession-churn-feedbacks.test.ts",
+   "motivo": "confere 401 sem sessao e que com sessao a rota toca o banco; o POST de feedbacks continua inserindo em client_feedbacks antes de qualquer coisa"
+  },
+  {
+   "teste": "test/getsession-legados-onboarding-churn.test.ts",
+   "motivo": "cita team/feedbacks por caminho na lista de rotas com getSession; nada muda"
+  },
+  {
+   "teste": "test/sai-resolver-chave-api-f.test.ts",
+   "motivo": "le as fontes de team/feedbacks e team/nps para provar que usam so o resolver unico; o ticket importa resolverCliente/clienteIdParaGravar do mesmo modulo"
+  },
+  {
+   "teste": "test/getsession-team-situacao-nps.test.ts",
+   "motivo": "401 sem sessao sem tocar banco, 400 com JSON invalido e com sessao toca o banco: a ordem getSession -> parse -> leituras e mantida"
+  },
+  {
+   "teste": "test/agregacoes-truncadas-ficha.test.ts",
+   "motivo": "testa o GET da carteira (leitura completa de reunioes), que nao muda neste ticket"
+  },
+  {
+   "teste": "test/carteira-edicao.test.ts",
+   "motivo": "testa mutations.ts (payload do PATCH e podeRegistrarChurn), fora da allowlist; o contrato { notion_id, field, value } continua"
+  },
+  {
+   "teste": "test/carteira-membro.test.ts",
+   "motivo": "testa o GET da carteira e kpis/gestores, que nao mudam"
+  },
+  {
+   "teste": "test/erro-string-carteira-perfil-disputa.test.ts",
+   "motivo": "confere que erro de leitura do GET vira mensagem; GET intocado"
+  },
+  {
+   "teste": "test/nps-lote-links.test.tsx",
+   "motivo": "cita /api/dashboard/clientes como fonte da tela de NPS; GET intocado"
+  },
+  {
+   "teste": "test/nps-universo-ativo.test.tsx",
+   "motivo": "idem; GET intocado"
+  },
+  {
+   "teste": "test/papel-nas-escritas.test.ts",
+   "motivo": "o PATCH sem sessao responde 401 e sem papel 403 antes de qualquer leitura (exigirPapel continua primeiro); se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/sem-insumo.test.ts",
+   "motivo": "cita a rota da carteira para o estado sem insumo do GET; GET intocado"
+  },
+  {
+   "teste": "test/json-malformado-perf-contas.test.ts",
+   "motivo": "cita nicho-principal por caminho na lista de modulos que leem perf_ad_accounts; a leitura nao muda"
+  },
+  {
+   "teste": "test/nicho-principal-manual.test.ts",
+   "motivo": "entra na allowlist: fixa o update no espelho; recalculado para lista vazia (criterio anti-afrouxamento)"
+  },
+  {
+   "teste": "test/c0-guard.test.ts",
+   "motivo": "guarda global: a rota da carteira esta na lista de rotas sancionadas para ler valor_mensal; o PATCH so faz SELECT em clientes_receita (cliente_id por id), nunca escrita"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 7238
+}

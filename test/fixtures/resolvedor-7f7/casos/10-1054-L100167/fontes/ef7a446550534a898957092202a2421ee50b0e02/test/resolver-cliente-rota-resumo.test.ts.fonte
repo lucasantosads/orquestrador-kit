@@ -1,0 +1,133 @@
+/**
+ * Ticket 822: as 3 rotas de resumo do cliente resolvem o [id] UMA vez com resolverCliente e
+ * consultam pelo lado certo do par. Supabase, sessão e resolver são dublês; nada toca banco.
+ */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
+
+const UUID = "00000000-0000-4000-8000-000000000001";
+const NOTION = "notion-cliente-001";
+
+const { chamadas, mockResolver } = vi.hoisted(() => ({
+  chamadas: [] as { tabela: string; metodo: string; args: unknown[] }[],
+  mockResolver: vi.fn(),
+}));
+
+vi.mock("@/lib/session", () => ({ getSession: async () => ({ employeeId: "emp-1" }) }));
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: () => ({
+    from: (tabela: string) => {
+      const promise = Promise.resolve({ data: [], error: null });
+      const chain: Record<string, unknown> = {
+        then: (f: never, r?: never) => promise.then(f, r),
+        catch: (f: never) => promise.catch(f),
+        maybeSingle: () => promise,
+      };
+      for (const metodo of ["select", "eq", "or", "order", "limit", "is", "gte", "lte", "insert"]) {
+        chain[metodo] = (...args: unknown[]) => {
+          chamadas.push({ tabela, metodo, args });
+          return chain;
+        };
+      }
+      return chain;
+    },
+  }),
+}));
+vi.mock("@/lib/clientes/resolver-cliente", async (original) => ({
+  ...(await original<typeof import("@/lib/clientes/resolver-cliente")>()),
+  resolverCliente: mockResolver,
+}));
+vi.mock("@/lib/ia/resumo-relacao", async (original) => ({
+  ...(await original<typeof import("@/lib/ia/resumo-relacao")>()),
+  gerarResumoRelacao: async () => ({ resumo: "ok", modelo: "m", uso: {} }),
+}));
+vi.mock("@/lib/ia/resumo-grupo-wpp", async (original) => ({
+  ...(await original<typeof import("@/lib/ia/resumo-grupo-wpp")>()),
+  statusGrupo: async (_db: unknown, clienteId: string) => {
+    chamadas.push({ tabela: "grupo", metodo: "statusGrupo", args: [clienteId] });
+    return { conectado: false, nome: null, ultima_mensagem_em: null };
+  },
+}));
+
+import { GET as getResumo } from "@/app/api/clientes/[id]/resumo/route";
+import { GET as getGrupo } from "@/app/api/clientes/[id]/resumo-grupo/route";
+import { POST as postIa } from "@/app/api/clientes/[id]/resumo-ia/route";
+
+const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
+const req = (id: string, rota: string) => new NextRequest(`http://localhost/api/clientes/${id}/${rota}`, { method: "POST" });
+
+const ROTAS = [
+  { nome: "resumo", chamar: (id: string) => getResumo(req(id, "resumo"), ctx(id)) },
+  { nome: "resumo-grupo", chamar: (id: string) => getGrupo(req(id, "resumo-grupo"), ctx(id)) },
+  { nome: "resumo-ia", chamar: (id: string) => postIa(req(id, "resumo-ia"), ctx(id)) },
+];
+
+/** O dado do cliente que a rota consultou: filtro por cliente_id (eq, or ou chamada direta). */
+function consultaPorCliente(): string[] {
+  return chamadas
+    .filter((c) => c.metodo === "statusGrupo" || c.metodo === "or" || (c.metodo === "eq" && c.args[0] === "cliente_id"))
+    .map((c) => JSON.stringify([c.tabela, c.metodo, c.args]));
+}
+
+beforeEach(() => {
+  chamadas.length = 0;
+  mockResolver.mockReset();
+  vi.spyOn(console, "error").mockImplementation(() => {});
+});
+
+describe.each(ROTAS)("rota $nome", ({ chamar }) => {
+  it("[id] em uuid e [id] em notion_id chegam à MESMA consulta por cliente_id", async () => {
+    mockResolver.mockResolvedValue({ cliente_id: UUID, notion_id: NOTION });
+    await chamar(UUID);
+    const porUuid = consultaPorCliente();
+    chamadas.length = 0;
+    await chamar(NOTION);
+    const porNotion = consultaPorCliente();
+
+    expect(porUuid.length).toBeGreaterThan(0);
+    expect(porNotion.join("|")).toBe(porUuid.join("|"));
+    expect(porUuid.join("|")).toContain(UUID);
+  });
+
+  it("resolve o [id] uma vez por requisição", async () => {
+    mockResolver.mockResolvedValue({ cliente_id: UUID, notion_id: NOTION });
+    await chamar(NOTION);
+    expect(mockResolver).toHaveBeenCalledTimes(1);
+    expect(mockResolver).toHaveBeenCalledWith(NOTION);
+  });
+
+  it("par com os dois lados null responde 404 Cliente não encontrado, sem consultar", async () => {
+    mockResolver.mockResolvedValue({ cliente_id: null, notion_id: null });
+    const res = await chamar("desconhecido");
+    expect(res.status).toBe(404);
+    expect((await res.json()).error).toBe("Cliente não encontrado");
+    expect(chamadas).toHaveLength(0);
+  });
+
+  it("resolver que lança responde 500 com a mensagem", async () => {
+    mockResolver.mockRejectedValue(new Error("falha de leitura do espelho"));
+    const res = await chamar(NOTION);
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toBe("falha de leitura do espelho");
+  });
+});
+
+describe("par sem cliente_id (só apelido legado)", () => {
+  const par = { cliente_id: null, notion_id: NOTION };
+
+  it("resumo-grupo mantém o 422 de sem vínculo", async () => {
+    mockResolver.mockResolvedValue(par);
+    const res = await getGrupo(req(NOTION, "resumo-grupo"), ctx(NOTION));
+    expect(res.status).toBe(422);
+    expect((await res.json()).error).toBe("Este cliente ainda não tem vínculo para o resumo do grupo.");
+  });
+
+  it("resumo segue lendo a linha antiga pela ponte (notion_id)", async () => {
+    mockResolver.mockResolvedValue(par);
+    const res = await getResumo(req(NOTION, "resumo"), ctx(NOTION));
+    expect(res.status).toBe(200);
+    const ors = chamadas.filter((c) => c.metodo === "or").map((c) => String(c.args[0]));
+    expect(ors.join("|")).toContain(NOTION);
+    expect(ors.join("|")).not.toContain("cliente_id.eq");
+  });
+});

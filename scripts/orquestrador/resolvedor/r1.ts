@@ -14,6 +14,11 @@
  *      `set -u`);
  *   4. o ticket reabre (status `pendente`, nota vazia).
  *
+ * Mais de um vermelho fora (7f-b7): tudo ou nada. Cada um tem de cumprir
+ * SOZINHO a D6 ou a D6b (`extracao.r1_testes`); se um só não cumpre, nenhuma
+ * ação. Cumprindo, todos entram de uma vez: na allowlist, no critério da
+ * lista, uma guarda de contagem por teste, num commit só (uma ação).
+ *
  * Só planeja: devolve o .md novo ou o motivo de não conseguir. Quem escreve é
  * acoes.ts. O git é só `gitLeitura` (show do branch alvo).
  */
@@ -32,15 +37,22 @@ export interface Contagem {
   skip: number
 }
 
-export interface PlanoR1 {
+export interface TesteR1 {
   teste: string
+  /** a regra que o teste cumpre sozinho */
+  regra: string
   /** o ref onde a contagem foi medida (`staging-auto` ou `origin/staging-auto`) */
   ref: string
   contagem: Contagem
-  /** índices dos critérios que listam os arquivos permitidos (o caminho entrou neles) */
+}
+
+export interface PlanoR1 {
+  /** os testes que entram, na ordem do diagnóstico (um, ou todos os vermelhos fora) */
+  testes: TesteR1[]
+  /** índices dos critérios que listam os arquivos permitidos (os caminhos entraram neles) */
   criteriosLista: number[]
-  /** índice do critério novo (a guarda) no ticket novo */
-  guarda: number
+  /** índices dos critérios novos (as guardas, uma por teste) no ticket novo */
+  guardas: number[]
   novo: string
 }
 
@@ -104,11 +116,26 @@ export function noAlvo(raiz: string, arquivo: string): { ref: string; texto: str
   return null
 }
 
-export function planejarR1(raiz: string, diag: Diagnostico, md: string, agora: number): Plano<PlanoR1> {
-  const teste = /^pôr (\S+) na allowlist/.exec(diag.remedio)?.[1]
+/** Os testes que o R1 põe na allowlist, ou o motivo de não pôr nenhum (tudo ou nada). */
+function testesDoPlano(diag: Diagnostico): { ok: true; testes: { teste: string; regra: string }[] } | { ok: false; motivo: string } {
+  const nomeado = /^pôr (\S+) na allowlist/.exec(diag.remedio)?.[1]
   const fora = diag.extracao.fora_da_allowlist_e_do_diff
-  if (!teste) return { ok: false, motivo: 'o remédio do diagnóstico não nomeia o teste' }
-  if (fora.length !== 1 || fora[0] !== teste) return { ok: false, motivo: `mais de um vermelho fora da allowlist (${fora.join(', ')}): um conserto só não destrava` }
+  if (!nomeado) return { ok: false, motivo: 'o remédio do diagnóstico não nomeia o teste' }
+  if (fora.length === 1 && fora[0] === nomeado) return { ok: true, testes: [{ teste: nomeado, regra: diag.regra ?? 'D6' }] }
+  const por = diag.extracao.r1_testes
+  if (fora.length < 2 || !fora.includes(nomeado)) return { ok: false, motivo: `o remédio nomeia ${nomeado}, fora da allowlist estão ${fora.join(', ') || 'nenhum'}` }
+  if (!por) return { ok: false, motivo: `mais de um vermelho fora da allowlist (${fora.join(', ')}) num diagnóstico sem a regra por teste: um conserto só não destrava` }
+  const regra = (f: string) => por.find((p) => p.arquivo === f)?.regra ?? null
+  const fracos = fora.filter((f) => !regra(f))
+  if (fracos.length) {
+    return { ok: false, motivo: `mais de um vermelho fora da allowlist, tudo ou nada: ${fracos.join(', ')} não cumpre D6 nem D6b sozinho; nenhuma ação` }
+  }
+  return { ok: true, testes: fora.map((f) => ({ teste: f, regra: regra(f)! })) }
+}
+
+export function planejarR1(raiz: string, diag: Diagnostico, md: string, agora: number): Plano<PlanoR1> {
+  const quais = testesDoPlano(diag)
+  if (!quais.ok) return quais
   let j: Record<string, unknown>
   try {
     j = bloco(md).json
@@ -116,12 +143,16 @@ export function planejarR1(raiz: string, diag: Diagnostico, md: string, agora: n
     return { ok: false, motivo: (e as Error).message }
   }
   const al = Array.isArray(j.pathspec_allowlist) ? (j.pathspec_allowlist as unknown[]).filter((x): x is string => typeof x === 'string') : []
-  if (al.includes(teste)) return { ok: false, motivo: `${teste} já está na allowlist` }
-  const fonte = noAlvo(raiz, teste)
-  if (!fonte) return { ok: false, motivo: `${teste} não existe no branch alvo (${branchAlvo(raiz)}): sem contagem para a guarda` }
-  const c = contar(fonte.texto)
-  if (c.skip > 0) return { ok: false, motivo: `${teste} já tem ${c.skip} .skip/.only/.todo em ${fonte.ref}: a guarda exige zero` }
-  if (c.it + c.test === 0 || c.expect === 0) return { ok: false, motivo: `${teste} sem it(/test( ou expect( em ${fonte.ref}: nada a guardar` }
+  const testes: TesteR1[] = []
+  for (const { teste, regra } of quais.testes) {
+    if (al.includes(teste)) return { ok: false, motivo: `${teste} já está na allowlist` }
+    const fonte = noAlvo(raiz, teste)
+    if (!fonte) return { ok: false, motivo: `${teste} não existe no branch alvo (${branchAlvo(raiz)}): sem contagem para a guarda` }
+    const c = contar(fonte.texto)
+    if (c.skip > 0) return { ok: false, motivo: `${teste} já tem ${c.skip} .skip/.only/.todo em ${fonte.ref}: a guarda exige zero` }
+    if (c.it + c.test === 0 || c.expect === 0) return { ok: false, motivo: `${teste} sem it(/test( ou expect( em ${fonte.ref}: nada a guardar` }
+    testes.push({ teste, regra, ref: fonte.ref, contagem: c })
+  }
 
   const cs = Array.isArray(j.criterios_aceite) ? (j.criterios_aceite as Record<string, unknown>[]) : []
   const lista: number[] = []
@@ -137,7 +168,9 @@ export function planejarR1(raiz: string, diag: Diagnostico, md: string, agora: n
   if (depoisDe < 0) return { ok: false, motivo: 'ticket sem critério: não há onde pôr a guarda' }
 
   try {
-    let novo = acrescentarAllowlist(md, teste)
+    let novo = md
+    for (const t of testes) novo = acrescentarAllowlist(novo, t.teste)
+    const aspas = testes.map((t) => ` '${t.teste}'`).join('')
     for (const i of lista) {
       const cmd = cs[i]!.cmd as string
       let fim = -1
@@ -145,16 +178,18 @@ export function planejarR1(raiz: string, diag: Diagnostico, md: string, agora: n
         const p = cmd.lastIndexOf(`'${a}'`)
         if (p >= 0) fim = Math.max(fim, p + a.length + 2)
       }
-      novo = trocarCmd(novo, i, `${cmd.slice(0, fim)} '${teste}'${cmd.slice(fim)}`)
+      novo = trocarCmd(novo, i, `${cmd.slice(0, fim)}${aspas}${cmd.slice(fim)}`)
     }
-    novo = inserirCriterio(novo, depoisDe, {
-      descricao: descricaoGuarda(teste, c, fonte.ref, diag.assinatura, agora, diag.regra ?? 'D6'),
-      cmd: cmdGuarda(teste, c.it + c.test, c.expect),
-      espera: 'CONTAGEM_MANTIDA',
-      tipo: 'guarda',
+    testes.forEach((t, k) => {
+      novo = inserirCriterio(novo, depoisDe + k, {
+        descricao: descricaoGuarda(t.teste, t.contagem, t.ref, diag.assinatura, agora, t.regra),
+        cmd: cmdGuarda(t.teste, t.contagem.it + t.contagem.test, t.contagem.expect),
+        espera: 'CONTAGEM_MANTIDA',
+        tipo: 'guarda',
+      })
     })
     novo = reabrir(novo)
-    return { ok: true, plano: { teste, ref: fonte.ref, contagem: c, criteriosLista: lista, guarda: depoisDe + 1, novo } }
+    return { ok: true, plano: { testes, criteriosLista: lista, guardas: testes.map((_, k) => depoisDe + 1 + k), novo } }
   } catch (e) {
     if (e instanceof EdicaoRecusada) return { ok: false, motivo: `edição do ticket recusada: ${e.message}` }
     throw e

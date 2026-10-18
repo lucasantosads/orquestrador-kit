@@ -1,0 +1,4 @@
+{
+  "aprovado": false,
+  "motivo": "Dedupe, colaboradores, chave, flattenTranscript e parseJsonResponse ok. Mas o objetivo exige transcricao 'informada'|'buscada_tldv'|'aguardando_tldv'|'sem_link_tldv'; o diff omite 'informada' (fica undefined) e o teste fixa toBeUndefined. Contrato do retorno que a tela 1196 consome diverge."
+}

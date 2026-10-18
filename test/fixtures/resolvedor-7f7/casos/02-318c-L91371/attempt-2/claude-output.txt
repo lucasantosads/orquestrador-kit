@@ -1,0 +1,9 @@
+O ranking de criativos está no drill da tese e commitado (`2438666`, 205 linhas), mas o tipo de funil do filtro ainda não chega a ele. Isso depende de `nichos-teses-aba.tsx`, que está fora da allowlist.
+
+O `tsc` ficou em 3 erros e as 8 guardas globais passaram, junto com `test/performance-ranking-criativos-tela.test.ts` e `test/performance-nichos-teses-aba.test.ts`. Não rodei a suíte inteira nem o `npm run build`, e os outros critérios de aceite (SO_ALLOWLIST, orçamento de diff, JSON novo etc.) não foram executados.
+
+- **O que foi feito:**
+  - **`ranking-criativos.tsx` (novo):** lê `/api/perf/nicho-tese/criativos` com `fetchJson` e mostra "Criativos da tese", com as colunas pedidas e "decidido por CPMQL" em texto pequeno.
+  - **Sem amostra, sem base e erro:** "N criativos sem amostra em nenhum degrau" aparece numa linha, a tese sem base mostra o motivo da rota numa linha, e a falha vira `ErrorState` com "Tentar novamente".
+  - **`drill-tese.tsx`:** monta `<RankingCriativos>` abaixo da tabela dos clientes. Recebe `tipo` por prop (padrão `"todos"`) e lê o período do mesmo `usePeriodoUrl` da aba.
+- **O que falta:** hoje o ranking sempre pede `tipo=todos`, então a reprovação anterior continua valendo. Falta uma linha em `nichos-teses-aba.tsx:372`: `<DrillTese tese={tese} tipo={tipo} />`. Não editei porque o critério SO_ALLOWLIST reprovaria o ticket. Para fechar, o ticket precisa incluir `nichos-teses-aba.tsx` na allowlist. O teste novo já cobre o lado do drill.

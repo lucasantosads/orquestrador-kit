@@ -1,0 +1,12 @@
+{
+ "id": "1053",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/1053-negocio-team-e-carteira-param-de-gravar-no-espelho.md",
+ "ticket_sha": "3718afa1ce04a6ddd079222b53df50e3909c7ddf",
+ "ticket_antes": true,
+ "linha_bloqueio": 99695,
+ "log_inicio": 99654,
+ "fim": "2026-10-13T19:17:36Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/1053"
+}

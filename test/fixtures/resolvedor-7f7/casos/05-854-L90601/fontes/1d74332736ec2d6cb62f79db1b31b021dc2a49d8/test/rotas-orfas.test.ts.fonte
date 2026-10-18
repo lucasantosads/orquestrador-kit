@@ -1,0 +1,299 @@
+// Ticket 150 — TERCEIRO módulo seguido com rota de página sem nenhum link no
+// menu (achado #21 + T-C da auditoria de Financeiro de 21/08). Em vez de
+// linkar rota por rota, este teste falha o build sempre que existir uma
+// página em src/app/dashboard/** sem NENHUM href apontando pra ela em
+// nenhum outro arquivo de src/.
+//
+// Medição contra origin/staging-auto em 22/08 (ver docs/recon/destino-rotas-
+// orfas.md, ticket 159, que precede este): 27 rotas brutas sem referência
+// literal, das quais 11 são dinâmicas ([id]/[cursoId]/[aulaId]) alcançadas só
+// por template literal (`/dashboard/clientes/${id}` etc.) — falso positivo de
+// um grep de string simples — e 16 são estáticas, realmente órfãs. Rodando o
+// mesmo método contra o estado atual deste worktree (23/08), o scanner com
+// resolução de template literal também aponta 3 rotas DINÂMICAS que
+// continuam órfãs de fato (nenhum `${id}` as alcança): duas sub-rotas de
+// `/dashboard/clientes/[id]` que duplicam abas já embutidas na própria ficha
+// do cliente, e `/dashboard/onboarding/[id]`, que `/dashboard/onboarding`
+// nunca linka. Essas três entram na allowlist pelo mesmo motivo das 16
+// estáticas — nenhuma delas ganha link neste ticket.
+//
+// Este ticket NÃO toca em sidebar.tsx nem em nenhuma página — só cria o
+// teste e a allowlist. Linkar as rotas é dos tickets 151 e 152.
+import { describe, it, expect } from 'vitest'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join, extname, relative } from 'node:path'
+
+const REPO_ROOT = join(__dirname, '..')
+const SRC_ROOT = join(REPO_ROOT, 'src')
+const DASHBOARD_ROOT = join(SRC_ROOT, 'app', 'dashboard')
+const CODE_EXT = new Set(['.ts', '.tsx'])
+const IGNORE_DIRS = new Set(['node_modules', '.next', '.git'])
+
+function walk(dir: string): string[] {
+  let out: string[] = []
+  let entries: string[]
+  try {
+    entries = readdirSync(dir)
+  } catch {
+    return out
+  }
+  for (const entry of entries) {
+    if (IGNORE_DIRS.has(entry)) continue
+    const full = join(dir, entry)
+    const st = statSync(full)
+    if (st.isDirectory()) out = out.concat(walk(full))
+    else if (CODE_EXT.has(extname(full))) out.push(full)
+  }
+  return out
+}
+
+// Comentário de linha e de bloco não conta como link — só string/template
+// literal real. Sem isso, o próprio cabeçalho de uma page.tsx que documenta
+// sua rota (ex.: "/dashboard/custos — Custo por Colaborador...") falsearia
+// o resultado como "linkada".
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+}
+
+// "src/app/dashboard/clientes/[id]/setup/page.tsx" -> "/dashboard/clientes/[id]/setup"
+function routeFromPageFile(file: string): string {
+  const rel = relative(join(SRC_ROOT, 'app'), file).replace(/\\/g, '/')
+  const withoutPage = rel.replace(/\/page\.tsx$/, '')
+  return '/' + withoutPage
+}
+
+// Resolve segmento dinâmico ([id], [cursoId], [...slug]) para o padrão real
+// usado no código: template literal tipo `/dashboard/clientes/${notionId}`.
+// Sem isso, TODA rota dinâmica cairia como falso positivo de órfã.
+function routeToPattern(route: string): RegExp {
+  const escaped = route
+    .split('/')
+    .map((seg) => {
+      if (/^\[(\.\.\.)?\w+\]$/.test(seg)) return '\\$\\{[^}]+\\}'
+      return seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    })
+    .join('/')
+  // Lookbehind de aspas/crase (início de string literal) e lookahead de
+  // aspas/crase/separador de caminho (fim do trecho que importa). Sem isso
+  // "/dashboard/clientes/perf" bate como substring dentro de
+  // "/dashboard/clientes/performance" — falso "linkada".
+  return new RegExp('(?<=["\'`])' + escaped + '(?=["\'`/?#]|$)', 'm')
+}
+
+function discoverPageRoutes(): { file: string; route: string }[] {
+  return walk(DASHBOARD_ROOT)
+    .filter((f) => f.endsWith('page.tsx'))
+    .map((file) => ({ file, route: routeFromPageFile(file) }))
+}
+
+const allFiles = walk(SRC_ROOT)
+const fileContents: [string, string][] = allFiles.map((f) => [f, stripComments(readFileSync(f, 'utf8'))])
+const pages = discoverPageRoutes()
+
+function findOrphanRoutes(allowed: Set<string>): string[] {
+  const orphans: string[] = []
+  for (const { file, route } of pages) {
+    if (allowed.has(route)) continue
+    const pattern = routeToPattern(route)
+    let linked = false
+    for (const [otherFile, content] of fileContents) {
+      if (otherFile === file) continue
+      if (pattern.test(content)) {
+        linked = true
+        break
+      }
+    }
+    if (!linked) orphans.push(route)
+  }
+  return orphans
+}
+
+const ALLOWLIST: Record<string, string> = {}
+function addAll(routes: string[], rationale: string): void {
+  for (const route of routes) ALLOWLIST[route] = rationale
+}
+
+// Categoria A (docs/recon/destino-rotas-orfas.md) — tela de configuração.
+// Quatro delas já existem como aba dentro de /clientes/config ou
+// /clientes/saude; a rota-página solta é resíduo, não funcionalidade
+// faltando destino. /planos depende do módulo Portal decidir onde entra.
+const CONFIG_PENDENTE = [
+  '/dashboard/planos',
+  '/dashboard/clientes/automacoes',
+  '/dashboard/clientes/alertas-regras',
+  '/dashboard/clientes/qualificacao',
+  '/dashboard/clientes/taxonomia',
+]
+const CONFIG_RATIONALE =
+  'Categoria A (config): já existe como view em /clientes/config ou /clientes/saude, ou (planos) aguarda o módulo Portal decidir o destino. Não recebe href de menu principal — decisão de execução fora deste ticket.'
+
+// Categoria B — operacional, mas bloqueada por decisão retida (guardrail 14
+// de receita/margem/comissão da agência). /custos e /equipe/comissoes SAEM
+// do escopo do ticket 161 (decisão do Lucas, 23/08): ambas exibem receita/
+// margem da agência e o guardrail 14 diz que isso não vive no OS — linkar
+// aumentaria a exposição de uma superfície que deveria migrar para o
+// dashboard-comercial.
+const OPERACIONAL_PENDENTE = ['/dashboard/custos', '/dashboard/equipe/comissoes']
+const OPERACIONAL_PENDENTE_RATIONALE =
+  'Categoria B (operacional) pendente de decisão fora deste ticket: /custos e /equipe/comissoes expõem receita/margem/comissão da agência (guardrail 14, decisão retida do módulo Financeiro) — decisão do Lucas (23/08) manteve as duas fora do ticket 161.'
+
+// Ticket 161 linkou /dashboard/clientes/alertas (dentro de Clientes) e
+// /dashboard/onboarding/status (módulo Onboarding, que não tinha entrada de
+// menu — verificado neste ticket que o 152 ainda não havia rodado). Ambas
+// saem da allowlist: agora têm href real em src/components/sidebar.tsx e o
+// scanner precisa continuar provando isso (ver "prova de vermelho" abaixo).
+
+// Categoria C — vira ?view= de /dashboard/clientes (Carteira) em vez de rota
+// própria, mas só depois do ticket 151 fazer a Carteira ler ?view=.
+const RECORTE_CARTEIRA = ['/dashboard/clientes/renovacoes', '/dashboard/clientes/onboarding-atrasados', '/dashboard/clientes/perf']
+const RECORTE_CARTEIRA_RATIONALE =
+  'Categoria C (recorte de carteira): deixa de existir como rota própria e vira filtro ?view= de /dashboard/clientes — depende do ticket 151 fazer a Carteira ler searchParams.get("view"), que hoje ela não lê.'
+
+// Categoria D — as tres rotas de acesso restrito ao dono da agência. Único
+// caso legítimo de allowlist permanente: o gate real é server-side (11 de 11
+// endpoints com getSession→401 + isSuperAdmin→403, confirmado no recon do
+// ticket 159), então tirar do menu é defesa em profundidade, não substituto
+// do controle — a allowlist nomeia as rotas em vez de forçar entrada no menu.
+const RESTRICTED_ROUTES = ['/dashboard/admin/rbac', '/dashboard/admin/organizacao', '/dashboard/admin/super']
+const RESTRICTED_RATIONALE =
+  'Área restrita ao dono da agência, controle real é o gate server-side (getSession→401 + isSuperAdmin→403 nos 11 endpoints, ver docs/recon/destino-rotas-orfas.md categoria D). Ausência de entrada no menu é defesa em profundidade, não substituto — allowlist permanente, nunca recebe href.'
+addAll(RESTRICTED_ROUTES, RESTRICTED_RATIONALE)
+
+// Rotas dinâmicas que a resolução de template literal comprova órfãs de
+// verdade (não falso positivo): duas sub-rotas de /clientes/[id] cujo
+// conteúdo já está embutido como aba na própria ficha do cliente, e
+// /onboarding/[id], que /dashboard/onboarding/page.tsx nunca referencia
+// (só linka /onboarding/motor e /onboarding/template).
+// Ticket 533a: o botao da barra da Visao passou a navegar por template literal para
+// /dashboard/clientes/<id>/relatorio, entao essa rota deixou de ser orfa e saiu da lista
+// (3 rotas viram 2; a conta de :263 se ajusta sozinha).
+const LEGACY_DINAMICA = ['/dashboard/clientes/[id]/reunioes', '/dashboard/onboarding/[id]']
+const LEGACY_DINAMICA_RATIONALE =
+  'Rota dinâmica sem nenhum `${...}` apontando para ela em src/ — resolução de template literal confirma que não é falso positivo de grep. Residual/duplicada de aba já embutida noutra página; decisão de remover ou linkar é de execução, fora deste ticket.'
+
+// Ticket 342a — Legal saiu do menu (era item de topo com zero controles,
+// só um empty state de uma frase) e virou seção dentro de Configurações; a
+// rota antiga /dashboard/admin/legal agora só existe como casca de
+// redirect para /config#legal, então nenhum item de sidebar.tsx aponta
+// mais pra ela. Entra na allowlist pelo motivo do ticket: ela fica sem
+// href de MENU depois que o item sai.
+//
+// Nota de execução: o scanner por string literal (que é o que este arquivo
+// testa) NÃO acusa essa rota como órfã mesmo sem allowlist, porque
+// src/lib/nav/papel.ts (ticket 352, nav por papel — o próprio arquivo
+// documenta "FORA DE ESCOPO deste ticket: a sidebar (343)") já cita o
+// literal '/dashboard/admin/legal' num dado de navegação que ainda não
+// alimenta nenhuma sidebar renderizada. Por isso esta rota NÃO entra no
+// array combinado da "prova de vermelho" abaixo (ela não é órfã de fato
+// pro scanner) e é subtraída à parte na invariante de contagem.
+const LEGAL_CONFIG = ['/dashboard/admin/legal']
+const LEGAL_CONFIG_RATIONALE =
+  'Ticket 342a: Legal saiu da sidebar (era item de menu com zero controles) e virou seção dentro de /config; a rota antiga é hoje só casca de redirect para /config#legal, sem nenhum href de sidebar.tsx apontando pra ela. Ainda aparece "linkada" pro scanner de string por causa de src/lib/nav/papel.ts (ticket 352/343, nav por papel ainda não ligada a sidebar nenhuma) — fora do escopo desta fatia mexer nesse arquivo.'
+
+// Ticket 342b — Comunicados saiu do menu (era item de topo com zero
+// controles próprios, só linkava a rota de tracking) e o tracking de
+// leitura virou um card dentro da tela Equipe (/portal/equipe). A rota
+// antiga /dashboard/equipe/comunicados agora só existe como casca de
+// redirect para /portal/equipe, então nenhum item de sidebar.tsx aponta
+// mais pra ela — mesmo motivo do LEGAL_CONFIG acima, entra na allowlist
+// porque fica sem href de MENU depois que o item sai.
+//
+// Diferente de LEGAL_CONFIG, esta rota NÃO tem nenhuma referência com aspas
+// sobrando em src/ (as duas únicas menções ao caminho, no próprio redirect
+// e no comentário do card novo, são texto solto sem aspas ao redor —
+// confirmado com grep antes de escrever este teste). Por isso ela entra
+// no array combinado da "prova de vermelho" abaixo como órfã de fato,
+// igual às outras categorias, sem precisar da exceção que LEGAL_CONFIG usa.
+const COMUNICADOS_EQUIPE = ['/dashboard/equipe/comunicados']
+const COMUNICADOS_EQUIPE_RATIONALE =
+  'Ticket 342b: Comunicados saiu da sidebar (item de topo com zero controles) e o tracking de leitura virou card dentro de /portal/equipe; a rota antiga é hoje só casca de redirect para /portal/equipe, sem nenhum href de sidebar.tsx apontando pra ela.'
+
+// Ticket 343b — a sidebar passa a ser os 5 grupos de src/lib/nav/papel.ts mais
+// Comarka Pro. Saem do menu Operação (Semana, Espaços; "carteira" era path do
+// grupo), Onboarding (Status) e os demais hubs antigos. Medido com o scanner
+// deste arquivo: exatamente estas 4 rotas ficam sem nenhum href em src/ — as
+// outras candidatas (aggencio, briefings-criativos, clientes/alertas,
+// onboarding, onboarding/motor) continuam citadas fora da sidebar.
+const REORGANIZACAO_5_GRUPOS = ['/dashboard/semana', '/dashboard/espacos', '/dashboard/carteira', '/dashboard/onboarding/status']
+const REORGANIZACAO_5_GRUPOS_RATIONALE =
+  'Ticket 343b: saem do menu na reorganização em 5 grupos (Hoje, Clientes, Tráfego, Time, Configurações). /dashboard/semana e /dashboard/carteira viram casca de redirect na fatia 343d; /dashboard/espacos e /dashboard/onboarding/status permanecem como tela e ficam alcançáveis por URL e pelas telas vizinhas.'
+
+addAll(REORGANIZACAO_5_GRUPOS, REORGANIZACAO_5_GRUPOS_RATIONALE)
+addAll(CONFIG_PENDENTE, CONFIG_RATIONALE)
+addAll(OPERACIONAL_PENDENTE, OPERACIONAL_PENDENTE_RATIONALE)
+addAll(RECORTE_CARTEIRA, RECORTE_CARTEIRA_RATIONALE)
+addAll(LEGACY_DINAMICA, LEGACY_DINAMICA_RATIONALE)
+addAll(LEGAL_CONFIG, LEGAL_CONFIG_RATIONALE)
+addAll(COMUNICADOS_EQUIPE, COMUNICADOS_EQUIPE_RATIONALE)
+
+describe('rotas órfãs em src/app/dashboard', () => {
+  it('encontra páginas de dashboard para escanear', () => {
+    expect(pages.length).toBeGreaterThan(30)
+  })
+
+  it('toda entrada da allowlist tem motivo documentado (não é lista vazia de justificativa)', () => {
+    for (const [route, rationale] of Object.entries(ALLOWLIST)) {
+      expect(rationale.length, route).toBeGreaterThan(20)
+    }
+  })
+
+  it('nomeia explicitamente as tres rotas de acesso restrito do dono da agência', () => {
+    // ticket 856: 3 = as 4 rotas restritas menos a tela /dashboard/super-admin removida
+    expect(RESTRICTED_ROUTES.length).toBe(3)
+    for (const route of RESTRICTED_ROUTES) {
+      expect(ALLOWLIST[route], route).toBe(RESTRICTED_RATIONALE)
+    }
+  })
+
+  // Prova do sentido inverso, exigida pelo ticket: sem a allowlist (ou com
+  // uma rota removida dela), o scanner tem que voltar a acusar a rota como
+  // órfã — prova que o gate não é sempre-verde por construção.
+  // Roda subprocess; o timeout padrao de 5s estoura sob carga do loop (incidente 393a).
+  it('prova de vermelho: rota fora da allowlist e sem href aparece como órfã', () => {
+    const orphansSemAllowlist = findOrphanRoutes(new Set())
+    // Ticket 343b: REORGANIZACAO_5_GRUPOS entra aqui porque as 4 rotas são
+    // órfãs de fato pro scanner (nenhum literal sobra em src/), e sem elas a
+    // invariante 1:1 abaixo não bate: 18 órfãs antes + 4 = 22.
+    for (const route of [...CONFIG_PENDENTE, ...OPERACIONAL_PENDENTE, ...RECORTE_CARTEIRA, ...RESTRICTED_ROUTES, ...LEGACY_DINAMICA, ...COMUNICADOS_EQUIPE, ...REORGANIZACAO_5_GRUPOS]) {
+      expect(orphansSemAllowlist, route).toContain(route)
+    }
+    // /dashboard/admin/legal (LEGAL_CONFIG, ticket 342a) é a única entrada da
+    // allowlist que não é órfã de fato pro scanner de string literal — ver
+    // comentário acima de LEGAL_CONFIG_RATIONALE: src/lib/nav/papel.ts já cita
+    // o literal do href fora do escopo desta fatia. Por isso ela some do lado
+    // esquerdo (orphansSemAllowlist não a contém) e a invariante 1:1 precisa
+    // descontar LEGAL_CONFIG.length do total da allowlist pra continuar batendo.
+    expect(orphansSemAllowlist).not.toContain(LEGAL_CONFIG[0])
+    expect(orphansSemAllowlist.length).toBe(Object.keys(ALLOWLIST).length - LEGAL_CONFIG.length)
+  }, 60000)
+
+  // Ticket 161: as duas rotas que a categoria B liberou (Alertas dentro de
+  // Clientes, Status dentro de Onboarding) têm que aparecer como NÃO órfãs
+  // mesmo sem allowlist — a prova de que o link é real, não emprestado da
+  // allowlist.
+  it('prova de vermelho invertida: as rotas linkadas pelo ticket 161 não aparecem como órfãs mesmo sem allowlist', () => {
+    const orphansSemAllowlist = findOrphanRoutes(new Set())
+    // Continua valendo depois do 343b: Alertas saiu do menu, mas a rota segue
+    // citada em alertas-cliente-tab.tsx, alertas-meta-tab.tsx e
+    // src/lib/hoje/fontes.ts — o link é real, não emprestado da allowlist.
+    expect(orphansSemAllowlist).not.toContain('/dashboard/clientes/alertas')
+    // Recalculado no 343b: a sidebar era o ÚNICO href de Status (a própria
+    // tela e o Motor não a citam), então sem allowlist ela agora É órfã — e
+    // só passa no gate por estar em REORGANIZACAO_5_GRUPOS.
+    expect(orphansSemAllowlist).toContain('/dashboard/onboarding/status')
+  })
+
+  it('prova de vermelho pontual: tirar UMA rota da allowlist já é suficiente pra reacusá-la', () => {
+    const semUmaRota = new Set(Object.keys(ALLOWLIST).filter((r) => r !== '/dashboard/planos'))
+    const orphans = findOrphanRoutes(semUmaRota)
+    expect(orphans).toContain('/dashboard/planos')
+  })
+
+  // O gate real: com a allowlist completa, toda página de dashboard tem um
+  // href real em algum outro arquivo (resolvendo template literal pra rota
+  // dinâmica) ou está explicitamente na allowlist com motivo.
+  it('toda página de dashboard tem href real ou está na allowlist com motivo', () => {
+    const orphans = findOrphanRoutes(new Set(Object.keys(ALLOWLIST)))
+    expect(orphans).toEqual([])
+  })
+})

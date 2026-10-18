@@ -1,0 +1,15 @@
+O ticket 1059 está commitado (`9907af0`), mas um teste fora da allowlist falha: `test/leitores-carteira-casa-nova.test.ts`. Não rodei o `npm run build` nem os critérios de aceite por script (allowlist, teto, anti-afrouxamento, grep de consumidores).
+
+- **tsc:** 3 erros, o baseline. O erro que reprovou a tentativa 1 era `test/leitores-carteira-casa-nova.test.ts(167)`. Esse teste importa `notion/clientes-filtrados/route` e chama `GET()` sem argumentos. O redirect pedia `req` obrigatório, daí o TS2554. Declarei o parâmetro como `req?: NextRequest` no redirect de `clientes-filtrados`, com base `http://localhost` quando falta. Os outros dois redirects usam `req` normal.
+- **Vitest:**
+  - Passam as 14 suítes da lista do critério mais `test/onboarding-sync-toast.test.ts`.
+  - Falha 1 caso, "clientes-filtrados usa lerEspelhoTodo para a ponte", em `test/leitores-carteira-casa-nova.test.ts`.
+  - O motivo: o teste ainda chama o caminho antigo, que agora devolve 308 em vez de 200.
+  - O teste está fora da allowlist e não o toquei. Falta trocar o import para `@/app/api/clientes/filtrados/route`, em outro ticket ou com a allowlist ampliada.
+- **Feito:**
+  - As 3 rotas novas existem com o handler idêntico; só mudaram os prefixos de log.
+  - Os 3 caminhos antigos viraram redirect 308 que preserva `[id]` e query.
+  - As 7 rotas sem consumidor foram removidas.
+  - Os 3 consumidores apontam para as URLs novas.
+  - Os 5 testes foram recalculados e o `test/notion-rotas-renomeadas.test.ts` foi criado.
+- **Diff:** 344 linhas adicionadas e 398 removidas, 742 no total. Está abaixo do teto de 760, mas só por 18 linhas.

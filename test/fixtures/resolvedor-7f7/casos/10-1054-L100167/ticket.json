@@ -1,0 +1,231 @@
+{
+ "id": "1054",
+ "slug": "negocio-leitores-ficha",
+ "lane": "dados",
+ "perfil": "backend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 720 linhas (~45 em src/lib/clientes/nichos-catalogo.ts NOVO, ~130 em src/lib/data.ts, ~35 em src/app/api/notion/clientes/[id]/route.ts, ~45 em src/app/api/clientes/[id]/resumo/route.ts, ~60 em src/app/api/clientes/[id]/diagnostico/route.ts, ~20 em src/app/api/clientes/entregaveis/route.ts, ~50 de recalculo em test/resumo-cliente.test.ts, ~250 em test/leitores-ficha-casa-nova.test.ts NOVO). Se passar do teto, pare e reporte. CONTEXTO (frente saida do Notion, leva B): libs prontas: src/lib/clientes/negocio.ts (1051: lerNegocio(db, id), lerNegocios(db, ids) -> Map; campos score_saude, score_calculado_em, risco_churn, risco_churn_motivo, risco_churn_acao, risco_calculado_em, temperatura, temperatura_em, fase), src/lib/clientes/perfil-operacional.ts (1052b: lerPerfilOperacional(db, id), lerPerfisOperacionais(db, ids) -> Map; analista, situacao, resultados, atencao, dia_otimizar, ultimo_feedback, data_otimizacao, plataformas), src/lib/clientes/espelho-legado.ts (1050b: pontePorCliente, notionUnicoDoCliente, pontePorNotion, pontePorEntrada, lerEspelhoPorNotion, lerEspelhoPorCliente, lerEspelhoPorEntrada, lerEspelhoTodo; colunas legadas tipadas em ColunaLegada). Depende de 1050b, 1051, 1052b, 1053 e 1053b. REGRA DE LEITURA (vale para todos os leitores da frente): campo de negocio vem de negocio (fase -> status operacional); campo de perfil vem do perfil; nicho vem do catalogo (nomes unidos por ', '); so quando o cliente NAO tem cliente_id (linha legada do e",
+ "cria_novo": [
+  "src/lib/clientes/nichos-catalogo.ts",
+  "test/leitores-ficha-casa-nova.test.ts"
+ ],
+ "pathspec_allowlist": [
+  "src/lib/clientes/nichos-catalogo.ts",
+  "src/lib/data.ts",
+  "src/app/api/notion/clientes/[id]/route.ts",
+  "src/app/api/clientes/[id]/resumo/route.ts",
+  "src/app/api/clientes/[id]/diagnostico/route.ts",
+  "src/app/api/clientes/entregaveis/route.ts",
+  "test/resumo-cliente.test.ts",
+  "test/leitores-ficha-casa-nova.test.ts"
+ ],
+ "dependencias": [
+  "1050b",
+  "1051",
+  "1052b",
+  "1053",
+  "1053b"
+ ],
+ "prioridade": 34,
+ "recon_esperado": [
+  {
+   "descricao": "src/lib/clientes/nichos-catalogo.ts e test/leitores-ficha-casa-nova.test.ts ainda nao existem",
+   "cmd": "a=$(test -e src/lib/clientes/nichos-catalogo.ts && echo 1 || echo 0); b=$(test -e test/leitores-ficha-casa-nova.test.ts && echo 1 || echo 0); [ \"$a\" = 0 ] && [ \"$b\" = 0 ] && echo AUSENTES || echo ST_${a}_${b}",
+   "espera": "AUSENTES"
+  },
+  {
+   "descricao": "data.ts ainda le o espelho com select * em getClientes e getClienteById",
+   "cmd": "f=src/lib/data.ts; a=$(grep -c 'from(\"clientes_notion_mirror\")' $f); b=$(grep -c 'export async function getClienteById' $f); c=$(grep -c 'export async function getClientesDoEmployee' $f); [ \"$a\" -ge 3 ] && [ \"$b\" = 1 ] && [ \"$c\" = 1 ] && echo LE_ESPELHO || echo ST_${a}_${b}_${c}",
+   "espera": "LE_ESPELHO"
+  },
+  {
+   "descricao": "as 4 rotas da area ainda leem o espelho direto",
+   "cmd": "a=$(grep -c 'from(\"clientes_notion_mirror\")' 'src/app/api/notion/clientes/[id]/route.ts'); b=$(grep -c 'from(\"clientes_notion_mirror\")' 'src/app/api/clientes/[id]/resumo/route.ts'); c=$(grep -c 'from(\"clientes_notion_mirror\")' 'src/app/api/clientes/[id]/diagnostico/route.ts'); d=$(grep -c 'from(\"clientes_notion_mirror\")' src/app/api/clientes/entregaveis/route.ts); [ \"$a\" = 1 ] && [ \"$b\" = 1 ] && [ \"$c\" = 2 ] && [ \"$d\" = 1 ] && echo ROTAS_LEEM_ESPELHO || echo ST_${a}_${b}_${c}_${d}",
+   "espera": "ROTAS_LEEM_ESPELHO"
+  },
+  {
+   "descricao": "test/resumo-cliente.test.ts ainda mocka o espelho por tabela",
+   "cmd": "a=$(grep -c 'table === \"clientes_notion_mirror\"' test/resumo-cliente.test.ts); b=$(grep -c 'ops_cliente_perfil' test/resumo-cliente.test.ts); [ \"$a\" = 1 ] && [ \"$b\" = 0 ] && echo MOCK_ESPELHO || echo ST_${a}_${b}",
+   "espera": "MOCK_ESPELHO"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do printf '%s\\n' 'src/lib/clientes/nichos-catalogo.ts' 'src/lib/data.ts' 'src/app/api/notion/clientes/[id]/route.ts' 'src/app/api/clientes/[id]/resumo/route.ts' 'src/app/api/clientes/[id]/diagnostico/route.ts' 'src/app/api/clientes/entregaveis/route.ts' 'test/resumo-cliente.test.ts' 'test/leitores-ficha-casa-nova.test.ts' | grep -Fxq \"$f\" || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 720 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 720 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais e os testes que leem os 6 arquivos seguem verdes (inclui test/resumo-cliente.test.ts recalculado)",
+   "cmd": "npx vitest run test/c0-guard.test.ts test/fetch-json-teto.test.ts test/travessao-mudo.test.ts test/ficha-por-uuid.test.ts test/getsession-notion-clientes.test.ts test/getsession-notion-onboarding-team.test.ts test/quem-cuida.test.ts test/sai-resolver-chave-lib-g.test.ts test/situacao-gate.test.ts test/cabecalho-campos-destino.test.ts test/comissao-autorizacao.test.ts test/profile-gate.test.ts test/carteira-sort.test.ts test/carteira-edicao.test.ts test/clientes-getsession-lote1.test.ts test/clientes-getsession-lote2.test.ts test/resolver-cliente-rota-diagnostico.test.ts test/resolver-cliente-rota-resumo.test.ts test/guardrail14-financeiro.test.ts test/ia-default-do-banco.test.ts test/ia-relacao-reuniao-operacional.test.ts test/registros-cliente.test.ts test/resumo-ia.test.ts test/whatsapp-resumo-periodo.test.ts test/resumo-score-fonte-unica.test.ts test/erro-objeto-nao-quebra.test.ts test/resumo-erro-nao-persiste.test.ts test/closer-analysis-sessao.test.ts test/resumo-cliente.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum dos 6 arquivos de src cita mais o espelho; data.ts e as rotas leem pelas libs",
+   "cmd": "a=$(grep -c 'clientes_notion_mirror' src/lib/data.ts 'src/app/api/notion/clientes/[id]/route.ts' 'src/app/api/clientes/[id]/resumo/route.ts' 'src/app/api/clientes/[id]/diagnostico/route.ts' src/app/api/clientes/entregaveis/route.ts src/lib/clientes/nichos-catalogo.ts | awk -F: '{s+=$NF} END {print s+0}'); b=$(grep -c 'lerNegocios(' src/lib/data.ts); c=$(grep -c 'lerPerfisOperacionais(' src/lib/data.ts); d=$(grep -c 'lerNomesNichosPorCliente(' src/lib/data.ts); e=$(grep -c 'pontePorCliente(' 'src/app/api/notion/clientes/[id]/route.ts'); f=$(grep -c 'lerPerfilOperacional(' 'src/app/api/clientes/[id]/resumo/route.ts'); g=$(grep -c 'lerNegocio(' 'src/app/api/clientes/[id]/diagnostico/route.ts'); h=$(grep -c 'lerEspelhoPorNotion(' src/app/api/clientes/entregaveis/route.ts); i=$(grep -c 'export async function lerNomesNichosPorCliente(' src/lib/clientes/nichos-catalogo.ts); [ \"$a\" = 0 ] && [ \"$b\" -ge 1 ] && [ \"$c\" -ge 1 ] && [ \"$d\" -ge 1 ] && [ \"$e\" -ge 1 ] && [ \"$f\" -ge 1 ] && [ \"$g\" -ge 1 ] && [ \"$h\" -ge 1 ] && [ \"$i\" = 1 ] && echo LEITORES_NA_CASA_NOVA || echo ST_${a}_${b}_${c}_${d}_${e}_${f}_${g}_${h}_${i}",
+   "espera": "LEITORES_NA_CASA_NOVA",
+   "tipo": "alvo"
+  },
+  {
+   "descricao": "anti-afrouxamento em test/resumo-cliente.test.ts: nenhum expect(/it( a menos, mock do perfil presente, nenhum skip/only/todo",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; f=test/resumo-cliente.test.ts; a=$(git show \"$b:$f\" | grep -cF 'expect('); n=$(grep -cF 'expect(' \"$f\"); ia=$(git show \"$b:$f\" | grep -cF 'it('); ni=$(grep -cF 'it(' \"$f\"); o=$(grep -c 'ops_cliente_perfil' \"$f\"); sk=$(grep -cE '\\.(skip|only|todo)\\(' \"$f\"); [ \"$n\" -ge \"$a\" ] && [ \"$ni\" -ge \"$ia\" ] && [ \"$o\" -ge 1 ] && [ \"$sk\" = 0 ] && echo RECALCULADO_1054 || echo ST_${a}_${n}_${ia}_${ni}_${o}_${sk}",
+   "espera": "RECALCULADO_1054",
+   "tipo": "alvo"
+  },
+  {
+   "descricao": "testes verdes (test/leitores-ficha-casa-nova.test.ts)",
+   "cmd": "test -f test/leitores-ficha-casa-nova.test.ts && npx vitest run test/leitores-ficha-casa-nova.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "avaliador: lib/data monta o Cliente da ficha com fase/perfil/catalogo para quem tem cliente_id e so cai no legado do espelho (pela lib) para linha sem vinculo; getClientes lanca em erro; a ficha por uuid devolve os campos da casa nova; resumo e diagnostico leem perfil, negocio e catalogo e a ponte por entrada so pela lib; entregaveis le pela lib; zero leitura direta do espelho nos 6 arquivos. REPROVE se: resta .from('clientes_notion_mirror') em arquivo da allowlist; erro de leitura vira lista vazia; cliente com cliente_id mostra valor do espelho em vez da casa nova; nicho como texto livre quando o catalogo tem vinculo; funcao exportada de data.ts removida ou renomeada; assercao removida ou afrouxada; skip/only.",
+   "cmd": "true",
+   "espera": "avaliador",
+   "tipo": "avaliador"
+  }
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/ficha-por-uuid.test.ts",
+   "motivo": "banco em memoria com o espelho e a rota /api/notion/clientes/[id]; a lib le a mesma memoria (ponte por cliente_id) e as tabelas novas nascem vazias no helper; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/getsession-notion-clientes.test.ts",
+   "motivo": "testa 401 sem sessao nas rotas notion/clientes; a ordem getSession primeiro nao muda"
+  },
+  {
+   "teste": "test/getsession-notion-onboarding-team.test.ts",
+   "motivo": "testa getSession em rotas que usam getTeam/getOnboarding de lib/data, intocadas"
+  },
+  {
+   "teste": "test/quem-cuida.test.ts",
+   "motivo": "banco em memoria com o espelho e quem-cuida; getClientesDoEmployee passa a ler pela lib na mesma memoria e a falha simulada do espelho continua virando 500 (a lib lanca); afirma que lib/data nao contem getClientesByAnalista; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/sai-resolver-chave-lib-g.test.ts",
+   "motivo": "testa addOtimizacaoEntry de lib/data, intocado"
+  },
+  {
+   "teste": "test/situacao-gate.test.ts",
+   "motivo": "mocka @/lib/data por nome; nomes exportados preservados"
+  },
+  {
+   "teste": "test/cabecalho-campos-destino.test.ts",
+   "motivo": "monta o mock de @/lib/data pelos imports da rota situacao; nomes preservados"
+  },
+  {
+   "teste": "test/comissao-autorizacao.test.ts",
+   "motivo": "mocka getTeam de lib/data; intocado"
+  },
+  {
+   "teste": "test/profile-gate.test.ts",
+   "motivo": "usa getTeam por transitividade; intocado"
+  },
+  {
+   "teste": "test/carteira-sort.test.ts",
+   "motivo": "importa so o tipo Cliente de lib/data; a interface nao muda"
+  },
+  {
+   "teste": "test/carteira-edicao.test.ts",
+   "motivo": "importa mutations.ts, que usa so o tipo Cliente; intocado"
+  },
+  {
+   "teste": "test/acao-unica-ficha-mutacoes.test.tsx",
+   "motivo": "importa ficha-context, que usa so o tipo Cliente de lib/data; intocado"
+  },
+  {
+   "teste": "test/acao-unica-reunioes.test.tsx",
+   "motivo": "idem: tipo Cliente por transitividade; intocado"
+  },
+  {
+   "teste": "test/campanhas-aba-criativos.test.tsx",
+   "motivo": "idem: chega a lib/data por transitividade de tipos; intocado"
+  },
+  {
+   "teste": "test/clientes-getsession-lote1.test.ts",
+   "motivo": "testa 401 sem sessao no diagnostico e em outras rotas; getSession continua antes de qualquer leitura"
+  },
+  {
+   "teste": "test/clientes-getsession-lote2.test.ts",
+   "motivo": "testa 401 sem sessao em entregaveis e outras rotas; idem"
+  },
+  {
+   "teste": "test/resolver-cliente-rota-diagnostico.test.ts",
+   "motivo": "mock por tabela devolve a linha do espelho por entrada; a ponte por entrada passa a vir de pontePorEntrada, que consulta a mesma tabela no mesmo client mockado; tabelas novas caem no default (lista vazia) e o contexto fica 'não calculado'; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/resolver-cliente-rota-resumo.test.ts",
+   "motivo": "confere a resolucao do [id] pelo resolver unico no resumo e o filtro de reunioes; a parte do espelho e recalculada em test/resumo-cliente.test.ts; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/guardrail14-financeiro.test.ts",
+   "motivo": "confere que o resumo le clientes_receita so por mes_fechamento/fidelidade_*; a leitura passa a ser por cliente_id com as mesmas colunas; se quebrar, PARE e descreva"
+  },
+  {
+   "teste": "test/ia-default-do-banco.test.ts",
+   "motivo": "cita a rota do resumo por caminho na lista de rotas de IA; o modelo nao muda"
+  },
+  {
+   "teste": "test/ia-relacao-reuniao-operacional.test.ts",
+   "motivo": "idem; intocado"
+  },
+  {
+   "teste": "test/registros-cliente.test.ts",
+   "motivo": "cita o caminho da pasta do resumo por outro motivo (registros); intocado"
+  },
+  {
+   "teste": "test/resumo-ia.test.ts",
+   "motivo": "testa o resumo de IA (outra rota da mesma pasta); intocado"
+  },
+  {
+   "teste": "test/whatsapp-resumo-periodo.test.ts",
+   "motivo": "cita a pasta do resumo por outro motivo; intocado"
+  },
+  {
+   "teste": "test/resumo-score-fonte-unica.test.ts",
+   "motivo": "afirma que a rota do resumo nao le score_saude do espelho; continua verdadeiro (o select saiu por inteiro)"
+  },
+  {
+   "teste": "test/erro-objeto-nao-quebra.test.ts",
+   "motivo": "cita lib/data pelo padrao de erro; intocado"
+  },
+  {
+   "teste": "test/resumo-erro-nao-persiste.test.ts",
+   "motivo": "cita lib/data por outro motivo; intocado"
+  },
+  {
+   "teste": "test/closer-analysis-sessao.test.ts",
+   "motivo": "cita lib/data por outro motivo; intocado"
+  },
+  {
+   "teste": "test/resumo-cliente.test.ts",
+   "motivo": "entra na allowlist: mocka o espelho por tabela; recalculado para perfil, catalogo e receita por cliente_id (criterio anti-afrouxamento)"
+  },
+  {
+   "teste": "test/c0-guard.test.ts",
+   "motivo": "guarda global: o diagnostico esta na lista de rotas sancionadas para ler clientes_receita; continua SELECT por id (nenhuma escrita C0)"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 8973
+}

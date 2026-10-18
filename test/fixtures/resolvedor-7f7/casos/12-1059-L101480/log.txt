@@ -1,0 +1,90 @@
+101391	[2026-10-14 11:34:17-0300] drenagem: ticket 1059 (4 pendentes restantes)
+101392	[orq 14:34:17] orquestrador iniciando · modo: real · once
+101393	[orq 14:34:17] preflight: validando infra (scripts, fila, env, claude)...
+101394	[orq 14:34:22] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+101395	[orq 14:34:30] preflight: ok
+101396	[orq 14:34:46] === ticket 1059 (notion-rotas-renomeadas) — tentativa 1 · modo: real ===
+101397	[orq 14:34:47]   recon_esperado: ok (3 comando(s))
+101398	[orq 14:34:47] aviso allowlist: src/app/api/notion/clientes-filtrados/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101399	[orq 14:34:47] aviso allowlist: src/app/api/notion/clientes/[id]/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101400	[orq 14:34:47] aviso allowlist: src/app/api/notion/onboarding/[id]/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101401	[orq 14:34:47] aviso allowlist: src/app/api/notion/clientes/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101402	[orq 14:34:47] aviso allowlist: src/app/api/notion/gestores/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101403	[orq 14:34:47] aviso allowlist: src/app/api/notion/member/[id]/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101404	[orq 14:34:47] aviso allowlist: src/app/api/notion/team/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101405	[orq 14:34:47] aviso allowlist: src/app/api/notion/update/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101406	[orq 14:34:47] aviso allowlist: src/app/api/notion/sync/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101407	[orq 14:34:47] aviso allowlist: src/app/api/notion/onboarding/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101408	[orq 14:34:47] aviso allowlist: src/components/gestor-capacidade.tsx já existe no worktree — o agente vai EDITAR, não criar
+101409	[orq 14:34:47] aviso allowlist: src/app/dashboard/clientes/[id]/page.tsx já existe no worktree — o agente vai EDITAR, não criar
+101410	[orq 14:34:47] aviso allowlist: src/app/dashboard/onboarding/[id]/page.tsx já existe no worktree — o agente vai EDITAR, não criar
+101411	[orq 14:34:47] aviso allowlist: test/getsession-notion-clientes.test.ts já existe no worktree — o agente vai EDITAR, não criar
+101412	[orq 14:34:47] aviso allowlist: test/getsession-notion-onboarding-team.test.ts já existe no worktree — o agente vai EDITAR, não criar
+101413	[orq 14:34:47] aviso allowlist: test/ficha-por-uuid.test.ts já existe no worktree — o agente vai EDITAR, não criar
+101414	[orq 14:34:47] aviso allowlist: test/quem-cuida.test.ts já existe no worktree — o agente vai EDITAR, não criar
+101415	[orq 14:34:47] aviso allowlist: test/c0-guard.test.ts já existe no worktree — o agente vai EDITAR, não criar
+101416	[orq 14:34:47]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1059/attempt-1/prompt.txt
+101417	[orq 14:34:47]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+101418	[orq 14:37:35]   diff cru salvo (733 linhas alteradas) · HEAD julgado 95743c92
+101419	[orq 14:37:36]   enforcement: ok
+101420	[orq 14:38:05]   gate tsc: FALHA (erro fora do baseline 'qualificacao')
+101421	[orq 14:38:05]   REPROVA (fail-fast, sem Opus): gate tsc: erro fora do baseline (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1059/attempt-1/gate-tsc.txt)
+101422	[orq 14:38:05] ticket 1059: reprovado — retry 1/2. motivo: gate tsc: erro fora do baseline (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1059/attempt-1/gate-tsc.txt)
+101423	[orq 14:38:05] === ticket 1059 (notion-rotas-renomeadas) — tentativa 2 · modo: real ===
+101424	[orq 14:38:06]   recon_esperado: ok (3 comando(s))
+101425	[orq 14:38:06] aviso allowlist: src/app/api/notion/clientes-filtrados/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101426	[orq 14:38:06] aviso allowlist: src/app/api/notion/clientes/[id]/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101427	[orq 14:38:06] aviso allowlist: src/app/api/notion/onboarding/[id]/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101428	[orq 14:38:06] aviso allowlist: src/app/api/notion/clientes/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101429	[orq 14:38:06] aviso allowlist: src/app/api/notion/gestores/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101430	[orq 14:38:06] aviso allowlist: src/app/api/notion/member/[id]/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101431	[orq 14:38:06] aviso allowlist: src/app/api/notion/team/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101432	[orq 14:38:06] aviso allowlist: src/app/api/notion/update/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101433	[orq 14:38:06] aviso allowlist: src/app/api/notion/sync/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101434	[orq 14:38:06] aviso allowlist: src/app/api/notion/onboarding/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101435	[orq 14:38:06] aviso allowlist: src/components/gestor-capacidade.tsx já existe no worktree — o agente vai EDITAR, não criar
+101436	[orq 14:38:06] aviso allowlist: src/app/dashboard/clientes/[id]/page.tsx já existe no worktree — o agente vai EDITAR, não criar
+101437	[orq 14:38:06] aviso allowlist: src/app/dashboard/onboarding/[id]/page.tsx já existe no worktree — o agente vai EDITAR, não criar
+101438	[orq 14:38:06] aviso allowlist: test/getsession-notion-clientes.test.ts já existe no worktree — o agente vai EDITAR, não criar
+101439	[orq 14:38:06] aviso allowlist: test/getsession-notion-onboarding-team.test.ts já existe no worktree — o agente vai EDITAR, não criar
+101440	[orq 14:38:06] aviso allowlist: test/ficha-por-uuid.test.ts já existe no worktree — o agente vai EDITAR, não criar
+101441	[orq 14:38:06] aviso allowlist: test/quem-cuida.test.ts já existe no worktree — o agente vai EDITAR, não criar
+101442	[orq 14:38:06] aviso allowlist: test/c0-guard.test.ts já existe no worktree — o agente vai EDITAR, não criar
+101443	[orq 14:38:06]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1059/attempt-2/prompt.txt
+101444	[orq 14:38:06]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+101445	[orq 14:41:18]   diff cru salvo (742 linhas alteradas) · HEAD julgado 9907af07
+101446	[orq 14:41:19]   enforcement: ok
+101447	[orq 14:41:44]   gate tsc: ok (baseline)
+101448	[orq 14:42:44]   gate vitest: FALHA
+101449	[orq 14:42:44]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1059/attempt-2/gate-vitest.txt)
+101450	[orq 14:42:44] ticket 1059: reprovado — retry 2/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1059/attempt-2/gate-vitest.txt)
+101451	[orq 14:42:44] === ticket 1059 (notion-rotas-renomeadas) — tentativa 3 · modo: real ===
+101452	[orq 14:42:47]   recon_esperado: ok (3 comando(s))
+101453	[orq 14:42:47] aviso allowlist: src/app/api/notion/clientes-filtrados/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101454	[orq 14:42:47] aviso allowlist: src/app/api/notion/clientes/[id]/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101455	[orq 14:42:47] aviso allowlist: src/app/api/notion/onboarding/[id]/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101456	[orq 14:42:47] aviso allowlist: src/app/api/notion/clientes/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101457	[orq 14:42:47] aviso allowlist: src/app/api/notion/gestores/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101458	[orq 14:42:47] aviso allowlist: src/app/api/notion/member/[id]/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101459	[orq 14:42:47] aviso allowlist: src/app/api/notion/team/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101460	[orq 14:42:47] aviso allowlist: src/app/api/notion/update/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101461	[orq 14:42:47] aviso allowlist: src/app/api/notion/sync/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101462	[orq 14:42:47] aviso allowlist: src/app/api/notion/onboarding/route.ts já existe no worktree — o agente vai EDITAR, não criar
+101463	[orq 14:42:47] aviso allowlist: src/components/gestor-capacidade.tsx já existe no worktree — o agente vai EDITAR, não criar
+101464	[orq 14:42:47] aviso allowlist: src/app/dashboard/clientes/[id]/page.tsx já existe no worktree — o agente vai EDITAR, não criar
+101465	[orq 14:42:47] aviso allowlist: src/app/dashboard/onboarding/[id]/page.tsx já existe no worktree — o agente vai EDITAR, não criar
+101466	[orq 14:42:47] aviso allowlist: test/getsession-notion-clientes.test.ts já existe no worktree — o agente vai EDITAR, não criar
+101467	[orq 14:42:47] aviso allowlist: test/getsession-notion-onboarding-team.test.ts já existe no worktree — o agente vai EDITAR, não criar
+101468	[orq 14:42:47] aviso allowlist: test/ficha-por-uuid.test.ts já existe no worktree — o agente vai EDITAR, não criar
+101469	[orq 14:42:47] aviso allowlist: test/quem-cuida.test.ts já existe no worktree — o agente vai EDITAR, não criar
+101470	[orq 14:42:47] aviso allowlist: test/c0-guard.test.ts já existe no worktree — o agente vai EDITAR, não criar
+101471	[orq 14:42:47]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/1059/attempt-3/prompt.txt
+101472	[orq 14:42:47]   tentativa final: escalando modelo do executor para 'opus'
+101473	[orq 14:42:47]   chamando claude -p (headless, --model opus, timeout 1500s) no worktree...
+101474	[orq 14:44:00]   diff cru salvo (0 linhas alteradas) · HEAD julgado 3d5d2803
+101475	[orq 14:44:00]   enforcement: ok
+101476	[orq 14:44:30]   gate tsc: ok (baseline)
+101477	[orq 14:45:47]   gate vitest: ok
+101478	[orq 14:46:19]   criterios mecânicos: FALHA — criterio[5] mecânico: esperado 'RENOMEADAS', obteve 'ST_0_0_7_3'
+101479	[orq 14:46:19]   REPROVA (mecânica, sem Opus): criterio[5] mecânico: esperado 'RENOMEADAS', obteve 'ST_0_0_7_3'
+101480	[orq 14:46:20] ticket 1059: reprovado após 2 retries — BLOQUEADO

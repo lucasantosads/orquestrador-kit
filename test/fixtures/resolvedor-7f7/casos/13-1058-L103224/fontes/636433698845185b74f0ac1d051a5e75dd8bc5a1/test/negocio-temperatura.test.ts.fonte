@@ -1,0 +1,120 @@
+/**
+ * Ticket 1052: a temperatura comercial (cron e lente) é gravada em ops_cliente_negocio
+ * por cliente_id, via lib negocio. Nenhuma das duas rotas atualiza o espelho do Notion,
+ * e a staleness de 7 dias do cron vem de temperatura_em da casa nova.
+ */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { NextRequest } from "next/server";
+
+const { mockGerarLeitura } = vi.hoisted(() => ({ mockGerarLeitura: vi.fn() }));
+vi.mock("@/lib/ia/lente-comercial", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/ia/lente-comercial")>("@/lib/ia/lente-comercial");
+  return { ...actual, gerarLeituraComercial: mockGerarLeitura };
+});
+
+const { mockFrom, upserts } = vi.hoisted(() => ({
+  mockFrom: vi.fn(),
+  upserts: [] as { tabela: string; payload: Record<string, unknown> }[],
+}));
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: () => ({ from: mockFrom }),
+}));
+
+import { POST } from "@/app/api/clientes/temperatura-comercial/route";
+
+const ROTA_CRON = "src/app/api/clientes/temperatura-comercial/route.ts";
+const ROTA_LENTE = "src/app/api/clientes/[id]/lente-comercial/route.ts";
+
+// Linhas do from("clientes_notion_mirror") e as 3 seguintes: nenhuma pode ter .update(.
+function temUpdateNoEspelho(fonte: string): boolean {
+  const linhas = fonte.split("\n");
+  return linhas.some(
+    (l, i) => l.includes('from("clientes_notion_mirror")') && linhas.slice(i, i + 4).some((x) => x.includes(".update(")),
+  );
+}
+
+describe("temperatura comercial grava em ops_cliente_negocio (ticket 1052)", () => {
+  it("as duas rotas gravam pela lib e nenhuma atualiza o espelho", () => {
+    const cron = readFileSync(ROTA_CRON, "utf8");
+    const lente = readFileSync(ROTA_LENTE, "utf8");
+    expect(cron).toContain("gravarNegocio(");
+    expect(lente).toContain("gravarNegocio(");
+    expect(temUpdateNoEspelho(cron)).toBe(false);
+    expect(temUpdateNoEspelho(lente)).toBe(false);
+  });
+
+  it("o cron le a staleness da casa nova e não conhece a coluna antiga do espelho", () => {
+    const cron = readFileSync(ROTA_CRON, "utf8");
+    expect(cron).toContain("lerNegocios(");
+    expect(cron).not.toContain("temperatura_calculada_em");
+  });
+
+  describe("cron com banco falso", () => {
+    const SECRET = "cron-secret-1052";
+    const ID_RECENTE = "00000000-0000-4000-8000-000000000001";
+    const ID_ANTIGO = "00000000-0000-4000-8000-000000000002";
+
+    function cadeia(data: unknown) {
+      const promise = Promise.resolve({ data, error: null });
+      const chain: Record<string, unknown> = {
+        then: (f: (v: unknown) => unknown, r?: (e: unknown) => unknown) => promise.then(f, r),
+      };
+      for (const m of ["select", "neq", "eq", "or", "is", "gte", "order", "limit", "in"]) chain[m] = () => chain;
+      return chain;
+    }
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      upserts.length = 0;
+      process.env.CRON_SECRET = SECRET;
+      delete process.env.PERF_CRON_SECRET;
+      const dia = 86400000;
+      const negocio = [
+        { cliente_id: ID_RECENTE, temperatura_em: new Date(Date.now() - 1 * dia).toISOString() },
+        { cliente_id: ID_ANTIGO, temperatura_em: new Date(Date.now() - 30 * dia).toISOString() },
+      ];
+      const espelho = [
+        { notion_id: "n-recente", cliente_id: ID_RECENTE, cliente: "Recente", status: "Ativo" },
+        { notion_id: "n-antigo", cliente_id: ID_ANTIGO, cliente: "Antigo", status: "Ativo" },
+      ];
+      mockFrom.mockImplementation((table: string) => {
+        if (table === "clientes_receita") return cadeia([{ id: "entrada-1", nome: "Mock", status: "ativo" }]);
+        if (table === "clientes_notion_mirror") return cadeia(espelho);
+        if (table === "ops_cliente_negocio") {
+          const chain = cadeia(negocio);
+          chain.upsert = (payload: Record<string, unknown>) => {
+            upserts.push({ tabela: table, payload });
+            return Promise.resolve({ error: null });
+          };
+          return chain;
+        }
+        return cadeia([]);
+      });
+      mockGerarLeitura.mockResolvedValue({
+        leitura: { temperatura: "morna", justificativa: "ok", sinais_upsell: [], riscos: [] },
+        modelo: "claude/claude-haiku-4-5",
+        uso: { tokens_in: 1, tokens_out: 1, custo_total: 0 },
+      });
+    });
+
+    it("temperatura_em de ontem é pulado; de 30 dias atrás é processado e gravado em ops_cliente_negocio", async () => {
+      const res = await POST(
+        new NextRequest("http://localhost/api/clientes/temperatura-comercial", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${SECRET}` },
+        }),
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json();
+
+      expect(body.pulados_recentes).toBe(1);
+      expect(body.processados).toBe(1);
+      expect(mockGerarLeitura).toHaveBeenCalledTimes(1);
+      expect(upserts).toHaveLength(1);
+      expect(upserts[0].tabela).toBe("ops_cliente_negocio");
+      expect(upserts[0].payload.cliente_id).toBe(ID_ANTIGO);
+      expect(upserts[0].payload.temperatura).toBe("morna");
+    });
+  });
+});

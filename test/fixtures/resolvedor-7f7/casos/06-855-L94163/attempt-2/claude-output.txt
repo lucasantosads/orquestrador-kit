@@ -1,0 +1,14 @@
+O ticket 855 está commitado (`b6842e6`), mas a suíte completa continua com 1 falha. Ela precisa de uma decisão sua. É a mesma falha que reprovou a tentativa anterior.
+
+**Falha:** `test/adocao-predicado.test.ts` (ticket 092) lista `src/app/dashboard/team/[id]/page.tsx` em `ROTAS_CONTAGEM_ATIVO`. Ele exige que o arquivo importe `@/lib/clientes/ativo`. O stub não pode ter import, então o teste falha. Esse arquivo está fora da allowlist e o ticket manda parar nesse caso, então não o editei.
+
+**Para destravar:** tirar a linha da `page.tsx` de `ROTAS_CONTAGEM_ATIVO`, ou autorizar o arquivo no ticket. Fora essa falha, a tentativa anterior passou a suíte inteira.
+
+**O que entrou no commit:**
+- **Stub:** `page.tsx` ficou com 5 linhas e `return null`. O `layout.tsx` do 710 não foi tocado.
+- **CONGELADO:** saiu só a linha da tela em `test/anon-navegador-congelado.test.ts`.
+- **Teste novo:** `test/remove-team-id.test.ts` cobre o stub, o `redirect(` no layout e a ausência de link para a rota em `src`.
+- **Conferido:** os 4 testes de redirect, stub e CONGELADO passam, e o `tsc` fica em 3 erros, o baseline.
+- **Não rodei:** `npm run build` e a suíte completa, depois do commit.
+
+**Não alterei `ativo-pela-receita.test.ts` nem `carteira-membro.test.ts`.** O 862 já migrou o it e o describe da carteira para ler `/equipe/[id]`. Nenhum dos dois lê mais a tela antiga, então não havia o que remover. Apagá-los tiraria asserções que protegem a rota nova.

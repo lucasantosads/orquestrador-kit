@@ -1,0 +1,6 @@
+{
+ "diff_cap_linhas": 900,
+ "claude_timeout_secs": 1500,
+ "max_retries": 2,
+ "fonte": "docs/fila/000-config.json@655c9160338e"
+}

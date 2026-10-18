@@ -1,0 +1,7 @@
+{
+ "id": "1054",
+ "arquivo": "docs/fila/1054-negocio-leitores-ficha.md",
+ "commit_humano": "b7a3eea2fdfde88f537867d3e1cfb499f4c2e149",
+ "depois": "b7a3eea2f:docs/fila/1054-negocio-leitores-ficha.md",
+ "antes": "b7a3eea2f^:docs/fila/1054-negocio-leitores-ficha.md com status bloqueado e a nota do motor"
+}

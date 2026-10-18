@@ -1,0 +1,164 @@
+{
+ "id": "966",
+ "slug": "campanhas-aba-criativos",
+ "lane": "produto",
+ "perfil": "frontend",
+ "objetivo": "ORCAMENTO DE DIFF: teto de 600 linhas (~350 em src/app/dashboard/clientes/[id]/tabs/criativos-tab.tsx NOVO, ~12 em src/app/dashboard/clientes/[id]/tabs/ficha-types.ts, ~8 em src/app/dashboard/clientes/[id]/page.tsx, ~220 em test/campanhas-aba-criativos.test.tsx NOVO, ~4 em test/campanhas-sem-duplicatas.test.ts). Se passar do teto, pare e reporte. Depende do 963b e do 965. MOCKUP: artboard 'Ficha . Campanhas . Criativos' do canvas 'Motor de Criativos' (09/10). PASSO 1: leia src/app/dashboard/clientes/[id]/tabs/ficha-types.ts (ChildTab, TAB_GROUPS, CHILD_LABELS; CHILD_TO_PARENT e derivado), src/app/dashboard/clientes/[id]/page.tsx (ramo grupoAtivo === 'performance': AnchorBlock de metricas, otimizacoes, painel, teses, analise, alertas-meta, calculadora), src/app/dashboard/clientes/[id]/tabs/metricas-tab.tsx (molde de aba que le useFicha: perfClienteId, periodoFicha, metricasStale), src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx (padrao de cabecalho, pilulas de filtro, celula SemDado), src/app/api/perf/criativos/route.ts e src/lib/perf/criativos/agrupar.ts (contrato RespostaCriativos, CriativoAgrupado, ranking, ChaveRanking) e test/campanhas-aceite-mockup.test.tsx (afirma que os 4 primeiros filhos de performance sao metricas, otimizacoes, painel, teses e a ordem dos AnchorBlock: o filho novo entra DEPOIS de teses). FAZER: (1) src/app/dashboard/clientes/[id]/tabs/ficha-types.ts: ChildTab ganha 'criativos'; TAB_GROUPS performance.children vira ['metricas','otimiz",
+ "cria_novo": [
+  "src/app/dashboard/clientes/[id]/tabs/criativos-tab.tsx",
+  "test/campanhas-aba-criativos.test.tsx"
+ ],
+ "pathspec_allowlist": [
+  "src/app/dashboard/clientes/[id]/tabs/criativos-tab.tsx",
+  "src/app/dashboard/clientes/[id]/tabs/ficha-types.ts",
+  "src/app/dashboard/clientes/[id]/page.tsx",
+  "test/campanhas-aba-criativos.test.tsx",
+  "test/campanhas-sem-duplicatas.test.ts"
+ ],
+ "testes_conferidos": [
+  {
+   "teste": "test/aba-na-url.test.ts",
+   "motivo": "itera os filhos de cada grupo e o ?aba= da URL; o filho novo tem rotulo e AnchorBlock como os demais"
+  },
+  {
+   "teste": "test/ficha-abas-orfas.test.ts",
+   "motivo": "exige que todo ChildTab tenha rotulo e montagem em page.tsx; o ticket entrega os tres juntos"
+  },
+  {
+   "teste": "test/ficha-subsecoes-sequencia.test.ts",
+   "motivo": "itera os filhos de TAB_GROUPS montando AnchorBlock por chave; o filho novo entra no mesmo padrao"
+  },
+  {
+   "teste": "test/rbac-visual.test.ts",
+   "motivo": "confere que performance contem metricas e o mapeamento de nos RBAC por grupo, nao a lista exata de filhos"
+  },
+  {
+   "teste": "test/campanhas-sem-duplicatas.test.ts",
+   "motivo": "entra na allowlist: o teste (h) fixa a lista exata de filhos de performance e e recalculado com criativos depois de teses (criterio anti-afrouxamento)"
+  },
+  {
+   "teste": "test/visao-geral-ordem.test.ts",
+   "motivo": "le TAB_GROUPS e page.tsx para a ordem dos grupos, que nao muda"
+  },
+  {
+   "teste": "test/ficha-nav-colapsavel.test.ts",
+   "motivo": "navegacao colapsavel por grupo; um filho a mais em Campanhas nao altera o comportamento"
+  },
+  {
+   "teste": "test/a11y/app-dashboard-clientes-id-page.test.ts",
+   "motivo": "varredura de acessibilidade da pagina; o AnchorBlock novo segue o padrao dos existentes"
+  },
+  {
+   "teste": "test/ui-guard.test.ts",
+   "motivo": "trava o numero de GRUPOS em 5; criativos e filho de Campanhas, nao grupo"
+  },
+  {
+   "teste": "test/campanhas-aceite-mockup.test.tsx",
+   "motivo": "afirma os 4 primeiros filhos de performance e a ordem dos AnchorBlock metricas, otimizacoes, painel, teses; o filho novo entra depois de teses e nao mexe nos 4"
+  },
+  {
+   "teste": "test/abas-montadas.test.ts",
+   "motivo": "exige um AnchorBlock por filho de TAB_GROUPS em page.tsx; o ticket adiciona o de criativos junto com o filho"
+  },
+  {
+   "teste": "test/visao-aceite-mockup.test.tsx",
+   "motivo": "recorta o ramo da Visao e o de performance de page.tsx por marcadores de grupo; um AnchorBlock a mais dentro do ramo de performance nao muda os marcadores nem o ramo da Visao"
+  },
+  {
+   "teste": "test/painel-em-campanhas.test.ts",
+   "motivo": "olha o filho painel e seu AnchorBlock, que continuam iguais e na mesma posicao"
+  }
+ ],
+ "dependencias": [
+  "963b",
+  "965",
+  "925"
+ ],
+ "prioridade": 37,
+ "recon_esperado": [
+  {
+   "descricao": "src/app/dashboard/clientes/[id]/tabs/criativos-tab.tsx ainda nao existe",
+   "cmd": "test -e 'src/app/dashboard/clientes/[id]/tabs/criativos-tab.tsx' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "test/campanhas-aba-criativos.test.tsx ainda nao existe",
+   "cmd": "test -e 'test/campanhas-aba-criativos.test.tsx' && echo EXISTE || echo AUSENTE",
+   "espera": "AUSENTE"
+  },
+  {
+   "descricao": "o filho criativos ainda nao existe no registro das abas",
+   "cmd": "n=$(grep -c '\"criativos\"' 'src/app/dashboard/clientes/[id]/tabs/ficha-types.ts'); [ \"$n\" = 0 ] && echo SEM_FILHO || echo ST_$n",
+   "espera": "SEM_FILHO"
+  },
+  {
+   "descricao": "page.tsx monta o AnchorBlock de teses dentro do ramo de performance",
+   "cmd": "grep -c 'AnchorBlock id=\"teses\"' 'src/app/dashboard/clientes/[id]/page.tsx'",
+   "espera": "1"
+  }
+ ],
+ "criterios_aceite": [
+  {
+   "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+   "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+   "espera": "OK",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "nenhum .sql novo (zero DDL)",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+   "espera": "SEM_SQL",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "so arquivos da allowlist foram tocados",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do printf '%s\\n' 'src/app/dashboard/clientes/[id]/tabs/criativos-tab.tsx' 'src/app/dashboard/clientes/[id]/tabs/ficha-types.ts' 'src/app/dashboard/clientes/[id]/page.tsx' 'test/campanhas-aba-criativos.test.tsx' 'test/campanhas-sem-duplicatas.test.ts' | grep -Fxq \"$f\" || r=FORA_$f; done; echo $r",
+   "espera": "SO_ALLOWLIST",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "diff dentro do orcamento (<= 600 linhas somando adicoes e remocoes)",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 600 ] && echo NO_TETO || echo ESTOUROU_$t",
+   "espera": "NO_TETO",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "guardas globais e os testes que leem o registro das abas seguem verdes",
+   "cmd": "npx vitest run test/c0-guard.test.ts test/fetch-json-teto.test.ts test/travessao-mudo.test.ts test/ui-guard.test.ts test/campanhas-aceite-mockup.test.tsx test/abas-montadas.test.ts test/visao-aceite-mockup.test.tsx test/painel-em-campanhas.test.ts test/aba-na-url.test.ts test/ficha-abas-orfas.test.ts test/ficha-subsecoes-sequencia.test.ts test/rbac-visual.test.ts test/campanhas-sem-duplicatas.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE",
+   "tipo": "guarda"
+  },
+  {
+   "descricao": "filho criativos registrado depois de teses e montado uma vez em page.tsx, na ordem certa",
+   "cmd": "t='src/app/dashboard/clientes/[id]/tabs/ficha-types.ts'; p='src/app/dashboard/clientes/[id]/page.tsx'; r=$(grep -c '\"teses\", \"criativos\", \"analise\"' \"$t\"); l=$(grep -c 'criativos: \"Criativos\"' \"$t\"); n=$(grep -c 'AnchorBlock id=\"criativos\"' \"$p\"); a=$(grep -n 'AnchorBlock id=\"teses\"' \"$p\" | head -1 | cut -d: -f1); m=$(grep -n 'AnchorBlock id=\"criativos\"' \"$p\" | head -1 | cut -d: -f1); b=$(grep -n 'AnchorBlock id=\"analise\"' \"$p\" | head -1 | cut -d: -f1); [ \"$r\" = 1 ] && [ \"$l\" = 1 ] && [ \"$n\" = 1 ] && [ \"$a\" -lt \"$m\" ] && [ \"$m\" -lt \"$b\" ] && echo FILHO_MONTADO || echo ST_${r}_${l}_${n}_${a}_${m}_${b}",
+   "espera": "FILHO_MONTADO",
+   "tipo": "alvo"
+  },
+  {
+   "descricao": "a aba reproduz o video pela rota de midia, ordena pela lib e nao tem seletor de periodo proprio",
+   "cmd": "f='src/app/dashboard/clientes/[id]/tabs/criativos-tab.tsx'; v=$(grep -c 'midia?tipo=video' \"$f\"); o=$(grep -c 'ChaveRanking' \"$f\"); u=$(grep -c 'useFicha()' \"$f\"); s=$(grep -ciE 'MODOS_PERIODO|setModoPeriodo|PeriodSelector' \"$f\"); t=$(grep -c $'\\u2014' \"$f\"); d=$(grep -c 's/ dado' \"$f\"); [ \"$v\" -ge 1 ] && [ \"$o\" -ge 1 ] && [ \"$u\" -ge 1 ] && [ \"$s\" = 0 ] && [ \"$t\" = 0 ] && [ \"$d\" = 0 ] && echo ABA_OK || echo ST_${v}_${o}_${u}_${s}_${t}_${d}",
+   "espera": "ABA_OK",
+   "tipo": "alvo"
+  },
+  {
+   "descricao": "anti-afrouxamento em test/campanhas-sem-duplicatas.test.ts: so a lista esperada ganhou criativos; nenhuma asserção removida, nenhum skip ou only",
+   "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; rem=$(git diff \"$b\" HEAD -- test/campanhas-sem-duplicatas.test.ts | grep -cE '^-.*(expect|it\\(|toBe|toEqual)'); add=$(git diff \"$b\" HEAD -- test/campanhas-sem-duplicatas.test.ts | grep -cE '^\\+.*\"teses\", \"criativos\", \"analise\"'); sk=$(grep -cE '\\.(skip|only)\\(' test/campanhas-sem-duplicatas.test.ts); [ \"$rem\" -le 1 ] && [ \"$add\" = 1 ] && [ \"$sk\" = 0 ] && echo RECALCULADO || echo ST_${rem}_${add}_${sk}",
+   "espera": "RECALCULADO",
+   "tipo": "alvo"
+  },
+  {
+   "descricao": "testes verdes (test/campanhas-aba-criativos.test.tsx)",
+   "cmd": "test -f test/campanhas-aba-criativos.test.tsx && npx vitest run test/campanhas-aba-criativos.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+   "espera": "VERDE"
+  },
+  {
+   "descricao": "avaliador: o grupo Campanhas ganha a aba Criativos com uma linha por video (hook, body, retencao, funil), imagens sem hook e body, ordenacao e filtro, e um painel que reproduz o video da Meta pela rota de midia com as metricas e a leitura contra a tese. REPROVE se: metrica nula vira 0; cor laranja sem benchmark; seletor de periodo proprio; painel vazio renderizado como cartao; grupo novo em TAB_GROUPS; filho fora da posicao depois de teses; teste conferido afrouxado.",
+   "cmd": "true",
+   "espera": "avaliador",
+   "tipo": "avaliador"
+  }
+ ],
+ "status": "pendente",
+ "notas_status": "",
+ "_objetivo_cortado_na_fixture": 8321
+}

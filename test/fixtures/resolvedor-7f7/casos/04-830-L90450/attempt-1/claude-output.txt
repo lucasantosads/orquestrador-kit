@@ -1,0 +1,13 @@
+Parei no PASSO 1 e não alterei nenhum arquivo nem fiz commit, porque o grep não veio como o ticket esperava.
+
+`grep -rn 'resolverUuid' src test` achou duas coisas fora do esperado:
+
+1. **`test/dono-dry-run.test.ts:54`** não é uma chamada. É só o título de um `it`: `"alcance e sugestao usam resolverUuid, inclusive por nome"`. O teste importa `montarRelatorioDono` de `scripts/dados/685-dono-dry-run`, não o resolver de identidade. O ticket diz para parar se sobrar qualquer outro arquivo, então não segui. O arquivo está fora da allowlist e não posso editá-lo.
+
+2. **`src/lib/identidade/resolver.ts:228`** tem um problema que o ticket não previu. `planejarIdentidade` chama `resolverUuid` por dentro: `const { uuid, metodo } = resolverUuid(receita, indicesClientes, mirrorPorNotionId)`.
+   - Remover a função, como o ticket pede, quebra `planejarIdentidade`, que fica "igual" pelo ticket.
+   - `planejarIdentidade` tem teste e é chamada por `src/lib/jobs/sync-clientes.ts` (e `test/sync-clientes-job.test.ts` o cobre), que o ticket marca como fora de escopo.
+   - Para o critério "resolverUuid não existe mais em src" passar, a lógica teria que ser movida para dentro de `planejarIdentidade` ou para um helper privado com outro nome. Isso é refactor, não só remoção.
+   - Os comentários nas linhas 100, 128 e 205 também citam `resolverUuid`. O critério ignora comentários, mas eles ficariam desatualizados.
+
+**Decisão para você:** me diga se posso (a) inlinar a lógica em `planejarIdentidade` ou em um helper privado, mantendo as outras exportações e o comportamento, e atualizar os três comentários, ou (b) se você prefere reescrever o ticket. Com (a), o diff continua bem abaixo das 200 linhas. Sobra só o título do teste em `test/dono-dry-run.test.ts`, que o critério de src (`grep -rn 'resolverUuid' src`) nem olha.

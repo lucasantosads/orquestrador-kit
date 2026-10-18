@@ -1,0 +1,5 @@
+ticket	dir	arquivo	linha	ts	antes_do_bloqueio
+1054	docs/fila/runs/1054/attempt-1.prev1	test/resolver-cliente-rota-diagnostico.test.ts	2528	2026-10-13T20:54:32Z	1
+1054	docs/fila/runs/1054/attempt-1.prev1	test/resolver-cliente-rota-resumo.test.ts	2601	2026-10-13T20:54:32Z	1
+1054	docs/fila/runs/1054/attempt-3	test/resolver-cliente-rota-diagnostico.test.ts	2549	2026-10-13T21:08:07Z	1
+1054	docs/fila/runs/1054/attempt-3	test/resolver-cliente-rota-resumo.test.ts	2606	2026-10-13T21:08:07Z	1

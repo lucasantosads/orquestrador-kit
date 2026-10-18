@@ -1,0 +1,28 @@
+As mudanças do ticket estão commitadas e verdes, mas um critério mecânico continua falhando: o `SO_ALLOWLIST`. O `npm run build` não rodou, porque o comando com `SESSION_SECRET` inline foi bloqueado pela permissão.
+
+**O que falta decidir (critério 2, `SO_ALLOWLIST`).** A reprovação anterior caiu aqui, e este critério reprovaria de novo. O `printf` do critério lista 6 arquivos e deixa `test/papel-nas-escritas.test.ts` de fora. Mas o ticket manda editar esse arquivo: ele está nos globs permitidos, no item (5) e no critério `RECALCULADO_PAPEL_1053`, que exige 11 `it`. Não dá para satisfazer os dois:
+- **Se eu editar o arquivo**, o `SO_ALLOWLIST` retorna `FORA_test/papel-nas-escritas.test.ts`. Foi o que fiz.
+- **Se eu não editar**, o `it` "gestor passa na carteira" recebe 409 e falha. Isso reprova o critério do vitest e o do papel, ou seja, dois no lugar de um.
+
+Precisa de uma correção na fila: incluir `test/papel-nas-escritas.test.ts` no `printf` do critério 2.
+
+**Rotas e lib**
+- `feedbacks` grava `ultimo_feedback` no perfil e responde com `perfil_atualizado`. Se a gravação do perfil falhar, o feedback fica e a resposta avisa.
+- `situation-history` resolve o cliente e responde 409 se ele não existir no OS. Lê a situação anterior do perfil, grava a nova e insere o histórico com `situacao_anterior`, `origem: gestor_manual` e o gestor da sessão. O trecho que anexava contexto à linha mais recente saiu.
+- O PATCH da carteira usa `DESTINO_CAMPO`. A fase vai por `gravarNegocio`, os demais campos por `gravarPerfilOperacional`. Campo fora do mapa (nicho, orçamento, pagamento) dá 400, cliente sem cadastro dá 409, e o insert `local_` saiu. O GET não mudou.
+- O PATCH importa `pontePorEntrada` de forma tardia, dentro do ramo `pending_`. O `espelho-legado` carrega `server-only`, e o import estático quebrava `papel-nas-escritas` e outros testes que importam a rota.
+- `recalcNichoPrincipal` só devolve o nome e não grava mais no espelho.
+
+**Testes**
+- `nicho-principal-manual` e `papel-nas-escritas` foram recalculados como o ticket descreve: 11 `it`, e o novo cobre o 409 da carteira.
+- O arquivo novo `escritas-team-carteira-casa-nova.test.ts` tem 22 testes.
+
+**Verificação**
+- `tsc` fica em 3 erros, os de `qualificacao*`.
+- O vitest completo passou: 1029 arquivos e 10266 testes.
+- Os 17 arquivos do critério de guardas ficaram verdes.
+- O diff soma 475 linhas contra o teto de 650, e não há `.sql` novo.
+- O critério `CASA_NOVA` confere nos contadores que rodei. Não rodei o comando do critério `RECALCULADO_1053`.
+- Não há travessão novo.
+
+Os commits são `47c5467`, `c692ddc` e um terceiro que troca um travessão do cabeçalho de `feedbacks`. Não houve push.

@@ -1,0 +1,12 @@
+{
+ "id": "1054",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/1054-negocio-leitores-ficha.md",
+ "ticket_sha": "3718afa1ce04a6ddd079222b53df50e3909c7ddf",
+ "ticket_antes": true,
+ "linha_bloqueio": 100167,
+ "log_inicio": 100112,
+ "fim": "2026-10-13T21:08:07Z",
+ "tentativas": 3,
+ "meta_dir": "docs/fila/runs/1054"
+}

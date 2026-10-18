@@ -1,0 +1,6 @@
+ src/app/api/perf/setup/[clienteId]/passo/route.ts | 140 ++++++-------------
+ src/lib/clientes/espelho-legado.ts                |   2 +-
+ src/lib/clientes/espelho-status.ts                | 159 ++++++++++++----------
+ test/espelho-fase-churn.test.ts                   |  75 +++++++---
+ test/fase-e-setup-casa-nova.test.ts               | 144 ++++++++++++++++++++
+ 5 files changed, 330 insertions(+), 190 deletions(-)

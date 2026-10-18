@@ -1,0 +1,259 @@
+[
+ {
+  "data": "2026-10-11 00:42",
+  "commit": "079d3f465eeb3525ddec95ad1e796c2687a8a862",
+  "id": "952a",
+  "arquivo": "docs/fila/952a-perf-leads-origem-ddl.md",
+  "allowlist_mais": [
+   "supabase/migrations/20261011033743_perf_leads_origem.sql"
+  ],
+  "linha_bloqueio": null,
+  "caso": null,
+  "motivo": "sem bloqueio antes do commit (ticket done: release)"
+ },
+ {
+  "data": "2026-10-11 00:42",
+  "commit": "079d3f465eeb3525ddec95ad1e796c2687a8a862",
+  "id": "972",
+  "arquivo": "docs/fila/972-alerta-coleta-conta-falhando.md",
+  "allowlist_mais": [
+   "supabase/migrations/20261011033749_alerta_regra_coleta_conta_falhando.sql"
+  ],
+  "linha_bloqueio": null,
+  "caso": null,
+  "motivo": "sem bloqueio antes do commit (ticket done: release)"
+ },
+ {
+  "data": "2026-10-11 11:02",
+  "commit": "cc8d3887b6db77fb89e9265cfb5a9053b6fb32c8",
+  "id": "932",
+  "arquivo": "docs/fila/932-ranking-foto-mensal-ddl.md",
+  "allowlist_mais": [
+   "supabase/migrations/20261011140147_perf_ranking_foto_mensal.sql"
+  ],
+  "linha_bloqueio": null,
+  "caso": null,
+  "motivo": "sem bloqueio antes do commit (ticket done: release)"
+ },
+ {
+  "data": "2026-10-11 12:27",
+  "commit": "5525c7db6e8301371e454a4743b31c31648b7ca4",
+  "id": "1006",
+  "arquivo": "docs/fila/1006-token-meta-pela-conexao.md",
+  "allowlist_mais": [
+   "test/quem-cuida.test.ts"
+  ],
+  "linha_bloqueio": 88744,
+  "caso": "casos/01-1006-L88744"
+ },
+ {
+  "data": "2026-10-12 11:08",
+  "commit": "4b5dd2eab31eefb888fff645645e6290dec562dc",
+  "id": "318c",
+  "arquivo": "docs/fila/318c-nichos-teses-ranking-criativos-tela.md",
+  "allowlist_mais": [
+   "src/app/dashboard/performance/nichos-teses/nichos-teses-aba.tsx"
+  ],
+  "linha_bloqueio": 91371,
+  "caso": "casos/02-318c-L91371"
+ },
+ {
+  "data": "2026-10-12 11:08",
+  "commit": "4b5dd2eab31eefb888fff645645e6290dec562dc",
+  "id": "933",
+  "arquivo": "docs/fila/933-ranking-foto-mensal-cron.md",
+  "allowlist_mais": [],
+  "linha_bloqueio": 90709,
+  "caso": null,
+  "motivo": "allowlist não mudou neste ticket"
+ },
+ {
+  "data": "2026-10-12 11:08",
+  "commit": "4b5dd2eab31eefb888fff645645e6290dec562dc",
+  "id": "934b",
+  "arquivo": "docs/fila/934b-avaliacao-aba.md",
+  "allowlist_mais": [],
+  "linha_bloqueio": 90762,
+  "caso": null,
+  "motivo": "allowlist não mudou neste ticket"
+ },
+ {
+  "data": "2026-10-12 11:08",
+  "commit": "4b5dd2eab31eefb888fff645645e6290dec562dc",
+  "id": "935",
+  "arquivo": "docs/fila/935-desvio-tese-vira-tarefa.md",
+  "allowlist_mais": [],
+  "linha_bloqueio": 91112,
+  "caso": null,
+  "motivo": "allowlist não mudou neste ticket"
+ },
+ {
+  "data": "2026-10-12 11:28",
+  "commit": "af768b088c5ccef42429b8102ece862a23bf284b",
+  "id": "966",
+  "arquivo": "docs/fila/966-campanhas-aba-criativos.md",
+  "allowlist_mais": [
+   "test/ficha-nav-colapsavel.test.ts"
+  ],
+  "linha_bloqueio": 91808,
+  "caso": "casos/03-966-L91808"
+ },
+ {
+  "data": "2026-10-12 11:29",
+  "commit": "05d951e939a37006f09edcc6b839e97d67361547",
+  "id": "830",
+  "arquivo": "docs/fila/830-sai-identidade-remove.md",
+  "allowlist_mais": [
+   "scripts/dados/370-identidade.ts",
+   "scripts/dados/685-dono-dry-run.ts",
+   "test/dono-dry-run.test.ts"
+  ],
+  "linha_bloqueio": 90450,
+  "caso": "casos/04-830-L90450"
+ },
+ {
+  "data": "2026-10-12 13:09",
+  "commit": "ab4e95cb45139cde82f93955246cf53ead18e1ce",
+  "id": "854",
+  "arquivo": "docs/fila/854-remove-equipe-geral.md",
+  "allowlist_mais": [
+   "test/rotas-orfas.test.ts"
+  ],
+  "linha_bloqueio": 90601,
+  "caso": "casos/05-854-L90601"
+ },
+ {
+  "data": "2026-10-12 20:19",
+  "commit": "638e003058d8ca54d3857a061a519e0d8ef268bc",
+  "id": "855",
+  "arquivo": "docs/fila/855-remove-team-id.md",
+  "allowlist_mais": [
+   "test/adocao-predicado.test.ts"
+  ],
+  "linha_bloqueio": 94163,
+  "caso": "casos/06-855-L94163"
+ },
+ {
+  "data": "2026-10-13 00:33",
+  "commit": "c00ee4b15fc7245048cbfc9d1a95c41103c08cfc",
+  "id": "924a",
+  "arquivo": "docs/fila/924a-conta-contrato-montagem.md",
+  "allowlist_mais": [
+   "test/conta-entregas-vazio-unico.test.ts",
+   "test/visao-aceite-mockup.test.tsx"
+  ],
+  "linha_bloqueio": 95742,
+  "caso": "casos/07-924a-L95742"
+ },
+ {
+  "data": "2026-10-14 11:21",
+  "commit": "b7a3eea2fdfde88f537867d3e1cfb499f4c2e149",
+  "id": "1053",
+  "arquivo": "docs/fila/1053-negocio-team-e-carteira-param-de-gravar-no-espelho.md",
+  "allowlist_mais": [
+   "test/papel-nas-escritas.test.ts"
+  ],
+  "linha_bloqueio": 99695,
+  "caso": "casos/08-1053-L99695"
+ },
+ {
+  "data": "2026-10-14 11:21",
+  "commit": "b7a3eea2fdfde88f537867d3e1cfb499f4c2e149",
+  "id": "1053b",
+  "arquivo": "docs/fila/1053b-fase-churn-e-setup-param-de-gravar-no-espelho.md",
+  "allowlist_mais": [
+   "src/lib/clientes/espelho-legado.ts"
+  ],
+  "linha_bloqueio": 99752,
+  "caso": "casos/09-1053b-L99752"
+ },
+ {
+  "data": "2026-10-14 11:21",
+  "commit": "b7a3eea2fdfde88f537867d3e1cfb499f4c2e149",
+  "id": "1054",
+  "arquivo": "docs/fila/1054-negocio-leitores-ficha.md",
+  "allowlist_mais": [
+   "test/resolver-cliente-rota-diagnostico.test.ts",
+   "test/resolver-cliente-rota-resumo.test.ts"
+  ],
+  "linha_bloqueio": 100167,
+  "caso": "casos/10-1054-L100167"
+ },
+ {
+  "data": "2026-10-14 11:21",
+  "commit": "b7a3eea2fdfde88f537867d3e1cfb499f4c2e149",
+  "id": "1055b",
+  "arquivo": "docs/fila/1055b-negocio-leitores-equipe-nps-portal.md",
+  "allowlist_mais": [
+   "test/acoes-recomendadas-chave.test.ts",
+   "test/relatorio-sem-cliente-id.test.ts"
+  ],
+  "linha_bloqueio": 100707,
+  "caso": "casos/11-1055b-L100707"
+ },
+ {
+  "data": "2026-10-14 11:21",
+  "commit": "b7a3eea2fdfde88f537867d3e1cfb499f4c2e149",
+  "id": "1056b",
+  "arquivo": "docs/fila/1056b-negocio-leitores-nps-onboarding-ponte.md",
+  "allowlist_mais": [],
+  "linha_bloqueio": null,
+  "caso": null,
+  "motivo": "sem bloqueio antes do commit e sem allowlist nova"
+ },
+ {
+  "data": "2026-10-14 11:21",
+  "commit": "b7a3eea2fdfde88f537867d3e1cfb499f4c2e149",
+  "id": "1101",
+  "arquivo": "docs/fila/1101-criativos-transcricao-job.md",
+  "allowlist_mais": [],
+  "linha_bloqueio": null,
+  "caso": null,
+  "motivo": "sem bloqueio antes do commit e sem allowlist nova"
+ },
+ {
+  "data": "2026-10-14 11:21",
+  "commit": "b7a3eea2fdfde88f537867d3e1cfb499f4c2e149",
+  "id": "924c",
+  "arquivo": "docs/fila/924c-conta-conexoes-linhas.md",
+  "allowlist_mais": [],
+  "linha_bloqueio": 99993,
+  "caso": null,
+  "motivo": "allowlist não mudou neste ticket"
+ },
+ {
+  "data": "2026-10-14 19:22",
+  "commit": "cf2fe3a97cd3effbeb619561436d0237cdab349a",
+  "id": "1059",
+  "arquivo": "docs/fila/1059-notion-rotas-renomeadas.md",
+  "allowlist_mais": [
+   "test/leitores-carteira-casa-nova.test.ts",
+   "test/leitores-ficha-casa-nova.test.ts"
+  ],
+  "linha_bloqueio": 101480,
+  "caso": "casos/12-1059-L101480"
+ },
+ {
+  "data": "2026-10-15 11:58",
+  "commit": "8324362726b5586c9d048165eedb16af6ecb188f",
+  "id": "1058",
+  "arquivo": "docs/fila/1058-negocio-leitores-crons-score-risco-temperatura-alertas.md",
+  "allowlist_mais": [
+   "test/negocio-temperatura.test.ts",
+   "test/quem-cuida.test.ts"
+  ],
+  "linha_bloqueio": 103224,
+  "caso": "casos/13-1058-L103224"
+ },
+ {
+  "data": "2026-10-17 05:34",
+  "commit": "75db690c013337a6a64f43fb608e39e4b1101618",
+  "id": "1195",
+  "arquivo": "docs/fila/1195-reuniao-dedupe-tldv.md",
+  "allowlist_mais": [
+   "test/reuniao-manual-registro.test.ts"
+  ],
+  "linha_bloqueio": 109677,
+  "caso": "casos/14-1195-L109677"
+ }
+]

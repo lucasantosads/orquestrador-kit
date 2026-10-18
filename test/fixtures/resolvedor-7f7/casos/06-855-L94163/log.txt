@@ -1,0 +1,34 @@
+94130	[2026-10-12 17:16:02-0300] drenagem: ticket 855 (4 pendentes restantes)
+94131	[orq 20:16:02] orquestrador iniciando · modo: real · once
+94132	[orq 20:16:02] preflight: validando infra (scripts, fila, env, claude)...
+94133	[orq 20:16:06] identidade: repo=comarka-os · banco=ogfnojbbvumujzfklkhh
+94134	[orq 20:16:13] preflight: ok
+94135	[orq 20:16:35] === ticket 855 (remove-team-id) — tentativa 1 · modo: real ===
+94136	[orq 20:16:36]   recon_esperado: ok (4 comando(s))
+94137	[orq 20:16:36] aviso allowlist: src/app/dashboard/team/[id]/page.tsx já existe no worktree — o agente vai EDITAR, não criar
+94138	[orq 20:16:36] aviso allowlist: test/anon-navegador-congelado.test.ts já existe no worktree — o agente vai EDITAR, não criar
+94139	[orq 20:16:36] aviso allowlist: test/ativo-pela-receita.test.ts já existe no worktree — o agente vai EDITAR, não criar
+94140	[orq 20:16:36] aviso allowlist: test/carteira-membro.test.ts já existe no worktree — o agente vai EDITAR, não criar
+94141	[orq 20:16:36]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/855/attempt-1/prompt.txt
+94142	[orq 20:16:36]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+94143	[orq 20:17:57]   diff cru salvo (753 linhas alteradas) · HEAD julgado 71ee1c91
+94144	[orq 20:17:57]   enforcement: ok
+94145	[orq 20:18:25]   gate tsc: ok (baseline)
+94146	[orq 20:19:22]   gate vitest: FALHA
+94147	[orq 20:19:22]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/855/attempt-1/gate-vitest.txt)
+94148	[orq 20:19:22] ticket 855: reprovado — retry 1/2. motivo: gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/855/attempt-1/gate-vitest.txt)
+94149	[orq 20:19:22] === ticket 855 (remove-team-id) — tentativa 2 · modo: real ===
+94150	[orq 20:19:24]   recon_esperado: ok (4 comando(s))
+94151	[orq 20:19:24] aviso allowlist: src/app/dashboard/team/[id]/page.tsx já existe no worktree — o agente vai EDITAR, não criar
+94152	[orq 20:19:24] aviso allowlist: test/anon-navegador-congelado.test.ts já existe no worktree — o agente vai EDITAR, não criar
+94153	[orq 20:19:24] aviso allowlist: test/ativo-pela-receita.test.ts já existe no worktree — o agente vai EDITAR, não criar
+94154	[orq 20:19:24] aviso allowlist: test/carteira-membro.test.ts já existe no worktree — o agente vai EDITAR, não criar
+94155	[orq 20:19:24]   prompt salvo em /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/855/attempt-2/prompt.txt
+94156	[orq 20:19:24]   chamando claude -p (headless, --model sonnet, timeout 1500s) no worktree...
+94157	[orq 20:20:34]   diff cru salvo (753 linhas alteradas) · HEAD julgado b6842e6c
+94158	[orq 20:20:35]   enforcement: ok
+94159	[orq 20:20:59]   gate tsc: ok (baseline)
+94160	[orq 20:21:55]   gate vitest: FALHA
+94161	[orq 20:21:55]   REPROVA (fail-fast, sem Opus): gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/855/attempt-2/gate-vitest.txt)
+94162	[orq 20:21:55] ticket 855: motivo de reprova REPETIU — circuit breaker (por ticket)
+94163	[orq 20:21:56] ticket 855: BLOQUEADO sem gastar a próxima volta

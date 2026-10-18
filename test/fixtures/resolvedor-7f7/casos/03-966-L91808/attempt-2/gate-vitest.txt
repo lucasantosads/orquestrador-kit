@@ -1,0 +1,196 @@
+stderr | test/mql-cliente-tags-regra.test.ts > listarTagsDaConta > 500 e corpo sem lista rejeitam com falha_ghl
+[ghl-agencia] tags da conta nao-ok { status: 500 }
+
+ ✓ test/mql-cliente-tags-regra.test.ts (15 tests) 21ms
+ ✓ test/lote-d-colunas.test.tsx (31 tests) 50ms
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura do resumo existente falha → 500 e nada gravado
+[churn-summary PATCH] Error: resumo do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/churn-summary-patch-leitura-falha.test.ts:59:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura de clientes_receita falha → 500 e nada gravado
+[churn-summary PATCH] Error: base de clientes: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/churn-summary-patch-leitura-falha.test.ts:66:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura das saídas falha → 500 e nada gravado
+[churn-summary PATCH] Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/churn-summary-patch-leitura-falha.test.ts:73:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > recalcularAposSaida — não lança, devolve aviso > falha de leitura vira aviso por mês, sem gravar
+[churn/resumo-mensal] 2026/09 Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/churn-summary-patch-leitura-falha.test.ts:123:20
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > recalcularAposSaida — não lança, devolve aviso > falha de leitura vira aviso por mês, sem gravar
+[churn/resumo-mensal] 2026/08 Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/churn-summary-patch-leitura-falha.test.ts:123:20
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > GET /api/cron/churn-resumo > falha visível: 500 com o mês que falhou
+[cron/churn-resumo] 2026/09 Error: base de clientes: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/churn-summary-patch-leitura-falha.test.ts:150:17
+
+ ✓ test/inicio-responder-prazo.test.ts (5 tests) 28ms
+stderr | test/relacao-responder-tela.test.ts > ResponderAgora
+`transformWithEsbuild` is deprecated and will be removed in the future. Please migrate to `transformWithOxc`.
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes-extra/[id] > exceção do logAudit não muda o status da resposta
+[clientes-extra PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/audit-log-rotas.test.ts:266:36
+
+ ✓ test/pacote-etapas-contratuais.test.ts (13 tests) 24ms
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > POST: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/audit-log-rotas.test.ts:301:36
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > PATCH: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/audit-log-rotas.test.ts:317:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/[id]/crm-config PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/audit-log-rotas.test.ts:344:36
+
+stderr | test/audit-log-rotas.test.ts > PUT /api/clientes/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/crm-config PUT] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/audit-log-rotas.test.ts:371:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/perfil-obs > exceção do logAudit não muda o status da resposta
+[clientes/[id]/perfil-obs PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/audit-log-rotas.test.ts:400:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/registros/[registroId] > exceção do logAudit não muda o status da resposta
+[registros PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/audit-log-rotas.test.ts:440:36
+
+stderr | test/ghl-agencia-2a.test.ts > POST /api/clientes/[id]/crm/conectar > conta com vínculo só desligado (ativo=false) não bloqueia; sem agência cai em 409 agencia_desconectada
+[crm/conectar] falhou agencia_desconectada
+
+ ✓ test/relacao-responder-tela.test.ts (8 tests) 32ms
+stderr | test/audit-log-rotas.test.ts > POST /api/tarefas-kanban > exceção do logAudit não muda o status da resposta
+[tarefas-kanban POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/audit-log-rotas.test.ts:467:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/clientes/relatorio-config (ativo=true) > exceção do logAudit não muda o status da resposta
+[clientes/relatorio-config POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/audit-log-rotas.test.ts:494:36
+
+ ✓ test/n8n-fase2.test.ts (8 tests) 11ms
+ ✓ test/ghl-backfill-job.test.ts (22 tests) 16ms
+ ✓ test/relatorio-leitura-ia-fonte-unica.test.ts (5 tests) 31ms
+ ✓ test/perf-insights-sync-direto.test.ts (6 tests) 39ms
+stderr | test/ficha-por-uuid.test.ts > uuid resolvido primeiro como id do cliente (29/09) > leitura de clientes que falha: 500, nunca 'não encontrado'
+[/api/notion/clientes/[id]] Error: cliente: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/ficha-por-uuid.test.ts:82:15
+
+ ✓ test/ficha-diario-crm.test.ts (7 tests) 25ms
+ ✓ test/coletar-retencao.test.tsx (9 tests) 24ms
+ ✓ test/relatorio-lembrete-quem-cuida.test.ts (4 tests) 26ms
+ ✓ test/ops-cliente-perfil-rota.test.ts (28 tests) 27ms
+ ✓ test/trafego-carteira.test.tsx (17 tests) 20ms
+stderr | test/ficha-reunioes-resumos-cliente-id.test.ts > GET /api/clientes/resumos por cliente_id > falha do resolvedor: 500 com mensagem de dominio
+[clientes/resumos GET] chave do cliente: Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/ficha-reunioes-resumos-cliente-id.test.ts:64:48
+
+ ✓ test/backfill-scrypt.test.ts (13 tests) 9ms
+ ✓ test/monitor-meta-frescor.test.ts (9 tests) 14ms
+ ✓ test/checklist-documentos.test.ts (10 tests) 14ms
+ ✓ test/portal-perfil-servidor.test.ts (11 tests) 13ms
+stderr | test/resolver-cliente-rota-observacoes.test.ts > resolverCliente na rota de observações > resolver que lança vira 500 com a mensagem em GET e POST
+[observacoes resolver] Error: leitura falhou
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/resolver-cliente-rota-observacoes.test.ts:113:36
+
+stderr | test/resolver-cliente-rota-observacoes.test.ts > resolverCliente na rota de observações > resolver que lança vira 500 com a mensagem em GET e POST
+[observacoes resolver] Error: leitura falhou
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/resolver-cliente-rota-observacoes.test.ts:113:36
+ ✓ test/resultado-derivado-sync.test.ts (2 tests) 16ms
+stderr | test/cs-wpp-ingestao.test.ts > ingestão crua em cs_wpp_mensagem > eh_grupo é true quando remoteJid termina em @g.us
+[nome-grupo-cache] Evolution falhou ao listar grupos: sem status (EVOLUTION_API_URL/KEY/INSTANCE não configurados)
+
+ ✓ test/cs-wpp-ingestao.test.ts (7 tests) 15ms
+stderr | test/resolver-cliente-rota-ops-perfil.test.ts > ops-perfil resolve o [id] com resolverCliente > resolver que lança devolve 500 com a mensagem, nunca resposta vazia
+[ops-perfil GET] Error: leitura falhou
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/resolver-cliente-rota-ops-perfil.test.ts:87:32
+ ✓ test/pacote-cliente-em-operacao.test.ts (11 tests) 12ms
+ ✓ test/importador-cadastros-apply.test.ts (10 tests) 13ms
+ ✓ test/leitura-relacao-so-grupo.test.ts (7 tests) 11ms
+ ✓ test/rotas-tarefas-kanban.test.ts (20 tests) 12ms
+ ✓ test/jobs-status.test.ts (13 tests) 12ms
+stderr | test/resolver-cliente-rota-reunioes.test.ts > reunioes: resolverCliente (823) > resolver que lança = 500, nunca lista vazia
+[clientes/reunioes] chave do cliente: Error: falha de leitura
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/resolver-cliente-rota-reunioes.test.ts:79:50
+ ✓ test/resolver-cliente-rota-reunioes.test.ts (4 tests) 9ms
+ ✓ test/mql-cliente-regra-etapas.test.ts (13 tests) 9ms
+ ✓ test/cron-registro-rotas.test.ts (7 tests) 9ms
+ ✓ test/resumo-cliente.test.ts (5 tests) 9ms
+ ✓ test/retencao-cruzamentos.test.ts (19 tests) 13ms
+stderr | test/avisos-renovacao-nps.test.ts > distribuição avisa o gestor > falha do aviso não desfaz a distribuição
+distribuir: falha ao avisar o gestor Error: falha no aviso
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/avisos-renovacao-nps.test.ts:25:32
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/avisos-renovacao-nps.test.ts:164:17
+
+ ✓ test/alertas-pacing-verba.test.ts (8 tests) 9ms
+stderr | test/wpp-nome-grupo-cache.test.ts > nomeDoGrupo > Evolução não configurada devolve null sem fetch
+[nome-grupo-cache] Evolution falhou ao listar grupos: sem status (EVOLUTION_API_URL/KEY/INSTANCE não configurados)
+
+stderr | test/wpp-nome-grupo-cache.test.ts > webhook Evolution — nome do grupo (ticket 729) > Evolução fora grava a mensagem com grupo_nome null
+[nome-grupo-cache] Evolution falhou ao listar grupos: sem status (Error: rede fora)
+
+ ✓ test/getsession-produtividade-crm-config.test.ts (6 tests) 13ms
+ ✓ test/wpp-nome-grupo-cache.test.ts (10 tests) 13ms
+stderr | test/cobertura-atribuicao.test.ts > GET /api/clientes/[id]/atribuicao-cobertura > 200 com meses e truncated; erro de leitura vira 500
+[atribuicao-cobertura] falhou falha de leitura
+
+ ✓ test/redirects-legados.test.ts (10 tests) 11ms
+ ✓ test/contas-anuncio-tabela.test.ts (15 tests) 8ms
+ ✓ test/ficha-nps-do-mes.test.ts (10 tests) 13ms
+ ✓ test/saude-denominador-churn.test.tsx (4 tests) 11ms
+ ✓ test/whatsapp-webhook.test.ts (5 tests) 12ms
+stderr | test/resolver-cliente-rota-nichos.test.ts > resolverCliente na rota de nichos > resolver que lança vira 500 com a mensagem
+[nichos resolver] Error: leitura falhou
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/resolver-cliente-rota-nichos.test.ts:73:36
+ ✓ test/grupos-cliente-que-saiu.test.ts (8 tests) 13ms
+ ✓ test/estados-padrao.test.ts (8 tests) 14ms
+ ✓ test/edu-getsession.test.ts (13 tests) 11ms
+ ✓ test/setup-cinco-passos.test.ts (19 tests) 9ms
+ ✓ test/churn-checklist-rota.test.ts (15 tests) 21ms
+stderr | test/ficha-resolucao-chave.test.ts > GET /api/perf/cockpit/[id] — adota o resolvedor do ticket 094 > falha na resolução da chave vira mensagem humana e acentuada, não o e.message cru
+[perf/cockpit] falha ao resolver chave do cliente: Error: connection terminated unexpectedly
+    at Object.maybeSingle (/Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/ficha-resolucao-chave.test.ts:49:28)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/ficha-resolucao-chave.test.ts:111:17
+ ✓ test/resolver-chave.test.ts (17 tests) 13ms
+ ✓ test/etapa2-funil-motor.test.ts (4 tests) 6ms
+ ✓ test/resumo-grupo-wpp-tela.test.tsx (8 tests) 7ms
+ ✓ test/observacoes-notas-fora.test.ts (3 tests) 12ms
+ ✓ test/erro-string-tempo-reunioes.test.ts (11 tests) 11ms
+stderr | test/resolver-cliente-rota-whatsapp-summary.test.ts > rota de resumos do WhatsApp usa resolverCliente (825) > resolver que lança devolve 500 com a mensagem, nunca lista vazia
+[whatsapp-summary GET] Error: falha de leitura
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-966/test/resolver-cliente-rota-whatsapp-summary.test.ts:100:36
+ ✓ test/produtividade-meta.test.ts (5 tests) 2ms
+ ✓ test/carteira-view.test.ts (3 tests) 2ms
+ ✓ test/wpp-desvincular-grupo.test.ts (5 tests) 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/ficha-nav-colapsavel.test.ts > comportamento visual — sub-seções em sequência, sempre, com título visível > cada grupo renderiza seus AnchorBlock em sequência, com label vindo de CHILD_LABELS
+AssertionError: expected 8 to be 7 // Object.is equality
+
+- Expected
++ Received
+
+- 7
++ 8
+
+ ❯ test/ficha-nav-colapsavel.test.ts:115:30
+    113|     // Ticket 531: meta-ads e entregaveis saíram de Campanhas para a C…
+    114|     // Ticket 646: o relatório antigo saiu de Campanhas (8 -> 7: metri…
+    115|     expect(n("performance")).toBe(7);
+       |                              ^
+    116|     // Ticket 550: contatos e crm foram para a Conta; sobram 6 (reunio…
+    117|     expect(n("relacao")).toBe(6);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 952 passed (953)
+      Tests  1 failed | 9541 passed (9542)
+   Start at  05:52:24
+   Duration  20.02s (transform 14.23s, setup 0ms, import 62.92s, tests 21.99s, environment 63ms)
+

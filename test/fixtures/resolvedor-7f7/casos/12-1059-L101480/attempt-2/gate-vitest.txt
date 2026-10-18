@@ -1,0 +1,255 @@
+ RUN  v4.1.9 /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059
+
+stderr | test/reuniao-operacional-resumo-ia-job.test.ts > processarJobReuniaoResumo > letra de outro alfabeto lança Error transitório e não grava
+[reuniao-resumo] saída da IA com letras de outro alfabeto; não gravado { reuniao: '00000000-0000-4000-8000-0000000000a1', letras: 'კონ' }
+
+stderr | test/leitores-carteira-casa-nova.test.ts > GET /api/dashboard/clientes (ticket 1055) > erro do espelho, do negocio ou do perfil vira 500, nunca lista
+[api/dashboard/clientes GET] Error: espelho: falha simulada
+
+stderr | test/leitores-carteira-casa-nova.test.ts > GET /api/dashboard/clientes (ticket 1055) > erro do espelho, do negocio ou do perfil vira 500, nunca lista
+[api/dashboard/clientes GET] Error: negocio dos clientes: falha simulada
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/leitores-carteira-casa-nova.test.ts:132:19
+
+stderr | test/leitores-carteira-casa-nova.test.ts > GET /api/dashboard/clientes (ticket 1055) > erro do espelho, do negocio ou do perfil vira 500, nunca lista
+[api/dashboard/clientes GET] Error: perfil dos clientes: falha simulada
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/leitores-carteira-casa-nova.test.ts:132:19
+
+stderr | test/leitores-carteira-casa-nova.test.ts > leitores da ponte pela lib (ticket 1055) > /api/carteira: erro do espelho e 500
+[carteira] espelho: Error: espelho: falha simulada
+
+ ❯ test/leitores-carteira-casa-nova.test.ts (18 tests | 1 failed) 40ms
+ ✓ test/sai-cockpit-id-removido.test.ts (2 tests) 164ms
+ ✓ test/erro-string-carteira-perfil-disputa.test.ts (9 tests) 172ms
+ ✓ test/agregacoes-truncadas-ficha.test.ts (10 tests) 125ms
+ ✓ test/consumo-cortesia.test.ts (9 tests) 259ms
+ ✓ test/remove-team-id.test.ts (3 tests) 164ms
+stderr | test/leitores-equipe-nps-portal-casa-nova.test.ts > portal: meus clientes > falha na leitura do perfil é 500
+[portal/meus-clientes] Error: perfil dos clientes: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/leitores-equipe-nps-portal-casa-nova.test.ts:127:13
+
+stderr | test/leitores-equipe-nps-portal-casa-nova.test.ts > relatório admin > falha de leitura do espelho é 500
+[admin/clientes-sem-cliente-id] Error: espelho: leitura falhou (simulada)
+ ✓ test/bloco-contrato-pendencia-portal.test.tsx (6 tests) 149ms
+ ✓ test/nps-reacao-resposta.test.ts (12 tests) 152ms
+ ✓ test/portal-cache-sync.test.ts (6 tests) 148ms
+ ✓ test/avisos-vacuo.test.ts (7 tests) 19ms
+ ✓ test/ghl-backfill.test.ts (12 tests) 186ms
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura do resumo existente falha → 500 e nada gravado
+[churn-summary PATCH] Error: resumo do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/churn-summary-patch-leitura-falha.test.ts:59:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura de clientes_receita falha → 500 e nada gravado
+[churn-summary PATCH] Error: base de clientes: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/churn-summary-patch-leitura-falha.test.ts:66:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > PATCH /api/churn-summary — falha de leitura não grava > leitura das saídas falha → 500 e nada gravado
+[churn-summary PATCH] Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/churn-summary-patch-leitura-falha.test.ts:73:17
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > recalcularAposSaida — não lança, devolve aviso > falha de leitura vira aviso por mês, sem gravar
+[churn/resumo-mensal] 2026/09 Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/churn-summary-patch-leitura-falha.test.ts:123:20
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > recalcularAposSaida — não lança, devolve aviso > falha de leitura vira aviso por mês, sem gravar
+[churn/resumo-mensal] 2026/08 Error: saídas do mês: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/churn-summary-patch-leitura-falha.test.ts:123:20
+
+stderr | test/churn-summary-patch-leitura-falha.test.ts > GET /api/cron/churn-resumo > falha visível: 500 com o mês que falhou
+[cron/churn-resumo] 2026/09 Error: base de clientes: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/churn-summary-patch-leitura-falha.test.ts:150:17
+ ✓ test/insights-buracos.test.ts (19 tests) 81ms
+ ✓ test/hoje-acoes.test.tsx (13 tests) 92ms
+ ✓ test/perfil-operacional-lib.test.ts (13 tests) 21ms
+ ✓ test/visao-criativos-periodo.test.tsx (7 tests) 50ms
+ ✓ test/meta-http.test.ts (13 tests) 63ms
+stderr | test/carteira-membro-equipe-id.test.ts > GET /api/equipe/carteira (ticket 862) > erro ao ler clientes, perfil, o espelho ou a receita: 500
+[api/equipe/carteira] Error: perfil dos clientes: falha simulada
+    at ler (/Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/carteira-membro-equipe-id.test.ts:100:15)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/carteira-membro-equipe-id.test.ts:162:17
+
+stderr | test/carteira-membro-equipe-id.test.ts > GET /api/equipe/carteira (ticket 862) > erro ao ler clientes, perfil, o espelho ou a receita: 500
+[api/equipe/carteira] Error: espelho: falha simulada
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/equipe-pessoas-grupos-leitura.test.ts:150:17
+
+ ✓ test/equipe-pessoas-grupos-leitura.test.ts (7 tests) 44ms
+stderr | test/avisos-renovacao-nps.test.ts > distribuição avisa o gestor > falha do aviso não desfaz a distribuição
+distribuir: falha ao avisar o gestor Error: falha no aviso
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/avisos-renovacao-nps.test.ts:25:32
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/avisos-renovacao-nps.test.ts:164:17
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/sync-ads-ad-map-chave.test.ts:294:17
+
+ ✓ test/sync-ads-ad-map-chave.test.ts (6 tests) 66ms
+stderr | test/ficha-por-uuid.test.ts > uuid resolvido primeiro como id do cliente (29/09) > leitura de clientes que falha: 500, nunca 'não encontrado'
+[/api/clientes/[id]/ficha] Error: cliente: leitura falhou (simulada)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/ficha-por-uuid.test.ts:82:15
+
+ ✓ test/relatorio-periodo-padrao.test.ts (4 tests) 32ms
+ ✓ test/relatorio-gerar.test.ts (8 tests) 46ms
+stderr | test/wpp-nome-grupo-cache.test.ts > nomeDoGrupo > Evolução não configurada devolve null sem fetch
+[nome-grupo-cache] Evolution falhou ao listar grupos: sem status (EVOLUTION_API_URL/KEY/INSTANCE não configurados)
+
+stderr | test/wpp-nome-grupo-cache.test.ts > webhook Evolution — nome do grupo (ticket 729) > Evolução fora grava a mensagem com grupo_nome null
+[nome-grupo-cache] Evolution falhou ao listar grupos: sem status (Error: rede fora)
+
+ ✓ test/wpp-nome-grupo-cache.test.ts (10 tests) 28ms
+ ✓ test/contrato-resumo-loader.test.ts (3 tests) 36ms
+ ✓ test/ghl-backfill-lib.test.ts (6 tests) 90ms
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes-extra/[id] > exceção do logAudit não muda o status da resposta
+[clientes-extra PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/audit-log-rotas.test.ts:266:36
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > POST: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/audit-log-rotas.test.ts:301:36
+
+stderr | test/audit-log-rotas.test.ts > POST/PATCH /api/clientes-extra/otimizacoes > PATCH: exceção do logAudit não muda o status da resposta
+[clientes-extra/otimizacoes PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/audit-log-rotas.test.ts:317:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/[id]/crm-config PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/audit-log-rotas.test.ts:344:36
+
+stderr | test/audit-log-rotas.test.ts > PUT /api/clientes/crm-config > exceção do logAudit não muda o status da resposta
+[clientes/crm-config PUT] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/audit-log-rotas.test.ts:371:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/perfil-obs > exceção do logAudit não muda o status da resposta
+[clientes/[id]/perfil-obs PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/audit-log-rotas.test.ts:400:36
+
+stderr | test/audit-log-rotas.test.ts > PATCH /api/clientes/[id]/registros/[registroId] > exceção do logAudit não muda o status da resposta
+[registros PATCH] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/audit-log-rotas.test.ts:440:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/tarefas-kanban > exceção do logAudit não muda o status da resposta
+[tarefas-kanban POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/audit-log-rotas.test.ts:467:36
+
+stderr | test/audit-log-rotas.test.ts > POST /api/clientes/relatorio-config (ativo=true) > exceção do logAudit não muda o status da resposta
+[clientes/relatorio-config POST] logAudit falhou Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/audit-log-rotas.test.ts:494:36
+ ✓ test/leitura-relacao-so-grupo-ficha.test.ts (7 tests) 41ms
+ ✓ test/sai-cockpit-id-api-b.test.ts (7 tests) 10ms
+ ✓ test/crm-config-conexao-location.test.ts (7 tests) 18ms
+ ✓ test/acao-unica-fila-saude.test.tsx (4 tests) 76ms
+ ✓ test/mql-cliente-regra-etapas.test.ts (13 tests) 26ms
+stderr | test/resolver-cliente-rota-whatsapp-summary.test.ts > rota de resumos do WhatsApp usa resolverCliente (825) > resolver que lança devolve 500 com a mensagem, nunca lista vazia
+[whatsapp-summary GET] Error: falha de leitura
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/resolver-cliente-rota-whatsapp-summary.test.ts:100:36
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/getsession-notion-clientes.test.ts:118:19
+
+ ✓ test/getsession-notion-clientes.test.ts (4 tests) 18ms
+ ✓ test/performance-nichos-teses-aba.test.ts (14 tests) 37ms
+stderr | test/ficha-resolucao-chave.test.ts > GET /api/perf/cockpit/[id] — adota o resolvedor do ticket 094 > falha na resolução da chave vira mensagem humana e acentuada, não o e.message cru
+[perf/cockpit] falha ao resolver chave do cliente: Error: connection terminated unexpectedly
+    at Object.maybeSingle (/Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/ficha-resolucao-chave.test.ts:49:28)
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/ficha-resolucao-chave.test.ts:111:17
+ ✓ test/resolver-cliente-rota-crm.test.ts (13 tests) 27ms
+ ✓ test/onboarding-sla-canonico.test.ts (2 tests) 28ms
+ ✓ test/etapa2-mapeamento-pipeline.test.ts (15 tests) 12ms
+ ✓ test/reprocessar-resultado-meta.test.ts (5 tests) 20ms
+ ✓ test/timeline-relacao.test.tsx (13 tests) 16ms
+stderr | test/resolver-cliente-rota-ops-perfil.test.ts > ops-perfil resolve o [id] com resolverCliente > resolver que lança devolve 500 com a mensagem, nunca resposta vazia
+[ops-perfil GET] Error: leitura falhou
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/resolver-cliente-rota-ops-perfil.test.ts:87:32
+[clientes/radar-renovacao] falhou
+
+ ✓ test/resolver-cliente-rota-radar-renovacao.test.ts (5 tests) 24ms
+ ✓ test/setup-cinco-passos.test.ts (19 tests) 39ms
+ ✓ test/calculadora-espelho.test.ts (5 tests) 22ms
+stderr | test/resolver-cliente-rota-observacoes.test.ts > resolverCliente na rota de observações > resolver que lança vira 500 com a mensagem em GET e POST
+[observacoes resolver] Error: leitura falhou
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/resolver-cliente-rota-observacoes.test.ts:113:36
+
+stderr | test/resolver-cliente-rota-observacoes.test.ts > resolverCliente na rota de observações > resolver que lança vira 500 com a mensagem em GET e POST
+[observacoes resolver] Error: leitura falhou
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/resolver-cliente-rota-observacoes.test.ts:113:36
+[lente-comercial] temperatura nao persistida db.from(...).upsert is not a function
+
+stderr | test/lente-comercial.test.ts > POST /api/clientes/[id]/lente-comercial > leitura de interações que falhou devolve 502 e não chama a IA (falha não vira lista vazia)
+[lente-comercial] leitura de insumos falhou { message: 'timeout' }
+
+stderr | test/resolver-cliente-rota-nichos.test.ts > resolverCliente na rota de nichos > resolver que lança vira 500 com a mensagem
+[nichos resolver] Error: leitura falhou
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/resolver-cliente-rota-nichos.test.ts:73:36
+ ✓ test/getsession-onboarding-tracking.test.ts (4 tests) 13ms
+ ✓ test/faixa-pedem-acao.test.tsx (26 tests) 20ms
+ ✓ test/onboarding-pendente-documento.test.ts (4 tests) 13ms
+ ✓ test/contratual-disputa.test.ts (8 tests) 25ms
+ ✓ test/apolo-acoes.test.ts (17 tests) 15ms
+stderr | test/ficha-reunioes-resumos-cliente-id.test.ts > GET /api/clientes/resumos por cliente_id > falha do resolvedor: 500 com mensagem de dominio
+[clientes/resumos GET] chave do cliente: Error: boom
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/ficha-reunioes-resumos-cliente-id.test.ts:64:48
+ ✓ test/resolver-cliente-rota-onboarding.test.ts (5 tests) 18ms
+ ✓ test/etapa2-motor-fases.test.ts (16 tests) 23ms
+ ✓ test/acao-unica-ficha-controles.test.tsx (36 tests) 11ms
+ ✓ test/contador-escopo.test.ts (11 tests) 14ms
+ ✓ test/carteira-views-acao.test.ts (22 tests) 7ms
+stderr | test/resolver-cliente-rota-reunioes.test.ts > reunioes: resolverCliente (823) > resolver que lança = 500, nunca lista vazia
+[clientes/reunioes] chave do cliente: Error: falha de leitura
+    at /Users/lucasantos/Projetos/_worktrees/orq-comarka-1059/test/resolver-cliente-rota-reunioes.test.ts:79:50
+ ✓ test/produtividade-meta.test.ts (5 tests) 3ms
+ ✓ test/apolo-contexto-kpis-ficha.test.tsx (4 tests) 4ms
+ ✓ test/deeplink-setup.test.ts (3 tests) 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/leitores-carteira-casa-nova.test.ts > leitores da ponte pela lib (ticket 1055) > clientes-filtrados usa lerEspelhoTodo para a ponte
+AssertionError: expected 308 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 308
+
+ ❯ test/leitores-carteira-casa-nova.test.ts:168:24
+    166|   it("clientes-filtrados usa lerEspelhoTodo para a ponte", async () =>…
+    167|     const res = await getFiltrados();
+    168|     expect(res.status).toBe(200);
+       |                        ^
+    169|     expect(espelhoSpy.todo).toHaveBeenCalledWith(expect.anything(), []…
+    170|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/leitores-ficha-casa-nova.test.ts > rotas > GET /api/notion/clientes/[id] por uuid devolve os campos da casa nova
+AssertionError: expected 308 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 308
+
+ ❯ test/leitores-ficha-casa-nova.test.ts:118:22
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/leitores-ficha-casa-nova.test.ts > rotas > GET /api/notion/clientes/[id] por uuid com espelho: 404 com o notion_id da ponte
+AssertionError: expected 308 to be 404 // Object.is equality
+
+- Expected
++ Received
+
+- 404
++ 308
+
+ ❯ test/leitores-ficha-casa-nova.test.ts:125:22
+    123|   it("GET /api/notion/clientes/[id] por uuid com espelho: 404 com o no…
+    124|     const r = await getFicha(new NextRequest(`http://localhost/api/not…
+    125|     expect(r.status).toBe(404);
+       |                      ^
+    126|     expect(await r.json()).toEqual({ error: "Not found", notion_id: "n…
+    127|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  2 failed | 1045 passed (1047)
+      Tests  3 failed | 10475 passed (10478)
+   Start at  11:41:45
+   Duration  58.55s (transform 74.48s, setup 0ms, import 218.25s, tests 57.44s, environment 118ms)
+

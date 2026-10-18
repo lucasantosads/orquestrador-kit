@@ -1,0 +1,426 @@
+# Ticket 924a: aba Conta: monta o cartão Contrato e tira o que duplicava (quadro, escopo, linha do tempo antiga, LTV do Negócio)
+
+> Fonte de máquina é o bloco ```json. A prosa é para humanos.
+
+## Objetivo (prosa)
+
+Ticket D2 da reorganização da aba Conta. Monta o `ContratoMarcos` (924) no topo e tira da aba Conta o que a spec manda sair:
+
+- o quadro de 5 células do FinanceiroTab e o cartão "Escopo Contratado", que duplicavam o contrato;
+- a "Linha do tempo do contrato" antiga (`BlocoRadarRenovacao`);
+- a lista fixa de marcos do `BlocoContrato` (`MarcosView`);
+- o LTV do bloco Negócio, que passa a aparecer só na faixa do contrato.
+
+Os arquivos dos componentes antigos ficam no repo. A rota antiga de marcos também fica, mas sem tela.
+
+## Recon de 09/10
+
+```
+page.tsx:1449-1467 SecaoConta 1: FinanceiroTab(+documentos), BlocoRadarRenovacao, BlocoContrato, BlocoConsultorias, EntregaveisTab, ContratualTab
+test/conta-quadro-contrato-aberto.test.ts:10  ROTULOS = ["Contrato","Início (START)","Vigência","Pacote","Renovação"]
+test/conta-contrato-e-entregas.test.ts:141   mesmos rotulos + "Escopo e entregáveis"
+test/conta-aceite.test.tsx:99-104            lista exata dos 5 rotulos do quadro
+test/contrato-escopo-implementacoes.test.ts:452  expect(html).toContain('data-testid="marcos-contrato"')
+test/cockpit-blocos-null.test.ts:93-102,160  casos de LTV do CockpitNegocio
+test/ltv-na-conta.test.ts:17-43  CockpitNegocio (apos 925: no ramo comercial)
+```
+
+## Campos de máquina
+
+```json
+{
+  "id": "924a",
+  "slug": "conta-contrato-montagem",
+  "lane": "produto",
+  "perfil": "frontend",
+  "objetivo": "ORCAMENTO DE DIFF: teto de 360 linhas (~40 em page.tsx, ~60 em financeiro-tab.tsx, ~25 em bloco-contrato.tsx, ~15 em cockpit-cards.tsx, o resto em recalculo de testes). Se passar do teto, pare e reporte. SPEC: docs/specs/2026-10-09-aba-conta-marcos.md (mockup 'Ficha · aba Conta reorganizada' aprovado pelo Lucas em 09/10, cliente de referencia AQUINO ADV). Leia antes PRODUCT.md, DESIGN.md (cor e sinal: verde saudavel, vermelho risco, azul acao; numeros em Geist Mono; sem Card aninhado; sem badge soup) e a skill de UI do Comarka OS se disponivel. Tela 1 bloco 3 e 'Sai da aba Conta'. DEPENDE do 924 (ContratoMarcos) e do 925 (Negocio ja na aba Comercial). FAZER: (1) src/app/dashboard/clientes/[id]/page.tsx: no ramo conta, dentro da <SecaoConta ordem={1}>, monte <ContratoMarcos clienteId={clientePipelineId} faixa={...} /> como PRIMEIRO bloco, antes do AnchorBlock financeiro. A faixa e montada no page com o que a ficha ja tem: status e pacote e inicio/fidelidade e renovacao do mesmo dado que o quadro do FinanceiroTab usa hoje (useFicha / extra), cobranca e ltv de cockpitData?.negocio (o mesmo dado do CockpitNegocio); campo sem dado vai null (nunca 0). Tire do ramo conta o <BlocoRadarRenovacao> (o arquivo do componente fica, so nao e montado; o import sem uso sai). (2) src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx: tire o Card do quadro do contrato (5 celulas) e a coluna 'Escopo e entregáveis' com o <EscopoBloco> ('Escopo Contratado' duplicava o contrato, decisao da spec); ficam 'Observações do Closer' e o slot documentos (vao para Cadastro no 924d). (3) src/app/dashboard/clientes/[id]/_components/bloco-contrato.tsx: o ContratoView deixa de renderizar o MarcosView (data-testid marcos-contrato, a lista fixa de marcos de src/lib/contrato/marcos.ts) e o PATCH de marcos (CAMPO_MARCO) sai da tela; a funcao MarcosView e o tipo podem sair do arquivo. Escopo, Implementacoes, Este mes e Pendencias ficam (924b reorganiza). (4) src/app/dashboard/clientes/[id]/_components/cockpit-cards.tsx: o CockpitNegocio (agora na aba Comercial) deixa de mostrar a linha LTV; o LTV aparece so na faixa do contrato. O resto do card (Vincular receita, NPS) nao muda. (5) RECALCULE os testes da allowlist sob a regra nova, com comentario acima de cada assercao mudada: 'Ticket 924a (spec 09/10): ...'. conta-quadro-contrato-aberto e conta-contrato-e-entregas:141 passam a conferir os 6 rotulos da faixa em contrato-marcos.tsx e a ausencia do quadro antigo no financeiro-tab; conta-aceite:99-104 idem; contrato-escopo-implementacoes:452 passa a exigir que marcos-contrato NAO aparece; cockpit-blocos-null: os casos de LTV passam a conferir que o CockpitNegocio nao mostra LTV (sem perder o caso de LTV manual sem meses, que vira assercao na faixa: ltv null => SemDado); ltv-na-conta: o LTV esta na faixa do ContratoMarcos dentro do ramo conta. PROIBIDO remover assercao, afrouxar matcher ou usar .skip/.only. Regras do repo: nao importe getSession em 'use client'; sem .json() novo em src (fetchJson de @/lib/fetch-json); sem travessao (U+2014) em texto; nenhum nome de tabela, coluna ou operador em texto que o usuario le; label em todo controle (WCAG AA). FORA DE ESCOPO: Entregas do mes, Conexoes, Cadastro, Automacoes, faixa 'pedem acao' (924b-924f); apagar bloco-radar-renovacao.tsx, escopo-bloco.tsx, a rota antiga de marcos ou src/lib/contrato/marcos.ts; mudar o radar de renovacao em outras telas.",
+  "cria_novo": [],
+  "pathspec_allowlist": [
+    "src/app/dashboard/clientes/[id]/page.tsx",
+    "src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx",
+    "src/app/dashboard/clientes/[id]/_components/bloco-contrato.tsx",
+    "src/app/dashboard/clientes/[id]/_components/cockpit-cards.tsx",
+    "test/conta-aceite.test.tsx",
+    "test/conta-quadro-contrato-aberto.test.ts",
+    "test/conta-contrato-e-entregas.test.ts",
+    "test/contrato-escopo-implementacoes.test.ts",
+    "test/cockpit-blocos-null.test.ts",
+    "test/ltv-na-conta.test.ts"
+  ],
+  "dependencias": [
+    "924",
+    "925"
+  ],
+  "prioridade": 60,
+  "excecao_tamanho": {
+    "motivo": "4 arquivos de src (page, financeiro, bloco-contrato, cockpit) que juntos tiram as 3 duplicacoes do contrato e o LTV do Negocio, mais os 6 testes que pinam exatamente esse quadro; separar deixaria a aba com dois cartoes Contrato e o LTV em dois lugares entre um ticket e outro"
+  },
+  "recon_esperado": [
+    {
+      "descricao": "o radar antigo esta montado na conta",
+      "cmd": "n=$(sed -n '/grupoAtivo === \"conta\" \\&\\&/,/grupoAtivo === \"comercial\" \\&\\&/p' 'src/app/dashboard/clientes/[id]/page.tsx' | grep -cE '<BlocoRadarRenovacao'); [ \"$n\" = 1 ] && echo RADAR_NA_CONTA || echo ST_$n",
+      "espera": "RADAR_NA_CONTA"
+    },
+    {
+      "descricao": "quadro antigo de 5 celulas e EscopoBloco no financeiro-tab",
+      "cmd": "a=$(grep -c 'Início (START)' 'src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx'); e=$(grep -c '<EscopoBloco' 'src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx'); [ \"$a\" -ge 1 ] && [ \"$e\" = 1 ] && echo QUADRO_ANTIGO || echo ST_${a}_${e}",
+      "espera": "QUADRO_ANTIGO"
+    },
+    {
+      "descricao": "MarcosView renderizado no bloco-contrato",
+      "cmd": "n=$(grep -c '<MarcosView' 'src/app/dashboard/clientes/[id]/_components/bloco-contrato.tsx'); [ \"$n\" -ge 1 ] && echo MARCOS_ANTIGOS || echo ST_$n",
+      "espera": "MARCOS_ANTIGOS"
+    }
+  ],
+  "criterios_aceite": [
+    {
+      "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+      "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+      "espera": "OK",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "nenhum .sql novo (zero DDL)",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+      "espera": "SEM_SQL",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "so arquivos da allowlist foram tocados",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do printf '%s\\n' 'src/app/dashboard/clientes/[id]/page.tsx' 'src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx' 'src/app/dashboard/clientes/[id]/_components/bloco-contrato.tsx' 'src/app/dashboard/clientes/[id]/_components/cockpit-cards.tsx' 'test/conta-aceite.test.tsx' 'test/conta-quadro-contrato-aberto.test.ts' 'test/conta-contrato-e-entregas.test.ts' 'test/contrato-escopo-implementacoes.test.ts' 'test/cockpit-blocos-null.test.ts' 'test/ltv-na-conta.test.ts' | grep -Fxq \"$f\" || r=FORA_$f; done; echo $r",
+      "espera": "SO_ALLOWLIST",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "diff dentro do orcamento (<= 360 linhas somando adicoes e remocoes)",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 360 ] && echo NO_TETO || echo ESTOUROU_$t",
+      "espera": "NO_TETO",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "guardas globais seguem verdes",
+      "cmd": "npx vitest run test/c0-guard.test.ts test/fetch-json-teto.test.ts test/travessao-mudo.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+      "espera": "VERDE",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "ContratoMarcos e o primeiro bloco da secao 1 e o radar antigo saiu da conta",
+      "cmd": "c=$(sed -n '/grupoAtivo === \"conta\" \\&\\&/,/grupoAtivo === \"comercial\" \\&\\&/p' 'src/app/dashboard/clientes/[id]/page.tsx' | grep -n '<ContratoMarcos' | head -1 | cut -d: -f1); f=$(sed -n '/grupoAtivo === \"conta\" \\&\\&/,/grupoAtivo === \"comercial\" \\&\\&/p' 'src/app/dashboard/clientes/[id]/page.tsx' | grep -n '<FinanceiroTab' | head -1 | cut -d: -f1); r=$(sed -n '/grupoAtivo === \"conta\" \\&\\&/,/grupoAtivo === \"comercial\" \\&\\&/p' 'src/app/dashboard/clientes/[id]/page.tsx' | grep -c '<BlocoRadarRenovacao'); [ -n \"$c\" ] && [ -n \"$f\" ] && [ \"$c\" -lt \"$f\" ] && [ \"$r\" = 0 ] && echo CONTRATO_NO_TOPO || echo ST_${c}_${f}_${r}",
+      "espera": "CONTRATO_NO_TOPO",
+      "tipo": "alvo"
+    },
+    {
+      "descricao": "duplicacoes fora: sem quadro antigo e sem EscopoBloco no financeiro, sem MarcosView no bloco-contrato, sem LTV no CockpitNegocio",
+      "cmd": "a=$(grep -c 'Início (START)' 'src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx'); e=$(grep -c '<EscopoBloco' 'src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx'); m=$(grep -c '<MarcosView' 'src/app/dashboard/clientes/[id]/_components/bloco-contrato.tsx'); l=$(sed -n '/export function CockpitNegocio/,/^}/p' 'src/app/dashboard/clientes/[id]/_components/cockpit-cards.tsx' | grep -c 'LTV'); [ \"$a\" = 0 ] && [ \"$e\" = 0 ] && [ \"$m\" = 0 ] && [ \"$l\" = 0 ] && echo SEM_DUPLICADO || echo ST_${a}_${e}_${m}_${l}",
+      "espera": "SEM_DUPLICADO",
+      "tipo": "alvo"
+    },
+    {
+      "descricao": "anti-afrouxamento nos testes recalculados (test/conta-aceite.test.tsx, test/conta-quadro-contrato-aberto.test.ts, test/conta-contrato-e-entregas.test.ts, test/contrato-escopo-implementacoes.test.ts, test/cockpit-blocos-null.test.ts, test/ltv-na-conta.test.ts): expect( nao diminui, sem .skip/.only, cita 924a",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; r=AFROUXAMENTO_OK; for f in 'test/conta-aceite.test.tsx' 'test/conta-quadro-contrato-aberto.test.ts' 'test/conta-contrato-e-entregas.test.ts' 'test/contrato-escopo-implementacoes.test.ts' 'test/cockpit-blocos-null.test.ts' 'test/ltv-na-conta.test.ts'; do if git diff --quiet \"$b\" HEAD -- \"$f\"; then continue; fi; a=$(git show \"$b:$f\" | grep -c 'expect('); h=$(grep -c 'expect(' \"$f\"); s=$(git diff \"$b\" HEAD -- \"$f\" | grep -cE '^[+].*[.](skip|only)[(]'); c=$(grep -c '924a' \"$f\"); if [ \"$h\" -lt \"$a\" ] || [ \"$s\" != 0 ] || [ \"$c\" = 0 ]; then r=AFROUXOU_$f; fi; done; echo $r",
+      "espera": "AFROUXAMENTO_OK",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "testes verdes (test/conta-aceite.test.tsx, test/conta-quadro-contrato-aberto.test.ts, test/conta-contrato-e-entregas.test.ts, test/contrato-escopo-implementacoes.test.ts, test/cockpit-blocos-null.test.ts, test/ltv-na-conta.test.ts, test/contrato-marcos-bloco.test.tsx, test/conta-conexoes-entregaveis.test.ts, test/visao-aceite-mockup.test.tsx, test/ficha-conta-contrato.test.ts, test/bloco-contrato-cortesia.test.ts, test/bloco-radar-renovacao.test.tsx)",
+      "cmd": "npx vitest run test/conta-aceite.test.tsx test/conta-quadro-contrato-aberto.test.ts test/conta-contrato-e-entregas.test.ts test/contrato-escopo-implementacoes.test.ts test/cockpit-blocos-null.test.ts test/ltv-na-conta.test.ts test/contrato-marcos-bloco.test.tsx test/conta-conexoes-entregaveis.test.ts test/visao-aceite-mockup.test.tsx test/ficha-conta-contrato.test.ts test/bloco-contrato-cortesia.test.ts test/bloco-radar-renovacao.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+      "espera": "VERDE",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "avaliador: a aba Conta abre com um unico cartao Contrato (faixa de 6 celulas + linha do tempo dos marcos); 'Escopo Contratado', o quadro antigo, a linha do tempo antiga (radar) e a lista fixa MarcosView sairam da Conta; LTV so na faixa. REPROVE se: dois cartoes Contrato; LTV em dois lugares; faixa com 0 ou data inventada para campo sem dado; marcos antigos editaveis ainda na tela; assercao removida ou afrouxada; teste recalculado sem o comentario do 924a.",
+      "cmd": "true",
+      "espera": "avaliador",
+      "tipo": "avaliador"
+    }
+  ],
+  "testes_conferidos": [
+    {
+      "teste": "test/ficha-conta-contrato.test.ts",
+      "motivo": "Observações do Closer segue no financeiro-tab com um unico Editar; nao muda"
+    },
+    {
+      "teste": "test/bloco-contrato-cortesia.test.ts",
+      "motivo": "cortesia do Este mes; o 924a so tira MarcosView; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/bloco-radar-renovacao.test.tsx",
+      "motivo": "testa o componente, que fica no repo; nao muda"
+    },
+    {
+      "teste": "test/conta-entregas-vazio-unico.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/tabs/financeiro-tab.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/a11y/app-dashboard-clientes-id-page.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/aba-na-url.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/aba-resultados-fechamentos.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/abas-montadas.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/acao-unica-ficha-mutacoes.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ativo-pela-receita.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/barra-visao.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/bloco-tarefas-visao.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/campanhas-aceite-mockup.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/cartao-copy-sem-travessao.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/cartao-topo-setup-e-closer.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/conta-cadastro-operacao.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/conta-conexoes-entregaveis.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/conta-conexoes.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/conta-crm-sem-contradicao.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/conta-resultados-escritorio.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/erro-objeto-nao-quebra.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-aba-comercial.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-abas-orfas.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-nav-colapsavel.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-nps.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-obs-contrato.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-por-uuid.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-relacao-estados.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-relacao-leitura.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-rotulo-moldura.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-sem-reescrita-notion.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ficha-subsecoes-sequencia.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/ghl-um-lugar-so.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/header-cliente-consolidado.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/kpis-visao-buraco-coleta.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/leitura-relacao-tela.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/link-setup-notion-id.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/lote-b3-1-periodo.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/lote-d-colunas.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/metricas-filtros-periodo.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/metricas-invalidacao.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/observacoes-notas-fora.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/orquestrador-enforcement.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/otimizacoes-tela.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/painel-em-campanhas.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/painel-estado-explicito.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/perf-cliente-438.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/rbac-visual.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/registrar-verificacao-rotulo.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/registro-unico-relacao.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/relacao-aceite.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/relacao-config-para-conta.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/relacao-responder-tela.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/relacao-sem-escrita-reuniao.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/resumo-grupo-wpp-tela.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/resumo-score-fonte-unica.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/rotas-fantasma-ficha.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/saude-chip-ficha.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/saude-motivo-sem-base.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/score-saude-fonte-unica.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/timeline-relacao.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/visao-aceite-estrutura.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/visao-aceite-mockup.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/visao-copy-ausencia.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/visao-dado-parado-e-link.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/visao-geral-ordem.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/visao-limpeza-final.test.tsx",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/visao-sem-cockpit-antigo.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/whatsapp-grupos-ui.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/page.tsx pelo grafo ou pelo caminho; a reorganizacao da aba Conta so troca blocos dentro do ramo grupoAtivo === \"conta\" (marcador do ramo fica) e nao muda as outras abas; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/contrato-parceria-sem-contrato.test.ts",
+      "motivo": "alcanca src/app/dashboard/clientes/[id]/_components/bloco-contrato.tsx; o 924a so tira o MarcosView do ContratoView, a parceria sem contrato nao muda; se quebrar, PARE e descreva"
+    },
+    {
+      "teste": "test/crm-escritorio-rolagem.test.ts",
+      "motivo": "le o page.tsx e o crm-escritorio.tsx da aba Comercial (overflow so no kanban); o ticket nao mexe no crm-escritorio; se quebrar, PARE e descreva"
+    }
+  ],
+  "status": "bloqueado",
+  "notas_status": "motivo repetido: provável defeito de spec/harness, não do código — gate vitest: suíte vermelha (ver /Users/lucasantos/Projetos/comarka-operacional/docs/fila/runs/924a/attempt-2/gate-vitest.txt)"
+}
+```

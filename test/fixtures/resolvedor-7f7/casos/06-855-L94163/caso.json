@@ -1,0 +1,12 @@
+{
+ "id": "855",
+ "repo": "comarka-operacional",
+ "arquivo_ticket": "docs/fila/855-remove-team-id.md",
+ "ticket_sha": "f01a98953774489642f6584383fda3a9932bba3a",
+ "ticket_antes": true,
+ "linha_bloqueio": 94163,
+ "log_inicio": 94130,
+ "fim": "2026-10-12T20:21:55Z",
+ "tentativas": 2,
+ "meta_dir": "docs/fila/runs/855"
+}
