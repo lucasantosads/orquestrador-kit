@@ -56,3 +56,22 @@ describe('8a-P3 · C14: v=$(grep -c …) && com v podendo valer 0 no estado cert
     expect(REGRAS.C14?.porque).toMatch(/0\/368/);
   });
 });
+
+describe('8a-P2 · C13: origin/ em critério (a worktree nasce da branch_alvo local)', () => {
+  it('1004 (versão de entrada) dispara C13 como aviso nos 3 critérios com origin/staging-auto, com a dica da branch local', () => {
+    const v = regra(rodar('c13', '1004'), 'C13');
+    expect(v.map((x) => x.campo)).toEqual(['criterios_aceite[1]', 'criterios_aceite[2]', 'criterios_aceite[3]']);
+    expect(v.every((x) => x.aviso)).toBe(true);
+    expect(v[0]!.mensagem).toContain("'staging-auto' local");
+  });
+
+  it('1012 (controle negativo P1r): merge-base com a branch local — não dispara', () => {
+    expect(regra(rodar('c13', '1012'), 'C13')).toEqual([]);
+  });
+
+  it('a tabela registra C13 como aviso, com o FP e a condição para virar erro no porque', () => {
+    expect(REGRAS.C13?.severidade).toBe('aviso');
+    expect(REGRAS.C13?.porque).toMatch(/120\/368/);
+    expect(REGRAS.C13?.porque).toMatch(/erro para ticket novo/);
+  });
+});

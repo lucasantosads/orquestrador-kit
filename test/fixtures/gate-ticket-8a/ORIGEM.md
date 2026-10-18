@@ -15,3 +15,10 @@ negativo, a versão que rodou (última `pendente` antes do loop pegar).
 | 926b-avisos-marcos-inicio.md | 1f6d31f:docs/fila/926b-avisos-marcos-inicio.md | negativo: conserto preventivo |
 | 999c-ficha-pendencia-respondida-no-portal.md | a269b0f:docs/fila/999c-ficha-pendencia-respondida-no-portal.md | negativo: resgate de premissa |
 | 922b-marcos-prazos-config-tela.md | f01a989:docs/fila/922b-marcos-prazos-config-tela.md | controle negativo P1r |
+
+## c13/
+
+| arquivo | origem | papel |
+|---|---|---|
+| 1004-crons-registram-execucao-motores.md | b6905eb:docs/fila/1004-crons-registram-execucao-motores.md | caso real (resgate f01a989) |
+| 1012-indices-fk-e-rls-initplan-sql.md | f01a989:docs/fila/1012-indices-fk-e-rls-initplan-sql.md | controle negativo P1r (já com `merge-base HEAD staging-auto`) |

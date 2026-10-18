@@ -129,6 +129,7 @@ export const REGRAS: Readonly<Record<string, Regra>> = {
   'C2c': { severidade: 'aviso', oque: "grep -c … || echo com a saída indo direto ao resultado ('0 0')", porque: 'Comarka: 0/1/4 FP; causal 3 (CI 003, 407a0, 486); os FP são o mesmo defeito latente' },
   'C2v': { severidade: 'aviso', oque: 'espera numérica com test/[ encadeado por && antes do número (saída vazia)', porque: 'Comarka (executado): 5/0/0 FP, 0 causal; aqui na forma estática' },
   'C2P': { severidade: 'erro', oque: 'grep -P, que o /usr/bin/grep do macOS não tem', porque: '0 disparo em (a) e (b); erro de plataforma' },
+  'C13': { severidade: 'aviso', oque: 'origin/<ref> em critério executável (a worktree nasce da branch_alvo local)', porque: 'etapa 8a: 120/368 FP nos done aprovados de primeira do Comarka (04-17/10, versão que rodou); 318 dos 1266 done usam a forma; causal 1004 (f01a989). Vira erro para ticket novo quando o gerador de tickets do Comarka parar de escrever origin/' },
   'C14': { severidade: 'erro', oque: 'v=$(grep -c …) encadeado por && com v podendo valer 0 no estado certo', porque: 'etapa 8a: 0/368 FP nos done aprovados de primeira do Comarka (04-17/10, versão que rodou); 1 disparo nos 1266 done (1116, done manual que nunca rodou, com o defeito); causal 924b e 924c (+924d, 924f)' },
   'C3': { severidade: 'aviso', oque: 'ausência com padrão amplo sem exceção nem teto', porque: 'Comarka: 3/0/9 FP; causal 1 (523b)' },
   'C4': { severidade: 'aviso', oque: 'regex que casa diferente em locale C e em UTF-8 (acento)', porque: 'Comarka: 0/0/12 FP, 0 causal; o kit roda sob launchd com a mesma exposição' },
@@ -1235,6 +1236,18 @@ export function saidaVaziaPossivel(cmd: string, espera: string): boolean {
 }
 
 /**
+ * C13 (etapa 8a): `origin/<ref>` no cmd do critério. A worktree do ticket nasce
+ * da `branch_alvo` LOCAL (`executor.sh`, setup_worktree), e o `origin/` só anda
+ * quando alguém dá push: o ticket rodado depois de outro aprovado compara com
+ * uma base velha e reprova (1004 do Comarka, consertado com mais 70 no f01a989).
+ */
+export function refsOrigin(cmd: string): string[] {
+  const refs: string[] = []
+  for (const m of cmd.matchAll(/(?<![\w/.-])origin\/[\w.\/-]*[\w-]/g)) if (!refs.includes(m[0])) refs.push(m[0])
+  return refs
+}
+
+/**
  * C14 (etapa 8a): `v=$(… grep -c …) &&` em que 0 é valor certo de `v`. Com
  * zero matches o grep -c imprime 0 e sai 1; a atribuição herda o rc e o `&&`
  * corta a cadeia: o critério reprova exatamente no estado certo (924b, 924c do
@@ -1526,6 +1539,11 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
             achado('C2v', campo, `espera numérica ('${esp}'), mas um test/[ encadeado por && vem antes do número: se ele falhar a saída sai vazia e o critério reprova por forma, não por número`)
           }
           if (grepPerl(cr.cmd)) achado('C2P', campo, 'grep -P não existe no /usr/bin/grep do macOS — use -E')
+          const origens = refsOrigin(cr.cmd)
+          if (origens.length > 0) {
+            const local = cfg.branch_alvo ?? '<branch_alvo>'
+            achado('C13', campo, `${origens.join(', ')} no critério: a worktree nasce da '${local}' local, e o origin/ só anda com push — rodado depois de outro ticket aprovado, o critério compara com base velha e reprova (1004 do Comarka). Use '${local}' (ex.: git merge-base HEAD ${local})`)
+          }
           const encadeados = grepCEncadeado(cr.cmd)
           if (encadeados.length > 0) {
             achado('C14', campo, `${encadeados.map((x) => `${x}=$(grep -c …)`).join(', ')} encadeado por && e comparado com 0 (ou teto): com zero matches o grep -c sai 1, a atribuição herda o rc e o && corta a cadeia — o critério reprova no estado certo (924b do Comarka). Use $(grep -c … || true)`)
