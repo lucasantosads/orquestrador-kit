@@ -1040,7 +1040,42 @@
   `orquestrador-resolvedor-replay-allowlist.test.ts`, `orquestrador-resolvedor-pausa-dono.test.ts`,
   `orquestrador-resolvedor-r1-multi-isolado.test.ts`.
 
+- **8a · validador na entrada.** O gate de ticket barra na criação o critério que vai
+  reprovar no estado certo e avisa o teste vizinho que o ticket vai quebrar: C14 `erro`
+  (`v=$(grep -c …) &&` com 0 possível; 0/368 FP na P1r), C13 `aviso` (`origin/` em
+  critério; 120/368) e C11 v2 `aviso` (import direto resolvido e citação, árvore da
+  `branch_alvo`, `matchesAllowlist`; 180/368, pega 14 de 19 resgates de allowlist no
+  pré-voo). Commits `578bf7d` (C14), `bc63343` (C13), `b68bd4b` (C11 v2). CONTRATO §12.6.
+  *Evidência:* `~/orq-sessoes/relatorio-kit-etapa8a.md` (§3a casos, §4b FP por variante),
+  `~/orq-sessoes/medicao-comarka/out/14d/`.
+  *Teste:* `orquestrador-gate-8a.test.ts` (fixtures `test/fixtures/gate-ticket-8a/`,
+  verbatim do Comarka, `ORIGEM.md`), `orquestrador-gate-corpus.test.ts`.
+
 ## PENDENTES
+
+- **8b · `testes_vizinhos` como allowlist de teste condicionada a falha.** Porte do
+  457856c do Comarka: a C11 v2 só avisa, porque nenhuma variante estática chega a zero FP
+  (c15 180/368 sem isenção, 87/368 com a isenção de `testes_conferidos`; c6 272/115;
+  `teste_cita` 163/82; híbrida 262/98 — relatório 8a §4b) e o defeito real é o conferido
+  errado (13 de 19 resgates de allowlist tinham o teste quebrado em `testes_conferidos`,
+  §3a). A 8b: o ticket ganha `testes_vizinhos` (a lista que o `--relatorio` já imprime);
+  o executor deixa o agente editar um deles só quando ele falha, uma vez por ticket, com a
+  regra anti-afrouxamento no prompt e no juiz (`teste_cita`, `vitest_vizinhos` e
+  `--allowlist-extra` do Comarka, `lib.sh:771-850`, `executor.sh:440-451`, `:681-692`).
+  Pelo `teste_cita`, a ampliação teria agido em 12 dos 19 casos. Junto, a normalização
+  de `dir/` em `dir/**` que o `enforcement-core.ts` do kit não tem (`:178`; o Comarka
+  tem, `enforcement-core.ts:85-90`).
+  *Evidência:* relatório 8a §2, §3a, §4b.
+  *Teste:* replay dos 19 casos de §3a (o teste real ampliado, nada fora dele) e o
+  enforcement aceitando `dir/` como `dir/**`.
+
+- **8a · classe "teste que varre diretório" sem detector estático.** 854 e 856 quebraram
+  `test/rotas-orfas.test.ts`, que varre `src/app/dashboard` por `readdirSync` a partir de
+  `join(SRC_ROOT, 'app', 'dashboard')` e não cita o arquivo do ticket: nem a C11 v2 nem o
+  457856c o ligam ao ticket. É classe do triador (diagnóstico depois da reprova), não do
+  gate. A C15 (critério que conta por diretório) não pegaria: em 854/966 quem conta é teste.
+  *Evidência:* relatório 8a §3a; `docs/fila/runs/854/attempt-1.prev1/gate-vitest.txt` do
+  Comarka (`expected 21 to be 20`).
 
 - **7f-b7 · `na_reprova` adiado.** Só faz sentido em motor que solta o ticket entre
   tentativas; volta na fase de sombra. No Comarka a reprova vira retry no mesmo processo,

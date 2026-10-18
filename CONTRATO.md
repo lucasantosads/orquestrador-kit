@@ -964,8 +964,8 @@ comentário.
 
 | Severidade | Regras |
 |---|---|
-| `erro` | `1` json, `2` campos, `4` status, `5t` tipo presente fora do vocabulário, `5c` cmd vazio em critério que roda, `5e` espera vazia, `6a` crase/`eval`/`sudo`/`curl`/`wget` (e padrão sem linha própria), `7` dependência órfã (= C7), `9` contexto_juiz, `10c` colchete escapado em classe, `10x` exemplo × padrão, `C2P` `grep -P` |
-| `aviso` | `2c` critérios ausentes, `3` id, `6a:rm `, `6a:bash`, `6a:sh -c`, `6r` redirecionamento, `6v` vitest por texto, `6q` `grep -q` em pipe, `6b` objetivo fora da allowlist, `8` sobreposição (fecho transitivo = C8), `9w`, `10n` sem exemplos, `C2c` `grep -c … \|\| echo`, `C2v` saída vazia, `C3` ausência ampla, `C4` acento em locale C, `C9` topologia, `C11` colisão de teste, `C12` allowlist sem arquivo nem pai |
+| `erro` | `1` json, `2` campos, `4` status, `5t` tipo presente fora do vocabulário, `5c` cmd vazio em critério que roda, `5e` espera vazia, `6a` crase/`eval`/`sudo`/`curl`/`wget` (e padrão sem linha própria), `7` dependência órfã (= C7), `9` contexto_juiz, `10c` colchete escapado em classe, `10x` exemplo × padrão, `C2P` `grep -P`, `C14` `v=$(grep -c …) &&` com 0 possível (8a) |
+| `aviso` | `2c` critérios ausentes, `3` id, `6a:rm `, `6a:bash`, `6a:sh -c`, `6r` redirecionamento, `6v` vitest por texto, `6q` `grep -q` em pipe, `6b` objetivo fora da allowlist, `8` sobreposição (fecho transitivo = C8), `9w`, `10n` sem exemplos, `C2c` `grep -c … \|\| echo`, `C2v` saída vazia, `C3` ausência ampla, `C4` acento em locale C, `C9` topologia, `C11` teste vizinho (v2 da 8a), `C12` allowlist sem arquivo nem pai, `C13` `origin/` em critério (8a) |
 | `off` | `6a:$(` |
 
 ### 12.2 Regras corrigidas
@@ -984,10 +984,11 @@ prova positivo e negativo com o padrão real, e dispensa exemplo no `grep -v`.
 Portadas do `validar-fila.py` sem executar critério (C1, C5 e C6 ficam para a
 etapa seguinte). C4, C9, C11 e C12 leem o repositório por `ContextoRepo`
 (`validarTicket`, 4º parâmetro): em produção, `contextoGit` usa a
-`branch_alvo` do config (C9, C12) e o disco do checkout da fila (C9, C11, e o
+`branch_alvo` do config (C9, C11, C12) e o disco do checkout da fila (C9, e o
 dicionário de palavras acentuadas de `**/src/**/*.ts(x)` para o C4). Fora de
-repositório git, essas regras não rodam; branch alvo inexistente = C9/C12 não
-rodam. Os tickets da própria fila não contam como teste no C11.
+repositório git, essas regras não rodam; branch alvo inexistente = C9/C11/C12
+não rodam. Os tickets da própria fila não contam como teste no C11. A C11 desta
+seção (basename em 1 a 4 testes) foi trocada pela v2 da etapa 8a (§12.6).
 
 ### 12.4 Execução sem cor
 
@@ -1000,6 +1001,38 @@ desliga o que segue supports-color/chalk.
 | Chave | Valor no template / `--migrar` | Lida em |
 |---|---|---|
 | `gate_ticket.severidade` | `{}` (vale a tabela) | `gate-ticket.ts:lerSeveridade`, `:severidadeDe` |
+
+### 12.6 Etapa 8a: validador na entrada (18/10/2026)
+
+Medição do Comarka de 04 a 17/10 (`~/orq-sessoes/relatorio-kit-etapa8a.md`): dos 89
+resgates, 18 de allowlist e 12 de critério nascem na escrita do ticket, e o gate de
+antes não barrava nenhum (nenhuma regra `erro` nos 39 tickets reais, na versão de
+entrada). A régua de FP desta etapa é a **P1r**: os 368 done do Comarka aprovados de
+primeira na janela, na versão que rodou (a última `pendente` antes do loop pegar), com a
+árvore da `staging-auto` daquele momento — todo disparo ali é FP. O corpus 7d-1 continua
+valendo (C14 `erro` passa nele com zero FP).
+
+| Regra | Sev. | O que olha | FP P1r | Casos reais |
+|---|---|---|---|---|
+| `C14` | `erro` | `v=$(… grep -c …) &&` com o grep -c como último comando do `$( )` e `v` comparada com 0 (`=`, `-eq`) ou com teto (`-le`, `-lt`): com zero matches o grep -c sai 1 e o `&&` corta a cadeia no estado certo (`grepCEncadeado`) | 0/368 (1 nos 1266 done: 1116, done manual que nunca rodou, com o defeito) | 924b, 924c (+924d, 924f) |
+| `C13` | `aviso` | `origin/<ref>` em critério executável; a worktree nasce da `branch_alvo` local (`refsOrigin`) | 120/368 (318 dos 1266 done) | 1004 |
+| `C11` v2 | `aviso` | arquivo de `src/` da allowlist (glob expandido) importado **direto** por teste fora da allowlist — relativo ou pelos `paths` do `tsconfig.json`, resolvido contra a árvore — ou citado pelo caminho (porte da camada 15 do `validar-fila.py`, 457856c) (`testesVizinhos`) | 180/368 | 950, 1006 (entrada); 840 (pré-voo); 14 de 19 resgates de allowlist com teste como causa, no pré-voo |
+
+C11 v2, como decide:
+- lê a **árvore da `branch_alvo`** (`lerArvoreAlvo`: `ls-tree` mais um `cat-file
+  --batch` com os testes e o tsconfig, memorizado por commit), não o disco do checkout;
+- "dentro da allowlist" é `matchesAllowlist`, a mesma função do enforcement;
+- teste = `*.test.*`/`*.spec.*` de código, fora de `e2e/` e da própria fila;
+- `testes_conferidos` **não isenta**: o teste conferido sai marcado na mensagem
+  ("declarado conferido; em 13 de 19 resgates medidos o conferido quebrou"). Com a
+  isenção, o FP seria 87/368 e ela pegaria 3 de 19;
+- `--relatorio` imprime `testes_vizinhos (C11): [...]` por ticket: o insumo da 8b.
+
+Fora do alcance, por decisão: 856 e 854 (teste que varre diretório, sem citar o
+arquivo), 711a (critério que contradiz teste), 762 (o teste cita `vercel.json`, item
+fora de `src/`; a variante que cita item fora de `src/` dava 262/368), 318c, 1053b e 830
+(arquivo de `src`/`scripts` fora da allowlist). A C15 pedida (critério que conta arquivo
+por diretório) não entrou: 0 dos casos reais, porque em 854/966 quem conta é teste.
 
 ---
 

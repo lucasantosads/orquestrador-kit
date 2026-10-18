@@ -1090,3 +1090,31 @@ Asserções existentes que mudaram: nenhuma. O motivo do segundo bloqueio passou
 bloqueado" seguem passando sem mudança. A ação de R1 com um teste só grava o mesmo `.md` de
 antes; o ledger `acao` ganha `testes`. Na 7f-b7-5, o desfecho ganha `subclasse` e o
 rebaixamento conta por ela; nenhuma asserção existente mudou.
+
+### Etapa 8a · validador na entrada (18/10/2026)
+
+O PASSO 0 mediu o gate contra os 39 tickets reais que precisaram de resgate de
+allowlist ou de critério no Comarka (04 a 17/10): nenhuma regra `erro` disparava. A
+régua de FP é a P1r (368 done aprovados de primeira, na versão que rodou). CONTRATO §12.6.
+
+- **8a-1** `578bf7d`: C14 `erro`, `v=$(grep -c …) &&` com 0 possível (924b, 924c, 924d,
+  924f; 0/368 FP; zero FP também no corpus 7d-1).
+- **8a-2** `bc63343`: C13 `aviso`, `origin/` em critério, com a dica de usar a
+  `branch_alvo` local (1004; 120/368 FP). Vira erro para ticket novo quando o gerador do
+  Comarka parar de escrever `origin/`.
+- **8a-3** `b68bd4b`: C11 v2 `aviso`, teste vizinho por import direto resolvido (relativo
+  e `paths` do tsconfig) e citação, lido da árvore da `branch_alvo`; "dentro" por
+  `matchesAllowlist`; `testes_conferidos` só marca; `--relatorio` lista `testes_vizinhos`
+  (950, 1006 na entrada, 840 no pré-voo; 180/368 FP). `ContextoRepo.testesQueCitam` virou
+  `arvoreAlvo()`.
+- **8a-4**: CONTRATO §12.6 (e a tabela de §12.1), este registro e `docs/PECAS.md` (8a
+  feita; 8b e a classe "teste que varre diretório" pendentes).
+
+Asserções existentes que mudaram: (8a-1, 8a-2) a tabela de severidade de
+`orquestrador-gate-severidade.test.ts` ganha `C13: 'aviso'` e `C14: 'erro'`. (8a-3) em
+`orquestrador-gate-comarka.test.ts`, os dois testes da C11 antiga sobre o Comarka 402
+(`vercel.json` em 3 testes; teste na allowlist não conta) viraram um: a C11 v2 não acusa
+o 402, porque `vercel.json` não é item de `src/` e o corpus não tem a árvore; a cobertura
+de "dentro da allowlist" foi para `orquestrador-gate-8a.test.ts`, com árvore real. O teste
+do CLI troca a mensagem esperada da C11 (`importado ou citado por`). O contexto do corpus
+devolve `arvoreAlvo: undefined`.
