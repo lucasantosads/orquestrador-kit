@@ -16,7 +16,10 @@
  *     `Orq-Resolvedor: <classe> <regra> <assinatura>`;
  *   - NUNCA `--no-verify`: o hook do repo (no Comarka, validar-fila) é a
  *     segunda trava; se ele recusar, o arquivo volta ao que era;
- *   - nunca push, nunca outro verbo de escrita.
+ *   - nunca push, nunca outro verbo de escrita;
+ *   - só na branch esperada do repo (8b): `branch` do item no repos.json,
+ *     senão `branch_protegida` do config do repo, senão `main`. Fora dela não
+ *     escreve, e quem chama registra `branch_inesperada` (acoes.ts).
  *
  * Toda leitura de git continua em `gitLeitura` (GIT_OPTIONAL_LOCKS=0).
  */
@@ -169,14 +172,26 @@ function gitEscrita(raiz: string, args: string[]): { rc: number; saida: string }
   return { rc: r.status ?? 1, saida: `${r.stdout ?? ''}${r.stderr ?? ''}`.trim() }
 }
 
-export type Escrita = { ok: true; commit: string } | { ok: false; motivo: string }
+export type Escrita = { ok: true; commit: string } | { ok: false; motivo: string; branch?: { atual: string; esperada: string } }
+
+/** A branch em que o resolvedor pode commitar no repo (8b): a do item, a `branch_protegida` do config ou `main`. */
+export function branchEsperada(raiz: string, doItem?: string): string {
+  if (doItem) return doItem
+  try {
+    const b = (JSON.parse(readFileSync(join(raiz, 'docs/fila/000-config.json'), 'utf8')) as { branch_protegida?: unknown }).branch_protegida
+    if (typeof b === 'string' && b.trim()) return b.trim()
+  } catch {
+    /* sem config legível: o padrão */
+  }
+  return 'main'
+}
 
 /**
  * Troca o ticket de `antes` para `novo` e faz o commit só dele. Se qualquer
  * coisa falha depois de escrever (hook, commit com outro arquivo), o arquivo
  * volta a `antes`.
  */
-export function escreverEComitar(raiz: string, id: string, rel: string, antes: string, novo: string, mensagem: string, retrato?: Retrato): Escrita {
+export function escreverEComitar(raiz: string, id: string, rel: string, antes: string, novo: string, mensagem: string, retrato?: Retrato, branch?: string): Escrita {
   const real = confereTicket(raiz, id, rel)
   const esperando = esperarGit(raiz)
   if (esperando) return { ok: false, motivo: `git rodando: ${esperando}` }
@@ -184,6 +199,9 @@ export function escreverEComitar(raiz: string, id: string, rel: string, antes: s
   const nova = retrato ? tentativaNova(raiz, id, rel, retrato) : null
   if (nova) return { ok: false, motivo: nova }
   if (readFileSync(real, 'utf8') !== antes) return { ok: false, motivo: 'o ticket mudou desde a leitura: outro processo mexeu' }
+  const esperada = branchEsperada(raiz, branch)
+  const atual = gitLeitura(raiz, ['rev-parse', '--abbrev-ref', 'HEAD']).stdout.trim()
+  if (atual !== esperada) return { ok: false, motivo: `branch_inesperada: checkout em '${atual}', esperada '${esperada}'`, branch: { atual, esperada } }
   const headAntes = gitLeitura(raiz, ['rev-parse', 'HEAD']).stdout.trim()
   writeFileSync(real, novo)
   const c = gitEscrita(raiz, ['commit', '--only', '-q', '-m', mensagem, '--', rel])

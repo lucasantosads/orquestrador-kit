@@ -24,6 +24,7 @@ import type { Decisao } from './decidir.js'
 import { diffLinhas } from './diff.js'
 import { acoesDe, lerLedger, registrar } from './ledger.js'
 import { modoDaChave, R1_MULTI, type Modos } from './modos.js'
+import { notificar } from './pausa.js'
 import { planejarR1, type Plano } from './r1.js'
 import { planejarR2 } from './r2.js'
 import { planejarR5 } from './r5.js'
@@ -38,7 +39,7 @@ export interface Feito {
 }
 
 export interface Alvo {
-  repo: { nome: string; caminho: string; modos?: Modos }
+  repo: { nome: string; caminho: string; modos?: Modos; branch?: string }
   id: string
   diag: Diagnostico
   decisao: Decisao
@@ -78,6 +79,16 @@ function oQueMudou(tipo: 'r1_allowlist' | 'r5_reabrir', p: { testes?: { teste: s
   const lista = p.criteriosLista?.length ? `; ${ts} na lista de criterio[${p.criteriosLista.join('], criterio[')}]` : ''
   const gs = p.guardas ?? []
   return `${ts} na allowlist${lista}; guarda${gs.length > 1 ? 's' : ''} de contagem em criterio[${gs.join('], criterio[')}]; reabriu (status pendente, nota vazia)`
+}
+
+/**
+ * Checkout fora da branch esperada (8b): linha `branch_inesperada` no ledger a
+ * cada recusa, e aviso só na primeira vez daquele repo naquela branch.
+ */
+function branchInesperada(a: Alvo, b: { atual: string; esperada: string }): void {
+  const ja = lerLedger().some((e) => e.tipo === 'branch_inesperada' && e.repo === a.repo.nome && e.branch === b.atual)
+  const notificacao = ja ? null : notificar(`orq: ${a.repo.nome} fora da branch`, `checkout em '${b.atual}', esperada '${b.esperada}': o resolvedor não commita até voltar`)
+  registrar(a.g, { ts: iso(a.agora), tipo: 'branch_inesperada', repo: a.repo.nome, id: a.id, branch: b.atual, esperada: b.esperada, ...(notificacao ? { notificacao } : {}) })
 }
 
 /** As travas de ação no ticket (mesmo bloqueio; teto), ou `null` se pode agir. */
@@ -141,8 +152,11 @@ export function agirR1R5(a: Alvo, tipo: 'r1_allowlist' | 'r5_reabrir'): Feito {
   const classe = diag.classe!
   const regra = diag.regra!
   const msg = `orq-resolvedor: ${id} ${classe} ${regra}: ${mudou}\n\n${diag.remedio}\n\n${trailer(classe, regra, diag.assinatura)}\n`
-  const e = escreverEComitar(repo.caminho, id, rel, antes, plano.plano.novo, msg, retrato)
-  if (!e.ok) return { feito: 'nao_consegui', motivo: e.motivo }
+  const e = escreverEComitar(repo.caminho, id, rel, antes, plano.plano.novo, msg, retrato, repo.branch)
+  if (!e.ok) {
+    if (e.branch) branchInesperada(a, e.branch)
+    return { feito: 'nao_consegui', motivo: e.motivo }
+  }
   const copia = join(dirTicket(repo.nome, id), 'acoes', carimbo(a.agora))
   a.g.escrever(join(copia, 'antes.md'), antes)
   a.g.escrever(join(copia, 'depois.md'), plano.plano.novo)

@@ -58,7 +58,7 @@ export function desfazer(o: { repo: string; id: string; agora?: number }): Desfe
   const copia = typeof a.copia === 'string' ? join(a.copia, 'antes.md') : null
   const antes = copia && existsSync(copia) ? readFileSync(copia, 'utf8') : gitLeitura(repo.caminho, ['show', `${sha}^:${rel}`]).stdout
   const msg = `orq-resolvedor: desfaz ${sha.slice(0, 12)} (${o.id} ${a.classe} ${a.regra})\n\n${a.mudou ?? ''}\n\nOrq-Resolvedor-Desfaz: ${sha}\n`
-  const e = escreverEComitar(repo.caminho, o.id, rel, noDisco, antes, msg, retrato)
+  const e = escreverEComitar(repo.caminho, o.id, rel, noDisco, antes, msg, retrato, repo.branch)
   if (!e.ok) return { ok: false, motivo: e.motivo }
   const g = new GuardaResolvedor([repo.caminho])
   const base = { ts: iso(agora), repo: repo.nome, id: o.id, classe: a.classe ?? null, regra: a.regra ?? null, assinatura: a.assinatura }

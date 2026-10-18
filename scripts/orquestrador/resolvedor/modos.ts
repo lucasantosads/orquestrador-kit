@@ -39,6 +39,8 @@ export interface RepoResolvedor extends RepoListado {
   pausaDonos?: string[]
   /** `pausa_dono_max_min` do item (7f-b7): o limite, em minutos */
   pausaDonoMaxMin?: number
+  /** `branch` do item (8b): a única branch em que o resolvedor commita no repo */
+  branch?: string
 }
 
 export const PAUSA_DONOS_PADRAO = ['publicar.sh', 'promocao-apolo']
@@ -111,13 +113,14 @@ export function lerReposResolvedor(): RepoResolvedor[] {
   const crus = itensCrus().filter((it) => caminhoDoItem(it) !== null)
   return listados.map((r, i) => {
     const it = crus[i]
-    const obj = it && typeof it === 'object' ? (it as { resolvedor?: unknown; pausa_gate?: unknown; pausa_donos?: unknown; pausa_dono_max_min?: unknown }) : undefined
+    const obj = it && typeof it === 'object' ? (it as { resolvedor?: unknown; pausa_gate?: unknown; pausa_donos?: unknown; pausa_dono_max_min?: unknown; branch?: unknown }) : undefined
     return {
       ...r,
       modos: modosDe(obj?.resolvedor),
       pausaGate: pausaGateDe(obj?.pausa_gate),
       pausaDonos: pausaDonosDe(obj?.pausa_donos),
       pausaDonoMaxMin: pausaDonoMaxMinDe(obj?.pausa_dono_max_min),
+      ...(typeof obj?.branch === 'string' && obj.branch.trim() ? { branch: obj.branch.trim() } : {}),
     }
   })
 }
