@@ -1195,3 +1195,22 @@ acoplado sem resgate humano. CONTRATO §21.
 
 Asserções existentes que mudaram: nenhuma. O hash de versão do aviso do gate de ticket virou
 `lib.sh:ticket_versao`, com o mesmo valor.
+
+### Etapa 8d · `.env` fora da worktree e template sem drift (22/10/2026)
+
+O dashboard-comercial pode rodar o loop sem a credencial de produção do `.env.local` do
+principal dentro da worktree. CONTRATO §22.
+
+- **8d-1** `b985465`: `worktree.linkar_env`. Ausente ou `true` = os dois links de antes;
+  `false` = nenhum `.env*` ligado, symlinks `.env*` de worktree reaproveitada apagados,
+  evento `WORKTREE env=nao-linkado … apagados=N`; não-booleano aborta o preflight com a
+  chave e o valor, e o `orq config` acusa o mesmo. Vermelho: 10 de 14 casos contra
+  `d3ce1b0` (os 4 verdes são os de identidade com o config do CI e a prova de que o
+  preflight não exporta). Fixtures: config do CI e rascunho da seção H do dashboard.
+- **8d-2** `0845dfc`: o template escreve em `zona_proibida` só o que o enforcement lê
+  (`prefixos_sem_ddl` no lugar de `no_write_prefixes`; saem `readonly_ok` e
+  `excecoes_os_owned`; entram `no_write_paths` e `no_write_credenciais.padroes`). Vermelho:
+  2 de 3 casos contra `b985465`.
+- **8d-3**: CONTRATO §22, este registro e `docs/PECAS.md`.
+
+Asserções existentes que mudaram: nenhuma.

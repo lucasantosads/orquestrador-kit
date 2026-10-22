@@ -1075,7 +1075,26 @@
   `orquestrador-vizinhos-8c-triador.test.ts` (fixtures `test/fixtures/vizinhos-8c/`, do
   Comarka, `ORIGEM.md`).
 
+- **8d · `.env` fora da worktree e template sem drift.** `worktree.linkar_env` (ausente ou
+  `true` = como antes; `false` = nenhum `.env*` do principal na worktree, inclusive na
+  reaproveitada, com evento; não-booleano aborta o preflight). O template passa a escrever em
+  `zona_proibida` só chaves que o enforcement lê. Commits `b985465`, `0845dfc`. CONTRATO §22.
+  *Evidência:* `~/orq-sessoes/relatorio-kit-etapa8d.md`.
+  *Teste:* `orquestrador-linkar-env.test.ts`, `orquestrador-template-zona.test.ts`
+  (fixtures `test/fixtures/config/ci-000-config.json` e
+  `dashboard-rascunho-h-000-config.json`, `PROCEDENCIA.md`).
+
 ## PENDENTES
+
+- **8d · leitura do `.env` do principal por caminho absoluto (ligada ao L6).** Com
+  `worktree.linkar_env: false` nada de `.env*` entra na worktree, mas o agente ainda pode ler
+  o arquivo do checkout principal pelo caminho absoluto. No dashboard-comercial são três
+  arquivos não versionados: `.env.local`, `.env.production.local` e `.env.vercel`. Fecha com o
+  L6 (guarda PreToolUse) e com o piso de `--disallowedTools` (`proibicoes_absolutas.tools`)
+  negando leitura desses caminhos.
+  *Evidência:* CONTRATO §22.2.
+  *Teste:* uma tentativa com `linkar_env: false` cujo agente tenta ler
+  `<principal>/.env.local` é barrada antes da leitura.
 
 - **8b · janela entre o sha e o `rm` na retomada da pausa de gate.** O resolvedor confere o
   sha do sentinela e chama o `orq-pause.sh --off` do repo, que apaga sem olhar o conteúdo

@@ -2113,6 +2113,59 @@ aprova; até o fim do drive; uma vez por versão; não vizinho segue base vermel
 inconclusivo na base; `it.skip` bloqueia; os prompts) e `orquestrador-vizinhos-8c-triador.test.ts`
 (o 1373 real e os 65 casos byte a byte). Fixtures em `test/fixtures/vizinhos-8c/` (`ORIGEM.md`).
 
+## 22. Etapa 8d: `.env` fora da worktree e template sem drift (22/10/2026)
+
+Origem: `~/orq-sessoes/relatorio-adocao-dashboard-paridade.md`, seção D item 1, seção H
+(rascunho do config do dashboard-comercial) e seção B, linha Zona C0. No dashboard, o
+`.env.local` do checkout principal tem a credencial do banco de PRODUÇÃO, compartilhado com o
+Comarka OS. Relatório: `~/orq-sessoes/relatorio-kit-etapa8d.md`.
+
+### 22.1 `worktree.linkar_env` (`executor.sh:linkar_env_cfg`, `env_na_worktree`)
+
+| valor | o que a worktree recebe |
+|---|---|
+| ausente, ou `true` | o de antes, byte a byte: symlink do `.env.local` do principal na raiz e em `apps/web` (lista fixa, achado K6 em aberto) |
+| `false` | nenhum `.env*` é ligado nem copiado. Os symlinks `.env*` que sobraram (worktree reaproveitada de uma tentativa com `true`) são apagados; arquivo regular (versionado, ex. `.env.example`) fica. Evento `WORKTREE env=nao-linkado motivo=worktree.linkar_env=false apagados=<N>` |
+| qualquer outro (`"false"`, `0`, `null`, `worktree` que não é objeto) | o preflight ABORTA: `preflight: worktree.linkar_env=<valor json> — worktree.linkar_env aceita só true ou false`. O `orq config` acusa a mesma chave |
+
+A leitura não usa `.worktree.linkar_env // true`: o `//` do jq trata `false` como ausente.
+`env_na_worktree` roda no `setup_worktree` e, com `false`, também na worktree reaproveitada.
+Com `true` o reaproveitamento segue como antes. O evento `WORKTREE` (§4.1) ganha esses
+campos; o vocabulário de eventos não muda.
+
+### 22.2 O que `false` não cobre
+
+- **O preflight continua lendo o `.env.local` do principal** (identidade contra
+  `ambiente_id` e `preflight_env_keys`). Só lê e compara: `env_key_present` é `grep -q`
+  (`lib.sh:1564-1570`), `env_value` imprime um `local` capturado num `local` do preflight
+  (`lib.sh:1575-1583`, `executor.sh:108`, `:117`). Não há `export`, `source` nem
+  `allexport` em `lib.sh` e `executor.sh`, e o plist só exporta `NODE_OPTIONS` e `NODE_DIR`.
+  Por isso o valor não chega a gates, critérios, agente nem juiz (caso de teste).
+- **Variável já exportada no ambiente de quem dispara o loop** chega aos filhos como
+  sempre. O motor não carrega env (`launchd-run.sh:8-11`).
+- **Leitura por caminho absoluto** do `.env.local` do principal pelo agente: fica para o L6
+  (guarda PreToolUse) e para o piso de `--disallowedTools` (`docs/PECAS.md`).
+- **`.env*` versionado** vem do git, não do motor.
+
+### 22.3 Template sem drift em `zona_proibida` (`doutrina/templates/config.json`)
+
+O template passa a escrever só chaves que o enforcement lê: `no_write_paths`,
+`no_write_credenciais.padroes`, `no_write_tables`, `prefixos_sem_ddl` (o antigo
+`no_write_prefixes`, renome da K11a-4). Saem `readonly_ok` e `excecoes_os_owned`: o motor não
+tem regra de leitura nem de ownership, e o `_zona_proibida` diz isso. `descricao` e
+`revisado_humano` ficam: são de processo humano. `config-chaves.ts` ganha as subchaves
+`zona_proibida.no_write_paths`, `.no_write_credenciais.padroes` e `.no_write_tables`
+(opcionais como subchave: `zona_proibida` inteira já é obrigatória).
+
+### 22.4 Testes
+
+`orquestrador-linkar-env.test.ts` (repo git de verdade; config do CI sem a chave e o rascunho
+da seção H com `false`, cópias em `test/fixtures/config/`, `PROCEDENCIA.md`; reaproveitamento;
+`"false"`, `0` e `null`; o preflight chama a validação; o valor lido pelo preflight não chega
+ao processo filho) e `orquestrador-template-zona.test.ts` (chave de `zona_proibida` do template
+desconhecida pelo motor reprova, com a lista fechada de processo humano; o registro não
+inventa chave fora do tipo do enforcement).
+
 ## 10. Divergências conhecidas
 
 O que este contrato **não** descreve como gostaria, e a peça que fecha cada uma.
