@@ -60,6 +60,7 @@ preflight() {
     [ -f "$ORQ_LIB_DIR/$s" ] && { bash -n "$ORQ_LIB_DIR/$s" || die "preflight: $s com erro de sintaxe"; }
   done
   jq -e . "$CONFIG" >/dev/null 2>&1 || die "preflight: $CONFIG não é JSON válido"
+  exigir_linkar_env_valido
   # Sem a lista, todo ticket pareceria edição alheia e nada do loop seria commitado (8b).
   jq -e 'type == "array" and length > 0' "$CAMPOS_DO_MOTOR_FILE" >/dev/null 2>&1 || die "preflight: $CAMPOS_DO_MOTOR_FILE ausente ou inválido"
   for f in $(ticket_files); do
@@ -305,13 +306,49 @@ setup_worktree() {
   # (pacotes_do_checkout), não adivinhado por nome de diretório.
   linkar_node_modules "$wt"
   limpa_cache_vite
-  # ACHADO em aberto (peça K6/pureza): esta lista continua FIXA. Generalizá-la
-  # para os pacotes detectados passaria a linkar .env.local de pacote que hoje
-  # não recebe link — mudança de comportamento fora do escopo desta peça.
-  local d
-  for d in "" apps/web; do
-    [ -e "$MAIN_CHECKOUT/${d:+$d/}.env.local" ] && ln -sfn "$MAIN_CHECKOUT/${d:+$d/}.env.local" "$wt/${d:+$d/}.env.local"
-  done
+  env_na_worktree "$id" "$wt"
+  return 0
+}
+
+# linkar_env_cfg -> `true`, `false` ou `invalido <chave>=<valor json>`.
+# Etapa 8d. NÃO é `.worktree.linkar_env // true`: o `//` do jq trata `false`
+# como ausente e devolveria `true` justamente quando o config diz `false`.
+# Ausente = `true` (o comportamento de antes da chave); só booleano vale.
+linkar_env_cfg() {
+  jq -r 'if has("worktree") | not then "true"
+    elif (.worktree | type) != "object" then "invalido worktree=\(.worktree | tojson)"
+    elif (.worktree | has("linkar_env") | not) then "true"
+    elif (.worktree.linkar_env | type) == "boolean" then (.worktree.linkar_env | tostring)
+    else "invalido worktree.linkar_env=\(.worktree.linkar_env | tojson)" end' "$CONFIG"
+}
+
+# Valor inválido ABORTA: config errado não melhora repetindo, e "false" string
+# lido como true ligaria a credencial de produção sem ninguém ver.
+exigir_linkar_env_valido() {
+  local v; v="$(linkar_env_cfg)"
+  case "$v" in true|false) ;; *) die "preflight: ${v#invalido } — worktree.linkar_env aceita só true ou false" ;; esac
+}
+
+# env_na_worktree <id> <worktree> — o .env.local do principal entra na worktree
+# só com `worktree.linkar_env` true (ou ausente). Com qualquer outra coisa nada
+# é ligado, os symlinks .env* que sobraram de tentativa anterior (worktree
+# reaproveitada) são apagados, e o evento diz quantos. Arquivo regular
+# (versionado, ex. .env.example) não é tocado: ele veio do git, não do motor.
+env_na_worktree() {
+  local id="$1" wt="$2" d n=0 l
+  if [ "$(linkar_env_cfg)" = true ]; then
+    # ACHADO em aberto (peça K6/pureza): esta lista continua FIXA. Generalizá-la
+    # para os pacotes detectados passaria a linkar .env.local de pacote que hoje
+    # não recebe link — mudança de comportamento fora do escopo desta peça.
+    for d in "" apps/web; do
+      [ -e "$MAIN_CHECKOUT/${d:+$d/}.env.local" ] && ln -sfn "$MAIN_CHECKOUT/${d:+$d/}.env.local" "$wt/${d:+$d/}.env.local"
+    done
+    return 0
+  fi
+  while IFS= read -r l; do
+    [ -n "$l" ] && rm -f "$l" && n=$((n + 1))
+  done < <(find "$wt" -name .git -prune -o -name node_modules -prune -o -type l -name '.env*' -print 2>/dev/null)
+  event "$id" WORKTREE "env=nao-linkado" "motivo=worktree.linkar_env=false" "apagados=$n"
   return 0
 }
 
@@ -1528,6 +1565,8 @@ drive_ticket() {
       log "  worktree REAPROVEITADA de attempt-$((slot + attempt - attempt0 - 1)) (enforcement passou): commit anterior presente, base $(printf '%.8s' "$base_ticket")"
       event "$id" WORKTREE "modo=reaproveitada" "de=attempt-$((slot + attempt - attempt0 - 1))" "base=$(printf '%.8s' "$base_ticket")"
       limpa_cache_vite
+      # Com true o reaproveitamento segue como antes (os links já estão lá).
+      [ "$(linkar_env_cfg)" = true ] || env_na_worktree "$id" "$wt"
     else
       setup_worktree "$id" "$wt"
       base_ticket="$(git -C "$wt" rev-parse HEAD)"

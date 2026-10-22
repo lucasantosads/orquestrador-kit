@@ -16,6 +16,10 @@
   "_adiamentos_limite": "Peça 7b-3 (local-loop.sh:adiamentos_limite). Adiamentos SEM cooldown seguidos (timeout, 5xx, sessão, gate que não rodou, recusa de preflight), contados em runs/<id>/.adiamentos. No limite o ticket vai para bloqueado, commitado, com notas_status 'adiado N vezes: <causa real>' (a medida do último ADIADO: motivo, rc e duração, ou a causa do preflight), e a trilha ganha BLOQUEADO motivo=adiamentos. Adiado com cooldown (rate_limit, quota) não conta nem zera; sair de pendente ou a branch alvo avançar zera. Ausente ou inválida = 4.",
   "migrations_dir": "<ex: supabase/migrations | db/migrations>",
   "worktrees_dir": "../_worktrees",
+  "worktree": {
+    "linkar_env": true
+  },
+  "_worktree": "Etapa 8d. `linkar_env`: true (ou ausente) liga o .env.local do checkout principal (raiz e apps/web) na worktree do ticket, e gates, critérios, agente e juiz rodam com ele à vista. Use false quando esse arquivo tiver credencial que o loop não pode ter (ex.: banco de produção): nada de .env* entra, e o evento WORKTREE env=nao-linkado vai para o events.log. Só booleano: qualquer outro valor aborta o preflight. O preflight de identidade continua lendo o .env.local do principal, sem exportar nada.",
   "runs_dir": "docs/fila/runs",
   "liberacoes_file": "docs/fila/liberacoes.json",
   "decisoes_file": "docs/fila/decisoes-pendentes.md",

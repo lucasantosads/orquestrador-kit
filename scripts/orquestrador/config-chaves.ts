@@ -117,6 +117,9 @@ export const CHAVES_CONFIG: ChaveConfig[] = [
   // --- piso de tools (peça T17) ---------------------------------------------
   { chave: 'proibicoes_absolutas.tools', onde: 'executor.sh:tools_proibidas, perfil.ts:190', obrigatoria: false, nota: 'o PISO de --disallowedTools; ausente = piso vazio e a flag não é passada. Nos três repos do disco `proibicoes_absolutas` ainda é um ARRAY de prosa, e ali o piso nasce vazio' },
 
+  // --- worktree (etapa 8d) --------------------------------------------------
+  { chave: 'worktree.linkar_env', onde: 'executor.sh:linkar_env_cfg', obrigatoria: false, nota: 'ausente = true, o comportamento de antes; false = nenhum .env* do principal entra na worktree; não-booleano aborta o preflight' },
+
   // --- agendamento (peça K6c) -----------------------------------------------
   { chave: 'launchd.label', onde: 'instalar-launchd.sh:47', obrigatoria: true, nota: 'NÃO tem default: o instalador RECUSA sem ele. Um label por repo — dois repos com o mesmo label são o MESMO job para o launchd' },
   { chave: 'launchd.start_interval', onde: 'instalar-launchd.sh:59', obrigatoria: false, nota: 'ausente vira 1800, o valor medido em 06/set/2026' },

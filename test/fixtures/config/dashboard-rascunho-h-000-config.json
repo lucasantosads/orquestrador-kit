@@ -1,0 +1,35 @@
+{
+  "schema": 2,
+  "branch_alvo": "staging-auto",
+  "branch_protegida": "main",
+  "repo_origin_deve_conter": "dashboard-comercial",
+  "ambiente_id": "ogfnojbbvumujzfklkhh",
+  "max_retries": 3,
+  "diff_cap_linhas": 400,
+  "migrations_dir": "supabase/migrations",
+  "runs_dir": "docs/fila/runs",
+  "liberacoes_file": "docs/fila/liberacoes.json",
+  "decisoes_file": "docs/fila/decisoes-pendentes.md",
+  "pausar_file": "docs/fila/.orq-pause",
+  "worktrees_dir": "~/Projetos/_worktrees",
+  "worktrees_prefixo": "orq-dc-",
+  "claude_timeout_secs": 1800,
+  "claude_max_turns": 60,
+  "executor_model": "sonnet",
+  "retry_final_model": "opus",
+  "modelos": { "executor": "sonnet", "juiz_alto": "opus", "juiz_baixo": "sonnet", "retry_final": "opus", "classificador": "haiku" },
+  "worktree": { "linkar_env": false },
+  "orcamento": { "custo_file": "docs/fila/runs/custo.json", "usd_dia": null, "tokens_dia": null, "usd_ticket": null },
+  "gates": [
+    { "nome": "typecheck", "cmd": "node_modules/.bin/tsc --noEmit 2>&1 | grep 'error TS' | grep -v '^\\.next/'", "tipo": "baseline", "baseline": 246 },
+    { "nome": "testes", "cmd": "node_modules/.bin/vitest run", "tipo": "exit_code" },
+    { "nome": "build", "cmd": "node_modules/.bin/next build", "tipo": "exit_code" }
+  ],
+  "zona_proibida": {
+    "no_write_tables": ["clientes_receita","leads_crm","leads_crm_historico","ads_metadata","ads_performance","fn_mql_sql_by_month","vw_atribuicao_proporcional","perf_meta_connections","perf_meta_ad_map","perf_ghl_locations","perf_ia_analises","ia_prompts","meta_connections","meta_ad_accounts","meta_insights_cache","meta_lead_forms","meta_sync_logs","meta_agency_connection","client_meta_accounts","_audit_baseline_metrics_v2","clientes"],
+    "prefixos_sem_ddl": ["trafego_","leads_crm","vw_","perf_","meta_"],
+    "no_write_paths": ["supabase/**","migrations/**","sql/**",".env*","next.config.mjs","vercel.json","vitest.config.ts","vitest.integration.config.ts","**/*.integration.test.ts","docs/fila/000-config.json","docs/fila/liberacoes.json","scripts/orquestrador/**","scripts/orq","CLAUDE.md"]
+  },
+  "gate_ticket": { "modo_pre_voo": "bloqueia" },
+  "launchd": { "label": null }
+}

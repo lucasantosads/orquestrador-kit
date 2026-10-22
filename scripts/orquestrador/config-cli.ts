@@ -170,6 +170,22 @@ export function validarConfig(cfg: unknown): Violacao[] {
     }
   }
 
+  // 5. worktree.linkar_env (etapa 8d): só booleano. O executor ABORTA no
+  //    preflight com qualquer outra coisa (executor.sh:exigir_linkar_env_valido);
+  //    aqui é a mesma regra dita antes do run.
+  if ('worktree' in c) {
+    const w = c.worktree
+    const ok = w && typeof w === 'object' && !Array.isArray(w)
+      && (!('linkar_env' in w) || typeof (w as Record<string, unknown>).linkar_env === 'boolean')
+    if (!ok) {
+      const valor = w && typeof w === 'object' ? (w as Record<string, unknown>).linkar_env : w
+      v.push({
+        chave: 'worktree.linkar_env',
+        mensagem: `aceita só true ou false; encontrado ${JSON.stringify(valor)} — o executor aborta no preflight`,
+      })
+    }
+  }
+
   return v
 }
 

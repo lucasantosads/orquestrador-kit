@@ -40,3 +40,14 @@ config do Actus foi migrado para o schema 2 em `5b623d5` (2026-09-11) e o caso
 "o proposto tem MENOS violações que o original" perdeu o objeto (o relatório
 passou a dizer `0 violações`, sem o `N violação(ões)` que o caso procura). O
 teste é sobre a migração de um v1; o fixture é o v1.
+
+## Acréscimo da etapa 8d (2026-10-22)
+
+| Arquivo | Origem (só leitura) | Schema | cksum |
+|---|---|---|---|
+| `ci-000-config.json` | `~/Projetos/conteudos-infinitos/docs/fila/000-config.json`, HEAD `e1541e2` (último commit que o tocou: `090e178`, 2026-10-14), sem mudança local; `cmp` contra o original = idêntico | v2 | `2955789644 34521` |
+| `dashboard-rascunho-h-000-config.json` | o bloco ```json da seção H de `~/orq-sessoes/relatorio-adocao-dashboard-paridade.md` (rascunho, não um arquivo de repo), extraído sem edição | rascunho (`"schema": 2`, ainda sem `$schema_versao`) | `3836506741 2176` |
+
+Lidos por `test/orquestrador-linkar-env.test.ts`: o do CI é o caso "sem a chave"
+(o comportamento de antes da 8d, byte a byte), o rascunho é o caso
+`"worktree": {"linkar_env": false}` que motivou a etapa.
