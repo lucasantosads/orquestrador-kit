@@ -209,21 +209,30 @@
     "docs/fila/000-config.json",
     ".claude/**"
   ],
+  "_zona_proibida": "Etapa 8d: só chaves que o enforcement lê (config-chaves.ts). no_write_paths e no_write_credenciais.padroes são globs de caminho; no_write_tables é \"TODAS\" ou a lista de tabelas congeladas por nome; prefixos_sem_ddl (o antigo no_write_prefixes) proíbe CREATE/ALTER/DROP de objeto com o prefixo. O motor NÃO tem regra de leitura (o antigo readonly_ok) nem de ownership (o antigo excecoes_os_owned): tabela fora de no_write_tables pode ser escrita, e ninguém fica protegido por uma lista que o motor não lê.",
   "zona_proibida": {
     "descricao": "Tudo que o loop NUNCA escreve nem gera DDL. Revisado por humano (revisado_humano: true) antes do primeiro run.",
     "revisado_humano": false,
+    "no_write_paths": [
+      ".env*",
+      "**/.env*",
+      "<outros caminhos que o loop nunca escreve>"
+    ],
+    "no_write_credenciais": {
+      "padroes": [
+        "**/*.pem",
+        "**/*.key",
+        "**/id_rsa*",
+        "**/credentials*",
+        "**/secrets*"
+      ]
+    },
     "no_write_tables": [
       "<tabela_compartilhada_1>"
     ],
-    "no_write_prefixes": [
+    "prefixos_sem_ddl": [
       "<prefixo_proibido_>",
       "vw_"
-    ],
-    "readonly_ok": [
-      "<tabelas que o loop pode SELECT mas nunca escrever>"
-    ],
-    "excecoes_os_owned": [
-      "<tabelas de nome parecido mas de propriedade deste repo>"
     ]
   },
   "_gates_papel": "Chave OPCIONAL por gate (peça K6b): \"papel\": \"typecheck\" | \"testes\" | \"build\" | \"lint\". É ela que decide o que a linha GATE da trilha diz sobre cada gate. Quando ausente, o papel é INFERIDO do nome (executor.sh, papel_do_gate: *typecheck*/*tsc*/*types* → typecheck; *lint* → lint; *build*/*compil* → build; *test*/*spec* → testes). Declare-a quando o nome do gate não disser o papel — um gate chamado `verificacao` sai como nao-configurado sem ela. Papel que não existe em gate nenhum do config aparece na trilha como `nao-configurado`, nunca `nao-rodou`.",
