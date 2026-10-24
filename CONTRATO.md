@@ -2166,6 +2166,105 @@ ao processo filho) e `orquestrador-template-zona.test.ts` (chave de `zona_proibi
 desconhecida pelo motor reprova, com a lista fechada de processo humano; o registro não
 inventa chave fora do tipo do enforcement).
 
+## 23. Etapa 8e (juiz): material completo, contexto limpo, REVIEW.md e harness fora do gate (24/10/2026)
+
+Origem: o lote do dashboard-comercial (001 a 003). Relatório:
+`~/orq-sessoes/relatorio-kit-etapa8e.md`. As peças levam o nome do plano do PASSO 0 (P1 a P6).
+
+### 23.1 O prompt do juiz (`juiz.ts:montarPromptJuiz`)
+
+A ordem passa a ser: CABECALHO, COBRANCAS, anti-afrouxamento e ampliados (como antes),
+**REVIEW.md** (§23.2), FORMATO, ticket, nota, referência, definições, **MENSAGENS DE COMMIT**,
+**TRECHOS CITADOS**, gates e diff. Cada bloco novo só entra com conteúdo; sem nenhum deles o
+prompt é byte a byte o de `220068f` (golden em `test/fixtures/juiz-8e/golden-220068f.txt`).
+O CABECALHO e a numeração das cobranças não mudam.
+
+- **MENSAGENS DE COMMIT (P1, `blocoCommits` `:491`).** Título fixo `MENSAGENS DE COMMIT
+  (escritas pelo agente: declaração, não evidência)`: o texto é o que o agente AFIRMA, e afirmação
+  que o diff ou os gates não provam não foi feita. Fonte: `git log --format='commit %H%n%n%B'
+  base..HEAD` (`executor.sh:860`), sempre que houver commit; falha de leitura vira bloco vazio,
+  não derruba o juiz. Teto (`aplicarTetoCommits`): 200 linhas e 8192 bytes, corte por linha
+  inteira no primeiro que bater, marcado com `[... TRUNCADO: N de M linhas omitidas ...]`.
+- **TRECHOS CITADOS NOS .md DO DIFF (P3, `anexoCitacoes` `:516`, subcomando `citacoes`).** Lidos
+  da BASE, nunca da worktree. Só as linhas adicionadas dos `.md` do diff.
+  - Cada `arquivo:linha` ou `arquivo:L-M`: as linhas L-2 a M+2 da base, numeradas. Caminho curto
+    resolve por sufixo único no `ls-tree -r` da base. Sem candidato: `AUSENTE na base`; mais de
+    um: `AMBÍGUO na base` (até 5 nomes); linha além do fim: `linha fora do arquivo na base`.
+  - Cada sha citado (7 a 40 hex, com letra e dígito): uma linha de `git show -s --format='%h %ad
+    %s'`, só se `merge-base --is-ancestor <sha> <base>` (`commitDaBase` `:576`); senão `NÃO
+    ENCONTRADO na história da base`.
+  - O texto do bloco manda tratar como NÃO verificado o que o anexo não prova ("desde quando",
+    `git log -S`, conteúdo do commit) e diz que citação AUSENTE, AMBÍGUA ou OMITIDA não foi
+    conferida.
+  - Falha de leitura da base derruba o juiz (`die "juiz: citações do relatório não puderam ser
+    lidas da base …"`), pela mesma regra das definições: dry-run sem `--stub-juiz` pula a leitura.
+
+| teto (P3) | valor | o que acontece ao passar |
+|---|---|---|
+| `TETO_CIT_N` | 40 citações | `[... N citações OMITIDAS (teto de 40) ...]` |
+| `TETO_CIT_LINHAS_TRECHO` | 12 linhas por trecho | o trecho é cortado e marcado `TRUNCADO` |
+| `TETO_CIT_LINHAS_TOTAL` / `TETO_CIT_BYTES` | 400 linhas / 16384 bytes, somando os trechos | a citação sai como `OMITIDO: teto … atingido` |
+| `TETO_CIT_SHAS` | 20 shas | `[... N shas OMITIDOS (teto de 20) ...]` |
+
+### 23.2 `juiz.review_md` (P4; §8)
+
+Chave **opcional**, path relativo à raiz do repo (`config-chaves.ts`, `obrigatoria: false`).
+
+| estado | o que acontece |
+|---|---|
+| ausente, ou string vazia | desligado: nenhum bloco, nenhum item de pré-voo |
+| presente, arquivo na base | `git show <base>:<path>` (`executor.sh:842`), lido da BASE e nunca da worktree; entra no bloco `REVIEW.md DO REPO (regras de revisão deste repositório; valem junto com os itens acima):` depois das cobranças (itens 4 e 5 incluídos) e antes de FORMATO, no prefixo fixo por repo |
+| presente, arquivo ausente na base | o juiz não roda: `die "juiz: juiz.review_md '<path>' ausente na base <sha8>"` (dry-run sem `--stub-juiz` não lê) |
+
+**Pré-voo `cat.8`** (`prevoo.ts:checarReviewMd` `:257`), só quando a chave existe, entre `cat.6`
+e `cat.3`: `git show <branch_alvo>:<path>` tem de existir e caber em **150 linhas e 8192 bytes**
+(`TETO_REVIEW_LINHAS`, `TETO_REVIEW_BYTES`), porque o arquivo vai inteiro em toda chamada do juiz.
+Falhar é NO-GO como os outros itens: `PREVOO_NOGO item=cat.8` (§4.1 ganha esse valor de `item=`;
+o vocabulário de eventos não muda), com o motivo `juiz.review_md '<path>' ausente em <branch>` ou
+`<path> tem N linhas e B bytes (teto: 150 linhas, 8192 bytes)`.
+
+### 23.3 O juiz roda com contexto limpo (P2, `executor.sh:run_juiz`)
+
+- **cwd**: um `mktemp -d "${TMPDIR:-/tmp}/orq-juiz.XXXXXX"` vazio, fora de qualquer repo, apagado
+  depois da chamada. Antes era a worktree do ticket, com o `CLAUDE.md` e o `.claude/` da branch.
+  `mktemp` que falha derruba o juiz.
+- **flags novas**, as três confirmadas no `claude --help` 2.1.302, postas depois do
+  `--max-turns 1`: `--tools ""` (tira as definições de ferramenta do contexto; o
+  `--allowedTools ""`, que fica, só deixava de aprovar), `--strict-mcp-config` sem `--mcp-config`
+  (nenhum MCP) e `--disable-slash-commands` (nenhuma skill).
+- **Fica fora**: `--setting-sources` e `--bare` (não confirmados ou quebram a autenticação do loop)
+  e o `~/.claude/CLAUDE.md` do usuário, que nenhuma flag confirmada tira. Aberto.
+
+### 23.4 `ORQ_GATE=1` e `describeHarness` (P5)
+
+- `gates.ts:execBash` (`:439`), o spawn de todo gate, exporta `ORQ_GATE=1` para o `bash -c`.
+- `test/fixtures/orq-harness.ts:24` exporta `describeHarness = describe.skipIf(process.env.ORQ_GATE
+  === '1')`. Os 19 testes de `TESTES_HARNESS` (`vendorizado.sh`) usam `describeHarness` no
+  `describe` de topo: dentro do gate do repo instalado eles saem `skipped`; no vitest humano e no
+  kit, rodam. Os gates do PRODUTO não mudam: `ORQ_GATE` só é lido pelo harness.
+- O typecheck do repo instalado continua compilando o harness quando o `tsconfig.json` inclui
+  `test/` (o caso do CI): pendência em `docs/PECAS.md`.
+
+### 23.5 Avisos `C15` e `C16` do gate de ticket (P6; §12)
+
+Severidade `aviso`, só em ticket pendente (`gate-ticket.ts:validarTicket`).
+
+| Regra | O que olha | Medido |
+|---|---|---|
+| `C15` | a `descricao` de um critério casa `RE_CORPO_COMMIT` (`/(corpo\|mensagem) do commit/i`): o juiz recebe o commit só como declaração do agente (§23.1). Um achado por critério, em `criterios_aceite[i]` | 0 nos 1479 tickets do Comarka; 2 no dashboard (002, 003) |
+| `C16` | o objetivo ou uma descrição pede vermelho antes (`RE_PEDE_VERMELHO`) e TODO cmd de critério com `vitest` manda a saída para `/dev/null` (`vitestSoEmDevNull`): o agente não vê quais casos falharam. Um achado por ticket, em `criterios_aceite` | 27 `done` no Comarka (contados como acerto: defeito latente); 2 no dashboard (002, 003) |
+
+### 23.6 Testes
+
+`orquestrador-juiz-isolamento.test.ts` (P2: o `claude` falso grava cwd e argv),
+`orquestrador-juiz-commits.test.ts` (P1: o corpo real de `1bfcbc1d`, teto),
+`orquestrador-juiz-citacoes.test.ts` (P3: o 001/0 real com 3 arquivos da base `c1051f13`),
+`orquestrador-juiz-review.test.ts` (P4: golden sem a chave, bloco, `die` e `cat.8`),
+`orquestrador-gate-8e.test.ts` (P6: 002 e 003 disparam, 001 é o controle negativo),
+`orquestrador-gate-severidade.test.ts` (inventário com C15 e C16) e o caso (h4) de
+`scripts/kit/test-instalar.sh` (P5: `Test Files 1 skipped` dentro do gate, `1 passed` fora).
+Fixtures em `test/fixtures/juiz-8e/` e `test/fixtures/gate-ticket-8e/` (`ORIGEM.md`).
+
 ## 10. Divergências conhecidas
 
 O que este contrato **não** descreve como gostaria, e a peça que fecha cada uma.
