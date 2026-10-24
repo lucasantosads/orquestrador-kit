@@ -13,8 +13,10 @@
  * bloco deste arquivo prova isso contra o arquivo REAL.
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import {
   BASE_TOOLS,
   PISO_TOOLS_SEMENTE,
@@ -203,5 +205,48 @@ describe('migrar-config: `proibicoes_absolutas` é um ARRAY nos três repos', ()
   it('a SEMENTE do código e a da tabela de migração são a MESMA lista', () => {
     const nova = NOVAS.find((n) => n.chave === 'proibicoes_absolutas.tools')!;
     expect(nova.valor).toEqual([...PISO_TOOLS_SEMENTE]);
+  });
+});
+
+// ─── K2 (dashboard-comercial, 24/10/2026): Read de .env* por caminho absoluto ─
+
+/**
+ * As worktrees do loop moram ao lado de checkouts humanos que têm `.env.local`
+ * de produção. `linkar_env: false` tira o link, mas o agente ainda alcança o
+ * arquivo pelo caminho absoluto. O piso ganha uma regra de PERMISSÃO com
+ * caminho (`Read(~/**\/.env*)`), que não é `Bash(...)` nem nome solto.
+ *
+ * O que este bloco prova: a regra chega INTACTA ao `--disallowedTools` (sem a
+ * vírgula do join a partir), e NÃO tira `Read` da allowlist (o agente segue
+ * lendo a worktree). Quem barra a leitura é o CLI do Claude Code; a prova disso
+ * é uma chamada real, fora da suíte (ela gasta modelo).
+ */
+describe('K2 · regra Read com caminho no piso', () => {
+  const REGRAS = ['Read(~/**/.env*)', 'Read(//Users/**/.env*)'];
+  const PISO = [...PISO_TOOLS_SEMENTE, ...REGRAS];
+
+  it('pisoDoConfig devolve as regras byte a byte', () => {
+    expect(pisoDoConfig({ proibicoes_absolutas: { tools: PISO } })).toEqual(PISO);
+  });
+
+  it('decisao-cli disallowed (o que o executor passa ao --disallowedTools) as carrega intactas', () => {
+    const raiz = mkdtempSync(join(tmpdir(), 'orq-k2-'));
+    mkdirSync(join(raiz, 'docs', 'fila'), { recursive: true });
+    writeFileSync(join(raiz, 'docs', 'fila', '000-config.json'), JSON.stringify({ proibicoes_absolutas: { tools: PISO } }));
+    const r = spawnSync(join(REPO_ROOT, 'node_modules', '.bin', 'tsx'), [join(REPO_ROOT, 'scripts', 'orquestrador', 'decisao-cli.ts'), raiz, 'disallowed'], { encoding: 'utf8' });
+    expect(r.status, r.stderr).toBe(0);
+    const itens = r.stdout.split(',');
+    for (const regra of REGRAS) expect(itens).toContain(regra);
+    expect(itens).toEqual(PISO);
+  });
+
+  it('a regra com caminho NÃO poda o Read da allowlist (só o CLI decide o caminho)', () => {
+    const tools = toolsDoTicket(GATES_CI, [], PISO).split(',');
+    expect(tools).toContain('Read');
+    for (const regra of REGRAS) expect(tools).not.toContain(regra);
+  });
+
+  it('nenhuma regra do piso tem vírgula (o join do decisao-cli a partiria)', () => {
+    for (const regra of PISO) expect(regra).not.toContain(',');
   });
 });
