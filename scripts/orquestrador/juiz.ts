@@ -121,6 +121,12 @@ export interface EntradaPrompt {
    * sai byte a byte como antes.
    */
   ampliados?: string[]
+  /**
+   * Etapa 8e (P1) — `git log --format='commit %H%n%n%B' base..HEAD`, CRU. Texto
+   * do AGENTE: entra rotulado como declaração, nunca como evidência. Ausente ou
+   * vazio (nenhum commit em base..HEAD): o prompt sai byte a byte como antes.
+   */
+  commits?: string
 }
 
 /** A allowlist inclui arquivo de teste? Só então o bloco anti-afrouxamento entra. */
@@ -451,6 +457,37 @@ function blocoDefinicoes(defs: DefinicaoChamada[]): string[] {
   ]
 }
 
+// ─── 2c · mensagens de commit (etapa 8e, P1) ───────────────────────────────
+
+export const TETO_COMMITS_LINHAS = 200
+export const TETO_COMMITS_BYTES = 8192
+
+/** Corta por linha inteira no primeiro teto que bater; o corte é MARCADO no texto. */
+export function aplicarTetoCommits(texto: string): string {
+  const linhas = texto.replace(/\n+$/, '').split('\n')
+  const out: string[] = []
+  let bytes = 0
+  for (const l of linhas) {
+    const b = Buffer.byteLength(l) + 1
+    if (out.length >= TETO_COMMITS_LINHAS || bytes + b > TETO_COMMITS_BYTES) break
+    out.push(l)
+    bytes += b
+  }
+  if (out.length === linhas.length) return out.join('\n')
+  return `${out.join('\n')}\n[... TRUNCADO: ${linhas.length - out.length} de ${linhas.length} linhas omitidas (teto de ${TETO_COMMITS_LINHAS} linhas / ${TETO_COMMITS_BYTES} bytes) ...]`
+}
+
+function blocoCommits(commits: string): string[] {
+  return [
+    '',
+    'MENSAGENS DE COMMIT (escritas pelo agente: declaração, não evidência):',
+    'O que o agente AFIRMA ter feito. Serve para saber o que conferir no diff e nos',
+    'gates; uma afirmação aqui que o diff ou os gates não provam NÃO foi feita.',
+    '',
+    aplicarTetoCommits(commits),
+  ]
+}
+
 /**
  * Ordem estável para cache de prefixo (custo-e-contexto §4): tudo que é fixo
  * primeiro, o material variável (diff, gates) por último.
@@ -489,6 +526,7 @@ export function montarPromptJuiz(e: EntradaPrompt): string {
     ...(e.nota?.trim() ? ['', 'NOTA DO HARNESS SOBRE ESTA TENTATIVA:', e.nota.trim()] : []),
     ...(e.contexto && e.contexto.length > 0 ? blocoReferencia(e.contexto) : []),
     ...(e.definicoes && e.definicoes.length > 0 ? blocoDefinicoes(e.definicoes) : []),
+    ...(e.commits?.trim() ? blocoCommits(e.commits) : []),
     '',
     'SAÍDA DOS GATES MECÂNICOS:',
     e.gates.trim() || '(vazia)',

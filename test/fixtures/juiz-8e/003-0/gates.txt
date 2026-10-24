@@ -1,0 +1,4 @@
+ok   typecheck             59405ms
+ok   testes                43756ms
+ok   build                218039ms
+VEREDITO: APROVADO

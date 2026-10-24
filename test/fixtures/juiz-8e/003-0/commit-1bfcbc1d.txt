@@ -1,0 +1,21 @@
+003: concederConquista não concede quando a contagem de posse falha
+
+A verificação 'já possui' decidia por (count ?? 0) > 0, então count null
+(com ou sem error) era tratado como 'não possui' e inserindo de novo.
+Agora lê também o error: com error ou count null, registra
+console.error [liga-conquistas] dizendo que nada foi concedido e retorna
+null sem inserir. Caminho feliz inalterado (count 0 insere, count > 0
+retorna null, tipo inexistente retorna null).
+
+Teste novo src/__tests__/liga-conquistas-guarda.test.ts (getSupabaseAdmin
+mockado, sem rede). Os casos (a) count null/error null e (b) count null
+com error FALHARAM contra o código anterior (rodei o arquivo antes da
+correção: vermelho) e passam depois; (c) e (d) cobrem o caminho feliz.
+
+Typecheck e build não foram rodados: não estão entre os comandos
+autorizados nesta sessão.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+Orq-Ticket: 003
+
