@@ -759,7 +759,7 @@ event_gate() {
 # INDEPENDÊNCIA (custo-e-contexto §7): a entrada é diff cru + gates.txt +
 # critérios do ticket. Nunca o prompt do executor (que está no mesmo rundir e
 # NÃO entra aqui), nunca o stdout do agente. Sem ferramenta nenhuma
-# (--allowedTools "" + instrução explícita no prompt) e --max-turns 1: o juiz
+# (--tools "" + instrução explícita no prompt) e --max-turns 1: o juiz
 # lê o que recebeu e responde, não investiga.
 JUIZ_ROU=0; JUIZ_APROVADO=""; JUIZ_MOTIVO=""; JUIZ_FALHOS=""; JUIZ_ILEGIVEL=0
 juiz() { "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/juiz.ts" --run-cli "$MAIN_CHECKOUT" "$@"; }
@@ -859,9 +859,19 @@ run_juiz() {
     log "  juiz: dry-run sem --stub-juiz — PULADO (dry-run não inventa veredito)"
     return 0
   else
-    claude_run "$wt" "$raw" "$(cfg '.claude_timeout_secs')" -- \
+    # Etapa 8e (P2): contexto LIMPO. O cwd é um dir vazio fora de qualquer repo
+    # (na worktree o juiz herdava o CLAUDE.md e o .claude/ da branch), e as
+    # flags são as que o `claude --help` confirma: `--tools ""` tira as
+    # definições de ferramenta do contexto (o `--allowedTools ""` só deixava de
+    # aprovar), `--strict-mcp-config` sem `--mcp-config` = nenhum MCP, e
+    # `--disable-slash-commands` = nenhuma skill.
+    local cwd_juiz
+    cwd_juiz="$(mktemp -d "${TMPDIR:-/tmp}/orq-juiz.XXXXXX")" || die "juiz: mktemp -d falhou"
+    claude_run "$cwd_juiz" "$raw" "$(cfg '.claude_timeout_secs')" -- \
       -p "$(cat "$prompt")" --output-format json --model "$modelo" \
-      --allowedTools "" --max-turns 1 || rc=$?
+      --tools "" --allowedTools "" --max-turns 1 \
+      --strict-mcp-config --disable-slash-commands || rc=$?
+    rm -rf "$cwd_juiz"
     custo_registrar juiz "$id" "$attempt" "$raw"
   fi
   JUIZ_ROU=1
