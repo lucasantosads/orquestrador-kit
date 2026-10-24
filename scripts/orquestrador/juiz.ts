@@ -127,6 +127,12 @@ export interface EntradaPrompt {
    * vazio (nenhum commit em base..HEAD): o prompt sai byte a byte como antes.
    */
   commits?: string
+  /**
+   * Etapa 8e (P3) — anexo de `anexoCitacoes`: trechos da BASE de cada
+   * `arquivo:linha` e uma linha de `git show -s` de cada sha citados nas linhas
+   * adicionadas dos .md do diff. Ausente ou vazio: o prompt sai como antes.
+   */
+  anexo?: string
 }
 
 /** A allowlist inclui arquivo de teste? Só então o bloco anti-afrouxamento entra. */
@@ -488,6 +494,105 @@ function blocoCommits(commits: string): string[] {
   ]
 }
 
+// ─── 2d · citações de relatório (etapa 8e, P3; caso real: dashboard 001/0) ──
+
+export const TETO_CIT_N = 40
+export const TETO_CIT_LINHAS_TRECHO = 12
+export const TETO_CIT_LINHAS_TOTAL = 400
+export const TETO_CIT_BYTES = 16384
+export const TETO_CIT_SHAS = 20
+
+const RE_CITACAO = /(?<![\w./@[\]-])((?:[\w@.[\]-]+\/)*[\w@.[\]-]+\.[A-Za-z0-9]{1,5}):(\d+)(?:-(\d+))?(?!\d)/g
+const RE_SHA = /(?<![\w/])(?=[0-9a-f]*[a-f])(?=[0-9a-f]*\d)[0-9a-f]{7,40}(?!\w)/g
+
+/** `null` quando o sha não está na história da base; senão `%h %ad %s`. */
+export type CommitDaBase = (sha: string) => string | null
+
+export function anexoCitacoes(diff: string, ler: LerBase, listar: () => string[], commit: CommitDaBase): string {
+  const linhas = [...linhasAdicionadasPorArquivo(diff)].filter(([p]) => /\.md$/i.test(p)).flatMap(([, l]) => l)
+  const cits: [string, number, number][] = []
+  const shas: string[] = []
+  for (const l of linhas) {
+    for (const m of l.matchAll(RE_CITACAO)) {
+      const c: [string, number, number] = [m[1]!, Number(m[2]), Number(m[3] ?? m[2])]
+      if (!cits.some((x) => x.join() === c.join())) cits.push(c)
+    }
+    for (const m of l.matchAll(RE_SHA)) if (!shas.includes(m[0])) shas.push(m[0])
+  }
+  if (cits.length === 0 && shas.length === 0) return ''
+  let arqs: string[] | null = null
+  const out: string[] = []
+  let total = 0
+  let bytes = 0
+  for (const [p, ini, fim] of cits.slice(0, TETO_CIT_N)) {
+    const rot = `--- ${p}:${ini}${fim !== ini ? `-${fim}` : ''}`
+    let path = p
+    let conteudo = ler(p)
+    if (conteudo === null) {
+      arqs ??= listar()
+      const cands = arqs.filter((f) => f.endsWith(`/${p}`))
+      if (cands.length !== 1) {
+        out.push(cands.length === 0 ? `${rot} --- AUSENTE na base` : `${rot} --- AMBÍGUO na base: ${cands.slice(0, 5).join(', ')}${cands.length > 5 ? ` e mais ${cands.length - 5}` : ''}`)
+        continue
+      }
+      path = cands[0]!
+      conteudo = ler(path) ?? ''
+    }
+    const arq = conteudo.replace(/\n$/, '').split('\n')
+    if (ini < 1 || ini > arq.length) {
+      out.push(`${rot} --- linha fora do arquivo na base (${arq.length} linhas)`)
+      continue
+    }
+    const de = Math.max(1, ini - 2)
+    const ate = Math.min(arq.length, fim + 2)
+    const n = ate - de + 1
+    const usar = Math.min(n, TETO_CIT_LINHAS_TRECHO)
+    const corpo = arq.slice(de - 1, de - 1 + usar).map((t, i) => `${String(de + i).padStart(5)}| ${t}`)
+    if (usar < n) corpo.push(`[... TRUNCADO: ${n - usar} de ${n} linhas (teto de ${TETO_CIT_LINHAS_TRECHO} por trecho) ...]`)
+    const b = Buffer.byteLength(corpo.join('\n'))
+    if (total + corpo.length > TETO_CIT_LINHAS_TOTAL || bytes + b > TETO_CIT_BYTES) {
+      out.push(`${rot} --- OMITIDO: teto de ${TETO_CIT_LINHAS_TOTAL} linhas / ${TETO_CIT_BYTES} bytes de trechos atingido`)
+      continue
+    }
+    total += corpo.length
+    bytes += b
+    out.push(`${rot}${path !== p ? ` (resolvido: ${path})` : ''} ---`, ...corpo, '--- fim ---')
+  }
+  if (cits.length > TETO_CIT_N) out.push(`[... ${cits.length - TETO_CIT_N} citações OMITIDAS (teto de ${TETO_CIT_N}) ...]`)
+  if (shas.length > 0) {
+    out.push('', 'COMMITS CITADOS (git show -s na base: hash curto, data, assunto):')
+    for (const s of shas.slice(0, TETO_CIT_SHAS)) out.push(`  ${s} -> ${commit(s) ?? 'NÃO ENCONTRADO na história da base'}`)
+    if (shas.length > TETO_CIT_SHAS) out.push(`[... ${shas.length - TETO_CIT_SHAS} shas OMITIDOS (teto de ${TETO_CIT_SHAS}) ...]`)
+  }
+  return out.join('\n')
+}
+
+/** Commit citado: só vale se for ancestral da base (`merge-base --is-ancestor`). */
+export function commitDaBase(wt: string, base: string): CommitDaBase {
+  return (sha) => {
+    try {
+      execFileSync('git', ['-C', wt, 'merge-base', '--is-ancestor', sha, base], { stdio: 'ignore' })
+      return execFileSync('git', ['-C', wt, 'show', '-s', '--format=%h %ad %s', sha], { encoding: 'utf8' }).trim()
+    } catch {
+      return null
+    }
+  }
+}
+
+function blocoAnexo(anexo: string): string[] {
+  return [
+    '',
+    'TRECHOS CITADOS NOS .md DO DIFF (estado na base, lidos pelo harness; NÃO fazem parte do diff):',
+    'Para cada arquivo:linha citado, as linhas da BASE em volta (L-2 a M+2), numeradas. Confira a',
+    'citação contra o trecho. Citação AUSENTE, AMBÍGUA ou OMITIDA não está conferida.',
+    'Os commits citados provam só que o commit existe na base, a data e o assunto. Afirmação que',
+    'pede mais ("desde quando", git log -S, conteúdo do commit) NÃO está verificada: diga isso no',
+    'motivo e julgue o critério como não verificado.',
+    '',
+    anexo,
+  ]
+}
+
 /**
  * Ordem estável para cache de prefixo (custo-e-contexto §4): tudo que é fixo
  * primeiro, o material variável (diff, gates) por último.
@@ -527,6 +632,7 @@ export function montarPromptJuiz(e: EntradaPrompt): string {
     ...(e.contexto && e.contexto.length > 0 ? blocoReferencia(e.contexto) : []),
     ...(e.definicoes && e.definicoes.length > 0 ? blocoDefinicoes(e.definicoes) : []),
     ...(e.commits?.trim() ? blocoCommits(e.commits) : []),
+    ...(e.anexo?.trim() ? blocoAnexo(e.anexo) : []),
     '',
     'SAÍDA DOS GATES MECÂNICOS:',
     e.gates.trim() || '(vazia)',
@@ -625,7 +731,7 @@ function objetosDeNivelSuperior(texto: string): string[] {
 }
 
 // --- CLI: a ponte fina que o executor.sh usa --------------------------------
-// `npx tsx juiz.ts --run-cli <raiz> nivel|prompt|parse|definicoes [args]` (payload em stdin)
+// `npx tsx juiz.ts --run-cli <raiz> nivel|prompt|parse|definicoes|citacoes [args]` (payload em stdin)
 // Mesmo guard por ARQUIVO do enforcement-core: este módulo também é importado.
 if (process.argv.includes('--run-cli') && /juiz\.(ts|js)$/.test(process.argv[1] ?? '')) {
   const i = process.argv.indexOf('--run-cli')
@@ -648,6 +754,19 @@ if (process.argv.includes('--run-cli') && /juiz\.(ts|js)$/.test(process.argv[1] 
       process.exit(2)
     }
     process.stdout.write(JSON.stringify(definicoesChamadasPelosTestes(stdin(), lerDaBase(wt, base))) + '\n')
+  } else if (sub === 'citacoes') {
+    // stdin = diff cru; argv = <worktree> <base>. Etapa 8e, P3.
+    const wt = process.argv[i + 3] ?? ''
+    const base = process.argv[i + 4] ?? ''
+    if (!wt || !base) {
+      process.stderr.write('juiz: citacoes exige <worktree> <base>\n')
+      process.exit(2)
+    }
+    const listar = () =>
+      execFileSync('git', ['-C', wt, 'ls-tree', '-r', '--name-only', base], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+        .split('\n')
+        .filter(Boolean)
+    process.stdout.write(anexoCitacoes(stdin(), lerDaBase(wt, base), listar, commitDaBase(wt, base)))
   } else if (sub === 'parse') {
     const v = extrairVeredito(stdin())
     if (!v) {

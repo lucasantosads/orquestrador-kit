@@ -1,0 +1,140 @@
+diff --git a/docs/auditoria/dc-0005-trafego-regras-historico.md b/docs/auditoria/dc-0005-trafego-regras-historico.md
+new file mode 100644
+index 00000000..29d4e9d8
+--- /dev/null
++++ b/docs/auditoria/dc-0005-trafego-regras-historico.md
+@@ -0,0 +1,134 @@
++# DC-0005: escritas em `trafego_regras_historico` fora da exceção autorizada
++
++Relatório de investigação (ticket 001). Somente leitura do repo: nenhuma consulta ao banco, nenhuma chamada de API, nenhuma rota executada. Linhas conferidas no disco da base `c1051f13`. Recomendações abaixo são propostas, não decisões tomadas.
++
++Exceção autorizada, só como referência: `src/app/api/trafego/regras-historico/route.ts:40` (grava `ignorada` / `falsa_positiva` com `aplicada_por` = employeeId da sessão).
++
++## Tabela-resumo
++
++| Rota | arquivo:linha do insert | Chamador | Recomendação (proposta) |
++|---|---|---|---|
++| `POST /api/ia/avaliar-alerta-trafego` | `src/app/api/ia/avaliar-alerta-trafego/route.ts:186` | `src/app/trafego/alertas/_alertas-content.tsx:121`; `src/app/api/trafego/verificar-regras/route.ts:144` | Mover para a rota autorizada |
++| `POST /api/meta/ativar` | `src/app/api/meta/ativar/route.ts:53` | `src/app/trafego/gerenciar/_gerenciar-content.tsx:406` (URL montada com template) | Mover para a rota autorizada |
++| `POST /api/meta/duplicar` | `src/app/api/meta/duplicar/route.ts:53` | `src/app/trafego/gerenciar/_gerenciar-content.tsx:420` | Mover para a rota autorizada |
++| `POST /api/meta/editar-budget` | `src/app/api/meta/editar-budget/route.ts:66` | `src/app/inteligencia/page.tsx:620`, `src/app/inteligencia/page.tsx:654` | Mover para a rota autorizada |
++| `POST /api/meta/pausar` | `src/app/api/meta/pausar/route.ts:64` | `src/app/trafego/alertas/_alertas-content.tsx:143`; `src/app/inteligencia/page.tsx:586`; `src/app/trafego/gerenciar/_gerenciar-content.tsx:406` | Mover para a rota autorizada |
++| `POST /api/trafego/verificar-regras` | `src/app/api/trafego/verificar-regras/route.ts:182` | Nenhum chamador encontrado no repo (não está em `vercel.json`; ver seção) | Decisão do Lucas: remover ou religar (não verificado se o n8n a chama) |
++
++Schema declarado em `migrations/p85-ativar-trafego-operacional.sql:202-214`: `regra_id, ad_id, adset_id, campaign_id, cliente_id, acao` (CHECK: `aplicada`, `ignorada`, `disparada`, `falsa_positiva`), `valor_metrica_no_momento, aplicada_por, observacao, created_at`. Esse é o arquivo de migration do repo, não o banco vivo: schema real não verificado.
++
++Observação sobre "desde quando": `git log -S'trafego_regras_historico' -- <arquivo>` retorna o commit em que a ocorrência da string entrou no arquivo. Não prova que as colunas do insert atual sejam as da primeira versão; não verificado coluna a coluna.
++
++---
++
++## 1. `POST /api/ia/avaliar-alerta-trafego`
++
++1. **Rota:** `POST /api/ia/avaliar-alerta-trafego`.
++2. **Insert:** `src/app/api/ia/avaliar-alerta-trafego/route.ts:186`, dentro de `for (const regra of regrasDisparadas)` (:185). Erro do insert não é lido.
++3. **O que escreve:**
++   - `regra_id`: `regra.id`, da leitura de `trafego_regras_otimizacao` (:31-35).
++   - `ad_id`, `adset_id`, `campaign_id`, `cliente_id`: vêm do corpo da requisição (:28), sem validação.
++   - `acao`: literal `"disparada"`.
++   - `valor_metrica_no_momento`: `Number(valor_atual)`, do corpo da requisição.
++   - Não grava `observacao` nem `aplicada_por`.
++   - Só ocorre depois da chamada à IA e do parse da resposta (:167-182).
++4. **Quem chama:**
++   - `src/app/trafego/alertas/_alertas-content.tsx:121` (botão de análise IA; o corpo (:124-130) não envia `cliente_id`).
++   - `src/app/api/trafego/verificar-regras/route.ts:144` (fetch interno; envia `cliente_id`).
++   - Se o chamador de :144 passa pela autenticação `verifySession` (:21): não verificado.
++5. **Desde quando:** `a30331ab` (2026-04-13, "Elite Sync XL: Full Project Upload").
++6. **Recomendação:** mover para a rota autorizada, porque é a única escrita do tipo `disparada` e hoje o autor é o próprio endpoint de leitura+IA, sem trilha de quem a disparou. Isso exige a rota autorizada aceitar `disparada` e `regra_id` (ela hoje aceita só `ignorada` e `falsa_positiva`, `regras-historico/route.ts:37-38`).
++
++## 2. `POST /api/meta/ativar`
++
++1. **Rota:** `POST /api/meta/ativar`.
++2. **Insert:** `src/app/api/meta/ativar/route.ts:53`. Erro do insert não é lido.
++3. **O que escreve:**
++   - `ad_id` / `adset_id` / `campaign_id`: `objeto_id` do corpo, conforme `tipo` (os outros dois ficam `null`).
++   - `cliente_id`: `cliente_id` do corpo ou `null`.
++   - `acao`: literal `"aplicada"`.
++   - `valor_metrica_no_momento`: literal `0`.
++   - `observacao`: `"Ativado manualmente via dashboard por ${session.nome}"`.
++   - Não grava `aplicada_por` nem `regra_id`.
++   - Só ocorre depois de `updateStatus(objeto_id, "ACTIVE")` ter sucesso (:38-41).
++4. **Quem chama:** `src/app/trafego/gerenciar/_gerenciar-content.tsx:406` (`fetch(\`/api/meta/${isActive ? "pausar" : "ativar"}\`)`; corpo em :409, sem `cliente_id`). A busca literal por `meta/ativar` só acha a própria rota; o chamador só aparece pelo template.
++5. **Desde quando:** `0872421b` (2026-04-28, "feat: integrar módulos de tráfego pago operacional ao dashboard comercial").
++6. **Recomendação:** mover para a rota autorizada, porque é ação humana de admin e a rota autorizada já tem o modelo (autor pela sessão em `aplicada_por`), que aqui falta.
++
++## 3. `POST /api/meta/duplicar`
++
++1. **Rota:** `POST /api/meta/duplicar`.
++2. **Insert:** `src/app/api/meta/duplicar/route.ts:53`, encadeado com `.then(() => null)` (:58), que descarta o resultado e o erro (comentário no código: "best-effort").
++3. **O que escreve:**
++   - `campaign_id` / `adset_id`: `objeto_id` do corpo, conforme `tipo` (o outro `null`).
++   - `acao`: literal `"aplicada"`.
++   - `observacao`: `"Duplicado via dashboard por ${actor}. Novo ID: ${copiedId || "?"}"`; `actor` vem de `session?.nome || "sistema"` (:23) e `copiedId` de `result.data?.copies[0]?.id` (:49-50).
++   - Não grava `ad_id`, `cliente_id`, `valor_metrica_no_momento`, `aplicada_por`, `regra_id`.
++   - Só ocorre depois de `duplicateObject` ter sucesso (:41-47).
++4. **Quem chama:** `src/app/trafego/gerenciar/_gerenciar-content.tsx:420` (`tipo` default `"campaign"`; o tipo `"ad"` aceito pela função (:417) é recusado pela rota, `duplicar/route.ts:37-39`).
++5. **Desde quando:** `0872421b` (2026-04-28).
++6. **Recomendação:** mover para a rota autorizada, porque é ação humana de admin; o novo ID só existe em texto livre em `observacao`.
++
++## 4. `POST /api/meta/editar-budget`
++
++1. **Rota:** `POST /api/meta/editar-budget`.
++2. **Insert:** `src/app/api/meta/editar-budget/route.ts:66`. Erro do insert não é lido.
++3. **O que escreve:**
++   - `campaign_id` / `adset_id`: `objeto_id` do corpo validado, conforme `tipo` (o outro `null`).
++   - `acao`: literal `"aplicada"`.
++   - `valor_metrica_no_momento`: `daily_budget || lifetime_budget || 0`, em BRL, do corpo.
++   - `observacao`: `"Budget editado via dashboard por ${session.nome}: daily R$… / lifetime R$…"`.
++   - Não grava `ad_id`, `cliente_id`, `aplicada_por`, `regra_id`.
++   - Só ocorre depois de `updateBudget` ter sucesso (:60-63).
++4. **Quem chama:** `src/app/inteligencia/page.tsx:620` (reduzir 50%) e `src/app/inteligencia/page.tsx:654` (aumentar 20%); ambos enviam `{ tipo, objeto_id, daily_budget }`.
++5. **Desde quando:** `0872421b` (2026-04-28).
++6. **Recomendação:** mover para a rota autorizada, porque é ação humana de admin; `valor_metrica_no_momento` carrega um valor de budget, não de métrica, o que a rota autorizada precisaria definir.
++
++## 5. `POST /api/meta/pausar`
++
++1. **Rota:** `POST /api/meta/pausar`.
++2. **Insert:** `src/app/api/meta/pausar/route.ts:64`. Erro do insert não é lido.
++3. **O que escreve:**
++   - `ad_id` / `adset_id` / `campaign_id`: `objeto_id` do corpo, conforme `tipo` (os outros dois `null`).
++   - `cliente_id`: `cliente_id` do corpo ou `null`.
++   - `acao`: literal `"aplicada"`.
++   - `valor_metrica_no_momento`: literal `0`.
++   - `aplicada_por`: literal `null` (:71), apesar de a sessão ter `employeeId` (usado em :79).
++   - `observacao`: `"Pausado manualmente via dashboard por ${session.nome}"`.
++   - Só ocorre depois de a Meta API responder OK (:42-52).
++4. **Quem chama:**
++   - `src/app/trafego/alertas/_alertas-content.tsx:143` (`pausarViaAPI`; sem `cliente_id`).
++   - `src/app/inteligencia/page.tsx:586` (sem `cliente_id`).
++   - `src/app/trafego/gerenciar/_gerenciar-content.tsx:406` (template, ramo `isActive`; sem `cliente_id`).
++5. **Desde quando:** `a30331ab` (2026-04-13).
++6. **Recomendação:** mover para a rota autorizada, porque é ação humana de admin com três chamadores e é a que hoje grava `aplicada_por: null` explicitamente.
++
++## 6. `POST /api/trafego/verificar-regras`
++
++1. **Rota:** `POST /api/trafego/verificar-regras` (protegida por `CRON_SECRET`, :22-25; pula fim de semana, :27-31).
++2. **Insert:** `src/app/api/trafego/verificar-regras/route.ts:182`, dentro de `try` (:162) cujo `catch` (:193) só empurra a mensagem para `resultados.erros`. O erro do próprio insert não é lido.
++3. **O que escreve** (só no ramo `regra.acao_automatica && regra.prioridade === 3`, :161, depois do POST à Meta API em :171):
++   - `regra_id`: `regra.id`.
++   - `ad_id`, `adset_id`, `campaign_id`: de `ads_metadata` do anúncio ativo (:37-40).
++   - `acao`: literal `"aplicada"`.
++   - `valor_metrica_no_momento`: `val`, calculado de `ads_performance` (:98-102). As variáveis `cpl`, `leads_dia` usam `p.leads` (:91), coluna que o CLAUDE.md proíbe ler. Isso é achado lateral; não foi tratado aqui.
++   - `observacao`: `"Pausa automática: ${regra.nome}"`.
++   - Não grava `cliente_id` nem `aplicada_por`.
++   - Observação: o fetch da pausa (:171) não confere `res.ok`, e `pausas_automaticas++` (:176) e o insert (:182) rodam mesmo se a Meta recusar. Lido no código; comportamento em produção não verificado.
++4. **Quem chama:** nenhum chamador encontrado no repo.
++   - `vercel.json` atual não lista a rota (22 entradas de cron lidas, nenhuma com `verificar-regras`).
++   - O cron `0 */2 * * 1-5` existia e foi removido em `94eb0345` (2026-04-22, "fix: reduce cron jobs to Hobby plan limit", diff de `vercel.json`).
++   - Não verificado: se há workflow no n8n Cloud que chame a rota (fora do repo). `FAQ.md:6953` e `FAQ.md:7872` ainda descrevem a rota como cron a cada 2h; é documentação, não prova de execução.
++5. **Desde quando:** `a30331ab` (2026-04-13).
++6. **Recomendação:** depende do Lucas (ver perguntas). Se a rota está morta, remover; se for religada, mover o insert para a rota autorizada, porque é o único insert automático (sem humano na sessão) e escreve decisão de pausar sem autor.
++
++---
++
++## Perguntas para o Lucas
++
++1. **O Comarka OS lê as linhas dessas rotas?** Não verificado: este repo não mostra o outro repo nem o banco. Nada no código daqui lê a tabela além de `src/app/api/trafego/regras/route.ts:27` e `src/app/api/ia/avaliar-alerta-trafego/route.ts:67` (as duas contam `regra_id, acao`). Se o OS lê `aplicada` / `disparada`, mudar o formato dessas linhas o afeta.
++2. **A exceção cobre só `ignorada` / `falsa_positiva` ou passa a cobrir `aplicada` e `disparada`?** Mover as rotas 1 a 5 para a rota autorizada exige ampliar o que ela aceita (hoje só duas ações, `regras-historico/route.ts:37-38`) e muda o contrato com o ticket de liberação (`orq liberar`).
++3. **`aplicada_por` deve ser preenchido nas ações humanas (ativar, duplicar, editar-budget, pausar)?** Hoje nenhuma grava; `pausar` grava `null` explicitamente (`pausar/route.ts:71`). Preencher muda as linhas novas, não as antigas.
++4. **`verificar-regras` está viva?** Só você sabe se há workflow no n8n que a chame. Se não houver, remover a rota ou religá-la é decisão sua; remoção é fora do escopo deste relatório.
++5. **A falha silenciosa do insert nessas rotas é aceitável?** As cinco primeiras não leem o erro do insert; `duplicar` o descarta de propósito. A rota autorizada devolve erro (`regras-historico/route.ts:47`). Mover implica decidir se a falha de log bloqueia a ação na Meta ou só é reportada.
++6. **`valor_metrica_no_momento` em `editar-budget` (valor de budget) e `0` nas demais ações humanas:** manter assim ou usar `null`? Quem consome a coluna (não verificado) pode tratar `0` como medida.

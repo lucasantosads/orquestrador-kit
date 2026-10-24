@@ -834,10 +834,14 @@ run_juiz() {
   # inventado: as definições não têm para quem ir, e a worktree de um dry-run
   # nem precisa ser git (orquestrador-juiz.test.ts, NEGATIVO --dry). Em todo
   # outro caso a leitura é obrigatória e a falha é alta.
-  local defs='[]'
+  # Etapa 8e (P3): trechos e commits citados nos .md do diff, lidos da BASE pela
+  # mesma regra (dry sem stub pula; falha de leitura derruba o juiz).
+  local defs='[]' anexo=''
   if [ "$DRY" != 1 ] || [ -n "$STUB_JUIZ" ]; then
     defs="$(git -C "$wt" diff "$base"...HEAD | juiz definicoes "$wt" "$base")" \
       || die "juiz: definições chamadas pelos testes novos não puderam ser lidas da base $(printf '%.8s' "$base")"
+    anexo="$(git -C "$wt" diff "$base"...HEAD | juiz citacoes "$wt" "$base")" \
+      || die "juiz: citações do relatório não puderam ser lidas da base $(printf '%.8s' "$base")"
   fi
   jq -n --arg id "$id" --arg o "$(ticket_field "$file" '.objetivo')" \
       --argjson c "$(ticket_json "$file" | jq '[.criterios_aceite[]? | {tipo, descricao, cmd, espera: (.espera|tostring)}]')" \
@@ -847,9 +851,9 @@ run_juiz() {
       --arg nota "$([ "${COMMIT_DO_HARNESS:-0}" = 1 ] && printf '%s' \
         'O agente saiu sem commitar e o COMMIT DESTE DIFF FOI DADO PELO HARNESS (wip). O trabalho pode estar num ponto intermediário e a mensagem de commit não é do agente — julgue o diff, não o commit.')" \
       --arg commits "$(git -C "$wt" log --format='commit %H%n%n%B' "$base"..HEAD 2>/dev/null || true)" \
-      --argjson ctx "$ctx" --argjson defs "$defs" \
+      --arg anexo "$anexo" --argjson ctx "$ctx" --argjson defs "$defs" \
       --argjson amp "$(printf '%s' "$VIZ_AMPLIADA" | jq -Rn '[inputs | select(length > 0)]')" \
-      '{id:$id, objetivo:$o, criterios:$c, allowlist:$al, diff:$diff, gates:$gates, nota:$nota, contexto:$ctx, definicoes:$defs, ampliados:$amp, commits:$commits}' \
+      '{id:$id, objetivo:$o, criterios:$c, allowlist:$al, diff:$diff, gates:$gates, nota:$nota, contexto:$ctx, definicoes:$defs, ampliados:$amp, commits:$commits, anexo:$anexo}' \
     | juiz prompt > "$prompt"
 
   fase juiz

@@ -1,0 +1,49 @@
+/**
+ * Registro de "alerta ignorado" / "falso positivo" da tela /trafego/alertas em
+ * trafego_regras_historico. Antes era um insert do navegador com a chave anon
+ * (negado pelo RLS) cujo erro não era conferido: a tela dizia "registrado" sem
+ * registrar. 29/09/2026.
+ *
+ * trafego_regras_historico é tabela C0 (compartilhada com o Comarka OS): esta rota é
+ * a EXCEÇÃO de escrita autorizada nela (CLAUDE.md) — grava a mesma linha que a tela já
+ * gravava, mais o autor (aplicada_por = employeeId da sessão). Nenhuma DDL, grant ou RLS.
+ *
+ * Quem pode (29/09/2026): admin ou gestor de tráfego (employees.is_gestor_trafego, o
+ * mesmo critério de requireGestorTrafego). SDR e closer: 403.
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import { corpoInvalido, falhaDeGravacao, lerCorpo, negar, sessaoAtual } from "@/lib/escrita/rota";
+
+const ACOES = {
+  ignorada: "Alerta ignorado",
+  falsa_positiva: "Marcado como falso positivo pelo usuario",
+} as const;
+
+export async function POST(req: NextRequest) {
+  const sessao = await sessaoAtual();
+  if (!sessao || !sessao.employeeId) return negar({ status: 401, error: "Sessão inválida ou expirada" });
+  if (sessao.role !== "admin") {
+    const { data: emp, error: empErr } = await supabaseAdmin
+      .from("employees").select("is_gestor_trafego").eq("id", sessao.employeeId).maybeSingle();
+    if (empErr) return falhaDeGravacao("Permissão não verificada", empErr);
+    if (!(emp as { is_gestor_trafego?: boolean } | null)?.is_gestor_trafego) {
+      return negar({ status: 403, error: "Apenas admin ou gestor de tráfego podem registrar esta ação" });
+    }
+  }
+
+  const body = await lerCorpo(req);
+  const adId = typeof body?.ad_id === "string" ? body.ad_id : "";
+  const acao = body?.acao;
+  if (!adId || (acao !== "ignorada" && acao !== "falsa_positiva")) return corpoInvalido("ad_id e acao ('ignorada' | 'falsa_positiva') obrigatórios");
+
+  const { error } = await supabaseAdmin.from("trafego_regras_historico").insert({
+    ad_id: adId,
+    acao,
+    valor_metrica_no_momento: 0,
+    observacao: ACOES[acao],
+    aplicada_por: sessao.employeeId,
+  });
+  if (error) return falhaDeGravacao("Ação não registrada", error);
+  return NextResponse.json({ ok: true });
+}
