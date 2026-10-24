@@ -102,6 +102,9 @@ describe('7d1b-2 · a tabela única', () => {
       // etapa 8a
       C13: 'aviso',
       C14: 'erro',
+      // etapa 8e
+      C15: 'aviso',
+      C16: 'aviso',
     });
   });
 

@@ -131,6 +131,8 @@ export const REGRAS: Readonly<Record<string, Regra>> = {
   'C2P': { severidade: 'erro', oque: 'grep -P, que o /usr/bin/grep do macOS não tem', porque: '0 disparo em (a) e (b); erro de plataforma' },
   'C13': { severidade: 'aviso', oque: 'origin/<ref> em critério executável (a worktree nasce da branch_alvo local)', porque: 'etapa 8a: 120/368 FP nos done aprovados de primeira do Comarka (04-17/10, versão que rodou); 318 dos 1266 done usam a forma; causal 1004 (f01a989). Vira erro para ticket novo quando o gerador de tickets do Comarka parar de escrever origin/' },
   'C14': { severidade: 'erro', oque: 'v=$(grep -c …) encadeado por && com v podendo valer 0 no estado certo', porque: 'etapa 8a: 0/368 FP nos done aprovados de primeira do Comarka (04-17/10, versão que rodou); 1 disparo nos 1266 done (1116, done manual que nunca rodou, com o defeito); causal 924b e 924c (+924d, 924f)' },
+  'C15': { severidade: 'aviso', oque: 'critério que depende do corpo/mensagem do commit (o juiz recebe o commit só como declaração do agente)', porque: 'etapa 8e: 0 disparo nos 1479 tickets do Comarka; 2 no dashboard (002, 003), os dois reprovados na attempt-0 por isso' },
+  'C16': { severidade: 'aviso', oque: 'ticket pede vermelho antes e todo cmd de critério com vitest descarta a saída em /dev/null', porque: 'etapa 8e: 27 done no Comarka (o mesmo defeito latente, contados como acerto) e 2 no dashboard (002, 003)' },
   'C3': { severidade: 'aviso', oque: 'ausência com padrão amplo sem exceção nem teto', porque: 'Comarka: 3/0/9 FP; causal 1 (523b)' },
   'C4': { severidade: 'aviso', oque: 'regex que casa diferente em locale C e em UTF-8 (acento)', porque: 'Comarka: 0/0/12 FP, 0 causal; o kit roda sob launchd com a mesma exposição' },
   'C9': { severidade: 'aviso', oque: 'item da allowlist no checkout e fora da branch alvo (topologia)', porque: 'Comarka: 0/1/0 FP, 0 causal' },
@@ -1298,6 +1300,18 @@ export function refsOrigin(cmd: string): string[] {
   return refs
 }
 
+/** C15 (etapa 8e): a descrição do critério depende do corpo/mensagem do commit. */
+export const RE_CORPO_COMMIT = /(corpo|mensagem) do commit/i
+
+/** C16 (etapa 8e): o ticket pede vermelho antes (objetivo ou descrição de critério). */
+export const RE_PEDE_VERMELHO = /falh(a|ar|am|em|aram|ariam|eriam)[^.]{0,40}contra|vermelho antes|antes (de|da) (corrigir|corre)|rode o teste antes/i
+
+/** C16: há cmd com vitest e TODOS mandam a saída para /dev/null. */
+export function vitestSoEmDevNull(cmds: string[]): boolean {
+  const vt = cmds.filter((c) => /vitest/.test(c))
+  return vt.length > 0 && vt.every((c) => />\s*\/dev\/null/.test(c))
+}
+
 /**
  * C14 (etapa 8a): `v=$(… grep -c …) &&` em que 0 é valor certo de `v`. Com
  * zero matches o grep -c imprime 0 e sai 1; a atribuição herda o rc e o `&&`
@@ -1752,6 +1766,21 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
         'objetivo',
         `AVISO: o objetivo cita caminho(s) fora da allowlist: ${fora.join(', ')} (se é para EDITAR, falta na allowlist; se é só para ler, ignore)`,
       )
+    }
+  }
+
+  // C15 e C16 (etapa 8e, lote do dashboard-comercial): avisos de ticket pendente.
+  if (pendente && ehArray(t.criterios_aceite)) {
+    const crs = t.criterios_aceite.map((c) => (c ?? {}) as Cru)
+    const desc = (c: Cru) => (typeof c.descricao === 'string' ? c.descricao : '')
+    crs.forEach((c, i) => {
+      if (RE_CORPO_COMMIT.test(desc(c))) {
+        achado('C15', `criterios_aceite[${i}]`, 'o critério depende do corpo do commit: o juiz recebe o commit só como declaração do agente, não como evidência — reescreva como critério que o diff ou um cmd provam')
+      }
+    })
+    const texto = [typeof t.objetivo === 'string' ? t.objetivo : '', ...crs.map(desc)].join(' ')
+    if (RE_PEDE_VERMELHO.test(texto) && vitestSoEmDevNull(crs.map((c) => (typeof c.cmd === 'string' ? c.cmd : '')))) {
+      achado('C16', 'criterios_aceite', 'o ticket pede vermelho antes, mas todo critério com vitest manda a saída para /dev/null: o agente só vê OK ou nada e não consegue mostrar quais casos falharam')
     }
   }
 
