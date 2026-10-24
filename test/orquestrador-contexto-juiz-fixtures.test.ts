@@ -146,7 +146,7 @@ describe('628 · run_juiz com teste novo chamando helper de fora do diff', () =>
     expect(r.prompt.indexOf(BLOCO)).toBeLessThan(r.prompt.indexOf('SAÍDA DOS GATES MECÂNICOS'));
     // o juiz segue sem ferramentas
     expect(r.prompt).toContain('VOCÊ NÃO TEM FERRAMENTAS');
-  });
+  }, 30_000); // 24/10/2026: 5 s estourou com os loops do operacional rodando junto (001 do dashboard)
 
   it('(b) helper definido no próprio diff não entra no bloco e aparece UMA vez; o de fora aparece no bloco, no MESMO prompt', () => {
     const f = fixture({
@@ -165,7 +165,7 @@ describe('628 · run_juiz com teste novo chamando helper de fora do diff', () =>
     expect(bloco, r.saida).toContain('(payloadSoComAnexo;');
     expect(bloco).not.toContain('helperDoDiff');
     expect(ocorrencias(r.prompt, 'CORPO_DO_HELPER_DO_DIFF')).toBe(1);
-  });
+  }, 30_000); // idem
 
   it('(c) diff sem teste novo: nenhum bloco, prompt igual ao montado sem definições', () => {
     const f = fixture({ novoIt: '', extraHead: { 'README.md': 'y\n' } });
