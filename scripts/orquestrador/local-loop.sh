@@ -496,7 +496,18 @@ drenar() {
     if [ "$exe_rc" = 0 ]; then say "  executor rc=0"; else say "  executor rc=$exe_rc (não fatal; reavalia a fila)"; fi
 
     st="$(ticket_field "$prox" '.status')"
-    if [ "$st" = "aguardando_merge" ]; then
+    # K3 (dashboard-comercial, 24/10/2026): a pausa só era lida entre tickets, e
+    # o merge roda logo depois do executor, na MESMA volta. Um ticket aprovado
+    # com o PAUSAR posto durante a execução entrava na branch alvo apesar da
+    # pausa. Agora o merge lê a pausa antes: o ticket fica em aguardando_merge,
+    # com a frente e a worktree intactas, e a volta seguinte encerra na pausa.
+    if [ "$st" = "aguardando_merge" ] && pausa_ativa; then
+      say "  PAUSA ativa: $(pausa_motivo) — $prox_id aprovado fica em aguardando_merge, sem merge em $BRANCH_ALVO"
+      ticket_set_nota "$prox" "aprovado; merge em $BRANCH_ALVO suspenso pela pausa ($(pausa_motivo))"
+      ticket_commit "$prox" "fila: $prox_id aguardando merge (pausa)"
+      event "$prox_id" MERGE_SUSPENSO "motivo=pausa" "alvo=$BRANCH_ALVO"
+      status_set "ultimo=$prox_id AGUARDANDO_MERGE $(date '+%H:%M:%S') (pausa)"
+    elif [ "$st" = "aguardando_merge" ]; then
       status_set "fase=merge"
       if merge_em_alvo "$prox_id" "$stwt"; then
         ticket_set_status "$prox" done

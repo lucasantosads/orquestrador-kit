@@ -274,6 +274,69 @@ printf '%s' "$saida" | grep -q "EXECUTADO 942" \
   && ok "o 2º ticket (942) foi executado" || falha "942 NÃO rodou: $(printf '%s' "$saida" | grep -E 'sem progresso|encerr' | head -1)"
 rm -rf "$fx"
 
+# --- K3 (dashboard-comercial, 24/10/2026): o merge lê o PAUSAR -----------------
+# Git DE VERDADE, com o merge_em_alvo REAL (sem stub): checkout com main e
+# staging-auto, worktree da staging, e a frente do ticket com um commit. O stub
+# do executor faz o que aconteceu no 001 do dashboard: o PAUSAR aparece DURANTE
+# a execução, e o ticket sai aprovado (aguardando_merge). O controle no mesmo
+# bloco roda o mesmo cenário SEM o PAUSAR e prova que o merge acontece — sem
+# ele, "a staging não andou" passaria com um harness que nunca mergeia nada.
+fx_git_merge() {  # fx_git_merge <dir> <id> — fila com 1 ticket, git e frente prontos
+  local d="$1" id="$2"
+  fx_fila "$d" "$id"
+  git -C "$d" init -q -b main
+  git -C "$d" -c user.name=t -c user.email=t@t add -A
+  git -C "$d" -c user.name=t -c user.email=t@t commit -q -m base
+  git -C "$d" branch staging-auto
+  git -C "$d" worktree add -q "$d.staging" staging-auto
+  git -C "$d" worktree add -q -b "frente/$id" "$d.frente" main
+  echo x > "$d.frente/a.txt"
+  git -C "$d.frente" -c user.name=t -c user.email=t@t add a.txt
+  git -C "$d.frente" -c user.name=t -c user.email=t@t commit -q -m "frente $id"
+}
+drena_merge_real() {  # drena_merge_real <dir> <pausar: 1|0>
+  ORQ_EXEC_ROOT="$1" LOCAL_LOOP_SOURCED=1 bash -c "
+    source '$AQUI/local-loop.sh'
+    set +e
+    ensure_staging_worktree() { echo '$1.staging'; }
+    ticket_commit() { return 0; }
+    cleanup_frente() { echo 'CLEANUP' >&2; return 0; }
+    run_executor_once() {
+      [ '$2' = 1 ] && : > '$1/docs/fila/PAUSAR'
+      ticket_set_status \"\$2\" aguardando_merge
+      return 0
+    }
+    drenar
+  " 2>&1
+}
+
+echo
+echo "== K3: ticket aprovado com o PAUSAR presente NÃO entra na staging-auto =="
+fx="$(mktemp -d)/c"; mkdir -p "$fx"; fx_git_merge "$fx" 951
+antes="$(git -C "$fx" rev-parse staging-auto)"
+saida="$(drena_merge_real "$fx" 1)"
+depois="$(git -C "$fx" rev-parse staging-auto)"
+[ "$antes" = "$depois" ] && ok "staging-auto não andou (${antes:0:8})" || falha "staging-auto ANDOU com o PAUSAR presente (${antes:0:8} -> ${depois:0:8})"
+git -C "$fx" merge-base --is-ancestor frente/951 staging-auto 2>/dev/null \
+  && falha "frente/951 está na staging-auto" || ok "frente/951 fora da staging-auto"
+grep -q '"status": "aguardando_merge"' "$fx/docs/fila/951-t.md" \
+  && ok "951 segue em aguardando_merge" || falha "951 saiu de aguardando_merge: $(grep -o '"status": "[a-z_]*"' "$fx/docs/fila/951-t.md")"
+grep -q " 951 MERGE_SUSPENSO motivo=pausa alvo=staging-auto" "$fx/docs/fila/runs/events.log" 2>/dev/null \
+  && ok "a trilha diz MERGE_SUSPENSO" || falha "sem MERGE_SUSPENSO na trilha"
+printf '%s' "$saida" | grep -q "CLEANUP" && falha "a frente foi limpa (o merge futuro precisa dela)" || ok "frente e worktree intactas"
+git -C "$fx" show-ref --verify --quiet refs/heads/frente/951 && ok "branch frente/951 existe" || falha "frente/951 sumiu"
+
+echo
+echo "== K3 controle: o MESMO cenário sem o PAUSAR mergeia =="
+fx2="$(mktemp -d)/c"; mkdir -p "$fx2"; fx_git_merge "$fx2" 952
+antes="$(git -C "$fx2" rev-parse staging-auto)"
+drena_merge_real "$fx2" 0 >/dev/null
+git -C "$fx2" merge-base --is-ancestor frente/952 staging-auto 2>/dev/null \
+  && ok "sem pausa, frente/952 entrou na staging-auto (${antes:0:8} -> $(git -C "$fx2" rev-parse --short staging-auto))" \
+  || falha "sem pausa o merge não aconteceu: o harness não prova o K3"
+grep -q '"status": "done"' "$fx2/docs/fila/952-t.md" && ok "952 terminou done" || falha "952 não chegou a done"
+rm -rf "$(dirname "$fx")" "$(dirname "$fx2")"
+
 echo
 if [ "$FALHAS" = 0 ]; then echo "TODOS OS CHECKS PASSARAM"; exit 0; fi
 echo "$FALHAS CHECK(S) FALHARAM"; exit 1

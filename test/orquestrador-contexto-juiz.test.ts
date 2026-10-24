@@ -143,7 +143,7 @@ describe('run_juiz com contexto_juiz', () => {
     expect(r.prompt).toContain('LINHA_DA_BASE_0264');
     expect(r.prompt).toContain(ROTULO);
     expect(r.prompt.indexOf('LINHA_DA_BASE_0264')).toBeLessThan(r.prompt.indexOf('SAÍDA DOS GATES MECÂNICOS'));
-  });
+  }, 30_000); // 24/10/2026: 5 s estourou com os loops do operacional rodando junto (001 do dashboard)
 
   it('o conteúdo é o da BASE da tentativa, não o da HEAD', () => {
     const r = rodarJuiz(fixture([REF], 'LINHA_DA_BASE_0264\n'));
@@ -153,7 +153,7 @@ describe('run_juiz com contexto_juiz', () => {
     const bloco = r.prompt.slice(r.prompt.indexOf('ARQUIVOS DE REFERÊNCIA'), r.prompt.indexOf('SAÍDA DOS GATES MECÂNICOS'));
     expect(bloco).toContain('LINHA_DA_BASE_0264');
     expect(bloco).not.toContain('LINHA_DA_HEAD_NUNCA_DEVE_CHEGAR');
-  });
+  }, 30_000); // idem
 
   it('arquivo acima do teto é truncado, e o truncamento está escrito no texto', () => {
     const linhas = Array.from({ length: 1000 }, (_, i) => `linha_${i + 1}`).join('\n') + '\n';

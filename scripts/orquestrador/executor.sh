@@ -61,6 +61,7 @@ preflight() {
   done
   jq -e . "$CONFIG" >/dev/null 2>&1 || die "preflight: $CONFIG não é JSON válido"
   exigir_linkar_env_valido
+  exigir_principal_sem_env
   # Sem a lista, todo ticket pareceria edição alheia e nada do loop seria commitado (8b).
   jq -e 'type == "array" and length > 0' "$CAMPOS_DO_MOTOR_FILE" >/dev/null 2>&1 || die "preflight: $CAMPOS_DO_MOTOR_FILE ausente ou inválido"
   for f in $(ticket_files); do
@@ -327,6 +328,25 @@ linkar_env_cfg() {
 exigir_linkar_env_valido() {
   local v; v="$(linkar_env_cfg)"
   case "$v" in true|false) ;; *) die "preflight: ${v#invalido } — worktree.linkar_env aceita só true ou false" ;; esac
+}
+
+# exigir_principal_sem_env — K1 (dashboard-comercial, 24/10/2026). Com
+# `worktree.linkar_env` false, o checkout principal não pode ter `.env*` fora do
+# git. O false impede o LINK, não a leitura: o arquivo seguiria a um `cat ../..`
+# do agente, dos gates e dos critérios. Ausência é a garantia; a flag sozinha é
+# convenção. Arquivo versionado (`.env.example`) não conta: veio do git.
+# O motor NÃO apaga nada — credencial é de quem a pôs lá.
+exigir_principal_sem_env() {
+  [ "$(linkar_env_cfg)" = false ] || return 0
+  local f rel soltos=""
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    rel="${f#"$MAIN_CHECKOUT"/}"
+    git -C "$MAIN_CHECKOUT" ls-files --error-unmatch -- "$rel" >/dev/null 2>&1 && continue
+    soltos="$soltos $rel"
+  done < <(find "$MAIN_CHECKOUT" -maxdepth 3 \( -name .git -o -name node_modules \) -prune \
+             -o \( -type f -o -type l \) -name '.env*' -print 2>/dev/null | LC_ALL=C sort)
+  [ -z "$soltos" ] || die "preflight: worktree.linkar_env=false e o checkout principal tem .env* fora do git:$soltos — o checkout do loop não guarda credencial; tire o arquivo de lá (o motor não apaga)"
 }
 
 # env_na_worktree <id> <worktree> — o .env.local do principal entra na worktree

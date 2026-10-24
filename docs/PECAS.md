@@ -1084,9 +1084,27 @@
   (fixtures `test/fixtures/config/ci-000-config.json` e
   `dashboard-rascunho-h-000-config.json`, `PROCEDENCIA.md`).
 
+- **8e · pedidos do dashboard-comercial (24/10/2026).** Preflight recusa `.env*` não
+  versionado no principal com `linkar_env: false`; gate `baseline_erros` (arquivo + código TS);
+  regra `Read(<caminho>)` do piso provada até o `--disallowedTools`; merge da drenagem
+  suspenso pela pausa; 30 s em 4 casos de contexto-juiz. Commits `36d8430`, `30568fc`,
+  `62845f4`, `d5c6389`, `23866f1`.
+  *Teste:* `orquestrador-linkar-env.test.ts` (bloco K1), `orquestrador-gate-baseline-erros.test.ts`,
+  `orquestrador-piso-tools.test.ts` (bloco K2), `test-drenagem.sh` (bloco K3).
+
 ## PENDENTES
 
-- **8d · leitura do `.env` do principal por caminho absoluto (ligada ao L6).** Com
+- **8e · `aguardando_merge` que a pausa segurou não volta sozinho.** Com a 8e-4, o ticket
+  aprovado durante a pausa fica em `aguardando_merge`, mas a drenagem só mergeia na volta do
+  próprio executor (`local-loop.sh`, bloco do `aguardando_merge`). Quando a pausa sai, nada o
+  re-mergeia: hoje é merge humano ou `status` de volta a `pendente`.
+  *Evidência:* `local-loop.sh`, único leitor de `aguardando_merge` é a volta do executor.
+  *Teste:* um `aguardando_merge` com frente existente e sem pausa é mergeado no início da
+  drenagem seguinte.
+
+- **8d · leitura do `.env` do principal por caminho absoluto (ligada ao L6).** Parcial em
+  24/10/2026: a 8e-1 tira o `.env*` do principal do loop, e a 8e-3 prova que a regra `Read`
+  do piso chega ao CLI. Falta a prova de que o CLI barra (chamada real) e o L6. Com
   `worktree.linkar_env: false` nada de `.env*` entra na worktree, mas o agente ainda pode ler
   o arquivo do checkout principal pelo caminho absoluto. No dashboard-comercial são três
   arquivos não versionados: `.env.local`, `.env.production.local` e `.env.vercel`. Fecha com o

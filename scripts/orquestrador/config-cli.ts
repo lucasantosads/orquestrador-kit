@@ -137,6 +137,14 @@ export function validarConfig(cfg: unknown): Violacao[] {
       // `test/fixtures/checkout/`), onde `limpeza_artefatos` é o único gate sem
       // papel e a linha GATE do CI está correta há meses.
       if (gg.tipo === 'preparacao') return
+      // `baseline_erros` sem arquivo reprova TODO ticket no gate (gates.ts:
+      // avaliaGate) — melhor dizer antes do run.
+      if (gg.tipo === 'baseline_erros' && (typeof gg.baseline_arquivo !== 'string' || gg.baseline_arquivo.trim() === '')) {
+        v.push({
+          chave: `gates[${i}].baseline_arquivo`,
+          mensagem: `o gate '${nome}' é tipo baseline_erros e não declara "baseline_arquivo" — sem a régua o gate reprova todo ticket`,
+        })
+      }
       if (papelDoGate(nome, gg.papel) === '') {
         v.push({
           chave: `gates[${i}].papel`,

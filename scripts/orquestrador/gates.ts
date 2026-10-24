@@ -10,6 +10,7 @@
  * teste exercita o motor inteiro sem rodar comando nenhum.
  */
 import { readFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 
 export interface Placar {
@@ -47,6 +48,14 @@ export interface GateSpec {
    * que o gate contou 3 e o critério contou 5 no MESMO worktree.
    */
   preparo?: string[]
+  /**
+   * `tipo: "baseline_erros"` — caminho do arquivo de baseline ERRO A ERRO,
+   * relativo à raiz do checkout que contém o config (a main, nunca a worktree:
+   * ticket não reescreve a régua que o julga). Formato: `ErrosBaseline`.
+   */
+  baseline_arquivo?: string
+  /** Preenchido pelo CLI a partir de `baseline_arquivo`; `null` = arquivo ilegível. */
+  baseline_erros?: ErrosBaseline | null
   baseline_placar?: Placar
   cobertura_minima_services?: number
 }
@@ -220,6 +229,84 @@ export function avaliaBaselineTsc(saida: string, baseline: number): { ok: boolea
   return avaliaBaseline(saida, baseline, 'max')
 }
 
+/**
+ * Baseline ERRO A ERRO (`tipo: "baseline_erros"`), pedida pelo dono do
+ * dashboard-comercial (24/10/2026): a contagem sozinha não vale, porque um
+ * ticket que conserta um erro e cria outro em arquivo diferente sai com o mesmo
+ * total e passa. A chave é `arquivo|código TS`, sem linha nem coluna (qualquer
+ * edição acima desloca a linha; arquivo e código não se deslocam).
+ *
+ * Regra: para TODO par da saída, a contagem atual é MENOR OU IGUAL à da
+ * baseline. Par novo ou par que cresceu reprova, e o motivo nomeia cada um.
+ * Erro que some não reprova (consertar herdado é permitido).
+ */
+export interface ErrosBaseline {
+  /** Commit sobre o qual a baseline foi medida (só registro). */
+  commit?: string
+  /** Soma de `pares` — conferida na leitura; divergência = arquivo adulterado. */
+  total: number
+  pares: Record<string, number>
+}
+
+const LINHA_TSC = /^(.+?)\(\d+,\d+\): error (TS\d+):/
+const CODIGO_TS = /error (TS\d+)/
+
+/**
+ * `arquivo|TSxxxx` -> quantas vezes, das linhas que casam o filtro (o mesmo
+ * `contagem_regex` do tipo `baseline`; ausente = `error TS\d+`). Linha de erro
+ * sem `arquivo(l,c):` (erro global do tsc, ex. TS5023 de tsconfig) entra como
+ * `?|TSxxxx`: fica na conta, nunca some.
+ */
+export function paresDeErro(saida: string, filtro?: string): Record<string, number> {
+  const re = new RegExp(filtro && filtro.trim() ? filtro : CONTAGEM_PADRAO)
+  const pares: Record<string, number> = {}
+  for (const bruta of saida.split('\n')) {
+    const linha = bruta.replace(/\x1B\[[0-9;]*m/g, '').trimEnd()
+    if (!re.test(linha)) continue
+    const m = LINHA_TSC.exec(linha)
+    const chave = m ? `${m[1]}|${m[2]}` : `?|${CODIGO_TS.exec(linha)?.[1] ?? 'TS?'}`
+    pares[chave] = (pares[chave] ?? 0) + 1
+  }
+  return pares
+}
+
+/** Lê e confere a baseline. `null` quando não dá para confiar nela. */
+export function lerErrosBaseline(bruto: string): ErrosBaseline | null {
+  try {
+    const b = JSON.parse(bruto) as ErrosBaseline
+    if (!b || typeof b !== 'object' || !b.pares || typeof b.pares !== 'object') return null
+    const soma = Object.values(b.pares).reduce((s, n) => s + (Number.isInteger(n) && n > 0 ? n : NaN), 0)
+    if (!Number.isInteger(b.total) || soma !== b.total) return null
+    return b
+  } catch {
+    return null
+  }
+}
+
+export function avaliaBaselineErros(
+  saida: string,
+  baseline: ErrosBaseline,
+  filtro?: string,
+): { ok: boolean; motivo?: string; total: number } {
+  const atual = paresDeErro(saida, filtro)
+  const total = Object.values(atual).reduce((s, n) => s + n, 0)
+  const excesso = Object.entries(atual)
+    .filter(([k, n]) => n > (baseline.pares[k] ?? 0))
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([k, n]) => {
+      const [arquivo, codigo] = k.split('|')
+      const antes = baseline.pares[k] ?? 0
+      return antes === 0 ? `${arquivo} ${codigo} (novo: ${n})` : `${arquivo} ${codigo} (${n} > ${antes})`
+    })
+  if (excesso.length === 0) return { ok: true, total }
+  const lista = excesso.slice(0, 20).join('; ') + (excesso.length > 20 ? `; … +${excesso.length - 20}` : '')
+  return {
+    ok: false,
+    total,
+    motivo: `${excesso.length} par(es) arquivo+código acima da baseline (${total} erro(s), baseline ${baseline.total}): ${lista}`,
+  }
+}
+
 /** Julga UM gate já executado. Pura: recebe a execução, não executa nada. */
 export function avaliaGate(spec: GateSpec, exec: Execucao): GateResultado {
   const base: GateResultado = { nome: spec.nome, ok: exec.exitCode === 0, ...exec }
@@ -249,6 +336,19 @@ export function avaliaGate(spec: GateSpec, exec: Execucao): GateResultado {
     // (quantos testes passaram), e um comando que saiu != 0 quebrou em algum
     // lugar — o placar alto não desfaz o que falhou.
     return { ...base, ok: base.ok && r.ok, ...(r.motivo ? { motivo: r.motivo } : {}) }
+  }
+  if (spec.tipo === 'baseline_erros') {
+    // Sem baseline confiável não há gate: aprovar seria aprovar sem régua.
+    if (!spec.baseline_erros) {
+      return { ...base, ok: false, motivo: `baseline_arquivo '${spec.baseline_arquivo ?? '(ausente)'}' ausente, ilegível ou com total que não bate com a soma dos pares` }
+    }
+    const r = avaliaBaselineErros(exec.saida, spec.baseline_erros, spec.contagem_regex)
+    // Mesmo GUARD do gate MUDO do `baseline`: saiu != 0 sem nenhum erro contado
+    // é comando que falhou por outro motivo, não "zero erros".
+    if (exec.exitCode !== 0 && r.total === 0) {
+      return { ...base, ok: false, motivo: `exit ${exec.exitCode} e nenhuma linha contada — o comando falhou por outro motivo que não os erros da baseline` }
+    }
+    return { ...base, ok: r.ok, ...(r.motivo ? { motivo: r.motivo } : {}) }
   }
   if (spec.baseline_placar) {
     const placar = parsePlacar(exec.saida)
@@ -337,6 +437,46 @@ export function execBash(raiz: string): (cmd: string) => Execucao {
   }
 }
 
+/**
+ * Preenche `baseline_erros` de cada gate `baseline_erros` a partir do arquivo.
+ * O caminho é relativo à raiz do checkout do CONFIG (`<raiz>/docs/fila/000-config.json`),
+ * isto é, a main: a worktree do ticket não escolhe a própria régua.
+ */
+export function carregarBaselinesErros(config: GatesConfig, caminhoConfig: string): void {
+  const raizConfig = resolve(dirname(caminhoConfig), '..', '..')
+  for (const g of config.gates) {
+    if (g.tipo !== 'baseline_erros') continue
+    try {
+      g.baseline_erros = g.baseline_arquivo ? lerErrosBaseline(readFileSync(join(raizConfig, g.baseline_arquivo), 'utf8')) : null
+    } catch {
+      g.baseline_erros = null
+    }
+  }
+}
+
+/** A baseline a partir de uma saída do tsc já gravada. */
+export function gerarErrosBaseline(saida: string, filtro?: string, commit?: string): ErrosBaseline {
+  const desordenado = paresDeErro(saida, filtro)
+  const pares: Record<string, number> = {}
+  for (const k of Object.keys(desordenado).sort()) pares[k] = desordenado[k]!
+  const total = Object.values(pares).reduce((s, n) => s + n, 0)
+  return { ...(commit ? { commit } : {}), total, pares }
+}
+
+// --- CLI: `npx tsx gates.ts --gerar-baseline-erros <saida.txt> [--filtro <re>] [--commit <sha>]`
+// Imprime o JSON da baseline no stdout. Não roda o tsc: mede-se em árvore limpa,
+// fora do motor, e o arquivo entra no repo por commit humano.
+if (process.argv.includes('--gerar-baseline-erros')) {
+  const arg = (n: string) => (process.argv.includes(n) ? process.argv[process.argv.indexOf(n) + 1] : undefined)
+  const arquivo = arg('--gerar-baseline-erros')
+  if (!arquivo) {
+    process.stderr.write('gates.ts: --gerar-baseline-erros <saida do tsc>\n')
+    process.exit(2)
+  }
+  process.stdout.write(`${JSON.stringify(gerarErrosBaseline(readFileSync(arquivo, 'utf8'), arg('--filtro'), arg('--commit')), null, 2)}\n`)
+  process.exit(0)
+}
+
 // --- CLI: `npx tsx gates.ts --run-cli <raiz> --config <000-config.json>` ------
 // Ticket 626: EXECUTA na raiz (a worktree) e LÊ o config passado em --config —
 // o da main, a mesma fonte de papel_marca, decisao-cli.ts e juiz.ts. Não existe
@@ -352,6 +492,7 @@ if (process.argv.includes('--run-cli')) {
     process.exit(2)
   }
   const config = JSON.parse(readFileSync(caminhoConfig, 'utf8')) as GatesConfig
+  carregarBaselinesErros(config, caminhoConfig)
   const v = rodarGates(config, execBash(raiz))
   for (const g of v.gates) {
     const marca = g.ok ? 'ok  ' : 'FALHA'

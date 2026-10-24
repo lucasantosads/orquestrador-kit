@@ -185,3 +185,62 @@ describe('P1 · o preflight lê o .env.local do principal e não exporta (condi�
     expect(r.stdout).toContain('FILHO=AUSENTE');
   });
 });
+
+/**
+ * K1 (dashboard-comercial, 24/10/2026) — com `false`, o principal não pode ter
+ * `.env*` fora do git. O `false` só impedia o LINK; o arquivo seguia no disco ao
+ * alcance de um `cat ../..`. Controle negativo: o mesmo principal, sem os dois
+ * arquivos, passa — e o `.env.example` VERSIONADO nunca reprova.
+ */
+describe('K1 · exigir_principal_sem_env', () => {
+  it('com false e .env.local solto na raiz e em apps/web: aborta nomeando os dois, sem apagar', () => {
+    const raiz = principal(DASH);
+    const r = noExecutor(raiz, 'exigir_principal_sem_env; echo "CHEGOU"');
+    expect(r.rc).not.toBe(0);
+    expect(r.stdout).not.toContain('CHEGOU');
+    expect(`${r.stdout}${r.stderr}`).toMatch(/linkar_env=false e o checkout principal tem \.env\* fora do git: \.env\.local apps\/web\/\.env\.local/);
+    expect(existsSync(join(raiz, '.env.local'))).toBe(true);
+    expect(existsSync(join(raiz, 'apps', 'web', '.env.local'))).toBe(true);
+  });
+
+  it('controle negativo: o mesmo principal sem os arquivos passa', () => {
+    const raiz = principal(DASH);
+    spawnSync('rm', ['-f', join(raiz, '.env.local'), join(raiz, 'apps', 'web', '.env.local')]);
+    const r = noExecutor(raiz, 'exigir_principal_sem_env && echo "CHEGOU"');
+    expect(r.rc, r.stderr).toBe(0);
+    expect(r.stdout).toContain('CHEGOU');
+  });
+
+  it('.env.example versionado não reprova; o mesmo nome fora do git reprova', () => {
+    const raiz = principal(DASH);
+    spawnSync('rm', ['-f', join(raiz, '.env.local'), join(raiz, 'apps', 'web', '.env.local')]);
+    writeFileSync(join(raiz, '.env.example'), 'SUPABASE_URL=\n');
+    expect(noExecutor(raiz, 'exigir_principal_sem_env').rc).not.toBe(0);
+    git(raiz, 'add', '.env.example');
+    git(raiz, 'commit', '-q', '-m', 'example');
+    expect(noExecutor(raiz, 'exigir_principal_sem_env').rc).toBe(0);
+  });
+
+  it('symlink .env* solto também reprova (é credencial do mesmo jeito)', () => {
+    const raiz = principal(DASH);
+    spawnSync('rm', ['-f', join(raiz, 'apps', 'web', '.env.local')]);
+    spawnSync('mv', [join(raiz, '.env.local'), join(raiz, '..', `env-fora-${process.pid}`)]);
+    symlinkSync(join(raiz, '..', `env-fora-${process.pid}`), join(raiz, '.env.production'));
+    const r = noExecutor(raiz, 'exigir_principal_sem_env');
+    expect(r.rc).not.toBe(0);
+    expect(`${r.stdout}${r.stderr}`).toContain('.env.production');
+  });
+
+  it('sem a chave (CI) ou com true: não cobra nada, mesmo com .env.local presente', () => {
+    for (const cfg of [CI, comWorktree(CI, true)]) {
+      const r = noExecutor(principal(cfg), 'exigir_principal_sem_env && echo "CHEGOU"');
+      expect(r.rc, r.stderr).toBe(0);
+      expect(r.stdout).toContain('CHEGOU');
+    }
+  });
+
+  it('o preflight chama a guarda logo depois da validação do valor', () => {
+    const exe = readFileSync(EXECUTOR, 'utf8');
+    expect(exe).toMatch(/\n  exigir_linkar_env_valido\n  exigir_principal_sem_env\n/);
+  });
+});
