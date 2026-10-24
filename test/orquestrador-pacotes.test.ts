@@ -29,11 +29,11 @@
  *      sem `node_modules` e o e2e de 27/09 adiou por `tsc: command not found`
  *      (docs/e2e/2026-09-27-1851-001). Symlink QUEBRADO não é pacote.
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { mkdirSync, writeFileSync, existsSync, mkdtempSync, rmSync, symlinkSync, lstatSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { bashNoFixture, criarFixture, REPO_ROOT } from './fixtures/orq-harness.js';
+import { describeHarness, bashNoFixture, criarFixture, REPO_ROOT } from './fixtures/orq-harness.js';
 
 const EXECUTOR = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
 
@@ -60,7 +60,7 @@ const SERVICES = [
   'telemetria',
 ];
 
-describe('pacotes_do_checkout detecta quem tem node_modules próprio', () => {
+describeHarness('pacotes_do_checkout detecta quem tem node_modules próprio', () => {
   it('pacote único: só a raiz', () => {
     const raiz = criarFixture([]);
     pacote(raiz, '.');
@@ -130,7 +130,7 @@ describe('pacotes_do_checkout detecta quem tem node_modules próprio', () => {
   });
 });
 
-describe('limpa_cache_vite purga o .vite de todo pacote detectado', () => {
+describeHarness('limpa_cache_vite purga o .vite de todo pacote detectado', () => {
   it('apaga na raiz E nos pacotes aninhados, e não toca no resto', () => {
     const raiz = criarFixture([]);
     for (const p of ['.', 'apps/web', 'services/telemetria', 'packages/ui']) {
@@ -151,7 +151,7 @@ describe('limpa_cache_vite purga o .vite de todo pacote detectado', () => {
   });
 });
 
-describe('a lista de pacotes é a MESMA que o linkador de worktree usa', () => {
+describeHarness('a lista de pacotes é a MESMA que o linkador de worktree usa', () => {
   it('linka node_modules de cada pacote detectado dentro da worktree', () => {
     const raiz = criarFixture([]);
     for (const p of ['.', 'apps/web', 'services/telemetria', 'packages/ui']) pacote(raiz, p);

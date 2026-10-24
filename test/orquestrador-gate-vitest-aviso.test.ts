@@ -15,7 +15,8 @@
  *     22/09/2026) não contam: ali, por definição, o caminho está fora da
  *     allowlist.
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
+import { describeHarness } from './fixtures/orq-harness.js';
 import { join } from 'node:path';
 import {
   caminhosForaDaAllowlist,
@@ -27,7 +28,7 @@ import {
 const FILA = join(__dirname, 'fixtures', 'gate-ticket-grep-q');
 const CFG = { proibido_no_cmd: [], cmd_prefixos_permitidos: [] };
 
-describe('(a) saída textual do vitest reprova', () => {
+describeHarness('(a) saída textual do vitest reprova', () => {
   it.each([
     'node_modules/.bin/vitest run 2>&1 | tail -5',
     "npx vitest run src/lib/comercial/midia 2>&1 | grep -E 'passed|failed'",
@@ -61,7 +62,7 @@ describe('(a) saída textual do vitest reprova', () => {
   });
 });
 
-describe('(b) caminho do objetivo fora da allowlist avisa', () => {
+describeHarness('(b) caminho do objetivo fora da allowlist avisa', () => {
   it.each<[string, string, string[], string[]]>([
     ['coberto exato', 'Edite src/a.ts.', ['src/a.ts'], []],
     ['fora', 'Edite src/a.ts e também src/b.ts.', ['src/a.ts'], ['src/b.ts']],

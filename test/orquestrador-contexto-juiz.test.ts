@@ -18,13 +18,13 @@
  *   (e) gate-ticket valida o campo (lista, existe na branch alvo, não é
  *       arquivo da própria allowlist).
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { criarFixture, escreverTicket, ler, REPO_ROOT } from './fixtures/orq-harness.js';
+import { describeHarness, criarFixture, escreverTicket, ler, REPO_ROOT } from './fixtures/orq-harness.js';
 import { montarPromptJuiz, type EntradaPrompt } from '../scripts/orquestrador/juiz.js';
 import { lerFila, validar, type GateCfg } from '../scripts/orquestrador/gate-ticket.js';
 
@@ -47,7 +47,7 @@ const ENTRADA_FIXA: EntradaPrompt = {
   nota: '',
 };
 
-describe('(a) sem contexto_juiz o prompt não muda', () => {
+describeHarness('(a) sem contexto_juiz o prompt não muda', () => {
   it('hash idêntico ao do prompt de ANTES do 622 (medido em 22/09/2026 na base 9a3c8d9)', () => {
     const h = createHash('sha256').update(montarPromptJuiz(ENTRADA_FIXA)).digest('hex');
     expect(h).toBe('247287f41cdad685907387035fb3f395386da580b6b55c1926f548a0f2e1dcd5');
@@ -134,7 +134,7 @@ function rodarJuiz(f: ReturnType<typeof fixture>) {
   };
 }
 
-describe('run_juiz com contexto_juiz', () => {
+describeHarness('run_juiz com contexto_juiz', () => {
   it('o critério cita um arquivo fora do diff: o material do juiz passa a conter esse arquivo, rotulado', () => {
     const f = fixture([REF], '-- gabarito\nLINHA_DA_BASE_0264\n');
     const r = rodarJuiz(f);
@@ -210,7 +210,7 @@ function filaGit(contexto: unknown, allowlist: string[] = ['src/a.ts']) {
   return { erros: v.filter((x) => !x.aviso && !x.isencao), avisos: v.filter((x) => x.aviso) };
 }
 
-describe('(d) gate-ticket valida contexto_juiz', () => {
+describeHarness('(d) gate-ticket valida contexto_juiz', () => {
   it('ausente: nada a dizer', () => {
     expect(filaGit(undefined).erros).toEqual([]);
   });

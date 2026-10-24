@@ -424,11 +424,20 @@ export function recorteDeFalha(saida: string, max = 40): string[] {
   return [...marcadas, ...cauda]
 }
 
-/** Executor real: bash -c a partir da raiz do repo. */
+/**
+ * Executor real: bash -c a partir da raiz do repo. `ORQ_GATE=1` (etapa 8e, P5):
+ * os testes de harness vendorizados (`describeHarness`) viram skipped dentro do
+ * gate e não disputam CPU com os testes do produto; no vitest humano eles rodam.
+ */
 export function execBash(raiz: string): (cmd: string) => Execucao {
   return (cmd) => {
     const t0 = Date.now()
-    const r = spawnSync('bash', ['-c', cmd], { cwd: raiz, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+    const r = spawnSync('bash', ['-c', cmd], {
+      cwd: raiz,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      env: { ...process.env, ORQ_GATE: '1' },
+    })
     return {
       exitCode: r.status ?? (r.signal ? 130 : 1),
       saida: `${r.stdout ?? ''}${r.stderr ?? ''}`,

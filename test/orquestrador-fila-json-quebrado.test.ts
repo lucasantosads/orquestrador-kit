@@ -11,11 +11,11 @@
  *
  * Nenhum caso carrega o executor, então o `claude` real não é alcançável.
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { bashNoFixture, criarFixture, escrever, ler, REPO_ROOT } from './fixtures/orq-harness.js';
+import { describeHarness, bashNoFixture, criarFixture, escrever, ler, REPO_ROOT } from './fixtures/orq-harness.js';
 
 const GATE_TS = join(REPO_ROOT, 'scripts', 'orquestrador', 'gate-ticket.ts');
 const TSX = join(REPO_ROOT, 'node_modules', '.bin', 'tsx');
@@ -69,7 +69,7 @@ function gatePendentes(fx: string): { rc: number; saida: string } {
   return { rc: r.status ?? 1, saida: `${r.stdout ?? ''}${r.stderr ?? ''}` };
 }
 
-describe('ticket 630 — fila com ticket de JSON quebrado', () => {
+describeHarness('ticket 630 — fila com ticket de JSON quebrado', () => {
   it('gate --pendentes sai com rc != 0 citando o arquivo e o erro; sem o quebrado, rc 0', () => {
     const fx = filaComQuebrado();
 

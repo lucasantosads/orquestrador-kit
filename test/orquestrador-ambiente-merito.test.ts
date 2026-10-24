@@ -20,9 +20,9 @@
  * reprovado entra como o literal "gates reprovados" em criteriosFalhos; juiz
  * que reprovou entra como "juiz: <motivo>" seguido dos criterios_falhos dele.
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { decidirDesfecho, type DecisaoConfig, type SinalTentativa } from '../scripts/orquestrador/decisao.js';
-import { configDeReferencia } from './fixtures/orq-harness.js';
+import { describeHarness, configDeReferencia } from './fixtures/orq-harness.js';
 
 const config = JSON.parse(configDeReferencia()) as DecisaoConfig;
 
@@ -30,7 +30,7 @@ function sinal(parcial: Partial<SinalTentativa>): SinalTentativa {
   return { exitCode: 0, saida: '', diffLines: 50, ...parcial };
 }
 
-describe("causa 'ambiente' × falha de mérito", () => {
+describeHarness("causa 'ambiente' × falha de mérito", () => {
   it('typecheck falho + permissão negada = reprovado, não adiado (caso real do 470c)', () => {
     const v = decidirDesfecho(
       config,

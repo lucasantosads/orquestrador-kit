@@ -16,12 +16,12 @@
  * `drive_ticket` de VERDADE (executor.sh sourced), com `run_attempt` STUBADO
  * num repo git sintético. Zero modelo.
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { REPO_ROOT, configDeReferencia } from './fixtures/orq-harness.js';
+import { describeHarness, REPO_ROOT, configDeReferencia } from './fixtures/orq-harness.js';
 
 const EXECUTOR = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
 
@@ -115,7 +115,7 @@ function drenagem(fx: string, ...roteiro: string[]): string {
   return `${r.stdout ?? ''}${r.stderr ?? ''}`;
 }
 
-describe('teto de adiamento por ambiente', () => {
+describeHarness('teto de adiamento por ambiente', () => {
   it('3 adiamentos consecutivos por ambiente = bloqueado, com a causa na nota', () => {
     const fx = fixtureRepo();
     drenagem(fx, 'ambiente');

@@ -10,11 +10,11 @@
  * 130 linhas, 23 eventos, 107 órfãs), e a asserção mais forte é a do
  * round-trip — desfazer o escape devolve o arquivo original BYTE A BYTE.
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { readFileSync, writeFileSync, copyFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { criarFixture, ler, REPO_ROOT } from './fixtures/orq-harness.js';
+import { describeHarness, criarFixture, ler, REPO_ROOT } from './fixtures/orq-harness.js';
 
 const REPARAR = join(REPO_ROOT, 'scripts', 'orquestrador', 'reparar-trilha.sh');
 const QUEBRADO = readFileSync(join(REPO_ROOT, 'test', 'fixtures', 'trilha', 'events-quebrado.log'), 'utf8');
@@ -35,7 +35,7 @@ function reparar(fx: string, conteudo: string) {
   return { rc: r.status ?? 1, saida: `${r.stdout ?? ''}${r.stderr ?? ''}`, trilha, depois: ler(trilha) };
 }
 
-describe('o recorte real é mesmo o caso doente', () => {
+describeHarness('o recorte real é mesmo o caso doente', () => {
   it('130 linhas para 23 eventos — 107 órfãs', () => {
     expect(linhas(QUEBRADO)).toHaveLength(130);
     expect(eventos(QUEBRADO)).toBe(23);
@@ -43,7 +43,7 @@ describe('o recorte real é mesmo o caso doente', () => {
   });
 });
 
-describe('reparo sobre a trilha real quebrada', () => {
+describeHarness('reparo sobre a trilha real quebrada', () => {
   it('100% das linhas passam a começar com timestamp', () => {
     const r = reparar(criarFixture([]), QUEBRADO);
     expect(r.rc, r.saida).toBe(0);
@@ -84,7 +84,7 @@ describe('reparo sobre a trilha real quebrada', () => {
   });
 });
 
-describe('uma vez só, e por construção', () => {
+describeHarness('uma vez só, e por construção', () => {
   it('a segunda passagem é no-op: não escreve, não anota', () => {
     const fx = criarFixture([]);
     const primeira = reparar(fx, QUEBRADO);
@@ -100,7 +100,7 @@ describe('uma vez só, e por construção', () => {
   });
 });
 
-describe('recusa em vez de inventar', () => {
+describeHarness('recusa em vez de inventar', () => {
   it('arquivo que COMEÇA com linha órfã não é tocado (rc=2)', () => {
     const semCabeca = linhas(QUEBRADO).slice(1).join('\n') + '\n';
     const fx = criarFixture([]);
@@ -121,7 +121,7 @@ describe('recusa em vez de inventar', () => {
   });
 });
 
-describe('a trilha reparada é legível pelas ferramentas que a liam errado', () => {
+describeHarness('a trilha reparada é legível pelas ferramentas que a liam errado', () => {
   it('`grep PERMISSAO_NEGADA` acha os eventos, e não os heredocs deles', () => {
     const r = reparar(criarFixture([]), QUEBRADO);
     const achados = linhas(r.depois).filter((l) => l.includes('PERMISSAO_NEGADA'));

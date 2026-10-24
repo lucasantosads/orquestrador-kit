@@ -15,11 +15,11 @@
  * O sinal é ENVIADO DE FORA nos casos abaixo, por um processo irmão. Um
  * `kill -TERM $$` provaria só que o handler roda quando chamado.
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { criarFixture, ler, REPO_ROOT } from './fixtures/orq-harness.js';
+import { describeHarness, criarFixture, ler, REPO_ROOT } from './fixtures/orq-harness.js';
 
 const EXECUTOR = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
 const runs = (fx: string) => join(fx, 'docs', 'fila', 'runs');
@@ -59,7 +59,7 @@ function morteExterna(sinal: 'TERM' | 'INT') {
   };
 }
 
-describe('SIGTERM: o caso de 06/09 15:38', () => {
+describeHarness('SIGTERM: o caso de 06/09 15:38', () => {
   const m = morteExterna('TERM');
 
   it('grava EXECUTOR_MORREU com o sinal, o rc e a fase', () => {
@@ -90,7 +90,7 @@ describe('SIGTERM: o caso de 06/09 15:38', () => {
   });
 });
 
-describe('SIGINT: o Ctrl-C do humano conta a mesma história', () => {
+describeHarness('SIGINT: o Ctrl-C do humano conta a mesma história', () => {
   const m = morteExterna('INT');
 
   it('grava EXECUTOR_MORREU rc=130 sinal=INT e limpa o STATUS', () => {
@@ -100,7 +100,7 @@ describe('SIGINT: o Ctrl-C do humano conta a mesma história', () => {
   });
 });
 
-describe('o handler espera o comando em primeiro plano — e isso explica o log de 06/09', () => {
+describeHarness('o handler espera o comando em primeiro plano — e isso explica o log de 06/09', () => {
   it('SIGTERM durante um comando em primeiro plano só é tratado quando ele volta', () => {
     // Por isso o local-loop.log traz "gates: REPROVADO (rc=143)" ANTES da morte:
     // o TERM foi para o grupo, o `npx tsx gates.ts` voltou 143, a linha do gate
@@ -136,7 +136,7 @@ describe('o handler espera o comando em primeiro plano — e isso explica o log 
   }, 30_000);
 });
 
-describe('o que NÃO mudou', () => {
+describeHarness('o que NÃO mudou', () => {
   const src = readFileSync(EXECUTOR, 'utf8');
 
   it('a produção arma os três traps, e é a mesma função que o teste exercita', () => {

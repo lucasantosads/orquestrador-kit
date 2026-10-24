@@ -14,12 +14,12 @@
  * interceptado (aprova e conta chamadas); `claude_run` redefinido para falhar
  * alto (lição do 623: STUB depois do source, nunca o claude real).
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { REPO_ROOT, configDeReferencia } from './fixtures/orq-harness.js';
+import { describeHarness, REPO_ROOT, configDeReferencia } from './fixtures/orq-harness.js';
 
 const EXECUTOR = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
 
@@ -114,7 +114,7 @@ function tentativa(fx: string, wt: string, stub: string): { log: string; veredit
 
 const soltos = (rundir: string) => readFileSync(join(rundir, 'arquivos-soltos.txt'), 'utf8');
 
-describe('631: arquivo solto', () => {
+describeHarness('631: arquivo solto', () => {
   it('sequência do 513: agente commita a.ts e deixa diag-tmp.txt solto -> reprovado/arquivo_solto com retry e o nome no diagnóstico', () => {
     const { fx, wt } = fixtureRepo();
     const stub = `echo a > a.ts && ${COMMIT} add a.ts && ${COMMIT} commit -qm trabalho && echo rascunho > diag-tmp.txt`;

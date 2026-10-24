@@ -15,12 +15,12 @@
  *   - gates vazios no config do fixture e `max_retries = 1` (duas tentativas);
  *   - enforcement, critérios, decisão e diagnóstico rodam de verdade.
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { REPO_ROOT, configDeReferencia } from './fixtures/orq-harness.js';
+import { describeHarness, REPO_ROOT, configDeReferencia } from './fixtures/orq-harness.js';
 
 const EXECUTOR = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
 
@@ -126,7 +126,7 @@ function drenagem(fx: string, ...roteiro: string[]): string {
 
 const prompt = (fx: string, n: number) => readFileSync(join(fx, 'docs', 'fila', 'runs', '901', `attempt-${n}`, 'prompt.txt'), 'utf8');
 
-describe('623 (a): o motivo do juiz chega ao prompt de retry', () => {
+describeHarness('623 (a): o motivo do juiz chega ao prompt de retry', () => {
   it('juiz reprova com o mecânico verde: o retry traz gate juiz, o motivo LITERAL e os criterios_falhos do juiz', () => {
     const fx = fixtureRepo();
     const log = drenagem(fx, 'v1', 'v2');
@@ -140,7 +140,7 @@ describe('623 (a): o motivo do juiz chega ao prompt de retry', () => {
   }, 180_000);
 });
 
-describe('623 (b): retry com o MESMO diff bloqueia sem chamar o juiz', () => {
+describeHarness('623 (b): retry com o MESMO diff bloqueia sem chamar o juiz', () => {
   it('segunda tentativa com diff.patch idêntico: bloqueado por retry_sem_mudanca, juiz chamado UMA vez', () => {
     const fx = fixtureRepo();
     const log = drenagem(fx, 'v1', '=');

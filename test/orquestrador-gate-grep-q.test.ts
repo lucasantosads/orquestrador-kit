@@ -12,7 +12,8 @@
  * `grep -q` SEM pipe (lendo arquivo) não tem produtor para matar e continua
  * permitido.
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
+import { describeHarness } from './fixtures/orq-harness.js';
 import { join } from 'node:path';
 import { checarCmd, lerFila, validar } from '../scripts/orquestrador/gate-ticket.js';
 
@@ -21,7 +22,7 @@ const CFG = { proibido_no_cmd: [], cmd_prefixos_permitidos: [] };
 
 const temGrepQ = (cmd: string) => checarCmd(cmd, CFG).some((a) => !a.isencao && /grep -q/.test(a.mensagem));
 
-describe('fila de fixture', () => {
+describeHarness('fila de fixture', () => {
   const fila = lerFila(FILA);
 
   it('901 (o critério real do 431) reprova, e pela regra do grep -q', () => {
@@ -35,7 +36,7 @@ describe('fila de fixture', () => {
   });
 });
 
-describe('quais formas caem', () => {
+describeHarness('quais formas caem', () => {
   it.each([
     "x 2>&1 | grep -q passed && echo ok",
     "x | grep -qE '[1-9] passed' && echo ok",

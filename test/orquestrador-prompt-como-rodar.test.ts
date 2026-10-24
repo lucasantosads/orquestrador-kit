@@ -18,11 +18,11 @@
  * para capturar o argv: o `prompt.txt` e o `--allowedTools` comparados são os da
  * MESMA chamada, não duas derivações que o teste juntou.
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { criarFixture, escreverTicket, ler, REPO_ROOT } from './fixtures/orq-harness.js';
+import { describeHarness, criarFixture, escreverTicket, ler, REPO_ROOT } from './fixtures/orq-harness.js';
 
 const EXECUTOR = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
 
@@ -96,7 +96,7 @@ function listaDoPrompt(prompt: string): string[] {
     .map((l) => l.slice(4));
 }
 
-describe('o bloco existe e diz as três regras', () => {
+describeHarness('o bloco existe e diz as três regras', () => {
   const { prompt } = tentativaReal();
 
   it('o prompt tem o bloco', () => {
@@ -119,7 +119,7 @@ describe('o bloco existe e diz as três regras', () => {
   });
 });
 
-describe('a lista é a MESMA string do --allowedTools daquela chamada', () => {
+describeHarness('a lista é a MESMA string do --allowedTools daquela chamada', () => {
   const { prompt, tools } = tentativaReal();
 
   it('item a item, na mesma ordem', () => {
@@ -152,7 +152,7 @@ describe('a lista é a MESMA string do --allowedTools daquela chamada', () => {
   });
 });
 
-describe('uma derivação só, no código', () => {
+describeHarness('uma derivação só, no código', () => {
   const src = readFileSync(EXECUTOR, 'utf8');
 
   it('run_attempt deriva `tools` uma vez e passa a MESMA variável para as duas bocas', () => {

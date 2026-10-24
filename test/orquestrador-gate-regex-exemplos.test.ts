@@ -10,10 +10,10 @@
  *
  * Tudo aqui roda o /usr/bin/grep de verdade (nenhum mock do casamento).
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { criarFixture, escreverTicket, REPO_ROOT } from './fixtures/orq-harness.js';
+import { describeHarness, criarFixture, escreverTicket, REPO_ROOT } from './fixtures/orq-harness.js';
 import {
   checarExemplosRegex,
   classeComColcheteEscapado,
@@ -71,7 +71,7 @@ const doTicket = (fx: string, id: string) => {
   return validar(fila.filter((t) => t.arquivo.includes(`/${id}-`)), fila, CFG);
 };
 
-describe('624 · o critério "cita arquivo:linha" do 503', () => {
+describeHarness('624 · o critério "cita arquivo:linha" do 503', () => {
   it('(a) regex VELHO (classe com \\[\\]) com os exemplos do 503 REPROVA pela regra 5 e pela regra 3', () => {
     const fx = criarFixture([]);
     ticket503(fx, '903', REGEX_VELHO, [{ regex: REGEX_VELHO, positivo: POSITIVO_503, negativo: NEGATIVO_503 }]);
@@ -122,7 +122,7 @@ describe('624 · o critério "cita arquivo:linha" do 503', () => {
   });
 });
 
-describe('624 · quais comandos exigem exemplo', () => {
+describeHarness('624 · quais comandos exigem exemplo', () => {
   it('(e) grep -F e grep -c sem -E não exigem exemplo', () => {
     expect(padroesDoCmd("{ grep -cF 'a|b' f || true; }")).toEqual([]);
     expect(padroesDoCmd("{ grep -c 'passed' f || true; }")).toEqual([]);
@@ -160,7 +160,7 @@ describe('624 · quais comandos exigem exemplo', () => {
   });
 });
 
-describe('624 · falha alta', () => {
+describeHarness('624 · falha alta', () => {
   it('(f) /usr/bin/grep ausente: o gate NÃO passa, sai com rc 2 dizendo o binário', () => {
     const fx = criarFixture([]);
     ticket503(fx, '908', REGEX_NOVO, [{ regex: REGEX_NOVO, positivo: POSITIVO_503, negativo: NEGATIVO_503 }]);

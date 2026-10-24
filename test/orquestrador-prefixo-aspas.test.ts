@@ -11,7 +11,8 @@
  * que se afirma não é "o novo funciona", é "o antigo produzia permissão que não
  * autoriza nada, e em quantos casos".
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
+import { describeHarness } from './fixtures/orq-harness.js';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { padroesDeCmd, prefixoDeCmd, prefixoSimples } from '../scripts/orquestrador/perfil.js';
@@ -51,14 +52,14 @@ function parentesesBalanceados(s: string): boolean {
   return n === 0;
 }
 
-describe('o corpus é o dos tickets reais do lote 8', () => {
+describeHarness('o corpus é o dos tickets reais do lote 8', () => {
   it('105 critérios, dos cinco tickets 246-250', () => {
     expect(CORPUS).toHaveLength(105);
     expect([...new Set(CORPUS.map((c) => c.ticket))].sort()).toEqual(['246', '247', '248', '249', '250']);
   });
 });
 
-describe('o dano que a derivação sem aspas causava', () => {
+describeHarness('o dano que a derivação sem aspas causava', () => {
   const quebrados = CORPUS.filter((c) => !aspasBalanceadas(prefixoAntigo(c.cmd)));
 
   it('21 dos 105 critérios saíam com aspas ABERTAS no prefixo', () => {
@@ -75,7 +76,7 @@ describe('o dano que a derivação sem aspas causava', () => {
   });
 });
 
-describe('com aspas, o prefixo de TODO cmd real fecha o que abriu', () => {
+describeHarness('com aspas, o prefixo de TODO cmd real fecha o que abriu', () => {
   it('nenhum dos 105 prefixos sai com aspas abertas', () => {
     const maus = CORPUS.filter((c) => !aspasBalanceadas(prefixoDeCmd(c.cmd)));
     expect(maus.map((c) => `${c.ticket}: ${c.cmd}`)).toEqual([]);
@@ -98,7 +99,7 @@ describe('com aspas, o prefixo de TODO cmd real fecha o que abriu', () => {
   });
 });
 
-describe('o corte de antes continua valendo onde sempre valeu', () => {
+describeHarness('o corte de antes continua valendo onde sempre valeu', () => {
   it('pipe FORA de aspas ainda corta', () => {
     expect(prefixoDeCmd("npx vitest run x | grep -c 'passed'")).toBe('npx vitest run x');
   });

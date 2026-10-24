@@ -16,13 +16,13 @@
  * Os dados do caso 503 são os de docs/fila/runs/503/attempt-0 (criterios.txt e
  * permission_denials do claude.txt), copiados literalmente.
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { mkdirSync, writeFileSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { decidirDesfecho, type DecisaoConfig, type SinalTentativa } from '../scripts/orquestrador/decisao.js';
 import { montarDiagnostico } from '../scripts/orquestrador/diagnostico.js';
-import { configDeReferencia, criarFixture, escreverTicket, REPO_ROOT } from './fixtures/orq-harness.js';
+import { describeHarness, configDeReferencia, criarFixture, escreverTicket, REPO_ROOT } from './fixtures/orq-harness.js';
 
 const config = JSON.parse(configDeReferencia()) as DecisaoConfig;
 const EXECUTOR = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
@@ -50,7 +50,7 @@ function sinal(parcial: Partial<SinalTentativa>): SinalTentativa {
   return { exitCode: 0, saida: '', diffLines: 60, ...parcial };
 }
 
-describe('625: a sequência do 503 attempt-0 vira mérito', () => {
+describeHarness('625: a sequência do 503 attempt-0 vira mérito', () => {
   it('gates verdes, enforcement ok, só o critério falho, duas permissões negadas, rc 0: REPROVADO e consome tentativa', () => {
     const s = sinal({ criteriosFalhos: [CRITERIO_503], permissoesNegadas: NEGADAS_503, enforcementViolado: false });
     const v = decidirDesfecho(config, s);
@@ -73,7 +73,7 @@ describe('625: a sequência do 503 attempt-0 vira mérito', () => {
   });
 });
 
-describe("625: 'ambiente' por critério só quando o harness não executou o comando", () => {
+describeHarness("625: 'ambiente' por critério só quando o harness não executou o comando", () => {
   it('critério com rc 126/127 (criteriosNaoExecutados) = adiado por ambiente, sem consumir tentativa', () => {
     const v = decidirDesfecho(
       config,
@@ -93,7 +93,7 @@ describe("625: 'ambiente' por critério só quando o harness não executou o com
   });
 });
 
-describe('625: run_criterios separa o comando que não executou do critério que reprovou', () => {
+describeHarness('625: run_criterios separa o comando que não executou do critério que reprovou', () => {
   it('rc 127 (não encontrado) e rc 126 (não executável) entram na lista; reprovação comum não entra', () => {
     const fx = criarFixture([]);
     escreverTicket(fx, {

@@ -8,13 +8,20 @@
  * nos casos de escrita, MEXER em) docs/fila do checkout principal — que é a
  * fonte única da fila real. O fixture é sempre um dir temporário puro.
  */
-import { afterAll } from 'vitest';
+import { afterAll, describe } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 
 export const REPO_ROOT = join(import.meta.dirname, '..', '..');
+
+/**
+ * `describe` dos testes de harness vendorizados (etapa 8e, P5). Sob `ORQ_GATE=1`
+ * (o spawn dos gates, gates.ts:execBash) vira skip: o gate de testes do
+ * repo instalado não roda o harness do motor, que não é critério de ticket nenhum.
+ */
+export const describeHarness = describe.skipIf(process.env.ORQ_GATE === '1');
 export const LIB = join(REPO_ROOT, 'scripts', 'orquestrador', 'lib.sh');
 
 /**

@@ -17,17 +17,17 @@
  * truncamento já existia (`executor.sh`, `cut -c1-160`) e não bastava, porque
  * `cut -c` é orientado a LINHA — corta cada linha em 160 e mantém todas.
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { criarFixture, bashNoFixture, ler, REPO_ROOT } from './fixtures/orq-harness.js';
+import { describeHarness, criarFixture, bashNoFixture, ler, REPO_ROOT } from './fixtures/orq-harness.js';
 
 const CMD_REAL = readFileSync(join(REPO_ROOT, 'test', 'fixtures', 'trilha', 'permissao-negada-234.cmd'), 'utf8').replace(/\n$/, '');
 const EXECUTOR = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
 const trilha = (fx: string) => ler(join(fx, 'docs', 'fila', 'runs', 'events.log'));
 
-describe('uma_linha: o escape que faltava', () => {
+describeHarness('uma_linha: o escape que faltava', () => {
   const roda = (fx: string, corpo: string) => bashNoFixture(fx, corpo, { ORQ_TESTE: '1' });
 
   it('escapa \\n, \\r e \\t como dois caracteres', () => {
@@ -51,7 +51,7 @@ describe('uma_linha: o escape que faltava', () => {
   });
 });
 
-describe('PERMISSAO_NEGADA com o comando multi-linha REAL do 234', () => {
+describeHarness('PERMISSAO_NEGADA com o comando multi-linha REAL do 234', () => {
   /** Roda permissoes_negadas() sobre um envelope com o comando real dentro. */
   function eventoDoComandoReal(fx: string): string {
     const envelope = JSON.stringify({
@@ -102,7 +102,7 @@ describe('PERMISSAO_NEGADA com o comando multi-linha REAL do 234', () => {
   });
 });
 
-describe('o escape vale para QUALQUER evento, não só PERMISSAO_NEGADA', () => {
+describeHarness('o escape vale para QUALQUER evento, não só PERMISSAO_NEGADA', () => {
   it('valor multi-linha em evento arbitrário sai numa linha só', () => {
     const fx = criarFixture([]);
     bashNoFixture(fx, `event 901 QUALQUER "detalhe=$(printf 'linha1\\nlinha2\\nlinha3')"`, { ORQ_TESTE: '1' });

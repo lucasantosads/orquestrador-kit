@@ -277,6 +277,20 @@ saida="$(cd "$TST" && npx vitest run --reporter=dot 2>&1)"; rc=$?
 printf '%s\n' "$saida" | tail -6 | sed 's/^/  | /'
 [ "$rc" = 0 ] && ok "npx vitest run no repo: rc 0" || falha "npx vitest run no repo: rc $rc"
 
+echo "-- (h4) · 8e-P5 · o gate de testes do repo PULA o harness; o vitest humano o roda --"
+# O spawn é o do motor (gates.ts:execBash, o mesmo dos gates da drenagem): sob ele
+# o harness vendorizado vira skipped e não disputa CPU com o teste do ticket.
+printf "import { execBash } from '%s/scripts/orquestrador/gates.ts'\nconst r = execBash(process.cwd())(process.argv[2]!)\nprocess.stdout.write(r.saida)\nprocess.exit(r.exitCode)\n" \
+  "$TST" > "$COPIA_TESTES/gate.mts"
+saida="$(cd "$TST" && node_modules/.bin/tsx "$COPIA_TESTES/gate.mts" "npx vitest run $ALVO" 2>&1)"; rc=$?
+printf '%s\n' "$saida" | tail -4 | sed 's/^/  | /'
+[ "$rc" = 0 ] && ok "gate: rc 0" || falha "gate: rc $rc"
+printf '%s' "$saida" | grep -qE 'Test Files +1 skipped' \
+  && ok "gate: $ALVO skipped" || falha "gate: $ALVO RODOU dentro do gate"
+saida="$(cd "$TST" && env -u ORQ_GATE npx vitest run "$ALVO" 2>&1)"; rc=$?
+printf '%s' "$saida" | grep -qE 'Test Files +1 passed' \
+  && ok "vitest humano: $ALVO roda" || falha "vitest humano: $ALVO não rodou (rc $rc)"
+
 
 # --- (i) · K8b-3 · --migrar: pause file, liberações e o relato do .gitignore --
 # O cenário é o repo LEGADO de verdade: kill switch no nome antigo

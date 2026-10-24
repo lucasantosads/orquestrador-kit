@@ -18,11 +18,11 @@
  *       há ausente) e para o STATUS.md, numa linha que só existe quando não
  *       está vazia.
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { configDeReferencia, criarFixture, REPO_ROOT } from './fixtures/orq-harness.js';
+import { describeHarness, configDeReferencia, criarFixture, REPO_ROOT } from './fixtures/orq-harness.js';
 
 const EXECUTOR = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
 const GATES_TS = join(REPO_ROOT, 'scripts', 'orquestrador', 'gates.ts');
@@ -89,7 +89,7 @@ function gateCom(fx: string, gatesTxt: string): string {
 
 const statusMd = (fx: string) => readFileSync(join(fx, 'docs', 'fila', 'runs', 'STATUS.md'), 'utf8');
 
-describe('626 (a): gates.ts executa na worktree e lê o config da main', () => {
+describeHarness('626 (a): gates.ts executa na worktree e lê o config da main', () => {
   it('config da main com typecheck + typecheck_scripts e worktree só com typecheck: os DOIS rodam; a linha GATE sai typecheck=ok', () => {
     const fx = checkout([TYPECHECK, TYPECHECK_SCRIPTS, TESTES, BUILD]);
     const wt = join(fx, 'wt');
@@ -121,7 +121,7 @@ describe('626 (a): gates.ts executa na worktree e lê o config da main', () => {
   });
 });
 
-describe('626 (b-e): a marcação do papel e os ausentes', () => {
+describeHarness('626 (b-e): a marcação do papel e os ausentes', () => {
   it('(b) typecheck ok e typecheck_scripts ausente do gates.txt: typecheck=ok e gates_ausentes=typecheck_scripts na linha GATE e no STATUS.md', () => {
     const fx = checkout([TYPECHECK, TYPECHECK_SCRIPTS, TESTES, BUILD]);
     const l = gateCom(fx, 'ok   typecheck 10ms\nok   testes 10ms\nok   build 10ms\nVEREDITO: APROVADO\n');
@@ -153,7 +153,7 @@ describe('626 (b-e): a marcação do papel e os ausentes', () => {
   });
 });
 
-describe('626: gates_ausentes no STATUS.md', () => {
+describeHarness('626: gates_ausentes no STATUS.md', () => {
   it('STATUS.md: status_set com gates_ausentes preenchido imprime a linha', () => {
     const fx = checkout([TYPECHECK]);
     const log = noExecutor(fx, 'status_set estado=executando ticket=901 gates_ausentes=typecheck_scripts,build');

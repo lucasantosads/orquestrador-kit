@@ -10,12 +10,12 @@
  * O caso central roda `run_juiz` DE VERDADE (executor.sh sourced, juiz
  * stubado), como o teste do 622: o que se assere é o `juiz.prompt.txt`.
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { criarFixture, escreverTicket, ler, REPO_ROOT } from './fixtures/orq-harness.js';
+import { describeHarness, criarFixture, escreverTicket, ler, REPO_ROOT } from './fixtures/orq-harness.js';
 import {
   definicoesChamadasPelosTestes,
   montarPromptJuiz,
@@ -121,7 +121,7 @@ function rodarJuiz(f: ReturnType<typeof fixture>) {
 const blocoDe = (p: string) => (p.includes(BLOCO) ? p.slice(p.indexOf(BLOCO), p.indexOf('SAÍDA DOS GATES MECÂNICOS')) : '');
 const ocorrencias = (texto: string, trecho: string) => texto.split(trecho).length - 1;
 
-describe('628 · run_juiz com teste novo chamando helper de fora do diff', () => {
+describeHarness('628 · run_juiz com teste novo chamando helper de fora do diff', () => {
   it('(a)(d) o corpo INTEIRO do helper, com arquivo:linha, entra no prompt, lido da BASE', () => {
     const f = fixture({
       novoIt: "  it('mensagem so com anexo', () => {\n    const e = montarEvento(payloadSoComAnexo())\n    expect(e.tipo).toBe('InboundMessage')\n  })",
@@ -190,7 +190,7 @@ const ENTRADA_FIXA: EntradaPrompt = {
   nota: '',
 };
 
-describe('628 · montarPromptJuiz e definicoesChamadasPelosTestes', () => {
+describeHarness('628 · montarPromptJuiz e definicoesChamadasPelosTestes', () => {
   it('(c) sem definições o prompt tem o MESMO hash do 622 (medido em 22/09/2026 na base 9a3c8d9)', () => {
     const h = (e: EntradaPrompt) => createHash('sha256').update(montarPromptJuiz(e)).digest('hex');
     expect(h({ ...ENTRADA_FIXA, definicoes: [] })).toBe('247287f41cdad685907387035fb3f395386da580b6b55c1926f548a0f2e1dcd5');

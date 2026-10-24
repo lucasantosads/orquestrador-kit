@@ -18,12 +18,12 @@
  *   - o juiz é interceptado (`run_juiz` conta chamadas num arquivo);
  *   - `claude_run` falha alto (lição do 623).
  */
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { REPO_ROOT, configDeReferencia } from './fixtures/orq-harness.js';
+import { describeHarness, REPO_ROOT, configDeReferencia } from './fixtures/orq-harness.js';
 
 const EXECUTOR = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
 const FIXTURE_510C = join(REPO_ROOT, 'test', 'fixtures', 'orquestrador-base-vermelha', 'gates-510c-attempt-0.txt');
@@ -152,7 +152,7 @@ function chamadasDoJuiz(fx: string): number {
   return existsSync(f) ? readFileSync(f, 'utf8').split('\n').filter(Boolean).length : 0;
 }
 
-describe('632: base vermelha', () => {
+describeHarness('632: base vermelha', () => {
   it('sequência do 510c: FAIL só no 0283 bloqueia com base_vermelha, sem juiz, sem retry e sem consumir tentativa', () => {
     const fx = fixtureRepo();
     const log = drenagem(fx);
