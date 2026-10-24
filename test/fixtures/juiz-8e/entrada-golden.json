@@ -1,0 +1,15 @@
+{
+  "id": "952",
+  "objetivo": "objetivo fixo do golden da 8e",
+  "allowlist": ["src/a.ts", "src/a.test.ts"],
+  "criterios": [
+    { "tipo": "alvo", "descricao": "d1", "cmd": "true", "espera": "x" },
+    { "tipo": "avaliador", "descricao": "compare com ref/base.sql", "cmd": "true", "espera": "avaliador" }
+  ],
+  "diff": "diff --git a/src/a.ts b/src/a.ts\n+++ b/src/a.ts\n+export const a = 2",
+  "gates": "ok   testes  10ms\nVEREDITO: APROVADO",
+  "nota": "nota do harness",
+  "contexto": [{ "path": "ref/base.sql", "conteudo": "select 1;" }],
+  "definicoes": [{ "path": "src/h.ts", "linha": 3, "nome": "h", "corpo": "function h() {}" }],
+  "ampliados": ["src/vizinho.test.ts"]
+}

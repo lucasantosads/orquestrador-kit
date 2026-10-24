@@ -60,6 +60,8 @@ export interface Item {
 export interface PreVooConfig {
   repo_origin_deve_conter?: string
   ambiente_id?: string
+  branch_alvo?: string
+  juiz?: { review_md?: string }
 }
 
 export interface PreVooDeps {
@@ -76,6 +78,8 @@ export interface PreVooDeps {
   ultimaSondagem: () => { dia: string; falhou: boolean } | null
   /** Hoje, injetado: teste de pré-voo não lê relógio. */
   hoje: () => string
+  /** `git show <branch>:<path>`; `null` quando o arquivo não existe lá (cat.8). */
+  lerDaBranchAlvo?: (branch: string, path: string) => string | null
 }
 
 /**
@@ -245,6 +249,25 @@ export function checarUltimaSondagem(deps: Pick<PreVooDeps, 'ultimaSondagem' | '
   }
 }
 
+/** Tetos do REVIEW.md (etapa 8e, P4): ele vai inteiro em TODA chamada do juiz. */
+export const TETO_REVIEW_LINHAS = 150
+export const TETO_REVIEW_BYTES = 8192
+
+/** cat.8 · `juiz.review_md` existe na branch alvo e cabe nos tetos. Só roda com a chave. */
+export function checarReviewMd(config: PreVooConfig, deps: Pick<PreVooDeps, 'lerDaBranchAlvo'>): Item {
+  const path = config.juiz?.review_md ?? ''
+  const branch = config.branch_alvo ?? ''
+  const item = { token: 'cat.8', item: 'review_md' }
+  const t = deps.lerDaBranchAlvo ? deps.lerDaBranchAlvo(branch, path) : null
+  if (t === null) return { ok: false, ...item, motivo: `juiz.review_md '${path}' ausente em ${branch}` }
+  const linhas = t.split('\n').length - (t.endsWith('\n') ? 1 : 0)
+  const bytes = Buffer.byteLength(t)
+  if (linhas > TETO_REVIEW_LINHAS || bytes > TETO_REVIEW_BYTES) {
+    return { ok: false, ...item, motivo: `${path} tem ${linhas} linhas e ${bytes} bytes (teto: ${TETO_REVIEW_LINHAS} linhas, ${TETO_REVIEW_BYTES} bytes)` }
+  }
+  return { ok: true, ...item, motivo: `${path}: ${linhas} linhas, ${bytes} bytes` }
+}
+
 export interface Veredito {
   ok: boolean
   itens: Item[]
@@ -272,6 +295,9 @@ export function preVooRelampago(entrada: { config: PreVooConfig; deps: PreVooDep
     ['cat.0 (spec vendorizada)', () => checarSpecVendorizada(deps)],
     ['cat.1 (identidade)', () => checarIdentidade({ config, ...deps })],
     ['cat.6 (estrutura da fila)', () => checarEstruturaFila(deps)],
+    ...(config.juiz?.review_md
+      ? [['cat.8 (review_md)', () => checarReviewMd(config, deps)] as [string, () => Item]]
+      : []),
     ['cat.3 (sondagem de modelo)', () => checarUltimaSondagem(deps)],
   ]
   const itens: Item[] = []
@@ -419,6 +445,10 @@ export function preVooDepsReais(entrada: {
     },
     lerLiberacoes: () => readFileSync(join(entrada.filaDir, 'liberacoes.json'), 'utf8'),
     ultimaSondagem: () => ultimaSondagemDe(entrada.runsDir, entrada.custoFile),
+    lerDaBranchAlvo: (branch, path) => {
+      const r = exigirGit(rodarGit('show', `${branch}:${path}`), `git show ${branch}:${path}`)
+      return r.status === 0 ? r.stdout : null
+    },
     hoje: entrada.hoje ?? (() => diaLocal()),
   }
 }

@@ -90,6 +90,7 @@ export const CHAVES_CONFIG: ChaveConfig[] = [
   { chave: 'juiz.paths_alto_risco', onde: 'juiz.ts:64', obrigatoria: true, nota: 'pode ser lista VAZIA; o que não pode é a chave sumir' },
   { chave: 'juiz.palavras_alto_risco', onde: 'juiz.ts:67', obrigatoria: true },
   { chave: 'juiz.diff_max_baixo', onde: 'juiz.ts:69', obrigatoria: true },
+  { chave: 'juiz.review_md', onde: 'executor.sh:run_juiz, prevoo.ts:checarReviewMd', obrigatoria: false, nota: 'etapa 8e: path do REVIEW.md lido da BASE para o prompt do juiz; ausente = desligado. Presente e fora da branch_alvo (ou acima de 150 linhas / 8192 bytes) = pré-voo NO-GO cat.8' },
   { chave: 'modelos.juiz_alto', onde: 'juiz.ts:76', obrigatoria: true },
   { chave: 'modelos.juiz_baixo', onde: 'juiz.ts:76', obrigatoria: true },
 

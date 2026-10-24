@@ -133,6 +133,11 @@ export interface EntradaPrompt {
    * adicionadas dos .md do diff. Ausente ou vazio: o prompt sai como antes.
    */
   anexo?: string
+  /**
+   * Etapa 8e (P4) — conteúdo de `juiz.review_md` (as regras de revisão do repo),
+   * lido da BASE pelo executor.sh. Ausente ou vazio: o prompt sai como antes.
+   */
+  review?: string
 }
 
 /** A allowlist inclui arquivo de teste? Só então o bloco anti-afrouxamento entra. */
@@ -616,6 +621,11 @@ export function montarPromptJuiz(e: EntradaPrompt): string {
     COBRANCAS,
     ...(tocaTeste([...e.allowlist, ...(e.ampliados ?? [])]) ? ['', ANTI_AFROUXAMENTO] : []),
     ...(e.ampliados && e.ampliados.length > 0 ? blocoAmpliados(e.ampliados) : []),
+    // Etapa 8e (P4): depois das cobranças e antes de FORMATO, no prefixo fixo
+    // por repo (cacheável); a numeração das cobranças não muda.
+    ...(e.review?.trim()
+      ? ['', 'REVIEW.md DO REPO (regras de revisão deste repositório; valem junto com os itens acima):', e.review.trim()]
+      : []),
     '',
     FORMATO,
     '',
