@@ -1243,3 +1243,38 @@ com as peças K1-K3 de 2026-09.
 - **8e-6**: este registro e `docs/PECAS.md`.
 
 Asserções existentes que mudaram: nenhuma (8e-5 só muda o limite de tempo).
+
+### Etapa 8e (juiz) · material completo, contexto limpo, REVIEW.md e harness fora do gate (24/10/2026)
+
+Segunda parte da 8e, a partir do lote do dashboard-comercial (001 a 003). As peças levam o
+nome do plano do PASSO 0 (P1 a P6), para não colidir com 8e-1..8e-6.
+
+- **8e-P2** `faf24b4`: o juiz roda com cwd num `mktemp -d` vazio, fora de qualquer repo (antes,
+  a worktree do ticket, com o CLAUDE.md e o `.claude/` da branch), e com `--tools ""`,
+  `--strict-mcp-config` e `--disable-slash-commands`, as três confirmadas no `claude --help`
+  2.1.302. `--setting-sources` e `--bare` ficaram fora. Vermelho: o `claude` falso gravou a
+  worktree como cwd.
+- **8e-P1** `1574417`: bloco `MENSAGENS DE COMMIT (escritas pelo agente: declaração, não
+  evidência)` com `git log base..HEAD`, sempre que houver commit; teto de 200 linhas e 8 KB
+  marcado. Vermelho: o corpo de `1bfcbc1d` (003/0) não chegava ao prompt.
+- **8e-P3** `e1bb1fa`: para cada `arquivo:linha` nas linhas adicionadas dos `.md` do diff, o
+  trecho da BASE (L-2 a M+2, numerado); caminho curto por sufixo único; ausente, ambíguo e
+  omitido entram marcados. Para cada sha citado, uma linha de `git show -s` (só se for
+  ancestral da base), até 20. O bloco manda tratar como não verificado o que o anexo não prova
+  (`git log -S`). Tetos: 40 citações, 12 linhas por trecho, 400 linhas e 16 KB. Vermelho: a
+  linha 186 de `avaliar-alerta-trafego/route.ts` (001/0) não chegava.
+- **8e-P4** `e7cbb8d`: chave `juiz.review_md` (opcional). Lida da BASE; bloco depois das
+  cobranças (itens 4 e 5 incluídos) e antes de FORMATO; chave presente e arquivo ausente na base
+  derruba o juiz. Pré-voo `cat.8`: o arquivo existe na `branch_alvo` com até 150 linhas e
+  8192 bytes. Sem a chave, o prompt é byte a byte o de `220068f` (golden). Vermelho: 5 de 6 casos.
+- **8e-P6** `71f3fdf`: avisos `C15` (critério depende do corpo/mensagem do commit) e `C16`
+  (ticket pede vermelho antes e todo cmd com vitest descarta a saída). Medido: C15 0 no Comarka
+  (1479) e 2 no dashboard; C16 27 `done` no Comarka (contados como acerto) e 2 no dashboard.
+- **8e-P5** `8e656c0`: `ORQ_GATE=1` no spawn dos gates (`gates.ts:execBash`); os 19 testes de
+  harness vendorizados usam `describeHarness` (`describe.skipIf(ORQ_GATE=1)`). No gate do repo
+  instalado eles viram skip; no vitest humano e no kit continuam rodando. Vermelho: caso (h4)
+  do `test-instalar.sh`.
+
+Asserções existentes que mudaram: nenhuma. O inventário de severidades
+(`orquestrador-gate-severidade.test.ts`) ganhou C15 e C16; os 19 testes vendorizados trocaram
+`describe` por `describeHarness`. CONTRATO não foi atualizado (falta a seção de `juiz.review_md`).

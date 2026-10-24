@@ -1092,7 +1092,43 @@
   *Teste:* `orquestrador-linkar-env.test.ts` (bloco K1), `orquestrador-gate-baseline-erros.test.ts`,
   `orquestrador-piso-tools.test.ts` (bloco K2), `test-drenagem.sh` (bloco K3).
 
+- **8e (juiz) · material completo, contexto limpo, REVIEW.md, harness fora do gate
+  (24/10/2026).** Mensagens de commit rotuladas como declaração do agente; trechos e commits
+  citados nos `.md` lidos da base; `juiz.review_md` com pré-voo `cat.8`; juiz fora da worktree
+  com `--tools ""`, `--strict-mcp-config`, `--disable-slash-commands`; avisos C15 e C16;
+  `ORQ_GATE=1` e `describeHarness`. Commits `faf24b4`, `1574417`, `e1bb1fa`, `e7cbb8d`,
+  `71f3fdf`, `8e656c0`.
+  *Evidência:* `~/orq-sessoes/relatorio-kit-etapa8e.md`.
+  *Teste:* `orquestrador-juiz-isolamento.test.ts`, `orquestrador-juiz-commits.test.ts`,
+  `orquestrador-juiz-citacoes.test.ts`, `orquestrador-juiz-review.test.ts`,
+  `orquestrador-gate-8e.test.ts`, `test-instalar.sh` caso (h4).
+
 ## PENDENTES
+
+- **8f · vermelho antes MECÂNICO.** Hoje o "vermelho antes" de um ticket é o que o agente
+  diz: o corpo de `1bfcbc1d` (dashboard 003/0) afirma que (a) e (b) falharam contra o código
+  anterior, e o `claude.txt` da mesma tentativa admite "deduzo do código antigo" e "não vi
+  quais casos falharam". A 8e-P1 só faz o juiz ver a afirmação, rotulada como declaração.
+  *Desenho proposto:* para os critérios de tipo `cria_novo` com vitest, o executor, depois
+  dos gates verdes, monta uma árvore temporária com o `src` da BASE e os arquivos de teste da
+  HEAD (`git worktree add <tmp> <base>` + `git checkout HEAD -- <testes do diff>`), roda o
+  mesmo cmd do critério ali e grava `vermelho-antes.txt` no rundir com o rc e o recorte de
+  falha (`recorteDeFalha`). O juiz recebe o bloco como EVIDÊNCIA do harness. Rc 0 na base
+  (teste que passa sem a mudança) vai para o juiz como achado, não como reprova automática,
+  até medir o falso positivo no corpus. Custo: um vitest a mais por tentativa com teste novo.
+  *Teste:* fixture com teste que falha na base e passa na HEAD (bloco com FAIL) e com teste
+  tautológico (bloco com rc 0 na base).
+
+- **8e · tsc do repo instalado lê os testes de harness.** A 8e-P5 tira o harness do gate de
+  testes (`ORQ_GATE=1`), mas o `tsconfig.json` do CI inclui `test/`, então o typecheck do CI
+  continua compilando os 19 testes vendorizados e o `test/fixtures/orq-harness.ts`, que
+  dependem do motor e de tipos do vitest. O dashboard já exclui `test/orquestrador-*` e
+  `test/fixtures/**` do tsc; o CI não.
+  *Evidência:* PASSO 0 da 8e, linha 4 (`tsconfig.json` do CI com `"include"` que cobre `test`).
+  *Conserto proposto:* mover o harness para `scripts/orquestrador/harness/*.harness.ts` com
+  vitest config própria (resolve tsc e gate juntos; 4 a 5 vezes o tamanho da P5) ou, menor,
+  o `--atualizar` acusar `tsconfig` que inclui `test/orquestrador-*`.
+  *Teste:* o tsc do repo de fixture com o `tsconfig` do CI não lista arquivo de harness.
 
 - **8e · `aguardando_merge` que a pausa segurou não volta sozinho.** Com a 8e-4, o ticket
   aprovado durante a pausa fica em `aguardando_merge`, mas a drenagem só mergeia na volta do
