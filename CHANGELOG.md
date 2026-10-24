@@ -1214,3 +1214,32 @@ principal dentro da worktree. CONTRATO §22.
 - **8d-3**: CONTRATO §22, este registro e `docs/PECAS.md`.
 
 Asserções existentes que mudaram: nenhuma.
+
+### Etapa 8e · pedidos do dashboard-comercial: credencial, gate erro a erro e pausa no merge (24/10/2026)
+
+Os nomes K1, K2 e K3 dos commits são os do lote do dashboard; aqui viram 8e-N para não colidir
+com as peças K1-K3 de 2026-09.
+
+- **8e-1** `36d8430`: `exigir_principal_sem_env` no preflight. Com `worktree.linkar_env: false`,
+  `.env*` não versionado no checkout principal (raiz até profundidade 3, symlink conta,
+  `.env.example` versionado não) aborta o run, nomeando os arquivos; o motor não apaga nada.
+  Vermelho: 3 de 6 casos com a guarda desligada.
+- **8e-2** `30568fc`: `tipo: "baseline_erros"`. Chave `arquivo|TSxxxx`; par novo ou que
+  cresceu reprova, nomeado no `gates.txt`; `baseline_arquivo` relativo à raiz do checkout do
+  config (a main, nunca a worktree); arquivo ilegível ou com total diferente da soma reprova;
+  gate mudo reprova; `gates.ts --gerar-baseline-erros`; o `orq config` acusa gate sem
+  `baseline_arquivo`. Vermelho: 3 de 18 casos com a comparação desligada, entre eles a troca de
+  um erro por outro que o gate de contagem aprova.
+- **8e-3** `62845f4`: teste de que uma regra `Read(<caminho>)` do piso chega intacta ao
+  `--disallowedTools` e não tira o `Read` da allowlist. Vermelho: 2 de 4 casos com o piso
+  descartando `Read(`. Quem barra a leitura é o CLI do Claude Code; essa prova é uma chamada
+  real, fora da suíte.
+- **8e-4** `d5c6389`: o merge da drenagem lê a pausa. Com o `PAUSAR` posto durante a execução,
+  o aprovado fica em `aguardando_merge`, com evento `MERGE_SUSPENSO motivo=pausa` e a frente
+  intacta. Antes, ele entrava na branch alvo na mesma volta. Teste com git de verdade e
+  `merge_em_alvo` real, com controle sem pausa no mesmo bloco. Vermelho: 5 checks sem a 8e-4.
+- **8e-5** `23866f1`: 30 s nos 4 casos de `orquestrador-contexto-juiz*.test.ts` que
+  estouraram 5 s sob carga, com outros loops rodando na máquina.
+- **8e-6**: este registro e `docs/PECAS.md`.
+
+Asserções existentes que mudaram: nenhuma (8e-5 só muda o limite de tempo).
