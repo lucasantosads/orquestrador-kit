@@ -1620,3 +1620,30 @@ ticket_versao() {
 vizinho_ja_ampliado() {
   grep -F " $1 VIZINHO_AMPLIADO " "$EVENTS_FILE" 2>/dev/null | grep -qE " hash=$2( |\$)"
 }
+
+# --- Teste instável no gate de testes (etapa L11, porte do 86dec07 Fix A) ------
+# O arquivo com FAIL sem relação com o diff (decisao instaveis) roda uma vez
+# isolado antes da base vermelha ou da reprovação; o que passa sai da conta.
+# Caso real: test/estado-plano-orfas.test.ts no Comarka, 29 registros de 19 a
+# 28/10 (1523 attempt-1: suíte de 41 s vermelha, isolado verde em 1,6 s).
+
+# roda_vitest_isolado <worktree> <arquivo> <saida>: um arquivo, uma vez, na
+# worktree do ticket, no ambiente do gate (gates.ts:execBash exporta ORQ_GATE=1)
+# e com o runner do vizinho_na_base. Sem timeout, como o vizinho_na_base.
+# stdin fechado: roda dentro de um 'while read' e não pode comer a lista.
+# Passou = rc 0 E um placar com arquivo passado: rc 0 com "No test files found"
+# (passWithNoTests) não rodou nada e não prova instável.
+roda_vitest_isolado() {
+  # shellcheck disable=SC2086 # o runner é uma linha de comando com argumentos
+  ( cd "$1" && NO_COLOR=1 FORCE_COLOR=0 ORQ_GATE=1 ${VIZINHO_CMD_BASE:-npx --no-install vitest run} "$2" ) > "$3" 2>&1 < /dev/null \
+    && grep -Eq 'Test Files +[1-9][0-9]* passed' "$3"
+}
+
+# registra_instavel <id> <arquivo>: best-effort, sempre devolve 0. Uma linha
+# "data<TAB>id<TAB>arquivo" em runs/instaveis.log (o formato do Comarka).
+registra_instavel() {
+  local id="$1" arq="$2" log_f="$RUNS_BASE/instaveis.log"
+  escrita_de_teste_permitida "$log_f" || return 0
+  printf '%s\t%s\t%s\n' "$(date '+%Y-%m-%d %H:%M')" "$id" "$arq" >> "$log_f" 2>/dev/null || return 0
+  return 0
+}

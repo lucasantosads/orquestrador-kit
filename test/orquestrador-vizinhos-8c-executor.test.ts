@@ -257,9 +257,13 @@ describe('8c-P2b · teste vizinho no drive_ticket: amplia na tentativa seguinte,
   it('contra-teste: FAIL fora da allowlist em teste que não é vizinho segue base_vermelha como hoje, sem VIZINHO_AMPLIADO', () => {
     const outra = readFileSync(join(FIX, 'gate-vitest.txt'), 'utf8').split(VIZINHO).join('test/outro-alheio.test.ts');
     const { fx, tmp } = fixtureRepo({ saidaTestes: outra });
-    const log = drenagem(fx, tmp, true);
+    // L11: o FAIL sem relação roda isolado antes da base vermelha, pelo mesmo
+    // runner (VIZINHO_CMD_BASE). 'vermelho' faz ele falhar isolado também: aí
+    // segue base_vermelha (se passasse isolado, seria instável e sairia da conta).
+    const log = drenagem(fx, tmp, true, 'vermelho');
     const ev = trilha(fx);
 
+    expect(existsSync(run(fx, 0, 'isolado-1.txt')), log).toBe(true);
     expect(ev.find((l) => / BLOQUEADO /.test(l)) ?? '', log).toContain('motivo=base_vermelha');
     expect(ev.some((l) => / VIZINHO_AMPLIADO /.test(l))).toBe(false);
     expect(JSON.parse(readFileSync(run(fx, 0, 'vizinhos.json'), 'utf8')).amplia).toBe(false);

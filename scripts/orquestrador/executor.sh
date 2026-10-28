@@ -1047,6 +1047,43 @@ grava_diff_patch() {
   return 0
 }
 
+# --- 7h · TESTE INSTÁVEL (etapa L11) ------------------------------------------
+# decide_instaveis <ticket> <wt> <rundir> <base> <gate>: decisao instaveis sobre a
+# saída inteira do gate (rundir/gate-falha.txt), com a allowlist mais a ampliada.
+# Cada candidato roda isolado (rundir/isolado-<n>.txt, lib.sh). Seta INSTAVEIS
+# (passaram isolados, um por linha) e INST_RESTO (seguem contando). A CLI que
+# falha derruba o executor, como a da base vermelha.
+INSTAVEIS=""; INST_RESTO=""; GATES_DECIDE=""
+decide_instaveis() {
+  local file="$1" wt="$2" rundir="$3" base="$4" gate="$5" id inst t n=0
+  id="$(ticket_field "$file" '.id')"
+  INSTAVEIS=""; INST_RESTO=""
+  inst="$(jq -n --rawfile s "$rundir/gate-falha.txt" \
+      --argjson d "$(git -C "$wt" diff --name-only "$base"...HEAD | jq -Rn '[inputs | select(length > 0)]')" \
+      --argjson al "$(ticket_json "$file" | jq --argjson x "$(printf '%s' "$VIZ_AMPLIADA" | jq -Rn '[inputs | select(length > 0)]')" \
+                       '(.pathspec_allowlist // []) + $x')" \
+      --arg w "$wt" --arg b "$base" \
+      '{saida:$s, arquivosDoDiff:$d, allowlist:$al, worktree:$w, base:$b}' | decisao instaveis)" \
+    || { log "ERRO: decisao instaveis falhou — o executor não segue sem saber se o FAIL é instável"; exit 1; }
+  [ -z "$(jq -r '.motivo' <<<"$inst")" ] || log "  teste instável: não reroda ($(jq -r '.motivo' <<<"$inst"))"
+  INST_RESTO="$(jq -r '.resto[]' <<<"$inst")"
+  while IFS= read -r t; do
+    [ -n "$t" ] || continue
+    n=$((n + 1))
+    if roda_vitest_isolado "$wt" "$t" "$rundir/isolado-$n.txt"; then
+      INSTAVEIS="${INSTAVEIS:+$INSTAVEIS$'\n'}$t"
+      printf '%s\n' "$t" >> "$rundir/instaveis.txt"
+      registra_instavel "$id" "$t"
+    else
+      INST_RESTO="${INST_RESTO:+$INST_RESTO$'\n'}$t"
+    fi
+  done < <(jq -r '.rerodar[]' <<<"$inst")
+  [ -z "$INSTAVEIS" ] || {
+    log "  teste instável: passou isolado, sai da conta ($(paste -sd, - <<<"$INSTAVEIS"))"
+    event "$id" INSTAVEL "arquivos=$(paste -sd, - <<<"$INSTAVEIS")" "gate=$gate" "resto=$(paste -sd, - <<<"$INST_RESTO")"
+  }
+}
+
 # --- 7g · TESTE VIZINHO NA BASE (etapa 8c, decisão 9) -----------------------
 # vizinho_na_base <wt> <base> <rundir> <teste>... -> ecoa verde|vermelho|inconclusivo.
 # Antes de ampliar, roda SÓ os arquivos falhos na árvore do base_ticket (uma
@@ -1218,7 +1255,8 @@ run_attempt() {
   # de quem chamou o executor, e com FORCE_COLOR ou CI nele o vitest colore o
   # placar ("Tests \e[22m \e[1m\e[32m2 passed"): gate que lê o placar com grep
   # reprovava com a suíte verde (test-sem-cor.sh).
-  NO_COLOR=1 FORCE_COLOR=0 "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/gates.ts" --run-cli "$wt" --config "$MAIN_CHECKOUT/docs/fila/000-config.json" > "$rundir/gates.txt" 2>&1 || gates_rc=$?
+  NO_COLOR=1 FORCE_COLOR=0 "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/gates.ts" --run-cli "$wt" --config "$MAIN_CHECKOUT/docs/fila/000-config.json" \
+    --saida-falha "$rundir/gate-falha.txt" > "$rundir/gates.txt" 2>&1 || gates_rc=$?
   log "  gates: $([ "$gates_rc" = 0 ] && echo APROVADO || echo "REPROVADO (rc=$gates_rc)")"
   grep -qi 'reexecutar' "$rundir/gates.txt" && log "  gates: interrompidos — conjunto não vale parcialmente"
   # Peça 7b-2: o PAPEL do gate que reprovou vai para o decisao.ts, que separa
@@ -1227,6 +1265,38 @@ run_attempt() {
     gate_falho="$(grep -E '^FALHA ' "$rundir/gates.txt" 2>/dev/null | head -1 | awk '{print $2}' || true)"
     [ -z "$gate_falho" ] || papel_falho="$(papel_do_gate "$gate_falho" \
       "$(jq -r --arg n "$gate_falho" '.gates[]? | select(.nome == $n) | .papel // empty' "$CONFIG" 2>/dev/null || true)")"
+  fi
+
+  # 7 · TESTE INSTÁVEL (etapa L11, porte do 86dec07 Fix A do Comarka). Gate de
+  # testes vermelho com FAIL sem relação com o diff (decisao instaveis, a régua
+  # da 8c): cada um roda isolado; o que passa sai da conta (rundir/instaveis.txt).
+  # Tudo instável: os gates depois do de testes rodam agora (gates.ts
+  # --retomar-depois) e o gates_rc passa a ser o deles. Mistura: a 7a e a 7b
+  # decidem sobre o gates.txt sem os instáveis.
+  GATES_DECIDE="$rundir/gates.txt"; INSTAVEIS=""
+  if [ "$ENF_OK" = 1 ] && [ "$gates_rc" != 0 ] && [ -s "$rundir/gate-falha.txt" ] \
+     && ! grep -qi 'reexecutar' "$rundir/gates.txt" && so_testes_reprovaram "$rundir/gates.txt"; then
+    decide_instaveis "$file" "$wt" "$rundir" "$base" "$gate_falho"
+    if [ -n "$INSTAVEIS" ] && [ -z "$INST_RESTO" ]; then
+      gates_rc=0
+      NO_COLOR=1 FORCE_COLOR=0 "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/gates.ts" --run-cli "$wt" --config "$MAIN_CHECKOUT/docs/fila/000-config.json" \
+        --retomar-depois "$gate_falho" > "$rundir/gates-retomada.txt" 2>&1 || gates_rc=$?
+      { echo; echo "--- retomada depois de $gate_falho: FAIL só em instável que passou isolado ($(paste -sd, - <<<"$INSTAVEIS")), fora da conta ---"
+        cat "$rundir/gates-retomada.txt"; } >> "$rundir/gates.txt"
+      log "  teste instável: gate $gate_falho fora da conta; gates depois dele: $([ "$gates_rc" = 0 ] && echo APROVADO || echo "REPROVADO (rc=$gates_rc)")"
+      gate_falho=""; papel_falho=""
+      if [ "$gates_rc" != 0 ]; then
+        gate_falho="$(grep -E '^FALHA ' "$rundir/gates-retomada.txt" 2>/dev/null | head -1 | awk '{print $2}' || true)"
+        [ -z "$gate_falho" ] || papel_falho="$(papel_do_gate "$gate_falho" \
+          "$(jq -r --arg n "$gate_falho" '.gates[]? | select(.nome == $n) | .papel // empty' "$CONFIG" 2>/dev/null || true)")"
+      fi
+    elif [ -n "$INSTAVEIS" ]; then
+      GATES_DECIDE="$rundir/gates-sem-instaveis.txt"
+      awk -v l="$INSTAVEIS" 'BEGIN { n = split(l, a, "\n") }
+        { s = $0; gsub(/\033\[[0-9;]*m/, "", s); sub(/^[ \t]+/, "", s)
+          for (i = 1; i <= n; i++) if (index(s, "FAIL ") == 1 && (s ~ ("^FAIL +" a[i] "( |$)"))) next
+          print }' "$rundir/gates.txt" > "$GATES_DECIDE"
+    fi
   fi
 
   fase critérios
@@ -1244,7 +1314,7 @@ run_attempt() {
   VIZ_DECIDIU=""; VIZ_JA=""
   if [ "$ENF_OK" = 1 ] && [ "$gates_rc" != 0 ] && [ -z "$VIZ_AMPLIADA" ] \
      && ! grep -qi 'reexecutar' "$rundir/gates.txt" && so_testes_reprovaram "$rundir/gates.txt"; then
-    jq -n --rawfile g "$rundir/gates.txt" \
+    jq -n --rawfile g "$GATES_DECIDE" \
         --argjson d "$(git -C "$wt" diff --name-only "$base"...HEAD | jq -Rn '[inputs | select(length > 0)]')" \
         --argjson al "$(ticket_json "$file" | jq '.pathspec_allowlist // []')" \
         --arg w "$wt" --arg b "$base" \
@@ -1285,7 +1355,7 @@ run_attempt() {
   if [ "$ENF_OK" = 1 ] && [ "$gates_rc" != 0 ] && [ -z "$CRITERIOS_FALHOS" ] && [ -z "$VIZ_DECIDIU$VIZ_JA" ] \
      && ! grep -qi 'reexecutar' "$rundir/gates.txt" && so_testes_reprovaram "$rundir/gates.txt"; then
     local bv_json
-    bv_json="$(jq -n --rawfile g "$rundir/gates.txt" \
+    bv_json="$(jq -n --rawfile g "$GATES_DECIDE" \
         --argjson d "$(git -C "$wt" diff --name-only "$base"...HEAD | jq -Rn '[inputs | select(length > 0)]')" \
         --argjson al "$(ticket_json "$file" | jq --argjson x "$(printf '%s' "$VIZ_AMPLIADA" | jq -Rn '[inputs | select(length > 0)]')" \
                          '(.pathspec_allowlist // []) + $x')" \
