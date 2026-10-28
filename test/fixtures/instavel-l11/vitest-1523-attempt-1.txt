@@ -1,0 +1,39 @@
+ [32m✓[39m test/conexoes-status-whatsapp.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m test/ui-card-sem-animacao.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m test/carteira-view.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 2[2mms[22m[39m
+ [32m✓[39m test/portal-previa-tela.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 2[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m test/estado-plano-orfas.test.ts[2m > [22mestado-plano: capacidades orfas[2m > [22marquivo inexistente: 'sem leitura (' e rc 0, nunca zero
+[31m[1mAssertionError[22m: rc=1 erro= stderr=Traceback (most recent call last):
+  File "/Users/lucasantos/Projetos/_worktrees/orq-comarka-1523/scripts/roadmap/estado-plano.py", line 192, in <module>
+    sys.exit(main())
+  File "/Users/lucasantos/Projetos/_worktrees/orq-comarka-1523/scripts/roadmap/estado-plano.py", line 172, in main
+    bloco = montar_bloco(ler_tickets(), tokens_liberados(), datetime.date.today(), ler_orfas())
+  File "/Users/lucasantos/Projetos/_worktrees/orq-comarka-1523/scripts/roadmap/estado-plano.py", line 29, in ler_tickets
+    txt = open(p, encoding="utf-8", errors="replace").read()
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/lucasantos/Projetos/_worktrees/orq-comarka-1523/docs/fila/apolo/5997-molde-forma.md'
+: expected '' to contain 'Capacidades órfãs: sem leitura ('[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Capacidades órfãs: sem leitura ([39m
+
+[36m [2m❯[22m test/estado-plano-orfas.test.ts:[2m79:30[22m[39m
+    [90m 77|[39m       [33mESTADO_PLANO_ORFAS[39m[33m:[39m [34mjoin[39m(dir[33m,[39m [32m"nao-existe.json"[39m)[33m,[39m
+    [90m 78|[39m     })[33m;[39m
+    [90m 79|[39m     expect(r.saida, diag(r)).toContain("Capacidades órfãs: sem leitura…
+    [90m   |[39m                              [31m^[39m
+    [90m 80|[39m     expect(r.saida, diag(r)).not.toContain("sem consumidor há 7 dias):…
+    [90m 81|[39m     [34mestruturaIntacta[39m(r)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m1418 passed[39m[22m[90m (1419)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m13905 passed[39m[22m[90m (13906)[39m
+[2m   Start at [22m 13:49:49
+[2m   Duration [22m 41.53s[2m (transform 23.49s, setup 0ms, import 124.47s, tests 58.15s, environment 136ms)[22m
+

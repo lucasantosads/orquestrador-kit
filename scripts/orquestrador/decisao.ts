@@ -894,3 +894,48 @@ export function cmdComAmpliados(cmd: string, allowlist: string[], ampliados: str
   }
   return `${cmd.slice(0, fim)}${novos.map((t) => ` '${t}'`).join('')}${cmd.slice(fim)}`
 }
+
+// ─── 8 · teste instável (etapa L11, porte do 86dec07 Fix A do Comarka) ────
+
+export const TETO_INSTAVEIS = 3
+
+export interface DecisaoInstaveis {
+  /** sem relação com o diff: rodam isolados, um por um */
+  rerodar: string[]
+  /** seguem contando: os que têm relação e, quando nada reroda, todos */
+  resto: string[]
+  /** por que nada reroda (vazio quando há candidato ou não precisou) */
+  motivo: string
+}
+
+/**
+ * Quem roda isolado antes da base vermelha ou da reprovação. Sem relação = fora
+ * do diff, da allowlist (com a ampliada) e dos vizinhos C11: a régua da 8c, uma
+ * só. `saida` é a saída INTEIRA do vitest (gates.ts --saida-falha), não o
+ * recorte: as guardas leem o fim dela. Nada reroda com `Unhandled Error` (falha
+ * sem arquivo), com `Test Files N failed` diferente dos FAIL lidos ou com mais de
+ * TETO_INSTAVEIS sem relação (base quebrada). Em TS a guarda não tem o SIGPIPE
+ * que o Comarka consertou no 906259f.
+ */
+export function instaveisCandidatos(entrada: {
+  saida: string
+  arquivosDoDiff: string[]
+  allowlist: string[]
+  vizinhos: ReadonlyMap<string, string[]>
+}): DecisaoInstaveis {
+  const falhos = arquivosFalhosDoVitest(entrada.saida)
+  if (falhos.length === 0) return { rerodar: [], resto: [], motivo: 'nenhum FAIL legível na saída do vitest' }
+  const conta = (motivo: string): DecisaoInstaveis => ({ rerodar: [], resto: falhos, motivo })
+  const limpo = entrada.saida.replace(/\x1b\[[0-9;]*m/g, '')
+  if (/Unhandled Error/.test(limpo)) return conta('vitest teve Unhandled Errors')
+  const nfail = [...limpo.matchAll(/^\s*Test Files\s+(\d+) failed/gm)].pop()?.[1]
+  if (Number(nfail) !== falhos.length) return conta(`Test Files diz '${nfail ?? '?'} failed' e há ${falhos.length} FAIL legíveis`)
+  const viz = new Set([...entrada.vizinhos.values()].flat())
+  const rel = (f: string) =>
+    entrada.arquivosDoDiff.includes(f) || matchesAllowlist(f, entrada.allowlist) || viz.has(f) || !RE_ARQ_TESTE.test(f)
+  const sem = falhos.filter((f) => !rel(f))
+  if (sem.length > TETO_INSTAVEIS) {
+    return conta(`base quebrada: ${sem.length} arquivos falhos sem relação com o diff (teto ${TETO_INSTAVEIS})`)
+  }
+  return { rerodar: sem, resto: falhos.filter(rel), motivo: '' }
+}

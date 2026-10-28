@@ -1,0 +1,52 @@
+ [32m✓[39m test/inteligencia/mascarar-texto-ordem.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m test/wpp-desvincular-grupo.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m test/deeplink-setup.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m test/a11y/app-dashboard-onboarding-template-page.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 4[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m test/estado-plano-orfas.test.ts[2m > [22mestado-plano: capacidades orfas[2m > [22mlista vazia: mostra 0, distinto de falha
+[31m[1mAssertionError[22m: rc=1 erro= stderr=Traceback (most recent call last):
+  File "/Users/lucasantos/Projetos/_worktrees/orq-apolo-5263/scripts/roadmap/estado-plano.py", line 192, in <module>
+    sys.exit(main())
+  File "/Users/lucasantos/Projetos/_worktrees/orq-apolo-5263/scripts/roadmap/estado-plano.py", line 172, in main
+    bloco = montar_bloco(ler_tickets(), tokens_liberados(), datetime.date.today(), ler_orfas())
+  File "/Users/lucasantos/Projetos/_worktrees/orq-apolo-5263/scripts/roadmap/estado-plano.py", line 29, in ler_tickets
+    txt = open(p, encoding="utf-8", errors="replace").read()
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/lucasantos/Projetos/_worktrees/orq-apolo-5263/docs/fila/apolo/5997-molde-forma.md'
+: expected '' to contain 'Capacidades órfãs (sem consumidor há …'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Capacidades órfãs (sem consumidor há 7 dias): 0[39m
+
+[36m [2m❯[22m test/estado-plano-orfas.test.ts:[2m69:30[22m[39m
+    [90m 67|[39m   [34mit[39m([32m"lista vazia: mostra 0, distinto de falha"[39m[33m,[39m () [33m=>[39m {
+    [90m 68|[39m     [35mconst[39m r [33m=[39m [34mcomLista[39m([])[33m;[39m
+    [90m 69|[39m     expect(r.saida, diag(r)).toContain("Capacidades órfãs (sem consumi…
+    [90m   |[39m                              [31m^[39m
+    [90m 70|[39m     [34mexpect[39m(r[33m.[39msaida[33m,[39m [34mdiag[39m(r))[33m.[39mnot[33m.[39m[34mtoContain[39m([32m"sem leitura"[39m)[33m;[39m
+    [90m 71|[39m     [34mestruturaIntacta[39m(r)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m test/sem-segredo-no-repo.test.ts[2m > [22msem segredo no repo[2m > [22mnenhum arquivo versionado carrega chave ou token
+[31m[1mError[22m: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+[36m [2m❯[22m test/sem-segredo-no-repo.test.ts:[2m49:3[22m[39m
+    [90m 47|[39m
+    [90m 48|[39m [34mdescribe[39m([32m"sem segredo no repo"[39m[33m,[39m () [33m=>[39m {
+    [90m 49|[39m   [34mit[39m([32m"nenhum arquivo versionado carrega chave ou token"[39m[33m,[39m () [33m=>[39m {
+    [90m   |[39m   [31m^[39m
+    [90m 50|[39m     [35mconst[39m problemas[33m:[39m string[] [33m=[39m [][33m;[39m
+    [90m 51|[39m     [35mfor[39m ([35mconst[39m rel [35mof[39m [34marquivosVersionados[39m()) {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m1360 passed[39m[22m[90m (1362)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m13325 passed[39m[22m[90m (13327)[39m
+[2m   Start at [22m 16:01:00
+[2m   Duration [22m 169.85s[2m (transform 192.87s, setup 0ms, import 606.00s, tests 226.89s, environment 438ms)[22m
+

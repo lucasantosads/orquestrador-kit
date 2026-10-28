@@ -19,6 +19,8 @@
  *   base-vermelha-arquivos    -> stdin = saída do vitest (string JSON); os arquivos com FAIL, um por linha (8c)
  *   criterios-ampliados       -> stdin = {criterios, allowlist, ampliados}; os critérios
  *                                com o cmd de lista fechada aceitando os ampliados (8c)
+ *   instaveis                 -> stdin = {saida, arquivosDoDiff, allowlist, worktree, base};
+ *                                {rerodar, resto, motivo} com os vizinhos da árvore de <base> (L11)
  */
 import { readFileSync } from 'node:fs'
 import {
@@ -28,6 +30,7 @@ import {
   blocoFailVitest,
   cmdComAmpliados,
   decidirVizinhos,
+  instaveisCandidatos,
   decidirDesfecho,
   decidirRetry,
   registroMeta,
@@ -139,6 +142,17 @@ switch (sub) {
     }
     const d = decidirVizinhos({ ...e, vizinhos: testesVizinhos(e.allowlist, arvore) })
     out({ ...d, bloco: d.amplia ? blocoFailVitest(e.gatesTxt, d.pares) : '' })
+    break
+  }
+  case 'instaveis': {
+    // Mesma árvore e mesma régua do 'vizinhos': o vizinho C11 tem relação com o diff.
+    const e = stdin() as { saida: string; arquivosDoDiff: string[]; allowlist: string[]; worktree: string; base: string }
+    const arvore = lerArvoreAlvo(e.worktree, e.base, 'docs/fila')
+    if (!arvore) {
+      process.stderr.write(`instaveis: não li a árvore de ${e.base} em ${e.worktree}\n`)
+      process.exit(1)
+    }
+    out(instaveisCandidatos({ ...e, vizinhos: testesVizinhos(e.allowlist, arvore) }))
     break
   }
   case 'base-vermelha-arquivos': {
