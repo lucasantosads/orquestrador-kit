@@ -1103,7 +1103,21 @@
   `orquestrador-juiz-citacoes.test.ts`, `orquestrador-juiz-review.test.ts`,
   `orquestrador-gate-8e.test.ts`, `test-instalar.sh` caso (h4).
 
+- **L5a · limite da assinatura do CLI 2.1.30x (porte do comarka 6ad8fbd, 28/10/2026).**
+  "You've hit your session limit" (weekly, Opus, Sonnet) arma cooldown nos dois lados:
+  `hit your [a-z ]{0,30}limit` na `RATE_LIMIT_REGEX` (`8abf51d`) e no `rate_limit` do
+  `PADRAO_CAUSA`, mais "5-hour session limit" no `quota` (`169cf20`). Um corpus só, o heredoc
+  `LIMITE_ASSINATURA`, com texto do commit 6ad8fbd (nenhuma captura real até 28/10).
+  *Evidência:* `~/orq-sessoes/relatorio-kit-l5a.md`.
+  *Teste:* `test-lib-config.sh` (corpus) e `orquestrador-causas-adiamento.test.ts`.
+
 ## PENDENTES
+
+- **L5b · cooldown até o "resets ...".** Hoje o cooldown é `cooldown_minutes` (60) e ignora o
+  "resets 3:45pm" / "resets Oct 20". Num limite semanal o disparo de cada hora faz uma chamada
+  recusada até o reset, por dias; o ticket não bloqueia, porque adiado com cooldown não conta
+  em `.adiamentos` (`local-loop.sh:241-245`, `:555`).
+  *Teste a escrever:* a mensagem com "resets" arma o cooldown até a hora do reset.
 
 - **8f · vermelho antes MECÂNICO.** Hoje o "vermelho antes" de um ticket é o que o agente
   diz: o corpo de `1bfcbc1d` (dashboard 003/0) afirma que (a) e (b) falharam contra o código
