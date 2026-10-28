@@ -7,7 +7,7 @@
 # verdes em 1,6 s. No kit isso era BLOQUEADO base_vermelha (executor.sh, 7b).
 #
 # Executor DE VERDADE (test-fixture-executor.sh). O gate `test` imprime a saída
-# real do 1523 (test/fixtures/instavel-l11/) e sai 1; o gate `build` vem depois
+# real do 1523 (embutida abaixo) e sai 1; o gate `build` vem depois
 # na ordem (como no Comarka: tsc, vitest, build). O isolado é o vitest REAL do
 # node_modules do checkout, sobre um test/estado-plano-orfas.test.ts do fixture
 # que passa (ou falha, no caso B):
@@ -26,14 +26,112 @@
 
 set -uo pipefail
 AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-KIT="$(git -C "$AQUI" rev-parse --show-toplevel)"
-FIXT="$KIT/test/fixtures/instavel-l11"
 
 export ORQ_TESTE=1
 ORQ_EXEC_ROOT="$(mktemp -d)/checkout"; export ORQ_EXEC_ROOT
 TMP_RAIZ="$(dirname "$ORQ_EXEC_ROOT")"
 source "$AQUI/test-fixture-executor.sh"
 trap 'fxe_limpa; rm -rf "$TMP_RAIZ"' EXIT
+
+# As linhas reais (test/fixtures/instavel-l11/ORIGEM.md do kit), aqui sem a cor:
+# o gate do kit grava sem cor (gates.ts roda com NO_COLOR=1), e o laço do
+# test-shell.sh roda este script num fixture que não leva test/fixtures/.
+FIXT="$TMP_RAIZ/fixt"; mkdir -p "$FIXT"
+cat > "$FIXT/vitest-1523-attempt-1.txt" <<'FIM_1523'
+ ✓ test/conexoes-status-whatsapp.test.ts (7 tests) 4ms
+ ✓ test/ui-card-sem-animacao.test.tsx (3 tests) 4ms
+ ✓ test/carteira-view.test.ts (3 tests) 2ms
+ ✓ test/portal-previa-tela.test.tsx (4 tests) 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/estado-plano-orfas.test.ts > estado-plano: capacidades orfas > arquivo inexistente: 'sem leitura (' e rc 0, nunca zero
+AssertionError: rc=1 erro= stderr=Traceback (most recent call last):
+  File "/Users/lucasantos/Projetos/_worktrees/orq-comarka-1523/scripts/roadmap/estado-plano.py", line 192, in <module>
+    sys.exit(main())
+  File "/Users/lucasantos/Projetos/_worktrees/orq-comarka-1523/scripts/roadmap/estado-plano.py", line 172, in main
+    bloco = montar_bloco(ler_tickets(), tokens_liberados(), datetime.date.today(), ler_orfas())
+  File "/Users/lucasantos/Projetos/_worktrees/orq-comarka-1523/scripts/roadmap/estado-plano.py", line 29, in ler_tickets
+    txt = open(p, encoding="utf-8", errors="replace").read()
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/lucasantos/Projetos/_worktrees/orq-comarka-1523/docs/fila/apolo/5997-molde-forma.md'
+: expected '' to contain 'Capacidades órfãs: sem leitura ('
+
+- Expected
++ Received
+
+- Capacidades órfãs: sem leitura (
+
+ ❯ test/estado-plano-orfas.test.ts:79:30
+     77|       ESTADO_PLANO_ORFAS: join(dir, "nao-existe.json"),
+     78|     });
+     79|     expect(r.saida, diag(r)).toContain("Capacidades órfãs: sem leitura…
+       |                              ^
+     80|     expect(r.saida, diag(r)).not.toContain("sem consumidor há 7 dias):…
+     81|     estruturaIntacta(r);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1418 passed (1419)
+      Tests  1 failed | 13905 passed (13906)
+   Start at  13:49:49
+   Duration  41.53s (transform 23.49s, setup 0ms, import 124.47s, tests 58.15s, environment 136ms)
+
+FIM_1523
+cat > "$FIXT/vitest-5263-attempt-1.txt" <<'FIM_5263'
+ ✓ test/inteligencia/mascarar-texto-ordem.test.ts (3 tests) 4ms
+ ✓ test/wpp-desvincular-grupo.test.ts (5 tests) 5ms
+ ✓ test/deeplink-setup.test.ts (3 tests) 3ms
+ ✓ test/a11y/app-dashboard-onboarding-template-page.test.ts (1 test) 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/estado-plano-orfas.test.ts > estado-plano: capacidades orfas > lista vazia: mostra 0, distinto de falha
+AssertionError: rc=1 erro= stderr=Traceback (most recent call last):
+  File "/Users/lucasantos/Projetos/_worktrees/orq-apolo-5263/scripts/roadmap/estado-plano.py", line 192, in <module>
+    sys.exit(main())
+  File "/Users/lucasantos/Projetos/_worktrees/orq-apolo-5263/scripts/roadmap/estado-plano.py", line 172, in main
+    bloco = montar_bloco(ler_tickets(), tokens_liberados(), datetime.date.today(), ler_orfas())
+  File "/Users/lucasantos/Projetos/_worktrees/orq-apolo-5263/scripts/roadmap/estado-plano.py", line 29, in ler_tickets
+    txt = open(p, encoding="utf-8", errors="replace").read()
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/lucasantos/Projetos/_worktrees/orq-apolo-5263/docs/fila/apolo/5997-molde-forma.md'
+: expected '' to contain 'Capacidades órfãs (sem consumidor há …'
+
+- Expected
++ Received
+
+- Capacidades órfãs (sem consumidor há 7 dias): 0
+
+ ❯ test/estado-plano-orfas.test.ts:69:30
+     67|   it("lista vazia: mostra 0, distinto de falha", () => {
+     68|     const r = comLista([]);
+     69|     expect(r.saida, diag(r)).toContain("Capacidades órfãs (sem consumi…
+       |                              ^
+     70|     expect(r.saida, diag(r)).not.toContain("sem leitura");
+     71|     estruturaIntacta(r);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/sem-segredo-no-repo.test.ts > sem segredo no repo > nenhum arquivo versionado carrega chave ou token
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/sem-segredo-no-repo.test.ts:49:3
+     47|
+     48| describe("sem segredo no repo", () => {
+     49|   it("nenhum arquivo versionado carrega chave ou token", () => {
+       |   ^
+     50|     const problemas: string[] = [];
+     51|     for (const rel of arquivosVersionados()) {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 1360 passed (1362)
+      Tests  2 failed | 13325 passed (13327)
+   Start at  16:01:00
+   Duration  169.85s (transform 192.87s, setup 0ms, import 606.00s, tests 226.89s, environment 438ms)
+
+FIM_5263
 
 FALHAS=0
 ok()    { printf '  ok    %s\n' "$*"; }
