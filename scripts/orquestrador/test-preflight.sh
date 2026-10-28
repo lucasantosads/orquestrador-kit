@@ -281,5 +281,21 @@ else
 fi
 
 echo
+echo "== 6 · o preflight não lê o ticket da vez (L12) =="
+# A drenagem trata todo ADIADO motivo=preflight como AMBIENTE (L12). Isso só vale
+# enquanto nenhuma recusa do preflight for sobre o ticket da vez: quem acrescentar
+# uma precisa de outro sinal (decisão do Lucas, 28/10/2026).
+declare -f preflight probe_modelos exigir_linkar_env_valido exigir_principal_sem_env ensure_branch_alvo \
+  | grep -qE '\$\{?(TICKET|TID)([^A-Za-z_]|$)' && falha "o preflight passou a ler TICKET/TID" || ok "nenhuma recusa lê TICKET/TID"
+fxp="$(mktemp -d)"; mkdir -p "$fxp/docs/fila/runs"; cp "$CONFIG_REAL" "$fxp/docs/fila/000-config.json"
+printf '# 901\n\n```json\n{"id": "901", "status": "pendente"}\n```\n' > "$fxp/docs/fila/901-da-vez.md"
+printf '# 904\n\n```json\n{ "id": "904", quebrado\n```\n' > "$fxp/docs/fila/904-quebrado.md"
+ORQ_EXEC_ROOT="$fxp" EXECUTOR_SOURCED=1 bash -c "source '$AQUI/executor.sh'; preflight_ou_adia '$fxp/docs/fila/901-da-vez.md'" >/dev/null 2>&1; rc=$?
+ev="$(grep ' ADIADO ' "$fxp/docs/fila/runs/events.log" 2>/dev/null)"
+[ "$rc" = 0 ] && case "$ev" in *" 901 ADIADO motivo=preflight causa=preflight: bloco json inválido em 904-quebrado.md") true ;; *) false ;; esac \
+  && ok "bloco json do 904 recusa a vez do 901 (é da fila, não do ticket)" || falha "rc=$rc evento: $ev"
+rm -rf "$fxp"
+
+echo
 if [ "$FALHAS" = 0 ]; then echo "TODOS OS CHECKS PASSARAM"; exit 0; fi
 echo "$FALHAS CHECK(S) FALHARAM"; exit 1

@@ -9,9 +9,15 @@
 # ticket. Sem isso, um login caído adiava a fila inteira a cada disparo.
 #
 #   1. preflight recusa TODO ticket (ADIADO motivo=preflight): 3 disparos, 3
-#      AMBIENTE, no máximo 2 chamadas por disparo, STATUS diz ambiente.
+#      AMBIENTE, 1 chamada por disparo (L12: o 1º ADIADO de preflight já é
+#      AMBIENTE, com um id só), STATUS diz ambiente.
 #   2. sessão caída em todo ticket (ADIADO motivo=sessao, sem cooldown): AMBIENTE.
 #   3. adiamentos com causas DIFERENTES não são ambiente: a drenagem segue.
+#   4. L12: 1 elegível, claude CLI fora (texto do 1523 do Comarka), 5 disparos:
+#      pendente, sem .adiamentos, 1 AMBIENTE por disparo, 1 aviso (o de entrada).
+#   5 e 6. L12: bloco json inválido de OUTRO arquivo, em fila de 1 e de 2: o
+#      mesmo AMBIENTE, a causa nomeia o arquivo, ninguém soma.
+#   7. L12: sondagem em limite remoto (cooldown armado) segue sem somar e sem AMBIENTE.
 #
 # Uso: bash scripts/orquestrador/test-ambiente-adiado.sh
 
@@ -56,6 +62,11 @@ run_executor_once() {
         "causa=preflight: lock de git em uso por outro processo: $ORQ_EXEC_ROOT/.git/index.lock (pid $pid, vez do $id, HEAD $(printf '%07x' $RANDOM$RANDOM)a)" ;;
     sessao)
       event "$id" ADIADO "motivo=sessao" "attempt=1" "rc=1" "dur=3s" "cooldown=nao" ;;
+    claude1523)  # notas_status do 1523 no comarka ac8fb76 (28/10/2026)
+      event "$id" ADIADO "motivo=preflight" "causa=preflight: claude CLI não respondeu (rc=1) — abortando sem consumir tentativa (checar login/instalação)" ;;
+    json)    event "$id" ADIADO "motivo=preflight" "causa=preflight: bloco json inválido em 904-t.md" ;;
+    limite)  cooldown_arm >/dev/null 2>&1
+             event "$id" ADIADO "motivo=preflight" "causa=probe: limite remoto na sondagem (rc=1), cooldown armado" ;;
     proprio)
       case "$id" in
         901) event "$id" ADIADO "motivo=timeout" "attempt=1" "rc=124" "dur=1801s" "cooldown=nao" ;;
@@ -82,10 +93,10 @@ for d in 1 2 3; do
   n="$(grep -c . "$CALLS")"; [ "$n" -gt "$max" ] && max="$n"
 done
 [ "$(n_amb)" = 3 ] && ok "3 eventos AMBIENTE (um por disparo)" || falha "esperava 3 AMBIENTE, há $(n_amb)"
-[ "$max" -le 2 ] && ok "no máximo 2 chamadas por disparo (máx: $max)" || falha "um disparo chamou o executor $max vezes"
+[ "$max" = 1 ] && ok "1 chamada por disparo (máx: $max)" || falha "um disparo chamou o executor $max vezes"
 amb="$(grep ' AMBIENTE ' "$TRILHA" | tail -1)"
 echo "  trilha: $amb"
-case "$amb" in *" --- AMBIENTE tickets=901,902 causa="*) ok "evento com os tickets que colidiram" ;; *) falha "evento fora do formato" ;; esac
+case "$amb" in *" --- AMBIENTE tickets=901 causa="*) ok "evento com o ticket da recusa" ;; *) falha "evento fora do formato" ;; esac
 causa="${amb#* causa=}"
 case "$causa" in
   *901*|*902*|*"$ORQ_EXEC_ROOT"*) falha "causa não normalizada: $causa" ;;
@@ -111,6 +122,48 @@ echo "== 3. adiamentos com causas DIFERENTES não são ambiente =="
 echo proprio > "$MODO"; antes="$(n_amb)"; disparo 5
 [ "$(n_amb)" = "$antes" ] && ok "nenhum AMBIENTE" || falha "causas diferentes viraram AMBIENTE"
 [ "$(tr '\n' ' ' < "$CALLS")" = "901 902 903 " ] && ok "a drenagem seguiu pelos três" || falha "chamadas: $(tr '\n' ' ' < "$CALLS")"
+
+NOTIF="$FILA/runs/notificacoes.log"
+avisos() { grep -c . "$NOTIF" 2>/dev/null || true; }
+sem_ad() { [ ! -e "$FILA/runs/$1/.adiamentos" ] && ok "$1 sem .adiamentos" || falha "$1 .adiamentos=$(cat "$FILA/runs/$1/.adiamentos")"; }
+echo
+echo "== 4. 1 elegível, claude CLI fora (texto do 1523), 5 disparos =="
+for id in 902 903; do ticket_set_status "$FILA/$id-t.md" done; done
+rm -f "$FILA"/runs/90?/.adiamentos "$FILA/runs/.notificacao-ambiente"
+echo claude1523 > "$MODO"; antes="$(n_amb)"; av0="$(avisos)"
+somou=0; for d in 6 7 8 9 10; do disparo "$d"; [ -e "$FILA/runs/901/.adiamentos" ] && somou=1; done
+[ "$(st 901)" = pendente ] && ok "901 segue pendente" || falha "901 virou $(st 901)"
+[ "$somou" = 0 ] && ok "nenhum disparo somou em .adiamentos" || falha "algum disparo somou em .adiamentos"
+[ "$(n_amb)" = $((antes + 5)) ] && ok "um AMBIENTE por disparo" || falha "AMBIENTE: $(( $(n_amb) - antes )) em 5 disparos"
+[ "$(( $(avisos) - av0 ))" = 1 ] && tail -1 "$NOTIF" | grep -q 'AMBIENTE' \
+  && ok "um aviso só, o de entrada" || falha "$(( $(avisos) - av0 )) avisos: $(tail -1 "$NOTIF")"
+
+echo
+echo "== 5. bloco json inválido de outro arquivo, fila de 1 =="
+printf '# 904\n\n```json\n{ "id": "904", quebrado\n```\n' > "$FILA/904-t.md"
+ticket_set_status "$FILA/901-t.md" pendente; rm -f "$FILA/runs/901/.adiamentos"
+echo json > "$MODO"; antes="$(n_amb)"; disparo 11
+[ "$(tr '\n' ' ' < "$CALLS")" = "901 " ] && ok "1 chamada, no 901" || falha "chamadas: $(tr '\n' ' ' < "$CALLS")"
+sem_ad 901
+grep ' AMBIENTE ' "$TRILHA" | tail -1 | grep -q ' AMBIENTE tickets=901 causa=' && [ "$(n_amb)" = $((antes + 1)) ] \
+  && ok "AMBIENTE tickets=901" || falha "sem AMBIENTE do 901"
+grep '^MOTIVO' "$FILA/runs/STATUS.md" | grep -q 'ambiente: .*bloco json inválido em 904-t.md' \
+  && ok "STATUS nomeia o arquivo corrompido" || falha "STATUS: $(grep '^MOTIVO' "$FILA/runs/STATUS.md")"
+
+echo
+echo "== 6. bloco json inválido de outro arquivo, fila de 2 =="
+ticket_set_status "$FILA/902-t.md" pendente; disparo 12
+[ "$(tr '\n' ' ' < "$CALLS")" = "901 " ] && ok "encerra no 1º, sem chamar o 902" || falha "chamadas: $(tr '\n' ' ' < "$CALLS")"
+sem_ad 901; sem_ad 902
+
+echo
+echo "== 7. sondagem em limite remoto (cooldown armado): sem somar e sem AMBIENTE =="
+rm -f "$FILA/904-t.md" "$FILA"/runs/90?/.adiamentos; ticket_set_status "$FILA/902-t.md" done; ticket_set_status "$FILA/901-t.md" pendente
+echo limite > "$MODO"; antes="$(n_amb)"; disparo 13
+[ "$(n_amb)" = "$antes" ] && ok "nenhum AMBIENTE" || falha "limite remoto virou AMBIENTE"
+sem_ad 901
+grep '^MOTIVO' "$FILA/runs/STATUS.md" | grep -q 'cooldown' && ok "STATUS diz cooldown" || falha "STATUS: $(grep '^MOTIVO' "$FILA/runs/STATUS.md")"
+rm -f "$FILA/runs/.cooldown-until"
 
 echo
 if [ "$FALHAS" = 0 ]; then echo "TODOS OS CHECKS PASSARAM"; exit 0; fi
