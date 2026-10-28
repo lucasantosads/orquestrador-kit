@@ -232,8 +232,10 @@ const PADRAO_CAUSA: [RegExp, CausaInfra][] = [
   // indisponível, nunca reprovação do trabalho. Ficar de fora custava um retry
   // por tentativa até o ticket bloquear, sem ninguém ter julgado nada.
   [/session expired|sess[aã]o expirada|invalid session|session not found|token expired|reauthenticate|please (log ?in|sign ?in) again|failed\s+to\s+authenticate|authentication_error|not\s+authenticated|please\s+run\s+\/login|invalid\s+api\s+key/i, 'sessao'],
-  [/rate[ _-]?limit|too many requests|\(429\)|\b429\b/i, 'rate_limit'],
-  [/quota|usage limit|usage_cap_reached|credit balance/i, 'quota'],
+  // L5a (porte do comarka 6ad8fbd): "You've hit your session limit" do CLI
+  // 2.1.30x e o "5-hour session limit". Gêmeo da RATE_LIMIT_REGEX do lib.sh.
+  [/hit your [a-z ]{0,30}limit|rate[ _-]?limit|too many requests|\(429\)|\b429\b/i, 'rate_limit'],
+  [/quota|usage limit|usage_cap_reached|credit balance|5-hour session limit/i, 'quota'],
   // Peça 7b-2 · INDISPONIBILIDADE não é limite. `service unavailable` e `503`
   // vieram da lista do Actus (executor.mjs:211-221), que trata limite e
   // indisponibilidade como a mesma família; aqui eles saem de `rate_limit` para

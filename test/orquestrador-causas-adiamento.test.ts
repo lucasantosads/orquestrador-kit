@@ -13,6 +13,8 @@
  *     Typecheck ou build que rodou e apontou erro de código segue mérito.
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   decidirDesfecho,
   detectarCausaInfra,
@@ -91,6 +93,23 @@ describe('cooldown só para limite remoto', () => {
       expect(v.causa).toBe(causa);
       expect(v.cooldown).toBe(cooldown);
       expect(v.contaComoRetry).toBe(false);
+    });
+  }
+
+  // L5a · o MESMO corpus do test-lib-config.sh (heredoc LIMITE_ASSINATURA): os
+  // dois lados concordam. Texto do commit 6ad8fbd do Comarka, não captura real.
+  const sh = readFileSync(join(__dirname, '..', 'scripts', 'orquestrador', 'test-lib-config.sh'), 'utf8');
+  const corpo = sh.split("<<'LIMITE_ASSINATURA'\n")[1]?.split('\nLIMITE_ASSINATURA\n')[0] ?? '';
+  const corpus = corpo.split('\n').filter(Boolean).map((l) => l.split('|') as [string, string]);
+  it('o corpus LIMITE_ASSINATURA existe no test-lib-config.sh', () => {
+    expect(corpus.length).toBeGreaterThanOrEqual(6);
+  });
+  for (const [esperado, saida] of corpus) {
+    it(`limite da assinatura: "${saida}" -> ${esperado}`, () => {
+      const v = decidirDesfecho(CONFIG, sinal({ exitCode: 1, saida }));
+      if (esperado === 'nao') return expect(v.desfecho).not.toBe('adiado');
+      expect([v.desfecho, v.causa, v.cooldown]).toEqual(['adiado', esperado, true]);
+      expect(detectarCausaInfra(sinal({ exitCode: 0, saida }))).toBeNull();
     });
   }
 
