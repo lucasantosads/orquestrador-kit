@@ -1640,10 +1640,20 @@ roda_vitest_isolado() {
 }
 
 # registra_instavel <id> <arquivo>: best-effort, sempre devolve 0. Uma linha
-# "data<TAB>id<TAB>arquivo" em runs/instaveis.log (o formato do Comarka).
+# "data<TAB>id<TAB>arquivo" em runs/instaveis.log (o formato do Comarka). No 3º
+# registro do mesmo arquivo (igualdade exata), uma vez: decisão pendente e o
+# evento INSTAVEL_RECORRENTE. Sem rascunho de ticket (o 9ee36a9 abria um; no
+# Comarka o mesmo teste foi registrado mais 25 vezes depois dele).
 registra_instavel() {
-  local id="$1" arq="$2" log_f="$RUNS_BASE/instaveis.log"
+  local id="$1" arq="$2" log_f="$RUNS_BASE/instaveis.log" n regs
   escrita_de_teste_permitida "$log_f" || return 0
   printf '%s\t%s\t%s\n' "$(date '+%Y-%m-%d %H:%M')" "$id" "$arq" >> "$log_f" 2>/dev/null || return 0
+  n="$(awk -F'\t' -v a="$arq" '$3 == a {c++} END {print c+0}' "$log_f" 2>/dev/null)" || return 0
+  [ "$n" = 3 ] || return 0
+  regs="$(awk -F'\t' -v a="$arq" '$3 == a {printf "%s%s (%s)", (c++ ? "; " : ""), $2, $1}' "$log_f" 2>/dev/null || true)"
+  event "$id" INSTAVEL_RECORRENTE "arquivo=$arq" "registros=3"
+  decisao_pendente executor-instavel "$arq" \
+    "INSTÁVEL RECORRENTE: $arq falhou na suíte sem relação com o diff e passou isolado 3 vezes; estabilizar o teste?" \
+    "registros: $regs (runs/instaveis.log)" || true
   return 0
 }
