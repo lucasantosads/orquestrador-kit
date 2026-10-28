@@ -583,16 +583,30 @@ drenar() {
         # não disparava (269 e 270 do conteudos-infinitos, 22/09).
         norm="$(causa_normalizada "$causa" "$prox_id")"
         outro="$(printf '%s\n' "$causas_vistas" | ORQ_CAUSA_NORM="$norm" awk -F'\t' -v id="$prox_id" '$2 == ENVIRON["ORQ_CAUSA_NORM"] && $1 != id { print $1; exit }')"
-        if [ -n "$outro" ]; then
+        amb_ids=''; amb_txt="$norm"
+        [ -z "$outro" ] || amb_ids="$outro,$prox_id"
+        # Peça L12: o ADIADO motivo=preflight já é AMBIENTE no 1º ticket. Nenhuma
+        # recusa do preflight lê o ticket da vez (test-preflight.sh, seção 6), então
+        # todo ticket bateria nela. Com 1 elegível a régua acima nunca achava outro
+        # e o ticket somava em .adiamentos até bloquear (comarka c2ae29b, 1523). A
+        # causa crua vai para STATUS e aviso: ela nomeia o arquivo do bloco json.
+        if [ -z "$amb_ids" ] && printf '%s\n' "$evs" | awk '$3 == "ADIADO" && $4 == "motivo=preflight" { a = 1 } END { exit !a }'; then
+          amb_ids="$prox_id"; amb_txt="$causa"
+        fi
+        if [ -n "$amb_ids" ]; then
           sem_progresso_desfazer "$sp_backup"
           contador_desfazer "$ad_backup" .adiamentos
           adiamentos_ambiente_desfazer "$amb_backup"
           sp_backup=''; a_bloquear=''; sem_progresso=0; ad_backup=''; a_bloquear_ad=''; amb_backup=''
           tentados="$tentados$prox_id "
           [ "$adiado" = 0 ] || adiados=$((adiados + 1))
-          event '---' AMBIENTE "tickets=$outro,$prox_id" "causa=$norm"
-          say "  AMBIENTE: $outro e $prox_id pararam pela mesma causa ($norm) — nada soma nesta drenagem; encerrando"
-          motivo_ocioso=ambiente; ambiente_causa="$norm"
+          event '---' AMBIENTE "tickets=$amb_ids" "causa=$norm"
+          if [ -n "$outro" ]; then
+            say "  AMBIENTE: $outro e $prox_id pararam pela mesma causa ($norm) — nada soma nesta drenagem; encerrando"
+          else
+            say "  AMBIENTE: o preflight recusou a vez de $prox_id ($causa); recusa de preflight não é do ticket, nada soma nesta drenagem; encerrando"
+          fi
+          motivo_ocioso=ambiente; ambiente_causa="$amb_txt"
           rm -f "$exe_out"; break
         fi
         causas_vistas="$causas_vistas$prox_id"$'\t'"$norm"$'\n'

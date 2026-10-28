@@ -20,6 +20,8 @@
 #      executor.sh passa por `uma_linha`). A comparação de causas não pode
 #      interpretar esse escape: 4 disparos, 1 AMBIENTE em cada, 0 bloqueados.
 #      Foi assim que o 269 e o 270 do conteudos-infinitos bloquearam em 22/09.
+#      Desde a L12 o ADIADO de preflight é AMBIENTE já no 1º ticket: o evento
+#      sai com tickets=906 só, e o `\n` literal segue na causa.
 #   5. causa 'ambiente' (8ª causa, peça d do porte) nos dois tickets, com `\n`
 #      literal: a regra de AMBIENTE absolve cada disparo, então o
 #      `adiamentos_ambiente` do ticket não avança e o teto de 3 do executor não
@@ -180,7 +182,7 @@ done
 [ "$um_por_disparo" = 1 ] && ok "1 AMBIENTE em cada um dos 4 disparos" || falha "AMBIENTE não disparou uma vez por drenagem ($(n_amb) no total)"
 amb="$(grep ' AMBIENTE ' "$TRILHA" | tail -1)"
 echo "  trilha: $amb"
-case "$amb" in *" --- AMBIENTE tickets=906,907 causa="*'antes:\n M '*) ok "evento com 906,907 e o \\n literal na causa" ;; *) falha "evento fora do formato" ;; esac
+case "$amb" in *" --- AMBIENTE tickets=906 causa="*'antes:\n M '*) ok "evento com 906 (L12) e o \\n literal na causa" ;; *) falha "evento fora do formato" ;; esac
 [ "$(st 906)" != bloqueado ] && [ "$(st 907)" != bloqueado ] && ok "906 e 907 não bloqueados" \
   || falha "bloqueado por ambiente: 906=$(st 906) 907=$(st 907)"
 
