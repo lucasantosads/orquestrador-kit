@@ -39,3 +39,18 @@ Observacao de linhagem: o motor do comarka nao foi instalado pelo kit (sem `VERS
 ## Pendencias de processo
 
 - `c2ae29b` entrou no comarka sem o prefixo `PORTE-PENDENTE:` que `.claude/rules/motor.md` exige. Registrar na tabela "PORTE-PENDENTE abertos no comarka" de `docs/migracao-comarka.md`.
+
+## Conferência no kit (28/10/2026, por leitura, nada executado)
+
+O kit já tem caminho próprio e cobre quase tudo. `preflight_ou_adia` (`executor.sh:1869-1885`, etapa 7b-2) roda o preflight num subshell e, ao recusar, grava o evento `ADIADO motivo=preflight causa=<linha>` (`executor.sh:1879`), sai com rc 0 e não toca o ticket nem consome tentativa. O disjuntor de sem progresso, portanto, não conta.
+
+Resíduo:
+
+- `foi_adiado` (`local-loop.sh:193`) trata esse ADIADO como adiado sem cooldown, que **soma em `adiamentos`** (`local-loop.sh:603-613`). O limite é `adiamentos_limite`, 4 quando a chave falta (`local-loop.sh:252`), e o bloqueio sai no fim da drenagem.
+- A régua AMBIENTE (7a-8, `local-loop.sh:593-594`) desfaz a soma só quando OUTRO ticket para pela mesma causa na mesma drenagem.
+- Com um único ticket elegível (fila pequena, como a do dashboard-comercial, ou a fila Apolo), uma falha de infra persistente soma 1 adiamento por disparo e bloqueia o ticket no 4º. Com `start_interval` de 900 s, isso é cerca de uma hora de claude CLI fora do ar.
+- `test-ambiente-adiado.sh:77-92` cobre 3 tickets (901, 902, 903). O caso de 1 ticket não está coberto.
+- O `die` de "bloco json inválido" (`executor.sh:68`) está dentro do `preflight` e também sai como `ADIADO motivo=preflight`. É culpa do ticket e hoje, no kit, nunca soma como sem progresso.
+
+Fixture e contraprova sugeridas para a etapa que tratar o resíduo: 1 ticket elegível, executor simulado recusando no preflight por claude CLI em 5 disparos seguidos. Esperado: ticket `pendente` e nenhum bloqueio por `adiamentos`. Vermelho antes: o mesmo cenário no kit atual bloqueia no 4º disparo. Contraprova: um bloco json inválido continua contando contra o ticket.
+

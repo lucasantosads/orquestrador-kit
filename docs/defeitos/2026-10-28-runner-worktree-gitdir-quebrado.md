@@ -40,3 +40,9 @@ Observacao de linhagem: o motor do comarka nao foi instalado pelo kit (sem `VERS
 
 - `54fccc1` entrou no comarka sem o prefixo `PORTE-PENDENTE:`. Registrar na tabela "PORTE-PENDENTE abertos no comarka" de `docs/migracao-comarka.md`.
 - Regra operacional ja registrada no comarka: nunca rodar `git worktree prune` fora do Mac.
+
+## Conferência no kit (28/10/2026, por leitura, nada executado)
+
+- O kit não tem `orq-runner`; o defeito, nesta forma, não existe no motor do kit hoje.
+- O kit usa worktree por ticket em `~/Projetos/_worktrees/<slug>/`. `lib.sh:869-894` recusa worktree de ticket que pertence a outro repo e manda o humano remover. Não foi verificado se o caso "diretório existe sem gitdir" cai nessa recusa. Conferir no PASSO 0 da etapa que tratar o item 14 de `docs/migracao-comarka.md`.
+
