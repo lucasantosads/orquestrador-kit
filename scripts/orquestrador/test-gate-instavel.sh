@@ -76,6 +76,8 @@ case "$(ev INSTAVEL)" in *"arquivos=$ORFAS gate=test resto="*) ok "evento INSTAV
 grep -q '^--- retomada depois de test' "$ATT/gates.txt" && grep -qE '^ok +build' "$ATT/gates.txt" \
   && ok "gates.txt: a retomada anexada, build ok" || falha "gates.txt sem retomada"
 [ -f "$ATT/juiz.veredito.json" ] && ok "juiz chamado" || falha "juiz não chamado"
+awk '/TESTE INSTÁVEL FORA DA CONTA/{f=1} /^SAÍDA DOS GATES/{exit} f' "$ATT/juiz.prompt.txt" 2>/dev/null | grep -qx "  - $ORFAS" \
+  && ok "o prompt do juiz diz que o FAIL é instável (P4)" || falha "juiz.prompt.txt sem o bloco de instáveis"
 
 echo "== B · o mesmo arquivo falha isolado: base vermelha como antes =="
 caso "$FIXT/vitest-1523-attempt-1.txt" 0

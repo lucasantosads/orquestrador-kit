@@ -138,6 +138,12 @@ export interface EntradaPrompt {
    * lido da BASE pelo executor.sh. Ausente ou vazio: o prompt sai como antes.
    */
   review?: string
+  /**
+   * Etapa L11 — `rundir/instaveis.txt`: arquivos com FAIL no gate de testes, sem
+   * relação com o diff, que passaram rodados isolados (no máximo 3). Ausente ou
+   * vazio: o prompt sai byte a byte como antes.
+   */
+  instaveis?: string[]
 }
 
 /** A allowlist inclui arquivo de teste? Só então o bloco anti-afrouxamento entra. */
@@ -183,6 +189,18 @@ const ANTI_AFROUXAMENTO = `4. ANTI-AFROUXAMENTO (a allowlist deste ticket inclui
    caminho aceito. Renomear símbolo para satisfazer contagem também é afrouxar.`
 
 /** Etapa 8c: o enforcement já barra o afrouxamento por contagem; aqui fica o que ele não vê. */
+/** Etapa L11: o gate de testes ficou fora da conta por instável que passou isolado. */
+function blocoInstaveis(instaveis: string[]): string[] {
+  return [
+    '',
+    'TESTE INSTÁVEL FORA DA CONTA (aviso do harness, não do agente):',
+    `A suíte ficou vermelha (a saída dos gates abaixo mostra FALHA no gate de testes) SÓ
+em teste sem relação com o diff que passou rodado isolado. Os gates depois dele rodaram
+na retomada, no fim da saída. Não reprove por esse FAIL; o resto vale como sempre:`,
+    ...instaveis.map((t) => `  - ${t}`),
+  ]
+}
+
 function blocoAmpliados(ampliados: string[]): string[] {
   return [
     '',
@@ -643,6 +661,7 @@ export function montarPromptJuiz(e: EntradaPrompt): string {
     ...(e.definicoes && e.definicoes.length > 0 ? blocoDefinicoes(e.definicoes) : []),
     ...(e.commits?.trim() ? blocoCommits(e.commits) : []),
     ...(e.anexo?.trim() ? blocoAnexo(e.anexo) : []),
+    ...(e.instaveis && e.instaveis.length > 0 ? blocoInstaveis(e.instaveis) : []),
     '',
     'SAÍDA DOS GATES MECÂNICOS:',
     e.gates.trim() || '(vazia)',

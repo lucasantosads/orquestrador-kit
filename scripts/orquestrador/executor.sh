@@ -860,7 +860,8 @@ run_juiz() {
       --arg commits "$(git -C "$wt" log --format='commit %H%n%n%B' "$base"..HEAD 2>/dev/null || true)" \
       --arg anexo "$anexo" --arg review "$review" --argjson ctx "$ctx" --argjson defs "$defs" \
       --argjson amp "$(printf '%s' "$VIZ_AMPLIADA" | jq -Rn '[inputs | select(length > 0)]')" \
-      '{id:$id, objetivo:$o, criterios:$c, allowlist:$al, diff:$diff, gates:$gates, nota:$nota, contexto:$ctx, definicoes:$defs, ampliados:$amp, commits:$commits, anexo:$anexo, review:$review}' \
+      --argjson inst "$(jq -Rn '[inputs | select(length > 0)]' 2>/dev/null < "$rundir/instaveis.txt" || echo '[]')" \
+      '{id:$id, objetivo:$o, criterios:$c, allowlist:$al, diff:$diff, gates:$gates, nota:$nota, contexto:$ctx, definicoes:$defs, ampliados:$amp, commits:$commits, anexo:$anexo, review:$review, instaveis:$inst}' \
     | juiz prompt > "$prompt"
 
   fase juiz
