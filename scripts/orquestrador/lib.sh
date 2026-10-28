@@ -915,6 +915,8 @@ ticket_mergeado_em_alvo() {
 # assinatura Max/Pro ou sobrecarga da API: tipos de erro `rate_limit_error`,
 # `overloaded_error`/529, `usage_cap_reached`; mensagens "usage limit reached",
 # "Request rejected (429)", "credit balance ... too low", "5-hour session limit".
+# L5a (porte do comarka 6ad8fbd): o CLI 2.1.30x diz "You've hit your session
+# limit · resets 3:45pm" (variantes weekly, Opus, Sonnet), que nada aqui casava.
 # ERE portável (sem \b — BSD grep do macOS): 429 casa com o formato
 # "(429)"/"Request rejected"/"error 429", não um "429" solto qualquer.
 # Cobre as causas 'rate limit' e 'quota estourada' do politica_adiamento.
@@ -923,7 +925,7 @@ ticket_mergeado_em_alvo() {
 # SERVIDOR_REGEX. Indisponibilidade não é limite: não tem prazo, e armar 60 min
 # de cooldown por um blip de API é o que o Comarka viu travar o 291 três vezes
 # em 03/09 (lib.sh:343 de lá).
-RATE_LIMIT_REGEX='rate[ _-]?limit|rate_limit_error|limit reached|usage limit|usage_cap_reached|too many requests|quota|credit balance|5-hour session limit|\(429\)|(error|status|rejected[^0-9]{0,20})[ (]?42[0-9]'
+RATE_LIMIT_REGEX='hit your [a-z ]{0,30}limit|rate[ _-]?limit|rate_limit_error|limit reached|usage limit|usage_cap_reached|too many requests|quota|credit balance|5-hour session limit|\(429\)|(error|status|rejected[^0-9]{0,20})[ (]?42[0-9]'
 
 # Erro TRANSITÓRIO de servidor (500/502/503/529, overloaded). Adia SEM cooldown.
 # Gêmeo do `servidor` do decisao.ts: os dois têm de concordar.

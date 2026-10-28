@@ -123,6 +123,27 @@ caso "menção a sessão expirada com rc=0"   "tratamos session expired na UI"  
 caso "erro real de código"                 "error TS2322: Type 'string' is not assignable" 1 nao-adia
 
 echo
+echo "== limite da assinatura (L5a): corpus lido também pelo vitest =="
+# <causa esperada no decisao.ts>|<mensagem>; `nao` = não pode adiar. As do CLI
+# 2.1.30x são o TEXTO do commit 6ad8fbd do Comarka (doc oficial errors), não
+# captura real: nenhum run do Comarka tem "hit your" até 28/10/2026.
+while IFS='|' read -r esperado msg; do
+  printf '%s\n' "$msg" > "$TMP/lim.txt"
+  if is_rate_limited "$TMP/lim.txt" 1; then r=adia; else r=nao; fi
+  quer=adia; [ "$esperado" = nao ] && quer=nao
+  [ "$r" = "$quer" ] && ok "rc 1: $msg -> $r" || falha "rc 1: $msg -> $r (esperava $quer)"
+  [ "$esperado" = nao ] && continue
+  is_rate_limited "$TMP/lim.txt" 0 && falha "rc 0: $msg adiou" || ok "rc 0: $msg -> nao"
+done <<'LIMITE_ASSINATURA'
+rate_limit|You've hit your session limit · resets 3:45pm
+rate_limit|You've hit your weekly limit · resets Oct 20
+rate_limit|You've hit your Opus limit · resets 3:45pm
+rate_limit|You've hit your Sonnet limit · resets 3:45pm
+quota|5-hour session limit reached
+nao|O cliente atingiu o limite de verba da campanha.
+LIMITE_ASSINATURA
+
+echo
 if [ "$FALHAS" = 0 ]; then
   echo "TODOS OS CHECKS PASSARAM"
   exit 0
