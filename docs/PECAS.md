@@ -1137,6 +1137,8 @@
 
 ## PENDENTES
 
+- **Fila de melhorias do motor:** `docs/MELHORIAS.md` (M-01 a M-61, status e marco de cada uma).
+
 - **L12 · o preflight pular o ticket corrompido em vez de recusar o run.** Hoje um bloco json
   inválido em qualquer arquivo da fila recusa o run inteiro (`executor.sh:68`) e, desde a L12, vira
   `AMBIENTE` a cada disparo até alguém consertar o arquivo, embora `proximo_pendente` já pule o
