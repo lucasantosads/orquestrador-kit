@@ -139,7 +139,7 @@ export interface EntradaPrompt {
    */
   review?: string
   /**
-   * Etapa L11 — `rundir/instaveis.txt`: arquivos com FAIL no gate de testes, sem
+   * Etapa L11: `rundir/instaveis.txt`: arquivos com FAIL no gate de testes, sem
    * relação com o diff, que passaram rodados isolados (no máximo 3). Ausente ou
    * vazio: o prompt sai byte a byte como antes.
    */

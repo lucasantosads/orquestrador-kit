@@ -1,5 +1,5 @@
 /**
- * Etapa L11 — gate de instável (porte do Fix A do 86dec07 e do 9ee36a9 do Comarka).
+ * Etapa L11: gate de instável (porte do Fix A do 86dec07 e do 9ee36a9 do Comarka).
  *
  * Arquivo com FAIL na suíte, sem relação com o diff (fora do diff, da allowlist com a
  * ampliada e dos vizinhos C11 da 8c), roda isolado antes de virar base vermelha ou

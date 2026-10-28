@@ -1,5 +1,5 @@
 /**
- * Etapa L11-P2 — duas flags no `gates.ts --run-cli` para o gate de instável.
+ * Etapa L11-P2: duas flags no `gates.ts --run-cli` para o gate de instável.
  *
  * `--saida-falha <arq>`: a saída INTEIRA do gate que reprovou (o gates.txt guarda
  * só o recorte de 40 linhas, e as guardas de Unhandled e de contagem leem o fim

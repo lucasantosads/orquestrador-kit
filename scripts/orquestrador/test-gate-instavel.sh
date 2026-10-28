@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test-gate-instavel.sh — gate de testes com teste instável (etapa L11, porte do
+# test-gate-instavel.sh: gate de testes com teste instável (etapa L11, porte do
 # 86dec07 Fix A e do test-gate-instavel.sh do Comarka).
 #
 # Caso real: Comarka 1523 attempt-1 (28/10 13:50). A suíte de 41 s falhou só em
@@ -38,7 +38,7 @@ trap 'fxe_limpa; rm -rf "$TMP_RAIZ"' EXIT
 FALHAS=0
 ok()    { printf '  ok    %s\n' "$*"; }
 falha() { printf '  FALHA %s\n' "$*"; FALHAS=$((FALHAS + 1)); }
-[ -x "$FXE_NM/.bin/vitest" ] || { echo "ERRO: $FXE_NM/.bin/vitest ausente — o isolado precisa do vitest do checkout"; exit 2; }
+[ -x "$FXE_NM/.bin/vitest" ] || { echo "ERRO: $FXE_NM/.bin/vitest ausente; o isolado precisa do vitest do checkout"; exit 2; }
 
 ORFAS=test/estado-plano-orfas.test.ts
 SEGREDO=test/sem-segredo-no-repo.test.ts
@@ -67,7 +67,7 @@ ev() { fxe_eventos | grep " 901 $1 " | tail -1; }
 echo "== A · 1523: instável que passa isolado sai da conta =="
 caso "$FIXT/vitest-1523-attempt-1.txt" 1
 [ "$(fxe_status)" = aguardando_merge ] && ok "status aguardando_merge" \
-  || falha "status $(fxe_status) — $(fxe_nota | head -c 300)"
+  || falha "status $(fxe_status): $(fxe_nota | head -c 300)"
 [ "$(cat "$ATT/instaveis.txt" 2>/dev/null)" = "$ORFAS" ] && ok "rundir/instaveis.txt" || falha "instaveis.txt: $(cat "$ATT/instaveis.txt" 2>/dev/null)"
 grep -q 'Tests  1 passed' "$ATT/isolado-1.txt" 2>/dev/null && ok "isolado-1.txt com o vitest real verde" || falha "isolado-1.txt: $(tail -5 "$ATT/isolado-1.txt" 2>/dev/null)"
 grep -q $'\t901\t'"$ORFAS"'$' "$FXE/repo/docs/fila/runs/instaveis.log" 2>/dev/null && ok "runs/instaveis.log (data, ticket, arquivo)" || falha "instaveis.log ausente"

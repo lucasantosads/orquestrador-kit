@@ -202,6 +202,8 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `EDICAO_ALHEIA` | `lib.sh:_aviso_edicao_alheia`, chamada por `commit_motor` (ticket_commit e autocommit; etapa 8b, §19) | `arquivo=<nome do ticket>` `campos=<chave>,…\|prosa\|nao_rastreado` `hash=<12 hex>` — o ticket tinha edição que não é do motor; o commit do loop levou só as chaves do motor e a edição ficou no working tree. Uma vez por edição (`hash` do ticket sem os campos do motor) |
 | `VIZINHO_BASE` | `executor.sh:run_attempt`, seção 7a (etapa 8c, §21) | `resultado=verde\|vermelho\|inconclusivo` `testes=<arquivo>,…` — o FAIL só em teste vizinho foi rodado na árvore do `base_ticket` antes de ampliar; só `verde` amplia |
 | `VIZINHO_AMPLIADO` | `executor.sh:drive_ticket` (etapa 8c, §21) | `testes=<arquivo>,…` `hash=<12 hex>` `attempt=<N>` — a tentativa N reprovou só em teste vizinho e as seguintes, até o fim do drive, podem editá-lo. Uma vez por versão do ticket (o `hash` é o do `GATE_TICKET_AVISO`, `lib.sh:ticket_versao`); gravado só quando há tentativa para usar |
+| `INSTAVEL` | `executor.sh:decide_instaveis`, seção 7 (etapa L11, §24) | `arquivos=<arquivo>,…` `gate=<nome>` `resto=<arquivo>,…`: o gate de testes reprovou e esses arquivos, sem relação com o diff, passaram rodados isolados: saem da conta. `resto` vazio = tudo instável (os gates depois dele rodam na retomada) |
+| `INSTAVEL_RECORRENTE` | `lib.sh:registra_instavel` (etapa L11, §24) | `arquivo=<arquivo>` `registros=3`: o 3º registro do mesmo arquivo em `runs/instaveis.log`; uma vez por arquivo, junto de uma linha em `decisoes-pendentes.md` (origem `executor-instavel`). Nenhum rascunho de ticket |
 | `PAUSA` | `lib.sh:pausa_registrar`, chamada por `orq pausar`, pelo `orq-pause.sh` (514, §11) e pelo painel (peças K12-C, K12-F) | `motivo=<token>` `por=terminal\|painel` |
 | `RETOMADA` | `lib.sh:retomada_registrar`, chamada por `orq retomar` e pelo painel (peças K12-C, K12-F) | `por=terminal\|painel` `dur=<N>min` |
 
@@ -2264,6 +2266,48 @@ Severidade `aviso`, só em ticket pendente (`gate-ticket.ts:validarTicket`).
 `orquestrador-gate-severidade.test.ts` (inventário com C15 e C16) e o caso (h4) de
 `scripts/kit/test-instalar.sh` (P5: `Test Files 1 skipped` dentro do gate, `1 passed` fora).
 Fixtures em `test/fixtures/juiz-8e/` e `test/fixtures/gate-ticket-8e/` (`ORIGEM.md`).
+
+## 24. Etapa L11: teste instável no gate de testes (28/10/2026)
+
+Porte do Fix A do `86dec07` e do `9ee36a9` do Comarka (o `dc90c8d` e o `906259f` entraram reescritos
+no `86dec07`). O Fix B do `86dec07` é equivalente à 8c (§21) e não foi portado.
+
+### 24.1 Quem roda isolado (`decisao.ts:instaveisCandidatos`, `decisao-cli.ts instaveis`)
+
+- Entrada: a saída INTEIRA do gate que reprovou (`gates.ts --saida-falha`, `rundir/gate-falha.txt`), o
+  diff, a allowlist com a ampliada e os vizinhos C11 da árvore do `base_ticket`.
+- Sem relação = fora do diff, da allowlist e dos vizinhos, e arquivo de teste: a régua da 8c, uma só.
+- Nada reroda com `Unhandled Error` na saída, com `Test Files N failed` diferente dos FAIL lidos (ou
+  ausente) ou com mais de 3 sem relação (`TETO_INSTAVEIS`, "base quebrada").
+
+### 24.2 No executor (`executor.sh`, seção 7, entre os gates e os critérios)
+
+- Só com enforcement ok, gates não interrompidos e todo gate reprovado de papel `testes`.
+- Cada candidato roda uma vez isolado (`lib.sh:roda_vitest_isolado`): na worktree do ticket, com
+  `NO_COLOR=1 FORCE_COLOR=0 ORQ_GATE=1` e o runner do `vizinho_na_base` (`VIZINHO_CMD_BASE`), sem
+  timeout. Passou = rc 0 E `Test Files N passed` (rc 0 sem teste rodado não conta).
+- Passou: `rundir/instaveis.txt`, `rundir/isolado-<n>.txt`, `runs/instaveis.log` (TSV data, id,
+  arquivo) e o evento `INSTAVEL`.
+- Tudo instável: `gates.ts --retomar-depois <gate>` roda os gates depois dele (com o vitest vermelho
+  eles não tinham rodado), a saída vai a `rundir/gates-retomada.txt` e é anexada ao `gates.txt`, e o
+  `gates_rc` passa a ser o da retomada. A linha `FALHA <gate de testes>` do `gates.txt` fica: o evento
+  `GATE` segue com `testes=falha` (o `INSTAVEL` diz por quê).
+- Mistura: a 7a (vizinho) e a 7b (base vermelha) leem `rundir/gates-sem-instaveis.txt` (o `gates.txt`
+  sem as linhas `FAIL` dos instáveis). Falhou isolado: o caminho de hoje.
+- O juiz recebe `instaveis` (§23.1, campo opcional): o bloco "TESTE INSTÁVEL FORA DA CONTA" logo antes
+  da saída dos gates.
+
+### 24.3 Recorrência (`lib.sh:registra_instavel`)
+
+No 3º registro do mesmo arquivo (igualdade exata), uma vez: o evento `INSTAVEL_RECORRENTE` e uma linha
+em `decisoes-pendentes.md`. O motor não abre rascunho de ticket (decisão do Lucas de 28/10/2026).
+
+### 24.4 Testes
+
+`orquestrador-instaveis-l11.test.ts` (P1: 1523, 5263, guardas, teto, CLI),
+`orquestrador-gates-l11.test.ts` (P2: as duas flags; sem elas, a saída de antes),
+`test-gate-instavel.sh` (P3: executor real, casos A a F), `orquestrador-juiz-instaveis-l11.test.ts`
+(P4) e `test-instavel-recorrente.sh` (P5). Fixtures em `test/fixtures/instavel-l11/` (`ORIGEM.md`).
 
 ## 10. Divergências conhecidas
 

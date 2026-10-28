@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test-instavel-recorrente.sh — o 3º registro do mesmo teste instável vira uma
+# test-instavel-recorrente.sh: o 3º registro do mesmo teste instável vira uma
 # decisão pendente (etapa L11, porte do 9ee36a9 do Comarka SEM o rascunho de
 # ticket, decisão do Lucas de 28/10).
 #
@@ -51,7 +51,7 @@ reg 1001 "$A"; reg 1002 "$A"
 
 echo "== B · 3º registro =="
 reg 1003 "$A"
-[ "$(nlinhas)" = 1 ] && ok "uma linha em decisoes-pendentes.md" || falha "B: $(nlinhas) linhas — $(tail -2 "$DEC")"
+[ "$(nlinhas)" = 1 ] && ok "uma linha em decisoes-pendentes.md" || falha "B: $(nlinhas) linhas: $(tail -2 "$DEC")"
 l="$(grep "INSTÁVEL RECORRENTE" "$DEC" 2>/dev/null)"
 r=0; for t in 1001 1002 1003; do case "$l" in *" $t"*) ;; *) r=1 ;; esac; done
 case "$l" in *"| $A |"*) ;; *) r=1 ;; esac

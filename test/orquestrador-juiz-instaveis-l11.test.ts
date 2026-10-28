@@ -1,5 +1,5 @@
 /**
- * Etapa L11-P4 — o juiz sabe do instável (porte do aviso do 86dec07 no avaliador.sh).
+ * Etapa L11-P4: o juiz sabe do instável (porte do aviso do 86dec07 no avaliador.sh).
  *
  * Com o gate de testes fora da conta por instável, o juiz roda, mas a SAÍDA DOS
  * GATES mostra `FALHA <gate>` e o cabeçalho diz que os gates passaram. O bloco diz

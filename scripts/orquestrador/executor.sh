@@ -1065,7 +1065,7 @@ decide_instaveis() {
                        '(.pathspec_allowlist // []) + $x')" \
       --arg w "$wt" --arg b "$base" \
       '{saida:$s, arquivosDoDiff:$d, allowlist:$al, worktree:$w, base:$b}' | decisao instaveis)" \
-    || { log "ERRO: decisao instaveis falhou — o executor não segue sem saber se o FAIL é instável"; exit 1; }
+    || { log "ERRO: decisao instaveis falhou; o executor não segue sem saber se o FAIL é instável"; exit 1; }
   [ -z "$(jq -r '.motivo' <<<"$inst")" ] || log "  teste instável: não reroda ($(jq -r '.motivo' <<<"$inst"))"
   INST_RESTO="$(jq -r '.resto[]' <<<"$inst")"
   while IFS= read -r t; do

@@ -1111,7 +1111,34 @@
   *Evidência:* `~/orq-sessoes/relatorio-kit-l5a.md`.
   *Teste:* `test-lib-config.sh` (corpus) e `orquestrador-causas-adiamento.test.ts`.
 
+- **L11 · gate de instável (porte do comarka 86dec07 Fix A e 9ee36a9, 28/10/2026).** O arquivo com
+  FAIL no gate de testes, sem relação com o diff (fora do diff, da allowlist com a ampliada e dos
+  vizinhos C11), roda uma vez isolado antes da base vermelha ou da reprovação; o que passa sai da
+  conta. Tudo instável: os gates depois do de testes rodam na retomada (`gates.ts
+  --retomar-depois`). O juiz recebe o bloco dos instáveis. O 3º registro do mesmo arquivo vira
+  decisão pendente e `INSTAVEL_RECORRENTE`, sem rascunho de ticket. Commits `a25c6fe` (P1,
+  classificação), `8abfbd6` (P2, flags do gates.ts), `15d22c4` (P3, executor), `f4498a8` (P4, juiz),
+  `a2a2713` (P5, recorrência). Fixtures reais do 1523 e do 5263 do Comarka.
+  *Evidência:* `~/orq-sessoes/relatorio-kit-l11.md`; CONTRATO §24.
+  *Teste:* `orquestrador-instaveis-l11.test.ts`, `orquestrador-gates-l11.test.ts`,
+  `orquestrador-juiz-instaveis-l11.test.ts`, `test-gate-instavel.sh`, `test-instavel-recorrente.sh`.
+
 ## PENDENTES
+
+- **L11 · o isolado não tem timeout.** `roda_vitest_isolado` roda sem teto de tempo, como o
+  `vizinho_na_base` (decisão do Lucas de 28/10/2026). Um arquivo que trava isolado segura a
+  tentativa até o `claude_timeout_secs` do loop. O runner é o mesmo `VIZINHO_CMD_BASE` na raiz da
+  worktree: em monorepo o arquivo não é achado e o isolado não passa (seguro, mas não ajuda; mesma
+  pendência do item 8c "runner da conferência").
+  *Evidência:* `lib.sh:roda_vitest_isolado`; CONTRATO §24.2.
+  *Teste a escrever:* um isolado que dorme além do teto vira "falhou isolado" e segue o caminho de
+  hoje.
+
+- **L11 · o evento `GATE` segue com `testes=falha` quando o gate saiu da conta por instável.** A
+  linha `FALHA` fica no `gates.txt` (evidência) e o `INSTAVEL` explica; o painel e o triador leem
+  o `GATE` sem saber do instável.
+  *Evidência:* CONTRATO §24.2; caso A do `test-gate-instavel.sh` (`GATE ... testes=falha` e
+  `APROVADO`).
 
 - **L5b · cooldown até o "resets ...".** Hoje o cooldown é `cooldown_minutes` (60) e ignora o
   "resets 3:45pm" / "resets Oct 20". Num limite semanal o disparo de cada hora faz uma chamada
