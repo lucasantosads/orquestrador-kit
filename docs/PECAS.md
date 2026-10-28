@@ -1123,7 +1123,38 @@
   *Teste:* `orquestrador-instaveis-l11.test.ts`, `orquestrador-gates-l11.test.ts`,
   `orquestrador-juiz-instaveis-l11.test.ts`, `test-gate-instavel.sh`, `test-instavel-recorrente.sh`.
 
+- **L12 · recusa de preflight é AMBIENTE com 1 ticket elegível (resíduo do comarka c2ae29b,
+  28/10/2026).** Com 1 elegível o `ADIADO motivo=preflight` somava em `.adiamentos` e o ticket
+  bloqueava no 4º disparo (no 1523 do Comarka, claude CLI com o login vencido). Agora a drenagem trata
+  esse ADIADO como `AMBIENTE` já no 1º ticket (`AMBIENTE tickets=<id>`), nada soma, a drenagem encerra
+  e o aviso é o da 7b-5. O sinal é o próprio `motivo=preflight`: nenhuma recusa do preflight lê o
+  ticket da vez, e o bloco json inválido é da fila (o arquivo corrompido nunca é a vez). A causa crua
+  vai ao STATUS e ao aviso, nomeando o arquivo. Sondagem em limite remoto (cooldown) sem mudança.
+  Commits `9212ab2` (P1, vermelho) e `9c9aed0` (P2, `local-loop.sh`; `executor.sh` não mudou).
+  *Evidência:* `~/orq-sessoes/relatorio-kit-l12.md`; CONTRATO §25.
+  *Teste:* `test-ambiente-adiado.sh` casos 1 e 4 a 7, `test-ambiente.sh` caso 4, `test-preflight.sh`
+  seção 6.
+
 ## PENDENTES
+
+- **L12 · o preflight pular o ticket corrompido em vez de recusar o run.** Hoje um bloco json
+  inválido em qualquer arquivo da fila recusa o run inteiro (`executor.sh:68`) e, desde a L12, vira
+  `AMBIENTE` a cada disparo até alguém consertar o arquivo, embora `proximo_pendente` já pule o
+  corrompido (`lib.sh:837`). Opção (c) do PASSO 0 da L12, fora dela por decisão do Lucas (28/10/2026).
+  *Teste a escrever:* fila com um corrompido e um sadio; o sadio roda e o corrompido aparece no
+  STATUS.
+
+- **L12 · alarme de ambiente prolongado no painel K12.** O aviso da 7b-5 sai na entrada e na saída do
+  `AMBIENTE`, sem re-aviso (decisão do Lucas, 28/10/2026). Com o claude CLI fora a noite toda, o
+  único sinal é o primeiro aviso. Falta um alarme no painel: `AMBIENTE` sem saída há mais de N horas
+  (a trilha tem o `AMBIENTE` de cada disparo).
+  *Evidência:* `orq-painel.py:alarmes_do_repo` não olha `AMBIENTE`.
+  *Teste a escrever:* `test-painel-alarmes.sh` com uma trilha de `AMBIENTE` seguidos além de N horas.
+
+- **L12 · prefixo dobrado "preflight: preflight:" na nota de bloqueio por adiamentos: moot.**
+  `causa_real_do_adiado` monta `<motivo>: <causa>`, e a causa do preflight já começa com
+  "preflight:". Só aparecia no `BLOQUEADO motivo=adiamentos` de um ADIADO de preflight, que desde a
+  L12 nunca soma. Inalcançável; fica registrado caso o caminho volte.
 
 - **L11 · o isolado não tem timeout.** `roda_vitest_isolado` roda sem teto de tempo, como o
   `vizinho_na_base` (decisão do Lucas de 28/10/2026). Um arquivo que trava isolado segura a

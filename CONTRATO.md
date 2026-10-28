@@ -197,7 +197,7 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `GATE_TICKET_AVISO` | `executor.sh:drive_ticket` (porte do Actus, §11) | `violacoes=<N>` `hash=<12 hex>` — o pré-voo achou violação e `gate_ticket.modo_pre_voo` é `aviso`: o ticket SEGUE. Uma vez por ticket e por versão (`hash` do bloco JSON sem `status`, `notas_status`, `tentativas`, `adiamentos_ambiente`, `adiado_ate`; etapa 7d-1b, §12) |
 | `PREVOO_NOGO` | `local-loop.sh:prevoo_ou_sai` | `item=cat.0\|cat.1\|cat.6` |
 | `OCIOSO` | `local-loop.sh:drenar` (peça 7a-4) | `pendentes=` e um `<id>=<razão>` por pendente; ver abaixo |
-| `AMBIENTE` | `local-loop.sh:drenar` (peça 7a-8) | `tickets=<id>,<id>` `causa=<normalizada>` (a causa vai até o fim da linha); ver abaixo |
+| `AMBIENTE` | `local-loop.sh:drenar` (peça 7a-8; L12) | `tickets=<id>,<id>` `causa=<normalizada>` (a causa vai até o fim da linha) · recusa de preflight (L12): `tickets=<id>`, um id só; ver abaixo |
 | `AMBIENTE_ADIAMENTO_DESFEITO` | `local-loop.sh:adiamentos_ambiente_desfazer` (porte-actus j2) | `adiamentos_ambiente=<antes>-><depois>` — a drenagem terminou em `AMBIENTE` e o `adiamentos_ambiente` que o executor somou no ticket nesta drenagem volta ao valor de antes (commitado); um por ticket ainda pendente cujo valor mudou |
 | `EDICAO_ALHEIA` | `lib.sh:_aviso_edicao_alheia`, chamada por `commit_motor` (ticket_commit e autocommit; etapa 8b, §19) | `arquivo=<nome do ticket>` `campos=<chave>,…\|prosa\|nao_rastreado` `hash=<12 hex>` — o ticket tinha edição que não é do motor; o commit do loop levou só as chaves do motor e a edição ficou no working tree. Uma vez por edição (`hash` do ticket sem os campos do motor) |
 | `VIZINHO_BASE` | `executor.sh:run_attempt`, seção 7a (etapa 8c, §21) | `resultado=verde\|vermelho\|inconclusivo` `testes=<arquivo>,…` — o FAIL só em teste vizinho foi rodado na árvore do `base_ticket` antes de ampliar; só `verde` amplia |
@@ -241,6 +241,11 @@ com `motivo_ocioso=ambiente` e o `MOTIVO` do STATUS é `ambiente: <causa>`. Não
 sai `OCIOSO` nesse fim. No máximo 2 chamadas ao executor por disparo com o
 ambiente quebrado. Um ticket isolado com causa própria segue a regra de cima.
 
+Desde a L12 (§25) o `ADIADO motivo=preflight` sem cooldown é `AMBIENTE` já no 1º
+ticket, sem esperar outro: `tickets=<id>` com um id só, 1 chamada ao executor por
+disparo, e o `MOTIVO` do STATUS (e o aviso da 7b-5) leva a causa crua, sem
+normalizar, para nomear o arquivo quando a recusa é bloco json inválido.
+
 ```
 --- AMBIENTE tickets=901,902 causa=executor morreu (rc=<n>, fase=?): preflight: lock de git em uso por outro processo: <caminho> (pid <n>, vez do <id>, HEAD <sha>)
 ```
@@ -264,8 +269,10 @@ todo o resto adia sem cooldown e o próximo disparo retoma sem espera.
 `motivo=preflight` substitui o `EXECUTOR_MORREU rc=1 fase=?` de id `—` que a
 recusa de preflight gravava até a 7b-2: o evento sai no ticket da vez, o
 executor sai 0, e nenhum ticket é TOCADO (nem nota nem commit). A régua de
-AMBIENTE (7a-8) vale sobre todo ADIADO sem cooldown, `preflight` incluído: a
-mesma causa normalizada em dois tickets na mesma drenagem é `AMBIENTE`.
+AMBIENTE (7a-8) vale sobre todo ADIADO sem cooldown: a mesma causa normalizada
+em dois tickets na mesma drenagem é `AMBIENTE`. O `preflight` não espera o
+segundo ticket desde a L12 (§25): é `AMBIENTE` no primeiro, e nunca soma em
+`.adiamentos`.
 
 **`REPROVADO sub=`** (peça 7b-4): qual mérito reprovou, na ordem em que o
 pipeline para: `gate_<papel>` (`typecheck`, `testes`, `build`, `lint`), `juiz`,
@@ -292,7 +299,8 @@ cooldown soma em `runs/<id>/.adiamentos`, que persiste entre disparos. No limite
 (`adiamentos_limite`, §8) o ticket vai para `bloqueado` no fim da drenagem, pelo
 `ticket_commit`, com `notas_status` = `adiado <N> vezes: <causa real>`. A causa
 real é a MEDIDA do último ADIADO: `<motivo> (rc=<rc>, <dur> de execução)`, ou
-`preflight: <causa>`; um rc 124 de 9 s nunca vira "timeout". Adiado COM
+`preflight: <causa>` (inalcançável desde a L12, §25: o ADIADO de preflight não
+soma); um rc 124 de 9 s nunca vira "timeout". Adiado COM
 cooldown não conta nem zera; sair de `pendente` ou a branch alvo avançar zera;
 drenagem que termina em `AMBIENTE` desfaz o que somou.
 
@@ -2308,6 +2316,28 @@ em `decisoes-pendentes.md`. O motor não abre rascunho de ticket (decisão do Lu
 `orquestrador-gates-l11.test.ts` (P2: as duas flags; sem elas, a saída de antes),
 `test-gate-instavel.sh` (P3: executor real, casos A a F), `orquestrador-juiz-instaveis-l11.test.ts`
 (P4) e `test-instavel-recorrente.sh` (P5). Fixtures em `test/fixtures/instavel-l11/` (`ORIGEM.md`).
+
+## 25. Etapa L12: recusa de preflight é AMBIENTE com 1 ticket elegível (28/10/2026)
+
+Resíduo do `c2ae29b` do Comarka (defeito `docs/defeitos/2026-10-28-disjuntor-conta-falha-de-infra.md`).
+Com 1 elegível, a régua da 7a-8 nunca achava outro ticket com a mesma causa: o `ADIADO
+motivo=preflight` somava em `.adiamentos` e o ticket bloqueava no 4º disparo sem o agente rodar.
+
+- Sinal: o próprio `motivo=preflight`, sem campo nem rc novo. Nenhuma recusa do preflight lê o ticket
+  da vez (`preflight`, `probe_modelos`, `exigir_*` e `ensure_branch_alvo` não leem `TICKET`/`TID`;
+  guarda em `test-preflight.sh`, seção 6). O Comarka casa texto de log; o kit não.
+- Bloco json inválido (`executor.sh:68`) é da FILA, não do ticket da vez: o preflight varre todos os
+  arquivos e `proximo_pendente` pula o corrompido (`lib.sh:837`), então a recusa cai sempre num ticket
+  sadio. Entra no mesmo `AMBIENTE`, com a causa crua nomeando o arquivo no STATUS e no aviso.
+- `drenar`: `ADIADO motivo=preflight` sem cooldown vira `AMBIENTE tickets=<id>` no 1º ticket, desfaz o
+  que a drenagem somou, encerra, e o aviso é o da 7b-5 (entrada e saída, sem re-aviso).
+- Sondagem em limite remoto (`exit 75` com cooldown armado): sem mudança. O cooldown faz a drenagem
+  pular a régua, nada soma e não sai `AMBIENTE`.
+- Asserções que mudaram: `test-ambiente-adiado.sh` caso 1 (no máximo 2 chamadas vira 1;
+  `tickets=901,902` vira `tickets=901`) e `test-ambiente.sh` caso 4 (`tickets=906,907` vira
+  `tickets=906`).
+- Testes: `test-ambiente-adiado.sh` casos 4 a 7 (1 elegível com o texto do 1523, bloco json em fila de
+  1 e de 2, limite remoto) e `test-preflight.sh` seção 6.
 
 ## 10. Divergências conhecidas
 
