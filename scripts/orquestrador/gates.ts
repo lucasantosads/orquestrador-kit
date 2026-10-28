@@ -9,7 +9,7 @@
  * A decisão é pura e testável; a execução entra injetada (`exec`), então o
  * teste exercita o motor inteiro sem rodar comando nenhum.
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 
@@ -369,11 +369,20 @@ export function avaliaGate(spec: GateSpec, exec: Execucao): GateResultado {
  * reprova. NAO_VALE_PARCIALMENTE: se QUALQUER gate foi interrompido, o
  * conjunto não vale — `reexecutar: true` e nenhum resultado anterior conta
  * como aprovado. Só existe verde quando a ordem completa rodou inteira.
+ *
+ * `depoisDe` (etapa L11): roda só os gates que vêm depois dele na ordem. É a
+ * retomada do executor quando o gate de testes reprovou só por instável que
+ * passou isolado: os gates depois dele não tinham rodado.
  */
-export function rodarGates(config: GatesConfig, exec: (cmd: string) => Execucao): Veredito {
+export function rodarGates(config: GatesConfig, exec: (cmd: string) => Execucao, depoisDe?: string): Veredito {
   const ordem = config._execucao_dos_gates.ordem_obrigatoria
   const parcialProibido = config._execucao_dos_gates.interrupcao === 'NAO_VALE_PARCIALMENTE'
-  const specs = ordenarGates(config.gates, ordem)
+  let specs = ordenarGates(config.gates, ordem)
+  if (depoisDe !== undefined) {
+    const i = specs.findIndex((g) => g.nome === depoisDe)
+    if (i < 0) throw new Error(`--retomar-depois: gate '${depoisDe}' não está na ordem`)
+    specs = specs.slice(i + 1)
+  }
   const gates: GateResultado[] = []
 
   for (const spec of specs) {
@@ -502,7 +511,15 @@ if (process.argv.includes('--run-cli')) {
   }
   const config = JSON.parse(readFileSync(caminhoConfig, 'utf8')) as GatesConfig
   carregarBaselinesErros(config, caminhoConfig)
-  const v = rodarGates(config, execBash(raiz))
+  // Etapa L11: --retomar-depois <gate> e --saida-falha <arq> (a saída inteira do
+  // gate que reprovou). Sem elas, tudo sai como antes.
+  const opt = (n: string) => (process.argv.includes(n) ? process.argv[process.argv.indexOf(n) + 1] : undefined)
+  const depoisDe = opt('--retomar-depois')
+  if (depoisDe !== undefined && !config._execucao_dos_gates.ordem_obrigatoria.includes(depoisDe)) {
+    process.stderr.write(`gates.ts: --retomar-depois: gate '${depoisDe}' não está na ordem\n`)
+    process.exit(2)
+  }
+  const v = rodarGates(config, execBash(raiz), depoisDe)
   for (const g of v.gates) {
     const marca = g.ok ? 'ok  ' : 'FALHA'
     const extra = g.placar ? ` [${g.placar.pacotes} pacotes, ${g.placar.passando}p/${g.placar.falhando}f]` : ''
@@ -516,6 +533,8 @@ if (process.argv.includes('--run-cli')) {
   const falho = v.gates.find((g) => !g.ok)
   if (falho) {
     process.stdout.write(`\n--- recorte de ${falho.nome} ---\n${recorteDeFalha(falho.saida).join('\n')}\n`)
+    const saidaFalha = opt('--saida-falha')
+    if (saidaFalha) writeFileSync(saidaFalha, falho.saida)
   }
   process.exit(v.ok ? 0 : 1)
 }
