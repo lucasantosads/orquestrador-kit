@@ -1,0 +1,2 @@
+FALHA testes                 7130ms — exit 1
+Error: ENOENT: no such file or directory, open '/Users/lucasantos/Projetos/_worktrees/dc-orq-044/src/lib/financeiro/v2/fatura/__fixtures__/bb-2026-08.txt'

@@ -1,0 +1,63 @@
+{
+  "id": "044",
+  "bloco": "B1",
+  "frente": "B1-F2",
+  "slug": "fin-v2-fatura-leitor-bb",
+  "origem": "humano",
+  "objetivo": "(1) Crie src/lib/financeiro/v2/fatura/tipos.ts: `type Banco = \"bb\" | \"nubank\" | \"mercadopago\" | \"bradesco\"`; `type TipoLinha = \"compra\" | \"credito\" | \"encargo\" | \"iof\"`; `interface ItemFatura { ordem: number; data_compra: string | null; descricao: string; cartao_final: string | null; valor: number; moeda_original: string | null; valor_original: number | null; parcela_atual: number | null; parcelas_total: number | null; tipo_linha: TipoLinha; secao: string | null }`; `interface FaturaLida { banco: Banco; vencimento: string; fechamento: string | null; total: number; parceladoFuturo: number | null; itens: ItemFatura[]; conferencia: { somaItens: number; diferenca: number; bate: boolean } }`; `type ResultadoLeitura = { ok: true; fatura: FaturaLida } | { ok: false; erro: string }`. (2) Crie src/lib/financeiro/v2/fatura/comum.ts (puro): `valorBR(texto)` -> number | null para os formatos do recon (sinal \"-\" ou \"−\" antes ou depois de \"R$\"; 2 casas); `dataDaFatura(texto, vencimentoIso)` para \"DD/MM\" e \"DD MMM\" (JAN a DEZ em português) com o ano do vencimento, ou o anterior quando o mês for maior que o do vencimento; `dataCompleta(texto)` para \"DD/MM/AAAA\" e \"DD MMM AAAA\"; `separarParcela(descricao)` -> { descricao, atual, total } para \"MP*MERCADOLIVRE 10/12\", \"DM *hosti PARC 11/12\" e \"MERCADOLIVRE*X Parcela 4 de 10\" (só no fim; atual <= total; senão sem parcela); `tipoDaLinha(descricao, valor)`: valor < 0 = credito; descrição começando por IOF ou com \"IOF de\" = iof; multa, juros, mora ou encargo (sem acento e maiúsculas indiferentes) = encargo; senão compra; `conferir(itens, total)` em centavos (bate quando a diferença é 0). (3) Crie src/lib/financeiro/v2/fatura/leitor-bb.ts: `lerFaturaBB(texto: string): ResultadoLeitura`. Cabeçalho: total = valor na linha depois de \"Valor\" na página 1 (conferir com \"Total R$\" do resumo), vencimento = linha depois de \"Vencimento\", fechamento = \"Fatura fechada em DD/MM/AAAA\", parceladoFuturo = \"futuras R$ ...\" depois de \"Saldo parcelado em faturas\". Lançamentos: começam depois de \"Data Descrição País Valor\" e terminam em \"Total da Fatura\"; \"Nome (Cartão NNNN)\" define cartao_final; linha sem data e sem valor é título de seção (Restaurantes, Saúde, Serviços, Compras parceladas...) e vai em secao; linhas da seção \"Pagamentos/Créditos\" e \"SALDO FATURA ANTERIOR\" ficam fora; item = \"DD/MM descrição [PAÍS] R$ valor\"; linhas \"*** 28.000,00 PESO ARGENTINO\" / \"*** 50,00 DOLAR AMERICANO\" dão moeda_original e valor_original ao item anterior; \"equivalente a US$\", \"Cotação do Dólar\" e \"Página N/M\" são ignoradas; parcela por separarParcela. Sem vencimento, sem total ou sem nenhum item = ok:false com frase do que faltou. (4) Crie src/lib/financeiro/v2/fatura/__tests__/leitor-bb.test.ts lendo a fixture src/lib/financeiro/v2/fatura/__fixtures__/bb-2026-08.txt com fs: 115 itens, soma 14.006,83 e conferência bate; vencimento 2026-08-08, fechamento 2026-07-28, parceladoFuturo 7.604,34; \"DM *hosti PARC 11/12\" vira descricao \"DM *hosti\", parcela 11 de 12, data 2025-09-02; \"APRES 72BARILOCHE\" 107,51 tem moeda_original \"PESO ARGENTINO\" e valor_original 28000; nenhum item com \"PGTO. CASH\"; \"IOF - COMPRA NO EXTERIOR\" é iof; cartao_final \"6962\"; texto vazio e texto de outro banco dão ok:false. Testes de comum.ts no mesmo arquivo: valorBR nos 5 formatos, dataDaFatura com 28/11 numa fatura de out/2026 (2025), \"09 JUL\" numa fatura de 05 AGO 2026, separarParcela com \"EBN *Canva04875 205/12\" (05/12) e com \"16/09\" sem parcela no meio da descrição. Diga no corpo do commit qual caso foi visto falhando antes do código existir (controle negativo). FORA DE ESCOPO: outros bancos (ticket 045), leitura do PDF (ticket 047), banco de dados, fixtures (só ler, não editar).",
+  "pathspec_allowlist": [
+    "src/lib/financeiro/v2/fatura/tipos.ts",
+    "src/lib/financeiro/v2/fatura/comum.ts",
+    "src/lib/financeiro/v2/fatura/leitor-bb.ts",
+    "src/lib/financeiro/v2/fatura/__tests__/leitor-bb.test.ts"
+  ],
+  "cria_novo": [
+    "src/lib/financeiro/v2/fatura/tipos.ts",
+    "src/lib/financeiro/v2/fatura/comum.ts",
+    "src/lib/financeiro/v2/fatura/leitor-bb.ts",
+    "src/lib/financeiro/v2/fatura/__tests__/leitor-bb.test.ts"
+  ],
+  "dependencias": [],
+  "diff_estimado": 520,
+  "risco": "",
+  "criterios_aceite": [
+    {
+      "tipo": "alvo",
+      "descricao": "teste do leitor BB verde",
+      "cmd": "node_modules/.bin/vitest run src/lib/financeiro/v2/fatura/__tests__/leitor-bb.test.ts >/dev/null 2>&1 && echo OK",
+      "espera": "OK"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "leitor puro não importa cliente de banco",
+      "cmd": "grep -c -F '@supabase' \"src/lib/financeiro/v2/fatura/leitor-bb.ts\"",
+      "espera": "0"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "teste usa a fixture real",
+      "cmd": "grep -q -F 'bb-2026-08.txt' \"src/lib/financeiro/v2/fatura/__tests__/leitor-bb.test.ts\" && echo SIM",
+      "espera": "SIM"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "teste confere o total da fatura (anti-afrouxamento)",
+      "cmd": "grep -q -F '14006.83' \"src/lib/financeiro/v2/fatura/__tests__/leitor-bb.test.ts\" && echo SIM",
+      "espera": "SIM"
+    },
+    {
+      "tipo": "avaliador",
+      "descricao": "avaliador: leitor puro sobre texto; pagamento anterior e saldo anterior fora; moeda estrangeira anexada ao item certo; parcela e ano inferidos pela regra; conferência em centavos; falta de dado vira ok:false, nunca fatura vazia; controle negativo relatado.",
+      "cmd": "true",
+      "espera": "avaliador"
+    }
+  ],
+  "status": "pendente",
+  "notas_status": "",
+  "hash_candidato": "",
+  "sinal_hash": "",
+  "gate_ok": "",
+  "pid": null,
+  "iniciado_em": "",
+  "adiado_ate": ""
+}

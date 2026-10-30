@@ -1708,6 +1708,31 @@ drive_ticket() {
       ;;
   esac
 
+  # 5c · DEPENDÊNCIA FORA DA ALVO (etapa L13, P3), antes de worktree, contador e
+  # gasto, em QUALQUER modo_pre_voo: não é regra calibrada, é fato de topologia.
+  # Caminho que o ticket lê (objetivo ou cmd), fora da allowlist e de cria_novo,
+  # que existe no checkout e não na branch alvo: a frente nasce da alvo e o
+  # arquivo não está lá (044 do dashboard, 29/10: ENOENT na fixture que entrou
+  # só na main). Bloqueado, sem tentativa, com os arquivos e as duas refs.
+  local deps deps_rc=0
+  deps="$(gate_ticket --dependencias-alvo "$file" 2>&1)" || deps_rc=$?
+  if [ "$deps_rc" != 0 ]; then
+    log "ERRO: gate-ticket --dependencias-alvo rc=$deps_rc no ticket $id — o pré-voo não rodou, o ticket NÃO segue: $deps"
+    exit 1
+  fi
+  if [ -n "$deps" ]; then
+    local alvo_b co_b; alvo_b="$(cfg '.branch_alvo')"
+    co_b="$(git -C "$MAIN_CHECKOUT" rev-parse --abbrev-ref HEAD 2>/dev/null)@$(git -C "$MAIN_CHECKOUT" rev-parse --short=8 HEAD 2>/dev/null)"
+    alvo_b="$alvo_b@$(git -C "$MAIN_CHECKOUT" rev-parse --short=8 "$alvo_b" 2>/dev/null)"
+    log "BLOQUEADO: DEPENDENCIA_FORA_DA_ALVO — sem worktree, sem tentativa: $(printf '%s' "$deps" | paste -sd, -)"
+    ticket_set_status "$file" "bloqueado"
+    ticket_set_nota "$file" "bloqueado: DEPENDENCIA_FORA_DA_ALVO (pré-voo, sem tentativa) — o ticket lê $(printf '%s' "$deps" | paste -sd, - | sed 's/,/, /g'), que existe em $co_b e está ausente em $alvo_b, de onde a frente nasce. Leve o(s) arquivo(s) para $(cfg '.branch_alvo') antes de reabrir."
+    ticket_commit "$file" "fila: $id bloqueado (DEPENDENCIA_FORA_DA_ALVO)"
+    event "$id" BLOQUEADO "motivo=DEPENDENCIA_FORA_DA_ALVO" "arquivos=$(printf '%s' "$deps" | paste -sd, -)"
+    status_set "estado=ocioso" "ultimo=$id BLOQUEADO $(date '+%H:%M:%S') (dependência fora da alvo)" "motivo=bloqueado: DEPENDENCIA_FORA_DA_ALVO"
+    DESFECHO_NOMEADO=1; return 0
+  fi
+
   nome="$(decisao worktree "$id")"
   wt="$WORKTREES_BASE/$nome"
   modelo="$(cfg '.executor_model')"

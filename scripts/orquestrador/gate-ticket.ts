@@ -1569,6 +1569,35 @@ export function testesVizinhos(allow: string[], arvore: ArvoreAlvo): Map<string,
   return out
 }
 
+/** Caminho com extensão qualquer (a do 6b não pega `.txt`, que foi o 044). */
+const RE_CAMINHO_DEP = /(?<![\w./@*-])((?:[\w.@-]+\/)+[\w@-][\w.@-]*\.[A-Za-z0-9]{1,5})(?![\w/*])/g
+
+/**
+ * Etapa L13 (P3): dependência de LEITURA fora da branch alvo. Caminho citado no
+ * objetivo ou num `cmd` de critério, fora da allowlist e de `cria_novo`, que
+ * existe no checkout e não existe na branch alvo. O 044 do dashboard (29/10)
+ * lia `__fixtures__/bb-2026-08.txt`, que entrou só na main (ea57887c): a frente
+ * nasce da staging-auto e o teste deu ENOENT. O C9 não via porque só confere a
+ * allowlist. Não é regra calibrada da tabela: é fato de topologia, e o executor
+ * barra em qualquer `modo_pre_voo` (medido: 2 disparos no dashboard de 29/10,
+ * 044 e 045, os dois verdadeiros; 0 hoje; 0 no Comarka).
+ */
+export function dependenciasForaDaAlvo(t: Cru, ctx: Pick<ContextoRepo, 'naAlvo' | 'noDisco'>): string[] {
+  const proprios = [
+    ...(ehArray(t.pathspec_allowlist) ? t.pathspec_allowlist.map(String) : []),
+    ...(ehArray(t.cria_novo) ? t.cria_novo.map(String) : []),
+  ]
+  const crs = ehArray(t.criterios_aceite) ? t.criterios_aceite : []
+  const texto = [typeof t.objetivo === 'string' ? t.objetivo : '', ...crs.map((c) => String(((c ?? {}) as Cru).cmd ?? ''))].join(' ')
+  const deps: string[] = []
+  for (const m of texto.matchAll(RE_CAMINHO_DEP)) {
+    const c = m[1]!
+    if (deps.includes(c) || matchesAllowlist(c, proprios)) continue
+    if (ctx.noDisco(c) && ctx.naAlvo(c) === null) deps.push(c)
+  }
+  return deps
+}
+
 /** C9, C11 e C12: a allowlist contra a árvore. */
 function checarArvore(t: Cru, ctx: ContextoRepo, achado: (regra: string, campo: string, mensagem: string, extra?: Partial<Violacao>) => void, branch: string) {
   const allow = ehArray(t.pathspec_allowlist) ? t.pathspec_allowlist.map(String) : []
@@ -1931,6 +1960,9 @@ function main(argv: string[]): number {
   // --violacoes: imprime SÓ violação (sem aviso nem isenção). É a forma que o
   // pré-voo do executor consome para escrever a nota do ticket bloqueado.
   let soViolacoes = false
+  // --dependencias-alvo (etapa L13, P3): imprime só os caminhos de
+  // `dependenciasForaDaAlvo`, um por linha, e sai 0. É o pré-voo do executor.
+  let dependencias = false
   const args: string[] = []
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!
@@ -1942,6 +1974,8 @@ function main(argv: string[]): number {
       pendentes = true
     } else if (a === '--violacoes') {
       soViolacoes = true
+    } else if (a === '--dependencias-alvo') {
+      dependencias = true
     } else {
       args.push(a)
     }
@@ -1981,6 +2015,16 @@ function main(argv: string[]): number {
   } else {
     process.stderr.write('uso: gate-ticket [--fila <dir>] [--relatorio | --violacoes] (--pendentes | <arquivo.md|id>...)\n')
     return 2
+  }
+
+  if (dependencias) {
+    const ctx = contextoGit(filaDir, cfg)
+    if (!ctx || ctx.naAlvo('.') === undefined) {
+      process.stderr.write(`gate-ticket: --dependencias-alvo precisa de repositório git com a branch_alvo '${cfg.branch_alvo ?? ''}'\n`)
+      return 2
+    }
+    for (const alvo of alvos) for (const d of dependenciasForaDaAlvo((alvo.json ?? {}) as Cru, ctx)) process.stdout.write(`${d}\n`)
+    return 0
   }
 
   let achados: Violacao[]

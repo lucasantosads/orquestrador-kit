@@ -1,0 +1,518 @@
+diff --git a/src/lib/financeiro/v2/fatura/__tests__/leitor-bb.test.ts b/src/lib/financeiro/v2/fatura/__tests__/leitor-bb.test.ts
+new file mode 100644
+index 00000000..f8b5b102
+--- /dev/null
++++ b/src/lib/financeiro/v2/fatura/__tests__/leitor-bb.test.ts
+@@ -0,0 +1,154 @@
++import { readFileSync } from "node:fs";
++import { resolve } from "node:path";
++import { describe, expect, it } from "vitest";
++import { lerFaturaBB } from "../leitor-bb";
++import {
++  conferir,
++  dataCompleta,
++  dataDaFatura,
++  separarParcela,
++  tipoDaLinha,
++  valorBR,
++} from "../comum";
++import type { FaturaLida } from "../tipos";
++
++const texto = readFileSync(
++  resolve(__dirname, "../__fixtures__/bb-2026-08.txt"),
++  "utf8",
++);
++
++function ler(t: string): FaturaLida {
++  const r = lerFaturaBB(t);
++  if (!r.ok) throw new Error(`leitura falhou: ${r.erro}`);
++  return r.fatura;
++}
++
++describe("lerFaturaBB (fixture bb-2026-08.txt)", () => {
++  const f = ler(texto);
++
++  it("115 itens, soma 14.006,83 e conferência bate", () => {
++    expect(f.banco).toBe("bb");
++    expect(f.itens).toHaveLength(115);
++    expect(f.total).toBe(14006.83);
++    expect(f.conferencia.somaItens).toBe(14006.83);
++    expect(f.conferencia.diferenca).toBe(0);
++    expect(f.conferencia.bate).toBe(true);
++  });
++
++  it("cabeçalho: vencimento, fechamento e parcelado futuro", () => {
++    expect(f.vencimento).toBe("2026-08-08");
++    expect(f.fechamento).toBe("2026-07-28");
++    expect(f.parceladoFuturo).toBe(7604.34);
++  });
++
++  it("parcela e ano inferidos: DM *hosti PARC 11/12 em 02/09 vira 2025-09-02", () => {
++    const i = f.itens.find((x) => x.descricao === "DM *hosti");
++    expect(i).toBeDefined();
++    expect(i!.parcela_atual).toBe(11);
++    expect(i!.parcelas_total).toBe(12);
++    expect(i!.data_compra).toBe("2025-09-02");
++    expect(i!.valor).toBe(46.86);
++    expect(i!.secao).toBe("Compras parceladas");
++  });
++
++  it("moeda estrangeira vai para o item anterior", () => {
++    const i = f.itens.find(
++      (x) => x.descricao === "APRES 72BARILOCHE" && x.valor === 107.51,
++    );
++    expect(i).toBeDefined();
++    expect(i!.moeda_original).toBe("PESO ARGENTINO");
++    expect(i!.valor_original).toBe(28000);
++    const usd = f.itens.find((x) => x.valor === 269.84);
++    expect(usd!.moeda_original).toBe("DOLAR AMERICANO");
++    expect(usd!.valor_original).toBe(50);
++    // item sem linha *** não herda moeda do vizinho
++    const nacional = f.itens.find((x) => x.valor === 43.88);
++    expect(nacional!.moeda_original).toBeNull();
++  });
++
++  it("pagamento e saldo anterior ficam fora", () => {
++    expect(f.itens.some((x) => x.descricao.includes("PGTO. CASH"))).toBe(false);
++    expect(f.itens.some((x) => x.descricao.includes("SALDO FATURA ANTERIOR"))).toBe(false);
++    expect(f.itens.every((x) => x.tipo_linha !== "credito")).toBe(true);
++  });
++
++  it("IOF é iof e o cartão final vem do título", () => {
++    const iof = f.itens.find((x) => x.descricao === "IOF - COMPRA NO EXTERIOR");
++    expect(iof!.tipo_linha).toBe("iof");
++    expect(f.itens.every((x) => x.cartao_final === "6962")).toBe(true);
++    expect(f.itens[0].secao).toBe("Restaurantes");
++  });
++
++  it("falta de dado vira ok:false", () => {
++    expect(lerFaturaBB("").ok).toBe(false);
++    const outro = lerFaturaBB(
++      "=== PAGINA 1\nNu Pagamentos\nTotal a pagar R$ 100,00\nVencimento: 10 AGO 2026\nCompras\n09 JUL Padaria R$ 10,00\n",
++    );
++    expect(outro.ok).toBe(false);
++    // sem nenhum item
++    const semItem = texto.split("\n").slice(0, 21).join("\n");
++    expect(lerFaturaBB(semItem).ok).toBe(false);
++  });
++});
++
++describe("comum.ts", () => {
++  it("valorBR nos 5 formatos", () => {
++    expect(valorBR("R$ 1.234,56")).toBe(1234.56);
++    expect(valorBR("R$14.006,83")).toBe(14006.83);
++    expect(valorBR("-R$ 300,00")).toBe(-300);
++    expect(valorBR("R$ -300,00")).toBe(-300);
++    expect(valorBR("−R$ 13.569,52")).toBe(-13569.52);
++    expect(valorBR("R$ 300,00-")).toBe(-300);
++    expect(valorBR("abc")).toBeNull();
++    expect(valorBR("R$ 10,5")).toBeNull();
++  });
++
++  it("dataDaFatura usa o ano do vencimento ou o anterior", () => {
++    expect(dataDaFatura("28/11", "2026-10-10")).toBe("2025-11-28");
++    expect(dataDaFatura("09 JUL", "2026-08-05")).toBe("2026-07-09");
++    expect(dataDaFatura("31/02", "2026-08-05")).toBeNull();
++  });
++
++  it("dataCompleta", () => {
++    expect(dataCompleta("08/08/2026")).toBe("2026-08-08");
++    expect(dataCompleta("05 AGO 2026")).toBe("2026-08-05");
++  });
++
++  it("separarParcela só no fim da descrição", () => {
++    expect(separarParcela("MP*MERCADOLIVRE 10/12")).toEqual({
++      descricao: "MP*MERCADOLIVRE",
++      atual: 10,
++      total: 12,
++    });
++    expect(separarParcela("DM *hosti PARC 11/12")).toEqual({
++      descricao: "DM *hosti",
++      atual: 11,
++      total: 12,
++    });
++    expect(separarParcela("MERCADOLIVRE*X Parcela 4 de 10")).toEqual({
++      descricao: "MERCADOLIVRE*X",
++      atual: 4,
++      total: 10,
++    });
++    const canva = separarParcela("EBN *Canva04875 205/12");
++    expect(canva.atual).toBe(5);
++    expect(canva.total).toBe(12);
++    const meio = separarParcela("COMPRA 16/09 LOJA");
++    expect(meio).toEqual({ descricao: "COMPRA 16/09 LOJA", atual: null, total: null });
++    expect(separarParcela("LOJA 13/12").atual).toBeNull();
++    expect(separarParcela("IOF ROT PF REF.06/26").atual).toBeNull();
++  });
++
++  it("tipoDaLinha e conferir em centavos", () => {
++    expect(tipoDaLinha("PGTO", -5)).toBe("credito");
++    expect(tipoDaLinha("IOF DIAR ROT", 2)).toBe("iof");
++    expect(tipoDaLinha("Cobranca de IOF de compra", 2)).toBe("iof");
++    expect(tipoDaLinha("Juros de mora", 2)).toBe("encargo");
++    expect(tipoDaLinha("MULTA ATRASO", 2)).toBe("encargo");
++    expect(tipoDaLinha("Padaria", 2)).toBe("compra");
++    const c = conferir([{ valor: 0.1 }, { valor: 0.2 }], 0.3);
++    expect(c.bate).toBe(true);
++    expect(c.somaItens).toBe(0.3);
++    expect(conferir([{ valor: 10 }], 10.01).bate).toBe(false);
++  });
++});
+diff --git a/src/lib/financeiro/v2/fatura/comum.ts b/src/lib/financeiro/v2/fatura/comum.ts
+new file mode 100644
+index 00000000..6f512d7b
+--- /dev/null
++++ b/src/lib/financeiro/v2/fatura/comum.ts
+@@ -0,0 +1,123 @@
++import type { ItemFatura, TipoLinha } from "./tipos";
++
++const MESES: Record<string, number> = {
++  JAN: 1,
++  FEV: 2,
++  MAR: 3,
++  ABR: 4,
++  MAI: 5,
++  JUN: 6,
++  JUL: 7,
++  AGO: 8,
++  SET: 9,
++  OUT: 10,
++  NOV: 11,
++  DEZ: 12,
++};
++
++const pad = (n: number) => String(n).padStart(2, "0");
++
++function iso(ano: number, mes: number, dia: number): string | null {
++  if (mes < 1 || mes > 12 || dia < 1) return null;
++  const ultimo = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
++  if (dia > ultimo) return null;
++  return `${ano}-${pad(mes)}-${pad(dia)}`;
++}
++
++function mesDe(nome: string): number | null {
++  return MESES[nome.toUpperCase().replace(".", "")] ?? null;
++}
++
++/** "R$ 1.234,56", "R$14.006,83", "-R$ 300,00", "R$ -300,00", "R$ 300,00-", "−R$ 300,00". Duas casas obrigatórias. */
++export function valorBR(texto: string): number | null {
++  const bruto = texto.trim();
++  const negativo = /[-−]/.test(bruto);
++  const limpo = bruto.replace(/R\$/gi, "").replace(/[-−\s]/g, "");
++  if (!/^(\d{1,3}(\.\d{3})+|\d+),\d{2}$/.test(limpo)) return null;
++  const numero = Number(limpo.replace(/\./g, "").replace(",", "."));
++  if (!Number.isFinite(numero)) return null;
++  return negativo ? -numero : numero;
++}
++
++/** "DD/MM/AAAA" ou "DD MMM AAAA" -> AAAA-MM-DD. */
++export function dataCompleta(texto: string): string | null {
++  const t = texto.trim();
++  let m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t);
++  if (m) return iso(Number(m[3]), Number(m[2]), Number(m[1]));
++  m = /^(\d{1,2})\s+([A-Za-zÇç]{3})\.?\s+(\d{4})$/.exec(t);
++  if (m) {
++    const mes = mesDe(m[2]);
++    return mes ? iso(Number(m[3]), mes, Number(m[1])) : null;
++  }
++  return null;
++}
++
++/** "DD/MM" ou "DD MMM": ano do vencimento, ou o anterior quando o mês é maior que o do vencimento. */
++export function dataDaFatura(texto: string, vencimentoIso: string): string | null {
++  const v = /^(\d{4})-(\d{2})-\d{2}$/.exec(vencimentoIso);
++  if (!v) return null;
++  const anoVenc = Number(v[1]);
++  const mesVenc = Number(v[2]);
++  const t = texto.trim();
++  let dia: number;
++  let mes: number | null;
++  let m = /^(\d{1,2})\/(\d{1,2})$/.exec(t);
++  if (m) {
++    dia = Number(m[1]);
++    mes = Number(m[2]);
++  } else {
++    m = /^(\d{1,2})\s+([A-Za-zÇç]{3})\.?$/.exec(t);
++    if (!m) return null;
++    dia = Number(m[1]);
++    mes = mesDe(m[2]);
++  }
++  if (!mes) return null;
++  return iso(mes > mesVenc ? anoVenc - 1 : anoVenc, mes, dia);
++}
++
++/**
++ * Parcela só no fim da descrição: "10/12", "Parcela 4 de 10". atual <= total, senão sem parcela.
++ * O "/" não pode vir colado a "." ou "/" (ex.: "REF.06/26" não é parcela). Sem fronteira à esquerda
++ * entre dígitos: "Canva04875 205/12" lê "05/12" (caso do recon).
++ */
++export function separarParcela(descricao: string): {
++  descricao: string;
++  atual: number | null;
++  total: number | null;
++} {
++  const texto = descricao.trim();
++  const m =
++    /(?<![./])(\d{1,2})\/(\d{1,2})$/.exec(texto) ??
++    /\s+Parcela\s+(\d{1,2})\s+de\s+(\d{1,2})$/i.exec(texto);
++  if (m) {
++    const atual = Number(m[1]);
++    const total = Number(m[2]);
++    if (atual >= 1 && atual <= total) {
++      const base = texto.slice(0, m.index).replace(/\s+PARC$/i, "").trim();
++      return { descricao: base, atual, total };
++    }
++  }
++  return { descricao: texto, atual: null, total: null };
++}
++
++export function tipoDaLinha(descricao: string, valor: number): TipoLinha {
++  if (valor < 0) return "credito";
++  const d = descricao
++    .normalize("NFD")
++    .replace(/[̀-ͯ]/g, "")
++    .toUpperCase()
++    .trim();
++  if (d.startsWith("IOF") || d.includes("IOF DE")) return "iof";
++  if (/\b(MULTAS?|JUROS|MORA|ENCARGOS?)\b/.test(d)) return "encargo";
++  return "compra";
++}
++
++/** Soma em centavos; bate quando a diferença para o total é zero. */
++export function conferir(
++  itens: Pick<ItemFatura, "valor">[],
++  total: number,
++): { somaItens: number; diferenca: number; bate: boolean } {
++  const somaCent = itens.reduce((acc, i) => acc + Math.round(i.valor * 100), 0);
++  const difCent = Math.round(total * 100) - somaCent;
++  return { somaItens: somaCent / 100, diferenca: difCent / 100, bate: difCent === 0 };
++}
+diff --git a/src/lib/financeiro/v2/fatura/leitor-bb.ts b/src/lib/financeiro/v2/fatura/leitor-bb.ts
+new file mode 100644
+index 00000000..064bc764
+--- /dev/null
++++ b/src/lib/financeiro/v2/fatura/leitor-bb.ts
+@@ -0,0 +1,186 @@
++import {
++  conferir,
++  dataCompleta,
++  dataDaFatura,
++  separarParcela,
++  tipoDaLinha,
++  valorBR,
++} from "./comum";
++import type { ItemFatura, ResultadoLeitura } from "./tipos";
++
++const CABECALHO_LANCAMENTOS = "Data Descrição País Valor";
++const FIM_LANCAMENTOS = /^Total da Fatura\b/i;
++const RE_ITEM = /^(\d{2}\/\d{2})\s+(.+?)\s+R\$\s*(-?[\d.]+,\d{2}-?)$/;
++const RE_MOEDA = /^\*{3}\s+([\d.]+,\d{2})\s+(.+)$/;
++const RE_CARTAO = /\(Cart[ãa]o\s+(\d{4})\)/i;
++const RE_IGNORADA = /^(equivalente a US\$|Cota[çc][ãa]o do D[óo]lar|P[áa]gina\s+\d+\/\d+|=== PAGINA)/i;
++const RE_PARC = /^(.*?)\s+PARC\s+(\d{1,2})\/(\d{1,2})(?:\s.*)?$/;
++
++/** Valor na linha seguinte a um rótulo exato ("Valor", "Vencimento"). */
++function depoisDe(linhas: string[], rotulo: string, limite: number): string | null {
++  const i = linhas.findIndex((l, idx) => idx < limite && l === rotulo);
++  return i >= 0 && i + 1 < linhas.length ? linhas[i + 1] : null;
++}
++
++/** País (2 letras) é o último token da linha do BB; descrições sem país (IOF) ficam intactas. */
++function tirarPais(descricao: string): string {
++  return descricao.replace(/\s+[A-Z]{2}$/, "").trim();
++}
++
++export function lerFaturaBB(texto: string): ResultadoLeitura {
++  const linhas = texto
++    .split(/\r?\n/)
++    .map((l) => l.trim())
++    .filter((l) => l.length > 0);
++
++  const inicio = linhas.findIndex((l) => l === CABECALHO_LANCAMENTOS);
++  const limiteCabecalho = inicio >= 0 ? inicio : linhas.length;
++
++  const vencimento = (() => {
++    const bruto = depoisDe(linhas, "Vencimento", limiteCabecalho);
++    return bruto ? dataCompleta(bruto) : null;
++  })();
++
++  const totalValor = (() => {
++    const bruto = depoisDe(linhas, "Valor", limiteCabecalho);
++    return bruto ? valorBR(bruto) : null;
++  })();
++  const totalResumo = (() => {
++    for (const l of linhas.slice(0, limiteCabecalho)) {
++      const m = /^Total\s+(R\$.*)$/.exec(l);
++      if (m) return valorBR(m[1]);
++    }
++    return null;
++  })();
++  const total = totalValor ?? totalResumo;
++
++  const faltou: string[] = [];
++  if (!vencimento) faltou.push("vencimento (linha depois de \"Vencimento\")");
++  if (total === null) faltou.push("total da fatura (linha depois de \"Valor\")");
++  if (inicio < 0) faltou.push(`cabeçalho dos lançamentos ("${CABECALHO_LANCAMENTOS}")`);
++  if (faltou.length > 0 || !vencimento || total === null) {
++    return { ok: false, erro: `Fatura do BB sem ${faltou.join(", ")}` };
++  }
++  if (totalValor !== null && totalResumo !== null && Math.round(totalValor * 100) !== Math.round(totalResumo * 100)) {
++    return {
++      ok: false,
++      erro: `Fatura do BB com total divergente: Valor ${totalValor} e Total do resumo ${totalResumo}`,
++    };
++  }
++
++  const fechamento = (() => {
++    for (const l of linhas.slice(0, limiteCabecalho)) {
++      const m = /Fatura fechada em (\d{2}\/\d{2}\/\d{4})/i.exec(l);
++      if (m) return dataCompleta(m[1]);
++    }
++    return null;
++  })();
++
++  const parceladoFuturo = (() => {
++    const i = linhas.findIndex((l, idx) => idx < limiteCabecalho && /Saldo parcelado em faturas/i.test(l));
++    if (i < 0) return null;
++    for (const l of linhas.slice(i, i + 3)) {
++      const m = /futuras\s+(R\$.*)$/i.exec(l);
++      if (m) return valorBR(m[1]);
++    }
++    return null;
++  })();
++
++  const itens: ItemFatura[] = [];
++  let cartao: string | null = null;
++  let secao: string | null = null;
++  let ignorarSecao = false;
++  let ultimo: ItemFatura | null = null;
++
++  for (const l of linhas.slice(inicio + 1)) {
++    if (FIM_LANCAMENTOS.test(l)) break;
++    if (RE_IGNORADA.test(l) || l === CABECALHO_LANCAMENTOS) continue;
++
++    const cartaoLinha = RE_CARTAO.exec(l);
++    if (cartaoLinha && !RE_ITEM.test(l)) {
++      cartao = cartaoLinha[1];
++      continue;
++    }
++
++    const moeda = RE_MOEDA.exec(l);
++    if (moeda) {
++      if (ultimo) {
++        ultimo.moeda_original = moeda[2].trim();
++        ultimo.valor_original = valorBR(moeda[1]);
++      }
++      continue;
++    }
++
++    if (/^SALDO FATURA ANTERIOR/i.test(l)) {
++      ultimo = null;
++      continue;
++    }
++
++    const item = RE_ITEM.exec(l);
++    if (item) {
++      if (ignorarSecao) {
++        ultimo = null;
++        continue;
++      }
++      const data = dataDaFatura(item[1], vencimento);
++      const valor = valorBR(`R$ ${item[3]}`);
++      if (valor === null) {
++        ultimo = null;
++        continue;
++      }
++      let descricao = tirarPais(item[2]);
++      let atual: number | null = null;
++      let totalParcelas: number | null = null;
++      const parc = RE_PARC.exec(descricao);
++      if (parc && Number(parc[2]) >= 1 && Number(parc[2]) <= Number(parc[3])) {
++        descricao = parc[1].trim();
++        atual = Number(parc[2]);
++        totalParcelas = Number(parc[3]);
++      } else {
++        const p = separarParcela(descricao);
++        descricao = p.descricao;
++        atual = p.atual;
++        totalParcelas = p.total;
++      }
++      ultimo = {
++        ordem: itens.length + 1,
++        data_compra: data,
++        descricao,
++        cartao_final: cartao,
++        valor,
++        moeda_original: null,
++        valor_original: null,
++        parcela_atual: atual,
++        parcelas_total: totalParcelas,
++        tipo_linha: tipoDaLinha(descricao, valor),
++        secao,
++      };
++      itens.push(ultimo);
++      continue;
++    }
++
++    // sem data e sem valor: título de seção
++    if (!/R\$/.test(l) && !/^\d{2}\/\d{2}\b/.test(l)) {
++      secao = l;
++      ignorarSecao = /^Pagamentos\/Cr[ée]ditos$/i.test(l);
++      ultimo = null;
++    }
++  }
++
++  if (itens.length === 0) {
++    return { ok: false, erro: "Fatura do BB sem nenhum lançamento entre o cabeçalho e \"Total da Fatura\"" };
++  }
++
++  return {
++    ok: true,
++    fatura: {
++      banco: "bb",
++      vencimento,
++      fechamento,
++      total,
++      parceladoFuturo,
++      itens,
++      conferencia: conferir(itens, total),
++    },
++  };
++}
+diff --git a/src/lib/financeiro/v2/fatura/tipos.ts b/src/lib/financeiro/v2/fatura/tipos.ts
+new file mode 100644
+index 00000000..2305496c
+--- /dev/null
++++ b/src/lib/financeiro/v2/fatura/tipos.ts
+@@ -0,0 +1,31 @@
++export type Banco = "bb" | "nubank" | "mercadopago" | "bradesco";
++
++export type TipoLinha = "compra" | "credito" | "encargo" | "iof";
++
++export interface ItemFatura {
++  ordem: number;
++  data_compra: string | null;
++  descricao: string;
++  cartao_final: string | null;
++  valor: number;
++  moeda_original: string | null;
++  valor_original: number | null;
++  parcela_atual: number | null;
++  parcelas_total: number | null;
++  tipo_linha: TipoLinha;
++  secao: string | null;
++}
++
++export interface FaturaLida {
++  banco: Banco;
++  vencimento: string;
++  fechamento: string | null;
++  total: number;
++  parceladoFuturo: number | null;
++  itens: ItemFatura[];
++  conferencia: { somaItens: number; diferenca: number; bate: boolean };
++}
++
++export type ResultadoLeitura =
++  | { ok: true; fatura: FaturaLida }
++  | { ok: false; erro: string };
