@@ -1,6 +1,6 @@
 # Defeito: o juiz morre com o git em pt_BR
 
-Origem: dashboard-comercial (clone `~/Projetos/dashboard-comercial-orq`), 30/10/2026, tickets 001 e 037 (base `2f8e6d1f`), consertado lá em `bfebb2e1` ("juiz lê a base com git em LC_ALL=C"). No kit, achado no fechamento da etapa L13: com a shell em `LANG=pt_BR.UTF-8` e sem `LC_ALL`, 3 testes do juiz falhavam na main (`fb1f98e`) e o `test-instalar.sh` caía no check (h3). Estado: **consertado na etapa L13, P6** (sha no PECAS). O dashboard já tem o seu.
+Origem: dashboard-comercial (clone `~/Projetos/dashboard-comercial-orq`), 30/10/2026, tickets 001 e 037 (base `2f8e6d1f`), consertado lá em `bfebb2e1` ("juiz lê a base com git em LC_ALL=C"). No kit, achado no fechamento da etapa L13: com a shell em `LANG=pt_BR.UTF-8` e sem `LC_ALL`, 3 testes do juiz falhavam na main (`fb1f98e`) e o `test-instalar.sh` caía no check (h3). Estado: **consertado na etapa L13, P6** (`9ba027e`). O dashboard já tem o seu.
 
 ## O que aconteceu
 
@@ -10,7 +10,7 @@ Origem: dashboard-comercial (clone `~/Projetos/dashboard-comercial-orq`), 30/10/
 
 | onde | o que lê | afetado? | destino |
 |---|---|---|---|
-| `scripts/orquestrador/juiz.ts:471` (`lerDaBase`) | `does not exist in`, `exists on disk, but not in` | sim | consertado: `LC_ALL=C`/`LANG=C` no `git show` e regex aceitando as duas línguas (porte do `bfebb2e1`) |
+| `scripts/orquestrador/juiz.ts:472` (`lerDaBase`) | `does not exist in`, `exists on disk, but not in` | sim | consertado: `LC_ALL=C`/`LANG=C` no `git show` e regex aceitando as duas línguas (porte do `bfebb2e1`) |
 | `scripts/orquestrador/triador/leitor-legado-comarka.ts:177` | `overwritten by merge:` no log do loop do Comarka | sim: em pt_BR a linha é "Suas alterações locais … seriam substituídas pelo merge:" e o D1 sumia | consertado: regex aceita `substituíd[ao]s pelo merge:` (o log é do Comarka, o kit não controla o locale de quem escreveu) |
 | `scripts/orquestrador/local-loop.sh:212` | linha `^fatal:` da saída do executor | não: o git mantém o prefixo `fatal:` em pt_BR (conferido) | nada |
 | `scripts/orquestrador/decisao.ts:49` | `does not exist` do erro de modelo | não é git (CLI do claude) | nada |

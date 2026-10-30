@@ -1146,7 +1146,7 @@
   *Teste:* `orquestrador-retry-mensagem.test.ts`, `orquestrador-impedimento.test.ts`,
   `orquestrador-dependencia-alvo.test.ts`, `orquestrador-tools-derivadas.test.ts` (L13 P1b),
   `orquestrador-gate-8e.test.ts`; fixtures reais em `test/fixtures/l13/`.
-- **L13-P6 · juiz e git em pt_BR (30/10/2026).** Porte do `bfebb2e1` do dashboard: `lerDaBase` roda o
+- **L13-P6 · juiz e git em pt_BR (30/10/2026), `9ba027e`.** Porte do `bfebb2e1` do dashboard: `lerDaBase` roda o
   `git show` com `LC_ALL=C` e aceita a mensagem em pt_BR; o leitor do legado do triador aceita a
   tradução pt_BR do "overwritten by merge:". Com isso as quatro suítes saem rc 0 na shell em pt_BR, sem
   `LC_ALL`. Defeito `docs/defeitos/2026-10-30-juiz-morre-com-git-pt-br.md` (varredura do grep lá).
