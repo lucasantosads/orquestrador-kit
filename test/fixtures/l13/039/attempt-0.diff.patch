@@ -1,0 +1,601 @@
+diff --git a/src/app/api/financeiro-v2/analise/closers/route.ts b/src/app/api/financeiro-v2/analise/closers/route.ts
+new file mode 100644
+index 00000000..a92e3f3e
+--- /dev/null
++++ b/src/app/api/financeiro-v2/analise/closers/route.ts
+@@ -0,0 +1,43 @@
++/**
++ * GET /api/financeiro-v2/analise/closers?mes=YYYY-MM
++ * Visão por closer do mês: carteira, recebido, saídas e comissão. Falha de leitura da base = 503;
++ * falha da comissão não derruba a rota (vai em `comissao: { ok: false }`, comissão null por linha).
++ * SOMENTE LEITURA: só select. Acesso: sessão + permissão de financeiro no servidor.
++ */
++import { NextRequest, NextResponse } from "next/server";
++import { calcularComissao, type ComissaoResult } from "@/lib/comissao-canonica";
++import { calcularPorCloser, lerBaseCloser } from "@/lib/financeiro/v2/por-closer";
++import { autorizar, mesPedido } from "@/lib/financeiro/v2/servidor";
++import type { Leitura } from "@/lib/financeiro/v2/tipos";
++
++export const dynamic = "force-dynamic";
++export const maxDuration = 60;
++
++const SEM_CACHE = { "Cache-Control": "no-store" };
++
++const FONTE = {
++  regra: "Cliente é do closer de mesmo nome em clientes_receita.closer. Ativos e MRR pelo status financeiro ativo; recebido por pagamentos pagos ou parciais do mês; saídas pelo churn_log do mês (não revertido); comissão pela comissao-canonica. Diretor fora do ranking; ex-closer em carteira herdada.",
++  tabelas: ["closers", "employees", "clientes_receita", "pagamentos_mensais", "churn_log"],
++};
++
++export async function GET(req: NextRequest) {
++  const a = await autorizar();
++  if (!a.ok) return NextResponse.json({ ok: false, erro: a.erro }, { status: a.status, headers: SEM_CACHE });
++  const mes = mesPedido(req.nextUrl.searchParams.get("mes"), a.hoje);
++  if (!mes) return NextResponse.json({ ok: false, erro: "Mês inválido." }, { status: 400, headers: SEM_CACHE });
++
++  const base = await lerBaseCloser(a.db, mes);
++  if (!base.ok) return NextResponse.json({ ok: false, erro: base.falha }, { status: 503, headers: SEM_CACHE });
++
++  let comissao: Leitura<ComissaoResult>;
++  try {
++    comissao = { ok: true, dados: await calcularComissao({ mes_referencia: mes }) };
++  } catch (e) {
++    comissao = { ok: false, falha: `comissão sem leitura: ${e instanceof Error ? e.message : String(e)}` };
++  }
++
++  return NextResponse.json(
++    { ok: true, mes, ...calcularPorCloser(base.dados, comissao), fonte: { ...FONTE, lidoEm: a.hoje.iso } },
++    { headers: SEM_CACHE },
++  );
++}
+diff --git a/src/lib/financeiro/v2/__tests__/por-closer.test.ts b/src/lib/financeiro/v2/__tests__/por-closer.test.ts
+new file mode 100644
+index 00000000..4dc977aa
+--- /dev/null
++++ b/src/lib/financeiro/v2/__tests__/por-closer.test.ts
+@@ -0,0 +1,301 @@
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import { NextRequest } from "next/server";
++import type { SupabaseClient } from "@supabase/supabase-js";
++import type { ComissaoColaborador, ComissaoResult } from "@/lib/comissao-canonica";
++import type { Leitura } from "../tipos";
++
++const h = vi.hoisted(() => ({
++  db: null as unknown,
++  comissao: null as unknown as () => Promise<unknown>,
++}));
++
++// closers-diretores dispara loadPessoas() no import; o fallback literal (Lucas) basta aqui.
++vi.mock("@/lib/pessoa-canonica", () => ({ loadPessoas: async () => [] }));
++
++vi.mock("@/lib/financeiro/v2/servidor", async () => {
++  const { hojeDe, mesValido } = await import("@/lib/financeiro/v2/datas");
++  return {
++    autorizar: async () => ({ ok: true, db: h.db, sessao: { employeeId: "e1" }, hoje: hojeDe("2026-10-29") }),
++    mesPedido: (p: string | null, hoje: { mes: string }) => {
++      if (p === null || p === "") return hoje.mes;
++      return !mesValido(p) || p > hoje.mes ? null : p;
++    },
++  };
++});
++
++vi.mock("@/lib/comissao-canonica", () => ({ calcularComissao: () => h.comissao() }));
++
++import { GET } from "@/app/api/financeiro-v2/analise/closers/route";
++import { calcularPorCloser, lerBaseCloser, type BaseCloser } from "../por-closer";
++
++// ─── Fixture ────────────────────────────────────────────────────────────────
++
++const DIR = "a987d655-88d0-490b-ad73-efe04843a2ec"; // Lucas, no fallback de closers-diretores
++const MARI = "closer-mariana";
++const ROG = "closer-rogerio";
++const LARI = "closer-larissa";
++
++const cli = (id: string, closer: string | null, valor: number, status = "ativo") =>
++  ({ id, nome: `Cliente ${id}`, closer, status_financeiro: status, valor_mensal: valor, categoria: null });
++
++function base(): BaseCloser {
++  return {
++    closers: [
++      { id: DIR, nome: "Lucas", ativo: true },
++      { id: MARI, nome: "Mariana", ativo: true },
++      { id: ROG, nome: "Rogério", ativo: true },
++      { id: LARI, nome: "Larissa", ativo: false },
++    ],
++    employees: [
++      { id: "emp-dir", entity_id: DIR }, { id: "emp-mari", entity_id: MARI },
++      { id: "emp-rog", entity_id: ROG }, { id: "emp-lari", entity_id: LARI },
++    ],
++    clientes: [
++      cli("c1", "Lucas", 1000), cli("c2", "Mariana", 500), cli("c3", "Rogério ", 300),
++      cli("c4", "Larissa", 200), cli("c5", "-", 100), cli("c6", "Fulano", 50),
++      cli("c7", "Mariana", 400, "churned"),
++    ],
++    pagamentos: [
++      { cliente_id: "c1", valor_pago: 5000, status: "pago" },
++      { cliente_id: "c2", valor_pago: 1000.1, status: "pago" },
++      { cliente_id: "c2", valor_pago: 200.05, status: "parcial" },
++      { cliente_id: "c3", valor_pago: 300, status: "pendente" },
++      { cliente_id: "c4", valor_pago: 700, status: "pago" },
++      { cliente_id: "c5", valor_pago: 100, status: "pago" },
++      { cliente_id: "c6", valor_pago: 50.55, status: "parcial" },
++      { cliente_id: "fantasma", valor_pago: 10, status: "pago" },
++    ],
++    churn: [
++      { cliente_receita_id: "c7", data_saida: "2026-10-10", mensalidade: 400 },
++      { cliente_receita_id: null, data_saida: "2026-10-12", mensalidade: 250 },
++      { cliente_receita_id: "c4", data_saida: "2026-10-20", mensalidade: 150 },
++    ],
++  };
++}
++
++const colab = (p: Partial<ComissaoColaborador>): ComissaoColaborador =>
++  ({ recebe_comissao: true, meta_pct: null, faixa_aplicada: null, fonte: "t", snapshot_aplicado: false, comissao_total: 0, ...p }) as ComissaoColaborador;
++
++const resultado = (colaboradores: ComissaoColaborador[], mes_fechado = false): ComissaoResult =>
++  ({ mes_referencia: "2026-10", colaboradores, mes_fechado, totais: { comissao_closers: 0, comissao_sdrs: 0, comissao_total: 0, contratos_novos_total: 0, renovacoes_total: 0 } });
++
++const ok = (r: ComissaoResult): Leitura<ComissaoResult> => ({ ok: true, dados: r });
++const semComissao: Leitura<ComissaoResult> = { ok: false, falha: "comissão sem leitura: x" };
++
++// ─── Banco falso (só leitura) ───────────────────────────────────────────────
++
++type Filtro = { op: "eq" | "gte" | "lte"; col: string; val: unknown };
++
++function bancoFalso(tabelas: Record<string, Record<string, unknown>[]>, falhaEm?: string) {
++  const reg = { filtros: {} as Record<string, Filtro[]>, selects: {} as Record<string, string>, escritas: 0 };
++  const db = {
++    from(tabela: string) {
++      const filtros: Filtro[] = [];
++      reg.filtros[tabela] = filtros;
++      let de = 0, ate = 999;
++      const b: Record<string, unknown> = {
++        select: (cols: string) => { reg.selects[tabela] = cols; return b; },
++        eq: (col: string, val: unknown) => { filtros.push({ op: "eq", col, val }); return b; },
++        gte: (col: string, val: unknown) => { filtros.push({ op: "gte", col, val }); return b; },
++        lte: (col: string, val: unknown) => { filtros.push({ op: "lte", col, val }); return b; },
++        order: () => b,
++        range: (a: number, z: number) => { de = a; ate = z; return b; },
++        insert: () => { reg.escritas++; return b; },
++        update: () => { reg.escritas++; return b; },
++        upsert: () => { reg.escritas++; return b; },
++        delete: () => { reg.escritas++; return b; },
++        then: (res: (v: unknown) => unknown, rej?: (e: unknown) => unknown) => {
++          if (tabela === falhaEm) return Promise.resolve({ data: null, error: { message: "boom" } }).then(res, rej);
++          const linhas = (tabelas[tabela] ?? []).filter((r) => filtros.every((f) => {
++            const v = r[f.col] as string | boolean;
++            return f.op === "eq" ? v === f.val : f.op === "gte" ? String(v) >= String(f.val) : String(v) <= String(f.val);
++          }));
++          return Promise.resolve({ data: linhas.slice(de, ate + 1), error: null }).then(res, rej);
++        },
++      };
++      return b;
++    },
++    rpc: () => { reg.escritas++; },
++  };
++  return { db: db as unknown as SupabaseClient, reg };
++}
++
++const tabelasDe = (b: BaseCloser) => ({
++  closers: b.closers as unknown as Record<string, unknown>[],
++  employees: b.employees as unknown as Record<string, unknown>[],
++  clientes_receita: b.clientes as unknown as Record<string, unknown>[],
++  pagamentos_mensais: b.pagamentos.map((p) => ({ ...p, mes_referencia: "2026-10-01" })),
++  churn_log: b.churn.map((c) => ({ ...c, revertido: false })),
++});
++
++// ─── Testes ─────────────────────────────────────────────────────────────────
++
++describe("calcularPorCloser: dono, diretor, ex-closer", () => {
++  const r = calcularPorCloser(base(), semComissao);
++
++  it("controle da fixture: sem a regra de diretor, Lucas lideraria o ranking por recebido", () => {
++    const b = base();
++    const recebidoDoLucas = b.pagamentos.filter((p) => p.cliente_id === "c1").reduce((s, p) => s + (p.valor_pago ?? 0), 0);
++    expect(recebidoDoLucas).toBe(5000);
++    expect(r.ranking[0].recebido).toBeLessThan(recebidoDoLucas);
++  });
++
++  it("diretor (isCloserDiretor) fica fora do ranking e da herdada, mesmo com o maior recebido", () => {
++    expect(r.ranking.map((l) => l.closer_id)).not.toContain(DIR);
++    expect(r.herdada.map((l) => l.closer_id)).not.toContain(DIR);
++    expect(r.foraDoRanking.direcao).toMatchObject({ ativos: 1, mrr: 1000, recebido: 5000, quantidadeRecebida: 1 });
++  });
++
++  it("ranking por recebido desc, trim no nome do closer do cliente", () => {
++    expect(r.ranking.map((l) => l.nome)).toEqual(["Mariana", "Rogério"]);
++    expect(r.ranking[0]).toMatchObject({ ativos: 1, mrr: 500, recebido: 1200.15, quantidadeRecebida: 2, saidas: 1, mrrPerdido: 400 });
++    // "Rogério " (com espaço) casa com o closer; o pagamento pendente não conta
++    expect(r.ranking[1]).toMatchObject({ ativos: 1, mrr: 300, recebido: 0, quantidadeRecebida: 0 });
++  });
++
++  it("empate de recebido desempata por nome", () => {
++    const b = base();
++    b.pagamentos = [];
++    expect(calcularPorCloser(b, semComissao).ranking.map((l) => l.nome)).toEqual(["Mariana", "Rogério"]);
++    b.closers[1].nome = "Zeca";
++    b.clientes[1].closer = "Zeca";
++    expect(calcularPorCloser(b, semComissao).ranking.map((l) => l.nome)).toEqual(["Rogério", "Zeca"]);
++  });
++
++  it("closer inativo vai para herdada, sem comissão", () => {
++    expect(r.herdada).toHaveLength(1);
++    expect(r.herdada[0]).toMatchObject({ closer_id: LARI, nome: "Larissa", ativos: 1, mrr: 200, recebido: 700, saidas: 1, mrrPerdido: 150, comissao: null });
++    expect(r.ranking.map((l) => l.closer_id)).not.toContain(LARI);
++  });
++
++  it('"-" e nome desconhecido caem em semCloser; MRR só de status ativo', () => {
++    expect(r.foraDoRanking.semCloser).toMatchObject({ ativos: 2, mrr: 150, recebido: 160.55, quantidadeRecebida: 3 });
++  });
++
++  it("soma das partes bate com o total do mês", () => {
++    const partes = [...r.ranking, ...r.herdada, r.foraDoRanking.direcao, r.foraDoRanking.semCloser];
++    const soma = (f: (x: { recebido: number; quantidadeRecebida: number }) => number) => Math.round(partes.reduce((s, p) => s + f(p) * 100, 0)) / 100;
++    expect(r.totais.recebido).toBe(7060.7);
++    expect(r.totais.quantidadeRecebida).toBe(7);
++    expect(soma((p) => p.recebido)).toBe(r.totais.recebido);
++    expect(soma((p) => p.quantidadeRecebida)).toBe(r.totais.quantidadeRecebida);
++  });
++
++  it("churn sem cliente_receita_id fica separado e entra nos totais", () => {
++    expect(r.totais).toMatchObject({ saidas: 3, mrrPerdido: 800, churnSemVinculo: { saidas: 1, mrrPerdido: 250 } });
++    const porLinha = [...r.ranking, ...r.herdada, r.foraDoRanking.direcao, r.foraDoRanking.semCloser];
++    expect(porLinha.reduce((s, p) => s + p.saidas, 0) + r.totais.churnSemVinculo.saidas).toBe(r.totais.saidas);
++  });
++});
++
++describe("calcularPorCloser: comissão", () => {
++  it("mês aberto: casa por colaborador.id === closer_id; só funcao closer; sem par = null", () => {
++    const c = ok(resultado([
++      colab({ id: MARI, employee_id: "emp-mari", funcao: "closer", comissao_total: 123.45 }),
++      colab({ id: ROG, employee_id: "emp-rog", funcao: "sdr", comissao_total: 999 }),
++    ]));
++    const r = calcularPorCloser(base(), c);
++    expect(r.comissao).toEqual({ ok: true });
++    expect(r.ranking.find((l) => l.closer_id === MARI)?.comissao).toBe(123.45);
++    expect(r.ranking.find((l) => l.closer_id === ROG)?.comissao).toBeNull();
++  });
++
++  it("mês fechado: casa por employee_id via employees.entity_id", () => {
++    const c = ok(resultado([
++      colab({ id: "emp-mari", employee_id: "emp-mari", funcao: "closer", comissao_total: 77.7 }),
++      colab({ id: "emp-rog", employee_id: "emp-rog", funcao: "closer", comissao_total: 0 }),
++    ], true));
++    const r = calcularPorCloser(base(), c);
++    expect(r.ranking.find((l) => l.closer_id === MARI)?.comissao).toBe(77.7);
++    // zero medido é zero; ausência é null
++    expect(r.ranking.find((l) => l.closer_id === ROG)?.comissao).toBe(0);
++  });
++
++  it("leitura com falha: null em todas as linhas e comissao.ok false", () => {
++    const r = calcularPorCloser(base(), semComissao);
++    expect(r.comissao).toEqual({ ok: false, falha: "comissão sem leitura: x" });
++    expect([...r.ranking, ...r.herdada].every((l) => l.comissao === null)).toBe(true);
++  });
++
++  it("lista de colaboradores vazia: null, nunca 0", () => {
++    const r = calcularPorCloser(base(), ok(resultado([])));
++    expect(r.comissao.ok).toBe(false);
++    expect([...r.ranking, ...r.herdada].every((l) => l.comissao === null)).toBe(true);
++  });
++});
++
++describe("lerBaseCloser", () => {
++  it("aplica filtro de mês e de revertido, e não escreve", async () => {
++    const t = tabelasDe(base());
++    t.pagamentos_mensais.push({ cliente_id: "c1", valor_pago: 9999, status: "pago", mes_referencia: "2026-09-01" });
++    t.churn_log.push(
++      { cliente_receita_id: "c1", data_saida: "2026-09-30", mensalidade: 1, revertido: false },
++      { cliente_receita_id: "c1", data_saida: "2026-10-31", mensalidade: 2, revertido: false },
++      { cliente_receita_id: "c1", data_saida: "2026-11-01", mensalidade: 3, revertido: false },
++      { cliente_receita_id: "c1", data_saida: "2026-10-15", mensalidade: 4, revertido: true },
++    );
++    const { db, reg } = bancoFalso(t);
++    const r = await lerBaseCloser(db, "2026-10");
++    expect(r.ok).toBe(true);
++    if (!r.ok) return;
++    expect(r.dados.pagamentos).toHaveLength(8);
++    expect(r.dados.pagamentos.some((p) => p.valor_pago === 9999)).toBe(false);
++    expect(r.dados.churn).toHaveLength(4); // 3 da fixture + a de 31/10
++    expect(r.dados.churn.map((c) => c.mensalidade)).toContain(2);
++    expect(r.dados.churn.map((c) => c.mensalidade)).not.toContain(3);
++    expect(r.dados.churn.map((c) => c.mensalidade)).not.toContain(4);
++    expect(reg.filtros.pagamentos_mensais).toEqual([{ op: "eq", col: "mes_referencia", val: "2026-10-01" }]);
++    expect(reg.filtros.churn_log).toEqual(expect.arrayContaining([
++      { op: "eq", col: "revertido", val: false },
++      { op: "gte", col: "data_saida", val: "2026-10-01" },
++      { op: "lte", col: "data_saida", val: "2026-10-31" },
++    ]));
++    expect(reg.escritas).toBe(0);
++  });
++
++  it.each(["closers", "employees", "clientes_receita", "pagamentos_mensais", "churn_log"])("falha em %s = ok:false", async (tabela) => {
++    const { db } = bancoFalso(tabelasDe(base()), tabela);
++    const r = await lerBaseCloser(db, "2026-10");
++    expect(r.ok).toBe(false);
++    if (!r.ok) expect(r.falha).toContain("boom");
++  });
++});
++
++describe("GET /api/financeiro-v2/analise/closers", () => {
++  const chamar = (qs = "") => GET(new NextRequest(`http://x/api/financeiro-v2/analise/closers${qs}`));
++
++  beforeEach(() => {
++    h.db = bancoFalso(tabelasDe(base())).db;
++    h.comissao = async () => resultado([colab({ id: MARI, employee_id: "emp-mari", funcao: "closer", comissao_total: 50 })]);
++  });
++
++  it("200 com a visão e a comissão casada", async () => {
++    const res = await chamar("?mes=2026-10");
++    expect(res.status).toBe(200);
++    expect(res.headers.get("Cache-Control")).toBe("no-store");
++    const j = await res.json();
++    expect(j).toMatchObject({ ok: true, mes: "2026-10", comissao: { ok: true }, fonte: { lidoEm: "2026-10-29" } });
++    expect(j.ranking[0]).toMatchObject({ nome: "Mariana", comissao: 50 });
++  });
++
++  it("503 quando a leitura da base falha", async () => {
++    h.db = bancoFalso(tabelasDe(base()), "churn_log").db;
++    const res = await chamar("?mes=2026-10");
++    expect(res.status).toBe(503);
++    expect(await res.json()).toMatchObject({ ok: false, erro: expect.stringContaining("churn do mês") });
++  });
++
++  it("200 com comissao ok:false quando calcularComissao lança", async () => {
++    h.comissao = async () => { throw new Error("explodiu"); };
++    const res = await chamar("?mes=2026-10");
++    expect(res.status).toBe(200);
++    const j = await res.json();
++    expect(j.comissao).toMatchObject({ ok: false, falha: expect.stringContaining("explodiu") });
++    expect([...j.ranking, ...j.herdada].every((l: { comissao: number | null }) => l.comissao === null)).toBe(true);
++    expect(j.totais.recebido).toBe(7060.7);
++  });
++
++  it("400 para mês inválido", async () => {
++    expect((await chamar("?mes=2026-13")).status).toBe(400);
++  });
++});
+diff --git a/src/lib/financeiro/v2/por-closer.ts b/src/lib/financeiro/v2/por-closer.ts
+new file mode 100644
+index 00000000..7322a4c8
+--- /dev/null
++++ b/src/lib/financeiro/v2/por-closer.ts
+@@ -0,0 +1,239 @@
++/**
++ * Visão por closer do Financeiro v2: carteira (ativos e MRR), recebido do mês, saídas (churn) e
++ * comissão do mês, por dono do cliente. SOMENTE LEITURA: só `select`.
++ *
++ * Dono do cliente: o closer cujo `closers.nome` (trim) é igual a `clientes_receita.closer` (trim).
++ * Sem par ("-", vazio ou nome desconhecido) = sem closer. Diretor sai pelo id canônico
++ * (`isCloserDiretor`), nunca por nome. Closer inativo (ex-closer) fica em carteira herdada, sem posição.
++ * A comissão vem inteira da comissao-canonica; aqui só se casa por id, sem recalcular faixa.
++ */
++import type { SupabaseClient } from "@supabase/supabase-js";
++import type { ComissaoResult } from "@/lib/comissao-canonica";
++import { isCloserDiretor } from "@/lib/closers-diretores";
++import { primeiroDia, ultimoDia } from "./datas";
++import { lerTudo, type PagamentoRow } from "./fontes";
++import { recebeu } from "./recebido";
++import { centavos, reaisDe, type Leitura } from "./tipos";
++
++// ─── Leitura ────────────────────────────────────────────────────────────────
++
++export interface CloserRow { id: string; nome: string; ativo: boolean | null }
++export interface EmployeeRow { id: string; entity_id: string | null }
++export interface ClienteCloserRow {
++  id: string;
++  nome: string;
++  closer: string | null;
++  status_financeiro: string | null;
++  valor_mensal: number;
++  categoria: string | null;
++}
++export interface PagamentoCloserRow { cliente_id: string; valor_pago: number | null; status: string }
++export interface ChurnCloserRow { cliente_receita_id: string | null; data_saida: string; mensalidade: number | null }
++
++export interface BaseCloser {
++  closers: CloserRow[];
++  employees: EmployeeRow[];
++  clientes: ClienteCloserRow[];
++  pagamentos: PagamentoCloserRow[];
++  churn: ChurnCloserRow[];
++}
++
++const num = (v: unknown): number => Number(v ?? 0);
++const textoOuNull = (v: unknown): string | null => (v === null || v === undefined ? null : String(v));
++
++export async function lerBaseCloser(db: SupabaseClient, mes: string): Promise<Leitura<BaseCloser>> {
++  const [cl, em, cr, pg, ch] = await Promise.all([
++    lerTudo<Record<string, unknown>>("closers", (de, a) =>
++      db.from("closers").select("id, nome, ativo").order("id").range(de, a)),
++    lerTudo<Record<string, unknown>>("employees", (de, a) =>
++      db.from("employees").select("id, entity_id").order("id").range(de, a)),
++    lerTudo<Record<string, unknown>>("clientes", (de, a) =>
++      db.from("clientes_receita").select("id, nome, closer, status_financeiro, valor_mensal, categoria").order("id").range(de, a)),
++    lerTudo<Record<string, unknown>>("pagamentos do mês", (de, a) =>
++      db.from("pagamentos_mensais").select("id, cliente_id, valor_pago, status")
++        .eq("mes_referencia", primeiroDia(mes)).order("id").range(de, a)),
++    lerTudo<Record<string, unknown>>("churn do mês", (de, a) =>
++      db.from("churn_log").select("id, cliente_receita_id, data_saida, mensalidade")
++        .eq("revertido", false).gte("data_saida", primeiroDia(mes)).lte("data_saida", ultimoDia(mes))
++        .order("id").range(de, a)),
++  ]);
++  if (!cl.ok) return cl;
++  if (!em.ok) return em;
++  if (!cr.ok) return cr;
++  if (!pg.ok) return pg;
++  if (!ch.ok) return ch;
++  return {
++    ok: true,
++    dados: {
++      closers: cl.dados.map((x) => ({ id: String(x.id), nome: String(x.nome ?? ""), ativo: (x.ativo as boolean | null) ?? null })),
++      employees: em.dados.map((x) => ({ id: String(x.id), entity_id: textoOuNull(x.entity_id) })),
++      clientes: cr.dados.map((x) => ({
++        id: String(x.id), nome: String(x.nome ?? ""), closer: textoOuNull(x.closer),
++        status_financeiro: textoOuNull(x.status_financeiro), valor_mensal: num(x.valor_mensal), categoria: textoOuNull(x.categoria),
++      })),
++      pagamentos: pg.dados.map((x) => ({
++        cliente_id: String(x.cliente_id), valor_pago: x.valor_pago === null || x.valor_pago === undefined ? null : num(x.valor_pago),
++        status: String(x.status ?? ""),
++      })),
++      churn: ch.dados.map((x) => ({
++        cliente_receita_id: textoOuNull(x.cliente_receita_id), data_saida: String(x.data_saida),
++        mensalidade: x.mensalidade === null || x.mensalidade === undefined ? null : num(x.mensalidade),
++      })),
++    },
++  };
++}
++
++// ─── Cálculo ────────────────────────────────────────────────────────────────
++
++export interface Resumo {
++  ativos: number;
++  mrr: number;
++  recebido: number;
++  quantidadeRecebida: number;
++  saidas: number;
++  mrrPerdido: number;
++}
++
++export interface LinhaCloser extends Resumo {
++  closer_id: string;
++  nome: string;
++  /** null = sem leitura da comissão ou closer sem par na lista. Nunca 0 inventado. */
++  comissao: number | null;
++}
++
++export interface PorCloser {
++  ranking: LinhaCloser[];
++  herdada: LinhaCloser[];
++  foraDoRanking: { direcao: Resumo; semCloser: Resumo };
++  totais: {
++    recebido: number;
++    quantidadeRecebida: number;
++    saidas: number;
++    mrrPerdido: number;
++    churnSemVinculo: { saidas: number; mrrPerdido: number };
++  };
++  comissao: { ok: true } | { ok: false; falha: string };
++}
++
++/** Acumulador em centavos. */
++interface Acum { ativos: number; mrr: number; recebido: number; quantidadeRecebida: number; saidas: number; mrrPerdido: number }
++const zero = (): Acum => ({ ativos: 0, mrr: 0, recebido: 0, quantidadeRecebida: 0, saidas: 0, mrrPerdido: 0 });
++const resumo = (a: Acum): Resumo => ({
++  ativos: a.ativos, mrr: reaisDe(a.mrr), recebido: reaisDe(a.recebido), quantidadeRecebida: a.quantidadeRecebida,
++  saidas: a.saidas, mrrPerdido: reaisDe(a.mrrPerdido),
++});
++
++type Balde = { tipo: "closer"; closer: CloserRow } | { tipo: "direcao" } | { tipo: "semCloser" };
++
++export function calcularPorCloser(base: BaseCloser, comissao: Leitura<ComissaoResult>): PorCloser {
++  const porNome = new Map<string, CloserRow>();
++  for (const c of base.closers) {
++    const k = c.nome.trim();
++    if (k && !porNome.has(k)) porNome.set(k, c);
++  }
++  const clientes = new Map(base.clientes.map((c) => [c.id, c]));
++
++  const acum = new Map<string, Acum>(); // por closer_id
++  const direcao = zero();
++  const semCloser = zero();
++
++  const baldeDe = (cliente: ClienteCloserRow | undefined): Balde => {
++    const nome = cliente?.closer?.trim() ?? "";
++    const closer = nome ? porNome.get(nome) : undefined;
++    if (!closer) return { tipo: "semCloser" };
++    if (isCloserDiretor(closer.id)) return { tipo: "direcao" };
++    return { tipo: "closer", closer };
++  };
++  const acumuladorDe = (b: Balde): Acum => {
++    if (b.tipo === "direcao") return direcao;
++    if (b.tipo === "semCloser") return semCloser;
++    let a = acum.get(b.closer.id);
++    if (!a) { a = zero(); acum.set(b.closer.id, a); }
++    return a;
++  };
++
++  for (const c of base.clientes) {
++    if (c.status_financeiro !== "ativo") continue;
++    const a = acumuladorDe(baldeDe(c));
++    a.ativos += 1;
++    a.mrr += centavos(c.valor_mensal);
++  }
++
++  const totais = { recebido: 0, quantidadeRecebida: 0, saidas: 0, mrrPerdido: 0 };
++  const semVinculo = { saidas: 0, mrrPerdido: 0 };
++
++  for (const p of base.pagamentos) {
++    if (!recebeu({ status: p.status } as PagamentoRow)) continue;
++    const v = centavos(p.valor_pago);
++    const a = acumuladorDe(baldeDe(clientes.get(p.cliente_id)));
++    a.recebido += v;
++    a.quantidadeRecebida += 1;
++    totais.recebido += v;
++    totais.quantidadeRecebida += 1;
++  }
++
++  for (const r of base.churn) {
++    const v = centavos(r.mensalidade);
++    totais.saidas += 1;
++    totais.mrrPerdido += v;
++    if (!r.cliente_receita_id) {
++      semVinculo.saidas += 1;
++      semVinculo.mrrPerdido += v;
++      continue;
++    }
++    const a = acumuladorDe(baldeDe(clientes.get(r.cliente_receita_id)));
++    a.saidas += 1;
++    a.mrrPerdido += v;
++  }
++
++  // Comissão: só da comissao-canonica, só colaborador closer, casada por id.
++  let falhaComissao: string | null = null;
++  const comissaoPorCloser = new Map<string, number>();
++  if (!comissao.ok) {
++    falhaComissao = comissao.falha;
++  } else if (!comissao.dados.colaboradores || comissao.dados.colaboradores.length === 0) {
++    falhaComissao = "comissão sem leitura: nenhum colaborador devolvido";
++  } else {
++    const entityDoEmployee = new Map(base.employees.map((e) => [e.id, e.entity_id]));
++    for (const col of comissao.dados.colaboradores) {
++      if (col.funcao !== "closer") continue;
++      const valor = reaisDe(centavos(col.comissao_total));
++      for (const c of base.closers) {
++        const casa = col.id === c.id || (!!col.employee_id && entityDoEmployee.get(col.employee_id) === c.id);
++        if (casa && !comissaoPorCloser.has(c.id)) comissaoPorCloser.set(c.id, valor);
++      }
++    }
++  }
++
++  const linha = (c: CloserRow): LinhaCloser => ({
++    closer_id: c.id,
++    nome: c.nome.trim(),
++    ...resumo(acum.get(c.id) ?? zero()),
++    comissao: falhaComissao !== null ? null : (comissaoPorCloser.get(c.id) ?? null),
++  });
++
++  const ranking: LinhaCloser[] = [];
++  const herdada: LinhaCloser[] = [];
++  for (const c of base.closers) {
++    if (isCloserDiretor(c.id)) continue;
++    if (c.ativo === false) herdada.push({ ...linha(c), comissao: null });
++    else ranking.push(linha(c));
++  }
++  const porNomeAsc = (a: LinhaCloser, b: LinhaCloser) => a.nome.localeCompare(b.nome, "pt-BR");
++  ranking.sort((a, b) => b.recebido - a.recebido || porNomeAsc(a, b));
++  herdada.sort(porNomeAsc);
++
++  return {
++    ranking,
++    herdada,
++    foraDoRanking: { direcao: resumo(direcao), semCloser: resumo(semCloser) },
++    totais: {
++      recebido: reaisDe(totais.recebido),
++      quantidadeRecebida: totais.quantidadeRecebida,
++      saidas: totais.saidas,
++      mrrPerdido: reaisDe(totais.mrrPerdido),
++      churnSemVinculo: { saidas: semVinculo.saidas, mrrPerdido: reaisDe(semVinculo.mrrPerdido) },
++    },
++    comissao: falhaComissao === null ? { ok: true } : { ok: false, falha: falhaComissao },
++  };
++}

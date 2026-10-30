@@ -1,0 +1,14 @@
+039: visão por closer do Financeiro v2 (lib, rota GET e testes)
+
+lerBaseCloser (só select, lerTudo) e calcularPorCloser (pura): ranking por recebido,
+diretor fora por isCloserDiretor, ex-closer em herdada, semCloser, churn sem vínculo
+separado e comissão só da comissao-canonica casada por id (null sem leitura, nunca 0).
+Rota GET analise/closers: 503 na falha da base; falha da comissão vira comissao ok:false.
+
+Controle negativo: o teste do diretor traz um controle da fixture (Lucas tem o maior recebido,
+5000, e só sai do ranking pela regra). Nao vi nenhum caso falhando antes do codigo existir:
+a sessao so permite rodar o vitest com saida descartada (so imprime OK), entao nao ha saida
+de falha para relatar. Typecheck e build tambem nao rodaram (comandos fora da lista permitida).
+
+Orq-Ticket: 039
+

@@ -1,0 +1,24 @@
+039: visão por closer do Financeiro v2 (lib, rota GET e testes)
+
+lerBaseCloser (só select, lerTudo) e calcularPorCloser (pura): ranking por recebido,
+diretor fora por isCloserDiretor, ex-closer em herdada, semCloser, churn sem vínculo
+separado e comissão só da comissao-canonica casada por id (null sem leitura, nunca 0).
+Rota GET analise/closers: 503 na falha da base; falha da comissão vira comissao ok:false.
+
+Controle negativo (visto falhando, depois restaurado com git restore):
+Base: vitest run por-closer.test.ts com o código atual -> imprime OK.
+1. Sem a regra de diretor (removidos os dois 'if (isCloserDiretor(...))' de por-closer.ts):
+   vitest -> exit 1, sem OK. Cai o caso 'diretor (isCloserDiretor) fica fora do ranking
+   e da herdada, mesmo com o maior recebido' (a987d655 com recebido 5000 lideraria).
+2. Comissão sem leitura ou sem par virando 0 em vez de null ('?? 0' na linha do closer):
+   vitest -> exit 1, sem OK. Caem os casos de comissão com falha, lista vazia e closer sem par.
+3. Rota sem o try/catch em volta de calcularComissao: vitest -> exit 1, sem OK. Cai o caso
+   '200 com comissao ok:false quando calcularComissao lança' do handler GET.
+Depois de restaurar: por-closer.test.ts e a suíte src/lib/financeiro/v2 imprimem OK.
+Limite: a sessão só permite o vitest com saída descartada, então a prova de falha é o exit 1
+sem o OK; o nome do caso que cai vem do que a mutação quebra, não de saída do vitest.
+Typecheck e build não rodaram (comandos fora da lista permitida).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Orq-Ticket: 039
+

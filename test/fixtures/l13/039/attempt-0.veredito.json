@@ -1,0 +1,5 @@
+{
+  "desfecho": "reprovado",
+  "causa": "criterio_qualidade",
+  "motivo": "critério(s) reprovado(s): juiz: O ticket exige que o corpo do commit diga qual caso foi visto falhando antes do código existir, mas o commit 565f237f declara 'Nao vi nenhum caso falhando antes do codigo existir'. O teste 'controle da fixture' em src/lib/financeiro/v2/__tests__/por-closer.test.ts só prova que a fixture é sensível; não substitui o controle negativo observado. O resto do diff (isCloserDiretor em por-closer.ts, herdada sem comissão, null sem leitura, soma das partes, churn sem vínculo, 503 e só select) está coerente.; avaliador: diretor fora do ranking por isCloserDiretor; ex-closer em carteira herdada sem posição; comissão só pela comissao-canonica, casada por id, null quando sem leitura e nunca 0 inventado; soma das partes bate com o recebido do mês; churn sem vínculo separado; falha de leitura 503; só select; handler real testado com controle negativo relatado."
+}

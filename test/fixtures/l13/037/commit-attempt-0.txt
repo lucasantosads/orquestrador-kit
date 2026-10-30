@@ -1,0 +1,16 @@
+037: retenção por coorte e churn por mês (lib, rota GET e testes)
+
+Lê clientes_receita e churn_log (revertido = false, como a vw_admin_churn_mensal), só select.
+Falha de leitura vira ok:false na lib e 503 na rota. Média por k ponderada; MRR da coorte usa o
+valor_mensal atual (dito na regra da fonte).
+
+Controle negativo: NÃO foi visto falhando antes do código existir. Escrevi lib e teste na mesma
+rodada e a permissão da sessão só aceita o comando de teste final, então não rodei o teste sem a lib.
+Os casos com controle embutido no próprio teste: linha revertida no churn_log fica de fora, média
+ponderada (60) difere da simples (75), e 503 com coortes undefined nas duas tabelas.
+IMPEDIMENTO: typecheck e build não rodaram (comandos fora da lista permitida na sessão).
+
+Orq-Ticket: 037
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+

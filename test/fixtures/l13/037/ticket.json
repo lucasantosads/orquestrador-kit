@@ -1,0 +1,87 @@
+{
+  "id": "037",
+  "bloco": "B1",
+  "frente": "B1-F9",
+  "slug": "fin-v2-retencao-coorte",
+  "origem": "humano",
+  "objetivo": "(1) Crie src/lib/financeiro/v2/coorte.ts. Exporte `interface ClienteCoorte { id: string; nome: string; status_financeiro: string | null; valor_mensal: number; mes_fechamento: string | null; categoria: string | null }`, `interface SaidaChurn { id: string; cliente_receita_id: string | null; data_saida: string; mensalidade: number | null }`, `lerBaseCoorte(db: SupabaseClient): Promise<Leitura<{ clientes: ClienteCoorte[]; saidas: SaidaChurn[] }>>` lendo com lerTudo e só select clientes_receita (id, nome, status_financeiro, valor_mensal, mes_fechamento, categoria; order id) e churn_log (id, cliente_receita_id, data_saida, mensalidade; eq revertido false, igual à vw_admin_churn_mensal; order id), com falha em qualquer uma -> ok:false (nunca lista vazia); e `calcularRetencao(base, ateMes: string, n = 12)` pura -> { coortes: { mes, entraram, semData, base, mrrBase, mds, retencao: { k, mes, ativos, pct, mrr }[] }[]; media: { k, base, ativos, pct }[]; churnPorMes: { mes, saidas, mrrPerdido }[]; notas: { semMesEntrada: number; churnSemVinculo: number } }. Regras: coorte = mês de mes_fechamento; coortes = os n meses até ateMes, inclusive, também as vazias (entraram 0); cliente sem mes_fechamento conta em notas.semMesEntrada e fica fora. Saída de um cliente = maior data_saida das linhas com o seu cliente_receita_id. Cliente com status_financeiro 'churned' sem linha em churn_log = saída sem data: conta em semData e fica fora da base. base = entraram − semData; mrrBase = soma do valor_mensal da base. Para k de 0 até (ateMes − coorte em meses): ativos = clientes da base sem saída com mês de data_saida <= coorte + k; pct = ativos ÷ base × 100 com 1 casa (null com base 0); mrr = soma do valor_mensal atual desses clientes (mensalidade de hoje, não a da época; dizer isso na regra da fonte). mds = quantos da base têm categoria MDS (seguem dentro, como no MRR). media[k] = soma de ativos ÷ soma de base das coortes que já chegaram em k (ponderada, nunca média das porcentagens), pct com 1 casa. churnPorMes: para cada um dos n meses, todas as linhas não revertidas com data_saida no mês, com ou sem vínculo: saidas = quantidade, mrrPerdido = soma de mensalidade (mesma regra da vw_admin_churn_mensal). notas.churnSemVinculo = linhas sem cliente_receita_id no período. Dinheiro em centavos. (2) Crie src/app/api/financeiro-v2/analise/retencao/route.ts: GET com autorizar() e mesPedido() como em saidas/lancamentos/route.ts; lerBaseCoorte(a.db); falha -> 503 { ok: false, erro } (nunca 200 vazio); 200 { ok: true, mes, ...calcularRetencao(base, mes, 12), fonte: { regra, tabelas: [\"clientes_receita\", \"churn_log\"], lidoEm: a.hoje.iso } }; Cache-Control no-store; só select. (3) Crie src/lib/financeiro/v2/__tests__/coorte.test.ts: coorte pelo mes_fechamento; sem mes_fechamento fora e contado; churned sem churn_log vira semData e sai da base; saída no próprio mês de entrada derruba o k 0; maior data quando há duas linhas; pct null com base 0; média ponderada diferente da média simples num caso montado para isso; churnPorMes conta linhas sem vínculo; lerBaseCoorte com banco falso: filtro revertido false aplicado, falha de qualquer leitura dá ok:false, nenhuma escrita; handler GET com mock de @/lib/financeiro/v2/servidor: 503 na falha e 400 em mês futuro. Diga no corpo do commit qual caso foi visto falhando antes do código existir (controle negativo). FORA DE ESCOPO: tela (ticket 038), /retencao, src/app/churn/** e src/app/pipeline-churn/** (telas antigas), vw_churn_mensal (banida), fontes.ts, churn_log (nenhuma escrita).",
+  "pathspec_allowlist": [
+    "src/lib/financeiro/v2/coorte.ts",
+    "src/app/api/financeiro-v2/analise/retencao/route.ts",
+    "src/lib/financeiro/v2/__tests__/coorte.test.ts"
+  ],
+  "cria_novo": [
+    "src/lib/financeiro/v2/coorte.ts",
+    "src/app/api/financeiro-v2/analise/retencao/route.ts",
+    "src/lib/financeiro/v2/__tests__/coorte.test.ts"
+  ],
+  "dependencias": [],
+  "diff_estimado": 470,
+  "risco": "",
+  "criterios_aceite": [
+    {
+      "tipo": "alvo",
+      "descricao": "teste de retenção e coorte verde",
+      "cmd": "node_modules/.bin/vitest run src/lib/financeiro/v2/__tests__/coorte.test.ts >/dev/null 2>&1 && echo OK",
+      "espera": "OK"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "rota de retenção não grava",
+      "cmd": "grep -c -E '\\.(insert|update|upsert|delete|rpc)\\(' \"src/app/api/financeiro-v2/analise/retencao/route.ts\"",
+      "espera": "0",
+      "exemplos_regex": [
+        {
+          "regex": "\\.(insert|update|upsert|delete|rpc)\\(",
+          "positivo": "db.rpc(\"fin_x\", {",
+          "negativo": "insertAfter(x)"
+        }
+      ]
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "lib de coorte não grava",
+      "cmd": "grep -c -E '\\.(insert|update|upsert|delete|rpc)\\(' \"src/lib/financeiro/v2/coorte.ts\"",
+      "espera": "0",
+      "exemplos_regex": [
+        {
+          "regex": "\\.(insert|update|upsert|delete|rpc)\\(",
+          "positivo": "db.rpc(\"fin_x\", {",
+          "negativo": "insertAfter(x)"
+        }
+      ]
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "não usa a view banida de churn",
+      "cmd": "grep -c -F 'vw_churn_mensal' \"src/lib/financeiro/v2/coorte.ts\"",
+      "espera": "0"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "churn revertido fica fora",
+      "cmd": "grep -q -F 'revertido' \"src/lib/financeiro/v2/coorte.ts\" && echo SIM",
+      "espera": "SIM"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "suíte do v2 continua verde",
+      "cmd": "node_modules/.bin/vitest run src/lib/financeiro/v2 >/dev/null 2>&1 && echo OK",
+      "espera": "OK"
+    },
+    {
+      "tipo": "avaliador",
+      "descricao": "avaliador: coorte pelo mês de entrada; saída sem data fora da base (regra de 07/10/2026) e contada; média ponderada; churn por mês igual à regra da vw_admin_churn_mensal; falha de leitura vira 503, nunca lista vazia; só select; handler real testado com controle negativo relatado.",
+      "cmd": "true",
+      "espera": "avaliador"
+    }
+  ],
+  "status": "pendente",
+  "notas_status": "",
+  "hash_candidato": "",
+  "sinal_hash": "",
+  "gate_ok": "",
+  "pid": null,
+  "iniciado_em": "",
+  "adiado_ate": ""
+}

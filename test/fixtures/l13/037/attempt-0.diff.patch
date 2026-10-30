@@ -1,0 +1,442 @@
+diff --git a/src/app/api/financeiro-v2/analise/retencao/route.ts b/src/app/api/financeiro-v2/analise/retencao/route.ts
+new file mode 100644
+index 00000000..cf4e3200
+--- /dev/null
++++ b/src/app/api/financeiro-v2/analise/retencao/route.ts
+@@ -0,0 +1,31 @@
++/**
++ * GET /api/financeiro-v2/analise/retencao[?mes=YYYY-MM]
++ * Retenção por coorte de entrada e churn dos 12 meses até `mes`.
++ * SOMENTE LEITURA: nenhuma escrita. Falha de leitura = 503, nunca 200 vazio.
++ */
++import { NextRequest, NextResponse } from "next/server";
++import { calcularRetencao, lerBaseCoorte, REGRA_RETENCAO } from "@/lib/financeiro/v2/coorte";
++import { autorizar, mesPedido } from "@/lib/financeiro/v2/servidor";
++
++export const dynamic = "force-dynamic";
++export const maxDuration = 60;
++
++export async function GET(req: NextRequest) {
++  const a = await autorizar();
++  if (!a.ok) return NextResponse.json({ ok: false, erro: a.erro }, { status: a.status });
++  const mes = mesPedido(req.nextUrl.searchParams.get("mes"), a.hoje);
++  if (!mes) return NextResponse.json({ ok: false, erro: "Mês inválido." }, { status: 400 });
++
++  const r = await lerBaseCoorte(a.db);
++  if (!r.ok) return NextResponse.json({ ok: false, erro: r.falha }, { status: 503, headers: { "Cache-Control": "no-store" } });
++
++  return NextResponse.json(
++    {
++      ok: true,
++      mes,
++      ...calcularRetencao(r.dados, mes, 12),
++      fonte: { regra: REGRA_RETENCAO, tabelas: ["clientes_receita", "churn_log"], lidoEm: a.hoje.iso },
++    },
++    { headers: { "Cache-Control": "no-store" } },
++  );
++}
+diff --git a/src/lib/financeiro/v2/__tests__/coorte.test.ts b/src/lib/financeiro/v2/__tests__/coorte.test.ts
+new file mode 100644
+index 00000000..c0d973ce
+--- /dev/null
++++ b/src/lib/financeiro/v2/__tests__/coorte.test.ts
+@@ -0,0 +1,215 @@
++import { describe, expect, it, vi } from "vitest";
++import type { SupabaseClient } from "@supabase/supabase-js";
++import { NextRequest } from "next/server";
++import { criarDb, novoEstado, type EstadoBanco, type Linha } from "../../../../__tests__/helpers/banco-falso";
++import { calcularRetencao, lerBaseCoorte, type BaseCoorte, type ClienteCoorte, type SaidaChurn } from "../coorte";
++
++let estadoRota: EstadoBanco = novoEstado();
++
++vi.mock("@/lib/financeiro/v2/servidor", async (importOriginal) => {
++  const real = await importOriginal<typeof import("@/lib/financeiro/v2/servidor")>();
++  return {
++    ...real,
++    autorizar: async () => ({ ok: true, db: criarDb(estadoRota), hoje: { mes: "2026-10", iso: "2026-10-29T12:00:00.000Z" } }),
++  };
++});
++
++const comoDb = (e: EstadoBanco) => criarDb(e) as unknown as SupabaseClient;
++
++const cli = (id: string, mes: string | null, extra: Partial<ClienteCoorte> = {}): ClienteCoorte => ({
++  id, nome: `Cliente ${id}`, status_financeiro: "ativo", valor_mensal: 1000, mes_fechamento: mes, categoria: null, ...extra,
++});
++const saida = (id: string, cliente: string | null, data: string, mensalidade: number | null = 1000): SaidaChurn => ({
++  id, cliente_receita_id: cliente, data_saida: data, mensalidade,
++});
++const base = (clientes: ClienteCoorte[], saidas: SaidaChurn[] = []): BaseCoorte => ({ clientes, saidas });
++const coorteDe = (r: ReturnType<typeof calcularRetencao>, mes: string) => r.coortes.find((c) => c.mes === mes)!;
++
++describe("calcularRetencao", () => {
++  it("coorte é o mês de mes_fechamento; as n coortes até ateMes existem, também as vazias", () => {
++    const r = calcularRetencao(base([cli("a", "2026-08-15"), cli("b", "2026-08"), cli("c", "2026-10-01")]), "2026-10", 3);
++    expect(r.coortes.map((c) => [c.mes, c.entraram])).toEqual([["2026-08", 2], ["2026-09", 0], ["2026-10", 1]]);
++    // k vai de 0 até (ateMes − coorte)
++    expect(coorteDe(r, "2026-08").retencao.map((p) => p.k)).toEqual([0, 1, 2]);
++    expect(coorteDe(r, "2026-10").retencao.map((p) => p.k)).toEqual([0]);
++  });
++
++  it("sem mes_fechamento fica fora e é contado; fora da janela também não entra em coorte", () => {
++    const r = calcularRetencao(base([cli("a", null), cli("b", "2026-09"), cli("antigo", "2020-01")]), "2026-10", 3);
++    expect(r.notas.semMesEntrada).toBe(1);
++    expect(r.coortes.reduce((s, c) => s + c.entraram, 0)).toBe(1);
++  });
++
++  it("churned sem churn_log vira semData e sai da base; churned com churn_log fica na base", () => {
++    const r = calcularRetencao(
++      base(
++        [cli("a", "2026-09"), cli("b", "2026-09", { status_financeiro: "churned" }), cli("c", "2026-09", { status_financeiro: "churned" })],
++        [saida("s1", "c", "2026-10-02")],
++      ),
++      "2026-10", 2,
++    );
++    const c = coorteDe(r, "2026-09");
++    expect(c).toMatchObject({ entraram: 3, semData: 1, base: 2 });
++    expect(c.retencao.map((p) => p.ativos)).toEqual([2, 1]);
++  });
++
++  it("saída no próprio mês de entrada derruba o k 0", () => {
++    const r = calcularRetencao(base([cli("a", "2026-09"), cli("b", "2026-09")], [saida("s1", "a", "2026-09-20")]), "2026-10", 2);
++    const [k0, k1] = coorteDe(r, "2026-09").retencao;
++    expect(k0).toMatchObject({ k: 0, ativos: 1, pct: 50 });
++    expect(k1).toMatchObject({ k: 1, ativos: 1, pct: 50 });
++  });
++
++  it("usa a maior data_saida quando o cliente tem duas linhas", () => {
++    const r = calcularRetencao(
++      base([cli("a", "2026-08")], [saida("s1", "a", "2026-10-05"), saida("s2", "a", "2026-08-10")]),
++      "2026-10", 3,
++    );
++    // saída mais recente = 2026-10: ativo em k 0 e 1, fora em k 2. Com a menor data (08) k 0 já seria 0.
++    expect(coorteDe(r, "2026-08").retencao.map((p) => p.ativos)).toEqual([1, 1, 0]);
++  });
++
++  it("pct é null com base 0 e mrr zero", () => {
++    const r = calcularRetencao(base([]), "2026-10", 2);
++    const c = coorteDe(r, "2026-09");
++    expect(c.base).toBe(0);
++    expect(c.retencao.map((p) => p.pct)).toEqual([null, null]);
++    expect(c.retencao.every((p) => p.mrr === 0)).toBe(true);
++    expect(r.media.map((m) => m.pct)).toEqual([null, null]);
++  });
++
++  it("media é ponderada (soma de ativos ÷ soma de base), diferente da média simples", () => {
++    // 2026-08: base 1, 100% em k 1. 2026-09: base 4, 50% em k 1. Simples = 75, ponderada = 3/5 = 60.
++    const r = calcularRetencao(
++      base(
++        [cli("a", "2026-08"), cli("b1", "2026-09"), cli("b2", "2026-09"), cli("b3", "2026-09"), cli("b4", "2026-09")],
++        [saida("s1", "b1", "2026-10-01"), saida("s2", "b2", "2026-10-01")],
++      ),
++      "2026-10", 3,
++    );
++    const k1 = r.media.find((m) => m.k === 1)!;
++    expect(k1).toEqual({ k: 1, base: 5, ativos: 3, pct: 60 });
++    const simples = (coorteDe(r, "2026-08").retencao[1].pct! + coorteDe(r, "2026-09").retencao[1].pct!) / 2;
++    expect(simples).toBe(75);
++    expect(k1.pct).not.toBe(simples);
++    // k 2 só foi alcançado pela coorte 2026-08
++    expect(r.media.find((m) => m.k === 2)).toMatchObject({ base: 1, ativos: 1, pct: 100 });
++  });
++
++  it("mrr usa o valor_mensal atual dos ativos; mrrBase soma a base; MDS segue dentro e é contado", () => {
++    const r = calcularRetencao(
++      base(
++        [cli("a", "2026-09", { valor_mensal: 1500.5 }), cli("b", "2026-09", { valor_mensal: 0.1, categoria: "MDS" }), cli("c", "2026-09", { valor_mensal: 0.2 })],
++        [saida("s1", "a", "2026-10-03")],
++      ),
++      "2026-10", 2,
++    );
++    const c = coorteDe(r, "2026-09");
++    expect(c.mrrBase).toBe(1500.8);
++    expect(c.mds).toBe(1);
++    expect(c.base).toBe(3);
++    expect(c.retencao.map((p) => p.mrr)).toEqual([1500.8, 0.3]);
++  });
++
++  it("churnPorMes conta linhas com e sem vínculo e soma a mensalidade; churnSemVinculo conta as sem vínculo", () => {
++    const r = calcularRetencao(
++      base(
++        [cli("a", "2026-08")],
++        [
++          saida("s1", "a", "2026-09-10", 0.1),
++          saida("s2", null, "2026-09-12", 0.2),
++          saida("s3", null, "2026-10-01", null),
++          saida("s4", "zzz", "2020-01-01", 999),
++        ],
++      ),
++      "2026-10", 3,
++    );
++    expect(r.churnPorMes).toEqual([
++      { mes: "2026-08", saidas: 0, mrrPerdido: 0 },
++      { mes: "2026-09", saidas: 2, mrrPerdido: 0.3 },
++      { mes: "2026-10", saidas: 1, mrrPerdido: 0 },
++    ]);
++    expect(r.notas.churnSemVinculo).toBe(2);
++  });
++});
++
++describe("lerBaseCoorte", () => {
++  const estado = (): EstadoBanco => {
++    const e = novoEstado();
++    e.tabelas.clientes_receita = [
++      { id: "c1", nome: "A", status_financeiro: "ativo", valor_mensal: "1200.5", mes_fechamento: "2026-08", categoria: "MDS" },
++    ];
++    e.tabelas.churn_log = [
++      { id: "s1", cliente_receita_id: "c1", data_saida: "2026-10-01", mensalidade: "1200.5", revertido: false },
++      { id: "s2", cliente_receita_id: "c1", data_saida: "2026-09-01", mensalidade: 50, revertido: true },
++    ];
++    return e;
++  };
++
++  it("aplica revertido = false (linha revertida fica fora) e converte os tipos", async () => {
++    const r = await lerBaseCoorte(comoDb(estado()));
++    if (!r.ok) throw new Error(r.falha);
++    expect(r.dados.saidas.map((s) => s.id)).toEqual(["s1"]);
++    expect(r.dados.clientes[0]).toMatchObject({ id: "c1", valor_mensal: 1200.5, categoria: "MDS" });
++    expect(r.dados.saidas[0].mensalidade).toBe(1200.5);
++  });
++
++  it("falha em qualquer leitura dá ok false, nunca lista vazia", async () => {
++    for (const chave of ["clientes_receita:select", "churn_log:select"]) {
++      const e = estado();
++      e.erros[chave] = "boom";
++      const r = await lerBaseCoorte(comoDb(e));
++      expect(r.ok).toBe(false);
++      if (!r.ok) expect(r.falha).toContain("boom");
++    }
++  });
++
++  it("não escreve no banco", async () => {
++    const e = estado();
++    await lerBaseCoorte(comoDb(e));
++    expect(e.escritas).toEqual([]);
++  });
++});
++
++describe("GET /api/financeiro-v2/analise/retencao", () => {
++  const chamar = async (qs = "") => {
++    const { GET } = await import("@/app/api/financeiro-v2/analise/retencao/route");
++    return GET(new NextRequest(`http://localhost/api/financeiro-v2/analise/retencao${qs}`));
++  };
++  const linhas = (): Linha[] => [{ id: "s1", cliente_receita_id: "c1", data_saida: "2026-10-01", mensalidade: 100, revertido: false }];
++
++  it("200 com coortes, media, churnPorMes, notas e fonte; no-store; sem escrita", async () => {
++    estadoRota = novoEstado();
++    estadoRota.tabelas.clientes_receita = [{ id: "c1", nome: "A", status_financeiro: "ativo", valor_mensal: 100, mes_fechamento: "2026-09", categoria: null }];
++    estadoRota.tabelas.churn_log = linhas();
++    const res = await chamar();
++    expect(res.status).toBe(200);
++    expect(res.headers.get("Cache-Control")).toBe("no-store");
++    const corpo = await res.json();
++    expect(corpo).toMatchObject({ ok: true, mes: "2026-10", notas: { semMesEntrada: 0, churnSemVinculo: 0 } });
++    expect(corpo.coortes).toHaveLength(12);
++    expect(corpo.fonte.tabelas).toEqual(["clientes_receita", "churn_log"]);
++    expect(corpo.fonte.lidoEm).toBe("2026-10-29T12:00:00.000Z");
++    expect(corpo.fonte.regra).toContain("valor_mensal ATUAL");
++    expect(estadoRota.escritas).toEqual([]);
++  });
++
++  it("falha de leitura = 503 com ok false e sem coortes (controle negativo do 200 vazio)", async () => {
++    for (const chave of ["clientes_receita:select", "churn_log:select"]) {
++      estadoRota = novoEstado();
++      estadoRota.erros[chave] = "boom";
++      const res = await chamar();
++      expect(res.status).toBe(503);
++      expect(res.headers.get("Cache-Control")).toBe("no-store");
++      const corpo = await res.json();
++      expect(corpo.ok).toBe(false);
++      expect(corpo.coortes).toBeUndefined();
++    }
++  });
++
++  it("mês futuro = 400 e mês inválido = 400", async () => {
++    estadoRota = novoEstado();
++    expect((await chamar("?mes=2026-11")).status).toBe(400);
++    expect((await chamar("?mes=abc")).status).toBe(400);
++  });
++});
+diff --git a/src/lib/financeiro/v2/coorte.ts b/src/lib/financeiro/v2/coorte.ts
+new file mode 100644
+index 00000000..d17b866e
+--- /dev/null
++++ b/src/lib/financeiro/v2/coorte.ts
+@@ -0,0 +1,178 @@
++/**
++ * Retenção por coorte de entrada (mês de `mes_fechamento` em clientes_receita) e churn por mês
++ * (churn_log). SOMENTE LEITURA: só `select`. Falha de leitura é `{ ok: false }`, nunca lista vazia.
++ *
++ * Saída de um cliente = maior `data_saida` entre as linhas do churn_log com o seu cliente_receita_id.
++ * Cliente `churned` sem linha no churn_log = saída sem data: conta em `semData` e fica fora da base.
++ * O churn por mês segue a vw_admin_churn_mensal (linhas com revertido = false, com ou sem vínculo).
++ */
++import type { SupabaseClient } from "@supabase/supabase-js";
++import { lerTudo } from "./fontes";
++import { centavos, reaisDe, type Leitura } from "./tipos";
++
++export interface ClienteCoorte {
++  id: string;
++  nome: string;
++  status_financeiro: string | null;
++  valor_mensal: number;
++  mes_fechamento: string | null;
++  categoria: string | null;
++}
++
++export interface SaidaChurn {
++  id: string;
++  cliente_receita_id: string | null;
++  data_saida: string;
++  mensalidade: number | null;
++}
++
++export interface BaseCoorte { clientes: ClienteCoorte[]; saidas: SaidaChurn[] }
++
++export interface PontoRetencao { k: number; mes: string; ativos: number; pct: number | null; mrr: number }
++
++export interface Coorte {
++  mes: string;
++  entraram: number;
++  semData: number;
++  base: number;
++  mrrBase: number;
++  mds: number;
++  retencao: PontoRetencao[];
++}
++
++export interface MediaRetencao { k: number; base: number; ativos: number; pct: number | null }
++export interface ChurnMes { mes: string; saidas: number; mrrPerdido: number }
++
++export interface ResultadoRetencao {
++  coortes: Coorte[];
++  media: MediaRetencao[];
++  churnPorMes: ChurnMes[];
++  notas: { semMesEntrada: number; churnSemVinculo: number };
++}
++
++/** Regra da fonte, exposta na rota. */
++export const REGRA_RETENCAO =
++  "Coorte = mês de mes_fechamento do cliente (clientes_receita). Saída = maior data_saida do churn_log " +
++  "(revertido = false) com o cliente_receita_id do cliente; cliente churned sem linha no churn_log é saída sem data " +
++  "e fica fora da base. Ativo no mês k = sem saída até o mês da coorte + k. Média por k ponderada " +
++  "(soma de ativos ÷ soma de base das coortes que chegaram em k). O MRR da coorte usa o valor_mensal ATUAL " +
++  "do cliente (mensalidade de hoje, não a da época). Clientes MDS seguem dentro, como no MRR. " +
++  "Churn por mês: todas as linhas não revertidas do churn_log, com ou sem vínculo, soma de mensalidade.";
++
++export async function lerBaseCoorte(db: SupabaseClient): Promise<Leitura<BaseCoorte>> {
++  const [c, s] = await Promise.all([
++    lerTudo<Record<string, unknown>>("clientes da coorte", (de, ate) =>
++      db.from("clientes_receita")
++        .select("id, nome, status_financeiro, valor_mensal, mes_fechamento, categoria")
++        .order("id").range(de, ate)),
++    lerTudo<Record<string, unknown>>("saídas de churn", (de, ate) =>
++      db.from("churn_log")
++        .select("id, cliente_receita_id, data_saida, mensalidade")
++        .eq("revertido", false)
++        .order("id").range(de, ate)),
++  ]);
++  if (!c.ok) return c;
++  if (!s.ok) return s;
++  return {
++    ok: true,
++    dados: {
++      clientes: c.dados.map((x): ClienteCoorte => ({
++        id: String(x.id),
++        nome: String(x.nome ?? ""),
++        status_financeiro: (x.status_financeiro as string | null) ?? null,
++        valor_mensal: Number(x.valor_mensal ?? 0),
++        mes_fechamento: (x.mes_fechamento as string | null) ?? null,
++        categoria: (x.categoria as string | null) ?? null,
++      })),
++      saidas: s.dados.map((x): SaidaChurn => ({
++        id: String(x.id),
++        cliente_receita_id: x.cliente_receita_id == null ? null : String(x.cliente_receita_id),
++        data_saida: String(x.data_saida ?? ""),
++        mensalidade: x.mensalidade == null ? null : Number(x.mensalidade),
++      })),
++    },
++  };
++}
++
++const idxMes = (m: string): number => Number(m.slice(0, 4)) * 12 + Number(m.slice(5, 7)) - 1;
++const mesDeIdx = (i: number): string => `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}`;
++const pct1 = (a: number, b: number): number | null => (b > 0 ? Math.round((a / b) * 1000) / 10 : null);
++const ehMDS = (c: string | null): boolean => (c ?? "").trim().toUpperCase() === "MDS";
++
++export function calcularRetencao(base: BaseCoorte, ateMes: string, n = 12): ResultadoRetencao {
++  const fim = idxMes(ateMes);
++  const meses = Array.from({ length: n }, (_, i) => mesDeIdx(fim - n + 1 + i));
++
++  // Última saída (maior data_saida) por cliente.
++  const ultimaSaida = new Map<string, string>();
++  for (const s of base.saidas) {
++    if (!s.cliente_receita_id || !s.data_saida) continue;
++    const atual = ultimaSaida.get(s.cliente_receita_id);
++    if (atual === undefined || s.data_saida > atual) ultimaSaida.set(s.cliente_receita_id, s.data_saida);
++  }
++
++  let semMesEntrada = 0;
++  const porCoorte = new Map<string, ClienteCoorte[]>(meses.map((m) => [m, []]));
++  for (const c of base.clientes) {
++    if (!c.mes_fechamento) { semMesEntrada++; continue; }
++    porCoorte.get(c.mes_fechamento.slice(0, 7))?.push(c);
++  }
++
++  const coortes = meses.map((mes): Coorte => {
++    const todos = porCoorte.get(mes) ?? [];
++    const naBase = todos.filter((c) => !(c.status_financeiro === "churned" && !ultimaSaida.has(c.id)));
++    const semData = todos.length - naBase.length;
++    const mrrBase = naBase.reduce((s, c) => s + centavos(c.valor_mensal), 0);
++    const retencao: PontoRetencao[] = [];
++    for (let k = 0; idxMes(mes) + k <= fim; k++) {
++      const limite = idxMes(mes) + k;
++      const ativos = naBase.filter((c) => {
++        const saida = ultimaSaida.get(c.id);
++        return saida === undefined || idxMes(saida) > limite;
++      });
++      retencao.push({
++        k,
++        mes: mesDeIdx(limite),
++        ativos: ativos.length,
++        pct: pct1(ativos.length, naBase.length),
++        mrr: reaisDe(ativos.reduce((s, c) => s + centavos(c.valor_mensal), 0)),
++      });
++    }
++    return {
++      mes, entraram: todos.length, semData, base: naBase.length,
++      mrrBase: reaisDe(mrrBase), mds: naBase.filter((c) => ehMDS(c.categoria)).length, retencao,
++    };
++  });
++
++  const media: MediaRetencao[] = [];
++  for (let k = 0; k < n; k++) {
++    let somaBase = 0;
++    let somaAtivos = 0;
++    let chegou = false;
++    for (const c of coortes) {
++      const p = c.retencao[k];
++      if (!p) continue;
++      chegou = true;
++      somaBase += c.base;
++      somaAtivos += p.ativos;
++    }
++    if (chegou) media.push({ k, base: somaBase, ativos: somaAtivos, pct: pct1(somaAtivos, somaBase) });
++  }
++
++  const churn = new Map<string, { saidas: number; centavos: number }>(meses.map((m) => [m, { saidas: 0, centavos: 0 }]));
++  let churnSemVinculo = 0;
++  for (const s of base.saidas) {
++    const acc = churn.get((s.data_saida ?? "").slice(0, 7));
++    if (!acc) continue;
++    acc.saidas++;
++    acc.centavos += centavos(s.mensalidade);
++    if (!s.cliente_receita_id) churnSemVinculo++;
++  }
++
++  return {
++    coortes,
++    media,
++    churnPorMes: meses.map((mes) => ({ mes, saidas: churn.get(mes)!.saidas, mrrPerdido: reaisDe(churn.get(mes)!.centavos) })),
++    notas: { semMesEntrada, churnSemVinculo },
++  };
++}

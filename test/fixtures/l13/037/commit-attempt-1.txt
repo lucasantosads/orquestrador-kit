@@ -1,0 +1,35 @@
+037: controle negativo do teste de retenção, observado e relatado
+
+Corrige a reprovação do juiz: o commit 5818364 não tinha controle negativo
+observado. Nesta rodada cada controle foi visto falhando com o comando do critério
+(node_modules/.bin/vitest run src/lib/financeiro/v2/__tests__/coorte.test.ts
+>/dev/null 2>&1 && echo OK). Ele só imprime OK ou nada, então cada mutação mexe numa
+regra só, para que se saiba qual caso caiu. Depois de cada uma, git restore.
+Sem mudança de código neste commit.
+
+Baseline com o código: OK.
+
+Controles negativos (todos deram exit 1 sem OK):
+0. Antes do código existir: coorte.ts e route.ts trocados por "export {};".
+   A suíte inteira cai (calcularRetencao, lerBaseCoorte e GET não existem).
+1. Rota sem o 503: na falha de leitura devolve 200 com calcularRetencao de listas
+   vazias. Cai "falha de leitura = 503 com ok false e sem coortes".
+2. Lib sem .eq("revertido", false) no churn_log. Cai "aplica revertido = false
+   (linha revertida fica fora)".
+3. Lib com naBase = todos (churned sem churn_log continua na base). Cai "churned
+   sem churn_log vira semData e sai da base".
+4. Lib com média simples das porcentagens no lugar da ponderada. Cai "media é
+   ponderada ... diferente da média simples" (daria 75, o esperado é 60).
+5. churnPorMes descartando linhas sem cliente_receita_id. Cai "churnPorMes conta
+   linhas com e sem vínculo".
+
+Depois do restore: git status limpo; coorte.test.ts OK; suíte src/lib/financeiro/v2
+OK; grep de escrita na rota = 0 e na lib = 0; vw_churn_mensal = 0; revertido = SIM.
+
+IMPEDIMENTO: typecheck (npx tsc) e build (npm run build) não rodaram, porque os
+comandos não estão na lista permitida desta sessão.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+Orq-Ticket: 037
+

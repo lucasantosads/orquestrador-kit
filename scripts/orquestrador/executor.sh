@@ -1048,6 +1048,23 @@ grava_diff_patch() {
   return 0
 }
 
+# grava_mensagens <worktree> <base> <rundir> (etapa L13, P1)
+# O corpo dos commits da frente (`git log --format=%B base..HEAD`), normalizado:
+# sem o trailer do config (`executor.trailer_commit`), sem `Co-Authored-By` e sem
+# linha vazia no fim. Entra na assinatura do retry_sem_mudanca junto com o
+# diff.patch: no 037 e no 039 do dashboard (29/10) o juiz reprovou só o corpo do
+# commit, o agente corrigiu só a mensagem (commit vazio, amend) e o diff idêntico
+# bloqueou sem o juiz ler a correção. Os dois trailers saem porque um amend que
+# só reordena trailer (o 039) não é mensagem nova.
+grava_mensagens() {
+  local wt="$1" base="$2" rundir="$3" trailer
+  trailer="$(cfg '.executor.trailer_commit' 2>/dev/null || true)"
+  git -C "$wt" log --format=%B "$base"..HEAD 2>/dev/null \
+    | grep -viE "^(${trailer:-Orq-Ticket}|Co-Authored-By):" \
+    | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' > "$rundir/mensagens.txt" || true
+  return 0
+}
+
 # --- 7h · TESTE INSTÁVEL (etapa L11) ------------------------------------------
 # decide_instaveis <ticket> <wt> <rundir> <base> <gate>: decisao instaveis sobre a
 # saída inteira do gate (rundir/gate-falha.txt), com a allowlist mais a ampliada.
@@ -1204,10 +1221,14 @@ run_attempt() {
   # ANTES do enforcement e de qualquer descarte: o patch é evidência, e evidência
   # que só existe quando o desfecho é bom não serve para diagnosticar o ruim.
   grava_diff_patch "$wt" "$base" "$rundir"
+  grava_mensagens "$wt" "$base" "$rundir"
 
   # 5b · retry sem mudança (ticket 623): da segunda tentativa em diante, diff
   # idêntico ao da anterior encerra a tentativa AQUI — sem enforcement, gates,
-  # critérios nem juiz. O hash é do diff.patch inteiro.
+  # critérios nem juiz. A assinatura é o diff.patch inteiro MAIS as mensagens
+  # (etapa L13, P1): diff igual com mensagem nova segue o pipeline inteiro
+  # (enforcement, gates, critérios e juiz de novo, sem reaproveitar nada). Sem
+  # mensagens.txt na anterior (tentativa de motor anterior à L13), vale só o diff.
   RETRY_SEM_MUDANCA=0; HASH_DIFF_ANTERIOR=""; HASH_DIFF_NOVO=""
   BASE_VERMELHA=""
   #
@@ -1220,7 +1241,14 @@ run_attempt() {
   if [ "${AGENTE_RC:-0}" = 0 ] && [ -n "$rundir_anterior" ] && [ -f "$rundir_anterior/diff.patch" ]; then
     HASH_DIFF_ANTERIOR="$(sha256_arquivo "$rundir_anterior/diff.patch")"
     HASH_DIFF_NOVO="$(sha256_arquivo "$rundir/diff.patch")"
-    if [ -n "$HASH_DIFF_NOVO" ] && [ "$HASH_DIFF_NOVO" = "$HASH_DIFF_ANTERIOR" ]; then
+    local msg_nova=0
+    if [ -f "$rundir_anterior/mensagens.txt" ] && [ -f "$rundir/mensagens.txt" ] \
+       && [ "$(sha256_arquivo "$rundir_anterior/mensagens.txt")" != "$(sha256_arquivo "$rundir/mensagens.txt")" ]; then
+      msg_nova=1
+    fi
+    if [ "$msg_nova" = 1 ] && [ -n "$HASH_DIFF_NOVO" ] && [ "$HASH_DIFF_NOVO" = "$HASH_DIFF_ANTERIOR" ]; then
+      log "  diff.patch idêntico ao de $(basename "$rundir_anterior"), mensagem nova (mensagens.txt difere): pipeline inteiro e juiz de novo"
+    elif [ -n "$HASH_DIFF_NOVO" ] && [ "$HASH_DIFF_NOVO" = "$HASH_DIFF_ANTERIOR" ]; then
       RETRY_SEM_MUDANCA=1; ENF_OK=1
       RESULT="reprovado"
       MOTIVO="retry_sem_mudanca: diff.patch idêntico ao da tentativa anterior (sha256 $HASH_DIFF_NOVO); juiz não chamado"

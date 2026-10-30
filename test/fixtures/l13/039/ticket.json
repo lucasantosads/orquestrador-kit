@@ -1,0 +1,80 @@
+{
+  "id": "039",
+  "bloco": "B1",
+  "frente": "B1-F9",
+  "slug": "fin-v2-por-closer",
+  "origem": "humano",
+  "objetivo": "(1) Crie src/lib/financeiro/v2/por-closer.ts. Exporte `interface BaseCloser` com as leituras e `lerBaseCloser(db: SupabaseClient, mes: string): Promise<Leitura<BaseCloser>>` lendo com lerTudo e só select: closers (id, nome, ativo), employees (id, entity_id), clientes_receita (id, nome, closer, status_financeiro, valor_mensal, categoria), pagamentos_mensais do mês (cliente_id, valor_pago, status; eq mes_referencia primeiroDia(mes)) e churn_log do mês (cliente_receita_id, data_saida, mensalidade; eq revertido false; data_saida de primeiroDia a ultimoDia do mês); falha em qualquer leitura -> ok:false. E `calcularPorCloser(base: BaseCloser, comissao: Leitura<ComissaoResult>)` pura -> { ranking: LinhaCloser[]; herdada: LinhaCloser[]; foraDoRanking: { direcao: Resumo; semCloser: Resumo }; totais: { recebido: number; quantidadeRecebida: number; saidas: number; mrrPerdido: number; churnSemVinculo: { saidas: number; mrrPerdido: number } }; comissao: { ok: true } | { ok: false; falha: string } }, com `LinhaCloser { closer_id, nome, ativos, mrr, recebido, quantidadeRecebida, saidas, mrrPerdido, comissao: number | null }` e `Resumo` com os mesmos números sem closer_id e sem comissão. Regras: o cliente é do closer cujo closers.nome (trim) é igual a clientes_receita.closer (trim); sem par (\"-\", vazio ou nome desconhecido) = semCloser. Diretor por isCloserDiretor(closer_id) de @/lib/closers-diretores, nunca por nome: vai para foraDoRanking.direcao e nunca entra no ranking. Closer com ativo false (ex-closer; hoje a Larissa, que virou SDR em out/2026) vai para herdada, sem posição. ativos e mrr = clientes com status_financeiro 'ativo' (MRR canônico; MDS dentro). recebido = soma de valor_pago dos pagamentos do mês com recebeu() de ./recebido (pago ou parcial), pelo dono do cliente. saidas e mrrPerdido = linhas de churn_log do mês pelo cliente_receita_id; linha sem cliente_receita_id vai para totais.churnSemVinculo. comissão do mês: só colaboradores com funcao 'closer', casando colaborador.id === closer_id ou colaborador.employee_id === employees.id do employee cujo entity_id é o closer_id; leitura com falha ou lista de colaboradores vazia (como lerComissao em fontes.ts) -> comissao null em todas as linhas e comissao ok:false com a falha; closer do ranking sem par na lista -> null (nunca 0 inventado); herdada e foraDoRanking não têm comissão. Ranking por recebido desc, empate por nome. totais.recebido e quantidadeRecebida = todos os pagamentos pago ou parcial do mês; a soma de ranking + herdada + direção + semCloser tem de bater com eles. totais.saidas e mrrPerdido = todas as linhas de churn_log do mês. Dinheiro em centavos. (2) Crie src/app/api/financeiro-v2/analise/closers/route.ts: GET com autorizar() e mesPedido(); lerBaseCloser(a.db, mes) com falha -> 503 { ok: false, erro }; comissão = calcularComissao({ mes_referencia: mes }) de @/lib/comissao-canonica dentro de try/catch que vira Leitura ok:false (falha da comissão não derruba a rota); 200 { ok: true, mes, ...calcularPorCloser(...), fonte: { regra, tabelas, lidoEm: a.hoje.iso } }; Cache-Control no-store; só select. (3) Crie src/lib/financeiro/v2/__tests__/por-closer.test.ts: diretor fora do ranking mesmo com o maior recebido (id a987d655-88d0-490b-ad73-efe04843a2ec, que está no fallback de closers-diretores); closer inativo em herdada; \"-\" e nome desconhecido em semCloser; soma das partes bate com totais.recebido; churn sem vínculo separado; comissão casa por entity_id em mês aberto e por employee_id em mês fechado; comissão com falha ou lista vazia vira null, nunca 0; lerBaseCloser com banco falso (filtro de mês e de revertido aplicados, falha = ok:false, nenhuma escrita); handler GET com mocks de @/lib/financeiro/v2/servidor e @/lib/comissao-canonica: 503 na falha de leitura e 200 com comissao ok:false quando calcularComissao lança. Diga no corpo do commit qual caso foi visto falhando antes do código existir (controle negativo). FORA DE ESCOPO: src/lib/comissao-canonica.ts e src/lib/closers-diretores.ts (só importar), cálculo de faixa ou meta, fontes.ts, tela (ticket 040), portal do closer, escrita em qualquer tabela.",
+  "pathspec_allowlist": [
+    "src/lib/financeiro/v2/por-closer.ts",
+    "src/app/api/financeiro-v2/analise/closers/route.ts",
+    "src/lib/financeiro/v2/__tests__/por-closer.test.ts"
+  ],
+  "cria_novo": [
+    "src/lib/financeiro/v2/por-closer.ts",
+    "src/app/api/financeiro-v2/analise/closers/route.ts",
+    "src/lib/financeiro/v2/__tests__/por-closer.test.ts"
+  ],
+  "dependencias": [],
+  "diff_estimado": 520,
+  "risco": "",
+  "criterios_aceite": [
+    {
+      "tipo": "alvo",
+      "descricao": "teste da visão por closer verde",
+      "cmd": "node_modules/.bin/vitest run src/lib/financeiro/v2/__tests__/por-closer.test.ts >/dev/null 2>&1 && echo OK",
+      "espera": "OK"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "rota por closer não grava",
+      "cmd": "grep -c -E '\\.(insert|update|upsert|delete|rpc)\\(' \"src/app/api/financeiro-v2/analise/closers/route.ts\"",
+      "espera": "0",
+      "exemplos_regex": [
+        {
+          "regex": "\\.(insert|update|upsert|delete|rpc)\\(",
+          "positivo": "db.rpc(\"fin_x\", {",
+          "negativo": "insertAfter(x)"
+        }
+      ]
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "diretor sai do ranking pela regra canônica",
+      "cmd": "grep -q -F 'isCloserDiretor' \"src/lib/financeiro/v2/por-closer.ts\" && echo SIM",
+      "espera": "SIM"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "diretor não é filtrado por nome",
+      "cmd": "grep -c -F '\"Lucas\"' \"src/lib/financeiro/v2/por-closer.ts\"",
+      "espera": "0"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "lib não recalcula faixa de comissão",
+      "cmd": "grep -c -F 'config_comissao' \"src/lib/financeiro/v2/por-closer.ts\"",
+      "espera": "0"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "suíte do v2 continua verde",
+      "cmd": "node_modules/.bin/vitest run src/lib/financeiro/v2 >/dev/null 2>&1 && echo OK",
+      "espera": "OK"
+    },
+    {
+      "tipo": "avaliador",
+      "descricao": "avaliador: diretor fora do ranking por isCloserDiretor; ex-closer em carteira herdada sem posição; comissão só pela comissao-canonica, casada por id, null quando sem leitura e nunca 0 inventado; soma das partes bate com o recebido do mês; churn sem vínculo separado; falha de leitura 503; só select; handler real testado com controle negativo relatado.",
+      "cmd": "true",
+      "espera": "avaliador"
+    }
+  ],
+  "status": "pendente",
+  "notas_status": "",
+  "hash_candidato": "",
+  "sinal_hash": "",
+  "gate_ok": "",
+  "pid": null,
+  "iniciado_em": "",
+  "adiado_ate": ""
+}

@@ -1,0 +1,5 @@
+{
+  "desfecho": "reprovado",
+  "causa": "criterio_qualidade",
+  "motivo": "critério(s) reprovado(s): juiz: O ticket exige relatar no corpo do commit qual caso foi visto falhando antes do código existir, mas o commit 5818364 diz que o controle negativo 'NÃO foi visto falhando antes do código existir' e que o teste nunca rodou sem a lib. Os casos com 'controle embutido' que ele cita (linha revertida, 60≠75, 503 com coortes undefined) são asserções do próprio teste e não substituem o vermelho observado. O resto do diff atende as regras: coorte por mes_fechamento, semData fora da base, média ponderada em coorte.ts:150-162, churnPorMes com e sem vínculo, 503 em route.ts:20 e só select.; avaliador: coorte pelo mês de entrada; saída sem data fora da base (regra de 07/10/2026) e contada; média ponderada; churn por mês igual à regra da vw_admin_churn_mensal; falha de leitura vira 503, nunca lista vazia; só select; handler real testado com controle negativo relatado."
+}
