@@ -172,7 +172,9 @@ function bloqueioDoLog(fonte: FonteLegado, tk: TicketLido | null, n: number): { 
   const arquivos: string[] = []
   const refs: Ref[] = []
   for (let i = 0; i < log.length; i++) {
-    if (!/overwritten by merge:/.test(log[i]!.t)) continue
+    // O log é do loop do Comarka, que roda o git no locale da máquina: aceita
+    // também a tradução pt_BR do git.mo (etapa L13 P6).
+    if (!/overwritten by merge:|substituíd[ao]s pelo merge:/.test(log[i]!.t)) continue
     refs.push(ref(a, log[i]!.n, log[i]!.t))
     for (let j = i + 1; j < log.length && /^\s+\S/.test(log[j]!.t); j++) {
       refs.push(ref(a, log[j]!.n, log[j]!.t))

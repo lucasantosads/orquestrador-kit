@@ -462,10 +462,14 @@ export function lerDaBase(wt: string, base: string): LerBase {
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
         maxBuffer: 64 * 1024 * 1024,
+        // LC_ALL=C: a decisão abaixo lê a mensagem do git. Com o git em pt_BR
+        // ("não existe em") o regex em inglês falhava e o executor morria
+        // (porte do bfebb2e1 do dashboard-comercial, etapa L13 P6, 30/10/2026).
+        env: { ...process.env, LC_ALL: 'C', LANG: 'C' },
       })
     } catch (e) {
       const err = String((e as { stderr?: unknown }).stderr ?? '')
-      if (/does not exist in|exists on disk, but not in/.test(err)) return null
+      if (/does not exist in|exists on disk, but not in|não existe em|existe no disco, mas não em/.test(err)) return null
       throw new Error(`git show ${base}:${path} falhou: ${err.trim() || (e as Error).message}`)
     }
   }

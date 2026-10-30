@@ -7,6 +7,8 @@
  * Os módulos entram por import dinâmico tolerante: sem `extrair.ts` o vermelho
  * é de asserção.
  */
+import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -91,5 +93,25 @@ describe('regras do triador (peça 3)', () => {
     const x = m ? m.extrair(ev) : NADA
     expect([x.classe, x.firme, x.regra, x.requeue]).toEqual(['R5', true, 'D5', 'sim_apos:base_verde:test/x.test.ts'])
     expect(x.evidencia).toEqual([ref])
+  })
+})
+
+// Etapa L13 (P6): o leitor do legado reconhece o merge recusado pela linha do
+// git. Com o git em pt_BR a linha é a tradução do git.mo ("seriam substituídas
+// pelo merge:"), e o D1 sumia em silêncio. Caso 36-940 com a linha traduzida.
+describe('L13 P6: merge recusado com o git em pt_BR', () => {
+  it('36-940 com a linha do git em pt_BR acha os mesmos arquivos que em inglês', async () => {
+    const m = await carregar()
+    const tmp = mkdtempSync(join(tmpdir(), 'triador-ptbr-'))
+    cpSync(join(FX, '36-940-L85222'), tmp, { recursive: true })
+    const log = join(tmp, 'log.txt')
+    writeFileSync(log, readFileSync(log, 'utf8').replaceAll(
+      'error: Your local changes to the following files would be overwritten by merge:',
+      'erro: Suas alterações locais nos seguintes arquivos seriam substituídas pelo merge:',
+    ))
+    const en = m?.lerCasoDeFixture(join(FX, '36-940-L85222'))
+    const pt = m?.lerCasoDeFixture(tmp)
+    expect(en?.merge_recusado?.arquivos).toEqual(['docs/fila/854-remove-equipe-geral.md'])
+    expect(pt?.merge_recusado?.arquivos).toEqual(en?.merge_recusado?.arquivos)
   })
 })
