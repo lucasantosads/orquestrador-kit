@@ -1155,11 +1155,33 @@ VIZ_AMPLIADA=""; VIZ_DECIDIU=""; VIZ_JA=""; VIZ_BLOCO=""
 # sai cedo com RETRY_SEM_MUDANCA=1 e o drive_ticket bloqueia com o motivo
 # retry_sem_mudanca, sem passar pelo decisao.ts (fora do escopo do 623).
 RETRY_SEM_MUDANCA=0; HASH_DIFF_ANTERIOR=""; HASH_DIFF_NOVO=""
+# IMPEDIMENTO DECLARADO (etapa L13, P2): a nota do agente quando ele declarou
+# impedimento e não mudou o diff. Não vazio = o drive_ticket bloqueia com a causa
+# IMPEDIMENTO_DECLARADO, sem juiz e sem consumir tentativa.
+IMPEDIMENTO_DECLARADO=""
 # sha256_arquivo <arquivo> -> o hex do sha256. `shasum` (macOS) ou `sha256sum`
 # (Linux): o motor roda nos dois.
 sha256_arquivo() {
   if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | cut -d' ' -f1
   else sha256sum "$1" | cut -d' ' -f1; fi
+}
+# impedimento_declarado <worktree> <base> <head_antes_do_agente> -> as linhas
+# `IMPEDIMENTO:` dos commits DESTA tentativa, unidas por " | ", ou vazio.
+# Commits desta tentativa = os que a HEAD alcança e a HEAD de antes do agente
+# não (pega commit novo e amend). Só conta quando TODO commit desta tentativa
+# tem corpo (sem assunto, sem o trailer do config, sem Co-Authored-By, sem
+# linha vazia) feito só de linhas `IMPEDIMENTO:`: o 043 do dashboard (3be96fdc)
+# casa; o 037 (ce346b5d, controle negativo com um IMPEDIMENTO no meio) não.
+impedimento_declarado() {
+  local wt="$1" base="$2" antes="$3" trailer c corpo linhas=""
+  trailer="$(cfg '.executor.trailer_commit' 2>/dev/null || true)"
+  for c in $(git -C "$wt" rev-list HEAD "^$base" ${antes:+"^$antes"} 2>/dev/null); do
+    corpo="$(git -C "$wt" log -1 --format=%b "$c" | grep -viE "^(${trailer:-Orq-Ticket}|Co-Authored-By):" | grep -v '^[[:space:]]*$' || true)"
+    [ -n "$corpo" ] || return 0
+    printf '%s\n' "$corpo" | grep -qv '^IMPEDIMENTO:' && return 0
+    linhas="${linhas:+$linhas | }$(printf '%s' "$corpo" | paste -sd'|' - | sed 's/|/ | /g')"
+  done
+  printf '%s' "$linhas"
 }
 run_attempt() {
   local file="$1" wt="$2" rundir="$3" modelo="$4" motivo_anterior="$5" attempt="${6:-0}" base_fixo="${7:-}" rundir_anterior="${8:-}"
@@ -1178,6 +1200,7 @@ run_attempt() {
   local piso; piso="$(tools_proibidas)"
   build_prompt "$file" "$motivo_anterior" "$tools" > "$prompt"
   base="${base_fixo:-$(git -C "$wt" rev-parse HEAD)}"
+  local head_antes; head_antes="$(git -C "$wt" rev-parse HEAD 2>/dev/null || true)"
 
   t0="$(date +%s)"
   if [ -n "$STUB" ]; then
@@ -1222,6 +1245,26 @@ run_attempt() {
   # que só existe quando o desfecho é bom não serve para diagnosticar o ruim.
   grava_diff_patch "$wt" "$base" "$rundir"
   grava_mensagens "$wt" "$base" "$rundir"
+
+  # 5a · IMPEDIMENTO declarado (etapa L13, P2, M-17): diff vazio ou igual ao da
+  # anterior, e o agente só declarou impedimento. É defeito de spec, não falta de
+  # hipótese: bloqueia com a nota dele, sem juiz e sem contar como retry sem
+  # mudança. Vem ANTES do 5b, que mandaria ao juiz (mensagem nova, P1).
+  IMPEDIMENTO_DECLARADO=""
+  if [ "${AGENTE_RC:-0}" = 0 ]; then
+    local diff_parado=0
+    if [ ! -s "$rundir/diff.patch" ]; then diff_parado=1
+    elif [ -n "$rundir_anterior" ] && [ -f "$rundir_anterior/diff.patch" ] \
+         && [ "$(sha256_arquivo "$rundir_anterior/diff.patch")" = "$(sha256_arquivo "$rundir/diff.patch")" ]; then diff_parado=1; fi
+    [ "$diff_parado" = 1 ] && IMPEDIMENTO_DECLARADO="$(impedimento_declarado "$wt" "$base" "$head_antes")"
+    if [ -n "$IMPEDIMENTO_DECLARADO" ]; then
+      RESULT="bloqueado"; ENF_OK=1
+      MOTIVO="IMPEDIMENTO_DECLARADO: $IMPEDIMENTO_DECLARADO"
+      jq -n --arg m "$MOTIVO" '{desfecho:"bloqueado", causa:"IMPEDIMENTO_DECLARADO", motivo:$m, contaComoRetry:false}' > "$rundir/veredito.json"
+      log "  IMPEDIMENTO declarado pelo agente, diff sem mudança — juiz NÃO chamado: $IMPEDIMENTO_DECLARADO"
+      return 0
+    fi
+  fi
 
   # 5b · retry sem mudança (ticket 623): da segunda tentativa em diante, diff
   # idêntico ao da anterior encerra a tentativa AQUI — sem enforcement, gates,
@@ -1741,6 +1784,17 @@ drive_ticket() {
       event "$id" BLOQUEADO "motivo=base_vermelha" "arquivos=$BASE_VERMELHA" "attempt=$((attempt + 1))"
       status_set "estado=ocioso" "ultimo=$id BLOQUEADO $(date '+%H:%M:%S') (${DUR}s)" "motivo=bloqueado: base_vermelha"
       DESFECHO_NOMEADO=1; log "BLOQUEADO: base_vermelha ($BASE_VERMELHA)"; cleanup_worktree "$id" "$wt"; return 0
+    fi
+
+    # Etapa L13 (P2): IMPEDIMENTO declarado bloqueia direto, com a nota do
+    # agente. RESULT é 'bloqueado': a tentativa já foi devolvida acima.
+    if [ -n "${IMPEDIMENTO_DECLARADO:-}" ]; then
+      ticket_set_status "$file" "bloqueado"
+      ticket_set_nota "$file" "bloqueado: IMPEDIMENTO_DECLARADO — na tentativa $((attempt + 1)) o agente declarou impedimento e não mudou o diff; o juiz não foi chamado. Nota do agente: $IMPEDIMENTO_DECLARADO. Evidência: runs/$id/$(basename "$rundir")/mensagens.txt. Decida a spec (objetivo, allowlist ou dependência) antes de reabrir."
+      ticket_commit "$file" "fila: $id bloqueado (IMPEDIMENTO_DECLARADO)"
+      event "$id" BLOQUEADO "motivo=IMPEDIMENTO_DECLARADO" "attempt=$((attempt + 1))"
+      status_set "estado=ocioso" "ultimo=$id BLOQUEADO $(date '+%H:%M:%S') (${DUR}s)" "motivo=bloqueado: IMPEDIMENTO_DECLARADO"
+      DESFECHO_NOMEADO=1; log "BLOQUEADO: IMPEDIMENTO_DECLARADO"; cleanup_worktree "$id" "$wt"; return 0
     fi
 
     # Ticket 623: retry sem mudança bloqueia direto, sem juiz e sem nova

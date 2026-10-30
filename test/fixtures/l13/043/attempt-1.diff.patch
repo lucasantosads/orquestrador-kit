@@ -1,0 +1,370 @@
+diff --git a/src/components/financeiro-v2/__tests__/mds-util.test.ts b/src/components/financeiro-v2/__tests__/mds-util.test.ts
+new file mode 100644
+index 00000000..eccd3338
+--- /dev/null
++++ b/src/components/financeiro-v2/__tests__/mds-util.test.ts
+@@ -0,0 +1,58 @@
++import { describe, expect, it } from "vitest";
++import { lerValorDigitado, previaRateio, textoSituacao } from "../mds-util";
++
++describe("lerValorDigitado", () => {
++  it.each(["7.500,00", "7500,00", "7500.00", " R$ 7.500,00 ", "7500"])("aceita %j como 7500", (t) => {
++    expect(lerValorDigitado(t)).toEqual({ ok: true, valor: 7500 });
++  });
++  it("mantém os centavos", () => {
++    expect(lerValorDigitado("1.234,5")).toEqual({ ok: true, valor: 1234.5 });
++    expect(lerValorDigitado("0,01")).toEqual({ ok: true, valor: 0.01 });
++  });
++  it.each(["", "abc", "7500,001", "7500.001", "1,2,3", "7.50,00", "0", "0,00", "-5"])("recusa %j", (t) => {
++    expect(lerValorDigitado(t).ok).toBe(false);
++  });
++});
++
++describe("previaRateio", () => {
++  const clientes = [
++    { nome: "A", valor_mensal: 1000 },
++    { nome: "B", valor_mensal: 1000 },
++    { nome: "C", valor_mensal: 1000 },
++  ];
++  it("soma igual ao valor digitado, ao centavo, com o resto no último", () => {
++    const r = previaRateio(100, clientes);
++    expect(r.map((x) => x.parte)).toEqual([33.33, 33.33, 33.34]);
++    expect(Math.round(r.reduce((s, x) => s + x.parte, 0) * 100)).toBe(10000);
++  });
++  it("é proporcional à mensalidade e preserva a ordem recebida", () => {
++    const r = previaRateio(7500, [
++      { nome: "X", valor_mensal: 1000 },
++      { nome: "Y", valor_mensal: 3000 },
++      { nome: "Z", valor_mensal: 1000 },
++    ]);
++    expect(r).toEqual([{ nome: "X", parte: 1500 }, { nome: "Y", parte: 4500 }, { nome: "Z", parte: 1500 }]);
++  });
++  it("soma fecha em valores quebrados", () => {
++    const cs = Array.from({ length: 15 }, (_, i) => ({ nome: `C${i}`, valor_mensal: 333.33 + i * 17.17 }));
++    const r = previaRateio(7499.99, cs);
++    expect(r).toHaveLength(15);
++    expect(Math.round(r.reduce((s, x) => s + x.parte, 0) * 100)).toBe(749999);
++  });
++  it("sem clientes ou sem mensalidade não inventa rateio", () => {
++    expect(previaRateio(100, [])).toEqual([]);
++    expect(previaRateio(100, [{ nome: "A", valor_mensal: 0 }])).toEqual([]);
++  });
++});
++
++describe("textoSituacao", () => {
++  it("com bloco", () => {
++    expect(textoSituacao({ valor: 7500, data_recebimento: "2026-11-05", clientes: 15 })).toBe("Pago em 05/11: R$ 7.500,00 para 15 clientes");
++  });
++  it("com um cliente só, no singular", () => {
++    expect(textoSituacao({ valor: 500, data_recebimento: "2026-11-05", clientes: 1 })).toBe("Pago em 05/11: R$ 500,00 para 1 cliente");
++  });
++  it("sem bloco", () => {
++    expect(textoSituacao(null)).toBe("Pagamento da MDS ainda não registrado");
++  });
++});
+diff --git a/src/components/financeiro-v2/entradas-cliente.tsx b/src/components/financeiro-v2/entradas-cliente.tsx
+index 08173d39..1f4c9c67 100644
+--- a/src/components/financeiro-v2/entradas-cliente.tsx
++++ b/src/components/financeiro-v2/entradas-cliente.tsx
+@@ -14,6 +14,7 @@ import { diaMes, mesLongo, mesNome, reais } from "./format";
+ import { mesHojeBRT } from "./interativos";
+ import { FILTROS, acoesDe, filtrarCobrancas, rotuloStatus, type Acao, type Filtro } from "./entradas-util";
+ import { DialogoBaixa, DialogoMotivo } from "./entradas-acoes";
++import { MdsCartao } from "./mds-cartao";
+ 
+ interface Corpo { ok: true; mes: string; cobrancas: CobrancaMes[]; semCobranca: SemCobranca[]; resumo: ResumoEntradas }
+ type Pedido = { estado: "carregando" } | { estado: "erro" } | { estado: "ok"; dados: Corpo };
+@@ -205,6 +206,8 @@ export function EntradasCliente() {
+         </section>
+       </div>
+ 
++      <MdsCartao mes={mes} resumoMds={d?.resumo?.mds ?? null} aoMudar={recarregar} />
++
+       {p.estado === "erro" && <Cartao><Erro oQue="as entradas do mês" aoTentar={tentarDeNovo} /></Cartao>}
+ 
+       {d && d.semCobranca.length > 0 && (
+diff --git a/src/components/financeiro-v2/mds-cartao.tsx b/src/components/financeiro-v2/mds-cartao.tsx
+new file mode 100644
+index 00000000..8f483e63
+--- /dev/null
++++ b/src/components/financeiro-v2/mds-cartao.tsx
+@@ -0,0 +1,220 @@
++"use client";
++
++/**
++ * Cartão da MDS em Entradas: a MDS paga num pagamento só para vários clientes. Lê o bloco do mês
++ * (GET /api/financeiro-v2/entradas/mds), registra o pagamento e estorna. O rateio por cliente é do servidor;
++ * aqui só se mostra o que ele devolveu. Falha de leitura é erro com "tentar de novo", nunca "não registrado".
++ */
++import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
++import { Cartao, Erro, Esqueleto, StatusTag } from "./ds";
++import { reais } from "./format";
++import { hojeBRT } from "./lancar-saida-util";
++import { lerValorDigitado, textoSituacao } from "./mds-util";
++
++interface Bloco {
++  id: string;
++  valor: number;
++  data_recebimento: string;
++  clientes: number;
++  rateio: { nome: string; valor: number }[];
++}
++type Pedido = { estado: "carregando" } | { estado: "erro" } | { estado: "ok"; bloco: Bloco | null };
++
++const campo = "w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-base";
++const rotulo = "t-label flex flex-col gap-1";
++
++function lerBloco(b: unknown): Bloco | null | undefined {
++  if (b === null) return null;
++  if (!b || typeof b !== "object") return undefined;
++  const o = b as Record<string, unknown>;
++  if (typeof o.id !== "string" || typeof o.valor !== "number" || typeof o.data_recebimento !== "string" || typeof o.clientes !== "number") return undefined;
++  const rateio = Array.isArray(o.rateio)
++    ? (o.rateio as Record<string, unknown>[]).map((r) => ({ nome: String(r?.nome ?? "cliente"), valor: Number(r?.valor) }))
++    : [];
++  return { id: o.id, valor: o.valor, data_recebimento: o.data_recebimento, clientes: o.clientes, rateio };
++}
++
++function useBloco(mes: string): [Pedido, () => void, () => void] {
++  const [p, setP] = useState<Pedido>({ estado: "carregando" });
++  const [n, setN] = useState(0);
++  const mesLido = useRef<string | null>(null);
++  useEffect(() => {
++    let vivo = true;
++    if (mesLido.current !== mes) { mesLido.current = mes; setP({ estado: "carregando" }); }
++    fetch(`/api/financeiro-v2/entradas/mds?mes=${mes}`, { cache: "no-store" })
++      .then(async (r) => {
++        const j = await r.json().catch(() => null);
++        if (!vivo) return;
++        const bloco = r.ok && j?.ok ? lerBloco(j.bloco) : undefined;
++        setP(bloco === undefined ? { estado: "erro" } : { estado: "ok", bloco });
++      })
++      .catch(() => vivo && setP({ estado: "erro" }));
++    return () => { vivo = false; };
++  }, [mes, n]);
++  const recarregar = useCallback(() => setN((x) => x + 1), []);
++  const tentarDeNovo = useCallback(() => { setP({ estado: "carregando" }); setN((x) => x + 1); }, []);
++  return [p, recarregar, tentarDeNovo];
++}
++
++/** POST com JSON. Devolve null em sucesso ou a mensagem da API (inclui a lista de clientes já baixados). */
++async function enviar(url: string, corpo: unknown): Promise<string | null> {
++  try {
++    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
++    if (r.ok) return null;
++    const j = (await r.json().catch(() => null)) as { erro?: unknown } | null;
++    if (typeof j?.erro === "string" && j.erro) return j.erro;
++    return r.status === 403 ? "Sem permissão para esta ação." : "Não gravou. Tente de novo.";
++  } catch {
++    return "Sem conexão com o servidor. Confira o cartão antes de tentar de novo.";
++  }
++}
++
++function Casca({ titulo, gravando, aoFechar, children }: { titulo: string; gravando: boolean; aoFechar: () => void; children: ReactNode }) {
++  function aoTeclar(e: KeyboardEvent<HTMLDivElement>) {
++    if (e.key === "Escape" && !gravando) { e.stopPropagation(); aoFechar(); }
++  }
++  return (
++    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onKeyDown={aoTeclar}>
++      <div role="dialog" aria-modal="true" aria-label={titulo} aria-busy={gravando || undefined} className="ds-cartao max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-lg bg-white p-4 sm:rounded-lg">
++        <h2 className="t-title mb-3">{titulo}</h2>
++        {children}
++      </div>
++    </div>
++  );
++}
++
++function Rodape({ gravando, rotuloEnviar, rotuloGravando, aoFechar }: { gravando: boolean; rotuloEnviar: string; rotuloGravando: string; aoFechar: () => void }) {
++  return (
++    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
++      <button type="button" className="fv2-btn" disabled={gravando} onClick={aoFechar}>Cancelar</button>
++      <button type="submit" className="fv2-btn fv2-btn-principal" disabled={gravando}>{gravando ? rotuloGravando : rotuloEnviar}</button>
++    </div>
++  );
++}
++
++function DialogoRegistrar({ mes, valorPadrao, aoConcluir, aoFechar }: { mes: string; valorPadrao: number | null; aoConcluir: () => void; aoFechar: () => void }) {
++  const hoje = hojeBRT();
++  const [valorTxt, setValorTxt] = useState(valorPadrao === null ? "" : valorPadrao.toFixed(2).replace(".", ","));
++  const [data, setData] = useState(hoje);
++  const [obs, setObs] = useState("");
++  const [erro, setErro] = useState<string | null>(null);
++  const [gravando, setGravando] = useState(false);
++  const travado = useRef(false);
++
++  async function enviarForm(e: FormEvent) {
++    e.preventDefault();
++    if (travado.current) return;
++    const v = lerValorDigitado(valorTxt);
++    if (!v.ok) { setErro(v.erro); return; }
++    if (!data || data < `${mes}-01` || data > hoje) { setErro("A data deve estar entre o primeiro dia do mês e hoje."); return; }
++    travado.current = true;
++    setGravando(true);
++    setErro(null);
++    const falha = await enviar("/api/financeiro-v2/entradas/mds", { mes, valor: v.valor, data, observacao: obs.trim() || null });
++    if (falha) { setErro(falha); setGravando(false); travado.current = false; return; }
++    setGravando(false);
++    aoConcluir();
++  }
++
++  return (
++    <Casca titulo="Registrar pagamento da MDS" gravando={gravando} aoFechar={aoFechar}>
++      <form className="grid gap-3" onSubmit={enviarForm}>
++        <p className="t-body">O valor é dividido entre os clientes da MDS pela mensalidade de cada um.</p>
++        <label className={rotulo}>Valor recebido (R$)
++          <input className={campo} inputMode="decimal" value={valorTxt} onChange={(e) => setValorTxt(e.target.value)} disabled={gravando} placeholder="7.500,00" />
++        </label>
++        <label className={rotulo}>Data do recebimento
++          <input className={campo} type="date" min={`${mes}-01`} max={hoje} value={data} onChange={(e) => setData(e.target.value)} disabled={gravando} />
++        </label>
++        <label className={rotulo}>Observação (opcional)
++          <textarea className={campo} rows={2} maxLength={300} value={obs} onChange={(e) => setObs(e.target.value)} disabled={gravando} />
++        </label>
++        {erro && <div role="alert" className="min-w-0 whitespace-pre-line break-words"><StatusTag tipo="problema">{erro}</StatusTag></div>}
++        <Rodape gravando={gravando} rotuloEnviar="Registrar pagamento" rotuloGravando="Gravando…" aoFechar={aoFechar} />
++      </form>
++    </Casca>
++  );
++}
++
++function DialogoEstornar({ blocoId, aoConcluir, aoFechar }: { blocoId: string; aoConcluir: () => void; aoFechar: () => void }) {
++  const [motivo, setMotivo] = useState("");
++  const [erro, setErro] = useState<string | null>(null);
++  const [gravando, setGravando] = useState(false);
++  const travado = useRef(false);
++
++  async function enviarForm(e: FormEvent) {
++    e.preventDefault();
++    if (travado.current) return;
++    if (!motivo.trim()) { setErro("Informe o motivo do estorno."); return; }
++    travado.current = true;
++    setGravando(true);
++    setErro(null);
++    const falha = await enviar(`/api/financeiro-v2/entradas/mds/${blocoId}/estorno`, { motivo: motivo.trim() });
++    if (falha) { setErro(falha); setGravando(false); travado.current = false; return; }
++    setGravando(false);
++    aoConcluir();
++  }
++
++  return (
++    <Casca titulo="Estornar pagamento da MDS" gravando={gravando} aoFechar={aoFechar}>
++      <form className="grid gap-3" onSubmit={enviarForm}>
++        <p className="t-body">As baixas dos clientes da MDS deste mês voltam ao estado anterior.</p>
++        <label className={rotulo}>Motivo (obrigatório)
++          <textarea className={campo} rows={3} maxLength={300} value={motivo} onChange={(e) => setMotivo(e.target.value)} disabled={gravando} />
++        </label>
++        {erro && <div role="alert" className="min-w-0 whitespace-pre-line break-words"><StatusTag tipo="problema">{erro}</StatusTag></div>}
++        <Rodape gravando={gravando} rotuloEnviar="Estornar" rotuloGravando="Estornando…" aoFechar={aoFechar} />
++      </form>
++    </Casca>
++  );
++}
++
++export function MdsCartao({ mes, resumoMds, aoMudar }: { mes: string; resumoMds: { clientes: number; valorMensal: number } | null; aoMudar: () => void }) {
++  const [p, recarregar, tentarDeNovo] = useBloco(mes);
++  const [dialogo, setDialogo] = useState<"registrar" | "estornar" | null>(null);
++  const [aberta, setAberta] = useState(false);
++
++  const concluir = useCallback(() => { setDialogo(null); recarregar(); aoMudar(); }, [recarregar, aoMudar]);
++  const bloco = p.estado === "ok" ? p.bloco : null;
++
++  return (
++    <Cartao titulo="MDS: pagamento em bloco" id="mds">
++      {p.estado === "carregando" && <Esqueleto altura={72} />}
++      {p.estado === "erro" && <Erro oQue="o pagamento da MDS" aoTentar={tentarDeNovo} />}
++      {p.estado === "ok" && !bloco && (
++        <div className="grid min-w-0 gap-2">
++          <p className="t-body-strong">{textoSituacao(null)}</p>
++          <p className="t-label ds-muted">
++            {resumoMds
++              ? `${resumoMds.clientes} ${resumoMds.clientes === 1 ? "cliente" : "clientes"} da MDS sem cobrança no mês · mensalidades somam ${reais(resumoMds.valorMensal)}`
++              : "Soma das mensalidades da MDS: s/ dado"}
++          </p>
++          <div><button type="button" className="fv2-btn fv2-btn-principal" onClick={() => setDialogo("registrar")}>Registrar pagamento da MDS</button></div>
++        </div>
++      )}
++      {p.estado === "ok" && bloco && (
++        <div className="grid min-w-0 gap-2">
++          <p className="t-body-strong">{textoSituacao(bloco)}</p>
++          <div className="flex flex-wrap gap-2">
++            <button type="button" className="fv2-btn" aria-expanded={aberta} onClick={() => setAberta((x) => !x)}>{aberta ? "Recolher rateio" : "Ver rateio"}</button>
++            <button type="button" className="fv2-btn" onClick={() => setDialogo("estornar")}>Estornar</button>
++          </div>
++          {aberta && (
++            <ul className="grid gap-1">
++              {bloco.rateio.length === 0 && <li className="t-label ds-muted">Rateio n/d</li>}
++              {bloco.rateio.map((r, i) => (
++                <li key={i} className="flex justify-between gap-2 t-body">
++                  <span className="min-w-0 break-words">{r.nome}</span>
++                  <span className="shrink-0">{reais(Number.isFinite(r.valor) ? r.valor : null)}</span>
++                </li>
++              ))}
++            </ul>
++          )}
++        </div>
++      )}
++
++      {dialogo === "registrar" && <DialogoRegistrar mes={mes} valorPadrao={resumoMds?.valorMensal ?? null} aoConcluir={concluir} aoFechar={() => setDialogo(null)} />}
++      {dialogo === "estornar" && bloco && <DialogoEstornar blocoId={bloco.id} aoConcluir={concluir} aoFechar={() => setDialogo(null)} />}
++    </Cartao>
++  );
++}
+diff --git a/src/components/financeiro-v2/mds-util.ts b/src/components/financeiro-v2/mds-util.ts
+new file mode 100644
+index 00000000..bd5a8f19
+--- /dev/null
++++ b/src/components/financeiro-v2/mds-util.ts
+@@ -0,0 +1,53 @@
++/**
++ * Funções puras do cartão da MDS (pagamento em bloco). A prévia do rateio é só para mostrar na tela:
++ * quem grava e decide os valores por cliente é a função SQL no servidor.
++ */
++import { diaMes, reais } from "./format";
++
++export type ValorDigitado = { ok: true; valor: number } | { ok: false; erro: string };
++
++const ERRO_VALOR = "Valor inválido. Use o formato 7.500,00.";
++
++/** Aceita "7.500,00", "7500,00" e "7500.00" (também com "R$" e inteiros). Devolve número com no máximo 2 casas ou erro. */
++export function lerValorDigitado(texto: string): ValorDigitado {
++  const t = texto.replace(/R\$/gi, "").replace(/\s/g, "");
++  if (t === "") return { ok: false, erro: "Informe o valor." };
++
++  let normal: string;
++  if (t.includes(",")) {
++    // vírgula decimal: os pontos antes dela só podem ser milhar (grupos de 3)
++    if (!/^\d{1,3}(\.\d{3})*,\d{1,2}$|^\d+,\d{1,2}$/.test(t)) return { ok: false, erro: ERRO_VALOR };
++    normal = t.replace(/\./g, "").replace(",", ".");
++  } else if (/^\d+(\.\d{1,2})?$/.test(t)) {
++    normal = t;
++  } else {
++    return { ok: false, erro: ERRO_VALOR };
++  }
++
++  const valor = Number(normal);
++  if (!Number.isFinite(valor)) return { ok: false, erro: ERRO_VALOR };
++  if (valor <= 0) return { ok: false, erro: "O valor deve ser maior que zero." };
++  return { ok: true, valor };
++}
++
++const cent = (v: number) => Math.round(v * 100);
++
++/** Prévia: proporcional à mensalidade, 2 casas, o resto no último pela ordem recebida. Soma sempre igual ao valor. */
++export function previaRateio(valor: number, clientes: { nome: string; valor_mensal: number }[]): { nome: string; parte: number }[] {
++  const total = clientes.reduce((s, c) => s + cent(c.valor_mensal), 0);
++  if (clientes.length === 0 || total <= 0) return [];
++  const alvo = cent(valor);
++  let usado = 0;
++  return clientes.map((c, i) => {
++    const centavos = i === clientes.length - 1 ? alvo - usado : Math.round((alvo * cent(c.valor_mensal)) / total);
++    usado += centavos;
++    return { nome: c.nome, parte: centavos / 100 };
++  });
++}
++
++/** Frase de situação do mês. Sem bloco = ainda não registrado (a falha de leitura é tratada fora, nunca chega aqui). */
++export function textoSituacao(bloco: { valor: number; data_recebimento: string; clientes: number } | null): string {
++  if (!bloco) return "Pagamento da MDS ainda não registrado";
++  const n = bloco.clientes;
++  return `Pago em ${diaMes(bloco.data_recebimento)}: ${reais(bloco.valor)} para ${n} ${n === 1 ? "cliente" : "clientes"}`;
++}

@@ -1,0 +1,5 @@
+{
+  "desfecho": "reprovado",
+  "causa": "retry_sem_mudanca",
+  "motivo": "retry_sem_mudanca: diff.patch idêntico ao da tentativa anterior (sha256 41282acd022f30a08faa62484260adecef8cb6565e6df02571fb3bd0d580022a); juiz não chamado"
+}

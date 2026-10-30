@@ -1,5 +1,5 @@
 /**
- * extrair.ts — a extração determinística e as regras D1-D12 (spec 7f-a §3).
+ * extrair.ts — a extração determinística e as regras D1-D12 (spec 7f-a §3) e D13 (etapa L13).
  *
  * Recebe a `Evidencia` (de qualquer leitor) e devolve a classe, se é FIRME
  * (vai ao painel sem modelo) ou PALPITE (vai ao modelo com as provas), a regra
@@ -20,7 +20,7 @@ import { matchesAllowlist } from '../enforcement-core.js'
 import { noDiff } from './leitor-legado-comarka.js'
 import type { Evidencia, Ref, Tentativa, Vizinho } from './tipos.js'
 
-export type Regra = 'D0' | 'D1' | 'D2' | 'D3' | 'D4' | 'D5' | 'D6' | 'D6b' | 'D6v' | 'D7' | 'D8' | 'D9' | 'D10' | 'D11' | 'D12'
+export type Regra = 'D0' | 'D1' | 'D2' | 'D3' | 'D4' | 'D5' | 'D6' | 'D6b' | 'D6v' | 'D7' | 'D8' | 'D9' | 'D10' | 'D11' | 'D12' | 'D13'
 
 export interface Extracao {
   /** `R1`..`R7` quando firme; palpite leva `?` (`R5?`, `R1|R2?`); `null` = nenhuma regra casou */
@@ -203,6 +203,17 @@ export function extrair(ev: Evidencia): Extracao {
     return { ...r, rotulo: ROTULO_D0 }
   }
   const u = ult.estagio
+
+  // D13 · IMPEDIMENTO declarado (etapa L13, P2): o motor bloqueou porque o
+  // agente declarou impedimento sem mudar o diff. Classe spec (R3); o remédio
+  // é a decisão humana sobre a nota do agente, que vem na nota do ticket.
+  const imp = ev.motor.find((r) => /BLOQUEADO.*motivo=IMPEDIMENTO_DECLARADO/.test(r.trecho))
+  if (imp) {
+    const nota = ev.ticket?.notas_status ?? ''
+    const fala = /Nota do agente: (.*?)\. Evidência:/.exec(nota)?.[1] ?? nota
+    const refNota = ev.ticket && nota ? [{ arquivo: ev.ticket.arquivo, linha: null, trecho: nota.slice(0, 160) }] : []
+    return sai('R3', 'D13', [imp, ...refNota], `decidir a spec: o agente declarou ${fala.slice(0, 240)}`)
+  }
 
   // D1 · merge recusado (árvore suja) e o juiz aprovou
   if (u === 'juiz_ok_merge_falhou' && ev.merge_recusado && ult.juiz?.aprovado === true) {

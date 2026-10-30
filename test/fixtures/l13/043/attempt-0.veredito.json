@@ -1,0 +1,5 @@
+{
+  "desfecho": "reprovado",
+  "causa": "criterio_qualidade",
+  "motivo": "critério(s) reprovado(s): juiz: Em src/components/financeiro-v2/mds-cartao.tsx:12 só `lerValorDigitado` e `textoSituacao` são importados: `previaRateio` (mds-util.ts:37) nunca é chamada no cartão nem em outro arquivo do diff, então a prévia do rateio pedida pelo objetivo não aparece em lugar nenhum. O resto está integrado: MdsCartao montado em entradas-cliente.tsx:209, erro com tentar de novo, motivo obrigatório com o aviso, botões travados por `gravando` e `travado`; mas o diálogo de registro (mds-cartao.tsx:117-135) não exibe nenhuma prévia antes de gravar.; avaliador: falha de leitura mostra erro com tentar de novo, nunca 'não registrado'; prévia do rateio só informativa e a gravação é do servidor; estorno exige motivo e avisa o efeito; botões travam durante a gravação; entradas-cliente.tsx só ganhou o cartão; 390 px sem rolagem lateral."
+}

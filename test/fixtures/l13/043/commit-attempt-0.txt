@@ -1,0 +1,6 @@
+043: cartão da MDS em Entradas (registrar pagamento em bloco, rateio e estorno)
+
+IMPEDIMENTO: typecheck e build não rodados (comandos fora da lista autorizada); só os testes do v2 rodaram, verdes.
+
+Orq-Ticket: 043
+

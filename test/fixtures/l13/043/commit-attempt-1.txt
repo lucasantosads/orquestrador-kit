@@ -1,0 +1,6 @@
+043: prévia do rateio no diálogo da MDS bloqueada por falta de dado por cliente
+
+IMPEDIMENTO: previaRateio (mds-util.ts:36) precisa da lista de clientes da MDS com valor_mensal, e nenhuma fonte ao alcance do cartão a entrega: resumo.mds de entradas.ts:35/119 traz só { clientes, valorMensal } (ticket 031, fora da allowlist), GET /api/financeiro-v2/entradas/mds devolve só o bloco já gravado (ticket 042, fora), e as props do cartão fixadas pelo ticket são só { mes, resumoMds, aoMudar }. Mostrar prévia por cliente exige expor essa lista em entradas.ts ou na rota da MDS; inventar a lista no cliente seria dado falso. Typecheck e build seguem não rodados (comandos fora da lista autorizada).
+
+Orq-Ticket: 043
+

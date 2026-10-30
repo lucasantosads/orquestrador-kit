@@ -1,0 +1,281 @@
+"use client";
+
+/**
+ * Entradas do Financeiro v2. Lê /api/financeiro-v2/entradas?mes= e mostra o resumo, a faixa de clientes
+ * sem cobrança (gerar cobranças com confirmação) e a lista de cobranças com baixa, estorno e anulação.
+ * Nenhum número é calculado aqui: o resumo vem da API; falha de leitura mostra erro, nunca zero.
+ */
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useSearchParams } from "next/navigation";
+import type { CobrancaMes, ResumoEntradas, SemCobranca } from "@/lib/financeiro/v2/entradas";
+import { Cartao, Erro, Esqueleto, StatusTag } from "./ds";
+import { diaMes, mesLongo, mesNome, reais } from "./format";
+import { mesHojeBRT } from "./interativos";
+import { FILTROS, acoesDe, filtrarCobrancas, rotuloStatus, type Acao, type Filtro } from "./entradas-util";
+import { DialogoBaixa, DialogoMotivo } from "./entradas-acoes";
+
+interface Corpo { ok: true; mes: string; cobrancas: CobrancaMes[]; semCobranca: SemCobranca[]; resumo: ResumoEntradas }
+type Pedido = { estado: "carregando" } | { estado: "erro" } | { estado: "ok"; dados: Corpo };
+
+const ROTULO_ACAO: Record<Acao, string> = { baixa: "Dar baixa", estorno: "Estornar", anular: "Anular" };
+const TOM_STATUS: Record<string, "ok" | "atencao" | "neutro"> = { pago: "ok", parcial: "atencao", pendente: "neutro" };
+
+/** Leitura da API. Depois de uma ação, `recarregar` mantém a lista na tela e troca os dados quando chegam. */
+function useEntradas(mes: string): [Pedido, () => void, () => void] {
+  const [p, setP] = useState<Pedido>({ estado: "carregando" });
+  const [n, setN] = useState(0);
+  const mesLido = useRef<string | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    if (mesLido.current !== mes) { mesLido.current = mes; setP({ estado: "carregando" }); }
+    fetch(`/api/financeiro-v2/entradas?mes=${mes}`, { cache: "no-store" })
+      .then(async (r) => {
+        const j = await r.json().catch(() => null);
+        if (!vivo) return;
+        if (!r.ok || !j?.ok || !Array.isArray(j.cobrancas) || !Array.isArray(j.semCobranca) || !j.resumo) setP({ estado: "erro" });
+        else setP({ estado: "ok", dados: j as Corpo });
+      })
+      .catch(() => vivo && setP({ estado: "erro" }));
+    return () => { vivo = false; };
+  }, [mes, n]);
+  const recarregar = useCallback(() => setN((x) => x + 1), []);
+  const tentarDeNovo = useCallback(() => { setP({ estado: "carregando" }); setN((x) => x + 1); }, []);
+  return [p, recarregar, tentarDeNovo];
+}
+
+// ─── Gerar cobranças ────────────────────────────────────────────────────────
+
+interface Ignorado { cliente: string; motivo: string }
+interface ResultadoGeracao { criadas: string; jaExistiam: string; ignorados: Ignorado[] | null }
+
+/** O resultado da função SQL não tem esquema fixo na API: cada contagem aceita número ou lista, o que não vier fica "n/d". */
+function contagem(v: unknown): string {
+  if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  if (Array.isArray(v)) return String(v.length);
+  return "n/d";
+}
+
+function lerResultado(r: unknown, nomes: Map<string, string>): ResultadoGeracao {
+  const o = (r && typeof r === "object" ? r : {}) as Record<string, unknown>;
+  const ign = o.ignorados ?? o.ignoradas;
+  let ignorados: Ignorado[] | null = null;
+  if (Array.isArray(ign)) {
+    ignorados = ign.map((i) => {
+      const x = (i && typeof i === "object" ? i : {}) as Record<string, unknown>;
+      const id = typeof x.cliente_id === "string" ? x.cliente_id : "";
+      const nome = typeof x.cliente_nome === "string" ? x.cliente_nome : nomes.get(id) ?? (id || "cliente");
+      const motivo = typeof x.motivo === "string" ? x.motivo : typeof x.razao === "string" ? x.razao : "motivo não informado";
+      return { cliente: nome, motivo };
+    });
+  }
+  return {
+    criadas: contagem(o.criadas),
+    jaExistiam: contagem(o.ja_existiam ?? o.ja_existentes ?? o.existentes),
+    ignorados: ignorados ?? (typeof ign === "number" ? [] : null),
+  };
+}
+
+function DialogoGerar({ mes, itens, aoConcluir, aoFechar }: { mes: string; itens: SemCobranca[]; aoConcluir: () => void; aoFechar: () => void }) {
+  const [gravando, setGravando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [resultado, setResultado] = useState<ResultadoGeracao | null>(null);
+  const travado = useRef(false);
+  const total = itens.reduce((s, i) => s + i.valor_mensal, 0);
+
+  async function confirmar() {
+    if (travado.current) return;
+    travado.current = true;
+    setGravando(true);
+    setErro(null);
+    try {
+      const r = await fetch("/api/financeiro-v2/entradas/cobrancas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mes }) });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j?.ok) {
+        setErro(r.status === 403 ? "Sem permissão para gerar cobranças." : typeof j?.erro === "string" ? j.erro : "Não gerou. Tente de novo.");
+        setGravando(false);
+        travado.current = false;
+        return;
+      }
+      setResultado(lerResultado(j.resultado, new Map(itens.map((i) => [i.cliente_id, i.cliente_nome]))));
+      setGravando(false);
+      aoConcluir();
+    } catch {
+      setErro("Sem conexão com o servidor. Confira a lista antes de tentar de novo.");
+      setGravando(false);
+      travado.current = false;
+    }
+  }
+
+  function aoTeclar(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "Escape" && !gravando) { e.stopPropagation(); aoFechar(); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onKeyDown={aoTeclar}>
+      <div role="dialog" aria-modal="true" aria-label="Gerar cobranças" className="ds-cartao max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-lg bg-white p-4 sm:rounded-lg" aria-busy={gravando || undefined}>
+        <h2 className="t-title mb-3">{resultado ? "Cobranças geradas" : `Gerar cobranças de ${mesNome(mes)}`}</h2>
+        {resultado ? (
+          <div className="grid gap-3">
+            <ul className="grid gap-1 t-body">
+              <li>Criadas: <strong>{resultado.criadas}</strong></li>
+              <li>Já existiam: <strong>{resultado.jaExistiam}</strong></li>
+              <li>Ignorados: <strong>{resultado.ignorados === null ? "n/d" : resultado.ignorados.length}</strong></li>
+            </ul>
+            {resultado.ignorados && resultado.ignorados.length > 0 && (
+              <ul className="grid gap-1 t-label">
+                {resultado.ignorados.map((i, k) => <li key={k}><strong>{i.cliente}</strong>: {i.motivo}</li>)}
+              </ul>
+            )}
+            <div className="flex justify-end"><button type="button" className="fv2-btn fv2-btn-principal" onClick={aoFechar}>Fechar</button></div>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            <p className="t-body">Vai criar uma cobrança de {mesNome(mes)} para cada cliente abaixo, com o valor da mensalidade.</p>
+            <ul className="grid max-h-60 gap-1 overflow-y-auto">
+              {itens.map((i) => (
+                <li key={i.cliente_id} className="flex justify-between gap-2 t-body">
+                  <span className="min-w-0 truncate">{i.cliente_nome}</span>
+                  <span className="shrink-0">{reais(i.valor_mensal)}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="t-body-strong flex justify-between gap-2"><span>Total ({itens.length} {itens.length === 1 ? "cliente" : "clientes"})</span><span>{reais(total)}</span></p>
+            {erro && <div role="alert"><StatusTag tipo="problema">{erro}</StatusTag></div>}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button type="button" className="fv2-btn" disabled={gravando} onClick={aoFechar}>Cancelar</button>
+              <button type="button" className="fv2-btn fv2-btn-principal" disabled={gravando} onClick={confirmar}>{gravando ? "Gerando…" : "Gerar cobranças"}</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tela ───────────────────────────────────────────────────────────────────
+
+type Aberto = { tipo: "gerar" } | { tipo: Acao; cobranca: CobrancaMes } | null;
+
+export function EntradasCliente() {
+  const params = useSearchParams();
+  const atual = mesHojeBRT();
+  const pedido = params?.get("mes");
+  const mes = pedido && /^\d{4}-\d{2}$/.test(pedido) && pedido <= atual ? pedido : atual;
+  const [p, recarregar, tentarDeNovo] = useEntradas(mes);
+  const [filtro, setFiltro] = useState<Filtro>("todos");
+  const [aberto, setAberto] = useState<Aberto>(null);
+
+  const fechar = useCallback(() => setAberto(null), []);
+  const concluirAcao = useCallback(() => { setAberto(null); recarregar(); }, [recarregar]);
+
+  const d = p.estado === "ok" ? p.dados : null;
+  const visiveis = d ? filtrarCobrancas(d.cobrancas, filtro) : [];
+  const resumo = d?.resumo ?? null;
+
+  const cartoes: [string, number | null][] = [
+    ["Previsto", resumo?.previsto ?? null],
+    ["Recebido", resumo?.recebido ?? null],
+    ["Em aberto", resumo?.emAberto ?? null],
+  ];
+
+  function botoes(c: CobrancaMes) {
+    return acoesDe(c.status).map((a) => (
+      <button key={a} type="button" className={`fv2-btn${a === "baixa" ? " fv2-btn-principal" : ""}`} onClick={() => setAberto({ tipo: a, cobranca: c })}>{ROTULO_ACAO[a]}</button>
+    ));
+  }
+
+  const tag = (c: CobrancaMes) => <StatusTag tipo={TOM_STATUS[c.status] ?? "neutro"}>{rotuloStatus(c.status)}</StatusTag>;
+  const dia = (c: CobrancaMes) => (c.dia_pagamento === null ? "s/ data" : diaMes(`${c.mes_pagamento ?? c.mes_referencia}`.slice(0, 8) + String(c.dia_pagamento).padStart(2, "0")));
+
+  return (
+    <main className="fv2-pagina">
+      <h1 className="sr-only">Entradas do Financeiro, {mesLongo(mes)}</h1>
+
+      <div className="ds-metricas">
+        {cartoes.map(([rotulo, v]) => (
+          <section key={rotulo} className="ds-cartao ds-metrica" aria-label={rotulo} aria-busy={p.estado === "carregando" || undefined}>
+            <h3 className="t-label">{rotulo}</h3>
+            {p.estado === "carregando" ? <Esqueleto altura={36} /> : <p className="t-metric">{v === null ? <span className="ds-sem">s/ dado</span> : reais(v)}</p>}
+          </section>
+        ))}
+        <section className="ds-cartao ds-metrica" aria-label="Sem cobrança gerada" aria-busy={p.estado === "carregando" || undefined}>
+          <h3 className="t-label">Sem cobrança gerada</h3>
+          {p.estado === "carregando" ? <Esqueleto altura={36} /> : <p className="t-metric">{resumo ? resumo.quantidadeSemCobranca : <span className="ds-sem">s/ dado</span>}</p>}
+        </section>
+      </div>
+
+      {p.estado === "erro" && <Cartao><Erro oQue="as entradas do mês" aoTentar={tentarDeNovo} /></Cartao>}
+
+      {d && d.semCobranca.length > 0 && (
+        <div className="ds-cartao flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" role="status">
+          <p className="t-body-strong">{d.semCobranca.length} {d.semCobranca.length === 1 ? "cliente ativo ainda sem cobrança" : "clientes ativos ainda sem cobrança"} de {mesNome(mes)}</p>
+          <button type="button" className="fv2-btn fv2-btn-principal" onClick={() => setAberto({ tipo: "gerar" })}>Gerar cobranças</button>
+        </div>
+      )}
+
+      <Cartao
+        titulo="Cobranças do mês"
+        id="cobrancas"
+        aoLado={<Link className="link ds-cab-dir" href={`/financeiro-v2/entradas/avulsos?mes=${mes}`}>Avulsos do mês</Link>}
+      >
+        {p.estado === "carregando" && <Esqueleto altura={320} />}
+        {d && (
+          <>
+            <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Filtrar por situação">
+              {FILTROS.map((f) => (
+                <button key={f.id} type="button" className={`fv2-btn${filtro === f.id ? " fv2-btn-principal" : ""}`} aria-pressed={filtro === f.id} onClick={() => setFiltro(f.id)}>
+                  {f.rotulo} ({filtrarCobrancas(d.cobrancas, f.id).length})
+                </button>
+              ))}
+            </div>
+            {visiveis.length === 0 ? (
+              <p className="t-body ds-muted">Nenhuma cobrança neste filtro.</p>
+            ) : (
+              <>
+                <div className="fv2-so-desk fv2-tabela-env">
+                  <table className="fv2-tabela">
+                    <thead>
+                      <tr><th>Cliente</th><th className="d">Esperado</th><th className="d">Recebido</th><th>Dia</th><th>Status</th><th><span className="sr-only">Ações</span></th></tr>
+                    </thead>
+                    <tbody>
+                      {visiveis.map((c) => (
+                        <tr key={c.id}>
+                          <td>{c.cliente_nome}</td>
+                          <td className="d">{reais(c.valor_esperado)}</td>
+                          <td className="d">{reais(c.valor_pago)}</td>
+                          <td>{dia(c)}</td>
+                          <td>{tag(c)}</td>
+                          <td><div className="flex flex-wrap justify-end gap-2">{botoes(c)}</div></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <ul className="fv2-cartoes grid gap-3">
+                  {visiveis.map((c) => (
+                    <li key={c.id} className="ds-cartao grid gap-2">
+                      <div className="flex items-start justify-between gap-2"><strong className="min-w-0 break-words">{c.cliente_nome}</strong>{tag(c)}</div>
+                      <dl className="grid grid-cols-3 gap-2 t-label">
+                        <div><dt className="ds-muted">Esperado</dt><dd>{reais(c.valor_esperado)}</dd></div>
+                        <div><dt className="ds-muted">Recebido</dt><dd>{reais(c.valor_pago)}</dd></div>
+                        <div><dt className="ds-muted">Dia</dt><dd>{dia(c)}</dd></div>
+                      </dl>
+                      {acoesDe(c.status).length > 0 && <div className="flex flex-wrap gap-2">{botoes(c)}</div>}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
+        )}
+      </Cartao>
+
+      <p className="t-label ds-muted">Dar baixa aqui não gera comissão: a comissão segue pela tela de Aprovações.</p>
+
+      {aberto?.tipo === "gerar" && d && <DialogoGerar mes={mes} itens={d.semCobranca} aoConcluir={recarregar} aoFechar={fechar} />}
+      {aberto?.tipo === "baixa" && <DialogoBaixa cobranca={aberto.cobranca} mes={mes} aoConcluir={concluirAcao} aoFechar={fechar} />}
+      {(aberto?.tipo === "estorno" || aberto?.tipo === "anular") && <DialogoMotivo cobranca={aberto.cobranca} acao={aberto.tipo} aoConcluir={concluirAcao} aoFechar={fechar} />}
+    </main>
+  );
+}

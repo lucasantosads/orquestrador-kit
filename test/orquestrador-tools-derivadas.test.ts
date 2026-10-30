@@ -251,9 +251,11 @@ describe('morte inesperada do executor deixa rastro (peça 0c, item 3)', () => {
     // décimo é o bloqueio pelo gate de ticket no pré-voo (porte do Actus, c404986).
     // O décimo primeiro é o teto de adiamentos por 'ambiente' (porte, ae29dcd).
     // O décimo segundo é o retry sem mudança (porte, 623). O décimo terceiro é a
-    // base vermelha (porte, 632).
+    // base vermelha (porte, 632). O décimo quarto é o IMPEDIMENTO declarado
+    // (etapa L13, P2).
     const n = (exec.match(/DESFECHO_NOMEADO=1/g) ?? []).length;
-    expect(n).toBe(13);
+    expect(n).toBe(14);
+    expect(exec).toMatch(/event "\$id" BLOQUEADO "motivo=IMPEDIMENTO_DECLARADO"[\s\S]{0,300}DESFECHO_NOMEADO=1/);
     expect(exec).toMatch(/event "\$id" BLOQUEADO "motivo=base_vermelha"[\s\S]{0,300}DESFECHO_NOMEADO=1/);
     expect(exec).toMatch(/event "\$id" BLOQUEADO "motivo=retry_sem_mudanca"[\s\S]{0,300}DESFECHO_NOMEADO=1/);
     expect(exec).toMatch(/event "\$id" BLOQUEADO "motivo=teto-adiamento-ambiente"[\s\S]{0,300}DESFECHO_NOMEADO=1/);
