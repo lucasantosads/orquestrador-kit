@@ -131,8 +131,9 @@ export const REGRAS: Readonly<Record<string, Regra>> = {
   'C2P': { severidade: 'erro', oque: 'grep -P, que o /usr/bin/grep do macOS não tem', porque: '0 disparo em (a) e (b); erro de plataforma' },
   'C13': { severidade: 'aviso', oque: 'origin/<ref> em critério executável (a worktree nasce da branch_alvo local)', porque: 'etapa 8a: 120/368 FP nos done aprovados de primeira do Comarka (04-17/10, versão que rodou); 318 dos 1266 done usam a forma; causal 1004 (f01a989). Vira erro para ticket novo quando o gerador de tickets do Comarka parar de escrever origin/' },
   'C14': { severidade: 'erro', oque: 'v=$(grep -c …) encadeado por && com v podendo valer 0 no estado certo', porque: 'etapa 8a: 0/368 FP nos done aprovados de primeira do Comarka (04-17/10, versão que rodou); 1 disparo nos 1266 done (1116, done manual que nunca rodou, com o defeito); causal 924b e 924c (+924d, 924f)' },
-  'C15': { severidade: 'aviso', oque: 'critério que depende do corpo/mensagem do commit (o juiz recebe o commit só como declaração do agente)', porque: 'etapa 8e: 0 disparo nos 1479 tickets do Comarka; 2 no dashboard (002, 003), os dois reprovados na attempt-0 por isso' },
-  'C16': { severidade: 'aviso', oque: 'ticket pede vermelho antes e todo cmd de critério com vitest descarta a saída em /dev/null', porque: 'etapa 8e: 27 done no Comarka (o mesmo defeito latente, contados como acerto) e 2 no dashboard (002, 003)' },
+  'C15': { severidade: 'erro', oque: 'critério que depende do corpo/mensagem do commit (o juiz recebe o commit só como declaração do agente)', porque: 'etapa 8e: 0 disparo nos 1479 tickets do Comarka; 2 no dashboard (002, 003), os dois reprovados na attempt-0 por isso. Etapa L13 (30/10): 0 em 1519 no Comarka, os mesmos 2 causais no dashboard, 0 FP: erro para todo pendente (M-62)' },
+  'C15o': { severidade: 'aviso', oque: 'objetivo pede algo no corpo/mensagem do commit (controle negativo, vermelho visto), que o juiz só lê como declaração', porque: 'etapa L13 (30/10): 25 no dashboard (17 done, 8 pendentes; 037, 039, 044 bloquearam por isso em 29/10; 007, 011, 012, 017, 019, 025, 026 e 042 aprovados de primeira) e 3 done no Comarka (1364, 295, 549). Com FP, não é erro' },
+  'C16': { severidade: 'aviso', oque: 'ticket pede vermelho antes e todo cmd de critério com vitest descarta a saída em /dev/null', porque: 'etapa 8e: 27 done no Comarka (o mesmo defeito latente, contados como acerto) e 2 no dashboard (002, 003). Etapa L13 (30/10): 28 no Comarka (27 done, 1 bloqueado) e 5 done no dashboard (002 e 003 causais; 007, 008, 011 sem reprova por isso): com FP, segue aviso' },
   'C3': { severidade: 'aviso', oque: 'ausência com padrão amplo sem exceção nem teto', porque: 'Comarka: 3/0/9 FP; causal 1 (523b)' },
   'C4': { severidade: 'aviso', oque: 'regex que casa diferente em locale C e em UTF-8 (acento)', porque: 'Comarka: 0/0/12 FP, 0 causal; o kit roda sob launchd com a mesma exposição' },
   'C9': { severidade: 'aviso', oque: 'item da allowlist no checkout e fora da branch alvo (topologia)', porque: 'Comarka: 0/1/0 FP, 0 causal' },
@@ -1798,10 +1799,15 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
     }
   }
 
-  // C15 e C16 (etapa 8e, lote do dashboard-comercial): avisos de ticket pendente.
+  // C15, C15o e C16 (etapa 8e, lote do dashboard-comercial; C15 erro e C15o na L13).
   if (pendente && ehArray(t.criterios_aceite)) {
     const crs = t.criterios_aceite.map((c) => (c ?? {}) as Cru)
     const desc = (c: Cru) => (typeof c.descricao === 'string' ? c.descricao : '')
+    // C15o (etapa L13): o mesmo pedido escrito no objetivo (037, 039, 044 do
+    // dashboard), que a C15 não via. Aviso, com FP medido na tabela.
+    if (typeof t.objetivo === 'string' && RE_CORPO_COMMIT.test(t.objetivo)) {
+      achado('C15o', 'objetivo', 'o objetivo pede algo no corpo do commit: o juiz recebe o commit só como declaração do agente, não como evidência — peça o que o diff ou um cmd provam')
+    }
     crs.forEach((c, i) => {
       if (RE_CORPO_COMMIT.test(desc(c))) {
         achado('C15', `criterios_aceite[${i}]`, 'o critério depende do corpo do commit: o juiz recebe o commit só como declaração do agente, não como evidência — reescreva como critério que o diff ou um cmd provam')

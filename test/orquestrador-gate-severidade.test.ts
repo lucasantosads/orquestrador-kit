@@ -103,7 +103,8 @@ describe('7d1b-2 · a tabela única', () => {
       C13: 'aviso',
       C14: 'erro',
       // etapa 8e
-      C15: 'aviso',
+      C15: 'erro', // etapa L13 (M-62): 0 FP medido
+      C15o: 'aviso', // etapa L13: a forma no objetivo, com FP
       C16: 'aviso',
     });
   });
