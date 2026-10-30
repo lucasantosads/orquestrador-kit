@@ -1,0 +1,471 @@
+Você é o JUIZ de uma esteira automatizada. Julgue SOMENTE pelo material abaixo:
+o diff cru da tentativa, a saída dos gates mecânicos e os critérios do ticket.
+Você NÃO recebe o prompt do executor nem resumo nenhum do agente, de propósito:
+o que o agente diz que fez nunca é evidência. Se algo não está no diff, não aconteceu.
+
+VOCÊ NÃO TEM FERRAMENTAS. Não leia arquivo, não rode comando, não abra o
+repositório: a chamada está sem ferramenta nenhuma e qualquer tentativa só
+gasta turno. Se o material abaixo não basta para aprovar, REPROVE dizendo o
+que faltou — nunca aprove no benefício da dúvida.
+
+Os gates mecânicos JÁ PASSARAM (enforcement, typecheck, testes, critérios, build).
+Você não os reexecuta: o seu trabalho é o que eles não conseguem ver.
+
+O QUE VOCÊ COBRA, item a item:
+
+1. INTEGRAÇÃO, não existência. Componente/função/rota criada mas nunca importada,
+   montada ou chamada passa em "arquivo existe" e falha em produção. Siga a
+   variável ou o símbolo até o ponto de uso real; um resultado calculado e
+   descartado não vale.
+2. O TESTE EXERCITA O COMPORTAMENTO DO OBJETIVO. Teste tautológico
+   (expect(true), expect(x).toBeDefined() sobre algo trivialmente definido,
+   asserção que passaria com o código antigo) NÃO prova nada. Pergunte-se: este
+   teste ficaria VERMELHO se a mudança fosse revertida? Se não, reprove.
+3. CRITÉRIO DE AUSÊNCIA EXIGE CONTROLE POSITIVO. Um teste que só afirma que algo
+   NÃO aparece passa igual quando o componente não renderiza nada. Exija, no
+   MESMO render/execução, ao menos uma asserção POSITIVA de que a coisa certa
+   apareceu. Reprove ausência provada no vazio.
+
+4. ANTI-AFROUXAMENTO (a allowlist deste ticket inclui arquivo de teste).
+   No diff dos arquivos de teste, REPROVE se encontrar qualquer um destes:
+   - asserção removida (expect apagado) sem que o comportamento tenha deixado de existir;
+   - toBe/toEqual trocado por toBeDefined/toBeTruthy/objectContaining mais frouxo;
+   - .skip, .todo, .only, teste comentado ou arquivo de teste deletado;
+   - valor esperado alterado SEM comentário dizendo por que a regra nova o muda.
+   Valor RECALCULADO sob a regra nova, com o porquê em comentário, é o único
+   caminho aceito. Renomear símbolo para satisfazer contagem também é afrouxar.
+
+RESPONDA SÓ COM ESTE JSON, sem cerca de código, sem texto antes ou depois:
+{"aprovado": true|false, "motivo": "<=2 frases, concreto, citando arquivo e linha>",
+ "criterios_falhos": ["descrição exata do critério que você reprova", ...]}
+
+criterios_falhos: use a DESCRIÇÃO do critério, copiada como está na lista acima.
+Vazio quando aprovado. Na dúvida entre aprovar e reprovar, REPROVE e diga o que falta.
+
+TICKET 699
+Objetivo: ORCAMENTO DE DIFF: teto de 560 linhas (~260 na rota NOVA, ~60 na rota NOVA de cobrar, ~240 no teste NOVO). Se passar do teto, pare e reporte. FONTE: docs/planos/plano-portal-gestor-30set.md (plano aprovado + adendo de decisoes de 30/09, que vale sobre o plano). PASSO 1: leia docs/roadmap/mockups/portal-gestor/inicio-head.dc.html (colunas 'Por gestor' e 'Responder agora · equipe'), src/lib/inicio/carregar-carteira.ts, src/lib/inicio/vacuo.ts, a rota do 694, a rota src/app/api/relacao/responder/route.ts e src/lib/relacao/pode-agir.ts (735, que substitui o 695, obsoleto em 02/10), src/app/api/admin/organizacao/papel/route.ts, src/lib/nav/papel.ts (papelDe) e src/lib/avisos/gravar.ts (702). FAZER: (1) NOVA rota src/app/api/portal/inicio/equipe/route.ts GET: 401; 403 para quem nao e diretor, head ou admin (papelDe do cargo); gestores = colaboradores ativos cujo papelDe e 'gestor'; linha por gestor { gestor_id, nome, clientes, esperando, mais_de_1_dia, promessas (sem base enquanto o 742 estiver em _hold (o 716 ficou obsoleto em 02/10)), vermelhos, acoes_atrasadas (tarefas com prazo vencido nao concluidas), resposta_media_min (sem base com menos de 5 respostas em perf_eventos_produtividade) } calculada com carregarInicio para CADA gestor (a mesma funcao do 694, sem regra nova); linha 'Sem gestor' com os clientes que hoje caem no head (responsaveisDoCliente origem 'head'); fila da equipe = vacuos acima de 420 min uteis e promessas vencidas de todas as carteiras, com o gestor de cada item. Ordem das linhas: quem tem mais cliente esperando. (2) NOVA rota src/app/api/portal/inicio/equipe/cobrar/route.ts POST { gestor_id, cliente_id, group_jid }: mesmo 401/403; grava aviso com gravarAviso (categoria 'grupo', titulo 'Cobrança: <cliente> espera resposta no grupo', link '/portal#responder', chave 'cobrar:<gestor>:<group_jid>:<AAAA-MM-DD>'): o mesmo pedido no mesmo dia nao duplica. (3) NOVO test/inicio-equipe-api.test.ts (mocks): 403 para gestor; papel vem do cargo (fixture com is_head_operacional=false e cargo Head de Trafego passa; is_head_operacional=true com cargo Gestor Junior leva 403); a linha do gestor X bate com GET /api/portal/inicio?view_as=X (compare os campos clientes, esperando e vermelhos das duas respostas); linha Sem gestor soma os clientes que caem no head; cobrar duas vezes no mesmo dia grava 1 aviso. FORA DE ESCOPO: a tela (700); qualquer UPDATE em employees; WhatsApp (cobranca e so aviso no OS). REGRAS: zona C0 (clientes_receita, leads_crm, leads_crm_historico, ads_metadata, ads_performance, fn_mql_sql_by_month, prefixos trafego_* e vw_*) e leitura pura: nada de escrita, DDL, grant, RLS ou trigger nelas; zero migration e zero .sql (so o 691 escreve .sql, e nao aplica); dono do cliente SO por carregarQuemCuida/responsaveisDoCliente/cuidaDoCliente (src/lib/clientes/quem-cuida.ts), nunca clientes.gestor_id nem o analista do espelho; equipe no grupo SO por ehDaEquipe (src/lib/whatsapp/equipe.ts), nunca a marca is_equipe gravada; cliente ativo SO por isClienteAtivo (src/lib/clientes/ativo.ts); papel SO por papelDe (src/lib/nav/papel.ts), nunca is_gestor_trafego nem is_head_operacional como papel; NUNCA rode UPDATE em employees.is_gestor_trafego; produtividade nasce de evento registrado, nunca de cronometro, sessao de tempo ou apontamento manual; dado ausente aparece como 'sem base' com o motivo, nunca zero e nunca verde; nenhum jargao de banco em texto de tela (nome de tabela, view, coluna ou operador); nenhum travessao (U+2014) em texto de tela nem em string de copy (guarda travessao-mudo); numeros de tela em Geist Mono (classe font-mono ja usada no repo); Set e Map so com Array.from (tsc sem downlevelIteration); nenhum .json() literal novo em src (cliente: fetchJson de @/lib/fetch-json; rota: lerCorpoJson de @/lib/fetch-json, nunca req.json()); getSession e server-only, nunca em arquivo 'use client'; supabase, fetch e getSession sempre mockados nos testes (vi.mock), nunca banco real; fixture de uuid RFC-4122 (00000000-0000-4000-8000-000000000000 ou crypto.randomUUID()); testes sem JSX (React.createElement + renderToStaticMarkup ou leitura de fonte com readFileSync; o projeto nao tem jsdom nem @testing-library); teste ancora em texto visivel ou data-testid, nunca em classe de estilo; nunca toEqual numa lista inteira (afirme itens com toContain/some). TESTES EXISTENTES da allowlist: se a mudanca quebrar uma assercao, RECALCULE o valor sob a regra nova com comentario acima citando o ticket e de onde veio o numero; PROIBIDO remover assercao, trocar toBe/toEqual/toMatch por toBeDefined/toBeTruthy, usar .skip/.only/.todo, apagar it( ou o arquivo. GUARDAS GLOBAIS (fora da allowlist, nao edite): test/fetch-json-teto.test.ts, test/consistencia-contagens.test.ts, test/bloco-vazio-linha.test.ts, test/abas-montadas.test.ts, test/cartao-topo-perfil.test.tsx, test/travessao-mudo.test.ts, test/c0-guard.test.ts. Se um teste FORA da allowlist quebrar, PARE e descreva. Motor do orquestrador (scripts/orquestrador/, docs/orquestrador/) intocado.
+
+Allowlist do ticket:
+  - src/app/api/portal/inicio/equipe/route.ts
+  - src/app/api/portal/inicio/equipe/cobrar/route.ts
+  - test/inicio-equipe-api.test.ts
+
+Critérios de aceite:
+  - [guarda · já verificado por comando] tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)
+      cmd: ( [ "$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\.next/')" = 3 ] ) && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] nenhum .sql novo (zero DDL)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff --name-only "$b" HEAD | grep -c '[.]sql$'); [ "$n" = 0 ] && echo SEM_SQL || echo SQL_$n · espera: SEM_SQL
+  - [guarda · já verificado por comando] guardas globais seguem verdes
+      cmd: npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [guarda · já verificado por comando] nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADAS || echo EDITOU_$n · espera: INTOCADAS
+  - [guarda · já verificado por comando] nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- 'src/app/api/portal/inicio/equipe/route.ts' 'src/app/api/portal/inicio/equipe/cobrar/route.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ "$n" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n · espera: ZERO_JSON_NOVO
+  - [guarda · já verificado por comando] arquivos fora do escopo intocados
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- 'src/app/api/portal/inicio/route.ts' 'src/app/api/relacao/responder/route.ts' 'src/lib/inicio/carregar-carteira.ts' | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADOS || echo TOCOU_$n · espera: INTOCADOS
+  - [guarda · já verificado por comando] so arquivos da allowlist foram tocados
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; r=SO_ALLOWLIST; for f in $(git diff --name-only "$b" HEAD); do ok=0; for p in 'src/app/api/portal/inicio/equipe/route.ts' 'src/app/api/portal/inicio/equipe/cobrar/route.ts' 'test/inicio-equipe-api.test.ts'; do case "$f" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r · espera: SO_ALLOWLIST
+  - [guarda · já verificado por comando] diff dentro do orcamento (<= 560 linhas somando adicoes e remocoes)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; t=$(git diff --numstat "$b" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ "$t" -le 560 ] && echo NO_TETO || echo ESTOUROU_$t · espera: NO_TETO
+  - [? · já verificado por comando] teste novo verde (test/inicio-equipe-api.test.ts)
+      cmd: test -f test/inicio-equipe-api.test.ts && npx vitest run test/inicio-equipe-api.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [? · já verificado por comando] papel lido do cargo, sem booleanos legados como papel
+      cmd: f=src/app/api/portal/inicio/equipe/route.ts; test -f $f || { echo AUSENTE; exit 0; }; a=$(grep -c 'papelDe' $f); b=$(grep -cE 'is_gestor_trafego|is_head_operacional' $f); [ "$a" -ge 1 ] && [ "$b" = 0 ] && echo PAPEL_DO_CARGO || echo PAPEL_${a}_${b} · espera: PAPEL_DO_CARGO
+  - [? · já verificado por comando] linha por gestor reusa carregarInicio
+      cmd: f=src/app/api/portal/inicio/equipe/route.ts; test -f $f && grep -q 'carregarInicio' $f && echo MESMA_REGRA || echo REGRA_PROPRIA · espera: MESMA_REGRA
+  - [avaliador · JULGUE VOCÊ] avaliador: a visao do head devolve linha por gestor igual ao Inicio de cada um, linha Sem gestor e a fila da equipe acima de 1 dia util; Cobrar gestor gera 1 aviso por dia. REPROVE se: le is_gestor_trafego ou is_head_operacional como papel; regra de carteira propria; cobranca manda WhatsApp.
+
+
+SAÍDA DOS GATES MECÂNICOS:
+ok   build
+       
+       ○  (Static)   prerendered as static content
+       ƒ  (Dynamic)  server-rendered on demand
+ok   tsc
+       src/app/api/perf/qualificacao-regras/[id]/route.ts(55,34): error TS2538: Type 'undefined' cannot be used as an index type.
+       src/app/api/perf/qualificacao-regras/estagios/route.ts(31,21): error TS2802: Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+       src/app/dashboard/clientes/qualificacao/qualificacao-block.tsx(74,29): error TS2802: Type 'MapIterator<ClienteTese>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+ok   vitest
+       Tests  8091 passed (8091)
+       Start at  16:23:07
+       Duration  43.53s (transform 57.78s, setup 0ms, import 161.35s, tests 41.85s, environment 91ms)
+VEREDITO: APROVADO
+
+DIFF CRU DA TENTATIVA (git diff base...HEAD):
+diff --git a/src/app/api/portal/inicio/equipe/cobrar/route.ts b/src/app/api/portal/inicio/equipe/cobrar/route.ts
+new file mode 100644
+index 0000000..9654909
+--- /dev/null
++++ b/src/app/api/portal/inicio/equipe/cobrar/route.ts
+@@ -0,0 +1,66 @@
++// Ticket 699: "Cobrar gestor" grava um aviso para o gestor (nada de WhatsApp). Um pedido por
++// gestor, grupo e dia: a chave do aviso impede repetir. Mesmo gate da equipe: papelDe do cargo.
++import { NextResponse } from "next/server";
++import { createClient } from "@supabase/supabase-js";
++import { z } from "zod";
++import { getSession } from "@/lib/session";
++import { FetchJsonError, lerCorpoJson } from "@/lib/fetch-json";
++import { gravarAviso } from "@/lib/avisos/gravar";
++import { papelDe, type CargoParaPapel, type EmployeeParaPapel, type Papel } from "@/lib/nav/papel";
++
++export const dynamic = "force-dynamic";
++
++const supabase = createClient(
++  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
++  process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder",
++);
++
++const VEEM_EQUIPE: readonly Papel[] = ["diretor", "head", "admin"];
++const corpoSchema = z.object({ gestor_id: z.string().uuid(), cliente_id: z.string().uuid(), group_jid: z.string().min(1) });
++
++export async function POST(req: Request) {
++  const session = await getSession();
++  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
++  try {
++    const emp = await supabase.from("employees").select("id, nome, role, cargo_id, ativo").eq("id", session.employeeId).maybeSingle();
++    if (emp.error) throw new Error(`colaborador: ${emp.error.message}`);
++    const employee = emp.data as EmployeeParaPapel | null;
++    let cargo: CargoParaPapel | null = null;
++    if (employee?.cargo_id) {
++      const c = await supabase.from("ops_cargo").select("id, nome, role_base, eh_lideranca").eq("id", employee.cargo_id).maybeSingle();
++      if (c.error) throw new Error(`cargo: ${c.error.message}`);
++      cargo = (c.data ?? null) as CargoParaPapel | null;
++    }
++    if (!employee || VEEM_EQUIPE.indexOf(papelDe(employee, cargo)) === -1) {
++      return NextResponse.json({ error: "Sem permissão para cobrar a equipe" }, { status: 403 });
++    }
++
++    let corpo: z.infer<typeof corpoSchema>;
++    try {
++      const parsed = corpoSchema.safeParse(await lerCorpoJson(req));
++      if (!parsed.success) return NextResponse.json({ error: "Dados inválidos" }, { status: 422 });
++      corpo = parsed.data;
++    } catch (e) {
++      const status = e instanceof FetchJsonError ? e.status : 400;
++      return NextResponse.json({ error: e instanceof Error ? e.message : "Corpo inválido" }, { status });
++    }
++
++    const cli = await supabase.from("clientes").select("id, nome").eq("id", corpo.cliente_id).maybeSingle();
++    if (cli.error) throw new Error(`cliente: ${cli.error.message}`);
++    const cliente = cli.data as { id: string; nome: string | null } | null;
++    if (!cliente) return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 });
++
++    const dia = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
++    const { gravado } = await gravarAviso(supabase, {
++      employeeId: corpo.gestor_id,
++      categoria: "grupo",
++      titulo: `Cobrança: ${cliente.nome ?? "cliente"} espera resposta no grupo`,
++      link: "/portal#responder",
++      chave: `cobrar:${corpo.gestor_id}:${corpo.group_jid}:${dia}`,
++      extra: { cliente_id: corpo.cliente_id, cobrado_por: session.employeeId },
++    });
++    return NextResponse.json({ ok: true, gravado });
++  } catch (e) {
++    return NextResponse.json({ error: e instanceof Error ? e.message : "Falha ao cobrar" }, { status: 500 });
++  }
++}
+diff --git a/src/app/api/portal/inicio/equipe/route.ts b/src/app/api/portal/inicio/equipe/route.ts
+new file mode 100644
+index 0000000..b2cae53
+--- /dev/null
++++ b/src/app/api/portal/inicio/equipe/route.ts
+@@ -0,0 +1,112 @@
++// Ticket 699: visão da equipe no Início do head. Cada gestor é calculado por carregarInicio (a mesma
++// função do 694, sem regra nova). Papel só por papelDe; dono do cliente só por quem-cuida.
++// Falha de leitura = 500, nunca linha zerada. Promessas seguem sem base enquanto o 742 estiver em hold.
++import { NextResponse } from "next/server";
++import { createClient } from "@supabase/supabase-js";
++import { getSession } from "@/lib/session";
++import { isClienteAtivo } from "@/lib/clientes/ativo";
++import { carregarQuemCuida, responsaveisDoCliente } from "@/lib/clientes/quem-cuida";
++import { carregarInicio, type ResumoInicio } from "@/lib/inicio/carregar-carteira";
++import { carregarVacuos } from "@/lib/inicio/vacuo";
++import { papelDe, type CargoParaPapel, type EmployeeParaPapel, type Papel } from "@/lib/nav/papel";
++
++export const dynamic = "force-dynamic";
++
++const supabase = createClient(
++  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
++  process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder",
++);
++
++const VEEM_EQUIPE: readonly Papel[] = ["diretor", "head", "admin"];
++const LIMITE_FILA_MIN = 420; // 1 dia útil
++type SemBase = { estado: "sem_base"; motivo: string };
++const SEM_PROMESSAS: SemBase = { estado: "sem_base", motivo: "detecção de promessas ainda não ligada" };
++type Linha = Record<string, unknown>;
++
++function ler<T>(oque: string, r: { data: unknown; error: { message?: string } | null }): T[] {
++  if (r.error) throw new Error(`${oque}: ${r.error.message ?? "erro de leitura"}`);
++  return (r.data ?? []) as T[];
++}
++
++export async function GET() {
++  const session = await getSession();
++  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
++  try {
++    const [empRes, cargoRes] = await Promise.all([
++      supabase.from("employees").select("id, nome, role, cargo_id, ativo"),
++      supabase.from("ops_cargo").select("id, nome, role_base, eh_lideranca"),
++    ]);
++    const cargos = new Map(ler<CargoParaPapel & { id: string }>("cargos", cargoRes).map((c) => [c.id, c] as const));
++    const equipe = ler<EmployeeParaPapel>("colaboradores", empRes).map((e) => ({
++      e, papel: papelDe(e, e.cargo_id ? cargos.get(e.cargo_id) ?? null : null),
++    }));
++    const quem = equipe.find((x) => x.e.id === session.employeeId);
++    if (!quem || VEEM_EQUIPE.indexOf(quem.papel) === -1) {
++      return NextResponse.json({ error: "Sem permissão para ver a equipe" }, { status: 403 });
++    }
++
++    const agora = new Date().toISOString();
++    const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
++    const gestores = equipe.filter((x) => x.papel === "gestor" && x.e.ativo !== false);
++    const gestorIds = gestores.map((g) => g.e.id);
++    const [q, clientesRes, vacuosRes, tarefasRes] = await Promise.all([
++      carregarQuemCuida(supabase),
++      supabase.from("clientes").select("id, nome, status"),
++      carregarVacuos(supabase, agora),
++      supabase.from("tarefas_kanban").select("responsavel_id, status, data_vencimento")
++        .in("responsavel_id", gestorIds).is("deleted_at", null).lte("data_vencimento", hoje),
++    ]);
++    const clientes = ler<{ id: string; nome: string | null; status: string | null }>("clientes", clientesRes)
++      .filter((c) => isClienteAtivo(c.status));
++    const nomeDe = new Map(clientes.map((c) => [c.id, c.nome ?? ""] as const));
++    const atrasadas = ler<{ responsavel_id: string; status: string | null; data_vencimento: string | null }>("tarefas", tarefasRes)
++      .filter((t) => t.status !== "concluido" && (t.data_vencimento ?? "9") < hoje);
++    const vacuos = vacuosRes.vacuos.filter((v) => nomeDe.has(v.cliente_id));
++    const contar = (ids: string[], min: number) =>
++      vacuos.filter((v) => ids.indexOf(v.cliente_id) !== -1 && v.minutos_uteis > min).length;
++
++    const resumos: ResumoInicio[] = await Promise.all(
++      gestores.map((g) => carregarInicio(supabase, { id: g.e.id, papel: "gestor" }, agora)),
++    );
++    const linhas: Linha[] = gestores.map((g, i) => {
++      const r = resumos[i];
++      const ids = r.carteira.map((l) => l.cliente_id);
++      const respostaMedia: number | SemBase = r.resposta_media_min ?? { estado: "sem_base", motivo: "menos de 5 respostas registradas" };
++      return {
++        gestor_id: g.e.id, nome: g.e.nome ?? "", clientes: r.carteira.length,
++        esperando: r.contadores.grupos_esperando.valor, mais_de_1_dia: contar(ids, LIMITE_FILA_MIN),
++        promessas: SEM_PROMESSAS, vermelhos: r.contadores.risco.vermelhos,
++        acoes_atrasadas: atrasadas.filter((t) => t.responsavel_id === g.e.id).length, resposta_media_min: respostaMedia,
++      };
++    });
++    linhas.sort((a, b) => (b.esperando as number) - (a.esperando as number));
++
++    // Sem gestor: clientes que hoje caem no head. A cor vem do Início de um head (mesma função).
++    const semGestorIds = clientes.filter((c) => responsaveisDoCliente(q, c.id).origem === "head").map((c) => c.id);
++    let vermelhosSem: number | SemBase = { estado: "sem_base", motivo: "nenhum head ativo para calcular" };
++    if (q.heads.length > 0) {
++      const rh = await carregarInicio(supabase, { id: q.heads[0].id, papel: "head" }, agora);
++      vermelhosSem = rh.carteira.filter((l) => semGestorIds.indexOf(l.cliente_id) !== -1 && l.cor === "vermelho").length;
++    }
++    const naoSeAplica: SemBase = { estado: "sem_base", motivo: "sem gestor responsável" };
++    const sem_gestor = {
++      clientes: semGestorIds.length, esperando: contar(semGestorIds, -1), mais_de_1_dia: contar(semGestorIds, LIMITE_FILA_MIN),
++      promessas: SEM_PROMESSAS, vermelhos: vermelhosSem, acoes_atrasadas: naoSeAplica, resposta_media_min: naoSeAplica,
++    };
++
++    const fila = vacuos.filter((v) => v.minutos_uteis > LIMITE_FILA_MIN)
++      .sort((a, b) => b.minutos_uteis - a.minutos_uteis)
++      .map((v) => {
++        const r = responsaveisDoCliente(q, v.cliente_id);
++        const g = r.origem === "gestor" ? r.pessoas[0] : null;
++        return {
++          tipo: "vacuo" as const, cliente_id: v.cliente_id, cliente_nome: nomeDe.get(v.cliente_id) ?? "", group_jid: v.group_jid,
++          desde: v.desde, minutos_uteis: v.minutos_uteis, gestor_id: g?.id ?? null, gestor_nome: g?.nome ?? "Sem gestor",
++        };
++      });
++    return NextResponse.json({ gestores: linhas, sem_gestor, fila, promessas_vencidas: SEM_PROMESSAS });
++  } catch (e) {
++    const motivo = e instanceof Error ? e.message : String(e);
++    return NextResponse.json({ error: `Não foi possível montar a equipe: ${motivo}` }, { status: 500 });
++  }
++}
+diff --git a/test/inicio-equipe-api.test.ts b/test/inicio-equipe-api.test.ts
+new file mode 100644
+index 0000000..da6c0e8
+--- /dev/null
++++ b/test/inicio-equipe-api.test.ts
+@@ -0,0 +1,181 @@
++// Ticket 699: GET /api/portal/inicio/equipe e POST .../equipe/cobrar. Banco falso em memória;
++// getSession, vácuo (734), interação (686) e feriados mockados. A linha de cada gestor vem de carregarInicio.
++import { describe, it, expect, vi, beforeEach } from "vitest";
++
++type Linha = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
++const banco = vi.hoisted(() => ({ tabelas: {} as Record<string, Record<string, any>[]> })); // eslint-disable-line @typescript-eslint/no-explicit-any
++
++function db() {
++  return {
++    from(tabela: string) {
++      const filtros: Array<(r: Linha) => boolean> = [];
++      let fatia: [number, number] = [0, Infinity];
++      const valor = (r: Linha, k: string) => (k.includes("->>") ? r[k.split("->>")[0]]?.[k.split("->>")[1]] : r[k]);
++      const exec = () => ({ data: (banco.tabelas[tabela] ?? []).filter((r) => filtros.every((f) => f(r))).slice(fatia[0], fatia[1]), error: null });
++      const f = (p: (r: Linha) => boolean) => (filtros.push(p), q);
++      const q: Record<string, unknown> = {
++        select: () => q,
++        eq: (k: string, v: unknown) => f((r) => valor(r, k) === v),
++        neq: (k: string, v: unknown) => f((r) => r[k] !== v),
++        is: (k: string, v: unknown) => f((r) => (r[k] ?? null) === v),
++        in: (k: string, vs: unknown[]) => f((r) => vs.includes(r[k])),
++        not: (k: string) => f((r) => r[k] != null),
++        gte: (k: string, v: string) => f((r) => String(r[k]) >= v),
++        lte: (k: string, v: string) => f((r) => String(r[k]) <= v),
++        order: () => q,
++        limit: (n: number) => ((fatia = [0, n]), q),
++        range: (a: number, b: number) => ((fatia = [a, b + 1]), q),
++        insert: async (linha: Linha) => ((banco.tabelas[tabela] = (banco.tabelas[tabela] ?? []).concat([linha])), { error: null }),
++        maybeSingle: async () => ({ data: exec().data[0] ?? null, error: null }),
++        then: (ok: (v: unknown) => unknown, ko?: (e: unknown) => unknown) => Promise.resolve(exec()).then(ok, ko),
++      };
++      return q;
++    },
++  };
++}
++
++const sessao = vi.hoisted(() => ({ atual: null as null | { employeeId: string } }));
++const ID = vi.hoisted(() => {
++  const u = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
++  return { G1: u(1), G2: u(2), H: u(3), H2: u(5), GJ: u(6), A1: u(11), A2: u(12), A4: u(14), B1: u(21), X: u(31), Z: u(41) };
++});
++vi.mock("@supabase/supabase-js", () => ({ createClient: () => db() }));
++vi.mock("@/lib/session", () => ({ getSession: vi.fn(async () => sessao.atual) }));
++vi.mock("@/lib/tempo/feriados", () => ({ carregarFeriados: vi.fn(async () => []) }));
++vi.mock("@/lib/wpp/interacao", () => ({ carregarInteracao: vi.fn(async () => []) }));
++// Vácuo do 734: A1 500 min úteis, A4 90, B1 70 e X (sem gestor) 600.
++vi.mock("@/lib/inicio/vacuo", () => ({
++  carregarVacuos: vi.fn(async (_db: unknown, _agora: string, o?: { clienteIds?: string[] }) => ({
++    vacuos: [
++      { cliente_id: ID.A1, minutos_uteis: 500, group_jid: "g-a1", desde: "2026-10-01T12:00:00.000Z" },
++      { cliente_id: ID.A4, minutos_uteis: 90, group_jid: "g-a4", desde: "2026-10-01T12:00:00.000Z" },
++      { cliente_id: ID.B1, minutos_uteis: 70, group_jid: "g-b1", desde: "2026-10-01T12:00:00.000Z" },
++      { cliente_id: ID.X, minutos_uteis: 600, group_jid: "g-x", desde: "2026-10-01T12:00:00.000Z" },
++    ].filter((v) => !o?.clienteIds || o.clienteIds.includes(v.cliente_id)),
++    desconhecidos24h: {},
++  })),
++}));
++
++import { GET as equipe } from "@/app/api/portal/inicio/equipe/route";
++import { POST as cobrar } from "@/app/api/portal/inicio/equipe/cobrar/route";
++import { GET as inicio } from "@/app/api/portal/inicio/route";
++
++const dia = (n: number) => new Date(Date.now() - 3 * 3600000 + n * 86400000).toISOString().slice(0, 10);
++type Corpo = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
++
++async function pedirEquipe() {
++  const res = await equipe();
++  return { status: res.status, body: (await res.json()) as Corpo };
++}
++async function pedirCobrar(corpo: Record<string, string>) {
++  const req = new Request("http://localhost/api/portal/inicio/equipe/cobrar", {
++    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(corpo),
++  });
++  const res = await cobrar(req);
++  return { status: res.status, body: (await res.json()) as Corpo };
++}
++const linhaDe = (b: Corpo, id: string) => (b.gestores as Corpo[]).find((l) => l.gestor_id === id) as Corpo;
++
++beforeEach(() => {
++  sessao.atual = { employeeId: ID.H };
++  banco.tabelas = {
++    ops_cargo: [["cg", "Gestor de Tráfego", false], ["cj", "Gestor Junior", false], ["ch", "Head de Tráfego", true]]
++      .map(([id, nome, lider]) => ({ id, nome, role_base: "operacao", eh_lideranca: lider })),
++    employees: [
++      { id: ID.G1, nome: "Gestor Um", cargo_id: "cg", ativo: true, is_head_operacional: false },
++      { id: ID.G2, nome: "Gestor Dois", cargo_id: "cg", ativo: true, is_head_operacional: false },
++      { id: ID.H, nome: "Head Um", cargo_id: "ch", ativo: true, is_head_operacional: true },
++    ],
++    clientes: [[ID.A1, "Alfa Um", "ativo"], [ID.A2, "Alfa Dois", "ativo"], [ID.A4, "Alfa Quatro", "ativo"],
++      [ID.B1, "Beta Um", "ativo"], [ID.X, "Sem Gestor", "ativo"], [ID.Z, "Encerrado", "churned"]]
++      .map(([id, nome, status]) => ({ id, nome, status })),
++    perf_cliente_gestor: [ID.A1, ID.A2, ID.A4, ID.Z].map((c) => ({ cliente_id: c, gestor_id: ID.G1, ativo: true, principal: true }))
++      .concat([{ cliente_id: ID.B1, gestor_id: ID.G2, ativo: true, principal: true }]),
++    wpp_grupo: [ID.A1, ID.A2, ID.A4, ID.B1, ID.X].map((c, i) => ({ group_jid: `g-${i}`, cliente_id: c, deleted_at: null, status: "ativo" })),
++    tarefas_kanban: [
++      { responsavel_id: ID.G1, status: "pendente", data_vencimento: dia(-2), deleted_at: null },
++      { responsavel_id: ID.G1, status: "concluido", data_vencimento: dia(-2), deleted_at: null },
++      { responsavel_id: ID.G2, status: "pendente", data_vencimento: dia(3), deleted_at: null },
++    ],
++    notifications: [],
++  };
++});
++
++describe("GET /api/portal/inicio/equipe", () => {
++  it("401 sem sessão e 403 para gestor", async () => {
++    sessao.atual = null;
++    expect((await pedirEquipe()).status).toBe(401);
++    sessao.atual = { employeeId: ID.G1 };
++    expect((await pedirEquipe()).status).toBe(403);
++  });
++
++  it("o papel vem do cargo, não dos booleanos legados", async () => {
++    // Head só pelo cargo (Head de Tráfego) com is_head_operacional=false: passa.
++    banco.tabelas.employees.push({ id: ID.H2, nome: "Head Dois", cargo_id: "ch", ativo: true, is_head_operacional: false });
++    sessao.atual = { employeeId: ID.H2 };
++    expect((await pedirEquipe()).status).toBe(200);
++    // is_head_operacional=true com cargo Gestor Junior: 403.
++    banco.tabelas.employees.push({ id: ID.GJ, nome: "Gestor Junior", cargo_id: "cj", ativo: true, is_head_operacional: true });
++    sessao.atual = { employeeId: ID.GJ };
++    expect((await pedirEquipe()).status).toBe(403);
++  });
++
++  it("a linha do gestor bate com o Início dele em view_as", async () => {
++    const eq = await pedirEquipe();
++    expect(eq.status).toBe(200);
++    for (const id of [ID.G1, ID.G2]) {
++      const res = await inicio(new Request(`http://localhost/api/portal/inicio?view_as=${id}`));
++      const ini = (await res.json()) as Corpo;
++      const linha = linhaDe(eq.body, id);
++      expect(linha.clientes).toBe(ini.carteira.length);
++      expect(linha.esperando).toBe(ini.contadores.grupos_esperando.valor);
++      expect(linha.vermelhos).toBe(ini.contadores.risco.vermelhos);
++    }
++    // Vácuo: G1 tem A1 (500) e A4 (90) esperando, só A1 acima de 1 dia útil; G2 tem B1 (70).
++    expect(linhaDe(eq.body, ID.G1).esperando).toBe(2);
++    expect(linhaDe(eq.body, ID.G1).mais_de_1_dia).toBe(1);
++    expect(linhaDe(eq.body, ID.G2).mais_de_1_dia).toBe(0);
++    // Tarefas: 1 vencida e não concluída para G1; a de G2 vence no futuro. Promessas sem base.
++    expect(linhaDe(eq.body, ID.G1).acoes_atrasadas).toBe(1);
++    expect(linhaDe(eq.body, ID.G2).acoes_atrasadas).toBe(0);
++    expect(linhaDe(eq.body, ID.G1).promessas.estado).toBe("sem_base");
++    expect(linhaDe(eq.body, ID.G1).resposta_media_min.estado).toBe("sem_base");
++    // Ordem: quem tem mais cliente esperando vem primeiro.
++    expect(eq.body.gestores[0].gestor_id).toBe(ID.G1);
++  });
++
++  it("Sem gestor soma os clientes que caem no head e a fila passa de 1 dia útil", async () => {
++    const { body } = await pedirEquipe();
++    // Só X não tem gestor principal (o encerrado Z é ignorado), então cai no head.
++    expect(body.sem_gestor.clientes).toBe(1);
++    expect(body.sem_gestor.esperando).toBe(1);
++    const fila = body.fila as Corpo[];
++    expect(fila.some((i) => i.cliente_id === ID.A1 && i.gestor_id === ID.G1)).toBe(true);
++    expect(fila.some((i) => i.cliente_id === ID.X && i.gestor_nome === "Sem gestor")).toBe(true);
++    expect(fila.some((i) => i.cliente_id === ID.A4 || i.cliente_id === ID.B1)).toBe(false);
++  });
++});
++
++describe("POST /api/portal/inicio/equipe/cobrar", () => {
++  const corpo = { gestor_id: ID.G1, cliente_id: ID.A1, group_jid: "g-a1" };
++
++  it("403 para gestor", async () => {
++    sessao.atual = { employeeId: ID.G1 };
++    expect((await pedirCobrar(corpo)).status).toBe(403);
++    expect(banco.tabelas.notifications).toHaveLength(0);
++  });
++
++  it("cobrar duas vezes no mesmo dia grava 1 aviso", async () => {
++    const a = await pedirCobrar(corpo);
++    const b = await pedirCobrar(corpo);
++    expect(a.status).toBe(200);
++    expect(a.body.gravado).toBe(true);
++    expect(b.body.gravado).toBe(false);
++    expect(banco.tabelas.notifications).toHaveLength(1);
++    const aviso = banco.tabelas.notifications[0];
++    expect(aviso.employee_id).toBe(ID.G1);
++    expect(aviso.titulo).toBe("Cobrança: Alfa Um espera resposta no grupo");
++    expect(aviso.link).toBe("/portal#responder");
++    expect(aviso.metadata.categoria).toBe("grupo");
++  });
++});

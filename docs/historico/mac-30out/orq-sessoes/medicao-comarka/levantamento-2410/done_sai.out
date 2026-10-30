@@ -1,0 +1,4 @@
+db1bc0daa 2026-10-19 00:37 Lucas Santos 5243 done -> pendente | apolo: 5243 volta ao loop (opcao B); anexos expirado; trava com flag do 5247 e pg_proc
+75963952b 2026-10-18 10:15 Lucas Santos 5241 done -> pendente | fila: 5230 da janela vira 5242 e reabre, 5241 reabre (id colidido, done sem rodar) e 1354 guarda de id unico
+75963952b 2026-10-18 10:15 Lucas Santos 5242 done -> pendente | fila: 5230 da janela vira 5242 e reabre, 5241 reabre (id colidido, done sem rodar) e 1354 guarda de id unico
+total: 3

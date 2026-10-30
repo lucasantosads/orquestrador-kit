@@ -1,0 +1,740 @@
+[fixture] tmp: /tmp/orq-fixture-Bpy9lH
+[fixture] instanciado (branches: main, staging-auto; origin falso; node_modules -> /Users/lucasantos/Projetos/_worktrees/kit-etapa7f7/node_modules)
+[fixture] para remover:  bash scripts/kit/fixture.sh --limpar /tmp/orq-fixture-Bpy9lH/repo
+== (a) fixture recém-instanciado ==
+  | VERIFICAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-fixture-Bpy9lH/repo
+  | 
+  | carimbo    2.1.0-dev
+  | 
+  | 
+  | idêntico ao kit 2.1.0-dev
+  ok    rc 0
+  ok    diz 'idêntico ao kit <VERSAO>'
+
+== (b) cópia do fixture com UM byte a mais em lib.sh ==
+  | VERIFICAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-verificar-2uQMmb/repo
+  | 
+  | carimbo    2.1.0-dev
+  | 
+  | diferente   scripts/orquestrador/lib.sh
+  | 
+  | 1 diferença(s)
+  ok    rc 1
+  ok    lista 'diferente scripts/orquestrador/lib.sh'
+  ok    exatamente 1 diferença, não uma cascata
+
+== (d) cópia do fixture com UM byte a mais em scripts/roadmap/lint-mapa.py ==
+  | VERIFICAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-verificar-sjrBqP/repo
+  | 
+  | carimbo    2.1.0-dev
+  | 
+  | diferente   scripts/roadmap/lint-mapa.py
+  | 
+  | 1 diferença(s)
+  ok    rc 1
+  ok    lista 'diferente scripts/roadmap/lint-mapa.py'
+  ok    exatamente 1 diferença, não uma cascata
+
+== (e) --atualizar: dry-run, recusa sem pausa, e o conserto ==
+-- (e1) --dry-run lista 'diferente' e NÃO escreve --
+  | ATUALIZAR  --dry-run: NADA é escrito; a lista abaixo é o que mudaria.
+  | 
+  | VERIFICAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-verificar-EstCmh/repo
+  | 
+  | carimbo    2.1.0-dev
+  | 
+  | diferente   scripts/orquestrador/lib.sh
+  | 
+  | 1 diferença(s)
+  | 
+  | O --atualizar de verdade RECUSARIA, por:
+  |   · o loop de '/private/tmp/orq-verificar-EstCmh/repo' não está pausado: não existe nem docs/fila/PAUSAR nem docs/fila/.orq-pause. Rode 'bash scripts/orq pausar "atualizando o motor"' dentro do repo e tente de novo.
+  |   (a recusa não impede este dry-run de listar tudo)
+  ok    rc 0
+  ok    lista 'diferente scripts/orquestrador/lib.sh'
+  ok    o lib.sh do repo NÃO foi tocado pelo --dry-run
+-- (e2) --atualizar sem pausa: recusa com rc 1 --
+  | RECUSADO: o loop de '/private/tmp/orq-verificar-EstCmh/repo' não está pausado: não existe nem docs/fila/PAUSAR nem docs/fila/.orq-pause. Rode 'bash scripts/orq pausar "atualizando o motor"' dentro do repo e tente de novo.
+  ok    rc 1
+  ok    a recusa diz que o loop não está pausado
+  ok    o repo continua intacto depois da recusa
+-- (e2b) com PAUSAR, mas com modificação não commitada no motor: recusa --
+  | ?? scripts/orquestrador/nao-commitado.txt
+  | RECUSADO: '/private/tmp/orq-verificar-EstCmh/repo' tem modificação não commitada no motor (acima). Commite ou descarte antes — ou repita com --forcar, que apaga isso.
+  ok    rc 1
+  ok    a recusa diz que há modificação não commitada
+  ok    a recusa NOMEIA o caminho
+  ok    o repo continua intacto depois da recusa 3
+-- (e3) --atualizar com PAUSAR e motor limpo: atualiza e fica idêntico --
+  | ATUALIZAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-verificar-EstCmh/repo
+  | 
+  | copiado: scripts/orquestrador/ · scripts/orq · scripts/roadmap/ · docs/orquestrador/skill/ (+ VERSAO 2.1.0-dev)
+  | copiado: 20 teste(s) de harness e 7 fixture(s) de teste (peça K8d)
+  | 
+  | VERIFICAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-verificar-EstCmh/repo
+  | 
+  | carimbo    2.1.0-dev
+  | 
+  | 
+  | idêntico ao kit 2.1.0-dev
+  | 
+  | commit sugerido, no repo, com pathspec explícito:
+  |   cd /private/tmp/orq-verificar-EstCmh/repo
+  |   git add scripts/orquestrador scripts/orq scripts/roadmap docs/orquestrador/skill \
+  |     test/fixtures/orq-harness.ts test/orquestrador-morte-por-sinal.test.ts test/orquestrador-pacotes.test.ts test/orquestrador-prefixo-aspas.test.ts test/orquestrador-prompt-como-rodar.test.ts test/orquestrador-reparo-trilha.test.ts test/orquestrador-trilha-uma-linha.test.ts test/orquestrador-gate-grep-q.test.ts test/orquestrador-gate-vitest-aviso.test.ts test/orquestrador-contexto-juiz.test.ts test/orquestrador-retry-feedback-juiz.test.ts test/orquestrador-gates-fonte-unica.test.ts test/orquestrador-base-vermelha.test.ts test/orquestrador-fila-json-quebrado.test.ts test/orquestrador-arquivo-solto.test.ts test/orquestrador-contexto-juiz-fixtures.test.ts test/orquestrador-gate-regex-exemplos.test.ts test/orquestrador-criterio-merito.test.ts test/orquestrador-ambiente-merito.test.ts test/orquestrador-teto-adiamento-ambiente.test.ts test/fixtures/criterios/lote8-246-250.json test/fixtures/trilha/events-quebrado.log test/fixtures/trilha/permissao-negada-234.cmd test/fixtures/gate-ticket-grep-q/901-fixture-grep-q-em-pipe.md test/fixtures/gate-ticket-grep-q/902-fixture-grep-c-controle.md test/fixtures/gate-ticket-grep-q/903-fixture-488-antigo.md test/fixtures/orquestrador-base-vermelha/gates-510c-attempt-0.txt 
+  |   git commit -m 'motor: kit 2.1.0-dev'
+  ok    rc 0
+  ok    o --verificar do fim diz 'idêntico ao kit <VERSAO>'
+  ok    o lib.sh do repo é o do kit
+  ok    docs/orquestrador/skill/VERSAO carimbado
+  ok    imprime a linha de commit com pathspec explícito
+  ok    docs/fila/** intacta
+  ok    o PAUSAR do repo continua lá (o kit não retoma o loop por conta própria)
+
+== (f) arquivo só do repo sobrevive ao --atualizar e aparece como 'só no repo' ==
+  | ATUALIZAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-verificar-SG44TS/repo
+  | 
+  | copiado: scripts/orquestrador/ · scripts/orq · scripts/roadmap/ · docs/orquestrador/skill/ (+ VERSAO 2.1.0-dev)
+  | copiado: 20 teste(s) de harness e 7 fixture(s) de teste (peça K8d)
+  | 
+  | VERIFICAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-verificar-SG44TS/repo
+  | 
+  | carimbo    2.1.0-dev
+  | 
+  | só no repo  scripts/orquestrador/so-do-repo.py
+  | 
+  | 1 diferença(s)
+  | 
+  | commit sugerido, no repo, com pathspec explícito:
+  |   cd /private/tmp/orq-verificar-SG44TS/repo
+  |   git add scripts/orquestrador scripts/orq scripts/roadmap docs/orquestrador/skill \
+  |     test/fixtures/orq-harness.ts test/orquestrador-morte-por-sinal.test.ts test/orquestrador-pacotes.test.ts test/orquestrador-prefixo-aspas.test.ts test/orquestrador-prompt-como-rodar.test.ts test/orquestrador-reparo-trilha.test.ts test/orquestrador-trilha-uma-linha.test.ts test/orquestrador-gate-grep-q.test.ts test/orquestrador-gate-vitest-aviso.test.ts test/orquestrador-contexto-juiz.test.ts test/orquestrador-retry-feedback-juiz.test.ts test/orquestrador-gates-fonte-unica.test.ts test/orquestrador-base-vermelha.test.ts test/orquestrador-fila-json-quebrado.test.ts test/orquestrador-arquivo-solto.test.ts test/orquestrador-contexto-juiz-fixtures.test.ts test/orquestrador-gate-regex-exemplos.test.ts test/orquestrador-criterio-merito.test.ts test/orquestrador-ambiente-merito.test.ts test/orquestrador-teto-adiamento-ambiente.test.ts test/fixtures/criterios/lote8-246-250.json test/fixtures/trilha/events-quebrado.log test/fixtures/trilha/permissao-negada-234.cmd test/fixtures/gate-ticket-grep-q/901-fixture-grep-q-em-pipe.md test/fixtures/gate-ticket-grep-q/902-fixture-grep-c-controle.md test/fixtures/gate-ticket-grep-q/903-fixture-488-antigo.md test/fixtures/orquestrador-base-vermelha/gates-510c-attempt-0.txt 
+  |   git commit -m 'motor: kit 2.1.0-dev'
+  ok    rc 1 (há 'só no repo' — o verificador do fim conta como diferença)
+  ok    so-do-repo.py SOBREVIVEU
+  ok    listado como 'só no repo'
+
+== (g) --atualizar recusa com scripts/roadmap/ sujo, e --forcar passa ==
+  |  M scripts/roadmap/lint-mapa.py
+  | RECUSADO: '/private/tmp/orq-verificar-c3mQuP/repo' tem modificação não commitada no motor (acima). Commite ou descarte antes — ou repita com --forcar, que apaga isso.
+  ok    rc 1
+  ok    a recusa diz que há modificação não commitada
+  ok    a recusa NOMEIA scripts/roadmap/lint-mapa.py
+  ok    o lint-mapa.py do repo continua intacto depois da recusa
+-- (g2) com --forcar: passa, avisa, e o lint-mapa.py vira o do kit --
+  |  M scripts/roadmap/lint-mapa.py
+  | --forcar: passando por cima de 1 caminho(s) modificado(s) no motor do repo.
+  | 
+  | ATUALIZAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-verificar-c3mQuP/repo
+  | 
+  | copiado: scripts/orquestrador/ · scripts/orq · scripts/roadmap/ · docs/orquestrador/skill/ (+ VERSAO 2.1.0-dev)
+  | copiado: 20 teste(s) de harness e 7 fixture(s) de teste (peça K8d)
+  | 
+  | VERIFICAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-verificar-c3mQuP/repo
+  | 
+  | carimbo    2.1.0-dev
+  | 
+  | 
+  | idêntico ao kit 2.1.0-dev
+  | 
+  | commit sugerido, no repo, com pathspec explícito:
+  |   cd /private/tmp/orq-verificar-c3mQuP/repo
+  |   git add scripts/orquestrador scripts/orq scripts/roadmap docs/orquestrador/skill \
+  |     test/fixtures/orq-harness.ts test/orquestrador-morte-por-sinal.test.ts test/orquestrador-pacotes.test.ts test/orquestrador-prefixo-aspas.test.ts test/orquestrador-prompt-como-rodar.test.ts test/orquestrador-reparo-trilha.test.ts test/orquestrador-trilha-uma-linha.test.ts test/orquestrador-gate-grep-q.test.ts test/orquestrador-gate-vitest-aviso.test.ts test/orquestrador-contexto-juiz.test.ts test/orquestrador-retry-feedback-juiz.test.ts test/orquestrador-gates-fonte-unica.test.ts test/orquestrador-base-vermelha.test.ts test/orquestrador-fila-json-quebrado.test.ts test/orquestrador-arquivo-solto.test.ts test/orquestrador-contexto-juiz-fixtures.test.ts test/orquestrador-gate-regex-exemplos.test.ts test/orquestrador-criterio-merito.test.ts test/orquestrador-ambiente-merito.test.ts test/orquestrador-teto-adiamento-ambiente.test.ts test/fixtures/criterios/lote8-246-250.json test/fixtures/trilha/events-quebrado.log test/fixtures/trilha/permissao-negada-234.cmd test/fixtures/gate-ticket-grep-q/901-fixture-grep-q-em-pipe.md test/fixtures/gate-ticket-grep-q/902-fixture-grep-c-controle.md test/fixtures/gate-ticket-grep-q/903-fixture-488-antigo.md test/fixtures/orquestrador-base-vermelha/gates-510c-attempt-0.txt 
+  |   git commit -m 'motor: kit 2.1.0-dev'
+  ok    rc 0
+  ok    avisa que passou por cima
+  ok    o lint-mapa.py do repo é o do kit
+
+== (h) --verificar/--atualizar cobrem os testes do harness ==
+-- (h1) --verificar acusa o teste envelhecido --
+  | VERIFICAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-verificar-OTHC4w/repo
+  | 
+  | carimbo    2.1.0-dev
+  | 
+  | diferente   test/orquestrador-pacotes.test.ts
+  | 
+  | 1 diferença(s)
+  ok    rc 1
+  ok    lista 'diferente test/orquestrador-pacotes.test.ts'
+  ok    não cita test/produto.test.ts (teste do produto não é motor)
+-- (h2) --atualizar corrige, e o teste do produto sobrevive --
+  | ATUALIZAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-verificar-OTHC4w/repo
+  | 
+  | copiado: scripts/orquestrador/ · scripts/orq · scripts/roadmap/ · docs/orquestrador/skill/ (+ VERSAO 2.1.0-dev)
+  | copiado: 20 teste(s) de harness e 7 fixture(s) de teste (peça K8d)
+  | 
+  | VERIFICAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-verificar-OTHC4w/repo
+  | 
+  | carimbo    2.1.0-dev
+  | 
+  | 
+  | idêntico ao kit 2.1.0-dev
+  | 
+  | commit sugerido, no repo, com pathspec explícito:
+  |   cd /private/tmp/orq-verificar-OTHC4w/repo
+  |   git add scripts/orquestrador scripts/orq scripts/roadmap docs/orquestrador/skill \
+  |     test/fixtures/orq-harness.ts test/orquestrador-morte-por-sinal.test.ts test/orquestrador-pacotes.test.ts test/orquestrador-prefixo-aspas.test.ts test/orquestrador-prompt-como-rodar.test.ts test/orquestrador-reparo-trilha.test.ts test/orquestrador-trilha-uma-linha.test.ts test/orquestrador-gate-grep-q.test.ts test/orquestrador-gate-vitest-aviso.test.ts test/orquestrador-contexto-juiz.test.ts test/orquestrador-retry-feedback-juiz.test.ts test/orquestrador-gates-fonte-unica.test.ts test/orquestrador-base-vermelha.test.ts test/orquestrador-fila-json-quebrado.test.ts test/orquestrador-arquivo-solto.test.ts test/orquestrador-contexto-juiz-fixtures.test.ts test/orquestrador-gate-regex-exemplos.test.ts test/orquestrador-criterio-merito.test.ts test/orquestrador-ambiente-merito.test.ts test/orquestrador-teto-adiamento-ambiente.test.ts test/fixtures/criterios/lote8-246-250.json test/fixtures/trilha/events-quebrado.log test/fixtures/trilha/permissao-negada-234.cmd test/fixtures/gate-ticket-grep-q/901-fixture-grep-q-em-pipe.md test/fixtures/gate-ticket-grep-q/902-fixture-grep-c-controle.md test/fixtures/gate-ticket-grep-q/903-fixture-488-antigo.md test/fixtures/orquestrador-base-vermelha/gates-510c-attempt-0.txt 
+  |   git commit -m 'motor: kit 2.1.0-dev'
+  ok    rc 0
+  ok    test/orquestrador-pacotes.test.ts do repo é o do kit
+  ok    test/produto.test.ts intacto
+  ok    o --verificar do fim diz 'idêntico ao kit <VERSAO>'
+-- (h3) a suíte do REPO passa com os testes que o kit instalou --
+  |    ✓ teto de adiamento por ambiente > reaberto depois do teto: começa do zero (não bloqueia de novo no primeiro adiamento) 6902ms
+  | 
+  |  Test Files  21 passed (21)
+  |       Tests  186 passed (186)
+  |    Start at  10:56:21
+  |    Duration  45.42s (transform 726ms, setup 0ms, collect 14.30s, tests 179.08s, environment 6ms, prepare 1.96s)
+  ok    npx vitest run no repo: rc 0
+
+== (i) --atualizar --migrar: .orq-pause -> PAUSAR, liberações -> v2 ==
+-- (i1) --migrar --dry-run: mostra tudo e NÃO escreve --
+  | ATUALIZAR  --dry-run: NADA é escrito; a lista abaixo é o que mudaria.
+  | 
+  | VERIFICAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-verificar-rXyzze/repo
+  | 
+  | carimbo    2.1.0-dev
+  | 
+  | 
+  | idêntico ao kit 2.1.0-dev
+  | 
+  | === MIGRAR docs/fila/** (--dry-run: NADA é escrito) ===
+  | 
+  | --- pausa: docs/fila/.orq-pause -> docs/fila/PAUSAR ---
+  | motivo preservado: 2026-09-05 09:12 | pausado para aplicar migration 0255
+  | (--dry-run: nada foi renomeado)
+  | 
+  | MIGRAR-LIBERACOES  liberacoes.json (/private/tmp/orq-verificar-rXyzze/repo/docs/fila/liberacoes.json)
+  |            --dry-run: NADA é escrito
+  | forma no disco: tokens[]: 5 (5 string, 0 objeto, 5 sem o prefixo humano:) · sem $schema_versao
+  | 5 entrada(s) lida(s) → 5 token(s) único(s) em v2
+  | nota: 5 token(s) sem data no disco: liberado_em = 'desconhecido'. A migração NÃO inventa data — 'origem' diz de onde cada registro veio
+  | 
+  | --- /private/tmp/orq-verificar-rXyzze/repo/docs/fila/liberacoes.json (atual)
+  | +++ /private/tmp/orq-verificar-rXyzze/repo/docs/fila/liberacoes.json (v2 proposto)
+  | @@ -1,9 +1,35 @@
+  |  {
+  | +  "$schema_versao": 2,
+  |    "tokens": [
+  | -    "migration-0255-aplicada",
+  | -    "migration-0259-aplicada",
+  | -    "migration-0260-aplicada",
+  | -    "migration-0261-aplicada",
+  | -    "migration-0262-aplicada"
+  | +    {
+  | +      "token": "humano:migration-0255-aplicada",
+  | +      "liberado_em": "desconhecido",
+  | +      "por": "desconhecido",
+  | +      "origem": "v1:tokens"
+  | +    },
+  | +    {
+  | +      "token": "humano:migration-0259-aplicada",
+  | +      "liberado_em": "desconhecido",
+  | +      "por": "desconhecido",
+  | +      "origem": "v1:tokens"
+  | +    },
+  | +    {
+  | +      "token": "humano:migration-0260-aplicada",
+  | +      "liberado_em": "desconhecido",
+  | +      "por": "desconhecido",
+  | +      "origem": "v1:tokens"
+  | +    },
+  | +    {
+  | +      "token": "humano:migration-0261-aplicada",
+  | +      "liberado_em": "desconhecido",
+  | +      "por": "desconhecido",
+  | +      "origem": "v1:tokens"
+  | +    },
+  | +    {
+  | +      "token": "humano:migration-0262-aplicada",
+  | +      "liberado_em": "desconhecido",
+  | +      "por": "desconhecido",
+  | +      "origem": "v1:tokens"
+  | +    }
+  |    ]
+  |  }
+  | 
+  | MIGRAR-TICKETS  fila (/private/tmp/orq-verificar-rXyzze/repo/docs/fila)
+  |            --dry-run: NADA é escrito
+  | 1 arquivo(s) de ticket em /private/tmp/orq-verificar-rXyzze/repo/docs/fila (regra do motor: [0-9]*.md, sem descer em rascunhos/ nem tocar _TEMPLATE.md)
+  | 
+  | nenhum ticket pendente a migrar.
+  | 
+  | MIGRAR-CONFIG  /private/tmp/orq-verificar-rXyzze/repo/docs/fila/000-config.json
+  |                --dry-run: NADA é escrito
+  | $schema_versao já era 2
+  | renome avaliador_model → modelos.juiz_alto: NÃO aplicado, 'modelos.juiz_alto' já existe com valor próprio
+  | renome avaliador_model → modelos.juiz_baixo: NÃO aplicado, 'modelos.juiz_baixo' já existe com valor próprio
+  | nova gate_ticket.modo_pre_voo = "aviso" (política do motor, não do repo). executor.sh:1052, passo 5b do drive_ticket (porte do Actus, c404986 e 624). O pré-voo do gate de ticket entra em repo que já tem fila, e regra nova de critério (grep -q em pipe, vitest textual, exemplos_regex) reprovaria tickets escritos antes dela: 'aviso' põe as violações no log e na trilha sem bloquear. Quem quer o bloqueio troca para 'bloqueia' no próprio config.
+  | nova gate_ticket.severidade = {} (política do motor, não do repo). gate-ticket.ts:1045 (lerSeveridade) e gate-ticket.ts:150 (severidadeDe), etapa 7d-1b. Objeto VAZIO = vale a tabela REGRAS do motor, que é a decisão da calibração de 25/09 (ERRO só com zero falso positivo nos done dos três repos). A chave nasce vazia para ficar à vista de quem abre o config: rebaixar ou subir uma regra ('6q': 'erro') é decisão do repo, e o motor recusa alto regra ou valor que não conhece.
+  | 
+  | --- /private/tmp/orq-verificar-rXyzze/repo/docs/fila/000-config.json (oficial, INTOCADO)
+  | +++ /private/tmp/orq-verificar-rXyzze/repo/docs/fila/000-config.proposto.json (proposto)
+  | @@ -2,17 +2,14 @@
+  |    "$schema_versao": 2,
+  |    "descricao": "Config do repo de FIXTURE do kit. Mínimo por construção: só as chaves que o motor LÊ hoje, levantadas por grep no disco (grep -ohE \"cfg '[^']*'\" scripts/orquestrador/*.sh, mais os acessos diretos dos .ts). Cada chave traz um comentário _<chave> com a procedência do valor.",
+  |    "_procedencia_geral": "Valores de forma vêm de doutrina/templates/config.json; valores de conteúdo, de _referencia-ci/000-config.ci.json (o config REAL do conteudos-infinitos @711ab5e) quando um teste do motor cobra o número exato; o resto é do fixture.",
+  | -
+  |    "branch_alvo": "staging-auto",
+  |    "_branch_alvo": "doutrina/templates/config.json:branch_alvo — lido por lib.sh:53 (CFG_BRANCH_ALVO).",
+  |    "branch_protegida": "main",
+  |    "_branch_protegida": "local-loop.sh:28 lê '.branch_protegida' (o template chama de branch_principal; o motor lê ESTE nome).",
+  | -
+  |    "max_retries": 2,
+  |    "_max_retries": "_referencia-ci/000-config.ci.json:max_retries — lido por lib.sh:54 e decisao.ts:273.",
+  |    "cooldown_minutes": 60,
+  |    "_cooldown_minutes": "_referencia-ci/000-config.ci.json:cooldown_minutes — lido por lib.sh (cooldown_arm).",
+  | -
+  |    "politica_adiamento": {
+  |      "regra": "Falha de INFRAESTRUTURA adia. Nunca reprova.",
+  |      "causas_que_adiam": [
+  | @@ -32,7 +29,6 @@
+  |      }
+  |    },
+  |    "_politica_adiamento": "As 7 causas, na ordem, de _referencia-ci/000-config.ci.json — test-lib-config.sh:58 cobra exatamente 7 e :61 cobra a do juiz pelo nome; decisao.ts:113 itera a lista.",
+  | -
+  |    "politica_retry": {
+  |      "por_causa": {
+  |        "diff_cap": {
+  | @@ -55,17 +51,14 @@
+  |      "proibicao": "NUNCA escalar modelo por falha de tamanho (diff_cap) nem por violação de fronteira (enforcement)."
+  |    },
+  |    "_politica_retry": "_referencia-ci/000-config.ci.json:politica_retry, sem os campos _porque — decisao.ts:277 indexa por_causa[causa] e rejeita config que mande escalar por diff_cap/enforcement.",
+  | -
+  |    "migrations_dir": "db/migrations",
+  |    "_migrations_dir": "enforcement-core.ts:128 usa para classificar .sql como artefato inerte. O fixture não tem banco; o diretório existe só para a chave não ser nula.",
+  |    "sql_pendente_dir": "docs/sql-pendente",
+  |    "_sql_pendente_dir": "enforcement-core.ts:128, mesmo par que migrations_dir.",
+  | -
+  |    "worktrees_dir": "../_worktrees",
+  |    "_worktrees_dir": "RELATIVO ao checkout principal (lib.sh:77). Como o fixture é instanciado em <tmp>/repo, isto resolve para <tmp>/_worktrees — nunca ~/Projetos/_worktrees.",
+  |    "worktrees_prefixo": "fx-",
+  |    "_worktrees_prefixo": "decisao.ts:363. 'fx-' em vez do 'ci-' do conteudos-infinitos: prefixo diferente é o que impede colisão de nome de worktree entre repos.",
+  | -
+  |    "runs_dir": "docs/fila/runs",
+  |    "_runs_dir": "doutrina/templates/config.json:runs_dir — lib.sh:72 (RUNS_BASE).",
+  |    "liberacoes_file": "docs/fila/liberacoes.json",
+  | @@ -74,7 +67,6 @@
+  |    "_decisoes_file": "doutrina/templates/config.json — lib.sh:723.",
+  |    "pausar_file": "docs/fila/PAUSAR",
+  |    "_pausar_file": "doutrina/templates/config.json — lib.sh:615 (kill switch em arquivo).",
+  | -
+  |    "modelos": {
+  |      "classificador": "haiku",
+  |      "executor": "sonnet",
+  | @@ -88,7 +80,6 @@
+  |    "avaliador_model": "opus",
+  |    "retry_final_model": "opus",
+  |    "_modelos": "Escada de _referencia-ci/000-config.ci.json (sonnet/opus/opus). juiz.ts:76 lê modelos.juiz_alto/juiz_baixo; executor.sh:149 e decisao.ts:292 leem os três aliases v1.",
+  | -
+  |    "restricao_execucao": {
+  |      "ativa": false,
+  |      "tickets_permitidos": [],
+  | @@ -97,31 +88,26 @@
+  |      "desbloqueio": "preencha executor_model/avaliador_model/retry_final_model em docs/fila/000-config.json"
+  |    },
+  |    "_restricao_execucao": "decisao.ts:71 lê o objeto inteiro; executor.sh:154 lê .desbloqueio na mensagem de aborto. Inativa aqui: nenhum papel é PENDENTE_*.",
+  | -
+  |    "diff_cap_linhas": 600,
+  |    "_diff_cap_linhas": "600 de _referencia-ci/000-config.ci.json. test-lib-config.sh cobra só a forma (bate com o arquivo, inteiro positivo), não o número: o 2500 do Actus também passa.",
+  |    "claude_timeout_secs": 900,
+  |    "_claude_timeout_secs": "Metade do 1800 do CI: o ticket do fixture é de ~40 linhas e um timeout longo só atrasa o diagnóstico quando o agente trava.",
+  |    "claude_max_turns": 40,
+  |    "_claude_max_turns": "doutrina/templates/config.json:claude_max_turns (o CI usa 80; 40 basta para um ticket de dois arquivos).",
+  | -
+  |    "preflight_probe": true,
+  |    "_preflight_probe": "LIGADO, e não por gosto: executor.sh:146 sai cedo quando o valor é `false`, e test-retry-worktree.sh:216 exercita `probe_modelos` inteiro (com `claude_run` stubado, sem chamada paga) contra ESTE config — com `false` a seção 4 daquele teste cai em 5 falhas. O preço é uma sondagem real de ~60s ('responda apenas: ok') por drenagem de verdade, que o gate de orçamento mede e o custo.json registra.",
+  |    "preflight_env_keys": [],
+  |    "_preflight_env_keys": "Vazio: executor.sh:123 itera esta lista e aborta por env faltando. O fixture não tem serviço externo nenhum.",
+  | -
+  |    "commit_checkpoint": {
+  |      "obrigatorio": true,
+  |      "quando": "a cada unidade lógica que passe typecheck + teste — não só no fim do ticket",
+  |      "_regra": "Passou typecheck e teste? Commita. Trabalho verificado e não commitado não existe."
+  |    },
+  |    "_commit_checkpoint": "executor.sh lê .commit_checkpoint.quando e ._regra para montar o prompt; texto de _referencia-ci/000-config.ci.json.",
+  | -
+  |    "repo_origin_deve_conter": "fixture/orq-fixture",
+  |    "_repo_origin_deve_conter": "Casa o origin FALSO que o scripts/kit/fixture.sh registra (git@example.invalid:fixture/orq-fixture.git). executor.sh:104-108 aborta o run inteiro se o origin não contiver isto.",
+  |    "ambiente_id": "orqfixture",
+  |    "_ambiente_id": "executor.sh:111-114 compara com o ref extraído de SUPABASE_URL do .env.local, que o fixture.sh escreve como https://orqfixture.supabase.co. test-lib-config.sh:48 cobra que não seja vazio nem null.",
+  | -
+  |    "zona_proibida": {
+  |      "descricao": "Tudo que o loop NUNCA escreve. Globs relativos à raiz do repo.",
+  |      "revisado_humano": true,
+  | @@ -143,7 +129,6 @@
+  |      "no_write_tables": "TODAS"
+  |    },
+  |    "_zona_proibida": "Recorte do de _referencia-ci/000-config.ci.json: enforcement-core.ts:211-215 lê no_write_paths + no_write_credenciais.padroes, e :212 trata no_write_tables == 'TODAS' como negação total. Sem banco no fixture, 'TODAS' é a leitura honesta.",
+  | -
+  |    "paths_harness": [
+  |      "scripts/orquestrador/**",
+  |      "docs/orquestrador/**",
+  | @@ -151,7 +136,6 @@
+  |      ".claude/**"
+  |    ],
+  |    "_paths_harness": "doutrina/templates/config.json:paths_harness, sem mudança — o motor vendorizado mora nos mesmos caminhos aqui. Lido pelo check 5 de scripts/roadmap/lint-mapa.py.",
+  | -
+  |    "_execucao_dos_gates": {
+  |      "ordem_obrigatoria": [
+  |        "typecheck",
+  | @@ -160,7 +144,6 @@
+  |      "interrupcao": "NAO_VALE_PARCIALMENTE"
+  |    },
+  |    "_ordem": "gates.ts:176-178 ordena .gates[] por esta lista e ERRA se divergir. Dois gates porque o package.json do fixture tem dois scripts: typecheck e test.",
+  | -
+  |    "gates": [
+  |      {
+  |        "nome": "typecheck",
+  | @@ -177,18 +160,15 @@
+  |    ],
+  |    "_gates_papel": "Chave OPCIONAL por gate (peça K6b): \"papel\": \"typecheck\" | \"testes\" | \"build\" | \"lint\". É ela que decide o que a linha GATE da trilha diz sobre cada gate. Quando ausente, o papel é INFERIDO do nome (executor.sh, papel_do_gate: *typecheck*/*tsc*/*types* → typecheck; *lint* → lint; *build*/*compil* → build; *test*/*spec* → testes). Declare-a quando o nome do gate não disser o papel — um gate chamado `verificacao` sai como nao-configurado sem ela. Papel que não existe em gate nenhum do config aparece na trilha como `nao-configurado`, nunca `nao-rodou`.",
+  |    "_gates": "cmd = os scripts do fixture/package.json, verificados no disco. tipo exit_code (não baseline): o fixture nasce com 0 erro de tipo e 3 testes verdes, então não há erro herdado a tolerar.",
+  | -
+  |    "launchd": {
+  |      "label": "com.orqfixture.orquestrador",
+  |      "start_interval": 600
+  |    },
+  |    "_launchd": "Peça K6c. `label` é o Label do job do launchd e NÃO tem default: instalar-launchd.sh RECUSA sem ele (o CI usa com.conteudos.orquestrador). Um label por repo — para o launchd, dois repos com o mesmo label são o MESMO job, e o segundo bootstrap derruba o primeiro. `start_interval` é o StartInterval em segundos; ausente vira 1800, que é o valor MEDIDO em 06/set/2026 (a medição está no com.orquestrador.plist.template). 600 aqui só para o teste provar que o número sai do config e não do template — o fixture nunca carrega job nenhum.",
+  | -
+  |    "canal_notificacao": "arquivo",
+  |    "_canal_notificacao": "lib.sh:820-823: qualquer valor diferente de 'notificacao_nativa' faz a notificação ficar SÓ no arquivo runs/notificacoes.log. É o padrão que a peça K10 quer para todo repo.",
+  |    "push_suprimido": true,
+  |    "_push_suprimido": "O origin do fixture é inválido de propósito (example.invalid). Publicar daqui não é opção — e lib.sh:staging_linha já imprime 'push suprimido' no snapshot.",
+  | -
+  |    "juiz": {
+  |      "diff_max_baixo": 300,
+  |      "max_tokens_veredicto": 300,
+  | @@ -207,7 +187,6 @@
+  |      ]
+  |    },
+  |    "_juiz": "juiz.ts:64-76 lê os quatro campos. paths_alto_risco VAZIO: o fixture só tem src/ e test/, e listar glob que não casa nada seria config decorativa. As palavras são as do doutrina/templates/config.json.",
+  | -
+  |    "gate_ticket": {
+  |      "juiz_para_humano": false,
+  |      "max_paths_allowlist": 8,
+  | @@ -247,10 +226,11 @@
+  |        "wget",
+  |        "> ",
+  |        ">>"
+  | -    ]
+  | +    ],
+  | +    "modo_pre_voo": "aviso",
+  | +    "severidade": {}
+  |    },
+  |    "_gate_ticket": "gate-ticket.ts:carregarCfg lê SÓ proibido_no_cmd e cmd_prefixos_permitidos (os dois nomes conferidos no disco). Os prefixos são o subconjunto do doutrina/templates/config.json que existe neste fixture: sem npm run build, sem npm run lint, sem curl (não há servidor local).",
+  | -
+  |    "orcamento": {
+  |      "usd_dia": 5,
+  |      "tokens_dia": 2000000,
+  | @@ -264,7 +244,6 @@
+  |      }
+  |    },
+  |    "_orcamento": "campos_usage copiados de _referencia-ci/000-config.ci.json (nomes confirmados lá por sondagem real de claude -p --output-format json). Os TETOS são do fixture e propositalmente baixos: usd_ticket 1 contra os 10 do CI — um ticket de dois arquivos que passe de US$ 1 é sintoma, não trabalho.",
+  | -
+  |    "executor": {
+  |      "auto_verificacao_max": 2,
+  |      "modo_arquiteto_para_alto": false,
+  | @@ -273,7 +252,6 @@
+  |      "trailer_commit": "Orq-Ticket"
+  |    },
+  |    "_executor": "local-loop.sh:95 lê .executor.trailer_commit para o trailer do merge commit; o resto é o default de doutrina/templates/config.json.",
+  | -
+  |    "proibicoes_absolutas": {
+  |      "regras": [
+  |        "nunca push na branch principal",
+  | 
+  | orq config sobre o PROPOSTO (rc 0):
+  | CONFIG   /var/folders/_7/dqmkt89n7lg_9sf9qkzm7fxr0000gn/T/orq-cfg-LKvK6W/000-config.json
+  | 0 violações — o config está preenchido e as chaves que o motor lê estão lá.
+  | 
+  | --- .gitignore: o que o repo deve ignorar ---
+  | ok       docs/fila/PAUSAR já é ignorado
+  | ok       docs/fila/runs/ já é ignorado
+  | --- orq validar --pendentes (só relatório; NADA é corrigido) ---
+  ok    rc 0
+  ok    o dry-run mostra o motivo que seria preservado
+  ok    o dry-run traz o DIFF das liberações, não um resumo
+  ok    o .orq-pause continua lá e nenhum PAUSAR foi criado
+  ok    liberacoes.json intacto
+  ok    nenhum .bak foi criado
+-- (i2) --migrar aplica: renomeia preservando o motivo, e migra as liberações --
+  | ATUALIZAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  | 
+  | copiado: scripts/orquestrador/ · scripts/orq · scripts/roadmap/ · docs/orquestrador/skill/ (+ VERSAO 2.1.0-dev)
+  | copiado: 20 teste(s) de harness e 7 fixture(s) de teste (peça K8d)
+  | 
+  | 
+  | === MIGRAR docs/fila/** (GRAVANDO, com .bak) ===
+  | 
+  | motivo preservado: 2026-09-05 09:12 | pausado para aplicar migration 0255
+  | RENOMEADO.
+  | 
+  | MIGRAR-LIBERACOES  liberacoes.json (/private/tmp/orq-verificar-rXyzze/repo/docs/fila/liberacoes.json)
+  | forma no disco: tokens[]: 5 (5 string, 0 objeto, 5 sem o prefixo humano:) · sem $schema_versao
+  | 5 entrada(s) lida(s) → 5 token(s) único(s) em v2
+  | nota: 5 token(s) sem data no disco: liberado_em = 'desconhecido'. A migração NÃO inventa data — 'origem' diz de onde cada registro veio
+  | 
+  | @@ -1,9 +1,35 @@
+  | 
+  | GRAVADO. Cópia do estado anterior em /private/tmp/orq-verificar-rXyzze/repo/docs/fila/liberacoes.json.bak
+  | 
+  | MIGRAR-TICKETS  fila (/private/tmp/orq-verificar-rXyzze/repo/docs/fila)
+  | 1 arquivo(s) de ticket em /private/tmp/orq-verificar-rXyzze/repo/docs/fila (regra do motor: [0-9]*.md, sem descer em rascunhos/ nem tocar _TEMPLATE.md)
+  | 
+  | nenhum ticket pendente a migrar.
+  | 
+  | MIGRAR-CONFIG  /private/tmp/orq-verificar-rXyzze/repo/docs/fila/000-config.json
+  | $schema_versao já era 2
+  | renome avaliador_model → modelos.juiz_alto: NÃO aplicado, 'modelos.juiz_alto' já existe com valor próprio
+  | renome avaliador_model → modelos.juiz_baixo: NÃO aplicado, 'modelos.juiz_baixo' já existe com valor próprio
+  | nova gate_ticket.modo_pre_voo = "aviso" (política do motor, não do repo). executor.sh:1052, passo 5b do drive_ticket (porte do Actus, c404986 e 624). O pré-voo do gate de ticket entra em repo que já tem fila, e regra nova de critério (grep -q em pipe, vitest textual, exemplos_regex) reprovaria tickets escritos antes dela: 'aviso' põe as violações no log e na trilha sem bloquear. Quem quer o bloqueio troca para 'bloqueia' no próprio config.
+  | nova gate_ticket.severidade = {} (política do motor, não do repo). gate-ticket.ts:1045 (lerSeveridade) e gate-ticket.ts:150 (severidadeDe), etapa 7d-1b. Objeto VAZIO = vale a tabela REGRAS do motor, que é a decisão da calibração de 25/09 (ERRO só com zero falso positivo nos done dos três repos). A chave nasce vazia para ficar à vista de quem abre o config: rebaixar ou subir uma regra ('6q': 'erro') é decisão do repo, e o motor recusa alto regra ou valor que não conhece.
+  | 
+  | @@ -2,17 +2,14 @@
+  | @@ -32,7 +29,6 @@
+  | @@ -55,17 +51,14 @@
+  | @@ -74,7 +67,6 @@
+  | @@ -88,7 +80,6 @@
+  | @@ -97,31 +88,26 @@
+  | @@ -143,7 +129,6 @@
+  | @@ -151,7 +136,6 @@
+  | @@ -160,7 +144,6 @@
+  | @@ -177,18 +160,15 @@
+  | @@ -207,7 +187,6 @@
+  | @@ -247,10 +226,11 @@
+  | @@ -264,7 +244,6 @@
+  | @@ -273,7 +252,6 @@
+  | 
+  | PROPOSTO gravado em /private/tmp/orq-verificar-rXyzze/repo/docs/fila/000-config.proposto.json. O oficial NÃO foi tocado.
+  | 
+  | orq config sobre o PROPOSTO (rc 0):
+  | CONFIG   /private/tmp/orq-verificar-rXyzze/repo/docs/fila/000-config.proposto.json
+  | 0 violações — o config está preenchido e as chaves que o motor lê estão lá.
+  | 
+  | O config NÃO foi aplicado, e isso é a peça funcionando. Passo humano:
+  | 
+  | ok       docs/fila/PAUSAR já é ignorado
+  | ok       docs/fila/runs/ já é ignorado
+  | VERIFICAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  | 
+  | carimbo    2.1.0-dev
+  | 
+  | 
+  | idêntico ao kit 2.1.0-dev
+  | 
+  | commit sugerido, no repo, com pathspec explícito:
+  | 
+  | e um SEGUNDO commit, separado, para os dados migrados:
+  | 
+  | Os `.bak` NÃO entram em commit nenhum: são rede local, e o git já é o backup
+  | de tudo que estava versionado. Apague-os quando o diff estiver revisado.
+  ok    rc 0
+  ok    .orq-pause virou PAUSAR
+  ok    o MOTIVO foi preservado byte a byte
+  ok    liberacoes.json em v2
+  ok    o token ganhou o prefixo humano:
+  ok    .bak tem o conteúdo ANTERIOR, byte a byte
+  ok    o .gitignore do repo NÃO foi editado
+  ok    sugere um SEGUNDO commit, separado, para os dados migrados
+-- (i3a) M1: a SEGUNDA passada recusa sobrescrever o proposto da primeira --
+  ok    rc 1 (recusa, não erro)
+  ok    o instalador REPASSA a recusa
+  ok    a mensagem dá o nome que a revisão humana deve usar
+  ok    o proposto sobrevive byte a byte
+-- (i3) rodar de novo é no-op, e o .bak NÃO é sobrescrito --
+  ok    rc 0
+  ok    a migração diz que não há o que fazer
+  ok    a pausa também é no-op
+  ok    .bak preservado (é o estado ANTES da PRIMEIRA migração)
+-- (i4) .orq-pause E PAUSAR juntos: NÃO migra, e diz por quê --
+  ok    recusa migrar com os dois presentes
+  ok    o PAUSAR existente não foi sobrescrito
+-- (i5) o relato de .gitignore pergunta ao GIT, e nomeia o que falta --
+  ok    acusa docs/fila/PAUSAR faltando
+  ok    acusa docs/fila/runs/ faltando
+  ok    diz que não edita o .gitignore do repo
+  ok    runs/ ignorado por runs/.gitignore conta como ok (é como o CI faz)
+-- (i5b) K8b-4: o config é PROPOSTO, nunca aplicado pelo instalador --
+  ok    relata o renome supabase_project_id → ambiente_id
+  ok    relata a conversão do tipo do gate
+  ok    c0_intocavel vira item NOMEADO do relatório
+  ok    grita que zona_proibida continua ausente
+  ok    o 000-config.json OFICIAL não foi tocado
+  ok    000-config.proposto.json gravado ao lado
+  ok    o proposto está em schema 2
+  ok    c0_intocavel atravessa INTACTA para o proposto
+  ok    diz que não aplicou, e dá os 4 passos humanos
+-- (i5c) K8b-5: bloco JSON dos pendentes, prosa intacta byte a byte --
+  ok    recon_esperado virou recon no ticket real
+  ok    o nome antigo saiu do bloco
+  ok    a PROSA é byte a byte a mesma
+  ok    nenhum .bak de ticket
+  ok    o relatório roda o orq validar sobre a fila migrada
+  ok    o orq validar não CORRIGIU o ticket (segunda passada é no-op)
+-- (i6) --dry-run PREVÊ a recusa em vez de dizer que está tudo bem --
+  ok    o dry-run continua saindo 0 (ele não é o gate)
+  ok    o dry-run avisa que o --atualizar de verdade recusaria
+  ok    e diz o motivo (sem pausa)
+
+== (j) --novo: repo git sem docs/fila ==
+-- (j1) o repo nasce inteiro --
+  | NOVO       kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-novo-8BoCGr
+  | 
+  | criado     scripts/orquestrador/ · scripts/orq · scripts/roadmap/ · docs/orquestrador/skill/ (VERSAO 2.1.0-dev)
+  | criado     20 teste(s) de harness e 7 fixture(s) (peça K8d)
+  | 
+  | criado     docs/fila/rascunhos/.gitkeep
+  | criado     docs/fila/000-config.json
+  | criado     docs/fila/_TEMPLATE.md
+  | criado     docs/fila/decisoes-pendentes.md
+  | criado     docs/fila/liberacoes.json (v2 vazio)
+  | criado     docs/roadmap/mapa.json
+  | criado     docs/roadmap/MAPA.md
+  | criado     docs/orquestrador/PLAYBOOK.md
+  | criado     docs/orquestrador/PECAS.md
+  | escrito    .gitignore (+2 linha(s))
+  | criado     docs/fila/runs/.gitignore
+  | criado     docs/fila/runs/custo.json
+  | 
+  | VERIFICAR  kit 2.1.0-dev (/Users/lucasantos/Projetos/_worktrees/kit-etapa7f7)
+  |            repo /private/tmp/orq-novo-8BoCGr
+  | 
+  | carimbo    2.1.0-dev
+  | 
+  | 
+  | idêntico ao kit 2.1.0-dev
+  | 
+  | --- orq config (o formulário ainda está em branco; é assim que ele nasce) ---
+  | CONFIG   /private/tmp/orq-novo-8BoCGr/docs/fila/000-config.json
+  |   branch_protegida: placeholder não preenchido: "<a branch que o loop NUNCA empurra — ex.: main>"
+  |   worktrees_prefixo: placeholder não preenchido: "<prefixo curto das worktrees deste repo — ex.: ci-, os-, fx->"
+  |   migrations_dir: placeholder não preenchido: "<ex: supabase/migrations | db/migrations>"
+  |   preflight_env_keys[0]: placeholder não preenchido: "<ENV_OBRIGATORIA_1>"
+  |   preflight_env_keys[1]: placeholder não preenchido: "<ENV_OBRIGATORIA_2>"
+  |   juiz.paths_alto_risco[0]: placeholder não preenchido: "<ex: supabase/**>"
+  |   juiz.paths_alto_risco[1]: placeholder não preenchido: "<ex: src/auth/**>"
+  |   juiz.paths_alto_risco[2]: placeholder não preenchido: "<ex: src/billing/**>"
+  |   gate_ticket.servidor_local_cmd: placeholder não preenchido: "<ex: npm run dev -- --port 3000 | vazio se não houver critério HTTP; sem ele, remova os prefixos curl>"
+  |   sentinela.smoke_cmd: placeholder não preenchido: "<ex: curl -sf http://localhost:3000/api/health>"
+  |   orcamento.campos_usage.custo_usd: placeholder não preenchido: "<nome do campo de custo no JSON de claude -p --output-format json, confirmado no pré-voo cat. 8>"
+  |   orcamento.campos_usage.tokens_in: placeholder não preenchido: "<campo>"
+  |   orcamento.campos_usage.tokens_out: placeholder não preenchido: "<campo>"
+  |   orcamento.campos_usage.tokens_cache: placeholder não preenchido: "<campo>"
+  |   relatorio.canal: placeholder não preenchido: "<notificacao_nativa | webhook_url | email>"
+  |   repo_origin_deve_conter: placeholder não preenchido: "<org/repo>"
+  |   ambiente_id: placeholder não preenchido: "<ref do banco/projeto, ou vazio se não aplicável>"
+  |   zona_proibida.no_write_tables[0]: placeholder não preenchido: "<tabela_compartilhada_1>"
+  |   zona_proibida.no_write_prefixes[0]: placeholder não preenchido: "<prefixo_proibido_>"
+  |   zona_proibida.readonly_ok[0]: placeholder não preenchido: "<tabelas que o loop pode SELECT mas nunca escrever>"
+  |   zona_proibida.excecoes_os_owned[0]: placeholder não preenchido: "<tabelas de nome parecido mas de propriedade deste repo>"
+  |   launchd.label: placeholder não preenchido: "<ex: com.suaorg.orquestrador — OBRIGATÓRIO, um por repo>"
+  |   gates[0].cmd: placeholder não preenchido: "<ex: npx tsc --noEmit>"
+  |   gates[0].baseline_scope_regex: placeholder não preenchido: "<regex de arquivos com erros herdados tolerados, ou vazio>"
+  |   gates[1].cmd: placeholder não preenchido: "<ex: npx vitest run>"
+  |   gates[2].cmd: placeholder não preenchido: "<ex: npm run build>"
+  |   lint.cmd: placeholder não preenchido: "<ex: npx eslint . --max-warnings=999999>"
+  | 
+  | 27 violação(ões)
+  | 
+  | PRÓXIMOS PASSOS, nesta ordem:
+  |   1. preencha docs/fila/000-config.json — cada placeholder <...> acima é uma decisão local
+  |   2. bash scripts/orq config           # tem de sair 0 violações
+  |   3. pré-voo: docs/orquestrador/skill/references/pre-voo.md, categorias 0 a 6
+  |   4. um ticket-fixture trivial atravessa o loop, com merge na staging
+  |   5. SÓ ENTÃO agendar: bash scripts/orquestrador/instalar-launchd.sh
+  |      (ele RECUSA sem launchd.label, e o label é um dos placeholders do passo 1)
+  | 
+  | commit sugerido, no repo, com pathspec explícito:
+  |   cd /private/tmp/orq-novo-8BoCGr
+  |   git add .gitignore scripts/orquestrador scripts/orq scripts/roadmap docs \
+  |     test/fixtures/orq-harness.ts test/orquestrador-morte-por-sinal.test.ts test/orquestrador-pacotes.test.ts test/orquestrador-prefixo-aspas.test.ts test/orquestrador-prompt-como-rodar.test.ts test/orquestrador-reparo-trilha.test.ts test/orquestrador-trilha-uma-linha.test.ts test/orquestrador-gate-grep-q.test.ts test/orquestrador-gate-vitest-aviso.test.ts test/orquestrador-contexto-juiz.test.ts test/orquestrador-retry-feedback-juiz.test.ts test/orquestrador-gates-fonte-unica.test.ts test/orquestrador-base-vermelha.test.ts test/orquestrador-fila-json-quebrado.test.ts test/orquestrador-arquivo-solto.test.ts test/orquestrador-contexto-juiz-fixtures.test.ts test/orquestrador-gate-regex-exemplos.test.ts test/orquestrador-criterio-merito.test.ts test/orquestrador-ambiente-merito.test.ts test/orquestrador-teto-adiamento-ambiente.test.ts test/fixtures/criterios/lote8-246-250.json test/fixtures/trilha/events-quebrado.log test/fixtures/trilha/permissao-negada-234.cmd test/fixtures/gate-ticket-grep-q/901-fixture-grep-q-em-pipe.md test/fixtures/gate-ticket-grep-q/902-fixture-grep-c-controle.md test/fixtures/gate-ticket-grep-q/903-fixture-488-antigo.md test/fixtures/orquestrador-base-vermelha/gates-510c-attempt-0.txt 
+  |   git commit -m 'orquestrador: instalação inicial, kit 2.1.0-dev'
+  ok    rc 0
+  ok    criou docs/fila/000-config.json
+  ok    criou docs/fila/_TEMPLATE.md
+  ok    criou docs/fila/liberacoes.json
+  ok    criou docs/fila/decisoes-pendentes.md
+  ok    criou docs/fila/rascunhos/.gitkeep
+  ok    criou docs/roadmap/mapa.json
+  ok    criou docs/roadmap/MAPA.md
+  ok    criou docs/orquestrador/PLAYBOOK.md
+  ok    criou docs/orquestrador/PECAS.md
+  ok    criou docs/orquestrador/skill/SKILL.md
+  ok    criou docs/orquestrador/skill/VERSAO
+  ok    criou scripts/orq
+  ok    criou scripts/orquestrador/lib.sh
+  ok    criou scripts/roadmap/lint-mapa.py
+  ok    criou test/fixtures/orq-harness.ts
+  ok    criou docs/fila/runs/.gitignore
+  ok    VERSAO carimbado
+  ok    liberacoes.json nasce em v2
+-- (j2) NADA de launchd: agendar é passo separado --
+  ok    nenhum plist instanciado no repo
+  ok    os próximos passos põem o agendamento por ÚLTIMO
+-- (j3) orq config: só placeholders, NENHUMA chave ausente --
+  ok    rc 1 (formulário em branco é config inválido, e tem de ser)
+  ok    lista os placeholders
+  ok    nenhuma chave obrigatória AUSENTE (o template só precisa ser preenchido)
+-- (j4) --verificar: idêntico ao kit --
+  | 
+  | 
+  | idêntico ao kit 2.1.0-dev
+  ok    rc 0
+  ok    idêntico ao kit
+-- (j5) .gitignore: acrescenta o que falta, preserva o que havia --
+  ok    a linha que já existia sobreviveu
+  ok    acrescentou docs/fila/PAUSAR
+  ok    docs/fila/runs/ é ignorado (o git confirma)
+-- (j6) rodar de novo RECUSA: com fila, o verbo é --atualizar --
+  ok    rc 1
+  ok    a recusa diz por quê e aponta o --atualizar
+-- (j7) repo que não é git: RECUSA antes de escrever qualquer coisa --
+  ok    rc 1
+  ok    a recusa nomeia a causa
+  ok    não escreveu NADA no diretório recusado
+
+== (k) T1 · sem node_modules/.bin/tsx ==
+-- (k1) --atualizar RECUSA, nomeando o caminho e o comando --
+  | RECUSADO: '/private/tmp/orq-sem-tsx-R2dUxV' não tem node_modules/.bin/tsx: o motor do orquestrador é TypeScript e nenhuma parte dele roda sem tsx. Instale a dependência de DESENVOLVIMENTO no repo, com o loop pausado, e repita: npm i -D tsx@^4.19.0   (ou o equivalente do gerenciador deste repo)
+  ok    rc 1
+  ok    diz RECUSADO
+  ok    nomeia node_modules/.bin/tsx
+  ok    dá a linha de instalação
+-- (k2) --forcar NÃO dispensa (forçar copiaria um motor que não roda) --
+  ok    rc 1 com --forcar
+-- (k3) --dry-run SÓ AVISA: sai 0, prevê a recusa e não escreve nada --
+  ok    rc 0 (o dry-run não é o gate)
+  ok    prevê a recusa
+  ok    e diz qual
+  ok    árvore idêntica antes e depois
+-- (k4) com o tsx de volta, o --atualizar segue normalmente --
+  ok    rc 0
+  ok    nenhuma reclamação de tsx
+
+== (v) nenhum scripts/orquestrador/test-*.sh vendorizado depende do kit ==
+  ok    29 test-*.sh vendorizados no fixture varridos
+  ok    nenhum cita test/fixtures, ORQ_KIT ou caminho que sobe para fora de scripts/orquestrador
+  ok    a trava reprova a linha que quebrou no CI
+
+== (c) ORQ_CI_CHECKOUT não setado (SÓ LEITURA — o resultado é achado, não gate) ==
+  (pulado: ORQ_CI_CHECKOUT vazio ou inexistente; o teste não lê outro repo por padrão)
+
+TODOS OS CHECKS PASSARAM

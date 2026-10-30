@@ -1,0 +1,8 @@
+14d real: dias com intervenção 12, maior sequência limpa 2
+14d R1/R5 auto (só o que sairia igual ao humano, medição da peça 4a): dias com intervenção 12, maior sequência limpa 2
+14d + pausa_gate auto (peça 7: retoma o falso positivo): dias com intervenção 12, maior sequência limpa 2
+14d + writeback, motor e config resolvidos (o cenário otimista da medição): dias com intervenção 9, maior sequência limpa 3
+30d real: dias com intervenção 28, maior sequência limpa 2
+30d R1/R5 auto (só o que sairia igual ao humano, medição da peça 4a): dias com intervenção 28, maior sequência limpa 2
+30d + pausa_gate auto (peça 7: retoma o falso positivo): dias com intervenção 28, maior sequência limpa 2
+30d + writeback, motor e config resolvidos (o cenário otimista da medição): dias com intervenção 25, maior sequência limpa 3

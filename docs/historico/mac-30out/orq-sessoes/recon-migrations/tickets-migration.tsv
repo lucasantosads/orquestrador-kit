@@ -1,0 +1,864 @@
+id	fila	status	toca_mig	toca_app	tent	ja_bloq	dep_mig_humano	dep_mig_ticket	notas	arq
+002	comarka	done	True	True	0					docs/fila/002-t-a-registro-whatsapp.md
+010	comarka	done	True	True	2					docs/fila/010-t-h-aba-perfil.md
+012	comarka	done	False	True	1					docs/fila/012-t-j-registros-detalhe.md
+025	comarka	done	False	False	3					docs/fila/025-harness-parser-veredicto.md
+026	comarka	done	False	False	2					docs/fila/026-relatorio-fallback-arquivo.md
+027	comarka	done	False	True	4	2026-08-09,2026-08-13				docs/fila/027-t15a-ui-regras-alerta.md
+028	comarka	done	False	True	10					docs/fila/028-t13f-lista-risco.md
+029	comarka	done	False	True	8	2026-08-09,2026-08-13				docs/fila/029-t14k-relatorio-periodo.md
+030	comarka	done	False	True	5	2026-08-09,2026-08-13				docs/fila/030-t14o-espelho-calculadora.md
+033	comarka	done	True	True	1					docs/fila/033-t17a-conclusao-etapa.md
+034	comarka	done	True	True	2					docs/fila/034-t17b-comunicacao-prazo.md
+035	comarka	done	False	True	1					docs/fila/035-t17c-painel-disputa.md
+036	comarka	done	False	True	9					docs/fila/036-guardrail14-remove-financeiro-agencia.md
+037	comarka	done	False	True	6	2026-08-13,2026-08-17				docs/fila/037-predicado-cliente-ativo.md
+038	comarka	done	False	True	5	2026-08-09,2026-08-13				docs/fila/038-t15c-superficies-alertas.md
+039	comarka	done	False	False	1					docs/fila/039-t16a-recon-carteira-ranking.md
+040	comarka	done	False	True	3	2026-08-09,2026-08-13				docs/fila/040-t14a-atalhos-externos-form.md
+041	comarka	done	False	False	1					docs/fila/041-t011-telemetria-orquestrador.md
+042	comarka	done	False	False	1					docs/fila/042-t47-higiene-repo.md
+043	comarka	done	False	True	6	2026-08-09,2026-08-13,2026-08-14,2026-08-17				docs/fila/043-t14n-aba-documentos-501.md
+044	comarka	done	False	True	1					docs/fila/044-t15e-gap-ativacao.md
+045	comarka	done	False	True	1					docs/fila/045-t15b-motor-cron-alertas.md
+046	comarka	done	False	True	3	2026-08-09,2026-08-13				docs/fila/046-drilldown-onboarding-atrasados.md
+047	comarka	done	False	True	3	2026-08-09,2026-08-13				docs/fila/047-t15c-toggle-relatorio-cliente.md
+048	comarka	done	False	True	1					docs/fila/048-p23-regra-pix-sem-investimento.md
+049	comarka	done	True	True	6	2026-08-09,2026-08-13,2026-08-14,2026-08-17				docs/fila/049-t14i-auditoria-v2-fonte-propria.md
+050	comarka	done	False	True	4	2026-08-09,2026-08-13				docs/fila/050-criar-tarefa-ficha.md
+051	comarka	done	False	True	1					docs/fila/051-data-view-renovacoes-risco.md
+052	comarka	done	False	True	2					docs/fila/052-banner-sessao-degradada.md
+053	comarka	done	False	True	1					docs/fila/053-fix-auth-whatsapp-summary.md
+054	comarka	done	False	True	2					docs/fila/054-religar-aba-registros.md
+056	comarka	done	False	False	1					docs/fila/056-auditoria-rls-tabelas.md
+059	comarka	done	False	False	1					docs/fila/059-t18b-recon-licencas-ativos.md
+060	comarka	done	False	True	3					docs/fila/060-religar-abas-mortas.md
+063	comarka	done	False	True	1					docs/fila/063-nav-ficha-4-abas.md
+070	comarka	done	True	False	1					docs/fila/070-t42-senha-scrypt-migration.md
+071	comarka	done	False	True	2			070		docs/fila/071-t42-login-dual-hash.md
+072	comarka	done	False	False	2					docs/fila/072-t41-c0-ddl-gate.md
+073	comarka	done	True	False	1					docs/fila/073-t56-rls-backfill-sql.md
+077	comarka	done	False	False	1					docs/fila/077-t19a-recon-coleta-nps.md
+078	comarka	done	False	True	1					docs/fila/078-t14e-perfil-obs-503.md
+080	comarka	done	True	False	1					docs/fila/080-nps-coleta-migration.md
+081	comarka	done	False	True	4			080		docs/fila/081-nps-coleta-ui.md
+083	comarka	done	False	True	2					docs/fila/083-audit-log-rotas-escrita.md
+085	comarka	done	False	False	1					docs/fila/085-t42-backfill-scrypt-script.md
+097	comarka	done	True	False	1					docs/fila/097-sla-onboarding-ancora.md
+1012	comarka	done	True	False	1					docs/fila/1012-indices-fk-e-rls-initplan-sql.md
+1013	comarka	done	True	False	1					docs/fila/1013-arquivar-tabelas-backup-sql.md
+1017	comarka	done	True	False	1					docs/fila/1017-ops-feedback-prints-ddl.md
+1022	comarka	done	True	False	1					docs/fila/1022-revoke-anon-notificacoes-sql.md
+1043	comarka	done	False	True	1					docs/fila/1043-onboarding-motor-grupo-whatsapp-um-clique.md
+1050	comarka	done	True	False	1					docs/fila/1050-ops-cliente-negocio-ddl.md
+1050b	comarka	done	False	True	1					docs/fila/1050b-espelho-legado-lib-unica-porta-de-leitura.md
+1051	comarka	done	False	True	1		humano:ddl-1050-aplicada			docs/fila/1051-negocio-crons-score-risco-gravam-casa-nova.md
+1052	comarka	done	False	True	1					docs/fila/1052-negocio-temperatura-e-lente-gravam-casa-nova.md
+1052b	comarka	done	False	True	1					docs/fila/1052b-situacao-e-data-gravam-casa-nova.md
+1053	comarka	done	False	True	5					docs/fila/1053-negocio-team-e-carteira-param-de-gravar-no-espelho.md
+1053b	comarka	done	False	True	6					docs/fila/1053b-fase-churn-e-setup-param-de-gravar-no-espelho.md
+1053c	comarka	done	False	True	3					docs/fila/1053c-sync-clientes-nao-linka-o-espelho.md
+1054	comarka	done	False	True	4					docs/fila/1054-negocio-leitores-ficha.md
+1054b	comarka	done	False	True	3					docs/fila/1054b-negocio-leitores-ficha-libs-e-comentarios.md
+1055	comarka	done	False	True	3					docs/fila/1055-negocio-leitores-carteira.md
+1055b	comarka	done	False	True	4					docs/fila/1055b-negocio-leitores-equipe-nps-portal.md
+1056	comarka	done	False	True	1					docs/fila/1056-negocio-leitores-retencao-saude-ponte.md
+1056b	comarka	done	False	True	2					docs/fila/1056b-negocio-leitores-nps-onboarding-ponte.md
+1057	comarka	done	False	True	3					docs/fila/1057-negocio-leitores-visao-geral-portal.md
+1058	comarka	done	False	True	3	2026-10-15				docs/fila/1058-negocio-leitores-crons-score-risco-temperatura-alertas.md
+1058b	comarka	done	False	True	2					docs/fila/1058b-negocio-leitores-performance-cockpit.md
+1059	comarka	done	False	True	6	2026-10-14				docs/fila/1059-notion-rotas-renomeadas.md
+1060	comarka	done	False	True	3	2026-10-15				docs/fila/1060-espelho-congelado.md
+1060a	comarka	done	False	False	2					docs/fila/1060a-dubles-espelho-select-in.md
+1060b	comarka	done	False	False	1	2026-10-16				docs/fila/1060b-espelho-congelado-testes.md
+1061	comarka	done	True	False	1					docs/fila/1061-rls-policies-abertas-os-sql.md
+1062	comarka	done	True	False	1					docs/fila/1062-views-security-invoker-e-search-path-sql.md
+1063	comarka	done	False	True	1					docs/fila/1063-papel-requalificar-e-valor-mensal.md
+1070	comarka	done	False	True	2					docs/fila/1070-reuniao-operacional-resumo-ia-job.md
+1071	comarka	done	False	True	1					docs/fila/1071-reuniao-operacional-termometro-na-relacao.md
+1080	comarka	done	False	True	1					docs/fila/1080-sync-clientes-desativa-quem-saiu-da-receita.md
+1082	comarka	done	True	False	1					docs/fila/1082-churn-log-fn-registrar-churn-receita-sql.md
+1082b	comarka	done	False	True	1		humano:ddl-1082-aplicada	1082		docs/fila/1082b-churn-log-post-sem-escrita-c0.md
+1100	comarka	done	True	False	1					docs/fila/1100-criativos-catalogo-hooks-ddl.md
+1102	comarka	done	False	True	1		humano:ddl-1100-aplicada			docs/fila/1102-criativos-classificacao-job.md
+1107	comarka	done	False	True	1					docs/fila/1107-criativos-foto-mensal.md
+111	comarka	done	True	False	2					docs/fila/111-t42-drop-senha-legado-sql.md
+1110	comarka	done	True	False	1					docs/fila/1110-consultorias-prazo-90-sql.md
+1111	comarka	done	True	False	1					docs/fila/1111-alerta-regra-conta-parada-sql.md
+1119	comarka	obsoleto	True	False	0	2026-10-14				docs/fila/1119-apolo-schema-role-sql.md
+1120	comarka	obsoleto	True	False	0	2026-10-14		1119		docs/fila/1120-apolo-dimensoes-sql.md
+1121	comarka	obsoleto	True	False	0	2026-10-14		1120		docs/fila/1121-apolo-ledger-sql.md
+1122	comarka	obsoleto	True	False	0	2026-10-14		1120		docs/fila/1122-apolo-autonomia-kill-orcamento-sql.md
+1123	comarka	obsoleto	False	True	0	2026-10-14	humano:migration-1119-aplicada;humano:migration-1120-aplicada;humano:migration-1121-aplicada;humano:migration-1122-aplicada	1121;1122		docs/fila/1123-apolo-worker-cron.md
+1125	comarka	obsoleto	False	True	0	2026-10-14				docs/fila/1125-sensor-promessa-vencida.md
+1126	comarka	obsoleto	False	True	0	2026-10-14				docs/fila/1126-sensor-midia-problema.md
+1127	comarka	obsoleto	False	True	0	2026-10-14	humano:migration-1121-aplicada			docs/fila/1127-apolo-leitor-v1.md
+1128	comarka	obsoleto	False	True	0	2026-10-14	humano:migration-1120-aplicada;humano:migration-1121-aplicada			docs/fila/1128-apolo-decisor-v1-sombra.md
+1129	comarka	obsoleto	True	False	0	2026-10-14		1121		docs/fila/1129-apolo-agente-versao-sql.md
+1129b	comarka	obsoleto	False	True	0	2026-10-14	humano:migration-1129-aplicada	1129		docs/fila/1129b-apolo-agente-versao-codigo.md
+1130	comarka	obsoleto	False	True	0	2026-10-14	humano:migration-1120-aplicada			docs/fila/1130-apolo-modo-sombra-executor.md
+1132	comarka	obsoleto	True	False	0	2026-10-14		1121		docs/fila/1132-apolo-ledger-ticket-sql.md
+1132b	comarka	obsoleto	False	False	0	2026-10-14	humano:migration-1132-aplicada	1132		docs/fila/1132b-apolo-ledger-tickets-script.md
+1133	comarka	obsoleto	True	False	0	2026-10-14		1121		docs/fila/1133-apolo-pergunta-tipada-sql.md
+1133b	comarka	obsoleto	False	True	0	2026-10-14	humano:migration-1133-aplicada	1133		docs/fila/1133b-apolo-decisao-tipada-adaptador.md
+1135	comarka	obsoleto	True	False	0	2026-10-14	humano:migration-1119-aplicada	1119		docs/fila/1135-apolo-raw-ghl-conversas-sql.md
+1136	comarka	obsoleto	False	True	0	2026-10-14	humano:migration-1135-aplicada	1135		docs/fila/1136-apolo-ghl-conversas-webhook.md
+1140	comarka	done	False	True	1		humano:migration-5035-aplicada			docs/fila/1140-ghl-webhook-mensagens-rota.md
+1142	comarka	done	False	True	1					docs/fila/1142-cliente-novo-nasce-planejamento.md
+1143	comarka	done	False	True	1					docs/fila/1143-status-historico-aceita-apelido.md
+115	comarka	done	True	False	1					docs/fila/115-t35-metas-migration.md
+116	comarka	done	False	True	1			115		docs/fila/116-t35-metas-ui.md
+1160	comarka	done	False	True	1		humano:migration-5060-aplicada;humano:migration-5061-aplicada;humano:migration-5062-aplicada			docs/fila/1160-apolo-atendimento-cron.md
+1161	comarka	done	False	True	1		humano:migration-5062-aplicada			docs/fila/1161-api-cliente-atendimento.md
+1163	comarka	done	True	False	1			1111		docs/fila/1163-alerta-captura-conversa-sql.md
+1163b	comarka	done	False	True	1		humano:ddl-1163-aplicada;humano:migration-5062-aplicada	1163		docs/fila/1163b-alerta-captura-conversa-motor.md
+1164	comarka	done	False	True	1		humano:migration-5060-aplicada;humano:migration-5062-aplicada			docs/fila/1164-api-desistencia-motivo.md
+1171	comarka	done	False	True	1	2026-10-16				docs/fila/1171-meta-token-invalido-alerta.md
+1172	comarka	pendente	True	True	0					docs/fila/1172-meta-migrar-system-user.md
+1173	comarka	pendente	False	True	0					docs/fila/1173-meta-descoberta-bm.md
+1180	comarka	done	False	True	1		humano:migration-5067-aplicada;humano:migration-5068-aplicada			docs/fila/1180-api-cliente-atendimento-lead.md
+1181	comarka	done	False	True	2		humano:migration-5067-aplicada;humano:migration-5069-aplicada			docs/fila/1181-api-cliente-atendimento-padroes.md
+1182	comarka	done	False	True	2		humano:migration-5070-aplicada			docs/fila/1182-api-cliente-atendimento-dataset.md
+1185	comarka	done	False	True	1		humano:migration-5067-aplicada;humano:migration-5068-aplicada			docs/fila/1185-cron-apolo-atendimento-julgamento.md
+1190	comarka	done	True	False	1					docs/fila/1190-reuniao-manual-ddl.md
+1191	comarka	done	False	True	3	2026-10-16,2026-10-17	humano:ddl-1190-aplicada	1190		docs/fila/1191-reuniao-manual-api.md
+1197	comarka	pendente	False	True	0		humano:ddl-1172-aplicada			docs/fila/1197-meta-system-user-fechamento.md
+1198	comarka	pendente	False	True	0					docs/fila/1198-meta-token-fora-da-url-restante-lib.md
+1199	comarka	pendente	False	True	0					docs/fila/1199-meta-token-fora-da-url-restante-rotas.md
+1200	comarka	done	False	True	1	2026-10-16				docs/fila/1200-meta-settings-sem-token-no-navegador.md
+121	comarka	done	False	True	4					docs/fila/121-t34-relatorio-compartilhavel.md
+1221	comarka	done	False	True	1		humano:migration-5084-aplicada;humano:migration-5083-aplicada			docs/fila/1221-api-cliente-atendimento-feedback.md
+1222	comarka	done	False	True	1		humano:migration-5083-aplicada			docs/fila/1222-api-cliente-atendimento-config.md
+1224	comarka	done	False	True	1		humano:migration-5086-aplicada;humano:migration-5067-aplicada			docs/fila/1224-api-cliente-atendimento-revisao.md
+1226	comarka	done	False	True	1		humano:migration-5088-aplicada			docs/fila/1226-api-cliente-atendimento-followup.md
+1228	comarka	done	False	True	1		humano:migration-5088-aplicada			docs/fila/1228-cron-apolo-atendimento-followup.md
+1243	comarka	done	False	True	1					docs/fila/1243-api-apolo-pendencias-veredito.md
+1244	comarka	done	False	True	1					docs/fila/1244-inicio-cartao-apolo-sugere.md
+1245	comarka	done	False	True	1					docs/fila/1245-comarka-pro-pontos-veredito-apolo.md
+1246	comarka	done	False	True	1					docs/fila/1246-cockpit-dado-em-verificacao.md
+1247	comarka	done	False	True	3					docs/fila/1247-api-cockpit-canonico.md
+1248	comarka	obsoleto	False	True	3	2026-10-17				docs/fila/1248-cockpit-kpis-canonicos-tela.md
+1249	comarka	done	False	True	1					docs/fila/1249-api-nicho-tese-canonico.md
+1250	comarka	done	False	True	1					docs/fila/1250-performance-nichos-teses-canonico-tela.md
+1251	comarka	done	False	True	1		humano:migration-5181-aplicada	5181		docs/fila/1251-ficha-aviso-tese-incoerente.md
+1252	comarka	done	False	True	1		humano:migration-5182-aplicada	5182		docs/fila/1252-api-mutirao-campanha-tese-lote.md
+1253	comarka	done	False	True	1					docs/fila/1253-tela-mutirao-classificacao.md
+1254	comarka	done	False	True	1		humano:migration-5197-aplicada	5197		docs/fila/1254-api-apolo-conhecimento-agente.md
+1255	comarka	done	False	True	1		humano:migration-5186-aplicada	5186		docs/fila/1255-api-inicio-rascunhos-amarelos.md
+1256	comarka	done	False	True	4					docs/fila/1256-a5-churn-remover-confirma.md
+1257	comarka	done	False	True	1					docs/fila/1257-a5-contrato-remover-entregavel-confirma.md
+1258	comarka	done	False	True	1					docs/fila/1258-a5-setup-desvincular-confirma.md
+1259	comarka	done	False	True	1					docs/fila/1259-a5-regra-mql-remover-confirma.md
+1260	comarka	done	False	True	1					docs/fila/1260-a5-meta-ads-desvincular-confirma.md
+1261	comarka	done	False	True	1					docs/fila/1261-a5-onboarding-templates-remover-confirma.md
+1262	comarka	pendente	False	True	0		humano:migration-5196-aplicada			docs/fila/1262-api-cliente-atendimento-calibracao.md
+1264	comarka	done	False	True	1		humano:migration-5193-aplicada			docs/fila/1264-api-cliente-atendimento-teses.md
+1267	comarka	pendente	False	True	0		humano:migration-5199-aplicada			docs/fila/1267-api-cliente-atendimento-config-nota-ghl.md
+1269	comarka	pendente	False	True	0		humano:migration-5199-aplicada			docs/fila/1269-cron-apolo-atendimento-nota-ghl.md
+1270	comarka	done	False	True	1					docs/fila/1270-ficha-atendimento-padroes-rotulos-sinais.md
+1271	comarka	done	False	True	1					docs/fila/1271-visao-kpis-canonicos-faixa.md
+1272	comarka	done	False	True	1					docs/fila/1272-ensure-cliente-fase-inicial.md
+1273	comarka	done	False	True	1					docs/fila/1273-ficha-carregando-nao-vira-vazio.md
+1274	comarka	done	False	True	1					docs/fila/1274-financeiro-erro-500-generico.md
+1275	comarka	done	False	True	2					docs/fila/1275-erro-interno-helper-teto.md
+1276	comarka	done	False	True	1					docs/fila/1276-erro-cru-fatia-01.md
+1277	comarka	done	False	True	1					docs/fila/1277-erro-cru-fatia-02.md
+1278	comarka	done	False	True	1					docs/fila/1278-erro-cru-fatia-03.md
+1279	comarka	done	False	True	1					docs/fila/1279-erro-cru-fatia-04.md
+1280	comarka	done	False	True	1					docs/fila/1280-erro-cru-fatia-05.md
+1281	comarka	done	False	True	1					docs/fila/1281-erro-cru-fatia-06.md
+1282	comarka	done	False	True	1					docs/fila/1282-erro-cru-fatia-07.md
+1283	comarka	done	False	True	1					docs/fila/1283-erro-cru-fatia-08.md
+1284	comarka	done	False	True	1					docs/fila/1284-erro-cru-fatia-09.md
+1285	comarka	done	False	True	1					docs/fila/1285-erro-cru-fatia-10.md
+1286	comarka	done	False	True	1					docs/fila/1286-erro-cru-fatia-11.md
+1287	comarka	done	False	True	1					docs/fila/1287-erro-cru-fatia-12.md
+1288	comarka	done	False	True	1					docs/fila/1288-erro-cru-fatia-13.md
+1289	comarka	done	False	True	1					docs/fila/1289-erro-cru-fatia-14.md
+1290	comarka	done	False	True	1					docs/fila/1290-erro-cru-fatia-15.md
+1291	comarka	done	False	True	1					docs/fila/1291-erro-cru-fatia-16.md
+1292	comarka	done	False	True	1					docs/fila/1292-erro-cru-fatia-17.md
+1293	comarka	done	False	True	1					docs/fila/1293-erro-cru-fatia-18.md
+1294	comarka	done	False	True	1					docs/fila/1294-erro-cru-fatia-19.md
+1295	comarka	done	False	True	1					docs/fila/1295-erro-cru-fatia-20.md
+1296	comarka	done	False	True	1					docs/fila/1296-erro-cru-fatia-21.md
+1297	comarka	done	False	True	1					docs/fila/1297-erro-cru-fatia-22.md
+1299	comarka	done	False	True	1		humano:migration-5207-aplicada	5207		docs/fila/1299-relatorio-envio-bloqueia-divergencia.md
+1305	comarka	pendente	False	True	0		humano:migration-5208-aplicada;humano:migration-5209-aplicada;humano:migration-5210-aplicada			docs/fila/1305-api-apolo-agentes-atendimento.md
+1307	comarka	pendente	False	True	0		humano:migration-5208-aplicada;humano:migration-5210-aplicada			docs/fila/1307-api-cliente-atendimento-criticas-lead.md
+1309	comarka	pendente	False	True	0		humano:migration-5208-aplicada;humano:migration-5209-aplicada			docs/fila/1309-cron-apolo-agentes.md
+1310	comarka	pendente	False	False	0					docs/fila/1310-apolo-registro-capacidades-guarda.md
+1311	comarka	pendente	False	False	0		humano:migration-5215-aplicada			docs/fila/1311-estado-plano-capacidades-orfas.md
+1312	comarka	done	False	True	1		humano:migration-5173-aplicada			docs/fila/1312-inicio-risco-score-apolo.md
+1313	comarka	done	False	True	1		humano:migration-5171-aplicada			docs/fila/1313-nicho-tese-benchmark-real.md
+1314	comarka	pendente	False	True	0		humano:migration-5221-aplicada	5221		docs/fila/1314-api-relatorio-apolo-mensal.md
+1318	comarka	pendente	False	True	0		humano:migration-5223-aplicada			docs/fila/1318-api-atendimento-ativacao-analista.md
+1320	comarka	done	True	False	1					docs/fila/1320-portal-link-saida-cliente-ddl.md
+1321	comarka	done	False	True	1		humano:migration-1320-aplicada	1320		docs/fila/1321-portal-link-cliente-fora.md
+1322	comarka	em_execucao	False	True	1		humano:migration-5225-aplicada	5225		docs/fila/1322-api-briefing-escritorio-portal-e-ficha.md
+1325	comarka	pendente	False	True	0		humano:migration-5226-aplicada			docs/fila/1325-api-atendimento-score-lead.md
+1326	comarka	done	True	False	1					docs/fila/1326-nps-teses-chave-cliente-id-sql.md
+1327	comarka	done	False	True	2		humano:migration-1326-aplicada	1326		docs/fila/1327-nps-link-por-cliente-id.md
+1328	comarka	done	False	True	1		humano:migration-1326-aplicada	1326		docs/fila/1328-nps-resposta-por-cliente-id.md
+1329	comarka	pendente	False	True	0		humano:migration-1326-aplicada;humano:migration-1332-aplicada	1326;1332		docs/fila/1329-nps-disparo-por-cliente-e-contato.md
+1330	comarka	done	False	True	2		humano:migration-1326-aplicada	1326		docs/fila/1330-teses-post-cliente-id-catalogo.md
+1332	comarka	done	True	False	1			1326		docs/fila/1332-nps-fila-e-resposta-por-contato-sql.md
+1334	comarka	pendente	False	True	0		humano:migration-1332-aplicada	1332		docs/fila/1334-nps-resposta-guarda-contato.md
+1336	comarka	done	False	True	2					docs/fila/1336-nps-nota-do-mes-media.md
+1337	comarka	done	True	False	1					docs/fila/1337-employees-public-sem-anon-sql.md
+1338	comarka	done	True	False	1					docs/fila/1338-views-publicas-security-invoker-sql.md
+134	comarka	done	False	True	2					docs/fila/134-profile-salario-pix-sem-gate.md
+1340	comarka	done	False	True	1					docs/fila/1340-liga-conquistas-schema-real.md
+1341	comarka	done	False	True	1					docs/fila/1341-otimizacoes-historico-aposentar-lote-1.md
+1342	comarka	obsoleto	False	True	0					docs/fila/1342-criativos-transcricao-openai.md
+1343	comarka	done	True	False	1					docs/fila/1343-clientes-marca-mds-sql.md
+1344	comarka	done	False	True	1		humano:migration-1343-aplicada	1343		docs/fila/1344-carteira-e-distribuir-sem-mds.md
+1348	comarka	done	True	False	1					docs/fila/1348-sombra-comparacao-sql.md
+1349	comarka	done	False	True	1		humano:migration-1348-aplicada	1348		docs/fila/1349-sombra-relatorio-diferenca-cron.md
+1353	comarka	done	False	False	1					docs/fila/1353-migrations-versao-guarda.md
+1362	comarka	done	False	False	1					docs/fila/1362-migrations-fase-no-vitest.md
+1363	comarka	done	True	False	1					docs/fila/1363-nps-fila-chave-em-duas-fases.md
+1371	comarka	done	True	False	3					docs/fila/1371-ia-claude-modelos-5-sql.md
+1372	comarka	done	False	True	1		humano:migration-1371-aplicada	1371		docs/fila/1372-ia-provider-esforco-cache-funcao.md
+1374	comarka	pendente	True	False	0		humano:migration-1371-aplicada			docs/fila/1374-ia-claude-faixa-haiku-sql.md
+1375	comarka	pendente	True	False	0		humano:migration-1374-aplicada	1374		docs/fila/1375-ia-claude-faixa-sonnet-sql.md
+1376	comarka	pendente	True	False	0		humano:migration-1375-aplicada	1375		docs/fila/1376-ia-claude-faixa-opus-sql.md
+1377	comarka	done	True	False	3					docs/fila/1377-rag-chunks-vector-1024-sql.md
+1378	comarka	done	False	True	2		humano:migration-1377-aplicada	1377		docs/fila/1378-rag-embeddings-voyage.md
+149	comarka	done	False	True	2					docs/fila/149-crm-facets-distinct.md
+163	comarka	done	False	True	1					docs/fila/163-custos-le-tabela-vazia.md
+165	comarka	done	False	True	1					docs/fila/165-aba-integracoes-status-e-erros.md
+178	comarka	done	False	False	1					docs/fila/178-recon-fonte-verdade-tarefa.md
+184	comarka	obsoleto	False	True	5	2026-08-25,2026-09-04				docs/fila/184-churn-pipeline-le-pelo-servidor.md
+196	comarka	done	True	False	1					docs/fila/196-cs-wpp-mensagem-schema.md
+215	comarka	done	True	False	4					docs/fila/215-temperatura-comercial-migration.md
+216	comarka	done	False	True	3		humano:migration-215-temperatura-aplicada	215		docs/fila/216-temperatura-comercial-cron.md
+220	comarka	done	True	False	1					docs/fila/220-wpp-grupo-migration.md
+222	comarka	done	False	True	1		humano:migration-220-wpp-grupo-aplicada			docs/fila/222-wpp-grupo-api.md
+224	comarka	done	True	False	1					docs/fila/224-responsavel-papel-migration.md
+225	comarka	done	False	True	1		humano:migration-224-papel-aplicada			docs/fila/225-responsavel-papel-resolucao.md
+227	comarka	done	True	False	2					docs/fila/227-clientes-teses-fk-catalogo.md
+228	comarka	obsoleto	True	False	0					docs/fila/228-seed-catalogo-nichos-teses.md
+229	comarka	done	True	False	1					docs/fila/229-aposentar-taxonomia-morta.md
+230	comarka	done	False	True	4		humano:migration-227-clientes-teses-fk-aplicada			docs/fila/230-aba-teses-usa-catalogo.md
+234	comarka	done	False	True	1					docs/fila/234-ficha-abas-orfas.md
+241	comarka	obsoleto	False	True	1					docs/fila/241-prompts-versionados-em-ia-prompts.md
+242	comarka	done	True	False	3					docs/fila/242-leitura-comercial-historico-migration.md
+243	comarka	done	False	True	1		humano:migration-242-ia-leitura-comercial-aplicada	242		docs/fila/243-leitura-comercial-persistida-e-historico.md
+244	comarka	done	False	True	1					docs/fila/244-remover-produto-personal-trainer.md
+245	comarka	done	False	True	1		humano:migration-196-cs-wpp-mensagem-aplicada			docs/fila/245-cs-wpp-ingestao-direcao.md
+249	comarka	done	True	False	4					docs/fila/249-policy-idempotente-nas-migrations.md
+253	comarka	done	False	True	1					docs/fila/253-churn-log-sem-auth.md
+254	comarka	done	False	True	2					docs/fila/254-sync-persistencia-e-freshness.md
+255	comarka	done	False	True	1					docs/fila/255-settings-meta-delete-gate.md
+256	comarka	done	False	True	1					docs/fila/256-sync-ads-persistencia.md
+257	comarka	obsoleto	False	False	4	2026-09-01,2026-09-04				docs/fila/257-cron-alertas-avaliar-orfao.md
+258	comarka	done	False	True	8	2026-09-01,2026-09-04				docs/fila/258-rotas-fantasma-ficha-cliente.md
+264	comarka	done	False	True	5	2026-09-01,2026-09-04				docs/fila/264-metricas-nao-recarregam-apos-sync.md
+266	comarka	done	False	True	1					docs/fila/266-registrar-verificacao-rotulo.md
+268	comarka	done	False	True	3					docs/fila/268-header-cliente-consolidado.md
+269	comarka	done	False	True	1					docs/fila/269-lente-comercial-nao-persiste.md
+270	comarka	done	False	True	1					docs/fila/270-erro-objeto-quebra-tela.md
+273	comarka	done	False	True	7	2026-09-02,2026-09-04				docs/fila/273-comarka-pro-tabela-inexistente.md
+275	comarka	done	False	True	2					docs/fila/275-rota-perfil-opcoes.md
+276	comarka	done	False	True	1					docs/fila/276-rota-ops-cliente-perfil.md
+277	comarka	done	False	True	6	2026-09-01,2026-09-04				docs/fila/277-iniciar-onboarding-na-pagina.md
+278	comarka	done	False	True	1					docs/fila/278-indicadores-resultados-cac-roi.md
+279	comarka	done	False	True	3					docs/fila/279-ficha-le-perfil-operacional.md
+280	comarka	done	False	False	5	2026-09-02				docs/fila/280-circuit-breaker-por-gate.md
+281	comarka	done	False	True	1					docs/fila/281-churn-pipeline-sem-browser.md
+282	comarka	obsoleto	False	False	2					docs/fila/282-cleanup-worktree-apos-merge.md
+284	comarka	obsoleto	False	False	0					docs/fila/284-cooldown-so-para-limite-real.md
+285	comarka	obsoleto	False	False	0					docs/fila/285-writeback-notion-opcional.md
+286	comarka	obsoleto	False	False	1					docs/fila/286-higiene-permissoes-claude.md
+287	comarka	done	False	True	2					docs/fila/287-rota-cliente-nichos.md
+288	comarka	obsoleto	False	True	0	2026-09-02,2026-09-04				docs/fila/288-nichos-na-ficha.md
+289	comarka	done	False	True	2					docs/fila/289-health-score-minimo-componentes.md
+290	comarka	done	False	True	1					docs/fila/290-ancora-scroll-e-montagem-sob-demanda.md
+291	comarka	done	False	True	9					docs/fila/291-contas-anuncio-cabecalho-e-colunas.md
+292	comarka	done	False	True	1					docs/fila/292-cadastro-colapsavel-na-ficha.md
+293	comarka	done	False	True	1					docs/fila/293-link-morto-alertas.md
+294	comarka	done	False	True	3	2026-09-03				docs/fila/294-sem-chave-default.md
+296b	comarka	done	False	True	2					docs/fila/296b-perfil-fonte-unica-cliente-perfil-obs.md
+298	comarka	done	False	True	1					docs/fila/298-por-tipo-mesma-fonte.md
+300	comarka	done	False	True	1					docs/fila/300-um-formulario-de-perfil.md
+306b	comarka	done	False	True	5	2026-09-19,2026-09-24	humano:ddl-306b0	306b0		docs/fila/306b-perf-fechamentos-ingest.md
+306b0	comarka	done	True	False	1					docs/fila/306b0-perf-fechamentos-origem-ghl.md
+309a	comarka	done	True	False	1					docs/fila/309a-onboarding-cliente-id-mapa.md
+311a	comarka	obsoleto	False	True	2	2026-09-11,2026-09-12				docs/fila/311a-qualificacao-cliente-api.md
+311a1	comarka	done	False	True	1					docs/fila/311a1-qualificacao-regras-tipos-heranca.md
+311a2	comarka	done	False	True	1					docs/fila/311a2-qualificacao-preview-api.md
+317	comarka	done	False	True	4	2026-09-16,2026-09-19				docs/fila/317-saude-vira-retencao.md
+335b	comarka	done	True	True	6	2026-09-08				docs/fila/335b-nps-cron-disparo.md
+336c	comarka	done	False	True	1		humano:ddl-373			docs/fila/336c-nps-taxa-e-variacao.md
+353	comarka	done	False	True	2	2026-09-15,2026-09-19	humano:ddl-374			docs/fila/353-obrigacoes-cadastro-tela.md
+360	comarka	done	False	True	2		humano:migration-196-aplicada	196		docs/fila/360-wpp-interacao-equipe.md
+372	comarka	done	True	False	1					docs/fila/372-etapa-churn-default-nulo.md
+373	comarka	done	True	False	1					docs/fila/373-chave-uuid-nps-reunioes.md
+374	comarka	done	True	False	1					docs/fila/374-obrigacao-evidencia-schema.md
+375	comarka	done	True	False	1					docs/fila/375-anon-revoga-kanban-onboarding.md
+378	comarka	obsoleto	False	False	0					docs/fila/378-painel-copiar-diagnostico.md
+382	comarka	done	False	True	2					docs/fila/382-snapshot-mensal-mrr.md
+394a1	comarka	done	False	True	1					docs/fila/394a1-agregacoes-truncadas-visao.md
+394a2	comarka	done	False	True	1					docs/fila/394a2-agregacoes-truncadas-ficha.md
+400	comarka	obsoleto	True	False	0					docs/fila/400-ops-jobs-schema.md
+401	comarka	done	False	True	1		humano:ddl-400			docs/fila/401-jobs-runtime.md
+407	comarka	obsoleto	False	True	1	2026-09-17,2026-09-19				docs/fila/407-churn-delete-checa-erro.md
+407a	comarka	done	True	True	8		humano:ddl-407a;humano:ddl-407a0	407a0		docs/fila/407a-fn-reativar-churn-migration.md
+407a0	comarka	done	True	False	3					docs/fila/407a0-churn-log-cliente-receita-id.md
+407b	comarka	done	False	True	1		humano:ddl-407a			docs/fila/407b-churn-reativar-rota-e-ui.md
+407c	comarka	done	True	False	1					docs/fila/407c-fn-reativar-churn-uma-linha.md
+475	comarka	done	False	True	2					docs/fila/475-ghl-oauth-por-cliente.md
+475c	comarka	done	False	True	4	2026-09-22	humano:ddl-475c0	475c0		docs/fila/475c-ghl-app-webhook-contatos.md
+475c0	comarka	done	True	False	2					docs/fila/475c0-perf-leads-ghl-contact-id.md
+475d	comarka	done	False	True	3					docs/fila/475d-ghl-backfill-contatos.md
+476	comarka	done	False	True	1					docs/fila/476-meta-crons-rodam.md
+477	comarka	done	False	True	3					docs/fila/477-monitor-meta-frescor.md
+478	comarka	done	False	True	1					docs/fila/478-importador-cadastros-base.md
+478b	comarka	done	False	True	1					docs/fila/478b-importador-cadastros-apply.md
+479	comarka	done	False	True	2					docs/fila/479-middleware-webhooks-auth-propria.md
+481	comarka	done	False	True	1		humano:ddl-visao-funil			docs/fila/481-funil-fonte-unica.md
+499	comarka	done	False	True	7					docs/fila/499-analise-ia-colapsada.md
+507	comarka	done	True	False	1					docs/fila/507-espelho-migrations-divergentes.md
+516	comarka	done	False	True	1					docs/fila/516-reunioes-rota-coluna-origem.md
+523	comarka	done	False	True	3					docs/fila/523-coleta-meta-falha-alto.md
+523b	comarka	done	False	True	4	2026-09-22				docs/fila/523b-perf-insights-sync-chamada-direta.md
+523c	comarka	done	False	True	2					docs/fila/523c-perf-insights-sync-falha-alto.md
+524	comarka	done	False	True	2					docs/fila/524-ler-corpo-json-modulo-financeiro.md
+525	comarka	obsoleto	False	True	1					docs/fila/525-ler-corpo-json-clientes-lote1.md
+526	comarka	done	False	True	1					docs/fila/526-error-boundaries-lote2.md
+527	comarka	done	False	True	1					docs/fila/527-clientes-getsession-lote2.md
+528	comarka	done	False	True	3	2026-09-22				docs/fila/528-resumo-antigo-score-fonte-unica.md
+529	comarka	done	False	True	2					docs/fila/529-dividas-avaliador-314.md
+530	comarka	done	False	True	3					docs/fila/530-campanhas-sem-duplicatas.md
+530b	comarka	done	False	True	2					docs/fila/530b-painel-campanhas-mockup.md
+531	comarka	done	False	True	4					docs/fila/531-conta-conexoes-entregaveis.md
+532	comarka	done	False	True	1					docs/fila/532-visao-dado-parado-e-link.md
+533	comarka	done	False	True	4	2026-09-23	humano:ddl-relatorio			docs/fila/533-relatorio-tela-gerar.md
+533b	comarka	done	False	True	1					docs/fila/533b-relatorio-rascunho-leitura-ia.md
+533c	comarka	done	False	True	1					docs/fila/533c-relatorio-tela-gerar-pagina.md
+534	comarka	done	False	True	1					docs/fila/534-relatorio-cliente-dados-pagina1.md
+534b	comarka	done	False	True	1					docs/fila/534b-relatorio-cliente-tela-pagina1.md
+535	comarka	done	False	True	1					docs/fila/535-relatorio-cliente-pagina2.md
+536	comarka	done	False	True	1					docs/fila/536-relatorio-blocos-opcionais.md
+537	comarka	done	False	False	1					docs/fila/537-relatorio-aceite-mockup.md
+538	comarka	done	False	True	4	2026-09-24	humano:ddl-metricas			docs/fila/538-sync-campos-novos-e-campanhas.md
+539	comarka	done	False	True	1					docs/fila/539-metricas-diarias-por-tipo-dados.md
+539b	comarka	done	False	True	2					docs/fila/539b-metricas-diarias-por-tipo-tela.md
+540	comarka	done	False	True	3					docs/fila/540-metricas-destaque-variacao.md
+541	comarka	done	False	True	1					docs/fila/541-teses-derivadas-rota.md
+541b	comarka	done	False	True	3					docs/fila/541b-teses-do-cliente-tela.md
+542	comarka	done	False	False	2					docs/fila/542-teses-tabela-duplicada-guarda.md
+543	comarka	done	False	True	3		humano:ddl-otimizacoes			docs/fila/543-otimizacoes-importadas-da-meta.md
+544	comarka	done	False	True	3					docs/fila/544-otimizacoes-api-e-compactacao.md
+544b	comarka	done	False	True	4					docs/fila/544b-otimizacoes-tela.md
+545	comarka	done	False	True	1		humano:ddl-relacao-tipos			docs/fila/545-relacao-registro-unico.md
+545b	comarka	done	False	True	1					docs/fila/545b-relacao-observacoes-notas-fora.md
+546	comarka	done	False	True	1					docs/fila/546-relacao-timeline-unica.md
+547	comarka	done	False	True	2		humano:ddl-leitura-relacao;humano:ddl-otimizacoes			docs/fila/547-leitura-relacao-motor.md
+548	comarka	done	False	True	1					docs/fila/548-leitura-relacao-tela.md
+549	comarka	done	False	True	1					docs/fila/549-leitura-relacao-gatilhos.md
+549c	comarka	done	False	False	4					docs/fila/549c-leitura-relacao-agendar.md
+550	comarka	done	False	True	4					docs/fila/550-relacao-config-para-conta.md
+551	comarka	done	False	False	3					docs/fila/551-aceite-relacao.md
+552	comarka	done	False	True	1					docs/fila/552-saude-ordem-por-risco.md
+553	comarka	done	False	True	2					docs/fila/553-conta-bugs-reais.md
+554	comarka	done	False	True	2					docs/fila/554-conta-contrato-e-entregas.md
+555	comarka	done	False	True	1					docs/fila/555-conta-resultados-escritorio.md
+555b	comarka	done	False	True	1					docs/fila/555b-conta-resultados-filtros-lista.md
+555c	comarka	done	False	True	1		humano:ddl-fechamento-campanha;humano:ddl-fechamentos-cliente			docs/fila/555c-fechamento-campanha-de-origem.md
+556	comarka	done	False	True	3					docs/fila/556-conta-conexoes.md
+557	comarka	done	False	True	5		humano:ddl-qualificacao			docs/fila/557-mapeamento-etapas-crm.md
+558	comarka	done	False	True	2					docs/fila/558-conta-cadastro-operacao.md
+560	comarka	done	False	True	1		humano:ddl-pacote-flags			docs/fila/560-pacote-flags-cadastro.md
+561	comarka	done	False	True	3		humano:ddl-contrato-etapas			docs/fila/561-pacote-etapas-contratuais.md
+562	comarka	done	False	True	1		humano:ddl-contrato-etapas;humano:ddl-pacote-flags			docs/fila/562-contrato-etapas-rota.md
+562b	comarka	done	False	True	1					docs/fila/562b-bloco-etapas-contratuais.md
+563	comarka	done	False	True	1		humano:ddl-pacote-flags;humano:ddl-contrato-etapas			docs/fila/563-consultorias-rota.md
+563b	comarka	done	False	True	1					docs/fila/563b-bloco-consultorias.md
+564	comarka	done	False	True	1		humano:ddl-fechamentos-cliente			docs/fila/564-fechamento-publico.md
+564b	comarka	done	False	True	1		humano:ddl-fechamentos-cliente			docs/fila/564b-fechamento-link-lembrete.md
+564c	comarka	done	False	True	2		humano:ddl-fechamentos-cliente			docs/fila/564c-fechamentos-informados-confirmacao.md
+565	comarka	done	False	True	2		humano:ddl-marco-onboarding			docs/fila/565-radar-renovacao-rota.md
+565b	comarka	done	False	True	1					docs/fila/565b-bloco-radar-renovacao.md
+566	comarka	done	False	True	1		humano:ddl-documentos-etapa			docs/fila/566-template-documentos-exigidos.md
+566b	comarka	done	False	True	1		humano:ddl-documentos-etapa			docs/fila/566b-checklist-documentos-conta.md
+566c	comarka	done	False	True	1		humano:ddl-documentos-etapa			docs/fila/566c-onboarding-pendente-documento.md
+567	comarka	done	False	True	1					docs/fila/567-resumo-grupo-wpp-motor.md
+567b	comarka	done	False	True	2					docs/fila/567b-resumo-grupo-wpp-tela.md
+568	comarka	done	False	False	1					docs/fila/568-aceite-aba-campanhas.md
+569	comarka	done	False	True	1		humano:ddl-marco-onboarding			docs/fila/569-marco-onboarding-linha-do-tempo.md
+570	comarka	done	False	True	1					docs/fila/570-getsession-notion-clientes.md
+571	comarka	done	False	True	2					docs/fila/571-getsession-notion-onboarding-team.md
+572	comarka	done	False	True	1					docs/fila/572-getsession-legados-onboarding-churn.md
+573	comarka	done	False	True	1					docs/fila/573-erro-string-settings-ia-admin.md
+574	comarka	done	False	True	1					docs/fila/574-erro-string-tempo-reunioes-produtividade.md
+575	comarka	done	False	True	1					docs/fila/575-erro-string-visao-geral-crons.md
+576	comarka	done	False	True	1					docs/fila/576-error-boundaries-lote3.md
+577	comarka	done	False	True	1					docs/fila/577-error-boundaries-lote4.md
+578	comarka	done	False	True	1					docs/fila/578-error-boundaries-lote5.md
+579	comarka	done	False	True	1					docs/fila/579-dead-code-liga-lib.md
+580	comarka	done	False	True	1					docs/fila/580-dead-code-telas-time.md
+581	comarka	done	False	True	1					docs/fila/581-dead-code-rotas-liga-visao.md
+582	comarka	done	False	True	1					docs/fila/582-getsession-churn-feedbacks.md
+583	comarka	done	False	True	1					docs/fila/583-getsession-onboarding-tracking.md
+584	comarka	done	False	True	1					docs/fila/584-erro-string-clientes-kpis.md
+585	comarka	done	False	True	1					docs/fila/585-erro-string-crons-score-campanha.md
+586	comarka	done	False	True	1					docs/fila/586-erro-string-carteira-perfil-disputa.md
+587	comarka	done	False	True	1					docs/fila/587-error-boundaries-lote6.md
+588	comarka	done	False	True	1					docs/fila/588-error-boundaries-lote7.md
+589	comarka	done	False	False	1					docs/fila/589-rotas-ops-feedback-custo.md
+590	comarka	done	False	False	1					docs/fila/590-rotas-ops-recorrentes-onboarding.md
+591	comarka	done	False	False	1					docs/fila/591-rotas-perf-receita.md
+592	comarka	done	False	False	1					docs/fila/592-rotas-tarefas-kanban.md
+593	comarka	done	False	False	1					docs/fila/593-dead-code-testes.md
+594	comarka	done	False	True	1					docs/fila/594-visao-kpis-grade-seis.md
+594b	comarka	done	False	True	3					docs/fila/594b-visao-barra-linha-unica.md
+595	comarka	done	False	True	1					docs/fila/595-visao-tabela-layout-mockup.md
+596	comarka	done	False	True	3					docs/fila/596-visao-relacao-cartao.md
+596b	comarka	done	False	True	4					docs/fila/596b-visao-tarefas-cartao.md
+596c	comarka	done	False	True	1					docs/fila/596c-visao-alertas-cartao-e-trio.md
+597	comarka	done	False	True	1					docs/fila/597-visao-linha-do-tempo-largura-cheia.md
+598	comarka	done	False	True	2					docs/fila/598-visao-cabecalho-compacto.md
+599	comarka	done	False	True	1					docs/fila/599-visao-saude-motivo-sem-base.md
+600	comarka	done	False	False	4					docs/fila/600-aceite-visao-estrutura.md
+601	comarka	done	False	True	1					docs/fila/601-getsession-team-situacao-nps.md
+602	comarka	done	False	True	1					docs/fila/602-getsession-otimizacoes-extra.md
+603	comarka	done	False	True	1					docs/fila/603-getsession-produtividade-crm-config.md
+604	comarka	done	False	True	1					docs/fila/604-json-malformado-alertas.md
+605	comarka	done	False	True	1					docs/fila/605-json-malformado-perf-contas.md
+606	comarka	done	False	True	1					docs/fila/606-json-malformado-notificacoes-colaborador.md
+607	comarka	done	False	True	1					docs/fila/607-erro-banco-churn.md
+608	comarka	done	False	True	1					docs/fila/608-erro-banco-receita-formas-premissas.md
+609	comarka	done	False	True	1					docs/fila/609-erro-banco-meta-receita-projecao.md
+610	comarka	done	False	True	1					docs/fila/610-cron-registro-rotas.md
+611	comarka	done	False	False	1					docs/fila/611-rotas-financeiro.md
+612	comarka	done	False	False	1					docs/fila/612-rotas-onboarding.md
+613	comarka	done	False	False	1					docs/fila/613-rotas-arquivos.md
+614	comarka	done	False	False	1					docs/fila/614-rotas-perf-calculadora.md
+615	comarka	done	False	True	1					docs/fila/615-ad-map-upsert-sem-id.md
+616	comarka	done	False	True	1					docs/fila/616-wpp-vincular-jid.md
+616b	comarka	done	False	True	1					docs/fila/616b-wpp-grupos-disponiveis.md
+616c	comarka	done	False	True	1					docs/fila/616c-wpp-vincular-seletor.md
+617	comarka	done	False	True	1					docs/fila/617-wpp-webhook-grupo.md
+617b	comarka	done	False	True	1					docs/fila/617b-wpp-webhook-lid-sanitiza.md
+618	comarka	done	False	True	1					docs/fila/618-wpp-phone-match.md
+619	comarka	done	False	True	1					docs/fila/619-wpp-resumo-semanal-cron.md
+620	comarka	done	False	True	1					docs/fila/620-wpp-resumo-semanal-tela.md
+621	comarka	done	False	True	1					docs/fila/621-motor-jobs-geral.md
+623	comarka	done	False	False	1					docs/fila/623-ddl-ops-automacoes.md
+624	comarka	done	False	True	2		humano:ddl-ops-automacoes			docs/fila/624-automacoes-cadastro-unico.md
+625	comarka	done	False	True	3					docs/fila/625-conta-gaps-aceite.md
+626	comarka	done	False	True	1					docs/fila/626-conta-auditoria-copy.md
+633	comarka	done	False	True	3					docs/fila/633-ficha-rotulos-legados-e-moldura.md
+634	comarka	done	False	True	1					docs/fila/634-visao-mql-zero-sem-fonte.md
+635	comarka	done	False	True	2					docs/fila/635-conta-crm-aviso-e-link.md
+636	comarka	done	False	True	1					docs/fila/636-conta-entregaveis-e-contratual-vazio-unico.md
+637	comarka	done	False	True	1					docs/fila/637-conta-whatsapp-um-cartao.md
+638	comarka	done	False	True	1					docs/fila/638-conta-quadro-contrato-sempre-aberto.md
+639	comarka	done	False	True	1					docs/fila/639-relatorio-publico-erro-leitura.md
+640	comarka	done	False	True	1					docs/fila/640-relatorio-gerar-config-erro-leitura.md
+641	comarka	done	False	True	1					docs/fila/641-relatorio-custo-visita-soma-sem-zero.md
+642	comarka	done	False	True	1					docs/fila/642-relatorio-rascunho-leitura-paginado.md
+643	comarka	done	False	True	1					docs/fila/643-relatorio-publico-sem-dado-some.md
+644	comarka	done	False	True	1					docs/fila/644-relatorio-leitura-sempre-no-fim.md
+645	comarka	done	False	True	1					docs/fila/645-relatorio-botao-baixar-pdf.md
+646	comarka	done	False	True	1					docs/fila/646-ficha-remove-aba-relatorio-antiga.md
+656	comarka	done	False	True	2					docs/fila/656-setup-fonte-unica.md
+657	comarka	done	False	True	1					docs/fila/657-performance-reunioes-coluna-resumo.md
+658	comarka	done	False	True	1					docs/fila/658-portal-perfil-remuneracao-colunas.md
+659	comarka	done	False	True	1					docs/fila/659-portal-cultura-regras-em-equipe.md
+660	comarka	done	False	True	1					docs/fila/660-crm-config-conexao-pela-location.md
+661	comarka	done	False	True	1					docs/fila/661-setup-assistente-lista-canonica.md
+661b	comarka	done	False	True	2					docs/fila/661b-setup-assistente-crm-seletor-e-concluir.md
+662	comarka	done	False	True	1					docs/fila/662-metas-seletor-futuro-e-lista-clientes.md
+662b	comarka	done	False	True	2					docs/fila/662b-metas-realizado-leads-do-perf.md
+663	comarka	done	False	True	1					docs/fila/663-meu-dia-fidelidade-vencida-agrupar-datas.md
+664	comarka	done	False	True	1					docs/fila/664-painel-integracoes-coleta-honesta.md
+664b	comarka	done	False	True	1					docs/fila/664b-sincronizacao-insights-coleta-honesta.md
+665	comarka	done	False	True	1					docs/fila/665-kpis-visao-aviso-buraco-coleta.md
+665b	comarka	obsoleto	False	True	0					docs/fila/665b-funil-variacao-anterior-parcial.md
+666	comarka	done	False	True	1					docs/fila/666-visao-cpl-por-objetivo.md
+666b	comarka	done	False	True	1					docs/fila/666b-diaria-cpl-por-objetivo.md
+667	comarka	done	False	True	1					docs/fila/667-apolo-contexto-kpis-da-ficha.md
+667b	comarka	done	False	True	1					docs/fila/667b-apolo-ferramentas-leitura-do-cliente.md
+668	comarka	done	False	True	1					docs/fila/668-relatorio-ativos-sem-cliente-id.md
+669	comarka	done	False	True	1					docs/fila/669-kanban-concluido-fecha-start-adv-premium.md
+670	comarka	done	False	True	1					docs/fila/670-menu-grupo-comercial.md
+671	comarka	done	False	True	1					docs/fila/671-ficha-aba-comercial-vazio-honesto.md
+671b	comarka	done	False	True	1					docs/fila/671b-comercial-cliente-rota-funil.md
+671c	comarka	done	False	True	3					docs/fila/671c-comercial-cliente-funil-e-colunas.md
+671d	comarka	done	False	True	2					docs/fila/671d-visao-linha-resumo-comercial.md
+672	comarka	done	False	True	1					docs/fila/672-wpp-lid-unifica-pessoa.md
+673	comarka	done	False	True	1					docs/fila/673-wpp-equipe-na-leitura.md
+674	comarka	done	False	True	1					docs/fila/674-relacao-ultimo-contato-grupo.md
+675	comarka	done	False	True	1					docs/fila/675-equipe-pessoas-dos-grupos-leitura.md
+675b	comarka	done	False	True	1					docs/fila/675b-equipe-telefone-e-vinculo-escrita.md
+675c	comarka	done	False	True	1					docs/fila/675c-equipe-telefone-inline-e-divergencia.md
+675d	comarka	done	False	True	1					docs/fila/675d-equipe-secao-pessoas-nos-grupos.md
+676	comarka	done	False	True	1					docs/fila/676-equipe-painel-para-superadmin.md
+677	comarka	done	False	True	1					docs/fila/677-meu-perfil-dados-pessoais-gravam.md
+678	comarka	done	False	True	1					docs/fila/678-portal-conteudo-nome-editor-servidor.md
+679	comarka	done	False	True	1					docs/fila/679-fila-painel-origem-pelo-servidor.md
+680	comarka	done	False	True	1					docs/fila/680-portal-comunicados-sem-realtime-anon.md
+681	comarka	done	False	False	1					docs/fila/681-guarda-anon-no-navegador.md
+684	comarka	done	False	True	2					docs/fila/684-esconde-funcao-sem-papel.md
+685	comarka	done	False	False	2					docs/fila/685-dono-dry-run.md
+686	comarka	done	False	True	1					docs/fila/686-vacuo-equipe-na-leitura.md
+687	comarka	done	False	True	1					docs/fila/687-grupos-sem-vinculo-api.md
+688	comarka	done	False	True	1					docs/fila/688-grupos-sem-vinculo-tela.md
+689	comarka	done	False	True	3					docs/fila/689-cronometro-tarefa-arquivada.md
+690	comarka	done	False	True	2					docs/fila/690-lembrete-relatorio-para-quem-cuida.md
+691	comarka	done	True	False	4	2026-09-30				docs/fila/691-inicio-ddl.md
+692	comarka	done	False	True	1					docs/fila/692-horas-uteis.md
+693	comarka	done	False	True	1					docs/fila/693-sinais-cliente.md
+694	comarka	done	False	True	3		humano:ddl-portal-inicio	691		docs/fila/694-api-inicio-resumo.md
+695	comarka	obsoleto	False	True	0		humano:ddl-portal-inicio	691		docs/fila/695-api-inicio-responder.md
+696	comarka	done	False	True	2					docs/fila/696-tela-inicio-casca.md
+697	comarka	done	False	True	1					docs/fila/697-tela-inicio-responder.md
+698	comarka	done	False	True	1					docs/fila/698-tela-inicio-carteira.md
+699	comarka	done	False	True	1					docs/fila/699-api-inicio-equipe.md
+700	comarka	done	False	True	1					docs/fila/700-tela-inicio-head.md
+701	comarka	done	False	True	1					docs/fila/701-entrada-por-papel.md
+702	comarka	done	False	True	1					docs/fila/702-notificacoes-api-escopo.md
+703	comarka	done	False	True	1					docs/fila/703-sino-barra-lateral.md
+704	comarka	done	False	True	1					docs/fila/704-aba-notificacoes-portal.md
+705	comarka	done	False	True	1		humano:ddl-portal-inicio	691		docs/fila/705-override-cor-api.md
+706	comarka	done	False	True	2					docs/fila/706-override-cor-tela.md
+707	comarka	done	False	False	10	2026-10-08				docs/fila/707-aceite-inicio-e-head.md
+707a	comarka	done	False	True	2					docs/fila/707a-responder-prazo-da-promessa.md
+707b	comarka	done	False	True	2					docs/fila/707b-midia-coletar-dias-faltantes.md
+708	comarka	done	False	False	3					docs/fila/708-aceite-sino-e-notificacoes.md
+709	comarka	done	False	True	1					docs/fila/709-meu-dia-sai-do-menu.md
+710	comarka	done	False	True	1					docs/fila/710-portal-antigo-redireciona.md
+711	comarka	obsoleto	False	True	0					docs/fila/711-saude-ficha-mesma-regra.md
+711a	comarka	done	False	True	4	2026-10-07				docs/fila/711a-saude-carteira-e-risco-mesma-regra.md
+711b	comarka	obsoleto	False	True	0					docs/fila/711b-saude-chip-ficha-mesma-regra.md
+711b1	comarka	done	False	True	1					docs/fila/711b1-saude-chip-regra.md
+711b2	comarka	done	False	True	1					docs/fila/711b2-saude-chip-leitura.md
+711b3	comarka	done	False	True	5					docs/fila/711b3-saude-chip-ficha-tela.md
+711b4	comarka	done	False	True	1					docs/fila/711b4-saude-resumo-sem-cor-antiga.md
+712	comarka	done	False	True	2					docs/fila/712-aviso-tarefa-atribuida.md
+713	comarka	done	False	True	1					docs/fila/713-avisos-operacao-job.md
+714	comarka	done	False	True	1		humano:ddl-portal-inicio	691		docs/fila/714-eventos-lib-e-tarefa.md
+715	comarka	done	False	True	3	2026-10-02				docs/fila/715-eventos-resposta-grupo.md
+716	comarka	obsoleto	False	True	0		humano:ddl-portal-inicio	691		docs/fila/716-promessas-ia.md
+717	comarka	done	False	True	1					docs/fila/717-selo-api.md
+718	comarka	done	False	True	1					docs/fila/718-selo-barra-lateral.md
+719	comarka	done	False	True	1					docs/fila/719-avisos-renovacao-nps-atribuicao.md
+720	comarka	done	False	True	2					docs/fila/720-aviso-comarka-pro.md
+722	comarka	done	False	True	4					docs/fila/722-leitura-relacao-sem-base-nao-grava.md
+723	comarka	done	False	True	3	2026-10-02				docs/fila/723-setup-cinco-passos-vinculo-comercial.md
+723a	comarka	obsoleto	False	True	0					docs/fila/723a-setup-regra-passos-nicho-no-p3.md
+723b	comarka	obsoleto	False	True	0					docs/fila/723b-setup-vinculo-comercial-leitura.md
+723c	comarka	obsoleto	False	True	0					docs/fila/723c-setup-tela-cinco-passos.md
+723d	comarka	obsoleto	False	True	0					docs/fila/723d-setup-bloco-comercial-passo-1.md
+724	comarka	obsoleto	False	True	1					docs/fila/724-equipe-telefones-nao-engole-erro.md
+725	comarka	done	False	True	1					docs/fila/725-ficha-chip-so-grupo.md
+726	comarka	done	False	False	1					docs/fila/726-crons-teste-sem-contagem-fixa.md
+728	comarka	done	False	True	1					docs/fila/728-telefone-cadastro-fallback-contato.md
+728b	comarka	done	False	True	1					docs/fila/728b-contatos-efetivos-do-cliente.md
+729	comarka	done	False	True	1					docs/fila/729-grupo-nome-cache-evolution.md
+730	comarka	done	True	False	1					docs/fila/730-vacuo-promessa-ddl.md
+731	comarka	done	False	True	1		humano:ddl-vacuo-promessa	730		docs/fila/731-classificar-autor-grupo.md
+732	comarka	done	False	True	1					docs/fila/732-equipe-numero-adicional.md
+733	comarka	done	False	True	1					docs/fila/733-pessoa-do-grupo-e-do-cliente.md
+734	comarka	done	False	True	1					docs/fila/734-vacuo-grupo-deterministico.md
+734b	comarka	done	False	True	1					docs/fila/734b-feriados-so-nacional.md
+735	comarka	done	False	True	2					docs/fila/735-api-responder-agora.md
+736	comarka	done	False	True	1					docs/fila/736-subir-tarefa-do-vacuo.md
+737	comarka	done	False	True	5	2026-10-02				docs/fila/737-tela-responder-agora-ficha.md
+738	comarka	done	False	True	1					docs/fila/738-aviso-vacuo.md
+739	comarka	done	False	True	4	2026-10-03,2026-10-05	humano:ddl-penalizacoes-fk			docs/fila/739-comarka-pro-penalizacoes-tabela.md
+740	comarka	done	False	True	1					docs/fila/740-promessa-fechar-e-avisar.md
+741	comarka	done	False	False	3	2026-10-08				docs/fila/741-backtest-promessas-aquino.md
+741a	comarka	done	False	True	5					docs/fila/741a-promessas-avaliar-pura.md
+742	comarka	done	False	True	2					docs/fila/742-promessa-na-lista.md
+743	comarka	done	False	True	1					docs/fila/743-mql-cliente-regra-etapas.md
+744	comarka	done	False	True	3					docs/fila/744-crm-cliente-etapas-sync.md
+745	comarka	done	False	True	1					docs/fila/745-tela-regra-mql-cliente.md
+746	comarka	done	True	False	1					docs/fila/746-perf-leads-tags-ddl.md
+747	comarka	done	False	True	1		humano:ddl-perf-leads-tags-aplicada	746		docs/fila/747-mql-cliente-tags-regra.md
+748	comarka	done	False	True	1					docs/fila/748-tela-regra-mql-tags.md
+750	comarka	done	False	True	1					docs/fila/750-relacao-temperatura-risco-efetivos.md
+751	comarka	done	True	False	0					docs/fila/751-leitura-relacao-gatilho-cron-diario-ddl.md
+752	comarka	done	False	True	1		humano:ddl-751	751		docs/fila/752-leitura-relacao-cron-diario.md
+760	comarka	done	False	True	3					docs/fila/760-ghl-oportunidades-gravacao-webhook.md
+761	comarka	done	False	True	3					docs/fila/761-ghl-backfill-contatos-lib.md
+762	comarka	done	False	True	4					docs/fila/762-ghl-backfill-job-conexao.md
+763	comarka	done	False	True	1					docs/fila/763-ghl-backfill-oportunidades.md
+800	comarka	done	False	True	2					docs/fila/800-resolver-cliente-lib.md
+801	comarka	done	False	True	3					docs/fila/801-resolver-cliente-rota-auditoria.md
+802	comarka	done	False	True	3					docs/fila/802-resolver-cliente-rota-automacoes.md
+803	comarka	done	False	True	1					docs/fila/803-resolver-cliente-rota-comercial.md
+804	comarka	done	False	True	1					docs/fila/804-resolver-cliente-rota-contrato-a.md
+805	comarka	done	False	True	1					docs/fila/805-resolver-cliente-rota-contrato-b.md
+806	comarka	done	False	True	1					docs/fila/806-resolver-cliente-rota-contrato-escopo-pendencias.md
+807	comarka	done	False	True	1					docs/fila/807-resolver-cliente-rota-contrato-metadados-risco.md
+808	comarka	done	False	True	2					docs/fila/808-resolver-cliente-rota-contratual.md
+809	comarka	done	False	True	1					docs/fila/809-resolver-cliente-rota-crm.md
+810	comarka	done	False	True	2					docs/fila/810-resolver-cliente-rota-diagnostico.md
+811	comarka	done	False	True	1					docs/fila/811-resolver-cliente-rota-gestor.md
+812	comarka	done	False	True	1					docs/fila/812-resolver-cliente-rota-relacao.md
+813	comarka	done	False	True	1					docs/fila/813-resolver-cliente-rota-nichos.md
+814	comarka	done	False	True	1					docs/fila/814-resolver-cliente-rota-observacoes.md
+815	comarka	done	False	True	1					docs/fila/815-resolver-cliente-rota-onboarding.md
+816	comarka	done	False	True	1					docs/fila/816-resolver-cliente-rota-ops-perfil.md
+817	comarka	done	False	True	1					docs/fila/817-resolver-cliente-rota-pacote.md
+818	comarka	done	False	True	3					docs/fila/818-resolver-cliente-rota-performance.md
+819	comarka	done	False	True	2					docs/fila/819-resolver-cliente-rota-radar-renovacao.md
+820	comarka	done	False	True	1					docs/fila/820-resolver-cliente-rota-relatorio-semanal.md
+821	comarka	done	False	True	1					docs/fila/821-resolver-cliente-rota-resultado-mensal.md
+822	comarka	done	False	True	1					docs/fila/822-resolver-cliente-rota-resumo.md
+823	comarka	done	False	True	1					docs/fila/823-resolver-cliente-rota-reunioes.md
+824	comarka	done	False	True	1					docs/fila/824-resolver-cliente-rota-tarefas.md
+825	comarka	done	False	True	2					docs/fila/825-resolver-cliente-rota-whatsapp-summary.md
+826	comarka	done	False	True	6	2026-10-08				docs/fila/826-ficha-sem-reescrita-notion.md
+826b	comarka	done	False	True	1					docs/fila/826b-ficha-reunioes-resumos-cliente-id.md
+827	comarka	done	False	False	1					docs/fila/827-sai-meta-client-resolver.md
+828	comarka	done	False	True	1					docs/fila/828-sai-identidade-lib.md
+829	comarka	done	False	True	1					docs/fila/829-sai-identidade-api.md
+830	comarka	done	False	True	4	2026-10-12				docs/fila/830-sai-identidade-remove.md
+831	comarka	done	False	True	1					docs/fila/831-sai-cockpit-id-api-a.md
+832	comarka	done	False	True	1					docs/fila/832-sai-cockpit-id-api-b.md
+833	comarka	done	False	True	1					docs/fila/833-sai-cockpit-id-api-c.md
+834	comarka	done	False	True	1					docs/fila/834-sai-cockpit-id-lib-d.md
+834b	comarka	done	False	True	1					docs/fila/834b-sai-cockpit-id-api-e.md
+835	comarka	done	False	True	5	2026-10-12				docs/fila/835-sai-cockpit-id-remove.md
+836	comarka	done	False	True	1					docs/fila/836-sai-resolver-chave-api-a.md
+837	comarka	done	False	True	1					docs/fila/837-sai-resolver-chave-api-b.md
+838	comarka	done	False	True	1					docs/fila/838-sai-resolver-chave-api-c.md
+839	comarka	done	False	True	1					docs/fila/839-sai-resolver-chave-api-d.md
+840	comarka	done	False	True	5					docs/fila/840-sai-resolver-chave-api-e.md
+841	comarka	done	False	True	1					docs/fila/841-sai-resolver-chave-api-f.md
+842	comarka	done	False	True	1					docs/fila/842-sai-resolver-chave-lib-g.md
+843	comarka	done	False	True	1					docs/fila/843-sai-resolver-chave-lib-h.md
+844	comarka	done	False	True	1					docs/fila/844-sai-resolver-chave-lib-i.md
+845	comarka	done	False	True	1					docs/fila/845-sai-resolver-chave-remove.md
+846	comarka	obsoleto	False	True	0					docs/fila/846-reuniao-vinculo-regra.md
+847	comarka	obsoleto	False	True	0					docs/fila/847-reuniao-vinculo-backfill.md
+848	comarka	obsoleto	False	True	0					docs/fila/848-reuniao-vinculo-aba-relacao.md
+849	comarka	done	False	True	1					docs/fila/849-meta-status-pela-coleta.md
+850	comarka	done	False	True	1					docs/fila/850-meta-contas-sem-insights-tela.md
+851	comarka	done	False	True	3					docs/fila/851-churn-leituras-servidor-api.md
+852	comarka	done	False	True	2					docs/fila/852-churn-tela-sem-anon.md
+853	comarka	obsoleto	False	True	1					docs/fila/853-home-vai-para-portal.md
+854	comarka	done	False	True	5	2026-10-09,2026-10-12				docs/fila/854-remove-equipe-geral.md
+855	comarka	done	False	True	3	2026-10-12				docs/fila/855-remove-team-id.md
+855a	comarka	done	False	True	1					docs/fila/855a-team-id-tira-abas-expansao.md
+855b	comarka	done	False	True	1					docs/fila/855b-team-id-tira-expansao-orcamento.md
+856	comarka	done	False	True	1					docs/fila/856-remove-super-admin.md
+857	comarka	done	False	True	1					docs/fila/857-remove-super-admin-componentes.md
+858	comarka	done	False	True	2					docs/fila/858-sidebar-comarka-pro-uma-vez.md
+859	comarka	done	True	False	1		humano:ddl-auditoria-dupla			docs/fila/859-auditoria-dupla-ddl.md
+860	comarka	done	False	True	2					docs/fila/860-evolution-credencial-erro-nunca-sem-nome.md
+861	comarka	done	False	True	1					docs/fila/861-promessa-par-pedido.md
+862	comarka	done	False	True	1					docs/fila/862-carteira-membro-equipe-id.md
+863	comarka	done	False	True	1					docs/fila/863-remove-rota-teses-metricas.md
+864	comarka	done	False	True	1					docs/fila/864-churn-cifras-restantes-regra-19.md
+865	comarka	done	False	True	1					docs/fila/865-relacao-reuniao-operacional.md
+866	comarka	done	False	True	1					docs/fila/866-ficha-reuniao-de-venda.md
+867	comarka	done	False	True	4	2026-10-07				docs/fila/867-relacao-sem-escrita-reuniao.md
+868	comarka	done	False	True	2					docs/fila/868-visao-apolo-sem-call-de-venda.md
+869	comarka	done	False	True	1					docs/fila/869-equipe-lista-so-ativos.md
+870	comarka	done	False	True	1					docs/fila/870-ia-relacao-reuniao-operacional.md
+873	comarka	done	False	True	1					docs/fila/873-setup-passo4-grupo-vinculado.md
+875	comarka	done	False	True	1					docs/fila/875-seletor-multinicho-ficha.md
+876	comarka	done	False	True	1					docs/fila/876-papel-nas-escritas-sem-guard.md
+878	comarka	done	False	True	1					docs/fila/878-cifra-meta-sem-fallback.md
+879	comarka	done	False	True	1					docs/fila/879-notion-codigo-morto.md
+880	comarka	done	False	True	1					docs/fila/880-ddd-do-lead.md
+882	comarka	done	False	True	1					docs/fila/882-integracoes-ghl-modo-por-conta.md
+883	comarka	done	False	True	1					docs/fila/883-ghl-backfill-orcamento-por-pagina.md
+884	comarka	done	False	True	1					docs/fila/884-oportunidade-leva-etapa-ao-lead.md
+888	comarka	done	False	True	2					docs/fila/888-nps-detrator-e-promotor.md
+889	comarka	done	True	False	2					docs/fila/889-crise-tipo-relacao-ddl.md
+889b	comarka	done	False	True	1		humano:ddl-relacao-crise-aplicada	889		docs/fila/889b-crise-relacao-lib-rota.md
+889c	comarka	done	False	True	1					docs/fila/889c-crise-relacao-tela.md
+890	comarka	done	False	True	1					docs/fila/890-cortesia-fora-do-consumo.md
+891	comarka	done	False	True	2					docs/fila/891-grupos-sem-vinculo.md
+892	comarka	done	True	False	1					docs/fila/892-contato-unico.md
+893	comarka	done	False	True	1					docs/fila/893-carteira-meta-leads-mql.md
+894	comarka	done	False	True	1					docs/fila/894-aviso-fim-licenca-crm.md
+897	comarka	done	True	False	1					docs/fila/897-pacing-verba-regra-ddl.md
+897b	comarka	done	False	True	1		humano:ddl-897	897		docs/fila/897b-pacing-verba-alerta-motor.md
+898	comarka	done	True	False	6	2026-10-08				docs/fila/898-alerta-saldo-meta.md
+898b	comarka	done	False	True	1		humano:ddl-898	898		docs/fila/898b-setup-verba-total-e-por-conta.md
+898c	comarka	done	False	True	1		humano:ddl-898	898		docs/fila/898c-alerta-verba-sobra.md
+899	comarka	done	False	True	1					docs/fila/899-produtividade-timer-novo.md
+900	comarka	done	True	False	3	2026-10-08				docs/fila/900-churn-fecha-leitura-anon.md
+903	comarka	done	True	False	1					docs/fila/903-search-path-funcoes-revinculo.md
+905	comarka	done	False	True	1					docs/fila/905-pix-sem-investimento-maiuscula.md
+907	comarka	done	False	True	2					docs/fila/907-operacao-inicio-registra-falha.md
+908	comarka	done	False	True	1					docs/fila/908-ficha-nps-do-mes.md
+909	comarka	done	False	True	1					docs/fila/909-reuniao-tldv-envelope-e-contato.md
+909b	comarka	done	False	True	2					docs/fila/909b-reunioes-sem-cliente-lista.md
+920	comarka	done	True	False	1					docs/fila/920-marcos-prazo-ddl.md
+921	comarka	done	False	True	3		humano:ddl-marcos-prazo-aplicada	920		docs/fila/921-marcos-prazo-leitura.md
+922	comarka	done	False	True	1		humano:ddl-marcos-prazo-aplicada	920		docs/fila/922-marcos-prazos-config-rota.md
+927	comarka	done	True	False	3					docs/fila/927-auditoria-autor-por-header-ddl.md
+932	comarka	done	True	False	3	2026-10-09,2026-10-10				docs/fila/932-ranking-foto-mensal-ddl.md
+933	comarka	done	False	True	3	2026-10-12	humano:ddl-ranking-foto-aplicada	932		docs/fila/933-ranking-foto-mensal-cron.md
+952a	comarka	done	True	False	1					docs/fila/952a-perf-leads-origem-ddl.md
+960	comarka	done	True	False	1					docs/fila/960-criativos-ddl.md
+961b	comarka	done	False	True	3					docs/fila/961b-resolver-criativo-no-sync.md
+972	comarka	done	True	True	1					docs/fila/972-alerta-coleta-conta-falhando.md
+991	comarka	done	False	True	2		humano:ddl-portal-aplicada			docs/fila/991-rate-limit-publico-banco.md
+999b	comarka	done	False	True	1		humano:ddl-portal-aplicada			docs/fila/999b-pendencias-canal-portal-tipos.md
+5019	apolo	done	True	False	1					docs/fila/apolo/5019-apolo-schema-role-sql.md
+5020	apolo	done	True	False	1			5019		docs/fila/apolo/5020-apolo-dimensoes-sql.md
+5021	apolo	done	True	False	1			5020		docs/fila/apolo/5021-apolo-ledger-sql.md
+5022	apolo	done	True	False	1			5020		docs/fila/apolo/5022-apolo-autonomia-kill-orcamento-sql.md
+5023	apolo	done	False	True	1		humano:migration-5019-aplicada;humano:migration-5020-aplicada;humano:migration-5021-aplicada;humano:migration-5022-aplicada	5021;5022		docs/fila/apolo/5023-apolo-worker-cron.md
+5025	apolo	done	False	True	3	2026-10-15,2026-10-16				docs/fila/apolo/5025-sensor-promessa-vencida.md
+5026	apolo	done	False	True	2					docs/fila/apolo/5026-sensor-midia-problema.md
+5027	apolo	done	False	True	1		humano:migration-5021-aplicada			docs/fila/apolo/5027-apolo-leitor-v1.md
+5028	apolo	done	False	True	1		humano:migration-5020-aplicada;humano:migration-5021-aplicada			docs/fila/apolo/5028-apolo-decisor-v1-sombra.md
+5029	apolo	done	True	False	1			5021		docs/fila/apolo/5029-apolo-agente-versao-sql.md
+5029b	apolo	done	False	True	2		humano:migration-5029-aplicada	5029		docs/fila/apolo/5029b-apolo-agente-versao-codigo.md
+5030	apolo	done	False	True	1		humano:migration-5020-aplicada			docs/fila/apolo/5030-apolo-modo-sombra-executor.md
+5032	apolo	done	True	False	1			5021		docs/fila/apolo/5032-apolo-ledger-ticket-sql.md
+5032b	apolo	done	False	False	1		humano:migration-5032-aplicada	5032		docs/fila/apolo/5032b-apolo-ledger-tickets-script.md
+5033	apolo	done	True	False	1			5021		docs/fila/apolo/5033-apolo-pergunta-tipada-sql.md
+5033b	apolo	done	False	True	1		humano:migration-5033-aplicada	5033		docs/fila/apolo/5033b-apolo-decisao-tipada-adaptador.md
+5035	apolo	done	True	False	1		humano:migration-5019-aplicada	5019		docs/fila/apolo/5035-apolo-raw-ghl-conversas-sql.md
+5036	apolo	done	False	True	2		humano:migration-5035-aplicada	5035		docs/fila/apolo/5036-apolo-ghl-conversas-lib.md
+5040	apolo	done	True	False	1			5035		docs/fila/apolo/5040-apolo-raw-meta-insights-dia-sql.md
+5041	apolo	done	True	False	1			5035		docs/fila/apolo/5041-apolo-raw-meta-entidades-sql.md
+5042	apolo	done	True	False	3	2026-10-15,2026-10-16		5035		docs/fila/apolo/5042-apolo-raw-evolution-mensagens-sql.md
+5043	apolo	done	True	False	1			5035		docs/fila/apolo/5043-apolo-raw-os-snapshot-sql.md
+5044	apolo	done	True	False	1			5045		docs/fila/apolo/5044-apolo-dim-tese-sql.md
+5045	apolo	done	True	False	1					docs/fila/apolo/5045-apolo-dim-nicho-sql.md
+5046	apolo	done	True	False	1					docs/fila/apolo/5046-apolo-dim-funil-tipo-sql.md
+5047	apolo	done	True	False	1					docs/fila/apolo/5047-apolo-metrica-versao-sql.md
+5048	apolo	done	True	False	1			5047		docs/fila/apolo/5048-apolo-fn-cliente-ativo-sql.md
+5049	apolo	done	True	False	1			5040;5041;5046		docs/fila/apolo/5049-apolo-fato-midia-dia-sql.md
+5050	apolo	done	True	False	1			5052		docs/fila/apolo/5050-apolo-fato-crm-dia-sql.md
+5051	apolo	done	True	False	1			5047;5050		docs/fila/apolo/5051-apolo-fn-pct-mql-sql.md
+5052	apolo	done	True	False	1			5035		docs/fila/apolo/5052-apolo-raw-ghl-crm-sql.md
+5053	apolo	done	False	False	1					docs/fila/apolo/5053-apolo-escritor-tickets-v0-1.md
+5054	apolo	done	True	False	1			5019		docs/fila/apolo/5054-apolo-fato-grupo-dia-sql.md
+5055	apolo	done	True	False	3	2026-10-16		5048		docs/fila/apolo/5055-apolo-fato-cliente-dia-sql.md
+5056	apolo	done	True	False	1			5041;5047;5049		docs/fila/apolo/5056-apolo-fn-cpl-sql.md
+5057	apolo	done	True	False	1			5047;5049;5050		docs/fila/apolo/5057-apolo-fn-cpmql-sql.md
+5058	apolo	done	True	False	1			5047;5049;5050		docs/fila/apolo/5058-apolo-fn-cac-sql.md
+5060	apolo	done	True	False	1			5035		docs/fila/apolo/5060-apolo-comercial-config-fato-sql.md
+5061	apolo	done	True	False	1			5060		docs/fila/apolo/5061-apolo-comercial-fn-recalcular-sql.md
+5062	apolo	done	True	False	3	2026-10-15		5061		docs/fila/apolo/5062-apolo-comercial-fn-leitura-sql.md
+5063	apolo	done	False	True	1			5062		docs/fila/apolo/5063-apolo-comercial-atendimento-lib.md
+5065	apolo	done	False	True	1					docs/fila/apolo/5065-apolo-comercial-sugestao-motivo.md
+5066	apolo	pendente	True	False	0					docs/fila/apolo/5066-apolo-endurece-privilegios-sql.md
+5067	apolo	done	True	False	2			5033;5062		docs/fila/apolo/5067-apolo-comercial-julgamento-sql.md
+5068	apolo	done	True	False	1			5067		docs/fila/apolo/5068-apolo-comercial-fn-conversa-sql.md
+5069	apolo	done	True	False	2			5067		docs/fila/apolo/5069-apolo-comercial-fn-padroes-sql.md
+5070	apolo	done	True	False	1			5062		docs/fila/apolo/5070-apolo-comercial-dataset-sql.md
+5071	apolo	done	False	True	1			5068;5069;5070		docs/fila/apolo/5071-apolo-comercial-conversa-lib.md
+5072	apolo	done	False	True	1			5067;5068		docs/fila/apolo/5072-apolo-comercial-juizes-lib.md
+5080	apolo	done	True	False	1			5067;5069		docs/fila/apolo/5080-apolo-comercial-hipotese-sql.md
+5081	apolo	done	True	False	1			5080		docs/fila/apolo/5081-apolo-comercial-fn-hipoteses-sql.md
+5082	apolo	done	True	False	1			5067;5068		docs/fila/apolo/5082-apolo-comercial-fn-onde-morre-sql.md
+5083	apolo	done	True	False	1			5062		docs/fila/apolo/5083-apolo-comercial-modelo-honorario-sql.md
+5084	apolo	done	True	False	1			5081;5082;5083		docs/fila/apolo/5084-apolo-comercial-fn-feedback-sql.md
+5085	apolo	done	False	True	1			5084		docs/fila/apolo/5085-apolo-comercial-feedback-lib.md
+5086	apolo	done	True	False	1			5067		docs/fila/apolo/5086-apolo-comercial-revisao-sql.md
+5087	apolo	done	False	True	1			5086		docs/fila/apolo/5087-apolo-comercial-revisao-lib.md
+5088	apolo	done	True	False	1			5062		docs/fila/apolo/5088-apolo-comercial-followup-sql.md
+5089	apolo	done	False	True	1			5088		docs/fila/apolo/5089-apolo-comercial-followup-gerar-lib.md
+5090	apolo	done	False	True	1			5088		docs/fila/apolo/5090-apolo-comercial-followup-lib.md
+5130	apolo	done	True	False	2			5047		docs/fila/apolo/5130-apolo-fn-minutos-uteis-comarka-sql.md
+5131	apolo	done	True	False	1			5130		docs/fila/apolo/5131-apolo-fn-vacuo-aberto-sql.md
+5132	apolo	done	True	False	1			5047		docs/fila/apolo/5132-apolo-fn-temperatura-sql.md
+5133	apolo	done	True	False	1			5047;5049		docs/fila/apolo/5133-apolo-fn-hook-body-rate-sql.md
+5134	apolo	done	True	False	1			5047;5050		docs/fila/apolo/5134-apolo-fn-breakeven-sql.md
+5135	apolo	done	True	False	1			5040		docs/fila/apolo/5135-apolo-fn-ingerir-raw-meta-insights-sql.md
+5136	apolo	done	True	False	1			5041		docs/fila/apolo/5136-apolo-fn-ingerir-raw-meta-entidades-sql.md
+5137	apolo	done	True	False	1			5042		docs/fila/apolo/5137-apolo-fn-ingerir-raw-evolution-sql.md
+5138	apolo	done	True	False	1			5052		docs/fila/apolo/5138-apolo-fn-ingerir-raw-ghl-crm-sql.md
+5139	apolo	done	True	False	2			5043		docs/fila/apolo/5139-apolo-fn-ingerir-raw-os-snapshot-sql.md
+5140	apolo	done	True	False	1			5049;5135;5136;5044;5046		docs/fila/apolo/5140-apolo-fn-fato-midia-dia-calcular-sql.md
+5141	apolo	done	True	False	1			5054;5137;5130		docs/fila/apolo/5141-apolo-fn-fato-grupo-dia-calcular-sql.md
+5142	apolo	done	True	False	1			5050;5138;5060		docs/fila/apolo/5142-apolo-fn-fato-crm-dia-calcular-sql.md
+5143	apolo	done	True	False	2			5055;5139;5048;5132;5044		docs/fila/apolo/5143-apolo-fn-fato-cliente-dia-calcular-sql.md
+5144	apolo	done	True	False	1			5021;5020		docs/fila/apolo/5144-apolo-qualidade-quarentena-sla-sql.md
+5145	apolo	done	True	False	1			5144;5140;5141;5142;5143		docs/fila/apolo/5145-apolo-fn-contratos-rodar-sql.md
+5146	apolo	done	True	False	1			5144;5140;5141;5142;5143		docs/fila/apolo/5146-apolo-fn-reconciliar-dia-sql.md
+5147	apolo	done	True	False	1			5135;5136;5137;5138;5139;5140;5141;5142;5143;5145;5146		docs/fila/apolo/5147-apolo-fn-ciclo-dados-diario-sql.md
+5148	apolo	done	True	False	1			5021;5131;5144		docs/fila/apolo/5148-apolo-fn-criterios-tipo-sql.md
+5149	apolo	done	True	False	1			5021;5051;5056;5057;5058;5141		docs/fila/apolo/5149-apolo-fn-medir-previsoes-sql.md
+5150	apolo	done	True	False	1			5021;5148;5149		docs/fila/apolo/5150-apolo-fn-relatorio-sombra-sql.md
+5151	apolo	done	True	False	1			5021		docs/fila/apolo/5151-apolo-falhas-taxonomia-sql.md
+5152	apolo	done	True	False	1			5022;5021		docs/fila/apolo/5152-apolo-fn-playbook-recalcular-sql.md
+5153	apolo	done	False	True	1					docs/fila/apolo/5153-apolo-agente-analista-v1.md
+5154	apolo	done	False	True	1					docs/fila/apolo/5154-apolo-rubricas-juiz-v1.md
+5155	apolo	done	False	True	1					docs/fila/apolo/5155-apolo-agente-juiz-v1.md
+5156	apolo	done	False	True	1					docs/fila/apolo/5156-apolo-decisor-catalogo-metricas-explicabilidade.md
+5157	apolo	done	False	True	1					docs/fila/apolo/5157-apolo-retencao-aleatoria-10pct.md
+5158	apolo	done	False	True	1					docs/fila/apolo/5158-apolo-adaptadores-verdes-tarefa-relacao.md
+5159	apolo	done	False	True	3	2026-10-17				docs/fila/apolo/5159-apolo-adaptadores-verdes-alerta-monitorar.md
+5160	apolo	done	False	True	1					docs/fila/apolo/5160-apolo-executor-modo-vivo-verde.md
+5161	apolo	done	False	True	1					docs/fila/apolo/5161-apolo-orcamento-por-tipo-pausa.md
+5162	apolo	done	False	True	1		humano:migration-5148-aplicada			docs/fila/apolo/5162-apolo-gerente-cobrador-v1.md
+5163	apolo	done	False	True	1			5021		docs/fila/apolo/5163-apolo-veredito-humano-lib.md
+5164	apolo	done	False	True	2		humano:migration-5144-aplicada			docs/fila/apolo/5164-apolo-frescor-dossie-decisor.md
+5165	apolo	done	False	True	1		humano:migration-5147-aplicada			docs/fila/apolo/5165-apolo-ciclo-dados-lib.md
+5166	apolo	done	False	True	1					docs/fila/apolo/5166-apolo-decisor-classe-playbook-autonomia.md
+5167	apolo	done	False	False	2					docs/fila/apolo/5167-apolo-escritor-tickets-v1.md
+5168	apolo	done	True	False	1			5021		docs/fila/apolo/5168-apolo-evento-negocio-sql.md
+5169	apolo	done	True	False	1			5168;5140;5141;5142;5143;5136		docs/fila/apolo/5169-apolo-fn-eventos-detectar-sql.md
+5170	apolo	done	True	False	3			5168;5140;5141;5142;5143		docs/fila/apolo/5170-apolo-evento-contexto-sql.md
+5171	apolo	done	True	False	1			5140;5142;5044		docs/fila/apolo/5171-apolo-benchmark-hierarquico-sql.md
+5172	apolo	done	True	False	1			5170		docs/fila/apolo/5172-apolo-padrao-assinatura-sql.md
+5173	apolo	done	True	False	1			5172;5143		docs/fila/apolo/5173-apolo-score-risco-sql.md
+5174	apolo	done	True	False	1			5021;5149		docs/fila/apolo/5174-apolo-playbook-lift-sql.md
+5175	apolo	done	True	False	1			5172		docs/fila/apolo/5175-apolo-padrao-coocorrencia-sql.md
+5176	apolo	done	True	False	1			5144;5140;5171		docs/fila/apolo/5176-apolo-auditoria-semanal-sql.md
+5177	apolo	done	True	False	1			5145;5146		docs/fila/apolo/5177-apolo-fn-qualidade-dado-tratar-sql.md
+5178	apolo	done	False	True	1		humano:migration-5177-aplicada			docs/fila/apolo/5178-apolo-pipeline-por-tipo-qualidade-dado.md
+5179	apolo	done	True	False	1					docs/fila/apolo/5179-apolo-fn-fato-crm-dia-calcular-v2-sql.md
+5180	apolo	done	True	False	1					docs/fila/apolo/5180-apolo-fn-eventos-detectar-v2-sql.md
+5181	apolo	done	True	False	1					docs/fila/apolo/5181-apolo-fn-coerencia-tese-cliente-sql.md
+5182	apolo	done	True	False	1					docs/fila/apolo/5182-apolo-fn-mutirao-sugestoes-sql.md
+5183	apolo	done	True	False	3					docs/fila/apolo/5183-apolo-fn-calibrar-limiares-sql.md
+5184	apolo	done	True	False	3					docs/fila/apolo/5184-apolo-suite-dourada-sql.md
+5185	apolo	done	False	True	1		humano:migration-5184-aplicada	5184		docs/fila/apolo/5185-apolo-suite-dourada-lib.md
+5186	apolo	done	True	False	2					docs/fila/apolo/5186-apolo-rascunho-amarelo-sql.md
+5187	apolo	done	False	True	1		humano:migration-5186-aplicada	5186		docs/fila/apolo/5187-apolo-adaptador-rascunho-grupo.md
+5188	apolo	done	False	True	1					docs/fila/apolo/5188-apolo-adaptador-realocacao-verba.md
+5189	apolo	done	False	True	1					docs/fila/apolo/5189-apolo-adaptador-troca-criativo.md
+5190	apolo	done	False	True	1					docs/fila/apolo/5190-apolo-executar-amarelo-aprovado.md
+5191	apolo	done	True	False	1					docs/fila/apolo/5191-apolo-fn-incidente-detectar-sql.md
+5192	apolo	done	False	True	3		humano:migration-5181-aplicada;humano:migration-5191-aplicada	5181;5191		docs/fila/apolo/5192-apolo-ciclo-incidente-coerencia-lib.md
+5193	apolo	done	True	False	1					docs/fila/apolo/5193-apolo-comercial-fn-padroes-tese-sql.md
+5194	apolo	done	True	False	1					docs/fila/apolo/5194-apolo-comercial-perguntas-tese-sql.md
+5196	apolo	done	True	False	2					docs/fila/apolo/5196-apolo-comercial-fn-limiar-pergunta-sql.md
+5197	apolo	done	True	False	1					docs/fila/apolo/5197-apolo-conhecimento-comercial-sql.md
+5198	apolo	done	False	True	1		humano:migration-5194-aplicada;humano:migration-5197-aplicada	5194;5197		docs/fila/apolo/5198-apolo-comercial-juizes-tese-conhecimento.md
+5199	apolo	em_execucao	True	False	1					docs/fila/apolo/5199-apolo-comercial-nota-ghl-sql.md
+5200	apolo	pendente	False	True	0		humano:migration-5199-aplicada	5199		docs/fila/apolo/5200-apolo-comercial-followup-nota-ghl-lib.md
+5201	apolo	done	False	True	1		humano:migration-5196-aplicada	5196		docs/fila/apolo/5201-apolo-comercial-calibracao-lib.md
+5202	apolo	done	False	True	3	2026-10-17	humano:migration-5193-aplicada	5193		docs/fila/apolo/5202-apolo-comercial-padroes-tese-lib.md
+5203	apolo	pendente	True	False	0		humano:migration-5183-aplicada	5183		docs/fila/apolo/5203-apolo-fn-calibrar-limiares-v2-sql.md
+5204	apolo	done	True	False	1		humano:migration-5193-aplicada;humano:migration-5196-aplicada	5193;5196		docs/fila/apolo/5204-apolo-comercial-fn-padroes-limiar-sql.md
+5206	apolo	done	False	False	1					docs/fila/apolo/5206-apolo-teste-eventos-v2-caminho-por-sufixo.md
+5207	apolo	done	True	False	2					docs/fila/apolo/5207-apolo-fn-relatorio-cliente-sql.md
+5208	apolo	pendente	True	False	0					docs/fila/apolo/5208-apolo-agentes-atendimento-tabelas-sql.md
+5209	apolo	pendente	True	False	0			5208		docs/fila/apolo/5209-apolo-fn-trechos-agente-sql.md
+5210	apolo	pendente	True	False	0			5208;5209		docs/fila/apolo/5210-apolo-fn-agentes-resumo-sql.md
+5211	apolo	pendente	False	True	0			5208;5209		docs/fila/apolo/5211-apolo-comercial-critica-mensagem-lib.md
+5212	apolo	pendente	False	True	0			5208;5209		docs/fila/apolo/5212-apolo-comercial-agentes-montar-lib.md
+5214	apolo	pendente	False	True	0			5208;5210		docs/fila/apolo/5214-apolo-comercial-agentes-leitura-lib.md
+5215	apolo	done	True	False	1					docs/fila/apolo/5215-apolo-capacidade-registro-sql.md
+5216	apolo	pendente	False	True	0		humano:migration-5215-aplicada	5215		docs/fila/apolo/5216-apolo-capacidades-lib.md
+5217	apolo	pendente	False	True	0		humano:migration-5215-aplicada			docs/fila/apolo/5217-apolo-kpis-dossie-registro.md
+5219	apolo	done	False	True	1		humano:migration-5174-aplicada			docs/fila/apolo/5219-apolo-decisor-ordena-por-lift.md
+5221	apolo	done	True	False	1					docs/fila/apolo/5221-apolo-fn-relatorio-mensal-sql.md
+5222	apolo	done	False	True	1		humano:migration-5184-aplicada			docs/fila/apolo/5222-apolo-gate-suite-dourada.md
+5223	apolo	done	True	False	1					docs/fila/apolo/5223-apolo-comercial-ativacao-sql.md
+5224	apolo	done	False	True	1			5223		docs/fila/apolo/5224-apolo-comercial-ativacao-lib.md
+5225	apolo	done	True	False	2					docs/fila/apolo/5225-apolo-briefing-escritorio-sql.md
+5226	apolo	pendente	True	False	0					docs/fila/apolo/5226-apolo-comercial-score-lead-sql.md
+5227	apolo	pendente	False	True	0			5226		docs/fila/apolo/5227-apolo-comercial-score-lead-lib.md
+5228	apolo	done	True	False	1					docs/fila/apolo/5228-apolo-comercial-conhecimento-curadoria-sql.md
+5229	apolo	done	False	True	1			5228		docs/fila/apolo/5229-apolo-comercial-conhecimento-curadoria-lib.md
+5231	apolo	done	True	False	1					docs/fila/apolo/5231-apolo-fn-relatorio-cliente-captacao-sql.md
+5242	apolo	done	True	False	1					docs/fila/apolo/5242-apolo-fato-midia-dia-janela-sql.md

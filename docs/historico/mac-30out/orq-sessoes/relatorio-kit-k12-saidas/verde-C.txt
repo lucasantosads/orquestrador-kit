@@ -1,0 +1,56 @@
+  servidor em http://127.0.0.1:55816
+== 1. pausar: cria o PAUSAR do contrato e grava PAUSA na trilha ==
+  ok    HTTP 200
+  ok    docs/fila/PAUSAR criado
+  ok    conteúdo no formato do §7: <AAAA-MM-DD HH:MM> | motivo
+  ok    trilha: 2026-09-23T13:21:07-0300 --- PAUSA motivo=leva-da-tarde por=painel
+  ok    a resposta explica que para ENTRE tickets
+  ok    .orq-pause nunca é escrito
+  ok    nada mais mudou no repo
+
+== 2. pausar de novo: recusa, sem segunda linha ==
+  ok    HTTP 409
+  ok    sem PAUSA duplicada
+
+== 3. o estado diz o que cada botão pode e por quê ==
+  ok    rho: pausar desabilitado
+  ok    rho: retomar habilitado
+  ok    rho: disparo desabilitado (ticket em curso)
+  ok    o motivo do disparo desabilitado está escrito
+  ok    sem ação 'pausar agora'
+
+== 4. retomar: apaga o PAUSAR e grava RETOMADA com a duração ==
+  ok    HTTP 200
+  ok    PAUSAR apagado
+  ok    trilha: 2026-09-23T13:21:07-0300 --- RETOMADA por=painel dur=0min
+  ok    nada mais mudou no repo
+  ok    retomar sem pausa: 409
+
+== 5. legado .orq-pause: lido, nunca escrito nem apagado ==
+  ok    sigma aparece pausado
+  ok    sigma: retomar desabilitado
+  ok    o motivo nomeia o .orq-pause
+  ok    POST retomar no legado: 409
+  ok    .orq-pause intacto
+  ok    sigma continua sem PAUSAR
+
+== 6. disparo: só com STATUS ocioso, e sem -k ==
+  ok    com ticket em curso: 409
+  ok    launchctl kickstart não chamado
+  ok    ocioso: 200
+  ok    kickstart gui/<uid>/<label do config>, sem -k
+
+== 7. o resto é recusado ==
+  ok    ação fora da allowlist: 403
+  ok    repo desconhecido: 400
+  ok    Host estranho: 403
+
+== 8. a página: Pausar e Retomar, e o que a pausa faz ==
+  ok    página contém 'Pausar'
+  ok    página contém 'Retomar'
+  ok    página contém 'ENTRE tickets'
+  ok    página contém 'nada é interrompido'
+  ok    sem 'Pausar agora'
+
+TODOS OS CHECKS PASSARAM
+rc=0

@@ -1,0 +1,25 @@
+# 2026-10-22 16:59:54 cwd=/Users/lucasantos/orq-sessoes/dc-config
+# kit a001fde, clone 072b62ec
+# git status --short (antes):
+# fim status antes
+$ bash ~/Projetos/orquestrador-kit/instalar.sh --novo --dry-run ~/Projetos/dashboard-comercial-orq
+instalar.sh: '--dry-run' não é um diretório
+rc=2
+$ bash ~/Projetos/orquestrador-kit/instalar.sh --help
+uso: bash instalar.sh --verificar <repo>
+     bash instalar.sh --atualizar <repo> [--dry-run] [--forcar] [--migrar]
+     bash instalar.sh --novo <repo>
+
+  --verificar <repo>   compara o motor vendorizado em <repo> com o do kit
+  --atualizar <repo>   copia o motor do kit por cima do de <repo>
+      --dry-run        só lista o que mudaria (e o que o --atualizar recusaria); sai 0
+      --forcar         segue mesmo com modificação não commitada no motor do repo
+                       (NÃO passa por cima da pausa, do STATUS nem do tsx ausente)
+      --migrar         TAMBÉM migra docs/fila/** (pausa, liberações) — o único
+                       caso em que o instalador toca os dados do dono
+  --novo <repo>        instala num repo git que ainda NÃO tem docs/fila
+rc=0
+# git status --short (depois):
+# fim status depois
+ls: /Users/lucasantos/Projetos/dashboard-comercial-orq/docs/fila: No such file or directory
+ls: /Users/lucasantos/Projetos/dashboard-comercial-orq/scripts/orq: No such file or directory

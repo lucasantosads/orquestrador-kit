@@ -1,0 +1,298 @@
+diff --git a/src/app/dashboard/clientes/[id]/portal-previa/corpo-previa.tsx b/src/app/dashboard/clientes/[id]/portal-previa/corpo-previa.tsx
+index ea0dcd9..904714c 100644
+--- a/src/app/dashboard/clientes/[id]/portal-previa/corpo-previa.tsx
++++ b/src/app/dashboard/clientes/[id]/portal-previa/corpo-previa.tsx
+@@ -12,18 +12,12 @@ import { ResultadosConteudo } from "@/app/r/escritorio/_components/aba-resultado
+ import { RelatoriosConteudo } from "@/app/r/escritorio/_components/aba-relatorios";
+ import { ContratoConteudo } from "@/app/r/escritorio/_components/aba-contrato";
+ import { BriefingConteudo, type DadosBriefing } from "@/app/r/escritorio/_components/aba-briefing";
+-import { ABAS_PRONTAS } from "@/app/r/escritorio/_components/portal-shell";
++import { T } from "@/app/r/escritorio/_components/tokens";
+ 
+ type Relatorios = Parameters<typeof RelatoriosConteudo>[0]["relatorios"];
+ type Contrato = Parameters<typeof ContratoConteudo>[0]["contrato"];
+ export type DadosPrevia = InicioPortal | ResultadosPortal | { relatorios: Relatorios } | Contrato | DadosBriefing;
+ 
+-/** Aba pelo hash: só as abas que o portal público mostra; hash desconhecido cai no Início (nunca vira pedido inválido). */
+-export function abaDoHash(hash: string): string {
+-  const h = hash.replace("#", "");
+-  return ABAS_PRONTAS.includes(h) ? h : "inicio";
+-}
+-
+ /** Payload carimbado com a aba que o pediu. */
+ export type CargaPrevia = { aba: string; dados: DadosPrevia };
+ 
+@@ -46,7 +40,7 @@ export function CorpoPrevia({
+   irParaAba: (aba: string) => void;
+ }) {
+   const dados = dadosDaAba(carga, aba);
+-  if (!dados) return <div aria-busy="true" className="h-[240px] animate-pulse rounded-xl bg-[#eef1f6]" />;
++  if (!dados) return <div aria-busy="true" className={`h-[240px] animate-pulse rounded-xl ${T.superficie}`} />;
+   if (aba === "resultados") return <ResultadosConteudo dados={dados as ResultadosPortal} token={token} onAtualizar={onAtualizar} />;
+   if (aba === "relatorios") return <RelatoriosConteudo relatorios={(dados as { relatorios: Relatorios }).relatorios} />;
+   if (aba === "contrato") return <ContratoConteudo contrato={dados as Contrato} token={token} />;
+diff --git a/src/app/dashboard/clientes/[id]/portal-previa/page.tsx b/src/app/dashboard/clientes/[id]/portal-previa/page.tsx
+index 3fe4155..5e3030c 100644
+--- a/src/app/dashboard/clientes/[id]/portal-previa/page.tsx
++++ b/src/app/dashboard/clientes/[id]/portal-previa/page.tsx
+@@ -11,7 +11,8 @@ import { fetchJson, FetchJsonError } from "@/lib/fetch-json";
+ import type { InicioPortal } from "@/lib/portal-escritorio/carregar";
+ import { PortalShell, TelaEstado } from "@/app/r/escritorio/_components/portal-shell";
+ import { TOKEN_PREVIA, T } from "@/app/r/escritorio/_components/tokens";
+-import { CorpoPrevia, abaDoHash, dadosDaAba, type CargaPrevia, type DadosPrevia } from "./corpo-previa";
++import { abaDoHash } from "@/app/r/escritorio/_components/portal-shell";
++import { CorpoPrevia, dadosDaAba, type CargaPrevia, type DadosPrevia } from "./corpo-previa";
+ 
+ const FAIXA_PREVIA = "Prévia: é isso que o escritório vê. Nada que você clicar aqui é enviado.";
+ const SEM_ACESSO = "Você não cuida deste cliente.";
+@@ -22,28 +23,29 @@ const irPara = (aba: string) => {
+ 
+ export default function PortalPreviaPage() {
+   const id = useParams<{ id: string }>()?.id;
+-  const [aba, setAba] = useState("inicio");
++  // null até ler o hash: link direto para #resultados não busca o Início antes.
++  const [aba, setAba] = useState<string | null>(null);
+   const [carga, setCarga] = useState<CargaPrevia | null>(null);
+   const [estado, setEstado] = useState<"carregando" | "ok" | "erro" | "sem_acesso">("carregando");
+-  const abaAberta = useRef(aba);
+-  abaAberta.current = aba;
++  // Só a resposta do último pedido vale: a de um pedido anterior (outra aba ou a mesma) é descartada.
++  const ultimoPedido = useRef(0);
+ 
+   const carregar = useCallback(
+     (silencioso = false) => {
+-      if (!id) return;
++      if (!id || !aba) return;
++      const pedido = ++ultimoPedido.current;
+       if (!silencioso) {
+         setEstado("carregando");
+         setCarga(null);
+       }
+       fetchJson<DadosPrevia>(`/api/clientes/${id}/portal-previa?aba=${aba}`)
+         .then((d) => {
+-          // Resposta de uma aba que já foi fechada não sobrescreve a da aba aberta.
+-          if (abaAberta.current !== aba) return;
++          if (pedido !== ultimoPedido.current) return;
+           setCarga({ aba, dados: d });
+           setEstado("ok");
+         })
+         .catch((e) => {
+-          if (silencioso || abaAberta.current !== aba) return;
++          if (silencioso || pedido !== ultimoPedido.current) return;
+           setEstado(e instanceof FetchJsonError && e.status === 403 ? "sem_acesso" : "erro");
+         });
+     },
+@@ -86,16 +88,14 @@ export default function PortalPreviaPage() {
+   }
+ 
+   // A troca de aba renderiza antes do fetch da aba nova: só monta com o payload pedido para a aba aberta.
+-  const dados = estado === "ok" ? dadosDaAba(carga, aba) : null;
+-  const corpo = (
+-    <CorpoPrevia aba={aba} carga={estado === "ok" ? carga : null} token={TOKEN_PREVIA} onAtualizar={() => carregar(true)} irParaAba={irPara} />
+-  );
++  const abaVisivel = aba ?? "inicio";
++  const dados = dadosDaAba(carga, abaVisivel);
+ 
+   return (
+     <>
+       {faixa}
+-      <PortalShell cliente={dados && aba === "inicio" ? (dados as InicioPortal).cliente : null} aba={aba} onAba={irPara}>
+-        {corpo}
++      <PortalShell cliente={dados && abaVisivel === "inicio" ? (dados as InicioPortal).cliente : null} aba={abaVisivel} onAba={irPara}>
++        <CorpoPrevia aba={abaVisivel} carga={carga} token={TOKEN_PREVIA} onAtualizar={() => carregar(true)} irParaAba={irPara} />
+       </PortalShell>
+     </>
+   );
+diff --git a/src/app/r/escritorio/[token]/page.tsx b/src/app/r/escritorio/[token]/page.tsx
+index 4f79cd4..3f8c906 100644
+--- a/src/app/r/escritorio/[token]/page.tsx
++++ b/src/app/r/escritorio/[token]/page.tsx
+@@ -9,13 +9,9 @@ import { useCallback, useEffect, useState } from "react";
+ import { useParams } from "next/navigation";
+ import { fetchJson, FetchJsonError } from "@/lib/fetch-json";
+ import type { InicioPortal } from "@/lib/portal-escritorio/carregar";
+-import { ABAS_PRONTAS, PortalShell, TelaEstado, type EstadoTela } from "../_components/portal-shell";
++import { PortalShell, TelaEstado, abaDoHash, type EstadoTela } from "../_components/portal-shell";
+ import { AbaInicio } from "../_components/aba-inicio";
+ 
+-const abaDoHash = () => {
+-  const h = typeof window === "undefined" ? "" : window.location.hash.replace("#", "");
+-  return ABAS_PRONTAS.includes(h) ? h : "inicio";
+-};
+ const irPara = (aba: string) => {
+   window.location.hash = aba;
+ };
+@@ -47,7 +43,7 @@ export default function PortalEscritorioPage() {
+     carregar();
+   }, [carregar]);
+   useEffect(() => {
+-    const f = () => setAba(abaDoHash());
++    const f = () => setAba(abaDoHash(window.location.hash));
+     f();
+     window.addEventListener("hashchange", f);
+     return () => window.removeEventListener("hashchange", f);
+diff --git a/src/app/r/escritorio/_components/aba-briefing.tsx b/src/app/r/escritorio/_components/aba-briefing.tsx
+index 5cd0434..804b776 100644
+--- a/src/app/r/escritorio/_components/aba-briefing.tsx
++++ b/src/app/r/escritorio/_components/aba-briefing.tsx
+@@ -69,12 +69,12 @@ export function BriefingConteudo({ dados, token, onSalvo }: { dados: DadosBriefi
+     quem: "",
+   });
+   const [fase, setFase] = useState<"parado" | "enviando">("parado");
+-  const [msg, setMsg] = useState<{ erro: boolean; texto: string } | null>(null);
++  const [msg, setMsg] = useState<{ erro: boolean; texto: string; neutro?: boolean } | null>(null);
+   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((p) => ({ ...p, [k]: e.target.value }));
+ 
+   async function enviar() {
+     if (token === TOKEN_PREVIA) {
+-      setMsg({ erro: false, texto: MENSAGEM_PREVIA });
++      setMsg({ erro: false, texto: MENSAGEM_PREVIA, neutro: true });
+       return;
+     }
+     const ticket = numero(f.ticket);
+@@ -179,7 +179,7 @@ export function BriefingConteudo({ dados, token, onSalvo }: { dados: DadosBriefi
+             {fase === "enviando" ? "Enviando" : "Enviar briefing"}
+           </button>
+           {msg && (
+-            <p role={msg.erro ? "alert" : "status"} className={`${msg.erro ? T.problema : T.ok} ${T.micro} rounded-lg px-2 py-1`}>
++            <p role={msg.erro ? "alert" : "status"} className={`${msg.neutro ? T.secundario : msg.erro ? T.problema : T.ok} ${T.micro} rounded-lg px-2 py-1`}>
+               {msg.texto}
+             </p>
+           )}
+diff --git a/src/app/r/escritorio/_components/aba-segura.tsx b/src/app/r/escritorio/_components/aba-segura.tsx
+index 32feb82..c4c1bdd 100644
+--- a/src/app/r/escritorio/_components/aba-segura.tsx
++++ b/src/app/r/escritorio/_components/aba-segura.tsx
+@@ -1,6 +1,7 @@
+ "use client";
+ 
+ import { Component, type ErrorInfo, type ReactNode } from "react";
++import { Button } from "@/components/ui/button";
+ import { T } from "./tokens";
+ 
+ export const INDISPONIVEL = "Indisponível agora.";
+@@ -22,7 +23,16 @@ export class AbaSegura extends Component<{ aba: string; children: ReactNode }, {
+   }
+ 
+   render() {
+-    if (this.state.erro) return <p className={T.secundario}>{INDISPONIVEL}</p>;
++    if (this.state.erro) {
++      return (
++        <div className="space-y-2">
++          <p className={T.secundario}>{INDISPONIVEL}</p>
++          <Button type="button" variant="link" className={`${T.botao} ${T.botaoSecundario} no-underline`} onClick={() => this.setState({ erro: false })}>
++            Tentar de novo
++          </Button>
++        </div>
++      );
++    }
+     return this.props.children;
+   }
+ }
+diff --git a/src/app/r/escritorio/_components/portal-shell.tsx b/src/app/r/escritorio/_components/portal-shell.tsx
+index dc97b6a..fe9ae7b 100644
+--- a/src/app/r/escritorio/_components/portal-shell.tsx
++++ b/src/app/r/escritorio/_components/portal-shell.tsx
+@@ -12,6 +12,12 @@ import { T } from "./tokens";
+ // 997c acrescenta as abas dele; aba fora da lista não aparece.
+ export const ABAS_PRONTAS: string[] = [...["inicio", "resultados"], "relatorios", "contrato", "briefing"];
+ 
++/** Aba pelo hash (portal e prévia): só as de ABAS_PRONTAS; hash desconhecido cai no Início, nunca vira pedido inválido. */
++export function abaDoHash(hash: string): string {
++  const h = hash.replace("#", "");
++  return ABAS_PRONTAS.includes(h) ? h : "inicio";
++}
++
+ const ROTULOS: Record<string, string> = {
+   inicio: "Início",
+   resultados: "Resultados",
+diff --git a/test/portal-previa-rota.test.ts b/test/portal-previa-rota.test.ts
+index 4fa8c53..4f1f58e 100644
+--- a/test/portal-previa-rota.test.ts
++++ b/test/portal-previa-rota.test.ts
+@@ -128,12 +128,13 @@ describe("rota portal-previa", () => {
+     });
+     await GET(req(), PARAMS);
+     await GET(req("?aba=resultados"), PARAMS);
++    await GET(req("?aba=briefing"), PARAMS);
+     expect(escritas).not.toHaveBeenCalled();
+     expect(tabelas).not.toContain("client_interaction_records");
+     expect(tabelas).not.toContain("perf_portal_tokens");
+   });
+ 
+-  // Hotfix 19/10: o portal público mostra a aba Briefing; a prévia serve o mesmo payload do GET
++  // Hotfix 18/10: o portal público mostra a aba Briefing; a prévia serve o mesmo payload do GET
+   // público (publico/portal/[token]/briefing), sem payloadSeguro, como lá.
+   it("briefing devolve o mesmo payload do portal público e não passa por payloadSeguro", async () => {
+     const res = await GET(req("?aba=briefing"), PARAMS);
+diff --git a/test/portal-previa-tela.test.tsx b/test/portal-previa-tela.test.tsx
+index 04d496c..628496f 100644
+--- a/test/portal-previa-tela.test.tsx
++++ b/test/portal-previa-tela.test.tsx
+@@ -17,7 +17,7 @@ describe("tela de prévia do portal (1303)", () => {
+     expect(PAGE).toContain("Você não cuida deste cliente.");
+   });
+ 
+-  // Hotfix 19/10: a escolha da aba saiu da page para corpo-previa.tsx (a page do Next não
++  // Hotfix 18/10: a escolha da aba saiu da page para corpo-previa.tsx (a page do Next não
+   // exporta nada além do default), que a page monta; as 4 abas seguem lá.
+   it("monta as 4 abas do portal real", () => {
+     expect(PAGE).toContain("<CorpoPrevia");
+diff --git a/test/portal-previa-troca-de-aba.test.tsx b/test/portal-previa-troca-de-aba.test.tsx
+index 80ad596..f6a702d 100644
+--- a/test/portal-previa-troca-de-aba.test.tsx
++++ b/test/portal-previa-troca-de-aba.test.tsx
+@@ -1,5 +1,5 @@
+ /**
+- * Hotfix 19/10: na prévia do portal, clicar em Resultados derrubava a ficha com
++ * Hotfix 18/10: na prévia do portal, clicar em Resultados derrubava a ficha com
+  * "Cannot read properties of undefined (reading 'slice')". A troca de aba renderiza antes
+  * do fetch da aba nova e a aba recebia o payload da anterior (ResultadosConteudo com o do
+  * Início quebra em mudancas.slice). Agora o payload vem carimbado com a aba que o pediu e
+@@ -24,13 +24,15 @@ type Comp = (p: Record<string, unknown>) => React.ReactElement | null;
+ const corpo = carregarTsx("src/app/dashboard/clientes/[id]/portal-previa/corpo-previa.tsx");
+ const CorpoPrevia = corpo.CorpoPrevia as (p: Props) => React.ReactElement;
+ const dadosDaAba = corpo.dadosDaAba as (c: Carga | null, aba: string) => unknown;
+-const abaDoHash = corpo.abaDoHash as (hash: string) => string;
+ const dir = "src/app/r/escritorio/_components/";
+ const ResultadosConteudo = carregarTsx(`${dir}aba-resultados.tsx`).ResultadosConteudo as Comp;
+ const RelatoriosConteudo = carregarTsx(`${dir}aba-relatorios.tsx`).RelatoriosConteudo as Comp;
+ const ContratoConteudo = carregarTsx(`${dir}aba-contrato.tsx`).ContratoConteudo as Comp;
+ const AbaInicio = carregarTsx(`${dir}aba-inicio.tsx`).AbaInicio as Comp;
+ const segura = carregarTsx(`${dir}aba-segura.tsx`);
++const shellMod = carregarTsx(`${dir}portal-shell.tsx`);
++const abaDoHash = shellMod.abaDoHash as (hash: string) => string;
++const ABAS_PRONTAS = shellMod.ABAS_PRONTAS as string[];
+ const AbaSegura = segura.AbaSegura as unknown as {
+   new (p: { aba: string; children: React.ReactNode }): { state: { erro: boolean }; render(): React.ReactNode };
+   getDerivedStateFromError(): { erro: boolean };
+@@ -121,7 +123,9 @@ describe("erro de render de uma aba fica na aba", () => {
+     const b = new AbaSegura({ aba: "resultados", children: React.createElement("p", null, "conteudo") });
+     expect(renderToStaticMarkup(b.render() as React.ReactElement)).toContain("conteudo");
+     b.state = { erro: true };
+-    expect(renderToStaticMarkup(b.render() as React.ReactElement)).toContain("Indisponível agora.");
++    const fallback = renderToStaticMarkup(b.render() as React.ReactElement);
++    expect(fallback).toContain("Indisponível agora.");
++    expect(fallback).toContain("Tentar de novo");
+     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+     (b as unknown as { componentDidCatch(e: Error, i: { componentStack: string }): void }).componentDidCatch(new Error("boom"), { componentStack: "" });
+     expect(spy.mock.calls[0]?.[0]).toContain("aba resultados falhou ao renderizar: boom");
+@@ -150,6 +154,18 @@ describe("prévia mostra as mesmas abas do portal público", () => {
+     expect(render({ aba: "briefing", carga: { aba: "inicio", dados: INICIO } })).toContain(ESPERA);
+   });
+ 
++  // Uma aba nova entra nos 3 lugares ou nenhum: ABAS_PRONTAS (o hash), ABAS da rota da prévia e o ramo do CorpoPrevia.
++  it("toda aba do portal público é aceita pela rota da prévia e tem ramo no corpo", () => {
++    const rota = readFileSync("src/app/api/clientes/[id]/portal-previa/route.ts", "utf8");
++    const abasRota = /const ABAS = \[([^\]]*)\]/.exec(rota)?.[1] ?? "";
++    const fonteCorpo = readFileSync("src/app/dashboard/clientes/[id]/portal-previa/corpo-previa.tsx", "utf8");
++    expect(ABAS_PRONTAS.length).toBe(5);
++    for (const a of ABAS_PRONTAS) {
++      expect(abasRota, `rota sem ${a}`).toContain(`"${a}"`);
++      if (a !== "inicio") expect(fonteCorpo, `corpo sem ramo de ${a}`).toContain(`aba === "${a}"`);
++    }
++  });
++
+   it("na prévia, Enviar briefing não chama a rota pública", () => {
+     const fonte = readFileSync(`${dir}aba-briefing.tsx`, "utf8");
+     const guarda = fonte.indexOf("if (token === TOKEN_PREVIA)");

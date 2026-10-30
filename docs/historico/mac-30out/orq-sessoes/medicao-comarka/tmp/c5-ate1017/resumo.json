@@ -1,0 +1,408 @@
+{
+ "C1": {
+  "desde_2026-08-08": {
+   "atual": 0,
+   "maior": 2,
+   "maior_ate": "2026-08-11",
+   "maior_de": "2026-08-10"
+  },
+  "dias_com_intervencao_na_janela": [
+   "2026-10-04",
+   "2026-10-05",
+   "2026-10-06",
+   "2026-10-07",
+   "2026-10-08",
+   "2026-10-09",
+   "2026-10-10",
+   "2026-10-11",
+   "2026-10-12",
+   "2026-10-13",
+   "2026-10-14",
+   "2026-10-15",
+   "2026-10-16",
+   "2026-10-17"
+  ],
+  "janela": {
+   "atual": 0,
+   "maior": 0,
+   "maior_ate": null,
+   "maior_de": null
+  },
+  "motivos_por_dia": {
+   "2026-10-04": [
+    "gate_streak:local-loop.log:72160",
+    "pausa_gate_streak"
+   ],
+   "2026-10-05": [
+    "allowlist:09e85d253",
+    "criterio:23267e260",
+    "criterio:2f1eeb75d",
+    "criterio:af5e6749b",
+    "dependencia:87522d9cf",
+    "dependencia:ef7dea44f",
+    "gate_streak:local-loop.log:72438",
+    "gate_streak:local-loop.log:72722",
+    "pausa_gate_streak",
+    "pausa_gate_streak",
+    "pausa_gate_streak",
+    "pausa_manual"
+   ],
+   "2026-10-06": [
+    "allowlist:9d7ef4d35",
+    "writeback:cfe97430e"
+   ],
+   "2026-10-07": [
+    "allowlist:2d79beee4",
+    "config:d33c111fd",
+    "dependencia:76d4fad06",
+    "outro:573f69e6d",
+    "outro:aa5423c4f",
+    "reabertura:ee9efbee9"
+   ],
+   "2026-10-08": [
+    "allowlist:90b5727d7",
+    "allowlist:ae22bc364",
+    "allowlist:c3cde4a75",
+    "criterio:21437fe3f",
+    "criterio:c5d74cdbd",
+    "criterio:d7a8d5437",
+    "criterio:f2c3cef0d",
+    "dependencia:917d35bca",
+    "gate_streak:local-loop.log:82653",
+    "gate_streak:local-loop.log:82794",
+    "pausa_gate_streak",
+    "reabertura:b7858391f"
+   ],
+   "2026-10-09": [
+    "allowlist:4dc5d717c",
+    "allowlist:676ca51e8",
+    "writeback:56d5c5f85"
+   ],
+   "2026-10-10": [
+    "allowlist:7787af376",
+    "writeback:1a5d41d9f",
+    "writeback:819c49aaa"
+   ],
+   "2026-10-11": [
+    "allowlist:079d3f465",
+    "allowlist:5525c7db6",
+    "allowlist:cc8d3887b",
+    "config:655c91603",
+    "criterio:f01a98953",
+    "dependencia:a269b0ffc",
+    "gate_streak:local-loop.log:89088",
+    "motor:db3edde4b",
+    "motor:ee7d358a3",
+    "motor:fab89d5c8",
+    "outro:fa2923eec",
+    "writeback:0388c9747"
+   ],
+   "2026-10-12": [
+    "allowlist:05d951e93",
+    "allowlist:4b5dd2eab",
+    "allowlist:638e00305",
+    "allowlist:ab4e95cb4",
+    "allowlist:af768b088",
+    "dependencia:3047e6cb8",
+    "gate_streak:local-loop.log:93808",
+    "motor:31104d009",
+    "pausa_gate_streak",
+    "reabertura:bc492863f",
+    "writeback:37a1bcee0"
+   ],
+   "2026-10-13": [
+    "allowlist:c00ee4b15",
+    "criterio:3718afa1c",
+    "criterio:3f5647804",
+    "reabertura:d23ee91ff"
+   ],
+   "2026-10-14": [
+    "allowlist:b7a3eea2f",
+    "allowlist:cf2fe3a97",
+    "motor:6df04ccc0",
+    "motor:eb010cfec",
+    "pausa_manual"
+   ],
+   "2026-10-15": [
+    "allowlist:832436272",
+    "dependencia:32f871933",
+    "outro:15f8b3e6f"
+   ],
+   "2026-10-16": [
+    "criterio:ce84bb2cd",
+    "motor:a4af7a5b9",
+    "outro:47ff6ef12",
+    "pausa_manual",
+    "pausa_manual",
+    "pausa_manual",
+    "pausa_manual",
+    "pausa_manual",
+    "pausa_manual",
+    "writeback:840d63f9d"
+   ],
+   "2026-10-17": [
+    "allowlist:75db690c0",
+    "criterio:fd12015be",
+    "motor:457856c46",
+    "outro:d790bf4c7",
+    "pausa_manual"
+   ]
+  },
+  "sem_dias_so_de_writeback": {
+   "desde_2026-08-08": {
+    "atual": 0,
+    "maior": 4,
+    "maior_ate": "2026-08-30",
+    "maior_de": "2026-08-27"
+   },
+   "janela": {
+    "atual": 0,
+    "maior": 0,
+    "maior_ate": null,
+    "maior_de": null
+   }
+  }
+ },
+ "C2": {
+  "aprovados_de_primeira": 413,
+  "denominador": 558,
+  "done_na_janela": 561,
+  "done_sem_meta": 3,
+  "nao_por_adiado_ou_pausado_na_1a_linha": 0,
+  "pct": 74.0
+ },
+ "C3": {
+  "desde_2026-08-08": {
+   "atual": 12,
+   "maior": 12,
+   "maior_ate": "2026-10-17",
+   "maior_de": "2026-10-06"
+  },
+  "janela": {
+   "atual": 12,
+   "maior": 12,
+   "maior_ate": "2026-10-17",
+   "maior_de": "2026-10-06"
+  },
+  "licoes_na_janela": 1,
+  "ultima_licao": "2026-10-05 15:32"
+ },
+ "C5": {
+  "apolo": {
+   "com_forte": 0,
+   "pct": null,
+   "universo": 0
+  },
+  "aprovados_de_primeira_com_forte": [
+   "386",
+   "509",
+   "533b",
+   "533c",
+   "534",
+   "534b",
+   "535",
+   "539",
+   "549",
+   "567",
+   "570",
+   "596c",
+   "619",
+   "620",
+   "634",
+   "641",
+   "643",
+   "666b",
+   "734"
+  ],
+  "com_14_dias": 315,
+  "coorte_ate": "2026-10-03",
+  "coorte_de": "2026-09-20",
+  "dias_acompanhados_min": 14,
+  "fortes_por_tipo": {
+   "fix_na_linha": 31,
+   "revert": 0,
+   "saiu_de_done": 0,
+   "ticket_conserto": 0
+  },
+  "fracos_por_tipo": {
+   "fix_no_arquivo": 56,
+   "linha_sem_fix": 103
+  },
+  "plataforma": {
+   "com_forte": 31,
+   "pct": 9.8,
+   "universo": 315
+  },
+  "quentes_excluidos_do_fraco": [
+   "docs/migrations-aplicadas.md",
+   "docs/orquestrador/PLAYBOOK.md",
+   "docs/roadmap/BACKLOG-MAPEADO.md",
+   "scripts/test-validar-fila.py",
+   "scripts/validar-fila.py",
+   "src/app/dashboard/clientes/[id]/_components/bloco-relacao.tsx",
+   "src/app/dashboard/clientes/[id]/_components/kpis-visao.tsx",
+   "src/app/dashboard/clientes/[id]/_components/metricas-diarias.tsx",
+   "src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx",
+   "src/app/dashboard/clientes/[id]/page.tsx",
+   "src/app/dashboard/clientes/[id]/tabs/config-tab.tsx",
+   "src/app/dashboard/clientes/[id]/tabs/ficha-types.ts",
+   "src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx",
+   "src/app/dashboard/clientes/page.tsx",
+   "src/middleware.ts",
+   "test/espelho-fase-churn.test.ts",
+   "test/relacao-aceite.test.tsx",
+   "test/visao-aceite-estrutura.test.tsx",
+   "test/visao-aceite-mockup.test.tsx",
+   "vercel.json"
+  ],
+  "tickets_com_fraco_sem_forte": 102,
+  "total": {
+   "com_forte": 31,
+   "pct": 9.8,
+   "universo": 315
+  }
+ },
+ "C5_parcial": {
+  "apolo": {
+   "com_forte": 0,
+   "pct": 0.0,
+   "universo": 136
+  },
+  "aprovados_de_primeira_com_forte": [
+   "318b",
+   "699",
+   "705",
+   "740",
+   "763",
+   "861",
+   "898c",
+   "908",
+   "938",
+   "952b",
+   "954",
+   "974",
+   "982"
+  ],
+  "com_14_dias": 0,
+  "coorte_ate": "2026-10-17",
+  "coorte_de": "2026-10-04",
+  "dias_acompanhados_min": 0,
+  "fortes_por_tipo": {
+   "fix_na_linha": 25,
+   "revert": 0,
+   "saiu_de_done": 0,
+   "ticket_conserto": 0
+  },
+  "fracos_por_tipo": {
+   "fix_no_arquivo": 27,
+   "linha_sem_fix": 15
+  },
+  "plataforma": {
+   "com_forte": 25,
+   "pct": 5.9,
+   "universo": 422
+  },
+  "quentes_excluidos_do_fraco": [
+   "docs/migrations-aplicadas.md",
+   "docs/orquestrador/PLAYBOOK.md",
+   "docs/roadmap/BACKLOG-MAPEADO.md",
+   "scripts/test-validar-fila.py",
+   "scripts/validar-fila.py",
+   "src/app/dashboard/clientes/[id]/_components/bloco-relacao.tsx",
+   "src/app/dashboard/clientes/[id]/_components/kpis-visao.tsx",
+   "src/app/dashboard/clientes/[id]/_components/metricas-diarias.tsx",
+   "src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx",
+   "src/app/dashboard/clientes/[id]/page.tsx",
+   "src/app/dashboard/clientes/[id]/tabs/config-tab.tsx",
+   "src/app/dashboard/clientes/[id]/tabs/ficha-types.ts",
+   "src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx",
+   "src/app/dashboard/clientes/page.tsx",
+   "src/middleware.ts",
+   "test/espelho-fase-churn.test.ts",
+   "test/relacao-aceite.test.tsx",
+   "test/visao-aceite-estrutura.test.tsx",
+   "test/visao-aceite-mockup.test.tsx",
+   "vercel.json"
+  ],
+  "tickets_com_fraco_sem_forte": 31,
+  "total": {
+   "com_forte": 25,
+   "pct": 4.5,
+   "universo": 558
+  }
+ },
+ "esforco": {
+  "claude_dur_secs_por_done": 247,
+  "claude_dur_secs_total_done": 137853,
+  "custo_usd": "sem dado"
+ },
+ "intervencoes": {
+  "commits_excluidos": {
+   "agente_executor": 744,
+   "resolvedor_Orq-Resolvedor": 10
+  },
+  "intervencoes_por_tipo": {
+   "allowlist": 22,
+   "config": 2,
+   "criterio": 12,
+   "dependencia": 7,
+   "gate_streak": 7,
+   "motor": 8,
+   "outro": 6,
+   "pausa_gate_streak": 5,
+   "pausa_manual": 9,
+   "reabertura": 4,
+   "writeback": 7
+  },
+  "linhas_por_classe": {
+   "alimentar_fila": 36,
+   "curadoria": 58,
+   "fora_da_fila": 114,
+   "intervencao": 77,
+   "intervencao_embutida": 12,
+   "liberacao": 36
+  },
+  "resolvedor_teria_agido": {
+   "nao": 67,
+   "sem dado": 5,
+   "sim R1": 11,
+   "sim R5": 2,
+   "so proposta R2": 4
+  }
+ },
+ "janela": {
+  "ate": "2026-10-17",
+  "corte": "2026-10-17T23:59:59-03:00",
+  "de": "2026-10-04",
+  "dias": 14
+ },
+ "ritual": {
+  "C5": {
+   "commits": 0,
+   "pares": 0,
+   "tickets": 0
+  },
+  "C5_parcial": {
+   "commits": 8,
+   "pares": 44,
+   "tickets": 44
+  }
+ },
+ "volume": {
+  "bloqueios": 67,
+  "bloqueios_com_retomada": 65,
+  "bloqueios_por_dia": 4.79,
+  "bloqueios_sem_retomada_ate_o_corte": [
+   "1165",
+   "1248"
+  ],
+  "done": 561,
+  "done_por_dia": 40.07,
+  "horas_loop_parado": 72,
+  "horas_medias_bloqueado_ate_proxima_tentativa": 6.7,
+  "horas_pausa_gate_streak": 29,
+  "horas_pausa_manual": 7,
+  "horas_pausa_operacional": 17,
+  "tentativas_medias_por_done": 1.5
+ }
+}

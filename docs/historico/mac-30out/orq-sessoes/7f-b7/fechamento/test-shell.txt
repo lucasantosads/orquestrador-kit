@@ -1,0 +1,1263 @@
+[fixture] tmp: /tmp/orq-fixture-5AgJL4
+[fixture] instanciado (branches: main, staging-auto; origin falso; node_modules -> /Users/lucasantos/Projetos/_worktrees/kit-etapa7f7/node_modules)
+[fixture] para remover:  bash scripts/kit/fixture.sh --limpar /tmp/orq-fixture-5AgJL4/repo
+== testes de shell do motor · fixture em /tmp/orq-fixture-5AgJL4/repo ==
+
+--- test-lib-config.sh ---
+== raízes resolvidas pelo lib.sh ==
+  ROOT           = /tmp/orq-fixture-5AgJL4/repo
+  MAIN_CHECKOUT  = /private/tmp/orq-fixture-5AgJL4/repo
+  CONFIG         = /private/tmp/orq-fixture-5AgJL4/repo/docs/fila/000-config.json
+  ok   config encontrado no caminho resolvido
+
+== valores lidos do config REAL ==
+  ambiente_id      = orqfixture
+  repo_origin      = fixture/orq-fixture
+  diff_cap_linhas  = 600
+  branch_alvo      = staging-auto
+  max_retries      = 2
+  ok   ambiente_id bate com o arquivo
+  ok   diff_cap bate com o arquivo (600)
+  ok   diff_cap é inteiro positivo
+
+== causas de adiamento declaradas no config ==
+  - erro de conexão
+  - sessão expirada
+  - rate limit
+  - quota estourada
+  - timeout de claude_timeout_secs
+  - gate interrompido no meio
+  - veredito do juiz ilegível
+  - falha de ambiente da worktree
+  ok   8 causas declaradas
+  ok   a causa de ambiente da worktree está declarada
+  ok   a causa do juiz ilegível está declarada
+
+== is_adiavel cobre cada causa ==
+  ok   erro de conexão (ECONNREFUSED) -> adia
+  ok   erro de conexão (socket hang up) -> adia
+  ok   sessão expirada -> adia
+  ok   sessão expirada (token) -> adia
+  ok   rate limit -> adia
+  ok   quota estourada -> adia
+  ok   timeout de claude_timeout_secs -> adia
+  ok   gate interrompido (SIGINT) -> adia
+  ok   gate interrompido (SIGHUP) -> adia
+  ok   menção a rate limit com rc=0 -> nao-adia
+  ok   menção a sessão expirada com rc=0 -> nao-adia
+  ok   erro real de código -> nao-adia
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-lib-config.sh) = 0
+
+--- test-drenagem.sh ---
+== config lida ==
+  branch_alvo=staging-auto  branch_protegida=main
+  ok    alvo != protegida
+
+== merge_em_alvo RECUSA a branch protegida ==
+  ok    alvo == protegida => rc=2 (recusado)
+  ok    recusa diz o motivo
+  (worktree de teste: /private/tmp/orq-fixture-5AgJL4/repo, em 'main')
+  ok    worktree em 'main' => rc=2 (recusado)
+  ok    recusa nomeia a protegida
+  ok    main intacta (76ef3eb2)
+
+== drenar TRATA o status refatiar (regra 19) ==
+  ok    refatiar NÃO vai para o merge
+  ok    a drenagem diz que o ticket voltou
+  ok    seguiu para o próximo ticket (executor chamado para: 901 902 )
+  ok    o placar da drenagem conta os 2 refatiados
+  ok    não conta como aprovado nem como bloqueado
+
+== mark_adiado: cooldown global só para limite real de conta (Actus 9e109cb) ==
+  ok    tsx do checkout: /private/tmp/orq-fixture-5AgJL4/repo/node_modules/.bin/tsx
+  ok    causa 'ambiente' (arma=nao) => cooldown global NÃO armado
+  ok    causa 'juiz_ilegivel' (arma=nao) => cooldown global NÃO armado
+  ok    causa 'timeout' (arma=nao) => cooldown global NÃO armado
+  ok    causa 'rate_limit' (arma=sim) => cooldown global ARMADO
+  ok    causa 'quota' (arma=sim) => cooldown global ARMADO
+
+== drenar: 1º ADIADO por 'ambiente' => o 2º roda na MESMA drenagem (Actus 9e109cb) ==
+  ok    o 2º ticket (922) foi executado
+  ok    nenhum cooldown global armado
+  ok    o adiado (921) roda UMA vez só nesta drenagem
+  ok    922 terminou done
+
+== drenar: 1º adiado por orcamento_ticket => o 2º roda na MESMA drenagem (Actus 9e109cb) ==
+  ok    o 2º ticket (932) foi executado
+  ok    931 não foi ao executor
+
+== drenar: executor adia por orcamento_ticket POR DENTRO => o 2º roda (Actus 9e109cb) ==
+  ok    o 2º ticket (942) foi executado
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-drenagem.sh) = 0
+
+--- test-retry-worktree.sh ---
+== 1 · enforcement PASSOU: a tentativa 2 herda a worktree e o commit ==
+  ok    attempt-1 começa COM o diff da anterior (1 linha, src/a.ts na árvore)
+  ok    o log diz que reaproveitou (e de qual tentativa)
+  ok    o prompt da tentativa 2 manda corrigir o apontado
+  ok    o patch da tentativa 2 contém o trabalho herdado
+  ok    a trilha registra a reaproveitação
+  ok    o RETRY anuncia o modo da worktree
+
+== 2 · enforcement REPROVOU: worktree NOVA (diff fora do escopo não vira base) ==
+  ok    attempt-1 nasce LIMPA quando o enforcement reprovou
+  ok    não reaproveitou
+  ok    o RETRY registra que a worktree é nova
+
+== 3 · diff.patch por tentativa, ANTES de qualquer descarte ==
+  ok    grava_diff_patch escreve o patch
+  ok    o patch tem o conteúdo, não só o nome do arquivo
+  ok    diff vazio => patch vazio, mas presente
+  ok    run_attempt grava o patch antes do enforcement
+
+== 4 · sondagem com rc!=0 grava o stderr REAL, não um palpite ==
+  ok    a mensagem traz a saída REAL do CLI
+  ok    não chuta mais a causa
+  ok    diz o rc observado
+  ok    gravou a evidência em runs/ (probe-falha-20261018T133037Z.txt)
+  ok    o arquivo tem a saída crua
+  ok    o log aponta o arquivo antes de morrer
+
+== 5 · REQUEUE: rodada nova com attempt-0..2 antigos no disco ==
+  ok    attempt-0 da rodada antiga NÃO foi sobrescrito
+  ok    attempt-1 e attempt-2 antigos preservados
+  ok    a rodada nova escreveu em attempt-3
+  ok    attempt-3 tem o prompt DE HOJE, não o antigo
+  ok    o log anuncia o slot inicial
+  ok    o retry da rodada foi para attempt-4 (numeração contínua)
+  ok    meta.json amarra o contador de retry ao diretório (campo dir)
+  ok    tentativa 1 da rodada nasce limpa, apesar dos runs/ antigos
+
+== 6 · COMMIT DO HARNESS: agente que sai sem commitar não perde trabalho ==
+  ok    o harness commitou pelo agente
+  ok    a worktree ficou limpa (nada solto para ser descartado)
+  ok    mensagem exata do commit
+  ok    trailer Orq-Ticket presente
+  ok    o diff passou a enxergar o trabalho (2 linhas)
+  ok    o arquivo fora do escopo foi commitado junto (o enforcement o julga)
+  ok    árvore limpa não gera commit vazio
+  ok    commit_do_agente roda antes de medir o diff
+
+== 7 · o juiz é avisado de que o commit foi do harness ==
+  ok    a nota entra no prompt do juiz
+  ok    sem nota, o prompt sai como antes
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-retry-worktree.sh) = 0
+
+--- test-drenagem-sem-progresso.sh ---
+== fila: 901 e 902 abortam antes do agente, 903 é saudável (N=3) ==
+  | [2026-10-18 10:30:41-0300] ticket 901 (3 processáveis)
+  | [orq ERRO] recusado: o ticket 901 pede cmd fora do prefixo permitido
+  | [2026-10-18 10:30:42-0300]   ticket 901 segue pendente sem cooldown (sem progresso 1/3) — marcado como tentado nesta drenagem; segue para o próximo não tentado. Causa: recusado: o ticket 901 pede cmd fora do prefixo permitido
+  | [2026-10-18 10:30:42-0300] ticket 902 (3 processáveis)
+  | [2026-10-18 10:30:42-0300]   ticket 902 segue pendente sem cooldown (sem progresso 1/3) — marcado como tentado nesta drenagem; segue para o próximo não tentado. Causa: fatal: branch 'frente/902' está em uso por outra worktree
+  | [2026-10-18 10:30:42-0300] ticket 903 (3 processáveis)
+  | [2026-10-18 10:30:42-0300] nenhum processável não tentado — encerrando (aprovados: 1; sem progresso: 901 902)
+  | [2026-10-18 10:30:42-0300] drenagem encerrada: 1 aprovado(s) e mergeado(s)
+  | [2026-10-18 10:30:43-0300] ocioso: 901 sem progresso · 902 sem progresso
+  ok    executor chamado 3x numa drenagem: 901 902 903 
+  ok    terminou em <= N=3 chamadas (sem loop)
+  ok    cada ticket tentado UMA vez, na ordem da fila
+  ok    o executor recebe --ticket (não reescolhe)
+  ok    o saudável (903) foi processado: done
+  ok    901 segue pendente (não mudou de status)
+  ok    902 segue pendente (não mudou de status)
+  trilha: 2026-10-18T10:30:43-0300 --- DRENAGEM_FIM aprovados=1 bloqueados=0 adiados=0 refatiar=0 sem_progresso=2 dur=0min
+  ok    DRENAGEM_FIM conta o aprovado
+  ok    DRENAGEM_FIM conta os 2 sem progresso em contador próprio
+  STATUS motivo: sem progresso em 901 902: 901 sem progresso · 902 sem progresso
+  ok    motivo_ocioso lista TODOS os pulados (901 e 902)
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-drenagem-sem-progresso.sh) = 0
+
+--- test-sem-progresso-limite.sh ---
+== 1. ticket 901 sempre aborta: 1, 2, 3 -> bloqueado ==
+  --- disparo 1 (aborta): chamadas [901 ] 901=1
+  ok    disparo 1: contador 1
+  --- disparo 2 (aborta): chamadas [901 ] 901=2
+  ok    disparo 2: contador 2 (persistiu entre disparos)
+  ok    abaixo do limite, segue pendente
+  --- disparo 3 (aborta): chamadas [901 ] 901=
+  ok    disparo 3: 901 bloqueado no limite
+  nota: sem_progresso: 3 disparos sem progresso entre 2026-10-18 10:30:43-0300 e 2026-10-18 10:30:44-0300; última causa: executor morreu (rc=128, fase=worktree): fatal: '/tmp/_worktrees/fx-901' already exists
+  ok    nota cita a última causa pelo DESFECHO do executor (EXECUTOR_MORREU + linha fatal), não pela linha FAIL
+  ok    trilha: 901 BLOQUEADO motivo=sem_progresso
+  ok    o bloqueio foi COMMITADO (árvore limpa no ticket)
+  ok    commit: fila: 901 bloqueado (sem_progresso, 3 disparos)
+  ok    o status bloqueado está no commit, não só no disco
+  ok    contador zerado ao mudar de status
+  --- disparo 4 (aborta): chamadas [] 901=
+  ok    disparo 4: bloqueado não é mais escolhido
+
+== 2. adiamento não conta ==
+  --- disparo 5 (aborta): chamadas [902 ] 901=
+  ok    902 aborta: contador 1
+  --- disparo 6 (adia-cooldown): chamadas [902 ] 901=
+  ok    adiado com cooldown (mark_adiado): não conta
+  ok    (o mark_adiado armou cooldown, como no motor)
+  --- disparo 7 (adia-sem-cooldown): chamadas [902 ] 901=
+  ok    adiado SEM cooldown (evento ADIADO): não conta
+  --- disparo 8 (adia-sem-cooldown): chamadas [902 ] 901=
+  ok    segundo adiamento sem cooldown também não conta
+  ok    adiado sem cooldown não é reescolhido na mesma drenagem
+  --- disparo 9 (aborta): chamadas [902 ] 901=
+  ok    abort depois dos adiamentos volta a contar (2)
+
+== 3. staging que avança na vez do ticket zera ==
+  --- disparo 10 (aborta): chamadas [902 902 ] 901=
+  ok    staging avançou: zerou e recomeçou em 1
+  ok    902 não bloqueou
+  ok    com staging andando, a drenagem voltou ao ticket (progresso)
+
+== 4. o limite vem do config ==
+  --- disparo 11 (aborta): chamadas [903 ] 901=
+  ok    sem_progresso_limite=1 no config: bloqueia no 1º disparo
+  ok    nota com o limite do config
+  ok    valor inválido no config cai no padrão 3
+  ok    chave ausente: padrão 3
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-sem-progresso-limite.sh) = 0
+
+--- test-ocioso.sh ---
+== 1. 244 atrás de 241b bloqueado, 232 atrás de 231 pendente (sem liberação) ==
+  ok    nenhum executor chamado (nada processável)
+  trilha: 2026-10-18T10:30:49-0300 --- OCIOSO pendentes=3 231=liberacao:humano:migration-0031 232=dependencia:231:pendente 244=dependencia:241b:bloqueado
+  ok    evento OCIOSO pendentes=3
+  ok    244: dependência 241b em bloqueado
+  ok    232: dependência 231 em pendente
+  ok    231: liberação humano:migration-0031 ausente
+  ok    UM evento por drenagem
+  ok    trilha continua uma linha por evento (nenhuma linha sem timestamp)
+  ok    OCIOSO vem antes do DRENAGEM_FIM
+  STATUS.md:
+    ORQUESTRADOR · 2026-10-18 10:30:50
+    ESTADO   ocioso
+    TICKET   —
+    DESDE    —
+    FASE     —
+    FILA     3 pendente · 1 bloqueado · 1 done
+    STAGING  171e46e · push suprimido (publicar é humano neste repo)
+    ÚLTIMO   —
+    MOTIVO   sem ticket processável: 231 sem liberação humano:migration-0031 · 232 espera 231 (pendente) · 244 espera 241b (bloqueado)
+  ok    STATUS mantém o motivo de sempre
+  ok    STATUS: 244 espera 241b (bloqueado)
+  ok    STATUS: 232 espera 231 (pendente)
+  ok    STATUS: 231 sem liberação
+  ok    DRENAGEM_FIM sem campo novo
+
+== 2. pendente pulado por sem-progresso nesta drenagem ==
+  trilha: 2026-10-18T10:30:50-0300 --- OCIOSO pendentes=4 231=liberacao:humano:migration-0031 232=dependencia:231:pendente 244=dependencia:241b:bloqueado 250=sem_progresso
+  ok    250 foi tentado uma vez
+  ok    250: pulado por sem-progresso
+  ok    STATUS: 250 sem progresso
+
+== 3. cooldown ativo: o liberado espera o cooldown ==
+  trilha: 2026-10-18T10:30:51-0300 --- OCIOSO pendentes=4 231=liberacao:humano:migration-0031 232=dependencia:231:pendente 244=dependencia:241b:bloqueado 250=cooldown:11:00
+  ok    250: cooldown até 11:00
+  ok    a razão de dependência vence o cooldown
+  ok    STATUS: 250 em cooldown até 11:00
+
+== 4. fins que NÃO gravam OCIOSO ==
+  ok    pausa: sem OCIOSO (quem pausou já sabe)
+  ok    sem pendente nenhum: sem OCIOSO
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-ocioso.sh) = 0
+
+--- test-rc-executor.sh ---
+== pipefail está ligado dentro da drenagem (é ele que desvia para o PIPESTATUS) ==
+  ok    pipefail on (vem do set -euo pipefail do local-loop.sh/lib.sh)
+
+== o rc do executor atravessa o tee ==
+  --- A: executor sai 3, tee sai 0 -> log 'executor rc=3'; nota: sem_progresso: 1 disparos sem progresso entre 2026-10-18 10:30:52-0300 e 2026-10-18 10:30:52-0300; última causa: executor saiu rc=3 sem desfecho registrado
+  ok    A: o log vê rc=3
+  ok    A: a causa do bloqueio carrega rc=3
+  --- B: executor sai 0, tee sai 0 -> log 'executor rc=0'; nota: sem_progresso: 1 disparos sem progresso entre 2026-10-18 10:30:53-0300 e 2026-10-18 10:30:53-0300; última causa: executor saiu rc=0 sem desfecho registrado
+  ok    B: o log vê rc=0
+  ok    B: a causa do bloqueio carrega rc=0
+  --- C: executor sai 0, tee sai 5 -> log 'executor rc=0'; nota: sem_progresso: 1 disparos sem progresso entre 2026-10-18 10:30:53-0300 e 2026-10-18 10:30:53-0300; última causa: executor saiu rc=0 sem desfecho registrado
+  ok    C: o log vê rc=0
+  ok    C: a causa do bloqueio carrega rc=0
+  --- D: executor sai 3, tee sai 5 -> log 'executor rc=3'; nota: sem_progresso: 1 disparos sem progresso entre 2026-10-18 10:30:54-0300 e 2026-10-18 10:30:54-0300; última causa: executor saiu rc=3 sem desfecho registrado
+  ok    D: o log vê rc=3
+  ok    D: a causa do bloqueio carrega rc=3
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-rc-executor.sh) = 0
+
+--- test-ambiente.sh ---
+== 1. preflight recusa TODO ticket, 3 disparos ==
+  --- disparo 1 (preflight): chamadas [901 902 ] 901=pendente/ 902=pendente/ 903=pendente/
+  --- disparo 2 (preflight): chamadas [901 902 ] 901=pendente/ 902=pendente/ 903=pendente/
+  --- disparo 3 (preflight): chamadas [901 902 ] 901=pendente/ 902=pendente/ 903=pendente/
+  ok    0 bloqueados depois de 3 disparos
+  ok    contadores zerados (nenhum .sem-progresso)
+  ok    3 eventos AMBIENTE (um por disparo)
+  ok    no máximo 2 chamadas ao executor por disparo (máx: 2)
+  trilha: 2026-10-18T10:30:58-0300 --- AMBIENTE tickets=901,902 causa=executor morreu (rc=<n>, fase=?): preflight: lock de git em uso por outro processo: <caminho> (pid <n>, vez do <id>, HEAD <sha>)
+  ok    evento com os tickets que colidiram
+  ok    causa normalizada (sem id, sha, número, caminho)
+  ok    DRENAGEM_FIM: bloqueados=0 sem_progresso=0
+  STATUS: MOTIVO   ambiente: executor morreu (rc=<n>, fase=?): preflight: lock de git em uso por outro processo: <caminho> (pid <n>, vez do <id>, HEAD <sha>)
+  ok    STATUS diz ambiente e a causa
+  ok    motivo_ocioso=ambiente
+
+== 2. causas próprias em tickets diferentes NÃO são ambiente ==
+  --- disparo 4 (proprio): chamadas [904 905 ] 901=done/ 902=done/ 903=done/
+  ok    904 e 905 somam 1 cada
+  ok    nenhum AMBIENTE
+
+== 3. um ticket sozinho travado continua bloqueando no 3º disparo ==
+  --- disparo 5 (proprio): chamadas [904 ] 901=done/ 902=done/ 903=done/
+  --- disparo 6 (proprio): chamadas [904 ] 901=done/ 902=done/ 903=done/
+  ok    904 bloqueado no 3º disparo
+  ok    trilha: 904 BLOQUEADO motivo=sem_progresso
+  ok    bloqueio commitado
+  ok    nenhum AMBIENTE no caso isolado
+
+== 4. árvore suja: causa com \n literal, 4 disparos (o teto de adiamentos) ==
+  --- disparo 7 (suja): chamadas [906 907 ] 901=done/ 902=done/ 903=done/
+  --- disparo 8 (suja): chamadas [906 907 ] 901=done/ 902=done/ 903=done/
+  --- disparo 9 (suja): chamadas [906 907 ] 901=done/ 902=done/ 903=done/
+  --- disparo 10 (suja): chamadas [906 907 ] 901=done/ 902=done/ 903=done/
+  ok    1 AMBIENTE em cada um dos 4 disparos
+  trilha: 2026-10-18T10:31:08-0300 --- AMBIENTE tickets=906,907 causa=ADIADO motivo=preflight causa=preflight: árvore de execução suja em <caminho> — commite ou stashe antes:\n M src/a.ts\n?? tmp-<id>.log
+  ok    evento com 906,907 e o \n literal na causa
+  ok    906 e 907 não bloqueados
+
+== 5. causa 'ambiente' em dois tickets: a absolvição não deixa o teto de 3 avançar ==
+  --- disparo 11 (amb): chamadas [908 909 ] 901=done/ 902=done/ 903=done/
+      908=pendente/adiamentos_ambiente=0 909=pendente/adiamentos_ambiente=0
+  --- disparo 12 (amb): chamadas [908 909 ] 901=done/ 902=done/ 903=done/
+      908=pendente/adiamentos_ambiente=0 909=pendente/adiamentos_ambiente=0
+  --- disparo 13 (amb): chamadas [908 909 ] 901=done/ 902=done/ 903=done/
+      908=pendente/adiamentos_ambiente=0 909=pendente/adiamentos_ambiente=0
+  --- disparo 14 (amb): chamadas [908 909 ] 901=done/ 902=done/ 903=done/
+      908=pendente/adiamentos_ambiente=0 909=pendente/adiamentos_ambiente=0
+  ok    1 AMBIENTE em cada um dos 4 disparos
+  ok    evento com 908,909 e o \n literal na causa
+  ok    908 e 909 seguem pendentes (teto de 3 não atingido)
+  ok    adiamentos_ambiente em 0 e ticket pendente depois de CADA disparo
+  ok    trilha: 8 AMBIENTE_ADIAMENTO_DESFEITO (2 por disparo)
+  ok    o evento diz de quanto para quanto
+  ok    desfazer commitado
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-ambiente.sh) = 0
+
+--- test-causa-adiamento.sh ---
+== A. timeout local (rc 124 do watchdog): adia SEM cooldown ==
+  ok    ticket segue pendente
+  ok    trilha: ADIADO motivo=timeout
+  ok    nenhum REPROVADO, RETRY ou BLOQUEADO
+  ok    uma tentativa só (nada consumido)
+  ok    não escalou modelo
+  ok    cooldown NÃO armado
+  ok    evento diz cooldown=nao
+  ok    nota registra timeout
+  | 901 INICIO attempt=1 model=sonnet
+  | 901 GATE typecheck=ok testes=ok enforcement=ok criterios=0/1 build=nao-configurado
+  | 901 ADIADO motivo=timeout attempt=1 rc=124 dur=2s cooldown=nao
+
+== B. 429: adia COM cooldown ==
+  ok    ticket segue pendente
+  ok    trilha: ADIADO motivo=rate_limit
+  ok    nenhum REPROVADO, RETRY ou BLOQUEADO
+  ok    uma tentativa só (nada consumido)
+  ok    não escalou modelo
+  ok    cooldown ARMADO (limite remoto)
+  ok    evento diz cooldown=sim
+  | 901 INICIO attempt=1 model=sonnet
+  | 901 GATE typecheck=ok testes=ok enforcement=ok criterios=0/1 build=nao-configurado
+  | 901 ADIADO motivo=rate_limit attempt=1 rc=1 dur=0s cooldown=sim
+
+== C. 503 / overloaded: adia SEM cooldown ==
+  ok    ticket segue pendente
+  ok    trilha: ADIADO motivo=servidor
+  ok    nenhum REPROVADO, RETRY ou BLOQUEADO
+  ok    uma tentativa só (nada consumido)
+  ok    não escalou modelo
+  ok    cooldown NÃO armado
+  | 901 INICIO attempt=1 model=sonnet
+  | 901 GATE typecheck=ok testes=ok enforcement=ok criterios=0/1 build=nao-configurado
+  | 901 ADIADO motivo=servidor attempt=1 rc=1 dur=1s cooldown=nao
+
+== D. gate de testes que não rodou (sem placar): gate_crash ==
+  ok    ticket segue pendente
+  ok    trilha: ADIADO motivo=gate_crash
+  ok    nenhum REPROVADO, RETRY ou BLOQUEADO
+  ok    uma tentativa só (nada consumido)
+  ok    não escalou modelo
+  ok    cooldown NÃO armado
+  | 901 INICIO attempt=1 model=sonnet
+  | 901 GATE typecheck=ok testes=falha enforcement=ok criterios=1/1 build=nao-configurado
+  | 901 ADIADO motivo=gate_crash attempt=1 rc=0 dur=1s cooldown=nao
+
+== E. tsc ausente (rc 127, command not found): gate_crash ==
+  ok    ticket segue pendente
+  ok    trilha: ADIADO motivo=gate_crash
+  ok    nenhum REPROVADO, RETRY ou BLOQUEADO
+  ok    uma tentativa só (nada consumido)
+  ok    não escalou modelo
+  | 901 INICIO attempt=1 model=sonnet
+  | 901 GATE typecheck=falha testes=nao-rodou enforcement=ok criterios=1/1 build=nao-configurado
+  | 901 ADIADO motivo=gate_crash attempt=1 rc=0 dur=1s cooldown=nao
+
+== F. tsc que rodou e apontou erro de código: mérito, não adia ==
+  ok    REPROVADO (mérito)
+  ok    não adiou
+  | 901 INICIO attempt=1 model=sonnet
+  | 901 GATE typecheck=falha testes=nao-rodou enforcement=ok criterios=1/1 build=nao-configurado
+  | 901 REPROVADO motivo=criterio_qualidade sub=gate_typecheck attempt=1 diff=1
+  | 901 BLOQUEADO motivo=criterio_qualidade attempt=1
+
+== G. recusa de preflight (árvore de execução suja): ADIADO motivo=preflight ==
+  ok    executor sai 0
+  ok    trilha: ADIADO motivo=preflight com a causa
+  ok    nenhuma linha EXECUTOR_MORREU
+  ok    um evento, uma linha
+  ok    ticket segue pendente
+  ok    cooldown NÃO armado
+  | 901 ADIADO motivo=preflight causa=preflight: árvore de execução suja em /private/var/folders/_7/dqmkt89n7lg_9sf9qkzm7fxr0000gn/T/tmp.HOa5giF0WD/repo — commite ou stashe antes:\n?? lixo.txt
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-causa-adiamento.sh) = 0
+
+--- test-ambiente-adiado.sh ---
+== 1. preflight recusa TODO ticket (ADIADO motivo=preflight), 3 disparos ==
+  --- disparo 1 (preflight): chamadas [901 902 ] 901=pendente 902=pendente 903=pendente
+  --- disparo 2 (preflight): chamadas [901 902 ] 901=pendente 902=pendente 903=pendente
+  --- disparo 3 (preflight): chamadas [901 902 ] 901=pendente 902=pendente 903=pendente
+  ok    3 eventos AMBIENTE (um por disparo)
+  ok    no máximo 2 chamadas por disparo (máx: 2)
+  trilha: 2026-10-18T10:31:39-0300 --- AMBIENTE tickets=901,902 causa=ADIADO motivo=preflight causa=preflight: lock de git em uso por outro processo: <caminho> (pid <n>, vez do <id>, HEAD <sha>)
+  ok    evento com os tickets que colidiram
+  ok    causa normalizada, com o motivo preflight
+  ok    0 bloqueados
+  STATUS: MOTIVO   ambiente: ADIADO motivo=preflight causa=preflight: lock de git em uso por outro processo: <caminho> (pid <n>, vez do <id>, HEAD <sha>)
+  ok    STATUS diz ambiente e a causa
+
+== 2. sessão caída em todo ticket (adiado sem cooldown): AMBIENTE ==
+  --- disparo 4 (sessao): chamadas [901 902 ] 901=pendente 902=pendente 903=pendente
+  ok    um AMBIENTE
+  ok    parou na 2ª chamada
+  ok    causa: ADIADO motivo=sessao
+
+== 3. adiamentos com causas DIFERENTES não são ambiente ==
+  --- disparo 5 (proprio): chamadas [901 902 903 ] 901=pendente 902=pendente 903=pendente
+  ok    nenhum AMBIENTE
+  ok    a drenagem seguiu pelos três
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-ambiente-adiado.sh) = 0
+
+--- test-adiamentos-limite.sh ---
+== A. executor real: rc 124 em 0 s com timeout de 30 s não é timeout ==
+  trilha: 901 ADIADO motivo=gate_interrompido attempt=1 rc=124 dur=0s cooldown=nao
+  ok    ADIADO, e não com motivo=timeout
+  ok    a trilha traz a medida (rc=124, duração real)
+  nota: adiado (executor) por infraestrutura: gate_interrompido (rc=124 em 0s, abaixo do limite de 30s: morto por fora) em 2026-10-18T13:31:48Z — retomará no próximo disparo
+  ok    a nota traz rc=124 e não diz timeout
+
+== B. sempre adiado: bloqueia no 4º disparo com a causa real ==
+  --- disparo 1 (adia): 901=pendente/1
+  --- disparo 2 (adia): 901=pendente/2
+  --- disparo 3 (adia): 901=pendente/3
+  ok    contador em 3 depois de 3 disparos
+  ok    abaixo do limite, segue pendente
+  --- disparo 4 (adia): 901=bloqueado/
+  ok    bloqueado no 4º disparo
+  nota: adiado 4 vezes: gate_interrompido (rc=124, 9s de execução)
+  ok    nota começa por 'adiado 4 vezes: '
+  ok    a causa é a medida: motivo, rc=124 e 9s
+  ok    trilha: BLOQUEADO motivo=adiamentos n=4 limite=4
+  ok    bloqueio commitado
+  ok    commit do bloqueio
+  ok    contador zerado ao bloquear
+
+== C. adiado que depois aprova zera o contador ==
+  --- disparo 5 (adia): 901=pendente/1
+  --- disparo 6 (adia): 901=pendente/2
+  ok    2 adiamentos contados
+  --- disparo 7 (aprova): 901=done/
+  ok    aprovado e mergeado
+  ok    contador zerado pela aprovação
+  --- disparo 8 (adia): 901=pendente/1
+  ok    recomeça em 1, não em 3
+
+== D. adiamento COM cooldown não conta nem zera ==
+  --- disparo 9 (limite): 901=pendente/1
+  ok    contador segue 1
+
+== E. o limite vem do config ==
+  --- disparo 10 (adia): 901=bloqueado/
+  ok    com limite 2, bloqueia no 2º
+  ok    trilha diz n=2 limite=2
+  ok    limite inválido ("x") vira 4
+  ok    limite inválido (0) vira 4
+  ok    limite inválido (-3) vira 4
+  ok    limite inválido ("quatro") vira 4
+  ok    limite ausente vira 4
+
+== F. AMBIENTE desfaz o que somou na drenagem ==
+  --- disparo 11 (adia): 901=pendente/1
+  ok    901 em 1 (antes do ambiente)
+  --- disparo 12 (mesmo): 901=pendente/1
+  ok    um AMBIENTE
+  ok    901 volta a 1 e 902 não soma
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-adiamentos-limite.sh) = 0
+
+--- test-reprovado-sub.sh ---
+  (timeout do agente falso: 30 s = 10 s x fator de carga 3; load1=20.08, núcleos=10)
+== A. critério vermelho, com permissão negada: mérito, mesmo modelo ==
+  ok    a permissão negada foi registrada
+  ok    REPROVADO sub=criterio
+  ok    RETRY com o mesmo modelo (sonnet), sub=criterio
+  ok    nenhuma chamada em opus
+  ok    não adiou (permissão negada não é ambiente)
+  | 901 INICIO attempt=1 model=sonnet
+  | 901 PERMISSAO_NEGADA n=1 cmds=ls -la node_modules
+  | 901 GATE typecheck=ok testes=ok enforcement=ok criterios=0/1 build=nao-configurado
+  | 901 REPROVADO motivo=criterio_qualidade sub=criterio attempt=1 diff=5
+  | 901 RETRY attempt=2 model=sonnet motivo=criterio_qualidade sub=criterio worktree=reaproveitada
+  | 901 WORKTREE modo=reaproveitada de=attempt-0 base=b5929c79
+  | 901 INICIO attempt=2 model=sonnet
+  | 901 PERMISSAO_NEGADA n=1 cmds=ls -la node_modules
+  | 901 GATE typecheck=ok testes=ok enforcement=ok criterios=0/1 build=nao-configurado
+  | 901 REPROVADO motivo=criterio_qualidade sub=criterio attempt=2 diff=6
+  | 901 BLOQUEADO motivo=criterio_qualidade attempt=2
+
+== B. juiz reprovando: escala ==
+  ok    REPROVADO sub=juiz
+  ok    RETRY model=opus, sub=juiz
+  ok    a 2ª chamada do agente foi em opus
+  | 901 INICIO attempt=1 model=sonnet
+  | 901 GATE typecheck=ok testes=ok enforcement=ok criterios=1/1 build=nao-configurado
+  | 901 JUIZ veredito=reprovado classe=baixo modelo=sonnet attempt=1
+  | 901 REPROVADO motivo=criterio_qualidade sub=juiz attempt=1 diff=5
+  | 901 RETRY attempt=2 model=opus motivo=criterio_qualidade sub=juiz worktree=reaproveitada
+  | 901 WORKTREE modo=reaproveitada de=attempt-0 base=6bc7f3a5
+  | 901 INICIO attempt=2 model=opus
+  | 901 GATE typecheck=ok testes=ok enforcement=ok criterios=1/1 build=nao-configurado
+  | 901 JUIZ veredito=reprovado classe=alto modelo=opus attempt=2
+  | 901 REPROVADO motivo=criterio_qualidade sub=juiz attempt=2 diff=6
+  | 901 BLOQUEADO motivo=criterio_qualidade attempt=2
+
+== C. gate de testes vermelho (com placar): sub=gate_testes, mesmo modelo ==
+  ok    REPROVADO sub=gate_testes
+  ok    RETRY com o mesmo modelo
+  | 901 INICIO attempt=1 model=sonnet
+  | 901 GATE typecheck=ok testes=falha enforcement=ok criterios=1/1 build=nao-configurado
+  | 901 REPROVADO motivo=criterio_qualidade sub=gate_testes attempt=1 diff=5
+  | 901 RETRY attempt=2 model=sonnet motivo=criterio_qualidade sub=gate_testes worktree=reaproveitada
+  | 901 WORKTREE modo=reaproveitada de=attempt-0 base=eb36787d
+  | 901 INICIO attempt=2 model=sonnet
+  | 901 GATE typecheck=ok testes=falha enforcement=ok criterios=1/1 build=nao-configurado
+  | 901 REPROVADO motivo=criterio_qualidade sub=gate_testes attempt=2 diff=6
+  | 901 BLOQUEADO motivo=criterio_qualidade attempt=2
+
+== D. o 461 do Actus: a 2ª reprovação igual (sub=criterio, diff=717) bloqueia na hora ==
+  ok    trilha fixture do 461 no lugar
+  ok    a reprovação desta execução: sub=criterio diff=717
+  ok    BLOQUEADO motivo=repeticao
+  ok    ticket bloqueado
+  ok    nenhum RETRY
+  ok    uma chamada paga só
+  nota: repetição: 2ª reprovação igual à anterior (sub=criterio, diff=717), sem 3ª volta. critério(s) reprovado(s): o arquivo existe
+  ok    a nota diz repetição e o diff
+  | 461 INICIO attempt=1 model=sonnet
+  | 461 PERMISSAO_NEGADA n=3 cmds=ls -la node_modules | ls -la node_modules 2>&1 | head -3 | ls -la node_modules 2>&1 | head -3; echo "---"; git status
+  | 461 GATE typecheck=ok testes=ok enforcement=ok criterios=3/4 build=ok
+  | 461 REPROVADO motivo=criterio_qualidade attempt=1 diff=717
+  | 461 INICIO attempt=1 model=sonnet
+  | 461 PERMISSAO_NEGADA n=1 cmds=ls -la node_modules
+  | 461 GATE typecheck=ok testes=ok enforcement=ok criterios=0/1 build=nao-configurado
+  | 461 REPROVADO motivo=criterio_qualidade sub=criterio attempt=1 diff=717
+  | 461 BLOQUEADO motivo=repeticao sub=criterio diff=717 attempt=1
+
+== E. max_retries vale no total, não por drenagem ==
+  --- 1ª execução: tentativas=1 status=pendente
+  ok    1ª execução: reprovou, adiou, segue pendente
+  ok    1 tentativa consumida, persistida no ticket (o adiado devolveu a sua)
+  --- 2ª execução: tentativas=3 status=bloqueado
+  ok    3 reprovações no total (max_retries 2 + 1)
+  ok    a 2ª execução começa em attempt=2
+  ok    BLOQUEADO na attempt=3
+  ok    nenhuma 4ª tentativa
+  | 901 INICIO attempt=1 model=sonnet
+  | 901 GATE typecheck=ok testes=ok enforcement=ok criterios=0/1 build=nao-configurado
+  | 901 REPROVADO motivo=criterio_qualidade sub=criterio attempt=1 diff=5
+  | 901 RETRY attempt=2 model=sonnet motivo=criterio_qualidade sub=criterio worktree=reaproveitada
+  | 901 WORKTREE modo=reaproveitada de=attempt-0 base=23c9f9a4
+  | 901 INICIO attempt=2 model=sonnet
+  | 901 GATE typecheck=ok testes=ok enforcement=ok criterios=0/1 build=nao-configurado
+  | 901 ADIADO motivo=servidor attempt=2 rc=1 dur=0s cooldown=nao
+  | 901 INICIO attempt=2 model=sonnet
+  | 901 GATE typecheck=ok testes=ok enforcement=ok criterios=0/1 build=nao-configurado
+  | 901 REPROVADO motivo=criterio_qualidade sub=criterio attempt=2 diff=6
+  | 901 RETRY attempt=3 model=sonnet motivo=criterio_qualidade sub=criterio worktree=reaproveitada
+  | 901 WORKTREE modo=reaproveitada de=attempt-2 base=23c9f9a4
+  | 901 INICIO attempt=3 model=sonnet
+  | 901 GATE typecheck=ok testes=ok enforcement=ok criterios=0/1 build=nao-configurado
+  | 901 REPROVADO motivo=criterio_qualidade sub=criterio attempt=3 diff=7
+  | 901 BLOQUEADO motivo=criterio_qualidade attempt=3
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-reprovado-sub.sh) = 0
+
+--- test-notificacao-ambiente.sh ---
+== 1. três disparos em AMBIENTE: um aviso ==
+  --- disparo 1 (preflight): avisos=1
+  --- disparo 2 (preflight): avisos=1
+  --- disparo 3 (preflight): avisos=1
+  ok    3 drenagens em AMBIENTE
+  ok    1 aviso em 3 disparos
+  ok    o aviso fala de ambiente
+  | 2026-10-18T10:32:31-0300 | Orquestrador: AMBIENTE, a fila parou | a mesma causa em dois tickets não é do ticket: ADIADO motivo=preflight causa=preflight: árvore de execução suja em <caminho> (vez do <id>). Nada somou nem bloqueou; avisa de novo quando sair.
+
+== 2. o 4º disparo, saudável: um aviso de saída ==
+  --- disparo 4 (aprova): avisos=2
+  ok    exatamente 1 aviso novo
+  ok    é o aviso de SAÍDA do ambiente
+  ok    com o placar da drenagem (3 aprovados)
+  | 2026-10-18T10:32:37-0300 | Orquestrador: ambiente normalizado, 3 aprovados, 0 bloqueados | saiu de AMBIENTE (ADIADO motivo=preflight causa=preflight: árvore de execução suja em <caminho> (vez do <id>)) · duração 0min · adiados 0
+
+== 3. o 5º disparo, saudável e sem nada: sem aviso de saída de novo ==
+  --- disparo 5 (aprova): avisos=3
+  ok    nenhum aviso de ambiente repetido
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-notificacao-ambiente.sh) = 0
+
+--- test-reabertura-humana.sh ---
+  (timeout do agente falso: 30 s = 10 s x fator de carga 3; load1=21.09, núcleos=10)
+== 1. a contagem de tentativas é commitada: docs/fila limpo depois de REPROVADO e RETRY ==
+  ok    houve REPROVADO e RETRY
+  | == chamada 1
+  | == chamada 2
+  | == chamada 3
+  ok    docs/fila limpo no checkout principal em TODA chamada (inclusive depois de REPROVADO+RETRY)
+  ok    docs/fila limpo no fim
+  | fila: 901 bloqueado
+  | fila: 901 tentativa 3
+  | fila: 901 tentativa 2
+  | fila: 901 tentativa 1
+  | fixture: fila inicial
+  ok    commit 'fila: 901 tentativa 2' no log
+  ok    bloqueado por max_retries com tentativas=3
+
+== 2. devolução humana: bloqueado -> pendente num commit humano zera tudo ==
+  ok    antes da drenagem: pendente, tentativas=3, .sem-progresso=2, .adiamentos=3
+  | --- DRENAGEM_INICIO alvo=staging-auto processaveis=1
+  | 901 RECUPERADO motivo=reaberto de=bloqueado
+  | 901 INICIO attempt=1 model=sonnet
+  | 901 GATE typecheck=ok testes=ok enforcement=ok criterios=0/1 build=nao-configurado
+  | 901 REPROVADO motivo=criterio_qualidade sub=criterio attempt=1 diff=8
+  | 901 RETRY attempt=2 model=sonnet motivo=criterio_qualidade sub=criterio worktree=reaproveitada
+  | 901 WORKTREE modo=reaproveitada de=attempt-3 base=7317cb2e
+  | 901 INICIO attempt=2 model=sonnet
+  | 901 GATE typecheck=ok testes=ok enforcement=ok criterios=0/1 build=nao-configurado
+  | 901 ADIADO motivo=servidor attempt=2 rc=1 dur=0s cooldown=nao
+  | --- OCIOSO pendentes=1 901=adiado
+  | --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=1 refatiar=0 sem_progresso=0 dur=0min
+  ok    a drenagem executou o ticket a partir de attempt=1
+  ok    não bloqueou na hora
+  ok    com retry disponível (RETRY attempt=2)
+  ok    segue pendente (a 2ª tentativa adiou)
+  ok    tentativas=1 (zerada e somada uma reprovação)
+  ok    .sem-progresso zerado
+  ok    .adiamentos recomeçou em 1 (era 3; sem zerar seria 4 e bloquearia)
+  ok    trilha: RECUPERADO motivo=reaberto de=bloqueado
+  ok    docs/fila limpo depois da drenagem (o zero também foi commitado)
+
+== 3. a devolução zera UMA vez: a drenagem seguinte continua de onde parou ==
+  ok    recomeça em attempt=2 (não zera de novo)
+  ok    nenhum RECUPERADO novo
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-reabertura-humana.sh) = 0
+
+--- test-painel-visao.sh ---
+== 0. pendentes_razoes: a régua do OCIOSO, com o processável dito 'pronto' ==
+  ok    531 pronto
+  ok    601 espera 600
+  ok    ocioso_razoes segue com rc 1 quando há processável
+
+== 1. o estado sai do painel, lido só do contrato ==
+  ok    painel --estado sai 0
+  ok    3 repos, na ordem do repos.json
+
+== 2. Precisa de você: tokens ordenados por quantos pendentes destravam ==
+  ok    1º item: humano:cred-evo
+  ok    cred-evo destrava 3 (600, e 601 e 602 atrás dele)
+  ok    tickets destravados por cred-evo
+  ok    2º item: humano:grupo-wa destrava 1
+  ok    o item diz de qual repo é
+
+== 3. estado em linguagem direta, com tempo ==
+  ok    alfa: tipo
+  ok    alfa: frase
+  ok    alfa: tentativa e último resultado
+  ok    beta: tipo
+  ok    beta: frase
+  ok    beta: o motivo da pausa
+  ok    gama: tipo
+  ok    gama: frase
+  ok    gama: por que não pega
+  ok    cada estado tem rótulo em texto, não só cor
+
+== 4. o dia: aprovados contra reprovas (ontem não conta) ==
+  ok    alfa: 2 aprovados, 2 reprovas
+  ok    alfa: contagem da fila
+
+== 5. próximos: os 3 primeiros da fila, com título ==
+  ok    ids na ordem do loop
+  ok    com título
+  ok    e mais 1
+
+== 6. bloqueados: categoria de motivo e sub, nunca da prosa ==
+  ok    700 (repeticao sub=gate_testes) é teste
+  ok    701 (criterio_qualidade, último sub=juiz) é juiz, apesar de 'fora_do_pathspec' na nota
+  ok    702 (bloqueado sem BLOQUEADO na trilha) é decisão sua
+  ok    243 (adiamentos) é ambiente
+  ok    primeira linha do motivo
+  ok    o resto fica para o clique
+  ok    4 bloqueados nos 3 repos, cada um com o repo
+
+== 7. nenhum ramo por nome de repo ==
+  ok    o mesmo repo com outro nome dá o mesmo estado
+  ok    orq-painel.py não cita nome de repo
+  ok    orq-painel.py não lê meta.json nem log livre
+
+== 8. repos.json ausente: a tela diz o que falta, não quebra ==
+  ok    repos_erro nomeia o arquivo
+
+== 9. a página: atualiza a cada 15 s e tem as seções ==
+  ok    página contém 'Precisa de você'
+  ok    página contém 'Bloqueados'
+  ok    página contém '/api/estado'
+  ok    página contém '15000'
+
+== 10. razões que não se apuram: a faixa diz quem ficou fora da conta (K12-G) ==
+  ok    os tokens do alfa continuam na faixa
+  ok    a faixa diz qual repo ficou fora da conta
+  ok    e por quê
+  ok    timeout: nenhum token apurado
+  ok    timeout: os dois repos fora da conta
+  ok    o erro diz o tempo e quantos pendentes
+  ok    o cartão mostra o erro
+  ok    sem razões, prontos é desconhecido, não zero
+  ok    gama ocioso sem razões: o cartão não diz 'sem ticket para pegar'
+  ok    alfa segue rodando: isso vem do STATUS, não das razões
+  ok    a página tem a frase de quem ficou fora
+
+== 11. motivo longo: primeira frase ou 160 caracteres, o resto no clique (K12-H) ==
+  ok    243: a primeira frase
+  ok    243: o texto inteiro fica para o clique
+  ok    244 sem ponto: cortado em até 160 caracteres mais '…' (160)
+  ok    o corte avisa com '…'
+  ok    o corte cai entre palavras
+  ok    700 (motivo curto em duas linhas) segue igual
+  ok    a página abre o texto inteiro no clique
+
+== 12. bloqueados: filtro por repo, junto com o de categoria (K12-I) ==
+  ok    contagem por repo, na ordem do repos.json, com o zero
+  ok    sem filtro: todos os bloqueados
+  ok    chip de repo sem bloqueado fica, desabilitado
+  ok    e mostra o 0
+  ok    clique em gama: só o 243
+  ok    clique em alfa: os 3 do alfa
+  ok    alfa + categoria teste: os dois filtros juntos
+  ok    a atualização de 15 s mantém repo e categoria
+
+== launchctl: só o stub, nunca o do sistema (K12-E) ==
+  ok    nenhuma chamada ao launchctl do PATH
+  ok    o stub de launchctl respondeu 8 chamada(s)
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-painel-visao.sh) = 0
+
+--- test-painel-detalhe.sh ---
+  ok    painel --estado sai 0
+
+== 1. os 6 indicadores ==
+  ok    tempo por ticket: média, mediana, pior (s)
+  ok    aprovação na 1ª: 2 de 3, 67%
+  ok    tentativas por aprovação: 5 inícios / 3 aprovações
+  ok    fila estimada: 2 prontos × 980 s de execução por aprovação
+  ok    ociosidade hoje: 12h menos 49 min em execução, 2h delas pausado
+  ok    última promoção: sem dado, com o motivo
+  ok    última promoção diz por que não tem dado
+  ok    custo do dia (custo.json), só hoje
+
+== 2. sem aprovação no dia, os indicadores dizem 'sem dado' em vez de zero ==
+  ok    tempo_ticket: sem dado (nenhuma aprovação hoje)
+  ok    primeira: sem dado (nenhuma aprovação hoje)
+  ok    tentativas_por_aprovacao: sem dado (nenhuma aprovação hoje)
+  ok    fila_estimada: sem dado (nenhuma aprovação hoje, sem ritmo)
+
+== 3. bloqueados: categoria, motivo, allowlist, parado há, tentativas ==
+  ok    820: enforcement
+  ok    820: parado há 30 min
+  ok    820: tentativas do BLOQUEADO (sem campo no ticket)
+  ok    820: onde mexe
+
+== 4. prontos: o que muda em uma frase, onde mexe, quantos destravam ==
+  ok    prontos na ordem do loop
+  ok    810: a primeira frase do objetivo
+  ok    810: onde mexe
+  ok    810 destrava 1 (o 812), 811 nenhum
+
+== 5. hora a hora: aprovado, reprova, parado ==
+  ok    9h: 1 aprovado, 1 reprova, 28 min em execução, 32 parado
+  ok    10h: 2 aprovados, 16 min em execução
+  ok    3h: parado a hora inteira
+  ok    horas até agora (0 a 12)
+
+== 6. arquivos mais disputados entre os pendentes ==
+  ok    top 3
+
+== 7. a página tem a vista de detalhe ==
+  ok    página contém 'function detalhe'
+  ok    página contém 'Hoje, hora a hora'
+  ok    página contém 'Arquivos mais disputados'
+  ok    página contém 'Prontos'
+  ok    página contém 'sem dado'
+
+== launchctl: só o stub, nunca o do sistema (K12-E) ==
+  ok    nenhuma chamada ao launchctl do PATH
+  ok    o stub de launchctl respondeu 2 chamada(s)
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-painel-detalhe.sh) = 0
+
+--- test-painel-pausa.sh ---
+  servidor em http://127.0.0.1:49515
+== 1. pausar: cria o PAUSAR do contrato e grava PAUSA na trilha ==
+  ok    HTTP 200
+  ok    docs/fila/PAUSAR criado
+  ok    conteúdo no formato do §7: <AAAA-MM-DD HH:MM> | motivo
+  ok    trilha: 2026-10-18T10:32:59-0300 --- PAUSA motivo=leva-da-tarde por=painel
+  ok    a resposta explica que para ENTRE tickets
+  ok    .orq-pause nunca é escrito
+  ok    nada mais mudou no repo
+
+== 2. pausar de novo: recusa, sem segunda linha ==
+  ok    HTTP 409
+  ok    sem PAUSA duplicada
+
+== 3. o estado diz o que cada botão pode e por quê ==
+  ok    rho: pausar desabilitado
+  ok    rho: retomar habilitado
+  ok    rho: disparo desabilitado (ticket em curso)
+  ok    o motivo do disparo desabilitado está escrito
+  ok    sem ação 'pausar agora'
+
+== 4. retomar: apaga o PAUSAR e grava RETOMADA com a duração ==
+  ok    HTTP 200
+  ok    PAUSAR apagado
+  ok    trilha: 2026-10-18T10:32:59-0300 --- RETOMADA por=painel dur=0min
+  ok    nada mais mudou no repo
+  ok    retomar sem pausa: 409
+
+== 4b. quem pausou: painel e terminal gravam a mesma linha, e o painel diz quem foi (K12-F) ==
+  ok    pausa pelo painel: o cartão diz 'pausado pelo painel'
+  ok    retomar pelo painel diz quem pausou e por quê
+  ok    pausa pelo terminal: o cartão diz 'pausado pelo terminal'
+  ok    PAUSA do terminal e do painel no mesmo formato
+
+== 5. legado .orq-pause: lido, nunca escrito nem apagado ==
+  ok    sigma aparece pausado
+  ok    sigma: retomar desabilitado
+  ok    o motivo nomeia o .orq-pause
+  ok    POST retomar no legado: 409
+  ok    .orq-pause intacto
+  ok    sigma continua sem PAUSAR
+
+== 6. disparo: só com STATUS ocioso, e sem -k ==
+  ok    com ticket em curso: 409
+  ok    launchctl kickstart não chamado
+  ok    ocioso: 200
+  ok    kickstart gui/<uid>/<label do config>, sem -k
+
+== 7. o resto é recusado ==
+  ok    ação fora da allowlist: 403
+  ok    repo desconhecido: 400
+  ok    Host estranho: 403
+
+== 8. a página: Pausar e Retomar, e o que a pausa faz ==
+  ok    página contém 'Pausar'
+  ok    página contém 'Retomar'
+  ok    página contém 'ENTRE tickets'
+  ok    página contém 'nada é interrompido'
+  ok    sem 'Pausar agora'
+
+== launchctl: só o stub, nunca o do sistema (K12-E) ==
+  ok    nenhuma chamada ao launchctl do PATH
+  ok    o stub de launchctl respondeu 31 chamada(s)
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-painel-pausa.sh) = 0
+
+--- test-painel-alarmes.sh ---
+== 1. launchd_exit: last exit code != 0 ==
+  ok    rc 127 com trilha recente: o job org.fixture.a1 saiu com rc 127 no último disparo (launchctl print: last exit code)
+  ok    o card diz travado
+  ok    rc 0 e drenagem dentro da janela: silêncio
+  ok    job NÃO carregado (desagendado de propósito): silêncio
+
+== 2. mudo: nenhum DRENAGEM_INICIO há mais de 2x o start_interval ==
+  ok    DRENAGEM_INICIO de 3x o start_interval atrás: nenhuma drenagem começou há 1h30; o job dispara a cada 30 min (limite 1h)
+  ok    e diz o intervalo do job: nenhuma drenagem começou há 1h30; o job dispara a cada 30 min (limite 1h)
+  ok    o card diz travado
+  ok    DRENAGEM_INICIO dentro de 2x o start_interval: silêncio
+  ok    velho, mas job descarregado: silêncio
+  ok    trilha sem nenhum DRENAGEM_INICIO, job carregado: nenhum DRENAGEM_INICIO na trilha, com o job org.fixture.a2d carregado (dispara a cada 30 min)
+
+== 3. pausa_furada: PAUSAR de pé e a drenagem seguiu depois dele ==
+  ok    DRENAGEM_INICIO sem motivo=pausado depois da PAUSA: a drenagem seguiu depois da pausa: DRENAGEM_INICIO às 11:40, com o PAUSAR de pé desde 11:29
+  ok    pausa respeitada (motivo=pausado) e retry do 530, que já corria: sem pausa_furada
+  ok    INICIO de OUTRO ticket depois da pausa: a drenagem seguiu depois da pausa: INICIO do 531 às 11:50, com o PAUSAR de pé desde 11:29
+
+== 4. pausa_longa: PAUSAR há mais de 40 min ==
+  ok    41 min: pausado há 41 min, mais de 40 min: motivo "madrugada"
+  ok    39 min: silêncio
+
+== 5. execucao_longa: além do timeout do config mais a margem ==
+  ok    41 min com timeout de 30 e margem de 10: o 530 está em execução há 41 min; o timeout é 30 min (+10 min de margem para gates e juiz)
+  ok    o card diz travado
+  ok    30 min, dentro do timeout mais a margem: silêncio
+
+== 6. todo alarme é texto, e o que falta no config vira 'sem dado' ==
+  ok    sem dado: mudo: sem launchd.start_interval no config | execução longa: sem claude_timeout_secs no config
+  ok    a página mostra o texto do alarme
+
+== launchctl: só o stub, nunca o do sistema (K12-E) ==
+  ok    nenhuma chamada ao launchctl do PATH
+  ok    o stub de launchctl respondeu 19 chamada(s)
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-painel-alarmes.sh) = 0
+
+--- test-painel-lento.sh ---
+  servidor em http://127.0.0.1:49534
+== 1. duas chamadas seguidas respondem abaixo de 1 s ==
+  ok    1ª chamada em 0.557296s
+  ok    2ª chamada em 0.000853s
+
+== 2. o repo rápido vem completo; o lento vem marcado ==
+  ok    rápido: razões apuradas
+  ok    rápido: 1 pronto
+  ok    rápido: o token dele está na faixa
+  ok    lento: apurando
+  ok    lento: o cartão diz que está apurando
+  ok    lento: fora da conta da faixa, e dito
+
+== 3. depois do timeout: sem apurar, com a hora da última tentativa, e o processo morto ==
+  ok    lento: sem apurar
+  ok    última tentativa às 10:33
+  ok    o cartão diz a última tentativa
+  ok    recuo de 1 min: próxima em 57s
+  ok    o processo do lento morreu no timeout
+  ok    rápido segue completo
+
+== 4. no recuo, nada de tentar de novo a cada chamada ==
+  ok    uma tentativa só
+
+== launchctl: só o stub, nunca o do sistema (K12-E) ==
+  ok    nenhuma chamada ao launchctl do PATH
+  ok    o stub de launchctl respondeu 6 chamada(s)
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-painel-lento.sh) = 0
+
+--- test-gate-prevoo.sh ---
+== 1 · critério com 'eval' (regra ERRO): bloqueia ANTES da worktree ==
+  ok    o ticket 901 não foi executado
+  ok    status bloqueado
+  ok    a nota lista a violação
+  ok    a nota não mistura aviso
+  ok    nenhuma tentativa consumida
+  ok    nenhuma worktree criada
+  ok    drive_ticket devolve 0 (não aborta)
+
+== 2 · ticket limpo, só com AVISO: executa ==
+  ok    o ticket 902 foi executado (aviso não bloqueia)
+
+== 3 · drenagem: bloqueia o 901 e SEGUE para o 902 ==
+  ok    a drenagem não executou o 901
+  ok    a drenagem seguiu e mergeou o 902
+  ok    não encerrou por 'sem progresso'
+  ok    placar: 1 aprovado, 1 bloqueado
+
+== 4 · gate que NÃO roda (tsx quebrado, rc 1 sem violação): falha alta, ticket segue pendente ==
+  ok    não executou o ticket com o gate quebrado
+  ok    gate quebrado = rc != 0 (falha alta)
+  ok    o ticket bom NÃO foi bloqueado por gate quebrado
+  ok    o log diz que o gate não rodou
+
+== 5 · modo 'aviso': o ticket com violação EXECUTA, e a trilha registra o aviso ==
+  ok    o 901 foi executado (aviso não bloqueia)
+  ok    status não é bloqueado
+  ok    evento GATE_TICKET_AVISO na trilha
+  ok    o log lista a violação
+
+== 6 · chave ausente: vale 'aviso', e o log diz ==
+  ok    o 901 foi executado (ausente = aviso)
+  ok    o log diz que a chave está ausente
+
+== 7 · valor desconhecido: falha alta, nada executa ==
+  ok    não executou com modo inválido
+  ok    modo inválido = rc != 0
+  ok    o log nomeia o valor inválido
+
+== 8 · modo 'bloqueia', ticket só com AVISO pela tabela de severidade: executa ==
+  ok    o 903 foi executado (grep -q e vitest por texto são aviso)
+  ok    status não é bloqueado
+  ok    a trilha não tem BLOQUEADO do 903
+
+== 9 · modo 'aviso', dois disparos seguidos: GATE_TICKET_AVISO uma vez por versão do ticket ==
+  ok    o 901 passou pelo pré-voo nos dois disparos (2)
+  ok    o 901 segue pendente (adiado)
+  ok    UM GATE_TICKET_AVISO na trilha em dois disparos
+  ok    o evento carrega o hash da versão
+  ok    o 901 editado é versão nova: segundo GATE_TICKET_AVISO
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-gate-prevoo.sh) = 0
+
+--- test-tentativas-persistidas.sh ---
+== 1 · drenagem 1: reprovado + adiado(ambiente) -> tentativas = 1 ==
+  ok    drenagem 1 começa em attempt=0 (ticket sem campo = 0)
+  ok    depois de reprovado+adiado: tentativas=1 no arquivo
+  ok    o adiamento devolve o ticket a pendente
+
+== 3 · crash no meio da tentativa: o contador já está no arquivo ==
+  ok    a tentativa foi persistida ANTES de rodar (o agente já via tentativas=1)
+  ok    depois do crash: tentativas=1 (a tentativa morta conta)
+
+== 4 · aprovado não consome; done zera ==
+  ok    reprovado+aprovado: tentativas=1 (o aprovado não soma)
+  ok    local-loop.sh zera tentativas junto com o status done
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-tentativas-persistidas.sh) = 0
+
+--- test-orq-pause.sh ---
+== 1 · as duas sentinelas presentes: --status lista as duas ==
+    PAUSADA: docs/fila/PAUSAR: 2026-09-24 10:00 | via orq pausar
+    PAUSADA: docs/fila/.orq-pause: 2026-09-24 10:01 | via orq-pause.sh
+  ok   duas linhas PAUSADA
+  ok   PAUSAR com caminho e conteúdo
+  ok   .orq-pause com caminho e conteúdo
+== 4 · pausa_motivo devolve caminho + conteúdo das duas ==
+    docs/fila/PAUSAR: 2026-09-24 10:00 | via orq pausar; docs/fila/.orq-pause: 2026-09-24 10:01 | via orq-pause.sh
+  ok   pausa_motivo nomeia as duas
+== 2 · --off remove as duas e pausa_ativa fica falso ==
+    removida: docs/fila/PAUSAR
+    removida: docs/fila/.orq-pause
+    fila RETOMADA (2 sentinela(s) removida(s))
+  ok   diz que removeu PAUSAR
+  ok   diz que removeu .orq-pause
+  ok   os dois arquivos sumiram
+  ok   pausa_ativa falso
+== 3 · só PAUSAR presente (o caso que falhava): --off remove PAUSAR ==
+  ok   pausado por PAUSAR antes do --off
+    removida: docs/fila/PAUSAR
+    fila RETOMADA (1 sentinela(s) removida(s))
+  ok   PAUSAR removido
+  ok   conta uma removida
+  ok   pausa_ativa falso
+== 5 · nenhuma presente ==
+  ok   --status: ativa (sem pausa)
+  ok   --off não inventa remoção
+  ok   nenhuma linha 'removida:'
+== 6 · local-loop pausado: o STATUS nomeia a sentinela ==
+    ESTADO   ocioso
+    MOTIVO   pausado (docs/fila/PAUSAR: 2026-09-24 12:00 | pausa do teste)
+  ok   MOTIVO com a sentinela e o conteúdo
+== 7 · (kit, K12-F) pausar e retomar pelo orq-pause.sh gravam PAUSA e RETOMADA na trilha ==
+  ok   PAUSA por=terminal na trilha
+  ok   RETOMADA por=terminal na trilha
+
+TODOS OK
+
+rc(test-orq-pause.sh) = 0
+
+--- test-preflight.sh ---
+== 1 · papel em PENDENTE_* aborta (ROOT sintético, zero gasto) ==
+  ok    abortou (rc=1)
+  ok    diz que é erro de config
+  ok    diz que não consome tentativa
+  ok    aponta o desbloqueio LIDO DO CONFIG
+  ok    nomeia o papel pendente
+  ok    nenhuma sondagem disparada
+  ok    nada gravado no custo.json do fixture
+
+== 1b · qualquer um dos três papéis pendente basta ==
+  ok    executor_model pendente => aborta nomeando o papel
+  ok    avaliador_model pendente => aborta nomeando o papel
+  ok    retry_final_model pendente => aborta nomeando o papel
+
+== 1c · INVARIANTE do config real: nenhum papel pendente hoje ==
+  ok    executor_model definido (sonnet)
+  ok    avaliador_model definido (opus)
+  ok    retry_final_model definido (opus)
+
+== 2 · id de modelo inexistente é RECUSADO pelo texto do CLI ==
+  ok    recusa detectada: [claude-code:unrecognized_model] {"model":"m…
+  ok    recusa detectada: There's an issue with the selected model (xy…
+  ok    recusa detectada: "PENDENTE_TK104" is not a model this version…
+  ok    resposta normal não é recusa
+
+== 3 · o que NÃO aconteceu ==
+  ok    nenhuma worktree criada (0 antes, 0 depois)
+  ok    nenhum attempt gravado no fixture
+  ok    cooldown NÃO armado (erro de config não é adiamento)
+
+== 4 · fronteira: sondagem limitada ADIA, não aborta ==
+  ok    429 real => adiável
+  ok    conexão recusada real => adiável
+  ok    saída vazia com rc!=0 => adiável (CLI não falou)
+  ok    modelo recusado NÃO é adiável
+
+== 5 · JUIZ (passo 7): stub, evidência e ZERO gasto ==
+  ok    veredito válido lido do envelope
+  ok    prompt gravado (evidência, regra 8)
+  ok    output CRU preservado
+  ok    o critério avaliador chega ao prompt
+  ok    allowlist com *.test.* liga o anti-afrouxamento
+  ok    o juiz não recebe o prompt do executor
+  ok    lixo => ILEGÍVEL (o executor adia, não reprova)
+  ok    nenhum veredito inventado a partir de lixo
+  ok    nada gravado em custo.json (nenhuma chamada paga)
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-preflight.sh) = 0
+
+--- test-diff-lines.sh ---
+C. diff vazio
+  ✓ diff vazio = 0
+A. inserções + deleções
+  ✓ DIFF_LINES = 15 (diff cru tem 50 linhas)
+B. binário conta zero
+  ✓ binário não soma (DIFF_LINES continua 15)
+
+PASS=3 FAIL=0
+
+rc(test-diff-lines.sh) = 0
+
+--- test-sem-cor.sh ---
+== 3 · controle: FORCE_COLOR=1 sem NO_COLOR colore o placar do vitest ==
+  ok    o placar sai com escape ANSI
+
+== 1 e 2 · executor com FORCE_COLOR=1 no ambiente: gate e critério leem o placar sem cor ==
+  ok    gate 'test' aprovado com o placar lido por grep
+  ok    critério: saída '1' (o placar casou)
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-sem-cor.sh) = 0
+
+--- test-criterio-isolado.sh ---
+== 1 · variável não definida não aborta o critério ==
+  ok    saída 'v=fim'
+== 2 · grep -c sem ocorrência imprime 0 ==
+  ok    saída 'n=0'
+== 3 · BASE_REF chega ao critério ==
+  ok    saída 'base=staging-auto'
+== 4 · contra-teste: grep -c 0 contra espera 1 continua falhando ==
+  ok    saída '0' e critério FALHA
+== 5 · contra-teste: test -n de variável vazia continua falhando ==
+  ok    critério FALHA
+== 6 · comando inexistente continua NÃO EXECUTADO (rc 127) ==
+  ok    rc 127 visto
+
+TODOS OS CHECKS PASSARAM
+
+rc(test-criterio-isolado.sh) = 0
+
+--- test-fixture-gates.sh (kit) ---
+[fixture] tmp: /tmp/orq-fixture-p65VOy
+[fixture] instanciado (branches: main, staging-auto; origin falso; node_modules -> /Users/lucasantos/Projetos/_worktrees/kit-etapa7f7/node_modules)
+[fixture] para remover:  bash scripts/kit/fixture.sh --limpar /tmp/orq-fixture-p65VOy/repo
+== gates reais numa worktree do motor · fixture em /tmp/orq-fixture-p65VOy/repo ==
+
+Preparing worktree (new branch 'frente/teste-gates')
+ok: a worktree tem node_modules (symlink -> /private/tmp/orq-fixture-p65VOy/repo/./node_modules)
+
+--- gates.txt ---
+ok   typecheck               765ms
+ok   test                  25022ms
+VEREDITO: APROVADO
+--- fim (rc=0) ---
+
+ok: gates.ts rc=0
+ok: VEREDITO: APROVADO
+ok: gate typecheck
+ok: gate test
+
+test-fixture-gates: VERDE
+
+rc(test-fixture-gates.sh) = 0
+
+== placar ==
+  rc=0  test-lib-config.sh
+  rc=0  test-drenagem.sh
+  rc=0  test-retry-worktree.sh
+  rc=0  test-drenagem-sem-progresso.sh
+  rc=0  test-sem-progresso-limite.sh
+  rc=0  test-ocioso.sh
+  rc=0  test-rc-executor.sh
+  rc=0  test-ambiente.sh
+  rc=0  test-causa-adiamento.sh
+  rc=0  test-ambiente-adiado.sh
+  rc=0  test-adiamentos-limite.sh
+  rc=0  test-reprovado-sub.sh
+  rc=0  test-notificacao-ambiente.sh
+  rc=0  test-reabertura-humana.sh
+  rc=0  test-painel-visao.sh
+  rc=0  test-painel-detalhe.sh
+  rc=0  test-painel-pausa.sh
+  rc=0  test-painel-alarmes.sh
+  rc=0  test-painel-lento.sh
+  rc=0  test-gate-prevoo.sh
+  rc=0  test-tentativas-persistidas.sh
+  rc=0  test-orq-pause.sh
+  rc=0  test-preflight.sh
+  rc=0  test-diff-lines.sh
+  rc=0  test-sem-cor.sh
+  rc=0  test-criterio-isolado.sh
+  rc=0  test-fixture-gates.sh (kit)
+TODOS OS SCRIPTS SAÍRAM rc 0

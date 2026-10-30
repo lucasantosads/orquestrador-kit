@@ -1,0 +1,233 @@
+
+ RUN  v2.1.9 /Users/lucasantos/Projetos/_worktrees/kit-k12
+
+ ✓ test/orquestrador-enforcement.test.ts (47 tests) 67ms
+ ✓ test/orquestrador-enforcement-actus.test.ts (104 tests) 37ms
+ ✓ test/orquestrador-decisao.test.ts (39 tests) 9ms
+ ✓ test/orquestrador-prevoo.test.ts (34 tests) 39ms
+stdout | test/orquestrador-migrar-tickets.test.ts > a prosa não se move UM BYTE > actus-saas: em TODO ticket migrado, só o bloco muda
+actus-saas: 0 ticket(s) migrados
+
+stdout | test/orquestrador-migrar-tickets.test.ts > a prosa não se move UM BYTE > comarka-operacional: em TODO ticket migrado, só o bloco muda
+comarka-operacional: 3 ticket(s) migrados
+
+stdout | test/orquestrador-migrar-tickets.test.ts > a prosa não se move UM BYTE > conteudos-infinitos: em TODO ticket migrado, só o bloco muda
+conteudos-infinitos: 0 ticket(s) migrados
+
+ ✓ test/orquestrador-migrar-tickets.test.ts (32 tests) 280ms
+ ✓ test/orquestrador-gates.test.ts (29 tests) 1648ms
+   ✓ critérios do executor — strip de ANSI > saída COLORIDA casa o mesmo critério que a saída limpa 463ms
+ ✓ test/orquestrador-liberar-migrar.test.ts (37 tests) 4032ms
+   ✓ migrar-liberacoes: --dry-run, .bak e rodar duas vezes > o resultado da migração PASSA no leitor do motor: todo token resolve 543ms
+   ✓ orq liberar: pelo `scripts/orq`, num repo de fixture > libera, sai 0 e o arquivo passa a ter o token 544ms
+   ✓ orq liberar: pelo `scripts/orq`, num repo de fixture > o token liberado DESTRAVA o ticket que dependia dele 816ms
+   ✓ orq liberar: pelo `scripts/orq`, num repo de fixture > duplicata: rc 1, RECUSADO, e o arquivo NÃO muda 784ms
+   ✓ orq liberar: pelo `scripts/orq`, num repo de fixture > arquivo em v1: recusa e manda migrar, sem tocar em nada 456ms
+ ✓ test/orquestrador-toolchain-tsx.test.ts (30 tests) 6171ms
+   ✓ lib.sh · tsx_bin resolve o binário UMA vez > tsx_local_ok responde pelo binário DO REPO, e é `test -x` 612ms
+   ✓ local-loop.sh · rodado de verdade num repo sem tsx > recusa NOMEADA: rc 1, PREVOO_NOGO item=tsx na trilha e uma notificação 342ms
+   ✓ local-loop.sh · rodado de verdade num repo sem tsx > SEM acesso à rede: o `npx` nunca é chamado (o stub não registrou nada) 377ms
+   ✓ local-loop.sh · rodado de verdade num repo sem tsx > não toca ticket nenhum, não cria lock e não reescreve o STATUS 339ms
+   ✓ local-loop.sh · rodado de verdade num repo sem tsx > COM tsx no lugar, o guard passa e o loop segue para o kill switch 474ms
+   ✓ cat.7 · toolchain > `orq prevoo` no fixture continua GO, com a cat.7 na saída 683ms
+   ✓ instalar.sh · recusa repo sem tsx > --dry-run SÓ AVISA: sai 0 e prevê a recusa, sem escrever nada 357ms
+   ✓ instalar.sh · recusa repo sem tsx > com pnpm-lock.yaml a linha é `pnpm add -D`; com package-lock.json é `npm i -D` 389ms
+   ✓ instalar.sh · recusa repo sem tsx > com tsx no lugar, o `--novo` volta a instalar (a recusa é SÓ sobre o tsx) 974ms
+ ✓ test/orquestrador-refatiar.test.ts (39 tests) 7797ms
+   ✓ reprovação MECÂNICA vira refatiar, sem consumir retry > diff acima do cap: refatiar, contaComoRetry false 645ms
+   ✓ reprovação MECÂNICA vira refatiar, sem consumir retry > arquivo fora da allowlist (enforcement): refatiar 477ms
+   ✓ reprovação MECÂNICA vira refatiar, sem consumir retry > zona proibida entra pelo MESMO campo — é a barreira que classifica 554ms
+   ✓ reprovação MECÂNICA vira refatiar, sem consumir retry > refatiar NÃO gera retry (o plano diz deveTentar=false) 540ms
+   ✓ reprovação MECÂNICA vira refatiar, sem consumir retry > NEGATIVO: falha de MÉRITO com o mecânico verde segue reprovando e gerando retry 1116ms
+   ✓ reprovação MECÂNICA vira refatiar, sem consumir retry > NEGATIVO: infra continua ADIANDO, e adiar vem ANTES de refatiar 506ms
+   ✓ marca_refatiar: status, nota, evento, commit e decisão pendente > status vira refatiar e a nota LISTA os arquivos 369ms
+   ✓ marca_refatiar: status, nota, evento, commit e decisão pendente > a trilha registra REFATIAR com motivo= e arquivos= 503ms
+   ✓ marca_refatiar: status, nota, evento, commit e decisão pendente > origem humano vira UMA linha em decisoes-pendentes.md, com a pergunta certa 472ms
+   ✓ marca_refatiar: status, nota, evento, commit e decisão pendente > a mesma pendência duas vezes não vira duas linhas 950ms
+   ✓ marca_refatiar: status, nota, evento, commit e decisão pendente > NEGATIVO: origem planejador NÃO gera decisão pendente (volta ao lote da frente) 345ms
+   ✓ o retry recebe o JSON, não o texto livre > o CLI monta o JSON a partir do rundir de verdade 723ms
+ ✓ test/doutrina-v2.test.ts (30 tests) 12ms
+ ✓ test/orquestrador-gate-ticket.test.ts (44 tests) 8487ms
+   ✓ a CLI é o contrato que `orq validar` repassa > sem violação: rc 0 e nenhuma linha 628ms
+   ✓ a CLI é o contrato que `orq validar` repassa > com violação: rc 1 e uma linha `<arquivo>:<campo> <mensagem>` 559ms
+   ✓ a CLI é o contrato que `orq validar` repassa > --relatorio: imprime tudo, conta as isenções à parte e sai 0 mesmo com violação 719ms
+   ✓ a CLI é o contrato que `orq validar` repassa > --pendentes pega SÓ os pendentes 517ms
+   ✓ a CLI é o contrato que `orq validar` repassa > por id e por caminho: os dois alcançam o mesmo ticket 1405ms
+   ✓ a CLI é o contrato que `orq validar` repassa > id que não é da fila: rc 2, e a mensagem diz qual fila foi olhada 1462ms
+   ✓ peça 1d · chamado por caminho com symlink, o gate RODA > rc 1 e a linha de violação, chamado PELO symlink 1755ms
+   ✓ peça 1d · chamado por caminho com symlink, o gate RODA > pelo symlink e pelo caminho real, a MESMA saída 1399ms
+ ✓ test/orquestrador-trilha.test.ts (22 tests) 4237ms
+   ✓ o merge commit carrega o trailer, e o git o devolve > git log --grep acha o merge pelo trailer 808ms
+   ✓ o merge commit carrega o trailer, e o git o devolve > NEGATIVO: o trailer é ancorado — 901 não casa 9012 555ms
+   ✓ o prompt do executor cobra o trailer no commit do agente > o prompt montado nomeia o trailer e o id 785ms
+   ✓ trilha e STATUS contam a primeira tentativa como 1 > a trilha REAL sai 1-based: o juiz na primeira tentativa registra attempt=1 568ms
+ ✓ test/orq-cli.test.ts (42 tests) 8453ms
+   ✓ orq — imprime o STATUS.md > mostra o snapshot quando ele existe 471ms
+   ✓ orq pausar / retomar — kill switch em arquivo, nunca kill de processo > retomar remove o arquivo 384ms
+   ✓ orq validar — o gate de ticket, com o rc repassado > fila limpa: rc 0 e nenhuma linha 436ms
+   ✓ orq validar — o gate de ticket, com o rc repassado > ticket torto: rc 1, e a linha nomeia arquivo e campo 482ms
+   ✓ orq validar — o gate de ticket, com o rc repassado > --relatorio sai 0 mesmo com violação (é o modo de olhar, não de barrar) 417ms
+   ✓ orq validar — o gate de ticket, com o rc repassado > validar é READ-ONLY: o .md do ticket sai byte a byte igual 361ms
+   ✓ read-only por construção > é executável 397ms
+ ✓ test/orquestrador-lock.test.ts (34 tests) 10ms
+ ✓ test/orquestrador-tools-derivadas.test.ts (32 tests) 7ms
+ ✓ test/orquestrador-causas-adiamento.test.ts (32 tests) 10ms
+ ✓ test/orquestrador-juiz.test.ts (39 tests) 9971ms
+   ✓ LIXO é adiado, nunca reprovado > o parse do CLI sai com rc 3 (o código que o executor lê como ADIADO) 683ms
+   ✓ LIXO é adiado, nunca reprovado > a fronteira está no decisao.ts: juizIlegivel ADIA e NÃO conta retry 483ms
+   ✓ LIXO é adiado, nunca reprovado > NEGATIVO: sem o campo, o mesmo sinal segue aprovando como antes 501ms
+   ✓ modelo por classe de risco (custo-e-contexto §7) > o CLI devolve classe + modelo juntos (é o que o shell consome) 644ms
+   ✓ ponta a ponta com --stub-juiz > veredito aprovado: JUIZ_APROVADO=true e evidência gravada 1057ms
+   ✓ ponta a ponta com --stub-juiz > o prompt gravado carrega o critério avaliador e o bloco anti-afrouxamento 1134ms
+   ✓ ponta a ponta com --stub-juiz > veredito reprovado: motivo e criterios_falhos ficam disponíveis para o retry 1479ms
+   ✓ ponta a ponta com --stub-juiz > lixo: ILEGIVEL=1, nenhum veredito.json, e o CRU continua lá para auditoria 1145ms
+   ✓ ponta a ponta com --stub-juiz > a trilha registra o veredito, a classe e o modelo, com attempt 1-based 1071ms
+   ✓ ponta a ponta com --stub-juiz > o risco sobe pelo objetivo e leva o modelo forte junto 1057ms
+   ✓ ponta a ponta com --stub-juiz > NEGATIVO: --dry sem --stub-juiz pula o juiz e não inventa veredito 708ms
+ ✓ test/orquestrador-piso-tools.test.ts (23 tests) 31ms
+ ✓ test/orquestrador-launchd-config.test.ts (15 tests) 1024ms
+   ✓ peça K6e · com --permitir-tmp, a instalação inteira passa pelo STUB > chama bootout e bootstrap no stub, e o launchd real nunca é tocado 411ms
+ ✓ test/orquestrador-agendamento.test.ts (21 tests) 261ms
+ ✓ test/orquestrador-envelope.test.ts (25 tests) 2325ms
+ ✓ test/orquestrador-gate-baseline.test.ts (21 tests) 6ms
+ ✓ test/orquestrador-trilha-gate-papel.test.ts (9 tests) 3327ms
+   ✓ config do FIXTURE (gates `typecheck` e `test`) > a trilha diz o que os gates disseram, e build sai como nao-configurado 356ms
+   ✓ config do FIXTURE (gates `typecheck` e `test`) > gate de nome próprio que REPROVA sai falha, e o que passou continua ok 407ms
+   ✓ config do FIXTURE (gates `typecheck` e `test`) > gate CONFIGURADO que não chegou a rodar continua nao-rodou 356ms
+   ✓ config do CI (_referencia-ci/000-config.ci.json) > produz EXATAMENTE a linha de hoje para um attempt real (runs-201 attempt-2) 373ms
+   ✓ config do CI (_referencia-ci/000-config.ci.json) > os dois typecheck do CI viram um papel só, e falha de um é falha do papel 388ms
+   ✓ config do CI (_referencia-ci/000-config.ci.json) > nenhum gate do CI cai em nao-configurado: o CI tem os três papéis 352ms
+   ✓ papel declarado no config manda sobre o inferido do nome > um gate chamado `verificacao` com "papel": "testes" entra como testes 338ms
+   ✓ papel `lint` só aparece na linha quando o repo tem gate de lint > config sem gate de lint: a linha NÃO ganha campo novo 389ms
+   ✓ papel `lint` só aparece na linha quando o repo tem gate de lint > config COM gate de lint: a linha ganha lint=, depois de build= 368ms
+ ✓ test/orquestrador-datar-liberacoes.test.ts (11 tests) 2075ms
+   ✓ datadorGit contra um repo de verdade, com dois commits > cada token recebe a data e o autor do commit que o INTRODUZIU 451ms
+   ✓ datadorGit contra um repo de verdade, com dois commits > o token é procurado SEM o prefixo `humano:` (o Actus grava sem ele) 302ms
+   ✓ datadorGit contra um repo de verdade, com dois commits > a data do MAIS VELHO vence: mexer na linha depois não redata o token 318ms
+   ✓ a migração inteira, ponta a ponta, no repo de verdade > o v2 gravado sai datado, e o relatório diz quantos 351ms
+   ✓ a migração inteira, ponta a ponta, no repo de verdade > rodar de novo é no-op: já datado, nada muda 320ms
+ ✓ test/orq-versao-config.test.ts (16 tests) 4472ms
+   ✓ orq config > chave obrigatória ausente: rc 1, e a mensagem diz de ONDE ela é lida 332ms
+   ✓ orq config > launchd.label ausente: rc 1 (é a chave que não pode ter default) 302ms
+   ✓ orq config > gate sem "nome": rc 1 e diz o índice 301ms
+   ✓ orq config > config ilegível: rc 1, e não finge que leu 327ms
+   ✓ orq config > config real e ANTIGO (snapshot @711ab5e): acusa launchd.label ausente 333ms
+   ✓ orq config > READ-ONLY: nem versao nem config escrevem no repo 505ms
+ ✓ test/orquestrador-observabilidade.test.ts (38 tests) 7671ms
+   ✓ status_set reescreve o snapshot INTEIRO > NUNCA append: 20 transições e o arquivo continua do mesmo tamanho 2061ms
+   ✓ status_set reescreve o snapshot INTEIRO > ocioso: TICKET e FASE viram — e MOTIVO explica por que a fila parou 341ms
+   ✓ FILA e STAGING são RELIDOS do disco a cada render (regra 9) > mudou o status de um ticket, mudou o placar — sem passar fila= nenhum 563ms
+   ✓ evento GATE resume a passagem inteira numa linha > tudo verde 358ms
+   ✓ evento GATE resume a passagem inteira numa linha > gate que reprovou aparece como falha; os que não rodaram, como nao-rodou 333ms
+   ✓ evento GATE resume a passagem inteira numa linha > enforcement reprovado carrega fora_do_pathspec com os arquivos 356ms
+   ✓ evento GATE resume a passagem inteira numa linha > enforcement verde nunca carrega fora_do_pathspec 340ms
+ ✓ test/orquestrador-custo.test.ts (38 tests) 15161ms
+   ✓ custo_registrar grava o consumo real da chamada > acrescenta em dias.<AAAA-MM-DD>[] com os campos do contrato 335ms
+   ✓ custo_registrar grava o consumo real da chamada > duas chamadas somam no mesmo dia, uma linha cada 565ms
+   ✓ custo_registrar grava o consumo real da chamada > papel e ticket distinguem as chamadas (é o que o orq custo agrega) 520ms
+   ✓ ledger ilegível nunca para a fila (fail-open com aviso) > a DRENAGEM segue com ledger corrompido: o executor é chamado 2605ms
+   ✓ ledger ilegível nunca para a fila (fail-open com aviso) > a DRENAGEM segue sem ledger nenhum: o executor é chamado 1892ms
+   ✓ mark_adiado_orcamento: adiado, não reprovado > ticket adiado até amanhã não é processável hoje 403ms
+   ✓ teto do DIA encerra a drenagem em ocioso, MOTIVO orcamento > o executor nunca é chamado 1058ms
+   ✓ teto do DIA encerra a drenagem em ocioso, MOTIVO orcamento > STATUS.md fica ocioso com MOTIVO orcamento 1008ms
+   ✓ teto do DIA encerra a drenagem em ocioso, MOTIVO orcamento > o ticket fica adiado, sem consumir tentativa, e a trilha registra 946ms
+   ✓ teto por TICKET adia só aquele ticket e a fila segue > adia o 901 por orcamento_ticket e passa ao 902 1707ms
+ ✓ test/orquestrador-adiamento-actus.test.ts (13 tests) 9ms
+ ✓ test/orquestrador-sub-repeticao.test.ts (16 tests) 6ms
+ ✓ test/orquestrador-push-suprimido.test.ts (14 tests) 28ms
+ ✓ test/orquestrador-dois-blocos-json.test.ts (13 tests) 932ms
+   ✓ ticket_set reescreve SÓ o primeiro bloco > trocar o status não duplica nem toca o bloco da prosa 343ms
+ ✓ test/orquestrador-pausa-e-prompt.test.ts (17 tests) 6984ms
+   ✓ pausar_file presente encerra a drenagem em ocioso, sem erro > sai 0 (pausa não é falha) 372ms
+   ✓ pausar_file presente encerra a drenagem em ocioso, sem erro > o log nomeia a pausa e o motivo registrado 398ms
+   ✓ pausar_file presente encerra a drenagem em ocioso, sem erro > STATUS.md fica ocioso com MOTIVO pausado 345ms
+   ✓ pausar_file presente encerra a drenagem em ocioso, sem erro > a trilha registra a drenagem pausada, com par início/fim 361ms
+   ✓ pausar_file presente encerra a drenagem em ocioso, sem erro > NENHUM ticket é tocado (nem pelo reconcile) 341ms
+   ✓ pausar_file presente encerra a drenagem em ocioso, sem erro > sem o arquivo, a drenagem NÃO para por pausa (o guard não é sempre-verdadeiro) 749ms
+   ✓ pausar_file presente encerra a drenagem em ocioso, sem erro > o sentinela legado (.orq-pause) continua pausando 325ms
+   ✓ pausar_file criado no meio: a drenagem para ENTRE tickets > o ticket em curso termina; o seguinte não começa 979ms
+   ✓ pausar_file criado no meio: a drenagem para ENTRE tickets > encerra em ocioso com MOTIVO pausado, não em erro 971ms
+   ✓ o executor aponta para EXECUTOR.md, não para a SKILL.md > o prompt cita docs/orquestrador/skill/EXECUTOR.md 437ms
+   ✓ o executor aponta para EXECUTOR.md, não para a SKILL.md > e manda NÃO ler SKILL.md nem references/ 449ms
+   ✓ o executor aponta para EXECUTOR.md, não para a SKILL.md > não existe mais ponteiro para a SKILL como leitura recomendada 431ms
+   ✓ o executor aponta para EXECUTOR.md, não para a SKILL.md > sem EXECUTOR.md no disco, o prompt sai sem ponteiro nenhum (não inventa) 429ms
+   ✓ o executor aponta para EXECUTOR.md, não para a SKILL.md > nada mais mudou no prompt: objetivo, allowlist, gates e proibições seguem lá 394ms
+ ✓ test/orquestrador-morte-por-sinal.test.ts (11 tests) 2892ms
+   ✓ o handler espera o comando em primeiro plano — e isso explica o log de 06/09 > SIGTERM durante um comando em primeiro plano só é tratado quando ele volta 2282ms
+ ✓ test/orquestrador-isolamento-teste.test.ts (25 tests) 3568ms
+   ✓ o test-*.sh rodando de verdade não deixa marca na trilha real > test-drenagem.sh: fixture recebe os eventos, produção não recebe nada 2646ms
+ ✓ test/kit-e2e-evidencia.test.ts (7 tests) 687ms
+ ✓ test/orquestrador-pacotes.test.ts (6 tests) 1986ms
+   ✓ pacotes_do_checkout detecta quem tem node_modules próprio > pacote único: só a raiz 316ms
+   ✓ pacotes_do_checkout detecta quem tem node_modules próprio > árvore do CI simulada: os 9 pacotes, na ordem do código antigo 357ms
+   ✓ pacotes_do_checkout detecta quem tem node_modules próprio > diretório sem node_modules próprio fica de fora 314ms
+   ✓ limpa_cache_vite purga o .vite de todo pacote detectado > apaga na raiz E nos pacotes aninhados, e não toca no resto 343ms
+   ✓ a lista de pacotes é a MESMA que o linkador de worktree usa > linka node_modules de cada pacote detectado dentro da worktree 383ms
+ ✓ test/orquestrador-prefixo-aspas.test.ts (13 tests) 12ms
+ ✓ test/orquestrador-liberacoes.test.ts (11 tests) 2615ms
+   ✓ o arquivo REAL do repo resolve as dependências que declara > cada token do arquivo real resolve via liberacao_ok 1026ms
+ ✓ test/orquestrador-trilha-uma-linha.test.ts (8 tests) 1331ms
+ ✓ test/orquestrador-disparo-congelado.test.ts (13 tests) 5401ms
+   ✓ status_congelado_secs: a régua é o claude_timeout_secs > executando DENTRO do timeout não está congelado 424ms
+   ✓ status_congelado_secs: a régua é o claude_timeout_secs > executando ALÉM do timeout está congelado, e diz há quanto tempo 426ms
+   ✓ status_congelado_secs: a régua é o claude_timeout_secs > ocioso nunca está congelado, por mais velho que seja o DESDE 369ms
+   ✓ a ordem: staleness ANTES de "já há drenagem em curso" > STATUS congelado E lock com pid VIVO => recupera (a staleness vence) 520ms
+   ✓ a ordem: staleness ANTES de "já há drenagem em curso" > a recuperação deixa rastro na trilha e limpa o STATUS 587ms
+   ✓ a ordem: staleness ANTES de "já há drenagem em curso" > STATUS são + lock com pid vivo => em-curso (a guarda continua valendo) 435ms
+   ✓ a ordem: staleness ANTES de "já há drenagem em curso" > lock com pid MORTO não segura disparo nenhum => segue 412ms
+   ✓ a ordem: staleness ANTES de "já há drenagem em curso" > sem lock e sem STATUS congelado => segue 378ms
+   ✓ a ordem: staleness ANTES de "já há drenagem em curso" > em-curso NÃO escreve na trilha: não houve o que recuperar 410ms
+   ✓ a guarda por processo é POR REPO > o lock de OUTRO repo não é visto: o caminho sai do RUNS_BASE deste 439ms
+   ✓ orq mostra MORTO, não executando > com o STATUS congelado, o snapshot diz MORTO e há quanto tempo 513ms
+   ✓ orq mostra MORTO, não executando > com o STATUS são, mostra o que sempre mostrou 486ms
+ ✓ test/orquestrador-runatload.test.ts (2 tests) 244ms
+ ✓ test/orquestrador-liberacoes-formatos.test.ts (28 tests) 12343ms
+   ✓ Actus — `tokens[]` de strings SEM o prefixo `humano:` > os 5 tokens do arquivo real resolvem a dependência `humano:<token>` 782ms
+   ✓ Comarka — `liberadas[]` de objetos + `tokens[]` de strings > TODOS os 47 tokens únicos do arquivo real resolvem 7227ms
+   ✓ o que o CI faz diferente: NADA > os 7 resolvem, e NENHUM grava aviso (a forma do CI não é legada) 1087ms
+ ✓ test/orquestrador-prompt-como-rodar.test.ts (10 tests) 3ms
+ ✓ test/orquestrador-reparo-trilha.test.ts (10 tests) 2517ms
+   ✓ uma vez só, e por construção > a segunda passagem é no-op: não escreve, não anota 494ms
+ ✓ test/orquestrador-migrar-config.test.ts (47 tests) 23355ms
+   ✓ a migração não apaga nada > actus-saas: o arquivo no disco do repo NÃO é tocado 652ms
+   ✓ a migração não apaga nada > comarka-operacional: o arquivo no disco do repo NÃO é tocado 609ms
+   ✓ o CI: o config migrado produz a MESMA linha GATE > antes da migração, a linha é a de hoje (é a medida de referência) 391ms
+   ✓ o CI: o config migrado produz a MESMA linha GATE > DEPOIS da migração, é caractere a caractere a MESMA linha 403ms
+   ✓ o proposto é um ARQUIVO AO LADO; o oficial nunca é sobrescrito > --dry-run não escreve nem o proposto 586ms
+   ✓ o proposto é um ARQUIVO AO LADO; o oficial nunca é sobrescrito > --propor grava 000-config.proposto.json e NÃO toca o oficial 702ms
+   ✓ o proposto é um ARQUIVO AO LADO; o oficial nunca é sobrescrito > --aplicar move o proposto QUE FOI REVISADO, não um recalculado 2282ms
+   ✓ o proposto é um ARQUIVO AO LADO; o oficial nunca é sobrescrito > o relatório do --dry-run traz o veredito do `orq config` sobre o PROPOSTO 1344ms
+   ✓ M1 · --propor RECUSA sobrescrever um proposto existente > --dry-run continua não gravando: ele AVISA da recusa e segue relatando 743ms
+   ✓ M1 · --propor RECUSA sobrescrever um proposto existente > sem proposto no disco, o --propor grava como sempre (a guarda não é sempre-verdadeira) 730ms
+   ✓ M1 · --propor RECUSA sobrescrever um proposto existente > o migrador NÃO conhece o nome da revisão: não lê, não escreve, não apaga 739ms
+   ✓ M1 · --propor RECUSA sobrescrever um proposto existente > a CLI distingue RECUSA (rc 1) de erro de uso (rc 2) 518ms
+   ✓ M1 · instalar.sh --atualizar --migrar repassa a recusa > com proposto pré-existente: rc 1, recusa dita, e o arquivo intacto byte a byte 3605ms
+   ✓ M1 · instalar.sh --atualizar --migrar repassa a recusa > o resto da migração roda: a recusa é do config, não do --migrar inteiro 3228ms
+   ✓ M1 · instalar.sh --atualizar --migrar repassa a recusa > sem proposto pré-existente, o --migrar volta a sair 0 e a gravar 3500ms
+   ✓ M1 · instalar.sh --atualizar --migrar repassa a recusa > --dry-run com proposto pré-existente: rc 0, avisa, e não escreve 2464ms
+   ✓ os dois configs reais: quanto o proposto melhora, e o que sobra > actus-saas: o proposto tem MENOS violações que o original, e o resto é decisão local 380ms
+   ✓ os dois configs reais: quanto o proposto melhora, e o que sobra > comarka-operacional: o proposto tem MENOS violações que o original, e o resto é decisão local 394ms
+ ✓ test/orquestrador-notificacao.test.ts (25 tests) 25509ms
+   ✓ o fallback em arquivo é escrito SEMPRE > sem osascript: só o arquivo, e o log diz por quê 10823ms
+   ✓ o fallback em arquivo é escrito SEMPRE > COM osascript: o arquivo é escrito do mesmo jeito 442ms
+   ✓ o fallback em arquivo é escrito SEMPRE > osascript que falha não derruba a drenagem e o arquivo continua valendo 389ms
+   ✓ o fallback em arquivo é escrito SEMPRE > anexa: duas drenagens, duas linhas (é histórico, não snapshot) 320ms
+   ✓ o que vai no título e no corpo > título: placar de aprovados e bloqueados 480ms
+   ✓ o que vai no título e no corpo > corpo: duração e o ÚLTIMO do snapshot 723ms
+   ✓ o que vai no título e no corpo > sem snapshot ainda, o corpo sai com — em vez de quebrar 485ms
+   ✓ fila sem processável: avisa uma vez, e só uma > a PRIMEIRA drenagem vazia escreve exatamente uma linha 693ms
+   ✓ fila sem processável: avisa uma vez, e só uma > a SEGUNDA drenagem vazia não escreve nada (é o spam do launchd) 1236ms
+   ✓ fila sem processável: avisa uma vez, e só uma > dez ticks seguidos com a fila vazia continuam valendo uma linha só 3909ms
+   ✓ fila sem processável: avisa uma vez, e só uma > processar de novo REARMA o aviso de fila vazia 1508ms
+   ✓ drenagem que PROCESSOU notifica, com o placar > aprovado: uma linha, placar 1 aprovado 757ms
+   ✓ drenagem que PROCESSOU notifica, com o placar > bloqueado: uma linha, placar 1 bloqueado 615ms
+   ✓ drenagem que PROCESSOU notifica, com o placar > adiado por orçamento: uma linha, corpo com adiados 1 528ms
+   ✓ drenagem que PROCESSOU notifica, com o placar > EXECUTOR_MORREU conta como processado, ainda que nada tenha sido aprovado 730ms
+   ✓ drenagem que PROCESSOU notifica, com o placar > EXECUTOR_MORREU que já estava na trilha ANTES não conta (a conta é do trecho) 697ms
+
+ Test Files  46 passed (46)
+      Tests  1172 passed (1172)
+   Start at  13:26:05
+   Duration  30.04s (transform 912ms, setup 0ms, collect 15.42s, tests 178.04s, environment 8ms, prepare 2.81s)
+
+rc=0

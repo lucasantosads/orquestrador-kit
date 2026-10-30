@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  TEMPLATE — não é um plist utilizável. Os placeholders /Users/lucasantos/Projetos/actus-saas e
+  /Users/lucasantos/.nvm/versions/node/v24.19.0/bin são resolvidos por scripts/orquestrador/instalar-launchd.sh,
+  que gera o plist final direto em ~/Library/LaunchAgents/.
+
+  O plist FINAL nunca é versionado (carrega caminhos da máquina); só este
+  template entra no git. Caminho absoluto versionado = dívida de
+  portabilidade — foi o que quebrou a migração de máquina de 2026-08-12.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.actus.orquestrador</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/lucasantos/Projetos/actus-saas/scripts/orquestrador/launchd-run.sh</string>
+  </array>
+
+  <!-- launchd não herda o PATH do shell interativo (nem o nvm). O diretório do
+       node é resolvido na instalação e entregue ao wrapper por env. -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>NODE_DIR</key>
+    <string>/Users/lucasantos/.nvm/versions/node/v24.19.0/bin</string>
+  </dict>
+
+  <!-- Dispara a cada 30 min. O lock do loop torna disparos sobrepostos seguros. -->
+  <key>StartInterval</key>
+  <integer>1800</integer>
+
+  <!-- NUNCA no login/boot: evita drenagem surpresa no meio de trabalho manual. -->
+  <key>RunAtLoad</key>
+  <false/>
+
+  <!-- Log do LAUNCHD (separado do log do loop em runs/launchd.log). -->
+  <key>StandardOutPath</key>
+  <string>/Users/lucasantos/Projetos/actus-saas/docs/fila/runs/launchd-agent.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/lucasantos/Projetos/actus-saas/docs/fila/runs/launchd-agent.log</string>
+
+  <!-- Sem KeepAlive: o job roda no intervalo e termina; não é serviço perene. -->
+</dict>
+</plist>

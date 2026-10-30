@@ -1,0 +1,159 @@
+arquivos (uniao main+staging-auto+staging-apolo): 365
+por pasta: {'migrations': 91, 'supabase/migrations': 272, 'supabase/migrations/perf': 1, 'supabase/migrations_descartadas': 1}
+por padrao: {'sem_prefixo': 91, '14dig_ssNN': 148, '8dig': 36, '14dig_ss00': 90}
+so na main: 0 | nao estao na main: ['20261017230200_inteligencia_comercial_fn_padroes_limiar.sql', '20261017230300_inteligencia_comercial_nota_ghl.sql', '20261018001000_inteligencia_capacidade_registro.sql', '20261018001100_inteligencia_fn_relatorio_mensal_apolo.sql', '20261018002000_inteligencia_kernel_comercial_ativacao.sql', '20261018002100_portal_link_saida_cliente.sql', '20261018002200_inteligencia_briefing_escritorio.sql', '20261018002400_inteligencia_conhecimento_curadoria.sql', '20261018003000_nps_teses_chave_cliente_id.sql', '20261018003100_nps_fila_e_resposta_por_contato.sql', '20261018003200_employees_public_sem_anon.sql', '20261018003300_views_publicas_security_invoker.sql', '20261018003400_clientes_marca_mds.sql', '20261018004000_ops_sombra_comparacao.sql', '20261018010000_inteligencia_fn_fato_midia_dia_janela.sql', '20261018010100_inteligencia_fn_relatorio_cliente_captacao.sql', '20261018030100_ia_claude_modelos_5.sql', '20261018030500_rag_chunks_vector_1024.sql', '20261019000100_nps_fila_sai_chave_notion.sql']
+
+sem 14 digitos no comeco (todas as pastas):
+   migrations/fix-data-integrity.sql
+   migrations/fix-schema-updates-v2.sql
+   migrations/fix-sistema-indices-seed.sql
+   migrations/fix-tarefas-retry.sql
+   migrations/migration-ad-intelligence.sql
+   migrations/migration-add-columns.sql
+   migrations/migration-alertas-config.sql
+   migrations/migration-backfill-employees.sql
+   migrations/migration-churn-monthly-summary.sql
+   migrations/migration-churn-pipeline.sql
+   migrations/migration-client-feedbacks.sql
+   migrations/migration-client-nps.sql
+   migrations/migration-client-situation-history.sql
+   migrations/migration-clientes-churn.sql
+   migrations/migration-clientes-crm-config.sql
+   migrations/migration-clientes-extra.sql
+   migrations/migration-clientes-modulo-expandido.sql
+   migrations/migration-clientes-performance.sql
+   migrations/migration-clientes-portal.sql
+   migrations/migration-clientes-receita.sql
+   migrations/migration-clientes-teses-v2.sql
+   migrations/migration-clientes-teses.sql
+   migrations/migration-comarka-pro-gestor-vinculo.sql
+   migrations/migration-comarka-pro-penalizacoes.sql
+   migrations/migration-comarka-pro.sql
+   migrations/migration-compensation.sql
+   migrations/migration-contratos-entrada-primeiro-mes.sql
+   migrations/migration-custos-fixos-pagamentos.sql
+   migrations/migration-despesas.sql
+   migrations/migration-employees-cargo.sql
+   migrations/migration-employees-senha-visivel.sql
+   migrations/migration-employees.sql
+   migrations/migration-entregaveis-clientes.sql
+   migrations/migration-fase4-indices-views.sql
+   migrations/migration-feedbacks-gestores-avaliacoes.sql
+   migrations/migration-fidelidade-data.sql
+   migrations/migration-fidelidade.sql
+   migrations/migration-financeiro-modulo.sql
+   migrations/migration-financeiro.sql
+   migrations/migration-fix-employee-roles.sql
+   migrations/migration-fluxo-entrada-clientes.sql
+   migrations/migration-folha-employee-link.sql
+   migrations/migration-ghl-funnel.sql
+   migrations/migration-justificativa-mespagamento.sql
+   migrations/migration-leads-ad-attribution.sql
+   migrations/migration-leads-attribution-trigger.sql
+   migrations/migration-leads-crm-drop-contact-unique.sql
+   migrations/migration-leads-crm-etapa-check.sql
+   migrations/migration-leads-crm-ghl-created-at.sql
+   migrations/migration-leads-crm-unique-ghl-opp-id.sql
+   migrations/migration-liga-comarka.sql
+   migrations/migration-liga-conquistas-dna.sql
+   migrations/migration-liga-eventos-apostas.sql
+   migrations/migration-liga-missoes-streaks.sql
+   migrations/migration-meta-agency-connection.sql
+   migrations/migration-meta-connections-insights.sql
+   migrations/migration-n8n-error-log.sql
+   migrations/migration-notifications-churn.sql
+   migrations/migration-notifications.sql
+   migrations/migration-notion-mirror.sql
+   migrations/migration-onboarding-checklist-counts.sql
+   migrations/migration-onboarding-checklist-items.sql
+   migrations/migration-onboarding-etapa-entrada.sql
+   migrations/migration-onboarding-sla.sql
+   migrations/migration-onboarding-template.sql
+   migrations/migration-ops-automacoes.sql
+   migrations/migration-otimizacoes-snapshot.sql
+   migrations/migration-pagamentos-valor-esperado.sql
+   migrations/migration-popular-custos-fixos.sql
+   migrations/migration-portal-extensao.sql
+   migrations/migration-projecoes-modulo.sql
+   migrations/migration-relatorio-config.sql
+   migrations/migration-schema-updates-v2.sql
+   migrations/migration-seed-super-admin.sql
+   migrations/migration-sistema-auditoria-triggers.sql
+   migrations/migration-sistema-infraestrutura-v2.sql
+   migrations/migration-sistema-infraestrutura.sql
+   migrations/migration-tarefas-atividades-notif.sql
+   migrations/migration-tarefas-checklists-comentarios.sql
+   migrations/migration-tarefas-kanban.sql
+   migrations/migration-tarefas-modulo.sql
+   migrations/migration-tarefas.sql
+   migrations/migration-team-commission-config.sql
+   migrations/migration-team-members-profile.sql
+   migrations/migration-trafego-modulo-expandido.sql
+   migrations/migration-trafego-pago-v2.sql
+   migrations/migration-trafego-pago.sql
+   migrations/migration-v2.sql
+   migrations/schema.sql
+   migrations/trigger-auto-leads-v2.sql
+   migrations/trigger-auto-leads.sql
+   supabase/migrations/20260525_cs_module_tables.sql
+   supabase/migrations/20260525_meta_insights_campaigns.sql
+   supabase/migrations/20260525_onboarding_prazo_total.sql
+   supabase/migrations/20260601_perf_nichos.sql
+   supabase/migrations/20260602_fix_unique_regras_null.sql
+   supabase/migrations/20260602_perf_ghl_locations.sql
+   supabase/migrations/20260602_perf_leads_qualificacao.sql
+   supabase/migrations/20260612_nps_coleta.sql
+   supabase/migrations/20260612_nps_coleta_rollback_client_nps.sql
+   supabase/migrations/20260612_perf_ad_accounts_em_uso.sql
+   supabase/migrations/20260612_perf_cliente_metas.sql
+   supabase/migrations/20260612_perf_conta_metas_cpl_por_conta.sql
+   supabase/migrations/20260612_perf_conta_metas_verba_teto.sql
+   supabase/migrations/20260612_perf_grants_hardening.sql
+   supabase/migrations/20260612_perf_meta_discovery.sql
+   supabase/migrations/20260612_perf_nps_respostas.sql
+   supabase/migrations/20260612_perf_qualificacao_regras_escopo_cliente.sql
+   supabase/migrations/20260612_setup_bridge_e_view.sql
+   supabase/migrations/20260612_vw_cliente_setup_em_uso.sql
+   supabase/migrations/20260612_vw_cliente_setup_p7_informativo.sql
+   supabase/migrations/20260614_vw_cliente_setup_sem_mrr.sql
+   supabase/migrations/20260616_perf_receita_metas_modelo.sql
+   supabase/migrations/20260620_tkt-dossie_ac_backfill_e_sync.sql
+   supabase/migrations/20260620_tkt-dossie_b_ponte_lead.sql
+   supabase/migrations/20260620_tkt-dossie_t1_revinculo.sql
+   supabase/migrations/20260620_tkt-dossie_t2_dossie_colunas.sql
+   supabase/migrations/20260623_tkt-rbac_v2_ops_permissao_fundacao.sql
+   supabase/migrations/20260626_ops_esta_na_subarvore.sql
+   supabase/migrations/20260626_ops_tarefas_recorrentes_fundacao.sql
+   supabase/migrations/20260628_ops_briefing_fundacao.sql
+   supabase/migrations/20260628_ops_onboarding_motor_fundacao.sql
+   supabase/migrations/20260628_perf_health_snapshot.sql
+   supabase/migrations/20260628_perf_reuniao.sql
+   supabase/migrations/20260629_ops_briefing_resposta_rekey_cliente_uuid.sql
+   supabase/migrations/20260916_perf_crm_cliente.sql
+   supabase/migrations/perf/20260601_create_perf_teses.sql
+
+versoes repetidas em supabase/migrations: {'20260525': 3, '20260602': 3, '20260612': 13, '20260620': 4, '20260626': 2, '20260628': 4, '20260817000000': 2}
+nomes (sem versao) repetidos em qualquer pasta:
+   nps_coleta -> ['supabase/migrations/20260612_nps_coleta.sql', 'supabase/migrations/20260818000000_nps_coleta.sql']
+
+adicionadas desde 2026-10-04 (primeiro commit, qualquer ref): 51
+  por fila: {'comarka': 18, 'sem_ticket': 2, 'apolo': 31}
+  por dia: {'2026-10-05': 1, '2026-10-06': 1, '2026-10-08': 2, '2026-10-10': 2, '2026-10-12': 2, '2026-10-14': 3, '2026-10-16': 4, '2026-10-17': 19, '2026-10-18': 17}
+  por padrao: {'14dig_ss00': 47, '14dig_ssNN': 4}
+sem ticket (recentes): ['20261008132631_perf_leads_datas_rm_rr_venda.sql :: feat(crm): Etapa 2 do mapeamento de etapas (RM/RR/VENDA por ', '20261014202117_perf_crm_sync_continuo.sql :: feat(crm): sync continuo do GHL (webhook, delta 15 min, reco']
+
+H: horas entre versao (nome, lida como UTC) e primeiro commit; n = 144
+  14dig_ssNN: n=58 mediana=6.6h  >+24h=10  <-24h=0
+  14dig_ss00: n=86 mediana=3.5h  >+24h=3  <-24h=0
+  ssNN com commit >24h depois da versao (arquivo entrou bem depois da aplicacao provavel):
+     1159.7h  20260515202549_liga_missoes_streaks.sql  commit e761deb 2026-07-03T01:10:19
+     1159.7h  20260515202640_liga_comarka_completa.sql  commit e761deb 2026-07-03T01:10:19
+     1159.6h  20260515203627_liga_eventos_apostas_v2.sql  commit e761deb 2026-07-03T01:10:19
+     1159.6h  20260515203716_liga_apostas_align_schema.sql  commit e761deb 2026-07-03T01:10:19
+      896.9h  20260526191903_fix_webhook_activity_log_rls.sql  commit e761deb 2026-07-03T01:10:19
+      774.9h  20260531211910_perf_fase1a_modelo_dados.sql  commit e761deb 2026-07-03T01:10:19
+      561.5h  20260609183825_perf_ia_tables.sql  commit e761deb 2026-07-03T01:10:19
+      224.6h  20260623193215_ia_prompts_piloto_dossie.sql  commit e761deb 2026-07-03T01:10:19
+       27.0h  20260825000005_ia_leitura_comercial.sql  commit ac02fcf 2026-08-26T00:00:37
+       26.1h  20260825000004_temperatura_comercial_mirror.sql  commit 21fa531 2026-08-25T23:05:08
+  ss00 com commit >24h antes da versao (versao no futuro):

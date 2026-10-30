@@ -1,0 +1,12 @@
+   × peça 4 (b): tentativa nova entre a leitura e a troca > um attempt-* novo em runs/<id>/: desiste, o ticket fica intacto 754ms
+   × peça 4 (b): tentativa nova entre a leitura e a troca > um arquivo reescrito dentro de um attempt-* (sem entrada nova): desiste 733ms
+   × peça 4 (b): tentativa nova entre a leitura e a troca > o log do loop ganha o começo de uma tentativa do ticket: desiste 634ms
+   × peça 4 (b): tentativa nova entre a leitura e a troca > o ticket vira em_execucao: desiste (e não pisa no que o loop escreveu) 568ms
+   ✓ peça 4 (b): tentativa nova entre a leitura e a troca > log de outro ticket e nada novo no runs/: age (a trava não trava sem motivo) 688ms
++     "feito": "aplicado",
++     "motivo": "test/nps-reacao-resposta.test.ts na allowlist; test/nps-reacao-resposta.test.ts na lista de criterio[6]; guarda de contagem em criterio[13]; reabriu (status pendente, nota vazia)",
++     "feito": "aplicado",
++     "motivo": "test/nps-reacao-resposta.test.ts na allowlist; test/nps-reacao-resposta.test.ts na lista de criterio[6]; guarda de contagem em criterio[13]; reabriu (status pendente, nota vazia)",
++     "feito": "aplicado",
++     "motivo": "test/nps-reacao-resposta.test.ts na allowlist; test/nps-reacao-resposta.test.ts na lista de criterio[6]; guarda de contagem em criterio[13]; reabriu (status pendente, nota vazia)",
++     "motivo": "o ticket mudou desde a leitura: outro processo mexeu",

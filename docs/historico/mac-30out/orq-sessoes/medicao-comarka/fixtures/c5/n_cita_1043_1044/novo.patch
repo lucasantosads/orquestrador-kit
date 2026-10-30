@@ -1,0 +1,44 @@
+diff --git a/src/app/dashboard/onboarding/motor/[id]/page.tsx b/src/app/dashboard/onboarding/motor/[id]/page.tsx
+index d2b67a0..6c3b282 100644
+--- a/src/app/dashboard/onboarding/motor/[id]/page.tsx
++++ b/src/app/dashboard/onboarding/motor/[id]/page.tsx
+@@ -20,6 +20,7 @@ import { ROTULO_SEGUE_NO_CONTRATO, contaParaOnboarding, progressoOnboarding } fr
+ import { etapaPorRegra } from "@/lib/ops/onboarding/etapa-por-regra";
+ import { fetchJson } from "@/lib/fetch-json";
+ import { GrupoWhatsappEtapa } from "./_components/grupo-whatsapp-etapa";
++import { BriefingEtapa } from "./_components/briefing-etapa";
+ 
+ const NENHUM = "__none__";
+ 
+@@ -138,6 +139,7 @@ export default function OnboardingDetailPage() {
+   // Grupo de WhatsApp só em onboarding em andamento; sem etapa que o peça, o bloco vai ao topo das etapas.
+   const mostraGrupo = onb.status === "em_andamento";
+   const etapaGrupoId = etapaPorRegra(onb.etapas, itens ?? [], "grupo_whatsapp");
++  const etapaBriefingId = etapaPorRegra(onb.etapas, itens ?? [], 'briefing');
+ 
+   return (
+     <div className="space-y-6">
+@@ -177,8 +179,13 @@ export default function OnboardingDetailPage() {
+         </div>
+       </div>
+ 
+-      {mostraGrupo && etapaGrupoId === null && (
+-        <Card><CardContent className="py-3"><GrupoWhatsappEtapa clienteId={onb.cliente_id} /></CardContent></Card>
++      {mostraGrupo && (etapaGrupoId === null || etapaBriefingId === null) && (
++        <Card>
++          <CardContent className="py-3">
++            {etapaGrupoId === null && <GrupoWhatsappEtapa clienteId={onb.cliente_id} />}
++            {etapaBriefingId === null && <BriefingEtapa clienteId={onb.cliente_id} />}
++          </CardContent>
++        </Card>
+       )}
+ 
+       {/* Etapas */}
+@@ -217,6 +224,7 @@ export default function OnboardingDetailPage() {
+                   </div>
+                   {e.descricao && <p className="text-[11px] text-muted-foreground mt-1">{e.descricao}</p>}
+                   {mostraGrupo && e.id === etapaGrupoId && <GrupoWhatsappEtapa clienteId={onb.cliente_id} />}
++                  {mostraGrupo && e.id === etapaBriefingId && <BriefingEtapa clienteId={onb.cliente_id} />}
+                   <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
+                     {fmt(e.iniciada_em) && <span>início {fmt(e.iniciada_em)}</span>}
+                     {fmt(e.concluida_em) && <span>conclusão {fmt(e.concluida_em)}</span>}

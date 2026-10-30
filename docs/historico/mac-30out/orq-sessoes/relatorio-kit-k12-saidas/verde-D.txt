@@ -1,0 +1,34 @@
+== 1. launchd_exit: last exit code != 0 ==
+  ok    rc 127 com trilha recente: o job org.fixture.a1 saiu com rc 127 no último disparo (launchctl print: last exit code)
+  ok    o card diz travado
+  ok    rc 0 e drenagem dentro da janela: silêncio
+  ok    job NÃO carregado (desagendado de propósito): silêncio
+
+== 2. mudo: nenhum DRENAGEM_INICIO há mais de 2x o start_interval ==
+  ok    DRENAGEM_INICIO de 3x o start_interval atrás: nenhuma drenagem começou há 1h30; o job dispara a cada 30 min (limite 1h)
+  ok    e diz o intervalo do job: nenhuma drenagem começou há 1h30; o job dispara a cada 30 min (limite 1h)
+  ok    o card diz travado
+  ok    DRENAGEM_INICIO dentro de 2x o start_interval: silêncio
+  ok    velho, mas job descarregado: silêncio
+  ok    trilha sem nenhum DRENAGEM_INICIO, job carregado: nenhum DRENAGEM_INICIO na trilha, com o job org.fixture.a2d carregado (dispara a cada 30 min)
+
+== 3. pausa_furada: PAUSAR de pé e a drenagem seguiu depois dele ==
+  ok    DRENAGEM_INICIO sem motivo=pausado depois da PAUSA: a drenagem seguiu depois da pausa: DRENAGEM_INICIO às 11:40, com o PAUSAR de pé desde 11:29
+  ok    pausa respeitada (motivo=pausado) e retry do 530, que já corria: sem pausa_furada
+  ok    INICIO de OUTRO ticket depois da pausa: a drenagem seguiu depois da pausa: INICIO do 531 às 11:50, com o PAUSAR de pé desde 11:29
+
+== 4. pausa_longa: PAUSAR há mais de 40 min ==
+  ok    41 min: pausado há 41 min, mais de 40 min: motivo "madrugada"
+  ok    39 min: silêncio
+
+== 5. execucao_longa: além do timeout do config mais a margem ==
+  ok    41 min com timeout de 30 e margem de 10: o 530 está em execução há 41 min; o timeout é 30 min (+10 min de margem para gates e juiz)
+  ok    o card diz travado
+  ok    30 min, dentro do timeout mais a margem: silêncio
+
+== 6. todo alarme é texto, e o que falta no config vira 'sem dado' ==
+  ok    sem dado: mudo: sem launchd.start_interval no config | execução longa: sem claude_timeout_secs no config
+  ok    a página mostra o texto do alarme
+
+TODOS OS CHECKS PASSARAM
+rc=0

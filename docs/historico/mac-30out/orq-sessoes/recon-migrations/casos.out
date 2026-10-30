@@ -1,0 +1,12 @@
+tickets parseados: 1590 {'comarka': 1422, 'hold': 1, 'apolo': 167}
+citam migration (texto) ou tocam supabase/migrations: 863
+  por status: {'done': 779, 'obsoleto': 48, 'pendente': 34, 'em_execucao': 2}
+tocam supabase/migrations (allowlist): 186 {('comarka', 'done'): 71, ('comarka', 'obsoleto'): 10, ('comarka', 'pendente'): 4, ('apolo', 'done'): 94, ('apolo', 'pendente'): 6, ('apolo', 'em_execucao'): 1}
+F1 tocam supabase/migrations E src/ no mesmo ticket: 9 | por status: {'done': 8, 'pendente': 1}
+F2 dependem de token humano de migration: 140 | tokens distintos: 109
+F2 dependem de ticket que so entrega migration: 160
+F2 qualquer um dos dois: 235
+ja estiveram bloqueado/refatiar (git): 81
+obsoletos: 48 | tent>1: 227
+pendentes esperando token humano de migration: [('1197', 'humano:ddl-1172-aplicada'), ('1262', 'humano:migration-5196-aplicada'), ('1267', 'humano:migration-5199-aplicada'), ('1269', 'humano:migration-5199-aplicada'), ('1305', 'humano:migration-5208-aplicada;humano:migration-5209-aplicada;humano:migration-5210-aplicada'), ('1307', 'humano:migration-5208-aplicada;humano:migration-5210-aplicada'), ('1309', 'humano:migration-5208-aplicada;humano:migration-5209-aplicada'), ('1311', 'humano:migration-5215-aplicada'), ('1314', 'humano:migration-5221-aplicada'), ('1318', 'humano:migration-5223-aplicada'), ('1325', 'humano:migration-5226-aplicada'), ('1329', 'humano:migration-1326-aplicada;humano:migration-1332-aplicada'), ('1334', 'humano:migration-1332-aplicada'), ('1374', 'humano:migration-1371-aplicada'), ('1375', 'humano:migration-1374-aplicada'), ('1376', 'humano:migration-1375-aplicada'), ('5200', 'humano:migration-5199-aplicada'), ('5203', 'humano:migration-5183-aplicada'), ('5216', 'humano:migration-5215-aplicada'), ('5217', 'humano:migration-5215-aplicada')]
+familias de dep humano (top 15): [('migration#-aplicada', 106), ('decisao-D#', 64), ('decisao-chave-oficial-cliente-id', 48), ('mockups-ficha-na-staging', 34), ('apolo#-na-main', 31), ('apolo-schema-exposto', 28), ('f#-rotas-go', 25), ('adr#-aceita', 24), ('ddl#', 18), ('lote-identidade#', 16), ('ui-lote#ut', 13), ('revisao-escritor#', 13), ('ddl#-aplicada', 10), ('mockups-portal-gestor-na-staging', 10), ('decisao-C#', 8)]

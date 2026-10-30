@@ -1,0 +1,14 @@
+test_dias_acompanhados_tem_teto_14 (__main__.Janela) ... ok
+test_fora_dos_14_dias_ou_depois_do_corte_nao_conta (__main__.Janela) ... ok
+test_arquivo_quente_derruba_so_o_fix_no_arquivo (__main__.Reais) ... ok
+test_cada_caso_real (__main__.Reais) ... ok
+test_citacao_de_lote_nao_e_ticket_conserto (__main__.Reais) ... ok
+test_por_loop_e_c2_inflado (__main__.Resumo) ... ok
+test_s_revert_de_sha_do_ticket (__main__.Sinteticos) ... ok
+test_s_saiu_de_done (__main__.Sinteticos) ... ok
+test_s_ticket_conserto_com_linha_do_ticket (__main__.Sinteticos) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.009s
+
+OK

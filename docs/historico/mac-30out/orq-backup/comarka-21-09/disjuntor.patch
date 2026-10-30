@@ -1,0 +1,130 @@
+diff --git a/docs/fila/000-config.json b/docs/fila/000-config.json
+index 0db7271..d28c8d9 100644
+--- a/docs/fila/000-config.json
++++ b/docs/fila/000-config.json
+@@ -20,6 +20,8 @@
+   "claude_timeout_secs": 1500,
+   "_gate_streak": "Pausa cross-ticket (ticket 280): se o MESMO gate mecanico (tsc/vitest/build/criterio/enforcement) reprovar gate_streak_limite tickets CONSECUTIVOS e DIFERENTES, o executor pausa a fila inteira (grava docs/fila/.orq-pause) em vez de bloquear cada ticket individualmente — o suspeito e o gate, nao o codigo. Os tickets envolvidos voltam a 'pendente', nunca 'bloqueado'. Chave ausente => cai em 2 (default no codigo, para repos com config antigo).",
+   "gate_streak_limite": 2,
++  "_disjuntor_sem_progresso": "Disjuntor de retry sem progresso (21/09, incidente 440: 19 execucoes com attempt vazio). local-loop.sh conta em runs/<id>/.sem-progresso cada volta em que o ticket segue pendente sem cooldown e sem staging-auto avancar; adiamento (cooldown ou 529/500/503) nao conta. Zera quando o ticket muda de status ou staging-auto avanca na vez dele. Ao chegar ao limite o ticket vira bloqueado com a causa em notas_status e o log ganha uma linha DISJUNTOR. Chave ausente => 3.",
++  "disjuntor_sem_progresso_limite": 3,
+   "preflight_probe": true,
+   "preflight_env_keys": [
+     "SESSION_SECRET",
+diff --git a/scripts/orquestrador/local-loop.sh b/scripts/orquestrador/local-loop.sh
+index 1daf95c..aa5f2ae 100755
+--- a/scripts/orquestrador/local-loop.sh
++++ b/scripts/orquestrador/local-loop.sh
+@@ -105,6 +105,42 @@ ensure_runner_worktree() {
+   echo "$wt"
+ }
+ 
++# --- DISJUNTOR DE RETRY SEM PROGRESSO (21/09) --------------------------------
++# $vistos só vale dentro de UMA drenagem: no disparo seguinte o mesmo ticket
++# volta a ser escolhido. Incidente 440: 19 execuções entre 18/09 e 21/09, todas
++# com attempt vazio (o executor saía no `git worktree add` antes do agente) e
++# nada parava a repetição. Este contador PERSISTE entre disparos, em
++# runs/<id>/.sem-progresso ("N|primeira|ultima"), e só conta o ramo "segue
++# pendente sem cooldown (sem progresso)". Adiamento (cooldown armado, ou
++# 529/500/503 que adia sem cooldown) não conta. Zera quando o ticket muda de
++# status ou quando staging-auto avança na vez dele. Limite na chave
++# disjuntor_sem_progresso_limite do 000-config.json (ausente => 3).
++sem_progresso_arquivo() { echo "$RUNS_BASE/$1/.sem-progresso"; }
++sem_progresso_zerar()   { rm -f "$(sem_progresso_arquivo "$1")"; }
++# sem_progresso_incrementar <id> -> imprime "N|primeira|ultima" já gravado.
++sem_progresso_incrementar() {
++  local f n=0 primeira agora linha
++  f="$(sem_progresso_arquivo "$1")"; agora="$(ts)"; primeira="$agora"
++  if [ -f "$f" ]; then
++    linha="$(cat "$f")"
++    n="${linha%%|*}"; primeira="$(printf '%s' "$linha" | cut -d'|' -f2)"
++    case "$n" in ''|*[!0-9]*) n=0; primeira="$agora" ;; esac
++  fi
++  n=$((n+1)); mkdir -p "$(dirname "$f")"
++  printf '%s|%s|%s\n' "$n" "$primeira" "$agora" > "$f"
++  cat "$f"
++}
++disjuntor_limite() {
++  local l; l="$(cfg '.disjuntor_sem_progresso_limite // 3' 2>/dev/null || echo 3)"
++  case "$l" in ''|*[!0-9]*|0) l=3 ;; esac
++  echo "$l"
++}
++# disjuntor_causa <saida-do-executor> -> última linha de erro (ou texto padrão).
++disjuntor_causa() {
++  local c; c="$(grep -E 'ERRO|fatal:|[Ee]rro[ r:]|FAIL' "$1" 2>/dev/null | tail -1 | tr -d '\r' | cut -c1-300)"
++  echo "${c:-sem linha de erro na saida do executor}"
++}
++
+ # --- DRENAGEM (ticket 006) ----------------------------------------------------
+ # Chama run_executor_once repetidamente ENQUANTO houver ticket pendente com deps
+ # resolvidas. Push de staging-auto após CADA ticket aprovado (req 3). Encerra
+@@ -114,7 +150,7 @@ ensure_runner_worktree() {
+ # não trava: entra em $vistos (escopo = esta invocação, não persiste entre
+ # disparos) e a seleção o exclui. Usa globals REPO/STWT/BRANCH_ALVO.
+ drenar() {
+-  local drenados=0 prox prox_id cyc_before cyc_after vistos=" "
++  local drenados=0 prox prox_id cyc_before cyc_after vistos=" " nota_antes nota_depois exe_out
+   say "DRENAGEM iniciando (claude local, sem ANTHROPIC_API_KEY)…"
+   while :; do
+     # Cooldown pode ter sido armado por um adiamento (rate limit) no ticket
+@@ -145,12 +181,21 @@ drenar() {
+     # seleciona o MESMO proximo_pendente, roda gates+avaliador e mergeia em
+     # staging-auto se aprovado. --once => processa 1 ticket e sai.
+     cyc_before="$(git -C "$STWT" rev-parse HEAD)"
+-    if run_executor_once "$prox_id"; then
++    # Disjuntor: nota antes (para reconhecer um adiamento novo) e saída do
++    # executor copiada para achar a última linha de erro. O tee mantém o log
++    # em tempo real; com pipefail o rc continua sendo o do executor.
++    nota_antes="$(ticket_field "$prox" '.notas_status')"
++    exe_out="$(mktemp)"
++    if run_executor_once "$prox_id" 2>&1 | tee "$exe_out"; then
+       say "  executor --once (ticket $prox_id) rc=0"
+     else
+       say "  executor --once (ticket $prox_id) rc!=0 (não fatal; reavalia a fila)"
+     fi
+     cyc_after="$(git -C "$STWT" rev-parse HEAD)"
++    # Progresso na vez dele (staging-auto andou) ou status mudou: zera.
++    if [ "$cyc_before" != "$cyc_after" ] || [ "$(ticket_field "$prox" '.status')" != "pendente" ]; then
++      sem_progresso_zerar "$prox_id"
++    fi
+ 
+     # req 3: push por-ticket — só se staging-auto avançou (aprovado + mergeado).
+     if [ "$cyc_before" != "$cyc_after" ]; then
+@@ -191,8 +236,37 @@ drenar() {
+        && [ "$cyc_before" = "$cyc_after" ] && ! cooldown_active; then
+       vistos="$vistos$prox_id "
+       say "  ticket $prox_id segue pendente sem cooldown (sem progresso) — marcado como tentado nesta execução; segue p/ o próximo não-tentado"
++      # mark_adiado sem cooldown (529/500/503, exit 31): blip de API, não conta.
++      # Sinal principal é a linha que o próprio mark_adiado escreve na saída do
++      # executor; a nota nova é reserva. Só a nota não basta: dois adiamentos no
++      # mesmo segundo geram a mesma nota (medido no test-disjuntor.sh).
++      nota_depois="$(ticket_field "$prox" '.notas_status')"
++      if grep -q 'adiado: .*retomará no próximo disparo' "$exe_out" 2>/dev/null \
++         || { case "$nota_depois" in adiado*) [ "$nota_depois" != "$nota_antes" ] ;; *) false ;; esac; }; then
++        say "  disjuntor: ticket $prox_id adiado nesta volta (${nota_depois%% em *}) — não conta"
++        rm -f "$exe_out"; continue
++      fi
++      local sp n primeira ultima lim causa ev
++      sp="$(sem_progresso_incrementar "$prox_id")"
++      n="${sp%%|*}"; primeira="$(printf '%s' "$sp" | cut -d'|' -f2)"; ultima="${sp##*|}"
++      lim="$(disjuntor_limite)"
++      say "  disjuntor: ticket $prox_id sem progresso $n/$lim (desde $primeira)"
++      if [ "$n" -ge "$lim" ]; then
++        causa="$(disjuntor_causa "$exe_out")"
++        if [ -d "$RUNS_BASE/$prox_id/attempt-1" ] && [ -z "$(ls -A "$RUNS_BASE/$prox_id/attempt-1" 2>/dev/null)" ]; then
++          ev="attempt vazio = executor abortou antes do agente"
++        else
++          ev="attempt com evidencia em runs/$prox_id/attempt-1"
++        fi
++        ticket_set_status "$prox" "bloqueado"
++        ticket_set_nota "$prox" "disjuntor: $n execucoes sem progresso entre $primeira e $ultima; $ev; causa: $causa"
++        sem_progresso_zerar "$prox_id"   # mudou de status: recomeça do zero quando voltar a pendente
++        say "DISJUNTOR: ticket $prox_id bloqueado apos $n execucoes sem progresso ($primeira .. $ultima); causa: $causa"
++      fi
++      rm -f "$exe_out"
+       continue
+     fi
++    rm -f "$exe_out"
+   done
+ }
+ 

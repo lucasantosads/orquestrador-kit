@@ -1,0 +1,1 @@
+cd ~/Projetos/orquestrador-kit && ORQ_DIAG_DIR=~/.orq/corrida-7f-peca6 ORQ_TRIADOR_TETO_DIA=6.60 bash scripts/orq triar --fixture test/fixtures/triador-7f > ~/orq-sessoes/corrida-7f-peca6.txt 2>&1; echo "rc=$?"

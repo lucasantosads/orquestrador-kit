@@ -1,0 +1,3 @@
+ M docs/fila/1009-carteira-cockpit-risco-leitura-completa.md
+?? scripts/__pycache__/
+?? scripts/roadmap/__pycache__/

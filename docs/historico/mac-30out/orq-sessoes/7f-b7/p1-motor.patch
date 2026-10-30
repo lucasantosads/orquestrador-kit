@@ -1,0 +1,293 @@
+diff --git a/scripts/orquestrador/resolvedor/acoes.ts b/scripts/orquestrador/resolvedor/acoes.ts
+index fa8713d..be24525 100644
+--- a/scripts/orquestrador/resolvedor/acoes.ts
++++ b/scripts/orquestrador/resolvedor/acoes.ts
+@@ -2,8 +2,12 @@
+  * acoes.ts — as ações R1 e R5 com as travas (etapa 7f-b2, peça 3).
+  *
+  * Travas (decisões do chat do programa):
+- *   - UMA ação por ticket: se o ledger já tem uma ação aplicada nele, o
+- *     segundo bloqueio vai para humano (não age de novo, registra);
++ *   - UMA ação por ticket POR BLOQUEIO (7f-b7; antes, uma por ticket): a
++ *     mesma assinatura, ou o mesmo `bloqueio.quando` (o fim da série, do
++ *     meta.json), depois de uma ação vai para humano. A assinatura sozinha
++ *     não basta: ela lê o mtime do ticket, e o `orq desfazer` (ou o writeback
++ *     do loop) a troca sem série nova. Uma série nova pode ter a segunda
++ *     ação; com 2 ações no ticket, só aviso (TETO_ACOES_TICKET);
+  *   - interruptor e trava global: passada.ts, antes de qualquer coisa;
+  *   - escrita no repo só por repo.ts (espera git, só o arquivo do ticket,
+  *     commit com trailer, nunca --no-verify, nunca push);
+@@ -25,7 +29,7 @@ import { planejarR5 } from './r5.js'
+ import { arquivoDoTicket, escreverEComitar, retratoDoLoop, trailer } from './repo.js'
+ 
+ export interface Feito {
+-  feito: 'aplicado' | 'proposto' | 'faria' | 'nao_consegui'
++  feito: 'aplicado' | 'proposto' | 'faria' | 'nao_consegui' | 'aviso'
+   motivo: string
+   commit?: string
+   proposta?: string
+@@ -63,25 +67,37 @@ function registrarProposta(a: Alvo, acao: string, mudou: string, proposta: strin
+ }
+ const carimbo = (t: number) => iso(t).replace(/[-:]/g, '')
+ 
++/** Ações do resolvedor num ticket, no total (7f-b7): na terceira, só aviso. */
++export const TETO_ACOES_TICKET = 2
++
+ /** O que mudou, em uma linha, para o ledger e a mensagem do commit. */
+-function oQueMudou(tipo: 'r1_allowlist' | 'r5_reabrir', p: { teste?: string; criteriosLista?: number[]; guarda?: number; condicao?: string }): string {
++function oQueMudou(tipo: 'r1_allowlist' | 'r5_reabrir', p: { testes?: { teste: string }[]; criteriosLista?: number[]; guardas?: number[]; condicao?: string }): string {
+   if (tipo === 'r5_reabrir') return `reabriu (status pendente, nota vazia): ${p.condicao}`
+-  const lista = p.criteriosLista?.length ? `; ${p.teste} na lista de criterio[${p.criteriosLista.join('], criterio[')}]` : ''
+-  return `${p.teste} na allowlist${lista}; guarda de contagem em criterio[${p.guarda}]; reabriu (status pendente, nota vazia)`
++  const ts = (p.testes ?? []).map((t) => t.teste).join(' e ')
++  const lista = p.criteriosLista?.length ? `; ${ts} na lista de criterio[${p.criteriosLista.join('], criterio[')}]` : ''
++  const gs = p.guardas ?? []
++  return `${ts} na allowlist${lista}; guarda${gs.length > 1 ? 's' : ''} de contagem em criterio[${gs.join('], criterio[')}]; reabriu (status pendente, nota vazia)`
+ }
+ 
+ export function agirR1R5(a: Alvo, tipo: 'r1_allowlist' | 'r5_reabrir'): Feito {
+   const { repo, id, diag } = a
+   const sombra = a.decisao.acao === 'sombra'
+-  if (!sombra && acoesDe(lerLedger(), repo.nome, id).length) {
+-    return { feito: 'nao_consegui', motivo: 'segunda vez bloqueado depois de uma ação do resolvedor: vai para humano' }
++  if (!sombra) {
++    const feitas = acoesDe(lerLedger(), repo.nome, id)
++    const quando = diag.bloqueio.quando
++    if (feitas.some((e) => e.assinatura === diag.assinatura || (quando !== null && e.bloqueado_em === quando))) {
++      return { feito: 'nao_consegui', motivo: 'segunda vez bloqueado no mesmo bloqueio (mesma assinatura ou mesma série) depois de uma ação do resolvedor: vai para humano' }
++    }
++    if (feitas.length >= TETO_ACOES_TICKET) {
++      return { feito: 'aviso', motivo: `teto de ${TETO_ACOES_TICKET} ações do resolvedor no ticket: só diagnóstico e aviso` }
++    }
+   }
+   const rel = arquivoDoTicket(repo.caminho, id)
+   if (!rel) return { feito: 'nao_consegui', motivo: `não achei um arquivo docs/fila/${id}-*.md só` }
+   const antes = readFileSync(join(repo.caminho, rel), 'utf8')
+   // o loop agora: conferido de novo imediatamente antes da troca (repo.ts, 7f-b5)
+   const retrato = retratoDoLoop(repo.caminho, id)
+-  const plano: Plano<{ novo: string; teste?: string; criteriosLista?: number[]; guarda?: number; condicao?: string }> =
++  const plano: Plano<{ novo: string; testes?: { teste: string }[]; criteriosLista?: number[]; guardas?: number[]; condicao?: string }> =
+     tipo === 'r1_allowlist' ? planejarR1(repo.caminho, diag, antes, a.agora) : planejarR5(repo.caminho, diag, antes)
+   if (!plano.ok) return { feito: 'nao_consegui', motivo: plano.motivo }
+   const mudou = oQueMudou(tipo, plano.plano)
+@@ -120,6 +136,7 @@ export function agirR1R5(a: Alvo, tipo: 'r1_allowlist' | 'r5_reabrir'): Feito {
+     assinatura: diag.assinatura,
+     acao: tipo,
+     mudou,
++    ...(plano.plano.testes ? { testes: plano.plano.testes.map((t) => t.teste) } : {}),
+     commit: e.commit,
+     arquivo: rel,
+     copia,
+diff --git a/scripts/orquestrador/resolvedor/r1.ts b/scripts/orquestrador/resolvedor/r1.ts
+index 60c05d1..f2f66b7 100644
+--- a/scripts/orquestrador/resolvedor/r1.ts
++++ b/scripts/orquestrador/resolvedor/r1.ts
+@@ -14,6 +14,11 @@
+  *      `set -u`);
+  *   4. o ticket reabre (status `pendente`, nota vazia).
+  *
++ * Mais de um vermelho fora (7f-b7): tudo ou nada. Cada um tem de cumprir
++ * SOZINHO a D6 ou a D6b (`extracao.r1_testes`); se um só não cumpre, nenhuma
++ * ação. Cumprindo, todos entram de uma vez: na allowlist, no critério da
++ * lista, uma guarda de contagem por teste, num commit só (uma ação).
++ *
+  * Só planeja: devolve o .md novo ou o motivo de não conseguir. Quem escreve é
+  * acoes.ts. O git é só `gitLeitura` (show do branch alvo).
+  */
+@@ -32,15 +37,22 @@ export interface Contagem {
+   skip: number
+ }
+ 
+-export interface PlanoR1 {
++export interface TesteR1 {
+   teste: string
++  /** a regra que o teste cumpre sozinho */
++  regra: string
+   /** o ref onde a contagem foi medida (`staging-auto` ou `origin/staging-auto`) */
+   ref: string
+   contagem: Contagem
+-  /** índices dos critérios que listam os arquivos permitidos (o caminho entrou neles) */
++}
++
++export interface PlanoR1 {
++  /** os testes que entram, na ordem do diagnóstico (um, ou todos os vermelhos fora) */
++  testes: TesteR1[]
++  /** índices dos critérios que listam os arquivos permitidos (os caminhos entraram neles) */
+   criteriosLista: number[]
+-  /** índice do critério novo (a guarda) no ticket novo */
+-  guarda: number
++  /** índices dos critérios novos (as guardas, uma por teste) no ticket novo */
++  guardas: number[]
+   novo: string
+ }
+ 
+@@ -104,11 +116,26 @@ export function noAlvo(raiz: string, arquivo: string): { ref: string; texto: str
+   return null
+ }
+ 
+-export function planejarR1(raiz: string, diag: Diagnostico, md: string, agora: number): Plano<PlanoR1> {
+-  const teste = /^pôr (\S+) na allowlist/.exec(diag.remedio)?.[1]
++/** Os testes que o R1 põe na allowlist, ou o motivo de não pôr nenhum (tudo ou nada). */
++function testesDoPlano(diag: Diagnostico): { ok: true; testes: { teste: string; regra: string }[] } | { ok: false; motivo: string } {
++  const nomeado = /^pôr (\S+) na allowlist/.exec(diag.remedio)?.[1]
+   const fora = diag.extracao.fora_da_allowlist_e_do_diff
+-  if (!teste) return { ok: false, motivo: 'o remédio do diagnóstico não nomeia o teste' }
+-  if (fora.length !== 1 || fora[0] !== teste) return { ok: false, motivo: `mais de um vermelho fora da allowlist (${fora.join(', ')}): um conserto só não destrava` }
++  if (!nomeado) return { ok: false, motivo: 'o remédio do diagnóstico não nomeia o teste' }
++  if (fora.length === 1 && fora[0] === nomeado) return { ok: true, testes: [{ teste: nomeado, regra: diag.regra ?? 'D6' }] }
++  const por = diag.extracao.r1_testes
++  if (fora.length < 2 || !fora.includes(nomeado)) return { ok: false, motivo: `o remédio nomeia ${nomeado}, fora da allowlist estão ${fora.join(', ') || 'nenhum'}` }
++  if (!por) return { ok: false, motivo: `mais de um vermelho fora da allowlist (${fora.join(', ')}) num diagnóstico sem a regra por teste: um conserto só não destrava` }
++  const regra = (f: string) => por.find((p) => p.arquivo === f)?.regra ?? null
++  const fracos = fora.filter((f) => !regra(f))
++  if (fracos.length) {
++    return { ok: false, motivo: `mais de um vermelho fora da allowlist, tudo ou nada: ${fracos.join(', ')} não cumpre D6 nem D6b sozinho; nenhuma ação` }
++  }
++  return { ok: true, testes: fora.map((f) => ({ teste: f, regra: regra(f)! })) }
++}
++
++export function planejarR1(raiz: string, diag: Diagnostico, md: string, agora: number): Plano<PlanoR1> {
++  const quais = testesDoPlano(diag)
++  if (!quais.ok) return quais
+   let j: Record<string, unknown>
+   try {
+     j = bloco(md).json
+@@ -116,12 +143,16 @@ export function planejarR1(raiz: string, diag: Diagnostico, md: string, agora: n
+     return { ok: false, motivo: (e as Error).message }
+   }
+   const al = Array.isArray(j.pathspec_allowlist) ? (j.pathspec_allowlist as unknown[]).filter((x): x is string => typeof x === 'string') : []
+-  if (al.includes(teste)) return { ok: false, motivo: `${teste} já está na allowlist` }
+-  const fonte = noAlvo(raiz, teste)
+-  if (!fonte) return { ok: false, motivo: `${teste} não existe no branch alvo (${branchAlvo(raiz)}): sem contagem para a guarda` }
+-  const c = contar(fonte.texto)
+-  if (c.skip > 0) return { ok: false, motivo: `${teste} já tem ${c.skip} .skip/.only/.todo em ${fonte.ref}: a guarda exige zero` }
+-  if (c.it + c.test === 0 || c.expect === 0) return { ok: false, motivo: `${teste} sem it(/test( ou expect( em ${fonte.ref}: nada a guardar` }
++  const testes: TesteR1[] = []
++  for (const { teste, regra } of quais.testes) {
++    if (al.includes(teste)) return { ok: false, motivo: `${teste} já está na allowlist` }
++    const fonte = noAlvo(raiz, teste)
++    if (!fonte) return { ok: false, motivo: `${teste} não existe no branch alvo (${branchAlvo(raiz)}): sem contagem para a guarda` }
++    const c = contar(fonte.texto)
++    if (c.skip > 0) return { ok: false, motivo: `${teste} já tem ${c.skip} .skip/.only/.todo em ${fonte.ref}: a guarda exige zero` }
++    if (c.it + c.test === 0 || c.expect === 0) return { ok: false, motivo: `${teste} sem it(/test( ou expect( em ${fonte.ref}: nada a guardar` }
++    testes.push({ teste, regra, ref: fonte.ref, contagem: c })
++  }
+ 
+   const cs = Array.isArray(j.criterios_aceite) ? (j.criterios_aceite as Record<string, unknown>[]) : []
+   const lista: number[] = []
+@@ -137,7 +168,9 @@ export function planejarR1(raiz: string, diag: Diagnostico, md: string, agora: n
+   if (depoisDe < 0) return { ok: false, motivo: 'ticket sem critério: não há onde pôr a guarda' }
+ 
+   try {
+-    let novo = acrescentarAllowlist(md, teste)
++    let novo = md
++    for (const t of testes) novo = acrescentarAllowlist(novo, t.teste)
++    const aspas = testes.map((t) => ` '${t.teste}'`).join('')
+     for (const i of lista) {
+       const cmd = cs[i]!.cmd as string
+       let fim = -1
+@@ -145,16 +178,18 @@ export function planejarR1(raiz: string, diag: Diagnostico, md: string, agora: n
+         const p = cmd.lastIndexOf(`'${a}'`)
+         if (p >= 0) fim = Math.max(fim, p + a.length + 2)
+       }
+-      novo = trocarCmd(novo, i, `${cmd.slice(0, fim)} '${teste}'${cmd.slice(fim)}`)
++      novo = trocarCmd(novo, i, `${cmd.slice(0, fim)}${aspas}${cmd.slice(fim)}`)
+     }
+-    novo = inserirCriterio(novo, depoisDe, {
+-      descricao: descricaoGuarda(teste, c, fonte.ref, diag.assinatura, agora, diag.regra ?? 'D6'),
+-      cmd: cmdGuarda(teste, c.it + c.test, c.expect),
+-      espera: 'CONTAGEM_MANTIDA',
+-      tipo: 'guarda',
++    testes.forEach((t, k) => {
++      novo = inserirCriterio(novo, depoisDe + k, {
++        descricao: descricaoGuarda(t.teste, t.contagem, t.ref, diag.assinatura, agora, t.regra),
++        cmd: cmdGuarda(t.teste, t.contagem.it + t.contagem.test, t.contagem.expect),
++        espera: 'CONTAGEM_MANTIDA',
++        tipo: 'guarda',
++      })
+     })
+     novo = reabrir(novo)
+-    return { ok: true, plano: { teste, ref: fonte.ref, contagem: c, criteriosLista: lista, guarda: depoisDe + 1, novo } }
++    return { ok: true, plano: { testes, criteriosLista: lista, guardas: testes.map((_, k) => depoisDe + 1 + k), novo } }
+   } catch (e) {
+     if (e instanceof EdicaoRecusada) return { ok: false, motivo: `edição do ticket recusada: ${e.message}` }
+     throw e
+diff --git a/scripts/orquestrador/triador/extrair.ts b/scripts/orquestrador/triador/extrair.ts
+index 43aee54..43cd341 100644
+--- a/scripts/orquestrador/triador/extrair.ts
++++ b/scripts/orquestrador/triador/extrair.ts
+@@ -32,6 +32,17 @@ export interface Extracao {
+   remedio: string
+   requeue: string
+   detalhe: Detalhe
++  /**
++   * R1 (D6/D6b): cada vermelho fora da allowlist e do diff e a regra que ele
++   * cumpre SOZINHO (`null`: nenhuma), para o R1 com mais de um vermelho, tudo
++   * ou nada (7f-b7). Fica fora do `detalhe`, que vai literal ao prompt do modelo.
++   */
++  r1_testes?: R1Teste[]
++}
++
++export interface R1Teste {
++  arquivo: string
++  regra: 'D6' | 'D6b' | null
+ }
+ 
+ export interface Detalhe {
+@@ -247,15 +258,23 @@ export function extrair(ev: Evidencia): Extracao {
+   const barrado = barrados.length === 1 ? /^fora_do_pathspec: (\S+)$/.exec(barrados[0]!)?.[1] : undefined
+   const ant = ts.at(-2)
+   const vermelhoBarrado = barrado ? fora.filter((x) => x.arquivo === barrado && (x.t === ult || x.t === ant)).at(-1) : undefined
++  // cada vermelho fora, por si: D6b (o barrado), D6 (acoplado e em ≥ 2 tentativas) ou nada
++  const r1Testes = (): R1Teste[] =>
++    [...new Set(fora.map((x) => x.arquivo))].map((arquivo) => {
++      if (u === 'enforcement' && vermelhoBarrado?.arquivo === arquivo) return { arquivo, regra: 'D6b' }
++      const vezes = new Set(fora.filter((x) => x.arquivo === arquivo).map((x) => x.t.n)).size
++      return { arquivo, regra: acoplados.some((x) => x.arquivo === arquivo) && vezes >= 2 ? 'D6' : null }
++    })
++  const comTestes = (e: Extracao): Extracao => ({ ...e, r1_testes: r1Testes() })
+   if (u === 'enforcement' && vermelhoBarrado) {
+     const { t, arquivo } = vermelhoBarrado
+     const onde = local(vermelhoRefs(t, arquivo), arquivo)
+-    return sai(
++    return comTestes(sai(
+       'R1',
+       'D6b',
+       [...vermelhoRefs(t, arquivo), ult.enforcement!.ref],
+       `pôr ${arquivo} na allowlist com guarda (mesma contagem de it/expect, sem skip); vermelho em ${onde} na tentativa ${t.n} e barrado pelo enforcement na ${ult.n}`,
+-    )
++    ))
+   }
+ 
+   // D6 · vermelho fora da allowlist e do diff, acoplado ao que o ticket mudou.
+@@ -269,7 +288,7 @@ export function extrair(ev: Evidencia): Extracao {
+     const provas = acoplados.flatMap((x) => vermelhoRefs(x.t, x.arquivo))
+     const onde = local(vermelhoRefs(a.t, a.arquivo), a.arquivo)
+     if (persistentes.length) {
+-      return sai('R1', 'D6', provas, `pôr ${a.arquivo} na allowlist com guarda (mesma contagem de it/expect, sem skip); vermelho em ${onde}`)
++      return comTestes(sai('R1', 'D6', provas, `pôr ${a.arquivo} na allowlist com guarda (mesma contagem de it/expect, sem skip); vermelho em ${onde}`))
+     }
+     return sai('R1?', 'D6', provas, `conferir ${a.arquivo}: vermelho fora da allowlist numa tentativa só (${onde}); se for acoplado, pôr na allowlist com guarda`)
+   }
+diff --git a/scripts/orquestrador/triador/triar.ts b/scripts/orquestrador/triador/triar.ts
+index 263eec3..b64f1ff 100644
+--- a/scripts/orquestrador/triador/triar.ts
++++ b/scripts/orquestrador/triador/triar.ts
+@@ -43,7 +43,7 @@ export interface Diagnostico {
+   remedio: string
+   requeue: string
+   arvore_alvo_agora: string
+-  extracao: Extracao['detalhe'] & { classe: string | null; regra: string | null; firme: boolean }
++  extracao: Extracao['detalhe'] & { classe: string | null; regra: string | null; firme: boolean; r1_testes?: Extracao['r1_testes'] }
+   modelo: unknown
+   falta: string[]
+   copia_evidencia: string
+@@ -113,7 +113,7 @@ function montar(repo: string, ev: Evidencia, ext: Extracao, assin: string, agora
+     remedio: ext.remedio,
+     requeue: ext.requeue,
+     arvore_alvo_agora: arvoreAlvoAgora(raiz, ext),
+-    extracao: { ...ext.detalhe, classe: ext.classe, regra: ext.regra, firme: ext.firme },
++    extracao: { ...ext.detalhe, classe: ext.classe, regra: ext.regra, firme: ext.firme, ...(ext.r1_testes ? { r1_testes: ext.r1_testes } : {}) },
+     modelo: null,
+     falta: ev.falta,
+     copia_evidencia: copia,

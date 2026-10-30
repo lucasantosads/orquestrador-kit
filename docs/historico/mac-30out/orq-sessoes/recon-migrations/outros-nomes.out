@@ -1,0 +1,160 @@
+## 20260525_cs_module_tables
+  add: bb5bd48 2026-05-26 feat: Meta Ads integration — connections, sync, analytics & CS module
+  objetos: [['table', 'client_cs_profile'], ['table', 'client_cs_observations'], ['table', 'client_meta_connections'], ['table', 'client_meta_snapshots']]
+  mesmo objeto em: []
+  liberacoes: []
+## 20260525_meta_insights_campaigns
+  add: bb5bd48 2026-05-26 feat: Meta Ads integration — connections, sync, analytics & CS module
+  objetos: [['column', 'meta_insights_cache', 'level'], ['column', 'meta_insights_cache', 'campaign_id'], ['column', 'meta_insights_cache', 'campaign_name']]
+  mesmo objeto em: []
+  liberacoes: []
+## 20260601_create_perf_teses
+  add: c9a1b6c 2026-05-31 feat(perf): CRUD nichos + teses + patch conta nicho_id/tese_id
+  objetos: [['table', 'public.perf_teses'], ['trigger', 'trg_perf_teses_updated'], ['column', 'public.perf_ad_accounts', 'tese_id']]
+  mesmo objeto em: []
+  liberacoes: []
+## 20260601_perf_nichos
+  add: c27ada0 2026-05-31 feat(perf): catálogo perf_nichos + nicho_id em perf_ad_accounts
+  objetos: [['table', 'perf_nichos'], ['trigger', 'trg_perf_nichos_updated'], ['column', 'perf_ad_accounts', 'nicho_id']]
+  mesmo objeto em: []
+  liberacoes: ['migration-227-clientes-teses-fk-aplicada: migration 20260825000002_clientes_teses_fk_catalogo aplicada e verificada no banco: 5 colu', 'decisao-D4: Taxonomia de nicho unica: rotulos livres de clientes_receita.nicho (MEDICO, SAUDE, TRANSIT']
+## 20260620_tkt-dossie_ac_backfill_e_sync
+  add: 549573d 2026-06-20 feat(tkt-dossie): TAREFA A — backfill assistido da ponte cliente↔lead
+  objetos: [['function', 'public.fn_revincular_clientes_lead'], ['function', 'public.fn_sincronizar_dossie_clientes']]
+  mesmo objeto em: []
+  liberacoes: []
+## 20260620_tkt-dossie_b_ponte_lead
+  add: 3089dbe 2026-06-20 feat(tkt-dossie): TAREFA B — origem ligada ao lead (trigger irmão)
+  objetos: [['function', 'public.resolve_lead_clientes_receita'], ['trigger', 'trg_resolve_lead_clientes_receita'], ['column', 'public.clientes_receita', 'lead_id']]
+  mesmo objeto em: []
+  liberacoes: []
+## 20260620_tkt-dossie_t1_revinculo
+  add: 55b5ec5 2026-06-20 feat(tkt-dossie): TAREFA 1 — revínculo determinístico reunião↔lead
+  objetos: [['function', 'public.fn_normaliza_nome'], ['function', 'public.fn_revincular_reunioes'], ['column', 'public.reunioes_cliente', 'lead_match_score']]
+  mesmo objeto em: []
+  liberacoes: []
+## 20260620_tkt-dossie_t2_dossie_colunas
+  add: 5c7eac5 2026-06-20 feat(tkt-dossie): TAREFA 2 — extração do dossiê comercial + docs
+  objetos: [['column', 'public.reunioes_cliente', 'dossie_comercial']]
+  mesmo objeto em: []
+  liberacoes: []
+## 20260623_tkt-rbac_v2_ops_permissao_fundacao
+  add: 24ae9e2 2026-06-23 feat(tkt-rbac): RBAC v2 fundação — resolver puro + camada de dados + rotas admin + UI
+  objetos: [['table', 'public.ops_permissao_catalogo'], ['table', 'public.ops_cargo_nivel'], ['table', 'public.ops_permissao_cargo'], ['table', 'public.ops_permissao_colaborador']]
+  mesmo objeto em: []
+  liberacoes: []
+## 20260626_ops_esta_na_subarvore
+  add: 9bfd03f 2026-06-26 chore(migrations): lastro SQL ops_esta_na_subarvore (já aplicada no banco)
+  objetos: [['function', 'ops_esta_na_subarvore']]
+  mesmo objeto em: []
+  liberacoes: []
+## 20260628_perf_health_snapshot
+  add: 0e52ae9 2026-06-29 feat(perf): health snapshot — Health Score em serie temporal (perf_health_snapshot)
+  objetos: [['table', 'public.perf_health_snapshot'], ['trigger', 'trg_perf_health_snapshot_updated']]
+  mesmo objeto em: []
+  liberacoes: []
+## 20260628_perf_reuniao
+  add: 9dfa3fa 2026-06-29 feat(cliente-360): reunioes tl;dv — ingestao+classificacao (perf_reuniao)
+  objetos: [['table', 'public.perf_reuniao'], ['trigger', 'trg_perf_reuniao_updated']]
+  mesmo objeto em: []
+  liberacoes: ['tldv-operacional-recebendo: 07/10: webhook recebe (2 reunioes em perf_reuniao), match nao_identificado; 865 trata o ca', 'ddl-1190-aplicada: perf_reuniao_registro_manual aplicada 16/10, ledger 20261016232052 (arquivo 20261016170000']
+## 20260715000000_meta_ad_accounts_cliente_id
+  add: d6c6663 2026-07-15 feat(cron): rota /api/cron/meta-sync + migration cliente_id (nao aplicada)
+  objetos: [['column', 'meta_ad_accounts', 'cliente_id']]
+  mesmo objeto em: []
+  liberacoes: []
+## 20260716000002_ops_acoes_recomendadas
+  add: 9ff1a4d 2026-07-15 migration: ops_acoes_recomendadas (T8, aplicada 15/07 via MCP, ledger 20260715205404)
+  objetos: [['table', 'public.ops_acoes_recomendadas']]
+  mesmo objeto em: []
+  liberacoes: []
+## 20260818000001_vw_onboarding_atraso_ancora
+  add: 66cf45b 2026-08-17 ticket 097: vw_onboarding_atraso com âncora de SLA por cliente
+  objetos: [['view', 'public.vw_onboarding_atraso']]
+  mesmo objeto em: []
+  liberacoes: []
+## 20260819000000_employees_drop_senha_legado
+  add: ff9122b 2026-08-19 T4.2 fase 1: migration drop senha_visivel (nao aplicada, gate humano)
+  objetos: []
+  mesmo objeto em: []
+  liberacoes: []
+## 20260903120000_revoke_anon_views_publicas
+  add: f0d4522 2026-09-03 sec(db): revoga select de anon/authenticated em 25 views publicas — PII e C0 estavam abertos no bundle
+  objetos: []
+  mesmo objeto em: []
+  liberacoes: []
+## 20260916_perf_crm_cliente
+  add: af6286f 2026-09-16 migration: perf_crm_* espelho somente leitura do CRM do cliente (nao aplicada)
+  objetos: [['table', 'public.perf_crm_conexoes'], ['table', 'public.perf_crm_pipelines'], ['table', 'public.perf_crm_etapas'], ['table', 'public.perf_crm_oportunidades']]
+  mesmo objeto em: []
+  liberacoes: []
+## 20260921120000_espelho_config_funil_campanha
+  add: 8c38d29 2026-09-21 docs(507): espelho vivo de config_funil_campanha e aviso de obsolescencia na migration de churn
+  objetos: [['table', 'public.config_funil_campanha']]
+  mesmo objeto em: ['20260919100001_d1_funil_check_direct_ligacao.sql']
+  liberacoes: []
+## 20260922100001_d1_metricas_por_tipo
+  add: 56e80a9 2026-09-22 fila: 10 DDL da leva 22/09 escritas e NAO aplicadas (D1-D10) + 4 decisoes da Conta
+  objetos: [['table', 'public.perf_meta_campanhas'], ['column', 'public.perf_insights_daily', 'link_clicks']]
+  mesmo objeto em: []
+  liberacoes: ['ddl-metricas: aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100001_d1_metricas']
+## 20260922100002_d2_perf_otimizacoes
+  add: 56e80a9 2026-09-22 fila: 10 DDL da leva 22/09 escritas e NAO aplicadas (D1-D10) + 4 decisoes da Conta
+  objetos: [['table', 'public.perf_otimizacoes']]
+  mesmo objeto em: []
+  liberacoes: ['ddl-otimizacoes: aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100002_d2_perf_oti']
+## 20260922100003_d3_relatorio_gerado
+  add: 56e80a9 2026-09-22 fila: 10 DDL da leva 22/09 escritas e NAO aplicadas (D1-D10) + 4 decisoes da Conta
+  objetos: [['table', 'public.perf_relatorios_gerados'], ['column', 'public.perf_relatorio_cliente_config', 'cpl_limite']]
+  mesmo objeto em: []
+  liberacoes: ['ddl-relatorio: aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100003_d3_relatori']
+## 20260922100004_d4_relacao_tipos
+  add: 56e80a9 2026-09-22 fila: 10 DDL da leva 22/09 escritas e NAO aplicadas (D1-D10) + 4 decisoes da Conta
+  objetos: []
+  mesmo objeto em: []
+  liberacoes: ['ddl-relacao-tipos: aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100004_d4_relacao_']
+## 20260922100005_d5_leitura_relacao
+  add: 56e80a9 2026-09-22 fila: 10 DDL da leva 22/09 escritas e NAO aplicadas (D1-D10) + 4 decisoes da Conta
+  objetos: [['table', 'public.perf_leituras_relacao']]
+  mesmo objeto em: []
+  liberacoes: ['ddl-leitura-relacao: aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100005_d5_leitura_']
+## 20260922100006_d6_qualificacao_etapas
+  add: 56e80a9 2026-09-22 fila: 10 DDL da leva 22/09 escritas e NAO aplicadas (D1-D10) + 4 decisoes da Conta
+  objetos: []
+  mesmo objeto em: []
+  liberacoes: ['ddl-qualificacao: aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100006_d6_qualific']
+## 20260922100007_d7_contrato_etapas
+  add: 56e80a9 2026-09-22 fila: 10 DDL da leva 22/09 escritas e NAO aplicadas (D1-D10) + 4 decisoes da Conta
+  objetos: [['table', 'public.ops_produto_etapas_contratuais'], ['table', 'public.ops_cliente_contrato_etapas'], ['column', 'public.ops_cliente_produtos', 'start_em']]
+  mesmo objeto em: []
+  liberacoes: ['ddl-contrato-etapas: aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100007_d7_contrato']
+## 20260922100008_d8_fechamentos_cliente
+  add: 56e80a9 2026-09-22 fila: 10 DDL da leva 22/09 escritas e NAO aplicadas (D1-D10) + 4 decisoes da Conta
+  objetos: [['table', 'public.perf_fechamento_tokens'], ['table', 'public.perf_fechamentos_informados'], ['column', 'public.perf_fechamentos', 'confirmado_por']]
+  mesmo objeto em: []
+  liberacoes: ['ddl-fechamentos-cliente: aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100008_d8_fechamen']
+## 20260922100009_d9_documentos_etapa
+  add: 56e80a9 2026-09-22 fila: 10 DDL da leva 22/09 escritas e NAO aplicadas (D1-D10) + 4 decisoes da Conta
+  objetos: [['table', 'public.ops_template_etapa_documentos'], ['table', 'public.ops_onboarding_etapa_documentos']]
+  mesmo objeto em: []
+  liberacoes: ['ddl-documentos-etapa: aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100009_d9_document']
+## 20260922100010_d10_pacote_flags
+  add: 56e80a9 2026-09-22 fila: 10 DDL da leva 22/09 escritas e NAO aplicadas (D1-D10) + 4 decisoes da Conta
+  objetos: [['column', 'public.ops_produtos', 'tem_etapas_contratuais']]
+  mesmo objeto em: []
+  liberacoes: ['ddl-pacote-flags: aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100010_d10_pacote_']
+## 20260922100011_d11_fechamento_campanha
+  add: edbd1b3 2026-09-22 fila: D11 (campanha de origem do fechamento) e D12 (marco do onboarding) escritas e NAO aplicadas
+  objetos: [['column', 'public.perf_fechamentos', 'campaign_id'], ['column', 'public.perf_fechamentos_informados', 'campaign_id']]
+  mesmo objeto em: []
+  liberacoes: ['ddl-fechamento-campanha: aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100011_d11_fechame']
+## 20260922100012_d12_marco_onboarding
+  add: edbd1b3 2026-09-22 fila: D11 (campanha de origem do fechamento) e D12 (marco do onboarding) escritas e NAO aplicadas
+  objetos: [['column', 'public.ops_template_etapas', 'marco_contrato'], ['column', 'public.ops_onboarding_etapas', 'marco_contrato']]
+  mesmo objeto em: []
+  liberacoes: ['ddl-marco-onboarding: aplicada em 22/09 via Supabase, verificada. supabase/migrations/20260922100012_d12_marco_o']
+## 20260929000002_employees_nivel_acesso
+  add: 31415d3 2026-09-28 fix(equipe): separa a migration de employees e tira nivel_acesso até a parte 2
+  objetos: [['column', 'public.employees', 'nivel_acesso']]
+  mesmo objeto em: ['migration-schema-updates-v2.sql']
+  liberacoes: []

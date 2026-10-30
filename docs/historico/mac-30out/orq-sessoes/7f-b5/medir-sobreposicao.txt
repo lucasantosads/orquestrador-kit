@@ -1,0 +1,52 @@
+## estado atual (working tree)
+{"repo":"comarka-operacional","pares":34,"exemplos":["318c<321 [src/app/dashboard/performance/nichos-teses/drill-tese.tsx src/app/dashboard/performance/nichos-teses/ranking-criativos.tsx]","320<826b [src/app/dashboard/clientes/[id]/page.tsx src/app/dashboard/clientes/[id]/tabs/ficha-context.tsx]","320<866 [src/app/dashboard/clientes/[id]/_components/bloco-reuniao-venda.tsx src/app/dashboard/clientes/[id]/page.tsx]","320<908 [src/app/dashboard/clientes/[id]/page.tsx src/app/dashboard/clientes/[id]/tabs/ficha-context.tsx src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx src/app/dashboard/clientes/[id]/tabs/nps-ficha.ts]","320<923c [src/app/dashboard/clientes/[id]/_components/registrar-marco.tsx]"]}
+{"repo":"actus-saas","pares":0,"exemplos":[]}
+{"repo":"conteudos-infinitos","pares":0,"exemplos":[]}
+## gabarito (árvore antes da edição humana)
+{"commit":"917d35bca","humano":"826 passa a depender do 866","par_detectado":true,"direcao_da_regra":"866 depende do 826","direcao_igual":false,"arquivos":["src/app/dashboard/clientes/[id]/page.tsx"],"pares_no_repo_naquele_instante":6}
+{"commit":"ded72e169","humano":"306b passa a depender do 500","par_detectado":true,"direcao_da_regra":"500 depende do 306b","direcao_igual":false,"arquivos":["src/app/dashboard/clientes/[id]/page.tsx","src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx","test/abas-montadas.test.ts"],"pares_no_repo_naquele_instante":29}
+{"commit":"ec421bcbe","humano":"522 passa a depender do 522c","par_detectado":false,"direcao_da_regra":null,"direcao_igual":null,"arquivos":[],"pares_no_repo_naquele_instante":56}
+## histórico (main ao fim de cada dia, 11/09 a 10/10)
+{
+ "pares_distintos": 261,
+ "desfecho": {
+  "ainda aberto ou obsoleto (indeterminado)": 108,
+  "os dois done, com reprova (indeterminado)": 131,
+  "falso positivo (os dois done sem reprova)": 6,
+  "humano ligou os dois depois": 16
+ },
+ "exemplos": {
+  "ainda aberto ou obsoleto (indeterminado)": [
+   "065<346c [test/ui-guard.test.ts]",
+   "065<346d [test/ui-guard.test.ts]",
+   "315a<381b [src/app/churn/page.tsx src/app/churn/razao-grafico.ts]",
+   "315a<384 [src/app/churn/page.tsx]",
+   "322<391a [src/app/dashboard/clientes/saude/churn-aba.tsx src/app/dashboard/clientes/saude/pipeline-churn.tsx]",
+   "322<391b [src/app/dashboard/clientes/saude/churn-aba.tsx]"
+  ],
+  "os dois done, com reprova (indeterminado)": [
+   "317<391a [src/app/dashboard/clientes/saude/churn-aba.tsx src/app/dashboard/clientes/saude/pipeline-churn.tsx]",
+   "317<391b [src/app/dashboard/clientes/saude/churn-aba.tsx]",
+   "317<391c [src/app/dashboard/clientes/saude/churn-aba.tsx src/app/dashboard/clientes/saude/grafico-saidas.tsx]",
+   "317<391d [src/app/dashboard/clientes/saude/churn-aba.tsx]",
+   "306b<420 [src/app/dashboard/clientes/[id]/relatorio/page.tsx]",
+   "306b<428 [src/app/dashboard/clientes/[id]/tabs/documentos-tab.tsx]"
+  ],
+  "falso positivo (os dois done sem reprova)": [
+   "317<411 [src/app/dashboard/clientes/saude/saidas-em-andamento.tsx]",
+   "317<464 [src/components/sidebar.tsx]",
+   "701<874 [src/lib/nav/papel.ts test/nav-papel.test.ts]",
+   "709<874 [src/lib/nav/papel.ts test/nav-papel.test.ts]",
+   "831<878 [src/app/api/auth/ghl/callback/route.ts]",
+   "842<879 [src/lib/data.ts]"
+  ],
+  "humano ligou os dois depois": [
+   "306b<556 [src/app/dashboard/clientes/[id]/_components/conexoes-relacao.tsx src/app/dashboard/clientes/[id]/page.tsx]",
+   "346d<718 [test/performance-titulo.test.ts]",
+   "715<722 [src/middleware.ts]",
+   "320<723 [src/app/dashboard/clientes/[id]/setup/page.tsx src/app/dashboard/clientes/[id]/tabs/config-tab.tsx]",
+   "367<723 [src/app/dashboard/clientes/[id]/setup/page.tsx src/app/dashboard/clientes/[id]/tabs/config-tab.tsx]",
+   "701<853 [src/app/page.tsx]"
+  ]
+ }
+}

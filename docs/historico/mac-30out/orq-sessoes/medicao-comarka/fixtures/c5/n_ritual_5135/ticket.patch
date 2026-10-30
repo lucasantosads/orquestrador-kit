@@ -1,0 +1,61 @@
+diff --git a/test/inteligencia/fn-ingerir-raw-meta-insights.test.ts b/test/inteligencia/fn-ingerir-raw-meta-insights.test.ts
+new file mode 100644
+index 0000000..74debe3
+--- /dev/null
++++ b/test/inteligencia/fn-ingerir-raw-meta-insights.test.ts
+@@ -0,0 +1,55 @@
++import { describe, expect, it } from "vitest";
++import { readFileSync } from "node:fs";
++
++const SQL = readFileSync(
++  "supabase/migrations/20261016150600_inteligencia_fn_ingerir_raw_meta_insights.sql",
++  "utf-8",
++);
++const CORPO = SQL.split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
++const FN = "inteligencia\\.fn_ingerir_raw_meta_insights_dia\\(date\\)";
++
++describe("inteligencia.fn_ingerir_raw_meta_insights_dia (ticket 5135)", () => {
++  it("le perf_insights_ad_daily e perf_insights_daily como fontes", () => {
++    expect(CORPO).toMatch(/from public\.perf_insights_ad_daily/);
++    expect(CORPO).toMatch(/from public\.perf_insights_daily/);
++  });
++
++  it("grava os niveis anuncio e campanha", () => {
++    expect(CORPO).toMatch(/'anuncio'/);
++    expect(CORPO).toMatch(/'campanha'/);
++  });
++
++  it("payload fiel via to_jsonb e hash sha256, sem metrica derivada", () => {
++    expect(CORPO).toMatch(/to_jsonb\(i\) - 'id' - 'created_at' - 'updated_at'/);
++    expect(CORPO).toMatch(/encode\(sha256\(convert_to\(p\.payload::text, 'UTF8'\)\), 'hex'\)/);
++  });
++
++  it("e idempotente por on conflict do nothing e usa gen_random_uuid", () => {
++    expect((CORPO.match(/on conflict do nothing/gi) ?? []).length).toBe(2);
++    expect(CORPO).toMatch(/gen_random_uuid\(\)/);
++  });
++
++  it("e security invoker com search_path fixo e sem current_date", () => {
++    expect(CORPO).toMatch(/security invoker/i);
++    expect(CORPO).not.toMatch(/security definer/i);
++    expect(CORPO).toContain("set search_path = pg_catalog, public, inteligencia, pg_temp");
++    expect(SQL.toLowerCase()).not.toContain("current_" + "date");
++  });
++
++  it("revoga public, anon e authenticated e concede a service_role e apolo", () => {
++    expect(CORPO).toMatch(new RegExp(`revoke execute on function ${FN} from public, anon, authenticated;`, "i"));
++    expect(CORPO).toMatch(new RegExp(`grant execute on function ${FN} to service_role;`, "i"));
++    expect(CORPO).toMatch(new RegExp(`grant execute on function ${FN} to apolo;`, "i"));
++  });
++
++  it("nao ha update nem delete na tabela raw", () => {
++    expect(CORPO).not.toMatch(/\bupdate\s+inteligencia\.raw_/i);
++    expect(CORPO).not.toMatch(/\bdelete\s+from\s+inteligencia\.raw_/i);
++  });
++
++  it("devolve o resumo com os seis campos", () => {
++    for (const k of ["dia", "ingest_run_id", "anuncios_lidos", "anuncios_inseridos", "campanhas_lidas", "campanhas_inseridas"]) {
++      expect(CORPO).toContain(`'${k}'`);
++    }
++  });
++});

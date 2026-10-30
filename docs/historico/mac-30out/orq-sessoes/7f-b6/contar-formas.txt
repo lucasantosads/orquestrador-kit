@@ -1,0 +1,9 @@
+comarka-operacional: 1115 tickets
+  A: aberto=12 ['921', '921b', '922', '922b', '923', '923b', '924', '924b', '924c', '924d', '924f', '926b'] | done=7
+  B: aberto=1 ['991'] | done=316
+actus-saas: 157 tickets
+  A: aberto=0 [] | done=0
+  B: aberto=0 [] | done=0
+conteudos-infinitos: 87 tickets
+  A: aberto=0 [] | done=0
+  B: aberto=0 [] | done=0

@@ -1,0 +1,129 @@
+diff --git a/src/lib/comercial/funil-cliente.ts b/src/lib/comercial/funil-cliente.ts
+index 884fad7..000bb7d 100644
+--- a/src/lib/comercial/funil-cliente.ts
++++ b/src/lib/comercial/funil-cliente.ts
+@@ -15,9 +15,12 @@ export interface LeadFunil {
+   etapa: string | null;
+   is_mql: boolean | null;
+   is_sql: boolean | null;
++  mql_em?: string | null;
++  sql_em?: string | null;
+   rm_em?: string | null;
+   rr_em?: string | null;
+   venda_em?: string | null;
++  origem?: string | null;
+   campaign_id: string | null;
+   created_at: string;
+ }
+@@ -31,7 +34,11 @@ export interface FechamentoFunil {
+   campaign_id: string | null;
+   valor_total: number | string | null;
+ }
+-export interface Periodo { from: string; to: string }
++/** aposTo = dia seguinte ao to (exclusivo); sem ele sai de to. */
++export interface Periodo { from: string; to: string; aposTo?: string }
++/** evento: cada marco conta no periodo da propria data. coorte: lead criado no periodo, marca em qualquer data. */
++export type ModoFunil = "evento" | "coorte";
++export const ORIGEM_FORA_DO_FUNIL = "instagram_dm";
+ 
+ export interface EtapaFunil {
+   nome: string;
+@@ -49,6 +56,7 @@ export interface FunilCliente {
+   cpmql: number | null;
+   cac: number | null;
+   campanhas_que_fecham: CampanhaQueFecha[];
++  fora_do_funil: { instagram_dm: number };
+ }
+ 
+ const ORDEM_CLASSE = ["MQL", "SQL", "RM", "RR", "VENDA"];
+@@ -95,13 +103,20 @@ function contar(et: EtapaFunil, l: LeadFunil) {
+ }
+ 
+ /** Uma linha por classe que o cliente mapeia, contando as marcas do motor. */
+-function etapasPeloMotor(leads: LeadFunil[], regras: RegraFunil[]): EtapaFunil[] {
++function etapasPeloMotor(
++  leads: LeadFunil[],
++  regras: RegraFunil[],
++  evento?: { marcaNoPeriodo: (l: LeadFunil, c: string) => boolean; criadoNoPeriodo: (l: LeadFunil) => boolean },
++): EtapaFunil[] {
+   const classes = ORDEM_CLASSE.filter((c) => regras.some((r) => r.classifica_como === c));
+   const linhas = new Map(classes.map((c) => [c, linhaVazia(ROTULO_CLASSE[c], c)]));
+   const semRegra = linhaVazia(ROTULO_SEM_CLASSIFICACAO, null);
+   for (const l of leads) {
+-    const marcas = marcasDoLead(l).filter((c) => linhas.has(c));
+-    if (marcas.length === 0) contar(semRegra, l);
++    const todas = marcasDoLead(l);
++    // Em evento a marca so conta com a data dentro do periodo.
++    const marcas = todas.filter((c) => linhas.has(c) && (!evento || evento.marcaNoPeriodo(l, c)));
++    const semMarca = todas.length === 0 || (!evento && marcas.length === 0);
++    if (semMarca && (!evento || evento.criadoNoPeriodo(l))) contar(semRegra, l);
+     for (const c of marcas) contar(linhas.get(c) as EtapaFunil, l);
+   }
+   const lista = Array.from(linhas.values());
+@@ -130,17 +145,44 @@ function etapasPorEstagio(leads: LeadFunil[], regras: RegraFunil[]): EtapaFunil[
+   return lista;
+ }
+ 
++/** Data do marco da classe; MQL e SQL so valem com a flag E a data. */
++function dataDaMarca(l: LeadFunil, c: string): string | null {
++  if (c === "MQL") return l.is_mql ? l.mql_em ?? null : null;
++  if (c === "SQL") return l.is_sql ? l.sql_em ?? null : null;
++  if (c === "RM") return l.rm_em ?? null;
++  if (c === "RR") return l.rr_em ?? null;
++  return l.venda_em ?? null;
++}
++
+ export function montarFunilCliente(
+-  leads: LeadFunil[],
++  todosLeads: LeadFunil[],
+   regras: RegraFunil[],
+   fechamentos: FechamentoFunil[],
+   gasto: number | null,
+   periodo: Periodo,
++  modo: ModoFunil = "evento",
+ ): FunilCliente {
+-  const lista = funilPeloMotor(regras) ? etapasPeloMotor(leads, regras) : etapasPorEstagio(leads, regras);
++  const aposTo = periodo.aposTo ?? new Date(Date.parse(`${periodo.to}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
++  const dentro = (d: string | null | undefined) => !!d && d >= periodo.from && d < aposTo;
++  const criadoNoPeriodo = (l: LeadFunil) => dentro(l.created_at);
++
++  // Lead de DM do Instagram fica fora de etapa, total, cpmql e campanhas.
++  const comOrigemDm = todosLeads.filter((l) => l.origem === ORIGEM_FORA_DO_FUNIL);
++  const base = todosLeads.filter((l) => l.origem !== ORIGEM_FORA_DO_FUNIL);
++  const pelaData = modo === "evento" && funilPeloMotor(regras);
++  // Total, pct e campanhas partem dos leads criados no periodo; fora do motor o modo e ignorado.
++  const leads = base.filter(criadoNoPeriodo);
++
++  const lista = funilPeloMotor(regras)
++    ? etapasPeloMotor(
++        pelaData ? base : leads,
++        regras,
++        pelaData ? { marcaNoPeriodo: (l, c) => dentro(dataDaMarca(l, c)), criadoNoPeriodo } : undefined,
++      )
++    : etapasPorEstagio(leads, regras);
+   for (const e of lista) e.pct = leads.length > 0 ? Math.round((e.quantidade / leads.length) * 1000) / 10 : 0;
+ 
+-  const campanhaDoLead = new Map<string, string | null>(leads.map((l) => [l.id, l.campaign_id]));
++  const campanhaDoLead = new Map<string, string | null>(base.map((l) => [l.id, l.campaign_id]));
+   const porCampanha = new Map<string, CampanhaQueFecha>();
+   const ref = (id: string) => {
+     let c = porCampanha.get(id);
+@@ -159,13 +201,15 @@ export function montarFunilCliente(
+     .filter((c) => c.vendas > 0)
+     .sort((a, b) => b.valor - a.valor || b.vendas - a.vendas || a.campaign_id.localeCompare(b.campaign_id));
+ 
+-  const mql = leads.filter((l) => l.is_mql).length;
++  const mql = pelaData ? base.filter((l) => dentro(dataDaMarca(l, "MQL"))).length : leads.filter((l) => l.is_mql).length;
++  const sql = pelaData ? base.filter((l) => dentro(dataDaMarca(l, "SQL"))).length : leads.filter((l) => l.is_sql).length;
+   return {
+-    periodo,
++    periodo: { from: periodo.from, to: periodo.to },
+     etapas: lista,
+-    totais: { leads: leads.length, mql, sql: leads.filter((l) => l.is_sql).length, vendas: fechamentos.length, valor_vendido: valorVendido },
++    totais: { leads: leads.length, mql, sql, vendas: fechamentos.length, valor_vendido: valorVendido },
+     cpmql: dividir(gasto, mql),
+     cac: dividir(gasto, fechamentos.length),
+     campanhas_que_fecham: campanhas,
++    fora_do_funil: { instagram_dm: comOrigemDm.filter(criadoNoPeriodo).length },
+   };
+ }

@@ -1,0 +1,173 @@
+diff --git a/src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx b/src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx
+index b1da25c..6c0569a 100644
+--- a/src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx
++++ b/src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx
+@@ -207,9 +207,13 @@ export type SemFonte = Partial<Record<ChaveCelula, string>>;
+  */
+ export function colunasSemFonte(contas: ContaCampanhas[], conexao?: EstadoConexaoCrm): SemFonte {
+   const leadsCrm = contas.some((c) => (c.campaigns ?? []).some((x) => x.leads_crm != null));
+-  const mql = mostrarColunasCrm(contas);
++  const mql = mostrarColunasCrm(contas) || contas.some((c) => (c.campaigns ?? []).some((x) => x.mqls_coorte != null));
+   const reunioes = motivoCrm(conexao, "reunioes");
+-  const r: SemFonte = { r_ag: reunioes, r_feita: reunioes };
++  const r: SemFonte = {};
++  const temRm = contas.some((c) => (c.campaigns ?? []).some((x) => x.rm != null));
++  const temRr = contas.some((c) => (c.campaigns ?? []).some((x) => x.rr != null));
++  if (!temRm) r.r_ag = reunioes;
++  if (!temRr) r.r_feita = reunioes;
+   if (!leadsCrm) { const m = motivoCrm(conexao, "leads"); r.l_crm = m; r.div = m; }
+   if (!mql) { const m = motivoCrm(conexao, "mql"); r.mql = m; r.pct_mql = m; r.cpmql = m; }
+   return r;
+@@ -255,6 +259,15 @@ export interface CampanhaLinha {
+   vendas?: number | null;
+   /** Leads do CRM desta campanha; ausente enquanto o CRM não está conectado. */
+   leads_crm?: number | null;
++  /** MQL dos leads que chegaram no período (coorte), a mesma base do L.CRM. */
++  mqls_coorte?: number | null;
++  /** Reuniões marcadas e realizadas vindas do CRM; null/ausente = sem fonte. */
++  rm?: number | null;
++  rr?: number | null;
++  /** false: nenhum lead desta campanha chegou ao CRM com a origem. */
++  crm_medido?: boolean;
++  /** De onde vêm as vendas: "crm" mostra a legenda "pelo CRM". */
++  vendas_fonte?: "crm" | "fechamentos";
+ }
+ 
+ export interface ContaCampanhas {
+@@ -468,13 +481,25 @@ function semBaseCel(motivo: string): Celula {
+ export function celulaLMeta(r: ResultadoAgregado): Celula {
+   if (r.tipo === "sem_base") return semBaseCel(SEM_RESULTADO);
+   if (r.tipo === "misto") return { texto: "misto", ausente: true, motivo: motivoMisto(r) };
++  if (r.familia !== "lead") return celulaEngajamento();
+   return { texto: fmtInt(r.qtd), ausente: false };
+ }
+ 
+-/** CPL = Investido / L.Meta, com o nome do resultado embaixo. Engajamento é custo por visita. */
++/** Resultado de engajamento não é lead: sem quantidade e sem custo por lead. */
++function celulaEngajamento(): Celula {
++  return { texto: "Engajamento", ausente: true, motivo: "resultado de engajamento não é lead" };
++}
++
++export const MOTIVO_MQL_COORTE = "MQL dos leads que chegaram no período";
++const NAO_MEDIDO = "Não medido";
++const MOTIVO_NAO_MEDIDO = "nenhum lead desta campanha chegou ao CRM com a origem";
++const naoMedidoCel = (): Celula => ({ texto: NAO_MEDIDO, ausente: true, motivo: MOTIVO_NAO_MEDIDO });
++
++/** CPL = Investido / L.Meta, com o nome do resultado embaixo. Só resultado da família lead. */
+ export function celulaCpl(gasto: number, r: ResultadoAgregado): Celula {
+   if (r.tipo === "sem_base") return semBaseCel(SEM_RESULTADO);
+   if (r.tipo === "misto") return { texto: "misto", ausente: true, motivo: motivoMisto(r) };
++  if (r.familia !== "lead") return celulaEngajamento();
+   const legenda = r.nomes.join(" + ");
+   if (!(r.qtd > 0)) return { texto: NAO_CALCULAVEL, ausente: true, motivo: "nenhum resultado no período", legenda, derivado: r.derivado };
+   return { texto: fmtBRL(gasto / r.qtd), ausente: false, legenda, derivado: r.derivado };
+@@ -514,13 +539,27 @@ export function celulasMetricas(
+ ): Record<ChaveCelula, Celula> {
+   const r = agregarResultados(c.resultados ?? []);
+   const lMeta = lMetaCaptacao(r);
++  const naoMedida = c.crm_medido === false;
++  const coorte = c.mqls_coorte ?? null;
+   const rastreado = mqlRastreado === true && c.mqls !== undefined;
+-  const mqls = rastreado ? c.mqls! : null;
++  // Ticket 982: na tabela o MQL é o da coorte (mesma base do L.CRM); sem o campo novo, o de hoje.
++  const mqls = coorte !== null ? coorte : rastreado ? c.mqls! : null;
+   const semMql: Celula = { ...semBaseCel(motivoCrm(crmConexao, "mql")), crm: true };
+   const semLeads: Celula = { ...semBaseCel(motivoCrm(crmConexao, "leads")), crm: true };
+   const semReunioes: Celula = { ...semBaseCel(motivoCrm(crmConexao, "reunioes")), crm: true };
+   const lCrm = c.leads_crm ?? null;
++  const vendasPeloCrm = c.vendas_fonte === "crm";
+   const vendas = c.vendas;
++  const reuniao = (n: number | null | undefined): Celula =>
++    naoMedida ? naoMedidoCel() : n == null ? semReunioes : { texto: fmtInt(n), ausente: false };
++  const pctMql: Celula = naoMedida ? naoMedidoCel()
++    : mqls === null ? semMql
++    : coorte !== null
++      ? lCrm === null ? semLeads : celulaRazao(mqls, lCrm, fmtPct, "nenhum lead do CRM no período")
++      // Resposta antiga (sem mqls_coorte): o cálculo de antes, sobre o lead da Meta de captação.
++      : lMeta !== null && lMeta > 0
++        ? celulaRazao(mqls, lMeta, fmtPct, "nenhum lead da Meta no período")
++        : semBaseCel("sem leads da Meta de captação no período");
+   const semVenda = vendas === undefined
+     ? semBaseCel("venda é registrada por campanha")
+     : vendas === null
+@@ -533,19 +572,17 @@ export function celulasMetricas(
+       : semBaseCel("status indisponível"),
+     investimento: { texto: fmtBRL(c.gasto), ausente: false },
+     l_meta: celulaLMeta(r),
+-    l_crm: lCrm === null ? semLeads : { texto: fmtInt(lCrm), ausente: false },
+-    div: lCrm === null ? semLeads : celulaDivergencia(lMeta, lCrm),
++    l_crm: naoMedida ? naoMedidoCel() : lCrm === null ? semLeads : { texto: fmtInt(lCrm), ausente: false },
++    div: naoMedida ? naoMedidoCel() : lCrm === null ? semLeads : celulaDivergencia(lMeta, lCrm),
+     cpl: celulaCpl(c.gasto, r),
+-    mql: mqls === null ? semMql : { texto: fmtInt(mqls), ausente: false },
+-    pct_mql: mqls === null
+-      ? semMql
+-      : lMeta !== null && lMeta > 0
+-        ? { texto: fmtPct(mqls / lMeta), ausente: false }
+-        : semBaseCel("sem leads da Meta de captação no período"),
+-    cpmql: mqls === null ? semMql : celulaRazao(c.gasto, mqls, fmtBRL, "nenhum MQL no período"),
+-    r_ag: semReunioes,
+-    r_feita: semReunioes,
+-    vendas: typeof vendas === "number" && vendas > 0 ? { texto: fmtInt(vendas), ausente: false } : semVenda,
++    mql: naoMedida ? naoMedidoCel() : mqls === null ? semMql : { texto: fmtInt(mqls), ausente: false },
++    pct_mql: pctMql,
++    cpmql: naoMedida ? naoMedidoCel() : mqls === null ? semMql : celulaRazao(c.gasto, mqls, fmtBRL, "nenhum MQL no período"),
++    r_ag: reuniao(c.rm),
++    r_feita: reuniao(c.rr),
++    vendas: typeof vendas === "number" && vendas > 0
++      ? { texto: fmtInt(vendas), ausente: false, ...(vendasPeloCrm ? { legenda: "pelo CRM" } : {}) }
++      : semVenda,
+     cac: typeof vendas === "number" && vendas > 0 ? { texto: fmtBRL(c.gasto / vendas), ausente: false } : semVenda,
+   };
+ }
+@@ -679,8 +716,10 @@ function CelulaStatus({ c }: { c: Celula }) {
+ // controle com contorno, não link solto; o texto segue na cor de ação do mockup.
+ const CLASSE_ACAO = `${buttonVariants({ variant: "outline", size: "xs" })} text-primary`;
+ 
+-export function PilulaFunil({ tipo, onTrocar, salvando }: {
++export function PilulaFunil({ tipo, onTrocar, salvando, detectado }: {
+   tipo: string | null | undefined; onTrocar: (novo: string) => void; salvando: boolean;
++  /** Rótulo do objetivo detectado; aparece ao lado de "+ tipo" quando o gestor não gravou tipo. */
++  detectado?: string | null;
+ }) {
+   const v = funilVisual(tipo);
+   const valor = v && tipo ? (tipo === "mensagem" ? "mensagens" : tipo) : "";
+@@ -693,7 +732,12 @@ export function PilulaFunil({ tipo, onTrocar, salvando }: {
+         >
+           {v.sigla}
+         </span>
+-      ) : <span className={CLASSE_ACAO}>+ tipo</span>}
++      ) : (
++        <>
++          <span className={CLASSE_ACAO}>+ tipo</span>
++          {detectado && <span data-testid="tipo-detectado" className="ml-1 text-fs-label text-muted-foreground">detectado: {detectado}</span>}
++        </>
++      )}
+       <select
+         aria-label="Tipo de funil"
+         disabled={salvando}
+@@ -973,7 +1017,7 @@ export function CorpoTabela({ contas, contasCliente, estado, filtro, filtroStatu
+               return (
+                 <th
+                   key={h}
+-                  title={motivo}
++                  title={motivo ?? (h === "MQL" ? MOTIVO_MQL_COORTE : undefined)}
+                   data-sem-fonte={motivo ? "" : undefined}
+                   className={`whitespace-nowrap px-2 py-1.5 font-medium ${i === 0 ? CLASSE_FIXA : ""} ${numerica ? "text-right font-mono tabular-nums" : "text-left"} ${motivo ? "cursor-help" : ""}`}
+                 >{h}</th>
+@@ -1013,8 +1057,13 @@ export function CorpoTabela({ contas, contasCliente, estado, filtro, filtroStatu
+                 </td>
+                 {vis.has("funil") && <td className="px-2 py-1.5">
+                   <span className="flex flex-col items-start gap-0.5">
+-                    <PilulaFunil tipo={estado.tipos[c.campaign_id]} salvando={salvandoId === c.campaign_id} onTrocar={(t) => onTipo(c, t)} />
+-                    {objetivo !== "nao_identificado" && (
++                    <PilulaFunil
++                      tipo={estado.tipos[c.campaign_id]}
++                      salvando={salvandoId === c.campaign_id}
++                      onTrocar={(t) => onTipo(c, t)}
++                      detectado={objetivo !== "nao_identificado" ? rotuloObjetivo(objetivo) : null}
++                    />
++                    {objetivo !== "nao_identificado" && tipoGestor && (
+                       <span data-testid="objetivo-campanha" className="text-fs-label text-muted-foreground">{rotuloObjetivo(objetivo)}</span>
+                     )}
+                   </span>

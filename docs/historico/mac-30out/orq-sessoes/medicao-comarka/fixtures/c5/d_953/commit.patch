@@ -1,0 +1,62 @@
+diff --git a/src/lib/comercial/funil-cliente.ts b/src/lib/comercial/funil-cliente.ts
+index 000bb7d..5b20d23 100644
+--- a/src/lib/comercial/funil-cliente.ts
++++ b/src/lib/comercial/funil-cliente.ts
+@@ -6,7 +6,20 @@
+  * estagio_pipeline contra a etapa do lead. Lead sem nada vai no fim como
+  * "Sem classificação". Divisão por zero é null.
+  */
++import { limitesDoPeriodoSP } from "@/lib/perf/periodo-sp";
++
+ export const LIMITE_LEADS_ETAPA = 10;
++const DATA_PURA = /^\d{4}-\d{2}-\d{2}$/;
++
++/** Limites do periodo no dia de Sao Paulo em milissegundos; data invalida volta null (cai no corte por texto). */
++function limitesSeguros(from: string, to: string): { inicio: number; fim: number } | null {
++  try {
++    const { inicio, fimExclusivo } = limitesDoPeriodoSP(from, to);
++    return { inicio: Date.parse(inicio), fim: Date.parse(fimExclusivo) };
++  } catch {
++    return null;
++  }
++}
+ export const ROTULO_SEM_CLASSIFICACAO = "Sem classificação";
+ 
+ export interface LeadFunil {
+@@ -52,7 +65,8 @@ export interface CampanhaQueFecha { campaign_id: string; leads: number; vendas:
+ export interface FunilCliente {
+   periodo: Periodo;
+   etapas: EtapaFunil[];
+-  totais: { leads: number; mql: number; sql: number; vendas: number; valor_vendido: number };
++  /** mql_coorte: MQL dos leads criados no periodo (mesma base de leads), para o %MQL. */
++  totais: { leads: number; mql: number; mql_coorte: number; sql: number; vendas: number; valor_vendido: number };
+   cpmql: number | null;
+   cac: number | null;
+   campanhas_que_fecham: CampanhaQueFecha[];
+@@ -163,7 +177,16 @@ export function montarFunilCliente(
+   modo: ModoFunil = "evento",
+ ): FunilCliente {
+   const aposTo = periodo.aposTo ?? new Date(Date.parse(`${periodo.to}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+-  const dentro = (d: string | null | undefined) => !!d && d >= periodo.from && d < aposTo;
++  // Timestamp (created_at, marcos) compara pelo instante contra o dia de Sao Paulo; texto e data pura
++  // ('YYYY-MM-DD') segue a comparacao por dia. Antes o timestamp UTC era comparado como texto e o lead
++  // das 21h as 24h de SP caia no dia seguinte.
++  const limitesSP = limitesSeguros(periodo.from, periodo.to);
++  const dentro = (d: string | null | undefined) => {
++    if (!d) return false;
++    if (DATA_PURA.test(d) || !limitesSP) return d >= periodo.from && d < aposTo;
++    const t = Date.parse(d);
++    return Number.isFinite(t) && t >= limitesSP.inicio && t < limitesSP.fim;
++  };
+   const criadoNoPeriodo = (l: LeadFunil) => dentro(l.created_at);
+ 
+   // Lead de DM do Instagram fica fora de etapa, total, cpmql e campanhas.
+@@ -206,7 +229,7 @@ export function montarFunilCliente(
+   return {
+     periodo: { from: periodo.from, to: periodo.to },
+     etapas: lista,
+-    totais: { leads: leads.length, mql, sql, vendas: fechamentos.length, valor_vendido: valorVendido },
++    totais: { leads: leads.length, mql, mql_coorte: leads.filter((l) => l.is_mql).length, sql, vendas: fechamentos.length, valor_vendido: valorVendido },
+     cpmql: dividir(gasto, mql),
+     cac: dividir(gasto, fechamentos.length),
+     campanhas_que_fecham: campanhas,

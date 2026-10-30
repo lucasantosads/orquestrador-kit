@@ -1,0 +1,422 @@
+====================================================================================================
+4509aa0 30/09 16:14 Lucas Santos
+fix(perf): B3.2 leads e CPL pela regra da ficha no diário, funil, histórico semanal e Carteira
+
+Leads = resultado_qtd das campanhas de captação (família lead) da janela; CPL =
+gasto dessas campanhas / leads. Sem lead com investimento: "sem resultado".
+Funil mostra o período de comparação em DD/MM.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 666b (done 2026-09-26 19:40, prim=sim, aprovado 856ef9301)
+      route.ts: - const visitasPeriodo = somar(selecao.filter((r) => r.data_ref >= from)).visitas_perfil;
+====================================================================================================
+9a81d70 08/10 10:56 Lucas Santos
+fix(ghl-backfill): backfill resumível com checkpoint, fases próprias e status no card da ficha
+
+Junta 7a6356c e 2f4df6f (perf/crm-etapa-mapeamento) sobre origin/main.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 744 (done 2026-10-05 19:18, prim=nao, aprovado f22f4f5f0)
+      route.ts: - * Roda o mesmo sync da conexão (pipelines, etapas e nome da conta) e, se o backfill dos
+      route.ts: - * contatos não terminou, enfileira o job dele (idempotente: job vivo não duplica).
+      route.ts: - await enfileirarBackfillGhl(db, { clienteId, locationId: conexao.location_id });
+      route.ts: - import { enfileirarBackfillGhl } from "@/lib/perf/ghl-backfill";
+      crm-cliente-etapas-sync.test.ts: - expect(vi.mocked(enfileirarBackfillGhl)).not.toHaveBeenCalled();
+      crm-cliente-etapas-sync.test.ts: - expect(vi.mocked(enfileirarBackfillGhl)).toHaveBeenCalledTimes(1);
+      crm-cliente-etapas-sync.test.ts: - expect(vi.mocked(enfileirarBackfillGhl).mock.calls[0][1]).toMatchObject({ clienteId: CLIENTE, locationId: LOC });
+      crm-cliente-etapas-sync.test.ts: - import { enfileirarBackfillGhl } from "@/lib/perf/ghl-backfill";
+  --- ticket 761 (done 2026-10-05 14:40, prim=nao, aprovado b548169e8)
+      ghl-backfill.ts: - dados = JSON.parse(await resp.text()) as { contacts?: unknown };
+      ghl-backfill.ts: - for (const contato of contatos) {
+      ghl-backfill.ts: - for (let pagina = 0; pagina < maxPaginas && !terminou; pagina++) {
+      ghl-backfill.ts: - let dados: { contacts?: unknown };
+  --- ticket 762 (done 2026-10-05 18:30, prim=nao, aprovado 3179addba)
+      ghl-backfill.ts: - .eq("cliente_id", c.cliente_id)
+      ghl-backfill.ts: - .eq("status", "ativa")
+      ghl-backfill.ts: - .eq("tipo", TIPO_JOB_BACKFILL)
+      ghl-backfill.ts: - .from("ops_jobs")
+      ghl-backfill-job.test.ts: - const arg = h.enqueue.mock.calls[0][1];
+      ghl-backfill-job.test.ts: - const base = h.resolver;
+      ghl-backfill-job.test.ts: - const consulta = h.ops.find((o) => o.table === "ops_jobs");
+      ghl-backfill-job.test.ts: - expect(arg.cliente_id).toBe(CLIENTE);
+  --- ticket 763 (done 2026-10-05 18:43, prim=sim, aprovado 652f46458)
+      ghl-backfill.ts: - * passa sempre 'backfill'.
+      ghl-backfill.ts: - /** Cursor da fase de oportunidades: pipeline em curso e a ancora da proxima pagina (meta do GHL). */
+      ghl-backfill.ts: - // 763: contatos nao concluem mais o backfill; a fase de oportunidades conclui.
+      ghl-backfill.ts: - : { pipeline_idx: cursor.pipeline_idx + 1, startAfter: null, startAfterId: null };
+      ghl-backfill-job.test.ts: - // "itens não gravados" sai da fase de oportunidades, coberta em ghl-backfill-oportunidades.test.ts.
+      ghl-backfill-job.test.ts: - // 763: a fase de contatos terminada NAO grava mais backfill_concluido_em nem mexe em ultimo_erro;
+      ghl-backfill-job.test.ts: - // 763: as 2 falhas de entrada seguem no payload da fase seguinte (falhas: 2); a mensagem final
+      ghl-backfill-job.test.ts: - // enfileira a fase de oportunidades (passo 0) com os acumulados. Os 3 contatos da pagina viram processados: 3.
+      ghl-backfill-oportunidades.test.ts: - // Date.now avança 150 s por chamada: a 1a página (100) não estoura 200 s, a 2a (mais 100) estoura; 10 + 200 = 210.
+      ghl-backfill-oportunidades.test.ts: - expect(arg.payload.cursor).toMatchObject({ pipeline_idx: 0, startAfter: 1700000000, startAfterId: "ultimo-id" });
+      ghl-backfill-oportunidades.test.ts: - expect(arg.payload.processados).toBe(210);
+====================================================================================================
+a2cd69e 08/10 13:21 Lucas Santos
+fix(pos-release-0810): chip Saúde da ficha e Início lento
+
+Bug 1: /api/clientes/sinais aceita notion id ou id do OS (resolverClientes,
+mesma regra de resolverCliente, em lote) e devolve a resposta indexada pelo
+mesmo id pedido. A ficha chamava com o notion id da URL e recebia {}.
+
+Bug 2: carregarVacuos fazia 2 consultas em série por cliente (contatos e
+cadastro); agora contatosEfetivosDosClientes lê em lote (.in) e as leituras
+independentes rodam em Promise.all. carregarInicio vira caso de uma pessoa de
+carregarInicios (3 estágios paralelos); a equipe calcula gestores e head num
+lote só, em vez de uma carga por gestor mais uma em série para o head.
+Formato das respostas inalterado. Teste prova consultas constantes com 3 e
+40 clientes e com 2 e 6 gestores (antes: 34 -> 108 e 100 -> 248).
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 694 (done 2026-10-07 15:16, prim=nao, aprovado 03f0d77f0)
+      carregar-carteira.ts: - .filter((g) => g.group_jid && g.cliente_id && ids.indexOf(g.cliente_id) !== -1);
+      carregar-carteira.ts: - .gte("ocorrido_em", new Date(agoraMs - 30 * MS_DIA).toISOString()),
+      carregar-carteira.ts: - .in("status", ["ok", "parcial"]).order("created_at", { ascending: false }).limit(1),
+      carregar-carteira.ts: - // Faixas disjuntas de faixaRenovacao (693): em_15 = até 15 dias, em_30 = de 16 a 30 dias.
+  --- ticket 699 (done 2026-10-07 16:25, prim=sim, aprovado 419a92762)
+      route.ts: - // Ticket 699: visão da equipe no Início do head. Cada gestor é calculado por carregarInicio (a mesma
+      route.ts: - // função do 694, sem regra nova). Papel só por papelDe; dono do cliente só por quem-cuida.
+      route.ts: - carregarQuemCuida(supabase),
+      route.ts: - const [empRes, cargoRes] = await Promise.all([
+  --- ticket 705 (done 2026-10-07 17:13, prim=sim, aprovado ad532d736)
+      carregar-carteira.ts: - .in("id", Array.from(overrides.values()).map((o) => o.autor_id));
+      carregar-carteira.ts: - cliente_id: c.id, nome: c.nome ?? "", cor: override ? override.cor : av.cor, cor_regra: av.cor, override,
+      carregar-carteira.ts: - const [gruposRes, contasRes, tarefasRes, overridesRes, respostasRes, feriados, fidelidade] = await Promise.all([
+      carregar-carteira.ts: - const autoresRes = overrides.size === 0 ? { data: [], error: null } : await db.from("employees").select("id, nome")
+  --- ticket 711a (done 2026-10-07 19:16, prim=nao, aprovado 3b4bc09b3)
+      route.ts: - // Contrato consumido pela carteira e pela ficha (711b): { [cliente_id]: { cor, sinal, motivo, faltando, override } }.
+      route.ts: - const linhas = await carregarSinaisPorIds(supabase, { id: session.employeeId, papel }, ids, new Date().toISOString());
+      route.ts: - for (const l of linhas) {
+      route.ts: - saida[l.cliente_id] = { cor: l.cor, sinal: l.sinal, motivo: l.motivo, faltando: l.faltando, override: l.override ?? null };
+      carregar-carteira.ts: - .filter((c) => isClienteAtivo(c.status) && (opcoes?.ids ? opcoes.ids.indexOf(c.id) !== -1 : noRecorte(pessoa, quem, c.id)));
+  --- ticket 734 (done 2026-10-02 15:29, prim=sim, aprovado a8ea88e1a)
+      vacuo.ts: - .from("cs_wpp_mensagem")
+      vacuo.ts: - .from("perf_vacuo_tratado")
+      vacuo.ts: - .gte("enviada_em", desdeISO)
+      vacuo.ts: - .in("group_jid", jids);
+====================================================================================================
+80a212f 08/10 13:34 Lucas Santos
+fix(pos-release-0810): paginação das mensagens e contatos em lote (vácuo, eventos, promessas)
+
+Achados do hotfix 2cc48bc:
+- vácuo, eventos de resposta e detecção de promessas liam as mensagens com
+  .order(enviada_em asc).limit(5000); o servidor corta em 1000 e as mais
+  recentes sumiam. Agora paginam com fetchAllPaged (lerMensagensPaginadas),
+  desempate por wpp_message_id. Falha na 1ª página mantém o zero de antes;
+  falha da 2ª página em diante lança; mais de 50 mil lança.
+- eventos e promessas liam os contatos cliente a cliente (N+1); agora usam
+  contatosEfetivosDosClientes, uma leitura para todos. Falha na leitura de
+  contatos lança (o cron falha em vez de classificar errado).
+
+Testes: test/mensagens-paginadas-lote.test.ts (banco falso com teto de 1000
+por chamada, 2500 mensagens, fronteira da 1ª/2ª página, teto de 50 mil,
+40 clientes = 1 leitura de contatos). Mocks existentes ganham .range.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 715 (done 2026-10-02 11:14, prim=nao, aprovado 020e33ef9)
+      resposta-grupo.ts: - .from("cs_wpp_mensagem")
+      resposta-grupo.ts: - .gte("enviada_em", desdeISO)
+      resposta-grupo.ts: - .in("remote_jid", jids)
+      resposta-grupo.ts: - .limit(LIMITE_MENSAGENS);
+      eventos-resposta-grupo.test.ts: - for (const m of ["select", "is", "neq", "in", "gte", "lte", "order", "limit", "eq"]) cadeia[m] = () => cadeia;
+  --- ticket 734 (done 2026-10-02 15:29, prim=sim, aprovado a8ea88e1a)
+      resposta-grupo.ts: - const contatosPorCliente = new Map<string, string[]>();
+      resposta-grupo.ts: - contatosPorCliente.set(id, await contatosEfetivosDoCliente(db as unknown as SupabaseClient, id));
+      resposta-grupo.ts: - for (const id of Array.from(new Set(Array.from(clientePorGrupo.values())))) {
+      resposta-grupo.ts: - import { contatosEfetivosDoCliente } from "@/lib/whatsapp/cliente-por-telefone";
+      vacuo.ts: - .from("cs_wpp_mensagem")
+      vacuo.ts: - .gte("enviada_em", desdeISO)
+      vacuo.ts: - .in("remote_jid", jids)
+      vacuo.ts: - .lte("enviada_em", agoraISO)
+      vacuo-grupo.test.ts: - for (const nome of ["select", "is", "neq", "in", "gte", "lte", "order", "limit", "eq"]) cadeia[nome] = () => cadeia;
+  --- ticket 741 (done 2026-10-08 12:24, prim=nao, aprovado 0788ddccb)
+      backtest-promessas.test.ts: - for (const m of ["select", "is", "neq", "in", "gte", "lte", "order", "limit", "eq"]) cadeia[m] = () => cadeia;
+  --- ticket 741a (done 2026-10-08 12:12, prim=nao, aprovado e006c6b19)
+      detectar.ts: - .gte("enviada_em", janela.desdeISO)
+      detectar.ts: - .in("remote_jid", grupos.map((g) => g.group_jid))
+      detectar.ts: - .lte("enviada_em", janela.ateISO)
+      detectar.ts: - const contatos: Record<string, string[]> = {};
+      promessas-avaliar-pura.test.ts: - for (const m of ["select", "is", "neq", "in", "gte", "lte", "order", "limit", "eq"]) cadeia[m] = () => cadeia;
+  --- ticket 861 (done 2026-10-07 21:18, prim=sim, aprovado a9114d6a8)
+      detectar.ts: - .from("cs_wpp_mensagem")
+      detectar.ts: - .limit(LIMITE_MENSAGENS);
+      detectar.ts: - .order("enviada_em", { ascending: true })
+      detectar.ts: - .select("wpp_message_id, remote_jid, enviada_em, texto, " + COLUNAS_AUTOR)
+      promessa-par.test.ts: - for (const m of ["select", "is", "neq", "in", "gte", "lte", "order", "limit", "eq"]) cadeia[m] = () => cadeia;
+====================================================================================================
+29afed5 08/10 13:48 Lucas Santos
+fix(promessas): fechar lê as mensagens por página, sem cortar as mais recentes
+
+fecharPromessas lia cs_wpp_mensagem com .order(enviada_em asc).limit(5000); o
+servidor devolve no máximo 1000 linhas por chamada e a entrega entre as mais
+recentes nunca chegava ao modelo. Passa a usar lerMensagensPaginadas (80a212f),
+mesma regra do vácuo: falha na 1ª página como antes, erro da 2ª em diante e acima
+de 50 mil, desempate por wpp_message_id. Mock do promessa-fechar ganha range.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 740 (done 2026-10-07 21:30, prim=sim, aprovado 6c6449993)
+      fechar.ts: - .from("cs_wpp_mensagem")
+      fechar.ts: - .gte("enviada_em", desde)
+      fechar.ts: - .in("remote_jid", Array.from(new Set(promessas.map((p) => p.group_jid))))
+      fechar.ts: - .limit(LIMITE_MENSAGENS);
+      promessa-fechar.test.ts: - for (const m of ["select", "is", "neq", "in", "gte", "lte", "order", "limit"]) cadeia[m] = () => cadeia;
+====================================================================================================
+10c88ed 12/10 15:57 Lucas Santos
+fix: revisao pos-release 12/10 (funil no dia de SP, %MQL na mesma base, reaper do worker, teste do recon, resolvedor, verba, ritmo, ranking)
+  --- ticket 318b (done 2026-10-12 04:07, prim=sim, aprovado edb555f6c)
+      ranking-criativos.ts: - (q) => q.gte("data_fechamento", inicio).lte("data_fechamento", fim),
+      ranking-criativos.ts: - const fechamentos = await lerEmLotes<EntradaRanking["fechamentos"][number]>(
+      ranking-criativos.ts: - const leads = await lerEmLotes<EntradaRanking["leads_fechados"][number]>(db, "os leads dos fechamentos", "perf_leads", "id, ad_id", ["id"], "id", idsL
+      ranking-criativos.ts: - db, "os fechamentos", "perf_fechamentos", "lead_id", ["lead_id"], "campaign_id", campanhas,
+  --- ticket 898c (done 2026-10-12 05:18, prim=sim, aprovado 133bc3e33)
+      verba-sobra.ts: - if (p.dadoAtrasado) return semBase("gasto de ontem ainda não chegou");
+  --- ticket 938 (done 2026-10-12 06:14, prim=sim, aprovado 6c228d877)
+      assistente-metas.tsx: - const ticket_tese = principal && principal.contratos > 0 && principal.gerado !== null ? principal.gerado / principal.contratos : null;
+  --- ticket 953 (done 2026-10-11 16:21, prim=nao, aprovado 52f3ffc80)
+      funil-cliente.ts: - const dentro = (d: string | null | undefined) => !!d && d >= periodo.from && d < aposTo;
+      funil-cliente.ts: - totais: { leads: leads.length, mql, sql, vendas: fechamentos.length, valor_vendido: valorVendido },
+  --- ticket 974 (done 2026-10-11 11:30, prim=sim, aprovado c4a7986cf)
+      ritmo.ts: - // Estado em memória do módulo: vale por execução da função serverless.
+  --- ticket 983 (done 2026-10-11 16:45, prim=nao, aprovado 4db2560a6)
+      kpis-visao.tsx: - export function crmDoComercial(r: RespComercialKpis): { leads: number; mql: number } {
+      kpis-visao.tsx: - return { leads: Number(r.totais?.leads ?? 0), mql: Number(etapa ? etapa.quantidade ?? 0 : r.totais?.mql ?? 0) };
+      kpis-visao.tsx: - totais?: { leads?: number; mql?: number };
+      linha-comercial.tsx: - totais: { leads: number; mql: number; vendas: number };
+====================================================================================================
+f16164c 13/10 00:33 Lucas Santos
+fix(clientes): conta Meta da ficha vem de perf_ad_accounts (bug 7c, parte Meta)
+
+clientes_extra.meta_account_id/meta_access_ativo é legado (nenhuma tela grava)
+e estava nulo para clientes que sincronizam normalmente: o atalho Ads Manager
+sumia e o prompt da análise IA dizia "Não conectado / sem acesso".
+
+- A ficha guarda as contas ativas e em uso de /api/perf/setup/[id]
+  (perf_ad_accounts, a mesma fonte do sync) e passa pelo contexto.
+- Ads Manager e o prompt da IA leem dali. Colunas de clientes_extra ficam
+  no banco, intocadas; só deixam de ser lidas.
+- clientes_crm_config não muda: o dashboard comercial lê e grava a tabela.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 826 (done 2026-10-09 11:48, prim=nao, aprovado 4f52a6e46)
+      geral-tab.tsx: - motivoSemNotion: motivoSemNotionFicha,
+  --- ticket 908 (done 2026-10-12 02:37, prim=sim, aprovado 216c73c45)
+      ficha-context.tsx: - EditOtimForm, NovaOtim, CatalogoNicho, CatalogoTese,
+====================================================================================================
+262b71c 13/10 00:40 Lucas Santos
+fix(clientes): CRM da Carteira e da ficha pelo status único e pelas regras (bug 7c, parte CRM)
+
+A pendência "Configuração CRM ausente" lia clientes_crm_config, que não tem
+linha para clientes conectados pelo fluxo novo (AQUINO), e a ficha pedia o
+pipeline de novo porque ele só vivia nessa tabela.
+
+- Carteira: estadosCrmPorCliente (perf_crm_conexoes + credencial) e regras
+  ativas de perf_qualificacao_regras. Pendências "CRM não conectado" e
+  "Marcos do CRM sem regra: ..."; leitura que falha não inventa pendência.
+- Ficha (GET /api/clientes/crm-config do OS): pipeline principal é o das
+  etapas das regras (perf_crm_etapas -> perf_crm_pipelines), sem coluna nova;
+  conectado, a location do status único vence o legado.
+- clientes_crm_config intocada: nenhuma escrita nova; o dashboard comercial
+  continua lendo e gravando a tabela.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 928 (done 2026-10-12 05:07, prim=nao, aprovado 12934f946)
+      route.ts: - // CRM config indexado pelo uuid do cliente (a linha legada por notion_id é traduzida pelo mirror)
+      route.ts: - const [{ data: mirror }, { data: entradas }, { data: teses }, { data: extras }, reunioesLidas, { data: contratos }, { data: sdrsData }, { data: closer
+      route.ts: - const crmPorCliente = mapaCrmPorCliente(crmCfgs, (mirror || []) as Array<{ cliente_id: string | null; notion_id: string }>);
+      route.ts: - ghl_subaccount_id: (m.cliente_id ? crmPorCliente.get(m.cliente_id) : null) || null,
+====================================================================================================
+fcc533d 13/10 00:55 Lucas Santos
+feat(perf): captura do anúncio click-to-WhatsApp pela nota do STEVO (bug 7b)
+
+O STEVO não preenche a atribuição do contato no GHL: o anúncio vem como texto
+numa nota ("Data ADS ... Source ID ... ctwaClid"). Por isso a campanha de
+mensagens da AQUINO tinha 0 leads atribuídos.
+
+- stevo-ad-referral.ts: parser puro e tolerante (emoji, caixa, CRLF, ordem).
+- ctwa-stevo.ts: job perf_ctwa_stevo (2 min depois do webhook, 3 tentativas)
+  lê as notas, resolve conjunto/campanha por perf_meta_ad_map e preenche só
+  ad_id vazio; nunca toca lead manual. atribuicao segue 'rastreada'; o método
+  vai no evento atribuicao_ctwa. Sem referral: atribuicao_ctwa_ausente com o
+  motivo, gravado só na última tentativa. Falha no insert do evento (DDL ainda
+  não aplicado) é logada e não desfaz a atribuição.
+- Webhook do app enfileira o job para contato com tag metaads e sem adId.
+- derivarOrigem: ctwa_clid/adId/Paid Social antes da tag metaads.
+- ORIGENS_NAO_ATRIBUIVEIS (instagram_dm) fora do aviso "sem campanha".
+- scripts/backfill-ctwa-stevo.ts: um cliente, dry-run por padrão, relatório
+  antes x depois e reclassificação lead a lead pela evidência.
+- Migration 20261013120000 (APLICAR E HUMANO): CHECK de perf_lead_eventos.tipo
+  com atribuicao_ctwa e atribuicao_ctwa_ausente. Não aplicada.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 952b (done 2026-10-11 10:41, prim=sim, aprovado c57e5eba4)
+      origem-lead.ts: - (tags ?? []).some((t) => txt(t) === "metaads")
+      origem-lead.ts: - /** Regras na ordem do ticket 952b; comparações sem caixa. */
+      origem-lead.ts: - if (txt(primeiro.adId) || sessao === "paid social") return "anuncio_meta";
+      origem-lead.ts: - medium === "whatsapp" ||
+====================================================================================================
+bc3fae8 13/10 11:24 Lucas Santos
+feat(perf): precedência única de fonte da atribuição: Meta > nota do STEVO > tag (bug 7b)
+
+Decisão do Lucas (13/10): resolverFonteAtribuicao (lib pura) decide origem e anúncio para
+webhook (via derivarOrigem), job e backfill. 1º Meta (formId/leadgen e IDs do
+attributionSource lido pelo get-contact, meta_form_leads pelo telefone), 2º nota do STEVO,
+3º tag metaads/UTM. Com Meta e STEVO no mesmo lead a Meta decide e a nota vai como
+fonte_secundaria no evento atribuicao_ctwa. ad_id existente nunca muda; a origem é
+corrigida pela evidência (os 6 do FORMS viram formulario_meta).
+
+Caminho do formId: o /contacts/search omite o formId; o backfill de contatos relê pelo
+get-contact o contato com adId e sem formId, e o webhook enfileira o job quando há tag
+metaads ou adId sem formId no payload. Evento atribuicao_ctwa fica idempotente por lead.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 952b (done 2026-10-11 10:41, prim=sim, aprovado c57e5eba4)
+      origem-lead.ts: - if (txt(primeiro.formId)) return "formulario_meta";
+====================================================================================================
+8124e3e 13/10 11:48 Lucas Santos
+feat(perf): origem whatsapp_sem_referral para WhatsApp do STEVO sem anúncio (bug 7b)
+
+Decisão do Lucas (13/10): contato criado pelo STEVO (createdBy.sourceId com o appId) sem
+tag metaads, nota de anúncio nem ID da Meta vira whatsapp_sem_referral, 4º nível de
+resolverFonteAtribuicao. Fica no denominador (não entra em ORIGENS_NAO_ATRIBUIVEIS; entra
+nas origens pagas da cobertura) e aparece no aviso de não atribuídos. Nada é excluído: o
+backfill lista esses leads com 'não perturbe' marcado para revisão manual.
+
+O job lê as tags do get-contact (a metaads pode chegar depois do webhook) e o webhook
+enfileira também o lead que seria desconhecida. DDL do check em
+20261013160000_perf_leads_origem_whatsapp_sem_referral.sql, NÃO APLICADO: precisa entrar
+antes do merge, senão o insert com a origem nova falha.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 952b (done 2026-10-11 10:41, prim=sim, aprovado c57e5eba4)
+      ghl.ts: - origem: derivarOrigem(atrib, tags),
+      leads-ghl.ts: - origem: derivarOrigem(atrib, tags),
+      origem-lead.ts: - export function derivarOrigem(primeiro: Atribuicao, tags: string[] | null): OrigemLead {
+      origem-lead.test.ts: - import { derivarOrigem, toques } from "@/lib/perf/origem-lead";
+  --- ticket 954 (done 2026-10-11 17:19, prim=sim, aprovado 20d52f6bd)
+      cobertura-atribuicao.ts: - const ORIGENS_PAGAS: readonly string[] = ["formulario_meta", "anuncio_meta", "whatsapp_anuncio"];
+====================================================================================================
+1d5940d 13/10 14:12 Lucas Santos
+fix(perf): página de captura pelo lead do pixel, tipo único no por-tipo e teses do topo pela campanha
+
+- detectarTipoCampanha: OUTCOME_LEADS com destino UNDEFINED/WEBSITE e resultado
+  fb_pixel_lead = landing_page; o sync passa os indicadores (janela + gravados).
+  A escolha do gestor continua vencendo.
+- Seletor de tipo da tabela de campanhas: gestor em "outro" com detecção
+  específica mostra "sugerido: <tipo>", um clique aplica. Landing page passa a
+  se chamar Página de captura, como na diária.
+- Performance por tipo usa a fonte da diária (gestor, senão detecção): ENGAJA
+  vira Perfil; rótulo de Página de captura.
+- Cabeçalho da ficha lê as teses do vínculo tese x campanha (fonte do bloco
+  Teses); o cadastro antigo só vale sem tese de campanha.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 826 (done 2026-10-09 11:48, prim=nao, aprovado 4f52a6e46)
+      geral-tab.tsx: - // Ticket 826: dublê parcial de useFicha() nos testes não traz o motivo.
+      geral-tab.tsx: - const motivoSemNotion = motivoSemNotionFicha ?? null;
+      geral-tab.tsx: - motivoSemNotion: motivoSemNotionFicha,
+  --- ticket 982 (done 2026-10-11 12:36, prim=sim, aprovado 58e384d4f)
+      tabela-campanhas.tsx: - export function PilulaFunil({ tipo, onTrocar, salvando, detectado }: {
+====================================================================================================
+da1f4f1 14/10 16:10 Lucas Santos
+fix(ghl-backfill): oportunidades em lotes concorrentes, sync_cursor espelha o checkpoint e falha sem registro vira ultimo_erro na retomada
+
+ARAUJO E SAMPAIO (0miX9uv2...): o backfill nao estava morto, andava a ~2 s por item
+(15-20 idas sequenciais ao banco por oportunidade/contato), com o cursor so no payload do job.
+- oportunidades gravadas em lotes de 6 em paralelo; requalificacao uma vez por contato do lote,
+  depois das gravacoes; erro inesperado relanca sem avancar a pagina
+- cada checkpoint espelha {fase, passo, cursor, acumulados} em perf_crm_conexoes.sync_cursor;
+  a conclusao limpa
+- retomada (cron/sincronizar) de job que falhou sem o handler registrar (lease vencido, corte)
+  grava o motivo em ultimo_erro antes de re-enfileirar
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 761 (done 2026-10-05 14:40, prim=nao, aprovado b548169e8)
+      ghl-backfill.ts: - } catch (err) {
+  --- ticket 762 (done 2026-10-05 18:30, prim=nao, aprovado 3179addba)
+      ghl-backfill.ts: - const campos: Record<string, unknown> = { backfill_concluido_em: agora };
+      ghl-backfill.ts: - } catch (err) {
+      ghl-backfill-job.test.ts: - expect(conexoes().length).toBe(0);
+  --- ticket 763 (done 2026-10-05 18:43, prim=sim, aprovado 652f46458)
+      ghl-backfill.ts: - await requalificarContato(p.cliente_id, gravada.ghl_contact_id);
+      ghl-backfill.ts: - console.error("[ghl-backfill] requalificar contato falhou", opp.id, motivoDe(err));
+      ghl-backfill.ts: - console.warn("[ghl-backfill] oportunidade nao gravada", opp.id, err.name);
+      ghl-backfill.ts: - const gravada = await gravarOportunidade(p.location_id, opp, "backfill");
+      ghl-backfill-job.test.ts: - expect(conexoes().length).toBe(0);
+      ghl-backfill-oportunidades.test.ts: - expect(conexoes().length).toBe(0);
+====================================================================================================
+85a69a3 14/10 16:10 Lucas Santos
+fix(ficha): fila de resposta e alertas resolvem o apelido antigo (local_...) para clientes.id
+
+A ficha aberta por notion_id mandava o id cru da URL para rotas que so aceitam uuid:
+/api/relacao/responder (422), POST /api/perf/alertas/regras (422) e
+/api/perf/alertas/ocorrencias (500 no cast). As tres passam pelo resolverCliente:
+chave que nao resolve da 404, falha de leitura da 500 (nunca lista vazia). A ficha passa
+o id resolvido (perfClienteId) para ResponderAgora e BlocoAlertas.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 735 (done 2026-10-02 15:41, prim=nao, aprovado 855321476)
+      route.ts: - const clienteId = filtro.data.cliente_id;
+      route.ts: - const filtro = filtroSchema.safeParse({ cliente_id: bruto ?? undefined });
+      route.ts: - const filtroSchema = z.object({ cliente_id: z.string().uuid().optional() });
+      relacao-responder-api.test.ts: - expect((await get("?cliente_id=abc")).status).toBe(422);
+      relacao-responder-api.test.ts: - it("cliente_id inválido dá 422", async () => {
+  --- ticket 737 (done 2026-10-02 17:44, prim=nao, aprovado e79eaf5ad)
+      page.tsx: - <ResponderAgora clienteId={String(id)} />
+====================================================================================================
+5912a0d 15/10 20:36 Lucas Santos
+fix(ficha): status do Grupo WhatsApp vem do vínculo em wpp_grupo, não do link
+
+A linha "Grupo WhatsApp" das Conexões decidia pelo clientes_extra.whatsapp_group_url
+e mostrava "Sem link do grupo" para os 25 clientes com grupo vinculado (0 com
+convite). Agora lê /api/clientes/[id]/whatsapp-grupos e conta só grupo com
+deleted_at nulo e status ativo: "Conectado · <nome>" em verde, ou "Sem grupo
+vinculado". Falha de leitura vira "s/ dado" com o motivo.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 924c (done 2026-10-13 20:37, prim=nao, aprovado 788f92272)
+      conexoes-linhas.tsx: - : extra.whatsapp_group_url ? { tom: "ok", texto: "Link do grupo salvo" } : { tom: "neutro", texto: "Sem link do grupo" };
+      conexoes-linhas.tsx: - ? semDado("carregando")
+      conexoes-linhas.tsx: - chave: "whatsapp", nome: "Grupo WhatsApp", status: statusWhatsapp,
+      conexoes-linhas.tsx: - const statusWhatsapp: StatusConexao = !extra
+====================================================================================================
+ac83a77 18/10 23:00 Lucas Santos
+fix: previa do portal nao derruba a ficha na troca de aba; Briefing igual ao portal publico
+
+- Na troca de aba o render vinha antes do fetch e a aba nova recebia o payload da anterior
+  (ResultadosConteudo com o do Inicio quebrava em mudancas.slice). O payload agora vem carimbado
+  com a aba que o pediu e resposta de aba fechada e descartada.
+- AbaSegura: erro de render de uma aba mostra 'Indisponivel agora.' e fica na aba (previa e publico).
+- A previa serve a aba Briefing com o mesmo payload do GET publico; hash desconhecido cai no Inicio.
+  Enviar briefing na previa nao chama a rota publica.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 1301 (done 2026-10-17 21:40, prim=sim, aprovado 492198f89)
+      route.ts: - * GET /api/clientes/[id]/portal-previa?aba=inicio|resultados|relatorios|contrato
+      route.ts: - const ABAS = ["inicio", "resultados", "relatorios", "contrato"] as const;
+  --- ticket 1303 (done 2026-10-17 22:26, prim=nao, aprovado 354ab5945)
+      page.tsx: - ) : aba === "contrato" ? (
+      page.tsx: - ) : aba === "relatorios" ? (
+      page.tsx: - ) : aba === "resultados" ? (
+      page.tsx: - <AbaInicio dados={dados as InicioPortal} token={TOKEN_PREVIA} onAtualizar={() => carregar(true)} irParaAba={irPara} />
+      portal-previa-tela.test.tsx: - expect(PAGE).toContain(c);
+====================================================================================================
+2c76b10 18/10 23:07 Lucas Santos
+fix: achados do code-review do hotfix da previa do portal
+
+- So a resposta do ultimo pedido vale (contador), nao so a da aba: pedido antigo da mesma aba
+  nao sobrescreve o novo nem derruba a tela com erro atrasado.
+- Aba comeca nula ate ler o hash: link direto para outra aba nao busca o Inicio antes.
+- AbaSegura ganha Tentar de novo na mesma aba.
+- abaDoHash mora no portal-shell e serve a previa e o portal publico.
+- Esqueleto da previa usa o token do portal; aviso de previa no briefing sai neutro.
+- Teste amarra ABAS_PRONTAS, ABAS da rota e os ramos do CorpoPrevia; nenhuma escrita cobre briefing.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+  --- ticket 1303 (done 2026-10-17 22:26, prim=nao, aprovado 354ab5945)
+      page.tsx: - const [aba, setAba] = useState("inicio");
+      page.tsx: - if (!id) return;
+  --- ticket 997 (done 2026-10-12 20:17, prim=sim, aprovado af11b9fa3)
+      page.tsx: - const abaDoHash = () => {
+      page.tsx: - const f = () => setAba(abaDoHash());
+      page.tsx: - const h = typeof window === "undefined" ? "" : window.location.hash.replace("#", "");
+      page.tsx: - import { ABAS_PRONTAS, PortalShell, TelaEstado, type EstadoTela } from "../_components/portal-shell";

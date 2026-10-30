@@ -1,0 +1,126 @@
+--- medir.sh.bak-2410	2026-10-24 15:55:11
++++ medir.sh	2026-10-24 16:45:13
+@@ -11,7 +11,8 @@
+ # O corte e o fim do dia --ate (23:59:59 -03). Tudo depois do corte e ignorado, por isso
+ # duas rodadas seguidas dao arquivos identicos mesmo com o loop vivo.
+ #
+-# Saida: out/<DIAS>d/{tickets,intervencoes,loop,playbook}.csv + resumo.json
++# Saida: out/<DIAS>d/{tickets,intervencoes,loop,playbook,retrabalho}.csv + resumo.json
++# C5 (retrabalho em 14 dias depois do done): regra em c5.py, testes em test_c5.py.
+ # rc 0 so se tudo rodou. Escreve so em out/ e tmp/ ao lado deste script.
+ set -euo pipefail
+ export LC_ALL=C TZ=America/Bahia GIT_OPTIONAL_LOCKS=0
+@@ -624,6 +625,91 @@
+                      "data_na_licao": r["dl"] or "-", "licao": r["txt"][:140],
+                      "fonte": "git show %s:%s linha %d" % (r["h"][:9], PB, r["linha"])})
+ dias_licao = {loc(r["dt"]).date() for r in linhas_p}
++
++# ---------------------------------------------------------------- 8b. C5 retrabalho (regra e testes: c5.py)
++# Coorte madura = done em [INI-14, ATE-14]: todo ticket dela tem 14 dias de acompanhamento antes do
++# corte. A janela corrente sai como C5_parcial. Nada depois do corte entra, como no resto.
++sys.path.insert(0, os.path.dirname(os.path.dirname(OUT)))
++import c5
++C_INI, C_FIM = INI - timedelta(days=14), CORTE - timedelta(days=14)
++MRG = re.compile(r"^orquestrador: merge frente/(\S+) \(ticket (\S+)\) em (\S+)$")
++mrg, patch = {}, {}
++for l in git("log", "--branches", "--merges", "--since=2026-08-01", "--format=%H %P" + FS + "%at" + FS + "%s").splitlines():
++    hp, at, s = l.split(FS); p = hp.split(); m = MRG.match(s); dt = datetime.fromtimestamp(int(at), UTC)
++    if m and len(p) >= 3 and dt <= CORTE:
++        mrg.setdefault(m.group(2), []).append((dt, p[0], p[2], p[1], m.group(3)))
++def merge_patch(mm):   # (dt, merge, frente, base, alvo) -> diff do lado frente, sem docs/fila
++    if mm[1] not in patch:
++        patch[mm[1]] = git("diff", "--no-color", mm[3] + "..." + mm[2], "--", ".", ":!docs/fila")
++    return patch[mm[1]]
++def universo(ini, fim):
++    us = []
++    for tid, rows in sorted(meta.items()):
++        d = [r["ts"] for r in rows if r["res"] == "done" and ini <= r["ts"] <= fim]
++        ms = sorted(mm for mm in mrg.get(tid, []) if d and mm[0] <= d[-1] + timedelta(hours=1))
++        if not ms:
++            continue
++        add, arqs = {}, set()
++        for mm in ms:
++            for f, v in c5.linhas_diff(merge_patch(mm), "+").items():
++                add.setdefault(f, set()).update(v)
++            arqs.update(x[6:] for x in merge_patch(mm).split("\n") if x.startswith("+++ b/"))
++        us.append({"id": tid, "loop": "apolo" if ms[-1][4] == "staging-apolo" else "plataforma", "done_em": d[-1],
++                   "sha_aprovado": ms[-1][2], "shas": {x for mm in ms for x in mm[1:3]}, "adicionadas": add, "arquivos": arqs,
++                   "prim": "sim" if len(rows) == 1 and rows[0]["res"] == "done" else "nao"})
++    return us
++u_mad, u_par = universo(C_INI, C_FIM), universo(INI, CORTE)
++ids_u = {t["id"] for t in u_mad + u_par}
++arqs_u = {f for t in u_mad + u_par for f in t["arquivos"]}
++rev = dict(b.partition(FS)[::2] for b in git("log", "--branches", "--no-merges", "--since=2026-08-01",
++           "--grep=This reverts commit", "--format=" + SEP + "%H" + FS + "%b").split(SEP)[1:])
++fora, qt = [], {}
++for c in commits:
++    fs = [p[-1] for _, p in c["arqs"]]
++    if c["dt"] < C_INI:
++        continue
++    for f in set(fs) - {f for f in fs if f.startswith("docs/fila/")}:
++        qt[f] = qt.get(f, 0) + 1
++    if c["h"] in agente or c["orr"] or c["s"].startswith("fila: status automatico do loop") or \
++            (c["h"] not in rev and not set(fs) & arqs_u):
++        continue
++    fora.append({"sha": c["h"], "dt": c["dt"], "assunto": c["s"], "corpo": rev.get(c["h"], ""), "arquivos": fs,
++                 "removidas": c5.linhas_diff(git("show", "--no-color", "--format=", c["h"], "--", ".", ":!docs/fila"), "-")})
++quentes = set(sorted(qt, key=lambda f: (-qt[f], f))[:20])
++TMD = re.compile(r"^docs/fila/(?:apolo/|_hold/|_to_delete/)?([0-9]{3,4}[a-z0-9]*)-[^/]*\.md$")
++cat = subprocess.Popen(["git", "-C", REPO, "cat-file", "--batch"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
++trans = []
++for blk in git("log", "--branches", "--no-merges", "-M", "--name-status", "--since=" + C_INI.isoformat(),
++               "--format=" + SEP + "%H" + FS + "%at", "--", "docs/fila").split(SEP)[1:]:
++    ls = blk.strip("\n").split("\n"); h, at = ls[0].split(FS); dt = datetime.fromtimestamp(int(at), UTC)
++    for l in ls[1:] if dt <= CORTE else []:
++        p = l.split("\t"); m = len(p) >= 2 and (TMD.match(p[-1]) or TMD.match(p[1]))
++        if not m or m.group(1) not in ids_u:
++            continue
++        a = (partes(blob(h + "^:" + p[1]))[0] or {}).get("status")
++        b = (partes(blob(h + ":" + p[-1]))[0] or {}).get("status") if p[0][0] != "D" else "(apagado)"
++        if a == "done" and b != "done":
++            trans.append({"id": m.group(1), "dt": dt, "sha": h, "para": b})
++add_path, novos = {}, []
++for blk in git("log", "--branches", "--diff-filter=A", "--name-only", "--format=" + SEP + "%H", "--", "docs/fila").split(SEP)[1:]:
++    ls = blk.strip().split("\n")
++    for p in ls[1:]:
++        if TMD.match(p):
++            add_path[TMD.match(p).group(1)] = (ls[0], p)   # do mais novo ao mais velho: fica a 1a adicao
++for tid, ms in sorted(mrg.items()):
++    tx = (blob("%s:%s" % add_path[tid]) or "") if tid in add_path else ""
++    for mm in ms if c5.ids_citados(tx) & ids_u else []:
++        if mm[0] >= C_INI:
++            novos.append({"id": tid, "sha": mm[1], "dt": mm[0], "texto": tx, "removidas": c5.linhas_diff(merge_patch(mm), "-")})
++cat.stdin.close(); cat.wait()
++l_mad, r_mad = c5.avaliar(u_mad, fora, CORTE, trans, novos, quentes)
++l_par, r_par = c5.avaliar(u_par, fora, CORTE, trans, novos, quentes)
++def bloco_c5(us, ls, rt, ini, fim):
++    r = c5.resumir(us, ls, rt); r.pop("ritual")
++    dias = {l["id"]: l["dias_acompanhados"] for l in ls}
++    r.update(coorte_de=dstr(ini), coorte_ate=dstr(fim), quentes_excluidos_do_fraco=sorted(quentes),
++             dias_acompanhados_min=min(dias.values()) if dias else None, com_14_dias=sum(1 for v in dias.values() if v >= 14))
++    return r
+ 
+ # ---------------------------------------------------------------- 9. escrita
+ def grava(nome, linhas, cols):
+@@ -643,6 +729,11 @@
+                              "horas_ocioso_sem_processavel", "horas_pausa_operacional", "horas_pausa_manual",
+                              "horas_pausa_gate_streak", "horas_sem_dado", "dia_com_intervencao", "fonte"])
+ grava("playbook.csv", linhas_p, ["data", "commit", "data_na_licao", "licao", "fonte"])
++grava("retrabalho.csv", sorted([dict(l, coorte=k, evidencia_sha=l["evidencia_sha"][:9], sha_aprovado=l["sha_aprovado"][:9])
++                                for k, ls in (("madura", l_mad), ("parcial", l_par)) for l in ls],
++                               key=lambda r: (r["coorte"], r["done_em"], r["id"], r["tipo"], r["evidencia_sha"])),
++      ["coorte", "id", "loop", "done_em", "dias_acompanhados", "tipo", "forca", "evidencia_sha", "sha_aprovado",
++       "arquivos", "linhas", "aprovado_de_primeira"])
+ 
+ # resumo
+ done_t = [r for r in linhas_t if r["status"] == "done" and r["data_done_ou_bloqueio"] != "-"]
+@@ -707,6 +798,9 @@
+                 "claude_dur_secs_por_done": round(sum(esf_done) / len(esf_done)) if esf_done else None,
+                 "custo_usd": "sem dado"},
+ }
++res["C5"] = bloco_c5(u_mad, l_mad, r_mad, C_INI, C_FIM)
++res["C5_parcial"] = bloco_c5(u_par, l_par, r_par, INI, CORTE)
++res["ritual"] = {"C5": r_mad, "C5_parcial": r_par}
+ with open(os.path.join(OUT, "resumo.json"), "w") as fh:
+     json.dump(res, fh, ensure_ascii=False, indent=1, sort_keys=True); fh.write("\n")
+ print("ok %s: tickets=%d intervencoes=%d loop=%d playbook=%d" % (

@@ -1,0 +1,20 @@
+   ✓ 632: base vermelha > contra-teste: FAIL num arquivo DA allowlist segue o caminho de hoje (REPROVADO criterio_qualidade, sem base_vermelha) 5498ms
+   ✓ 632: base vermelha > contra-teste: saída de testes sem linha FAIL reconhecível segue o caminho de hoje 4060ms
+   ✓ 632: base vermelha > sequência do 510c: FAIL só no 0283 bloqueia com base_vermelha, sem juiz, sem retry e sem consumir tentativa 5300ms
+ FAIL  test/orq-cli.test.ts > orq validar — o gate de ticket, com o rc repassado > ticket torto: rc 1, e a linha nomeia arquivo e campo
+ FAIL  test/orquestrador-arquivo-solto.test.ts > 631: arquivo solto > drive_ticket: o retry do arquivo_solto reaproveita a worktree, mantém o modelo e aprova quando o agente remove o arquivo
+ FAIL  test/orquestrador-criterio-merito.test.ts > 625: 'ambiente' por critério só quando o harness não executou o comando > critério com rc 126/127 (criteriosNaoExecutados) = adiado por ambiente, sem consumir tentativa
+ FAIL  test/orquestrador-decisao.test.ts > fronteira — infra ADIA, mérito REPROVA > as 7 causas do config são reconhecidas
+ FAIL  test/orquestrador-decisao.test.ts > retry — cap e fronteira MANTÊM modelo, qualidade ESCALA > POSITIVO: reprovação por qualidade escala para retry_final_model
+ FAIL  test/orquestrador-gate-ticket.test.ts > a CLI é o contrato que `orq validar` repassa > --relatorio: imprime tudo, conta as isenções à parte e sai 0 mesmo com violação
+ FAIL  test/orquestrador-gate-ticket.test.ts > check 2 · campos obrigatórios (só para pendente) > `risco` basta EXISTIR: vazio passa (quem preenche é o passo 6), lixo não
+ FAIL  test/orquestrador-gate-ticket.test.ts > check 2 · campos obrigatórios (só para pendente) > a lista de campos obrigatórios é a do contrato, item a item
+ FAIL  test/orquestrador-gate-ticket.test.ts > check 3 · id NNN[a], igual ao prefixo do nome do arquivo > MAU: id fora do formato
+ FAIL  test/orquestrador-gate-ticket.test.ts > check 6 · o veto, a isenção e o que a isenção NÃO alcança > regra (b): `2>&1`, `>/dev/null` e `2>/dev/null` passam
+ FAIL  test/orquestrador-gate-ticket.test.ts > check 6 · o veto, a isenção e o que a isenção NÃO alcança > regra (d): a isenção chega ao ticket, nomeando o critério e o prefixo
+ FAIL  test/orquestrador-tools-derivadas.test.ts > morte inesperada do executor deixa rastro (peça 0c, item 3) > todo caminho de desfecho nomeado marca DESFECHO_NOMEADO
+ FAIL  test/orquestrador-tools-derivadas.test.ts > permission_denials deixam de ser ignorados (peça 0c) > entram no JSON que vira o motivo do retry
+ FAIL  test/orquestrador-trilha.test.ts > trilha e STATUS contam a primeira tentativa como 1 > o DIRETÓRIO é nomeado pelo slot contínuo, nunca pelo contador de retry
++     log "  base vermelha: FAIL só em $BASE_VERMELHA (fora do diff e da allowlist) — juiz NÃO chamado"
++   # FAIL fora do diff e da allowlist: a base está vermelha, não o ticket. Bloqueia
++   # Lista vazia (FAIL não reconhecido) ou arquivo próprio = caminho de hoje. O

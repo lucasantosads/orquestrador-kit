@@ -1,0 +1,690 @@
+Você é o JUIZ de uma esteira automatizada. Julgue SOMENTE pelo material abaixo:
+o diff cru da tentativa, a saída dos gates mecânicos e os critérios do ticket.
+Você NÃO recebe o prompt do executor nem resumo nenhum do agente, de propósito:
+o que o agente diz que fez nunca é evidência. Se algo não está no diff, não aconteceu.
+
+VOCÊ NÃO TEM FERRAMENTAS. Não leia arquivo, não rode comando, não abra o
+repositório: a chamada está sem ferramenta nenhuma e qualquer tentativa só
+gasta turno. Se o material abaixo não basta para aprovar, REPROVE dizendo o
+que faltou — nunca aprove no benefício da dúvida.
+
+Os gates mecânicos JÁ PASSARAM (enforcement, typecheck, testes, critérios, build).
+Você não os reexecuta: o seu trabalho é o que eles não conseguem ver.
+
+O QUE VOCÊ COBRA, item a item:
+
+1. INTEGRAÇÃO, não existência. Componente/função/rota criada mas nunca importada,
+   montada ou chamada passa em "arquivo existe" e falha em produção. Siga a
+   variável ou o símbolo até o ponto de uso real; um resultado calculado e
+   descartado não vale.
+2. O TESTE EXERCITA O COMPORTAMENTO DO OBJETIVO. Teste tautológico
+   (expect(true), expect(x).toBeDefined() sobre algo trivialmente definido,
+   asserção que passaria com o código antigo) NÃO prova nada. Pergunte-se: este
+   teste ficaria VERMELHO se a mudança fosse revertida? Se não, reprove.
+3. CRITÉRIO DE AUSÊNCIA EXIGE CONTROLE POSITIVO. Um teste que só afirma que algo
+   NÃO aparece passa igual quando o componente não renderiza nada. Exija, no
+   MESMO render/execução, ao menos uma asserção POSITIVA de que a coisa certa
+   apareceu. Reprove ausência provada no vazio.
+
+4. ANTI-AFROUXAMENTO (a allowlist deste ticket inclui arquivo de teste).
+   No diff dos arquivos de teste, REPROVE se encontrar qualquer um destes:
+   - asserção removida (expect apagado) sem que o comportamento tenha deixado de existir;
+   - toBe/toEqual trocado por toBeDefined/toBeTruthy/objectContaining mais frouxo;
+   - .skip, .todo, .only, teste comentado ou arquivo de teste deletado;
+   - valor esperado alterado SEM comentário dizendo por que a regra nova o muda.
+   Valor RECALCULADO sob a regra nova, com o porquê em comentário, é o único
+   caminho aceito. Renomear símbolo para satisfazer contagem também é afrouxar.
+
+RESPONDA SÓ COM ESTE JSON, sem cerca de código, sem texto antes ou depois:
+{"aprovado": true|false, "motivo": "<=2 frases, concreto, citando arquivo e linha>",
+ "criterios_falhos": ["descrição exata do critério que você reprova", ...]}
+
+criterios_falhos: use a DESCRIÇÃO do critério, copiada como está na lista acima.
+Vazio quando aprovado. Na dúvida entre aprovar e reprovar, REPROVE e diga o que falta.
+
+TICKET 763
+Objetivo: ORCAMENTO DE DIFF: teto de 520 linhas (~170 em src/lib/perf/ghl-backfill.ts, ~30 recalculadas em test/ghl-backfill-job.test.ts, ~300 no teste NOVO test/ghl-backfill-oportunidades.test.ts). Se passar do teto, pare e reporte. FONTE: decisoes do Lucas de 03/10 (regra de MQL do cliente no Setup > CRM passa a usar etapas reais do GHL; tags nos tickets 746 a 748; etapas canonicas seguem so para relatorio agregado). Piloto AQUINO ADV (location BAs5Fw46Xz3uvTtq6Gmz, cliente 7837ac12-c6db-47e8-b4e8-6e043633eb6d): conectado, 7 pipelines em perf_crm_pipelines, 50 etapas em perf_crm_etapas, todas com etapa_canonica nula, location_nome nula, backfill iniciado e nao concluido, 0 linhas em perf_crm_oportunidades e 0 em perf_leads (o backfill de contatos nunca rodou: nada chama a rota nem enfileira job; a ingestao nasce nos tickets 760 a 763). PASSO 1: leia src/lib/perf/ghl-backfill.ts (761 e 762), src/lib/perf/crm-oportunidades.ts (760: normalizarOportunidadeGhl, gravarOportunidade, requalificarContato) e src/lib/perf/ghl-agencia.ts (apiBase, GHL_API_VERSION). FAZER: (1) src/lib/perf/ghl-backfill.ts: a fase 'contatos', ao terminar, NAO grava mais backfill_concluido_em: enfileira a fase 'oportunidades' (passo 0, acumulados de contatos no payload) e conclui o job com { fase: 'contatos', proxima: 'oportunidades' }. NOVA fase 'oportunidades' em processarJobBackfillGhl: le os pipelines ativos da location (perf_crm_pipelines, ordem posicao; erro lanca), e para cada um GET ${GHL_API_BASE_URL}/opportunities/search com location_id, pipeline_id e limit 100 (nomes de query da API v2), paginando por meta.startAfter + meta.startAfterId ate a pagina vir com menos de 100 ou sem meta.nextPageUrl. Token por credencialDaConta (761). Cada oportunidade: normalizarOportunidadeGhl (null conta em falhas) e gravarOportunidade(locationId, opp, 'backfill') da lib do 760, sem recriar normalizacao nem gravacao (a lib ja aceita a forma do GET /opportunities/search, resolve etapa com um resync de pipelines, faz o upsert e grava o historico; ela NAO decide origem, grava no historico o valor recebido, e esta fora do escopo: o backfill passa sempre 'backfill' e documenta isso no codigo); OportunidadeSemEtapaError e OportunidadeSemConexaoError da lib contam em falhas e seguem; depois requalificarContato quando houver contactId (falha conta em falhas e segue). Cursor do payload = { pipeline_idx, startAfter, startAfterId }. Mesmo orcamento de 200 s e mesmo encadeamento por passo do 762. Pagina com erro: ultimo_erro = `Backfill de oportunidades parou: <mensagem>` + ultimo_erro_em e relanca (401/403 = JobPermanentError). Terminou todos os pipelines: backfill_concluido_em = agora, limpa erro antigo de backfill e, com falhas > 0, grava `Backfill concluído com N itens não gravados`, como no 762. (2) test/ghl-backfill-job.test.ts (do 762): as assercoes que afirmavam 'fase contatos terminada grava backfill_concluido_em' passam a afirmar que ela enfileira a fase de oportunidades e NAO grava a conclusao, RECALCULADAS com comentario citando o 763; o resto fica igual. (3) NOVO test/ghl-backfill-oportunidades.test.ts (supabase, fetch, gravarOportunidade e requalificarContato mockados): busca usa location_id, pipeline_id e limit 100; segunda pagina vai com startAfter e startAfterId da primeira; passa por todos os pipelines na ordem; oportunidade sem etapa conta em falhas; fim grava backfill_concluido_em; erro de pagina grava o ultimo_erro com prefixo e relanca; 403 = JobPermanentError; orcamento estourado enfileira o proximo passo com pipeline_idx e cursor. FORA DE ESCOPO: webhook e a lib de oportunidades (760), regra de MQL (743), tela. REGRAS: zona C0 (clientes_receita, leads_crm, leads_crm_historico, ads_metadata, ads_performance, fn_mql_sql_by_month, prefixos trafego_* e vw_*) e leitura pura: nada de escrita, DDL, grant, RLS ou trigger nelas; ghl_etapa_mapa e as demais ghl_* do comercial sao leitura pura e a regra nova NAO depende delas nem de perf_crm_etapas.etapa_canonica (que continua existindo so para relatorio agregado; nao altere nem apague); zero migration e zero .sql (so o 746 escreve .sql, e nao aplica); nada e escrito de volta no GHL (so GET); token do GHL so por obterTokenLocation (src/lib/perf/ghl-agencia.ts), nunca lido direto de integration_tokens e nunca logado; falha de leitura (banco ou GHL) nunca vira zero, lista vazia ou null silencioso: nada de `?? []`, `|| []`, `|| 0` ou catch que devolve vazio numa leitura, o erro sobe com o motivo; dado ausente aparece como 's/ dado' ou 'sem base' com o motivo, nunca zero e nunca verde; nenhum jargao de banco em texto de tela (nome de tabela, view, coluna, tipo_regra ou uuid); nenhum travessao (U+2014) em texto de tela nem em string de copy (guarda travessao-mudo); numeros de tela em Geist Mono (classe font-mono ja usada no repo); Set e Map so com Array.from (tsc sem downlevelIteration); nenhum .json() literal novo em src (cliente: fetchJson de @/lib/fetch-json, ou res.text() + JSON.parse quando precisar do corpo de erro, como pedirCrm em tabs/config-tab.tsx; rota: lerCorpoJson de @/lib/fetch-json, nunca req.json()); getSession e server-only, nunca em arquivo 'use client'; supabase, fetch, getSession e resolveCockpitId sempre mockados nos testes (vi.mock), nunca banco real nem GHL real; fixture de uuid RFC-4122 (00000000-0000-4000-8000-000000000000 ou crypto.randomUUID()); testes sem JSX (React.createElement + renderToStaticMarkup ou leitura de fonte com readFileSync; o projeto nao tem jsdom nem @testing-library); teste ancora em texto visivel ou data-testid, nunca em classe de estilo; nunca toEqual numa lista inteira (afirme itens com toContain/some). TESTES EXISTENTES da allowlist: se a mudanca quebrar uma assercao, RECALCULE o valor sob a regra nova com comentario acima citando o ticket e de onde veio o numero; PROIBIDO remover assercao, trocar toBe/toEqual/toMatch por toBeDefined/toBeTruthy, usar .skip/.only/.todo, apagar it( ou o arquivo. GUARDAS GLOBAIS (fora da allowlist, nao edite): test/fetch-json-teto.test.ts, test/consistencia-contagens.test.ts, test/bloco-vazio-linha.test.ts, test/abas-montadas.test.ts, test/cartao-topo-perfil.test.tsx, test/travessao-mudo.test.ts, test/c0-guard.test.ts. Se um teste FORA da allowlist quebrar, PARE e descreva. Motor do orquestrador (scripts/orquestrador/, docs/orquestrador/) intocado.
+
+Allowlist do ticket:
+  - src/lib/perf/ghl-backfill.ts
+  - test/ghl-backfill-job.test.ts
+  - test/ghl-backfill-oportunidades.test.ts
+
+Critérios de aceite:
+  - [guarda · já verificado por comando] tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)
+      cmd: ( [ "$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\.next/')" = 3 ] ) && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] nenhum .sql novo (zero DDL)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff --name-only "$b" HEAD | grep -c '[.]sql$'); [ "$n" = 0 ] && echo SEM_SQL || echo SQL_$n · espera: SEM_SQL
+  - [guarda · já verificado por comando] guardas globais seguem verdes
+      cmd: npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [guarda · já verificado por comando] nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADAS || echo EDITOU_$n · espera: INTOCADAS
+  - [guarda · já verificado por comando] nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- 'src/lib/perf/ghl-backfill.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ "$n" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n · espera: ZERO_JSON_NOVO
+  - [guarda · já verificado por comando] nenhuma leitura nova vira vazio em silencio (?? [] ou || [] em linha nova de src do ticket)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- 'src/lib/perf/ghl-backfill.ts' | grep -E '^[+][^+]' | grep -cE '[?][?] *\[\]|[|][|] *\[\]'); [ "$n" = 0 ] && echo SEM_VAZIO_SILENCIOSO || echo VAZIO_SILENCIOSO_$n · espera: SEM_VAZIO_SILENCIOSO
+  - [guarda · já verificado por comando] arquivos fora do escopo intocados
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- 'src/lib/perf/crm-oportunidades.ts' 'src/app/api/webhooks/ghl/app/route.ts' 'src/lib/perf/crm-conexao.ts' 'src/lib/jobs/handlers/index.ts' 'src/app/api/perf/ghl/backfill/[clienteId]/route.ts' | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADOS || echo TOCOU_$n · espera: INTOCADOS
+  - [guarda · já verificado por comando] so arquivos da allowlist foram tocados
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; r=SO_ALLOWLIST; for f in $(git diff --name-only "$b" HEAD); do ok=0; for p in 'src/lib/perf/ghl-backfill.ts' 'test/ghl-backfill-job.test.ts' 'test/ghl-backfill-oportunidades.test.ts'; do if [ "$f" = "$p" ]; then ok=1; fi; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r · espera: SO_ALLOWLIST
+  - [guarda · já verificado por comando] diff dentro do orcamento (<= 520 linhas somando adicoes e remocoes)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; t=$(git diff --numstat "$b" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ "$t" -le 520 ] && echo NO_TETO || echo ESTOUROU_$t · espera: NO_TETO
+  - [guarda · já verificado por comando] nenhuma escrita nova em tabela C0 ou ghl_* do comercial
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- src | grep -E '^[+][^+]' | grep -E '[.](insert|update|upsert|delete)[(]' | grep -cE 'clientes_receita|leads_crm|ads_metadata|ads_performance|trafego_|vw_|ghl_etapa_mapa|ghl_user_map|ghl_funnel'); [ "$n" = 0 ] && echo SEM_ESCRITA_C0 || echo ESCREVE_C0_$n · espera: SEM_ESCRITA_C0
+  - [guarda · já verificado por comando] test/ghl-backfill-job.test.ts anti-afrouxamento: nao perdeu assercao (contagem de expect( nao cai)
+      cmd: [ -f 'test/ghl-backfill-job.test.ts' ] || { echo SEM_AFROUXAR; exit 0; }; b="$(git merge-base HEAD origin/staging-auto)"; a=$(git show "$b:test/ghl-backfill-job.test.ts" 2>/dev/null | grep -c 'expect('); n=$(grep -c 'expect(' 'test/ghl-backfill-job.test.ts'); [ "$n" -ge "${a:-0}" ] && echo SEM_AFROUXAR || echo PERDEU_${a}_${n} · espera: SEM_AFROUXAR
+  - [guarda · já verificado por comando] testes do GHL, jobs, webhook e backfill seguem verdes
+      cmd: npx vitest run test/ghl-agencia-2a.test.ts test/ghl-conectar-ficha.test.ts test/middleware-webhooks.test.ts test/ingest-ghl.test.ts test/fechamentos.test.ts test/qualificacao-motor.test.ts test/jobs-motor-geral.test.ts test/setup-assistente-crm-concluir.test.ts test/ghl-app-webhook.test.ts test/ghl-backfill.test.ts test/ghl-oauth.test.ts test/ghl-backfill-lib.test.ts test/ghl-backfill-job.test.ts test/ghl-oportunidades-webhook.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [? · já verificado por comando] teste novo verde (test/ghl-backfill-oportunidades.test.ts)
+      cmd: test -f test/ghl-backfill-oportunidades.test.ts && npx vitest run test/ghl-backfill-oportunidades.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [? · já verificado por comando] backfill de oportunidades busca por pipeline e grava pela lib do 760
+      cmd: f='src/lib/perf/ghl-backfill.ts'; a=$(grep -c 'opportunities/search' "$f"); b=$(grep -c 'gravarOportunidade' "$f"); c=$(grep -c 'startAfterId' "$f"); d=$(grep -c 'pipeline_id' "$f"); [ "$a" -ge 1 ] && [ "$b" -ge 1 ] && [ "$c" -ge 1 ] && [ "$d" -ge 1 ] && echo OPORTUNIDADES_OK || echo OPP_${a}_${b}_${c}_${d} · espera: OPORTUNIDADES_OK
+  - [avaliador · JULGUE VOCÊ] avaliador: depois dos contatos, o job puxa as oportunidades de cada pipeline ativo ate o fim, grava pela lib do 760 (com historico) e so entao marca backfill_concluido_em; toda falha fica em ultimo_erro. REPROVE se: grava oportunidade fora da lib do 760; conclui antes de terminar todos os pipelines; erro de pagina vira pagina vazia; assercao do teste do 762 removida em vez de recalculada.
+
+
+MENSAGENS DE COMMIT (escritas pelo agente: declaração, não evidência):
+O que o agente AFIRMA ter feito. Serve para saber o que conferir no diff e nos
+gates; uma afirmação aqui que o diff ou os gates não provam NÃO foi feita.
+
+commit 652f46458a2db9d42addc3eee2a10c389f01fba8
+
+test(763): recalcula conclusao dos contatos e cobre a fase de oportunidades
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+commit 929a91511c7ab64d0edf30cf0b1ee4d3267b9950
+
+feat(763): backfill de oportunidades por pipeline depois dos contatos, conclui so no fim
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+SAÍDA DOS GATES MECÂNICOS:
+ok   build
+       
+       ○  (Static)   prerendered as static content
+       ƒ  (Dynamic)  server-rendered on demand
+ok   tsc
+       src/app/api/perf/qualificacao-regras/[id]/route.ts(55,34): error TS2538: Type 'undefined' cannot be used as an index type.
+       src/app/api/perf/qualificacao-regras/estagios/route.ts(31,21): error TS2802: Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+       src/app/dashboard/clientes/qualificacao/qualificacao-block.tsx(74,29): error TS2802: Type 'MapIterator<ClienteTese>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+ok   vitest
+       Tests  7690 passed (7690)
+       Start at  18:41:45
+       Duration  35.96s (transform 44.69s, setup 0ms, import 128.63s, tests 38.45s, environment 139ms)
+VEREDITO: APROVADO
+
+DIFF CRU DA TENTATIVA (git diff base...HEAD):
+diff --git a/src/lib/perf/ghl-backfill.ts b/src/lib/perf/ghl-backfill.ts
+index 0a459fa..7f0d10b 100644
+--- a/src/lib/perf/ghl-backfill.ts
++++ b/src/lib/perf/ghl-backfill.ts
+@@ -9,6 +9,13 @@ import { enqueue } from "@/lib/jobs/core/enqueue";
+ import { JobPermanentError, type Job, type JobsDb } from "@/lib/jobs/core/types";
+ import { getEncryptionKey } from "@/lib/perf/encryption-key";
+ import { renovarTokenGhl } from "@/lib/perf/ghl-oauth";
++import {
++  OportunidadeSemConexaoError,
++  OportunidadeSemEtapaError,
++  gravarOportunidade,
++  normalizarOportunidadeGhl,
++  requalificarContato,
++} from "@/lib/perf/crm-oportunidades";
+ import { ingerirLeadGhl, mapGhlAppContactToLead } from "@/lib/perf/leads-ghl";
+ 
+ export const PREFIXO_ERRO_BACKFILL = "Backfill";
+@@ -18,6 +25,7 @@ const PAGINAS_POR_VOLTA = 5;
+ const ORCAMENTO_JOB_MS = 200_000;
+ 
+ const CONTATOS_POR_PAGINA = 100;
++const OPORTUNIDADES_POR_PAGINA = 100;
+ const MARGEM_RENOVACAO_MS = 5 * 60 * 1000;
+ const GHL_API_VERSION = "2021-07-28";
+ 
+@@ -28,6 +36,19 @@ const supabase = createClient(
+ 
+ export type CursorBackfill = (string | number)[];
+ 
++/** Cursor da fase de oportunidades: pipeline em curso e a ancora da proxima pagina (meta do GHL). */
++export type CursorOportunidades = { pipeline_idx: number; startAfter: string | number | null; startAfterId: string | null };
++
++export function lerCursorOportunidades(v: unknown): CursorOportunidades {
++  if (!v || typeof v !== "object" || Array.isArray(v)) return { pipeline_idx: 0, startAfter: null, startAfterId: null };
++  const c = v as Record<string, unknown>;
++  return {
++    pipeline_idx: typeof c.pipeline_idx === "number" && c.pipeline_idx >= 0 ? c.pipeline_idx : 0,
++    startAfter: typeof c.startAfter === "string" || typeof c.startAfter === "number" ? c.startAfter : null,
++    startAfterId: typeof c.startAfterId === "string" ? c.startAfterId : null,
++  };
++}
++
+ export type ParcialBackfill = { processados: number; falhas: number; cursor: CursorBackfill | null };
+ 
+ export class BackfillErro extends Error {
+@@ -199,7 +220,7 @@ export async function enfileirarBackfillGhl(
+     clienteId: string;
+     locationId: string;
+     fase?: string;
+-    cursor?: CursorBackfill | null;
++    cursor?: CursorBackfill | CursorOportunidades | null;
+     passo?: number;
+     acumulado?: AcumuladoBackfill;
+   },
+@@ -282,7 +303,7 @@ async function concluirBackfill(db: JobsDb, locationId: string, falhas: number):
+   const erroAtual = atual && typeof atual.ultimo_erro === "string" ? atual.ultimo_erro : "";
+   const campos: Record<string, unknown> = { backfill_concluido_em: agora };
+   if (falhas > 0) {
+-    campos.ultimo_erro = `Backfill concluído com ${falhas} contatos não gravados`;
++    campos.ultimo_erro = `Backfill concluído com ${falhas} itens não gravados`;
+     campos.ultimo_erro_em = agora;
+   } else if (erroAtual.startsWith(PREFIXO_ERRO_BACKFILL)) {
+     campos.ultimo_erro = null;
+@@ -292,15 +313,169 @@ async function concluirBackfill(db: JobsDb, locationId: string, falhas: number):
+   if (error) throw new Error(`Falha ao concluir o backfill: ${error.message}`);
+ }
+ 
++type PayloadBackfill = {
++  cliente_id: string;
++  location_id: string;
++  fase?: string;
++  cursor?: unknown;
++  passo?: number;
++  processados?: number;
++  falhas?: number;
++};
++
++function motivoDe(err: unknown): string {
++  return err instanceof BackfillErro ? err.mensagem : err instanceof Error ? err.message : "erro interno";
++}
++
++async function lerPipelinesAtivos(locationId: string): Promise<string[]> {
++  const { data, error } = await supabase
++    .from("perf_crm_pipelines")
++    .select("ghl_pipeline_id")
++    .eq("location_id", locationId)
++    .eq("ativo", true)
++    .order("posicao", { ascending: true });
++  if (error) throw new BackfillErro(500, `Falha ao ler os funis do CRM: ${error.message}`);
++  if (!Array.isArray(data)) throw new BackfillErro(500, "Falha ao ler os funis do CRM: resposta inválida");
++  return (data as { ghl_pipeline_id: string }[]).map((r) => r.ghl_pipeline_id);
++}
++
++/** Uma pagina de GET /opportunities/search (nomes de query da API v2). Erro sobe; nunca vira pagina vazia. */
++async function buscarPaginaOportunidades(args: {
++  base: string;
++  bearer: string;
++  locationId: string;
++  pipelineId: string;
++  cursor: CursorOportunidades;
++}): Promise<{ itens: unknown[]; proximo: { startAfter: string | number; startAfterId: string } | null }> {
++  const { base, bearer, locationId, pipelineId, cursor } = args;
++  const url = new URL(`${base}/opportunities/search`);
++  url.searchParams.set("location_id", locationId);
++  url.searchParams.set("pipeline_id", pipelineId);
++  url.searchParams.set("limit", String(OPORTUNIDADES_POR_PAGINA));
++  if (cursor.startAfter !== null && cursor.startAfterId !== null) {
++    url.searchParams.set("startAfter", String(cursor.startAfter));
++    url.searchParams.set("startAfterId", cursor.startAfterId);
++  }
++  const resp = await fetch(url.toString(), {
++    headers: { Authorization: `Bearer ${bearer}`, Version: GHL_API_VERSION, accept: "application/json" },
++  });
++  if (!resp.ok) {
++    console.error("[ghl-backfill] busca de oportunidades falhou", resp.status);
++    throw new BackfillErro(resp.status === 401 || resp.status === 403 ? resp.status : 502, "Falha ao buscar oportunidades no CRM");
++  }
++  let dados: { opportunities?: unknown; meta?: { startAfter?: unknown; startAfterId?: unknown; nextPageUrl?: unknown } };
++  try {
++    dados = JSON.parse(await resp.text());
++  } catch {
++    console.error("[ghl-backfill] resposta de oportunidades ilegivel", resp.status);
++    throw new BackfillErro(502, "Resposta inválida do CRM ao buscar oportunidades");
++  }
++  if (!Array.isArray(dados.opportunities)) throw new BackfillErro(502, "Resposta inválida do CRM ao buscar oportunidades");
++  const itens = dados.opportunities as unknown[];
++  const meta = dados.meta;
++  if (itens.length < OPORTUNIDADES_POR_PAGINA || !meta?.nextPageUrl) return { itens, proximo: null };
++  const { startAfter, startAfterId } = meta;
++  if ((typeof startAfter !== "string" && typeof startAfter !== "number") || typeof startAfterId !== "string") {
++    throw new BackfillErro(502, "Resposta inválida do CRM ao paginar oportunidades");
++  }
++  return { itens, proximo: { startAfter, startAfterId } };
++}
++
++/**
++ * Fase 'oportunidades': cada pipeline ativo da location, pagina a pagina, gravando pela lib do 760.
++ * A lib grava no historico o valor de origem recebido e nao decide nada sobre ele: o backfill
++ * passa sempre 'backfill'.
++ */
++async function processarFaseOportunidades(p: PayloadBackfill, db: JobsDb): Promise<Record<string, unknown>> {
++  const passo = typeof p.passo === "number" ? p.passo : 0;
++  let cursor = lerCursorOportunidades(p.cursor);
++  let processados = typeof p.processados === "number" ? p.processados : 0;
++  let falhas = typeof p.falhas === "number" ? p.falhas : 0;
++  const inicio = Date.now();
++  const prefixo = `${PREFIXO_ERRO_BACKFILL} de oportunidades parou: `;
++
++  let pipelines: string[];
++  let bearer: string;
++  const base = (process.env.GHL_API_BASE_URL || "").replace(/\/+$/, "");
++  try {
++    if (!base) throw new BackfillErro(500, "Integração com o CRM não configurada");
++    pipelines = await lerPipelinesAtivos(p.location_id);
++    bearer = await credencialDaConta(p.location_id);
++  } catch (err) {
++    const motivo = motivoDe(err);
++    await gravarUltimoErro(db, p.location_id, `${prefixo}${motivo}`);
++    if (err instanceof BackfillErro && (err.status === 404 || err.status === 409)) throw new JobPermanentError(motivo);
++    throw err;
++  }
++
++  while (cursor.pipeline_idx < pipelines.length) {
++    try {
++      const { itens, proximo } = await buscarPaginaOportunidades({
++        base,
++        bearer,
++        locationId: p.location_id,
++        pipelineId: pipelines[cursor.pipeline_idx],
++        cursor,
++      });
++      for (const bruto of itens) {
++        const opp = normalizarOportunidadeGhl(bruto);
++        if (!opp) {
++          falhas++;
++          continue;
++        }
++        try {
++          const gravada = await gravarOportunidade(p.location_id, opp, "backfill");
++          processados++;
++          if (gravada.ghl_contact_id) {
++            try {
++              await requalificarContato(p.cliente_id, gravada.ghl_contact_id);
++            } catch (err) {
++              falhas++;
++              console.error("[ghl-backfill] requalificar contato falhou", opp.id, motivoDe(err));
++            }
++          }
++        } catch (err) {
++          if (err instanceof OportunidadeSemEtapaError || err instanceof OportunidadeSemConexaoError) {
++            falhas++;
++            console.warn("[ghl-backfill] oportunidade nao gravada", opp.id, err.name);
++          } else throw err;
++        }
++      }
++      cursor = proximo
++        ? { pipeline_idx: cursor.pipeline_idx, startAfter: proximo.startAfter, startAfterId: proximo.startAfterId }
++        : { pipeline_idx: cursor.pipeline_idx + 1, startAfter: null, startAfterId: null };
++    } catch (err) {
++      const motivo = motivoDe(err);
++      await gravarUltimoErro(db, p.location_id, `${prefixo}${motivo}`);
++      if (err instanceof BackfillErro && (err.status === 401 || err.status === 403)) throw new JobPermanentError(motivo);
++      throw err;
++    }
++
++    if (cursor.pipeline_idx < pipelines.length && Date.now() - inicio >= ORCAMENTO_JOB_MS) {
++      try {
++        await enfileirarBackfillGhl(db, {
++          clienteId: p.cliente_id,
++          locationId: p.location_id,
++          fase: "oportunidades",
++          cursor,
++          passo: passo + 1,
++          acumulado: { processados, falhas },
++        });
++      } catch (err) {
++        await gravarUltimoErro(db, p.location_id, `${prefixo}${motivoDe(err)}`);
++        throw err;
++      }
++      return { continua: true, processados, falhas };
++    }
++  }
++
++  await concluirBackfill(db, p.location_id, falhas);
++  return { processados, falhas };
++}
++
+ export async function processarJobBackfillGhl(job: Job, db: JobsDb): Promise<Record<string, unknown>> {
+-  const p = job.payload as {
+-    cliente_id: string;
+-    location_id: string;
+-    cursor?: unknown;
+-    passo?: number;
+-    processados?: number;
+-    falhas?: number;
+-  };
++  const p = job.payload as PayloadBackfill;
++  if (p.fase === "oportunidades") return processarFaseOportunidades(p, db);
+   const passo = typeof p.passo === "number" ? p.passo : 0;
+   let cursor = lerCursor(p.cursor);
+   let processados = typeof p.processados === "number" ? p.processados : 0;
+@@ -322,8 +497,20 @@ export async function processarJobBackfillGhl(job: Job, db: JobsDb): Promise<Rec
+     cursor = volta.cursor;
+ 
+     if (volta.terminou) {
+-      await concluirBackfill(db, p.location_id, falhas);
+-      return { processados, falhas };
++      // 763: contatos nao concluem mais o backfill; a fase de oportunidades conclui.
++      try {
++        await enfileirarBackfillGhl(db, {
++          clienteId: p.cliente_id,
++          locationId: p.location_id,
++          fase: "oportunidades",
++          passo: 0,
++          acumulado: { processados, falhas },
++        });
++      } catch (err) {
++        await gravarUltimoErro(db, p.location_id, `${PREFIXO_ERRO_BACKFILL} de contatos parou: ${motivoDe(err)}`);
++        throw err;
++      }
++      return { fase: "contatos", proxima: "oportunidades", processados, falhas };
+     }
+     if (Date.now() - inicio >= ORCAMENTO_JOB_MS) {
+       try {
+diff --git a/test/ghl-backfill-job.test.ts b/test/ghl-backfill-job.test.ts
+index 2bfcec3..c493ef7 100644
+--- a/test/ghl-backfill-job.test.ts
++++ b/test/ghl-backfill-job.test.ts
+@@ -166,35 +166,37 @@ describe("agendarBackfillsPendentes", () => {
+ });
+ 
+ describe("processarJobBackfillGhl", () => {
+-  it("ao terminar grava backfill_concluido_em e limpa erro antigo de backfill", async () => {
++  // 763: a fase de contatos terminada NAO grava mais backfill_concluido_em nem mexe em ultimo_erro;
++  // enfileira a fase de oportunidades (passo 0) com os acumulados. Os 3 contatos da pagina viram processados: 3.
++  it("ao terminar os contatos enfileira a fase de oportunidades e não grava a conclusão", async () => {
+     erroConexao = "Backfill de contatos parou: Falha ao buscar contatos no CRM";
+     vi.stubGlobal("fetch", vi.fn(async () => pagina(3)));
+     const r = await processarJobBackfillGhl(job(), db);
+-    expect(r).toMatchObject({ processados: 3, falhas: 0 });
+-    const upd = conexoes()[0].valores as Record<string, unknown>;
+-    expect(typeof upd.backfill_concluido_em).toBe("string");
+-    expect(upd.ultimo_erro).toBeNull();
+-    expect(upd.ultimo_erro_em).toBeNull();
+-    expect(upd).not.toHaveProperty("status");
++    expect(r).toMatchObject({ fase: "contatos", proxima: "oportunidades", processados: 3, falhas: 0 });
++    const arg = h.enqueue.mock.calls[0][1];
++    expect(arg.chave_idempotencia).toBe(`ghl_backfill:${LOC}:oportunidades:0`);
++    expect(arg.payload).toMatchObject({ fase: "oportunidades", passo: 0, processados: 3, falhas: 0 });
++    expect(conexoes().length).toBe(0);
++    expect(arg.cliente_id).toBe(CLIENTE);
+   });
+ 
+-  it("não limpa ultimo_erro que não é do backfill (sem o prefixo)", async () => {
++  it("não escreve ultimo_erro nem conclusão ao terminar os contatos (a conclusão é da fase de oportunidades)", async () => {
+     erroConexao = "Falha ao sincronizar pipelines";
+     vi.stubGlobal("fetch", vi.fn(async () => pagina(2)));
+     await processarJobBackfillGhl(job(), db);
+-    const upd = conexoes()[0].valores as Record<string, unknown>;
+-    expect(typeof upd.backfill_concluido_em).toBe("string");
+-    expect(upd).not.toHaveProperty("ultimo_erro");
++    expect(h.enqueue).toHaveBeenCalledTimes(1);
++    expect(conexoes().some((o) => "backfill_concluido_em" in (o.valores ?? {}))).toBe(false);
++    expect(conexoes().some((o) => "ultimo_erro" in (o.valores ?? {}))).toBe(false);
+   });
+ 
+-  it("falhas acumuladas no fim gravam a mensagem de contatos não gravados", async () => {
++  // 763: as 2 falhas de entrada seguem no payload da fase seguinte (falhas: 2); a mensagem final
++  // "itens não gravados" sai da fase de oportunidades, coberta em ghl-backfill-oportunidades.test.ts.
++  it("falhas acumuladas dos contatos seguem no payload da fase de oportunidades", async () => {
+     vi.stubGlobal("fetch", vi.fn(async () => pagina(2)));
+     const r = await processarJobBackfillGhl(job({ falhas: 2 }), db);
+     expect(r).toMatchObject({ falhas: 2 });
+-    const upd = conexoes()[0].valores as Record<string, unknown>;
+-    expect(upd.ultimo_erro).toBe("Backfill concluído com 2 contatos não gravados");
+-    expect(typeof upd.ultimo_erro_em).toBe("string");
+-    expect(typeof upd.backfill_concluido_em).toBe("string");
++    expect(h.enqueue.mock.calls[0][1].payload).toMatchObject({ fase: "oportunidades", falhas: 2, processados: 2 });
++    expect(conexoes().length).toBe(0);
+   });
+ 
+   it("página com erro grava ultimo_erro com o prefixo e relança o erro original", async () => {
+@@ -239,6 +241,7 @@ describe("processarJobBackfillGhl", () => {
+   });
+ 
+   it("o status da conexão nunca é escrito pelo job", async () => {
++    // 763: com 1 contato o job só enfileira a fase seguinte; o status segue sem escrita.
+     vi.stubGlobal("fetch", vi.fn(async () => pagina(1)));
+     await processarJobBackfillGhl(job(), db);
+     for (const o of conexoes()) expect(o.valores).not.toHaveProperty("status");
+diff --git a/test/ghl-backfill-oportunidades.test.ts b/test/ghl-backfill-oportunidades.test.ts
+new file mode 100644
+index 0000000..75de6ba
+--- /dev/null
++++ b/test/ghl-backfill-oportunidades.test.ts
+@@ -0,0 +1,237 @@
++/**
++ * 763: fase 'oportunidades' do backfill do GHL. Supabase, fetch, gravarOportunidade e
++ * requalificarContato mockados; Date.now controlado no teste do orçamento.
++ */
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++
++type Op = { table: string; acao: string; valores?: Record<string, unknown>; filtros: [string, unknown][] };
++type Resp = { data: unknown; error: { message: string } | null };
++
++const h = vi.hoisted(() => {
++  class SemEtapa extends Error {}
++  class SemConexao extends Error {}
++  return {
++    ops: [] as Op[],
++    resolver: (_op: Op): Resp => ({ data: null, error: null }),
++    enqueue: vi.fn(),
++    gravar: vi.fn(),
++    requalificar: vi.fn(),
++    SemEtapa,
++    SemConexao,
++  };
++});
++
++function builder(table: string) {
++  const op: Op = { table, acao: "select", filtros: [] };
++  const b: Record<string, unknown> = {};
++  const registrar = (nome: string) => (...a: unknown[]) => {
++    if (nome === "update" || nome === "insert") {
++      op.acao = nome;
++      op.valores = a[0] as Record<string, unknown>;
++    } else op.filtros.push([nome, a]);
++    return b;
++  };
++  for (const m of ["select", "eq", "not", "is", "gt", "in", "limit", "order", "update", "insert"]) b[m] = registrar(m);
++  const fim = () => {
++    h.ops.push(op);
++    return Promise.resolve(h.resolver(op));
++  };
++  b.maybeSingle = fim;
++  b.single = fim;
++  b.then = (ok: (v: Resp) => unknown, ko: (e: unknown) => unknown) => fim().then(ok, ko);
++  return b;
++}
++
++const fakeDb = { from: (t: string) => builder(t), rpc: () => Promise.resolve({ data: "token-claro", error: null }) };
++
++vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ from: (t: string) => builder(t), rpc: () => Promise.resolve({ data: "token-claro", error: null }) }) }));
++vi.mock("@/lib/jobs/core/enqueue", () => ({ enqueue: (...a: unknown[]) => h.enqueue(...a) }));
++vi.mock("@/lib/perf/encryption-key", () => ({ getEncryptionKey: () => "chave" }));
++vi.mock("@/lib/perf/ghl-oauth", () => ({ renovarTokenGhl: vi.fn() }));
++vi.mock("@/lib/perf/leads-ghl", () => ({ ingerirLeadGhl: vi.fn(), mapGhlAppContactToLead: vi.fn() }));
++// A lib do 760 é mockada por inteiro; a normalização aqui só exige id, pipeline, etapa e status.
++vi.mock("@/lib/perf/crm-oportunidades", () => ({
++  OportunidadeSemEtapaError: h.SemEtapa,
++  OportunidadeSemConexaoError: h.SemConexao,
++  normalizarOportunidadeGhl: (b: Record<string, unknown>) => (b && b.id && b.pipelineId && b.pipelineStageId && b.status ? b : null),
++  gravarOportunidade: (...a: unknown[]) => h.gravar(...a),
++  requalificarContato: (...a: unknown[]) => h.requalificar(...a),
++}));
++
++import { TIPO_JOB_BACKFILL, processarJobBackfillGhl } from "@/lib/perf/ghl-backfill";
++import { JobPermanentError, type Job, type JobsDb } from "@/lib/jobs/core/types";
++
++const db = fakeDb as unknown as JobsDb;
++const CLIENTE = "00000000-0000-4000-8000-000000000000";
++const LOC = "BAs5Fw46Xz3uvTtq6Gmz";
++
++function job(payload: Record<string, unknown> = {}): Job {
++  return {
++    id: "00000000-0000-4000-8000-000000000001",
++    tipo: TIPO_JOB_BACKFILL,
++    payload: { cliente_id: CLIENTE, location_id: LOC, fase: "oportunidades", cursor: null, passo: 0, processados: 0, falhas: 0, ...payload },
++  } as unknown as Job;
++}
++
++/** Oportunidade no formato do GET /opportunities/search. */
++function opp(id: string, pipeline: string, contato: string | null = "ct1") {
++  return { id, pipelineId: pipeline, pipelineStageId: "s1", status: "open", name: id, ...(contato ? { contactId: contato } : {}) };
++}
++
++function pagina(itens: unknown[], meta: Record<string, unknown> = {}) {
++  return { ok: true, status: 200, text: async () => JSON.stringify({ opportunities: itens, meta }) };
++}
++
++function cheia(pipeline: string) {
++  return Array.from({ length: 100 }, (_, i) => opp(`${pipeline}-o${i}`, pipeline));
++}
++
++const META_MAIS = { startAfter: 1700000000, startAfterId: "ultimo-id", nextPageUrl: "https://ghl.test/proxima" };
++
++function conexoes(): Op[] {
++  return h.ops.filter((o) => o.table === "perf_crm_conexoes" && o.acao === "update");
++}
++
++function urlsChamadas(f: ReturnType<typeof vi.fn>): URL[] {
++  return f.mock.calls.map((c) => new URL(String(c[0])));
++}
++
++let pipelines: string[];
++let erroConexao: string | null;
++
++beforeEach(() => {
++  h.ops = [];
++  h.enqueue.mockReset();
++  h.enqueue.mockResolvedValue({ job: {}, criado: true });
++  h.gravar.mockReset();
++  h.gravar.mockResolvedValue({ oportunidade_id: "x", ghl_contact_id: "ct1", cliente_id: CLIENTE, criada: true, mudou: true });
++  h.requalificar.mockReset();
++  h.requalificar.mockResolvedValue({ lead_id: null });
++  pipelines = ["p1", "p2"];
++  erroConexao = null;
++  process.env.GHL_API_BASE_URL = "https://ghl.test";
++  h.resolver = (op) => {
++    if (op.table === "perf_crm_pipelines") return { data: pipelines.map((p) => ({ ghl_pipeline_id: p })), error: null };
++    if (op.table === "integration_tokens") return { data: { access_token: "x", refresh_token: null, token_expires_at: null }, error: null };
++    if (op.table === "perf_crm_conexoes" && op.acao === "select") return { data: { ultimo_erro: erroConexao }, error: null };
++    return { data: null, error: null };
++  };
++});
++
++afterEach(() => {
++  vi.unstubAllGlobals();
++  vi.restoreAllMocks();
++});
++
++describe("fase de oportunidades do backfill", () => {
++  it("a busca usa location_id, pipeline_id e limit 100", async () => {
++    pipelines = ["p1"];
++    const f = vi.fn(async () => pagina([opp("o1", "p1")]));
++    vi.stubGlobal("fetch", f);
++    await processarJobBackfillGhl(job(), db);
++    const u = urlsChamadas(f)[0];
++    expect(u.pathname).toBe("/opportunities/search");
++    expect(u.searchParams.get("location_id")).toBe(LOC);
++    expect(u.searchParams.get("pipeline_id")).toBe("p1");
++    expect(u.searchParams.get("limit")).toBe("100");
++  });
++
++  it("a segunda página vai com startAfter e startAfterId da primeira", async () => {
++    pipelines = ["p1"];
++    const f = vi.fn().mockResolvedValueOnce(pagina(cheia("p1"), META_MAIS)).mockResolvedValueOnce(pagina([opp("fim", "p1")]));
++    vi.stubGlobal("fetch", f);
++    await processarJobBackfillGhl(job(), db);
++    const [primeira, segunda] = urlsChamadas(f);
++    expect(primeira.searchParams.has("startAfter")).toBe(false);
++    expect(segunda.searchParams.get("startAfter")).toBe("1700000000");
++    expect(segunda.searchParams.get("startAfterId")).toBe("ultimo-id");
++    expect(h.gravar).toHaveBeenCalledTimes(101);
++  });
++
++  it("passa por todos os pipelines na ordem e grava pela lib com origem backfill", async () => {
++    const f = vi.fn(async (url: string) => pagina([opp(`o-${new URL(url).searchParams.get("pipeline_id")}`, "px")]));
++    vi.stubGlobal("fetch", f);
++    await processarJobBackfillGhl(job(), db);
++    expect(urlsChamadas(f).map((u) => u.searchParams.get("pipeline_id"))).toEqual(["p1", "p2"]);
++    expect(h.gravar.mock.calls[0][0]).toBe(LOC);
++    expect(h.gravar.mock.calls[0][2]).toBe("backfill");
++    expect(h.requalificar).toHaveBeenCalledWith(CLIENTE, "ct1");
++  });
++
++  it("oportunidade sem etapa conta em falhas e o job segue", async () => {
++    pipelines = ["p1"];
++    vi.spyOn(console, "warn").mockImplementation(() => {});
++    h.gravar.mockRejectedValueOnce(new h.SemEtapa("sem etapa"));
++    vi.stubGlobal("fetch", vi.fn(async () => pagina([opp("o1", "p1"), opp("o2", "p1")])));
++    const r = await processarJobBackfillGhl(job(), db);
++    expect(r).toMatchObject({ processados: 1, falhas: 1 });
++    expect(h.gravar).toHaveBeenCalledTimes(2);
++    expect(conexoes()[0].valores?.ultimo_erro).toBe("Backfill concluído com 1 itens não gravados");
++  });
++
++  it("falha ao requalificar o contato conta em falhas e segue", async () => {
++    pipelines = ["p1"];
++    vi.spyOn(console, "error").mockImplementation(() => {});
++    h.requalificar.mockRejectedValueOnce(new Error("motor fora"));
++    vi.stubGlobal("fetch", vi.fn(async () => pagina([opp("o1", "p1")])));
++    const r = await processarJobBackfillGhl(job(), db);
++    expect(r).toMatchObject({ processados: 1, falhas: 1 });
++  });
++
++  it("o fim grava backfill_concluido_em e limpa erro antigo de backfill", async () => {
++    pipelines = ["p1"];
++    erroConexao = "Backfill de oportunidades parou: Falha ao buscar oportunidades no CRM";
++    vi.stubGlobal("fetch", vi.fn(async () => pagina([opp("o1", "p1")])));
++    const r = await processarJobBackfillGhl(job({ processados: 3 }), db);
++    expect(r).toMatchObject({ processados: 4, falhas: 0 });
++    const upd = conexoes()[0].valores as Record<string, unknown>;
++    expect(typeof upd.backfill_concluido_em).toBe("string");
++    expect(upd.ultimo_erro).toBeNull();
++    expect(upd).not.toHaveProperty("status");
++    expect(h.enqueue).not.toHaveBeenCalled();
++  });
++
++  it("erro de página grava ultimo_erro com o prefixo e relança", async () => {
++    vi.spyOn(console, "error").mockImplementation(() => {});
++    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 500, text: async () => "" })));
++    await expect(processarJobBackfillGhl(job(), db)).rejects.toThrow(/Falha ao buscar oportunidades no CRM/);
++    const upd = conexoes()[0].valores as Record<string, unknown>;
++    expect(String(upd.ultimo_erro).startsWith("Backfill de oportunidades parou: ")).toBe(true);
++    expect(typeof upd.ultimo_erro_em).toBe("string");
++    expect(conexoes().some((o) => "backfill_concluido_em" in (o.valores ?? {}))).toBe(false);
++  });
++
++  it("403 vira JobPermanentError e ainda grava o erro", async () => {
++    vi.spyOn(console, "error").mockImplementation(() => {});
++    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 403, text: async () => "" })));
++    await expect(processarJobBackfillGhl(job(), db)).rejects.toBeInstanceOf(JobPermanentError);
++    expect(String((conexoes()[0].valores as Record<string, unknown>).ultimo_erro)).toContain("Backfill de oportunidades parou: ");
++  });
++
++  it("orçamento estourado enfileira o próximo passo com pipeline_idx e cursor", async () => {
++    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(pagina(cheia("p1"), META_MAIS)));
++    let t = 1_000_000;
++    vi.spyOn(Date, "now").mockImplementation(() => {
++      t += 150_000;
++      return t;
++    });
++    const r = await processarJobBackfillGhl(job({ passo: 3, processados: 10 }), db);
++    expect(r).toMatchObject({ continua: true });
++    const arg = h.enqueue.mock.calls[0][1];
++    expect(arg.chave_idempotencia).toBe(`ghl_backfill:${LOC}:oportunidades:4`);
++    expect(arg.payload.cursor).toMatchObject({ pipeline_idx: 0, startAfter: 1700000000, startAfterId: "ultimo-id" });
++    // Date.now avança 150 s por chamada: a 1a página (100) não estoura 200 s, a 2a (mais 100) estoura; 10 + 200 = 210.
++    expect(arg.payload.processados).toBe(210);
++    expect(conexoes().length).toBe(0);
++  });
++
++  it("retoma do pipeline_idx e do cursor do payload", async () => {
++    const f = vi.fn(async () => pagina([opp("o1", "p2")]));
++    vi.stubGlobal("fetch", f);
++    await processarJobBackfillGhl(job({ cursor: { pipeline_idx: 1, startAfter: 5, startAfterId: "abc" } }), db);
++    const u = urlsChamadas(f);
++    expect(u.length).toBe(1);
++    expect(u[0].searchParams.get("pipeline_id")).toBe("p2");
++    expect(u[0].searchParams.get("startAfterId")).toBe("abc");
++  });
++});

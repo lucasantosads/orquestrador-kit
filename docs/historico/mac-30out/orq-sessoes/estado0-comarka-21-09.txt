@@ -1,0 +1,126 @@
+seg 21 set 2026 11:17:22 -03
+fetch rc=0
+## main...origin/main [ahead 2]
+ M docs/fila/000-config.json
+ M scripts/orquestrador/local-loop.sh
+?? scripts/orquestrador/test-disjuntor.sh
+stash@{0}: wip-315a-check-baseline
+stash@{1}: On main: pre-lote-v41
+stash@{2}: On frente/rbac-v2: wip-frequencia-rollup
+stash@{3}: On main: tkt-freq-wip
+stash@{4}: On tkt-029: tkt-029 WIP cockpit (auto-stashed para criar branch tkt-dossie)
+0ece764 fila: conserto grep -c || echo em 486, 407a0 e varredura (21/09)
+7382ac3 fila: status devolvido pelo loop ate 21/09
+8868403 handoff: sessoes de 19 e 20/09
+5465c3f playbook: uma sessao por vez escrevendo em docs/fila (20/09)
+cf189f1 playbook: "tipo":"alvo" em recon_esperado e ignorado (incidente 486/489/495)
+f5c9941 fila: 486 declara orcamento de diff de 600; 486b registra a janela segura (tabela vazia)
+0240973 fila: 486 fatiado em 486/486b; 504 cobre a ficha inteira
+2a64460 fila: 486/489 reabertos, 504 e 505 novos (revisao visual da ficha)
+2	0
+== orq
+bash: scripts/orq: No such file or directory
+== pausa
+ls: .orq-pause: No such file or directory
+ls: docs/fila/PAUSAR: No such file or directory
+== launchd
+	state = not running
+	runs = 18
+	last exit code = 0
+		state = active
+		state = active
+== harness
+   12195 total
+    1787 scripts/orquestrador/orq-server.py
+     921 docs/orquestrador/PLAYBOOK.md
+     896 scripts/orquestrador/executor.sh
+     701 scripts/orquestrador/lib.sh
+     610 scripts/orquestrador/orq-painel.py
+     406 scripts/orquestrador/orq-granularidade.py
+     399 scripts/orquestrador/local-loop.sh
+     302 test/orquestrador-enforcement.test.ts
+     276 scripts/orquestrador/telemetria.ts
+     258 scripts/orquestrador/enforcement-core.ts
+     248 docs/orquestrador/skill/templates/config.json
+     233 scripts/orquestrador/orq-contrato.py
+     224 scripts/orquestrador/writeback-notion.ts
+     216 scripts/orquestrador/test-gate-streak.sh
+     212 scripts/orquestrador/orq-telemetria.py
+     212 docs/orquestrador/skill/SKILL.md
+     195 scripts/orquestrador/test-adiado.sh
+     192 scripts/orquestrador/avaliador.sh
+     185 scripts/orquestrador/relatorio-email.ts
+     185 docs/orquestrador/skill/references/autoalimentacao.md
+     185 docs/orquestrador/FIXES-comarka.md
+     184 scripts/orquestrador/test-drenagem.sh
+     180 docs/orquestrador/214-harness-manutencao.md
+     171 docs/orquestrador/avaliacao-bmad.md
+     156 docs/orquestrador/skill/references/instalacao-portavel.md
+     155 scripts/orquestrador/test-cooldown-causa.sh
+     143 scripts/orquestrador/test-parser-verdict.sh
+     130 test/orquestrador-lock.test.ts
+     129 docs/orquestrador/skill/references/observabilidade.md
+     118 scripts/orquestrador/instalar-orq-server.sh
+     117 docs/orquestrador/skill/templates/TICKET.md
+     116 docs/orquestrador/skill/references/setup.md
+     107 docs/orquestrador/SKILL-patch-v2.APLICADO.md
+     106 .github/workflows/orquestrador.yml
+     100 docs/orquestrador/skill/references/custo-e-contexto.md
+      91 scripts/orquestrador/test-drenagem-sem-progresso.sh
+      90 scripts/orquestrador/fila-read.ts
+      87 scripts/orquestrador/test-drenagem-divergente.sh
+      86 scripts/orquestrador/test-cleanup-worktree.sh
+== config chaves
+$schema_versao
+_cooldown
+_diff_cap_medido
+_disjuntor_sem_progresso
+_economia
+_gate_streak
+_identidade
+_modelos
+_writeback_notion
+avaliador_model
+branch_alvo
+c0_intocavel
+claude_timeout_secs
+cooldown_minutes
+descricao
+diff_cap_linhas
+disjuntor_sem_progresso_limite
+executor_model
+gate_streak_limite
+gates
+liberacoes_file
+max_retries
+migrations_dir
+perfis_tools
+preflight_env_keys
+preflight_probe
+proibicoes_absolutas
+repo_origin_deve_conter
+retry_final_model
+runs_dir
+supabase_project_id
+worktrees_dir
+writeback_notion
+== harness desde 12/09
+819707f harness: selecao unica por prioridade (drenar usa selecionar_pendente) + teste de ponta a ponta com paridade painel/loop
+c4273db harness: campo prioridade ordena proximo_pendente (1-99, ausente=50) + test-prioridade.sh
+f5a1ebf fila: lote A1 — guarda mais barata e 4 colisoes de allowlist resolvidas
+d62de4f fila: lote A1 de acessibilidade — 60 tickets gerados, 118 achados
+df0f3b4 merge: gate de topologia no validar-fila
+94d5456 feat(validar-fila): gate de topologia — ticket escrito contra arvore que o loop nao usa
+f141ebc merge: main -> staging-auto (padrao de listagem, contrato ops_jobs, lote 392-394)
+661edf9 chore(roadmap): indice medido da fila + higiene de worktree
+3a3e526 fix(orq): .cmd // "" evita jq null em criterio de avaliador
+b4c08c4 Merge branch 'feat/onda-carteira' into staging-auto
+8d46a68 deploy: promove staging-auto para main (68 commits)
+70007aa a11y: auditor de acoes, gate P0 e smoke axe
+683668c orquestrador: aviso de allowlist ignora criterio tipo=guarda
+45c0adc orquestrador: retry no fetch (3x20s) em vez de abortar de primeira
+80f47de 316: avaliador de onboarding estourado + seed idempotente da regra
+ scripts/orquestrador/local-loop.sh | 78 +++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 76 insertions(+), 2 deletions(-)
+== worktrees
+       5

@@ -1,0 +1,10 @@
+   × peça 6: aviso de pausa > pausa nova no Comarka: uma notificação com o repo e a 1ª linha, uma linha no ledger; o sentinela intacto 8ms
+   × peça 6: aviso de pausa > --dry-run não notifica nem grava 2ms
+   × peça 6: aviso de pausa > pausa do kit (PAUSAR), com notificar.imessage: notificação e iMessage, a 1ª linha sem a data 2ms
+   × peça 6: aviso de pausa > o conteúdo muda (outra pausa): avisa de novo; a pausa some: nada 2ms
+   × peça 6: aviso de pausa > com o interruptor do resolvedor ligado, nada (nem aviso) 1ms
+AssertionError: expected [] to have a length of 1 but got +0
+AssertionError: expected [] to have a length of 1 but got +0
+AssertionError: expected [] to have a length of 2 but got +0
+AssertionError: expected [] to have a length of 5 but got +0
+AssertionError: expected [] to have a length of 5 but got +0

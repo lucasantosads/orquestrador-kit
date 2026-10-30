@@ -1,0 +1,12 @@
+   × peça 7: veredito da pausa de gate sistêmico > sombra (padrão), nenhum arquivo em comum: falso positivo provável na notificação e no ledger; não retoma 358ms
+   × peça 7: veredito da pausa de gate sistêmico > algum arquivo em comum: base vermelha provável, com os arquivos 8ms
+   × peça 7: veredito da pausa de gate sistêmico > artefato ausente, gate sem lista (criterio) ou sinal de máquina: sem veredito 6ms
+   × peça 7: veredito da pausa de gate sistêmico > diagnostico: só o veredito, sem "retomaria" 4ms
+   × peça 7: veredito da pausa de gate sistêmico > auto, falso positivo: retoma pelo orq-pause.sh --off (nunca rm direto); 1 por 6 h; nunca de novo para o mesmo par 3ms
+   × peça 7: veredito da pausa de gate sistêmico > auto com base vermelha: não retoma 3ms
+AssertionError: expected '-e\non run argv\n-e\ndisplay notifica…' to contain 'falso positivo provável'
+AssertionError: expected '-e\non run argv\n-e\ndisplay notifica…' to contain 'base vermelha provável: test/use-acao…'
+AssertionError: expected { ts: '2026-10-11T19:42:00Z', …(6) } to match object { veredito: { …(2) } }
+AssertionError: expected { ts: '2026-10-11T21:42:00Z', …(6) } to match object { …(2) }
+AssertionError: expected [] to deeply equal [ '--off' ]
+AssertionError: expected [] to deeply equal [ '--off', '--off' ]

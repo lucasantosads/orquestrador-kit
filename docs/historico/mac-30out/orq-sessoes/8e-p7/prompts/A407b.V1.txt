@@ -1,0 +1,622 @@
+Você é o JUIZ de uma esteira automatizada. Julgue SOMENTE pelo material abaixo:
+o diff cru da tentativa, a saída dos gates mecânicos e os critérios do ticket.
+Você NÃO recebe o prompt do executor nem resumo nenhum do agente, de propósito:
+o que o agente diz que fez nunca é evidência. Se algo não está no diff, não aconteceu.
+
+VOCÊ NÃO TEM FERRAMENTAS. Não leia arquivo, não rode comando, não abra o
+repositório: a chamada está sem ferramenta nenhuma e qualquer tentativa só
+gasta turno. Se o material abaixo não basta para aprovar, REPROVE dizendo o
+que faltou — nunca aprove no benefício da dúvida.
+
+Os gates mecânicos JÁ PASSARAM (enforcement, typecheck, testes, critérios, build).
+Você não os reexecuta: o seu trabalho é o que eles não conseguem ver.
+
+O QUE VOCÊ COBRA, item a item:
+
+1. INTEGRAÇÃO, não existência. Componente/função/rota criada mas nunca importada,
+   montada ou chamada passa em "arquivo existe" e falha em produção. Siga a
+   variável ou o símbolo até o ponto de uso real; um resultado calculado e
+   descartado não vale.
+2. O TESTE EXERCITA O COMPORTAMENTO DO OBJETIVO. Teste tautológico
+   (expect(true), expect(x).toBeDefined() sobre algo trivialmente definido,
+   asserção que passaria com o código antigo) NÃO prova nada. Pergunte-se: este
+   teste ficaria VERMELHO se a mudança fosse revertida? Se não, reprove.
+3. CRITÉRIO DE AUSÊNCIA EXIGE CONTROLE POSITIVO. Um teste que só afirma que algo
+   NÃO aparece passa igual quando o componente não renderiza nada. Exija, no
+   MESMO render/execução, ao menos uma asserção POSITIVA de que a coisa certa
+   apareceu. Reprove ausência provada no vazio.
+
+4. ANTI-AFROUXAMENTO (a allowlist deste ticket inclui arquivo de teste).
+   No diff dos arquivos de teste, REPROVE se encontrar qualquer um destes:
+   - asserção removida (expect apagado) sem que o comportamento tenha deixado de existir;
+   - toBe/toEqual trocado por toBeDefined/toBeTruthy/objectContaining mais frouxo;
+   - .skip, .todo, .only, teste comentado ou arquivo de teste deletado;
+   - valor esperado alterado SEM comentário dizendo por que a regra nova o muda.
+   Valor RECALCULADO sob a regra nova, com o porquê em comentário, é o único
+   caminho aceito. Renomear símbolo para satisfazer contagem também é afrouxar.
+
+RESPONDA SÓ COM ESTE JSON, sem cerca de código, sem texto antes ou depois:
+{"aprovado": true|false, "motivo": "<=2 frases, concreto, citando arquivo e linha>",
+ "criterios_falhos": ["descrição exata do critério que você reprova", ...]}
+
+criterios_falhos: use a DESCRIÇÃO do critério, copiada como está na lista acima.
+Vazio quando aprovado. Na dúvida entre aprovar e reprovar, REPROVE e diga o que falta.
+
+TICKET 407b
+Objetivo: REESCRITO 29/09 (Lucas). Estado de hoje (pos-d77ab1e): a tela `/churn` ja nao escreve
+pelo navegador; reverter churn e o `DELETE` de `src/app/api/churn-log/route.ts` (admin, localiza a
+saida por `?id=` ou `?cliente_id=`). O 407a (dependencia) troca o `.delete()` dessa rota por
+marcar `revertido = true` e escreve `fn_reativar_churn(p_cliente_id uuid)`; `humano:ddl-407a`
+garante que a funcao esta APLICADA no banco antes deste ticket rodar.
+FAZER, so no corpo do `DELETE` de `src/app/api/churn-log/route.ts` (GET e POST ficam como estao):
+(1) A rota deixa de fazer QUALQUER escrita direta em `clientes_receita` (zona C0). Hoje ela
+faz `.from("clientes_receita").update(...)` ao reverter: sai. A unica escrita em C0 passa a
+ser a de dentro de `fn_reativar_churn`, a excecao aprovada em 19/09. Pelo mesmo motivo sai o
+`.from("clientes").update(...)` da reversao e a marcacao de `churn_log` feita pela propria
+rota: a funcao ja faz as duas coisas na mesma transacao (status do cliente e revertido).
+(2) A rota resolve o cliente pela chave `clientes.id`: com `?cliente_id=` usa esse valor; com
+`?id=` le `churn_log.cliente_id` da saida. Saida sem `cliente_id` devolve 404 com texto do
+dominio, sem chamar a funcao. Depois chama `supabase.rpc("fn_reativar_churn", { p_cliente_id })`.
+Nada de id de `clientes_receita` em lugar nenhum da reversao.
+(3) Se a funcao falhar com a excecao "cliente sem vínculo na receita: vincule antes de reverter", a rota devolve 409 com
+`{ error: "cliente sem vínculo na receita: vincule antes de reverter" }` (a mesma frase, sem nome de tabela). Outro erro da funcao: 500 com
+"Nao foi possivel reverter o churn". NUNCA sucesso falso.
+(4) O espelho do Notion (fase volta para Ativo, `gravarFaseNoEspelho`) continua DEPOIS da
+funcao, so quando ela deu certo, e o aviso de espelho continua em `avisos`.
+(5) Em `src/app/churn/page.tsx`, `deletarChurn` mostra no `toast.error` a mensagem que a rota devolveu
+(`FetchJsonError`), inclusive a de cliente sem vinculo; nunca `toast.success` quando a rota
+falhou. O texto de 404 que existe hoje continua. Nenhuma escrita volta para o navegador.
+(6) TESTE NOVO `test/churn-reativar-rota.test.ts` (mock de supabase que registra `from`/`update`/`rpc`): (a) DELETE
+com `?cliente_id=` chama `rpc("fn_reativar_churn", { p_cliente_id })` com o `clientes.id`;
+(b) DELETE com `?id=` resolve `churn_log.cliente_id` e chama com ele; (c) SEM VINCULO: o rpc
+devolve erro com "cliente sem vínculo na receita: vincule antes de reverter" e a rota responde 409 com essa mensagem, sem nenhum `update`
+registrado; (d) em nenhum caso ha `from("clientes_receita")` com `update` registrado.
+TESTES EXISTENTES NA ALLOWLIST (`test/churn-log-auth.test.ts`, `test/espelho-fase-churn.test.ts`): eles exercitam o DELETE e hoje
+esperam os writes diretos (churn_log, clientes_receita, clientes). RECALCULE cada assercao
+quebrada sob a regra nova (os writes viram UMA chamada rpc) com comentario acima citando o
+ticket 407b; PROIBIDO remover assercao, trocar toBe/toEqual/toMatch por toBeDefined/toBeTruthy,
+usar .skip/.only/.todo, apagar it( ou o arquivo.
+TESTE DE FONTE NA ALLOWLIST (`test/erro-banco-churn.test.ts`, ticket 607): ele le `src/app/api/churn-log/route.ts` e exige
+`console.error(` nas 4 linhas ANTES de todo `status: 500` e nenhum `error: <x>.message` na resposta. O 500 novo
+("Nao foi possivel reverter o churn") segue a mesma forma dos que ja existem na rota: `console.error(...)` logo acima,
+texto de dominio na resposta. Ele esta na allowlist so para o caso de uma assercao precisar ser recalculada (com
+comentario citando 407b); o caminho certo e a rota obedecer, nao o teste mudar. Mesmas proibicoes de afrouxamento.
+REGRAS: zero escrita nova em C0; zero DDL e zero migration (a funcao e do 407a); gate de papel
+da rota fica como esta (`requireAdmin`); nenhum jargao de banco em texto que chega ao usuario;
+ausencia e "sem base" em cinza, nunca travessao, 0 inventado ou "sem dado". FORA DE ESCOPO: a estrutura de `src/app/churn/page.tsx` (o item 5 so muda as mensagens de `deletarChurn`;
+nada de bloco, grafico, eixo, filtro, rotulo ou leitura nova). Por isso `test/graficos-eixo-filtro.test.ts`,
+`test/churn-summary-patch-leitura-falha.test.ts` e `test/a11y/app-churn-page.test.ts`, que leem essa pagina, ficam
+FORA da allowlist e tem de seguir verdes sem edicao; se um deles quebrar, PARE e descreva;
+o POST da mesma rota, que tambem escreve em `clientes_receita` ao registrar o churn (divida
+registrada no BACKLOG-MAPEADO, ticket proprio); o gate de CS (decisao de 19/09 dizia admin e
+CS; o DELETE atual e so admin e continua assim ate decisao nova).
+
+Allowlist do ticket:
+  - src/app/api/churn-log/route.ts
+  - src/app/churn/page.tsx
+  - test/churn-reativar-rota.test.ts
+  - test/churn-log-auth.test.ts
+  - test/espelho-fase-churn.test.ts
+  - test/erro-banco-churn.test.ts
+
+Critérios de aceite:
+  - [guarda · já verificado por comando] tsc nao regride alem do baseline de 3 (src e test, fora de .next)
+      cmd: ( [ "$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\.next/')" = 3 ] ) && echo OK || echo FAIL · espera: OK
+  - [? · já verificado por comando] zero escrita direta em clientes_receita no DELETE da rota
+      cmd: awk '/export async function DELETE/,0' src/app/api/churn-log/route.ts | grep -c 'from("clientes_receita")' · espera: 0
+  - [? · já verificado por comando] o DELETE chama fn_reativar_churn com p_cliente_id
+      cmd: [ "$(awk '/export async function DELETE/,0' src/app/api/churn-log/route.ts | grep -c 'rpc("fn_reativar_churn"')" -ge 1 ] && [ "$(awk '/export async function DELETE/,0' src/app/api/churn-log/route.ts | grep -c 'p_cliente_id')" -ge 1 ] && echo OK || echo FAIL · espera: OK
+  - [? · já verificado por comando] o DELETE nao apaga churn_log (o 407a, dependencia, ja troca o .delete() por revertido; aqui a funcao do banco faz a marcacao)
+      cmd: awk '/export async function DELETE/,0' src/app/api/churn-log/route.ts | grep -c '\.delete()' · espera: 0
+  - [? · já verificado por comando] o DELETE nao escreve direto em clientes nem em churn_log (a funcao faz)
+      cmd: awk '/export async function DELETE/,0' src/app/api/churn-log/route.ts | grep -cE 'from\("(clientes|churn_log|churn_aprovacoes)"\)\.(update|insert|upsert)' · espera: 0
+  - [? · já verificado por comando] a mensagem de cliente sem vinculo chega ao usuario pela rota
+      cmd: grep -cF 'cliente sem vínculo na receita: vincule antes de reverter' src/app/api/churn-log/route.ts | awk '{print ($1>=1)?"OK":"FAIL"}' · espera: OK
+  - [guarda · já verificado por comando] o POST da rota nao ganha escrita nova em clientes_receita (fora de escopo, guarda)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; [ "$(grep -c 'from("clientes_receita")' src/app/api/churn-log/route.ts)" -le "$(git show "$b:src/app/api/churn-log/route.ts" | grep -c 'from("clientes_receita")')" ] && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] a tela nao escreve em banco pelo navegador
+      cmd: grep -cE '\.(update|insert|upsert|delete)\(' src/app/churn/page.tsx · espera: 0
+  - [guarda · já verificado por comando] nenhuma migration escrita aqui (a DDL e do 407a)
+      cmd: git diff --name-only "$(git merge-base HEAD origin/staging-auto)" HEAD -- supabase/ | wc -l | tr -d ' ' · espera: 0
+  - [? · já verificado por comando] teste novo cobre o caso sem vinculo e passa
+      cmd: test -f test/churn-reativar-rota.test.ts && [ "$(grep -cF 'vincule antes de reverter' test/churn-reativar-rota.test.ts)" -ge 1 ] && npx vitest run test/churn-reativar-rota.test.ts >/dev/null 2>&1 && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] anti-afrouxamento: test/churn-log-auth.test.ts nao perde expect( e nao ganha .skip/.only/.todo
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; [ "$(grep -c 'expect(' test/churn-log-auth.test.ts)" -ge "$(git show "$b:test/churn-log-auth.test.ts" | grep -c 'expect(')" ] && ! grep -qE '\.(skip|only|todo)\(' test/churn-log-auth.test.ts && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] anti-afrouxamento: test/espelho-fase-churn.test.ts nao perde expect( e nao ganha .skip/.only/.todo
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; [ "$(grep -c 'expect(' test/espelho-fase-churn.test.ts)" -ge "$(git show "$b:test/espelho-fase-churn.test.ts" | grep -c 'expect(')" ] && ! grep -qE '\.(skip|only|todo)\(' test/espelho-fase-churn.test.ts && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] os testes da rota passam
+      cmd: npx vitest run test/churn-log-auth.test.ts test/espelho-fase-churn.test.ts >/dev/null 2>&1 && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] todo status 500 da rota tem console.error nas 4 linhas anteriores (test/erro-banco-churn.test.ts verde)
+      cmd: npx vitest run test/erro-banco-churn.test.ts >/dev/null 2>&1 && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] anti-afrouxamento: test/erro-banco-churn.test.ts nao perde expect( e nao ganha .skip/.only/.todo (contra o merge-base com staging-auto)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; [ "$(grep -c 'expect(' test/erro-banco-churn.test.ts)" -ge "$(git show "$b:test/erro-banco-churn.test.ts" | grep -c 'expect(')" ] && ! grep -qE '\.(skip|only|todo)\(' test/erro-banco-churn.test.ts && echo OK || echo FAIL · espera: OK
+  - [avaliador · JULGUE VOCÊ] a tela mostra o erro devolvido pela rota (inclusive o de cliente sem vinculo) e nunca mostra sucesso quando a rota falhou; asserções recalculadas citam 407b; nenhum jargao de banco em texto de usuario
+
+
+DEFINIÇÕES CHAMADAS PELOS TESTES NOVOS (estado na base, NÃO fazem parte do diff):
+Funções e fixtures que os testes ADICIONADOS chamam e que estão definidas fora do diff.
+Julgue pelo corpo, nunca pelo nome.
+
+--- test/espelho-fase-churn.test.ts:162 (receita; estado na base, NÃO faz parte do diff) ---
+    const receita = (id: string) => (db.clientes_receita as Row[]).find((r) => r.id === id);
+--- fim de receita ---
+
+MENSAGENS DE COMMIT (escritas pelo agente: declaração, não evidência):
+O que o agente AFIRMA ter feito. Serve para saber o que conferir no diff e nos
+gates; uma afirmação aqui que o diff ou os gates não provam NÃO foi feita.
+
+commit 5848706328f2abea7934638af4312b4c7483fb3d
+
+407b: DELETE de churn-log reverte por fn_reativar_churn; tela mostra o erro da rota; testes recalculados
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+SAÍDA DOS GATES MECÂNICOS:
+ok   build
+       
+       ○  (Static)   prerendered as static content
+       ƒ  (Dynamic)  server-rendered on demand
+ok   tsc
+       src/app/api/perf/qualificacao-regras/[id]/route.ts(55,34): error TS2538: Type 'undefined' cannot be used as an index type.
+       src/app/api/perf/qualificacao-regras/estagios/route.ts(31,21): error TS2802: Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+       src/app/dashboard/clientes/qualificacao/qualificacao-block.tsx(74,29): error TS2802: Type 'MapIterator<ClienteTese>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+ok   vitest
+       Tests  7423 passed (7423)
+       Start at  23:13:58
+       Duration  14.54s (transform 11.19s, setup 0ms, import 45.81s, tests 15.85s, environment 43ms)
+VEREDITO: APROVADO
+
+DIFF CRU DA TENTATIVA (git diff base...HEAD):
+diff --git a/src/app/api/churn-log/route.ts b/src/app/api/churn-log/route.ts
+index e522553..aef7b07 100644
+--- a/src/app/api/churn-log/route.ts
++++ b/src/app/api/churn-log/route.ts
+@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
+ }
+ 
+ export async function DELETE(req: NextRequest) {
+-  // Gate: mesmo nivel do POST — DELETE reverte churn (Notion + clientes_receita + clientes).
++  // Gate: mesmo nivel do POST — DELETE reverte churn (função do banco + espelho do Notion).
+   const gate = await requireAdmin();
+   if (gate.fail) return gate.fail;
+ 
+@@ -165,22 +165,34 @@ export async function DELETE(req: NextRequest) {
+   }
+   if (!id) return NextResponse.json({ error: "id ou cliente_id obrigatório" }, { status: 400 });
+ 
+-  // Buscar o churn antes de marcar como revertido
++  // Saída lida ANTES da função: depois dela a linha fica revertida. Dela vêm o cliente (chave
++  // clientes.id), o notion_id do espelho e o mês do resumo.
+   const { data: churn } = await supabase.from("churn_log").select("*").eq("id", id).single();
++  const clienteId: string | null = clienteIdParam ?? (churn as { cliente_id?: string | null } | null)?.cliente_id ?? null;
++  if (!clienteId) {
++    return NextResponse.json(
++      { error: "Esta saída não tem o cadastro do cliente. Reverta pelo registro de saídas." },
++      { status: 404 },
++    );
++  }
+ 
+-  // 407a: reversão nunca apaga; a linha fica com revertido = true (decisão de 19/09).
+-  const { error } = await supabase.from("churn_log")
+-    .update({ revertido: true, revertido_em: new Date().toISOString() }).eq("id", id);
++  // 407b: a reversão inteira (status do cliente, da receita e a marcação da saída) é UMA
++  // chamada à função do banco, na mesma transação. A rota não escreve em tabela nenhuma.
++  const { error } = await supabase.rpc("fn_reativar_churn", { p_cliente_id: clienteId });
+   if (error) {
++    if ((error.message ?? "").includes("cliente sem vínculo na receita: vincule antes de reverter")) {
++      return NextResponse.json({ error: "cliente sem vínculo na receita: vincule antes de reverter" }, { status: 409 });
++    }
+     console.error("[api/churn-log DELETE]", error);
+-    return NextResponse.json({ error: "Não foi possível reverter a saída" }, { status: 500 });
++    return NextResponse.json({ error: "Nao foi possivel reverter o churn" }, { status: 500 });
+   }
+ 
+   // TODO(253): churn_log nao tem coluna de autor — quando existir, persistir
+   // gate.session.employeeId na linha. Migration e coluna sao ticket separado.
+   console.info(`[churn-log] DELETE por ${gate.session.employeeId}`);
+ 
+-  // Reverter: fase operacional volta para "Ativo" no espelho, com auditoria.
++  // Só com a função concluída: fase operacional volta para "Ativo" no espelho, com auditoria.
++  const avisos: string[] = [];
+   let avisoEspelho: string | null = null;
+   if (churn?.cliente_notion_id) {
+     const espelho = await gravarFaseNoEspelho(
+@@ -189,39 +201,11 @@ export async function DELETE(req: NextRequest) {
+       "Ativo",
+       { id: gate.session.employeeId, nome: gate.session.nome },
+     );
+-    if (!espelho.ok) avisoEspelho = espelho.erro;
+-  }
+-  // Reversão (item 4d, 29/09): a receita volta ao status que tinha antes do churn, guardado na
+-  // saída (receita_status_*_anterior); saída sem esse registro (antiga ou do comercial) volta
+-  // para "ativo", a regra anterior. A receita é achada pela chave, nunca pelo nome.
+-  const avisos: string[] = avisoEspelho ? [`espelho: ${avisoEspelho}`] : [];
+-  if (churn?.cliente_notion_id) {
+-    let receitaId: string | null = null;
+-    try {
+-      receitaId = await receitaIdPelaChave(supabase, { notionId: churn.cliente_notion_id });
+-    } catch (e) {
+-      avisos.push(`receita não revertida: ${(e as Error).message}`);
+-    }
+-    if (receitaId) {
+-      const { error: recErr } = await supabase.from("clientes_receita").update({
+-        status: churn.receita_status_anterior ?? "ativo",
+-        status_financeiro: churn.receita_status_financeiro_anterior ?? "ativo",
+-      }).eq("id", receitaId);
+-      if (recErr) avisos.push(`receita não revertida: ${recErr.message}`);
+-    } else if (avisos.every((a) => !a.startsWith("receita"))) {
+-      avisos.push("receita não revertida: cliente sem linha de receita achada pela chave");
++    if (!espelho.ok) {
++      avisoEspelho = espelho.erro;
++      avisos.push(`espelho: ${espelho.erro}`);
+     }
+   }
+-  // Pipeline `clientes` (item 4d): em vez de apagar por nome a linha "cancelado", volta o
+-  // estado do cliente pelo id (churn_log.cliente_id). Sem cliente_id na saída: não mexe e avisa.
+-  if (churn?.cliente_id) {
+-    const { error: pipeErr } = await supabase.from("clientes").update({
+-      status: "ativo", data_cancelamento: null, motivo_cancelamento: null, etapa_churn: null,
+-    }).eq("id", churn.cliente_id).eq("status", "cancelado");
+-    if (pipeErr) avisos.push(`pipeline não revertido: ${pipeErr.message}`);
+-  } else if (churn) {
+-    avisos.push("pipeline não revertido: saída sem cadastro do cliente (cliente_id)");
+-  }
+ 
+   // 6(a): resumo recalculado a partir do churn_log. Antes havia um "-1" manual aqui, por cima
+   // do gatilho trg_sync_churn_summary, que já reconta no DELETE — contava em dobro.
+diff --git a/src/app/churn/page.tsx b/src/app/churn/page.tsx
+index 5b683c6..d74ab02 100644
+--- a/src/app/churn/page.tsx
++++ b/src/app/churn/page.tsx
+@@ -16,7 +16,6 @@ import { Input } from "@/components/ui/input";
+ import { Label } from "@/components/ui/label";
+ import { formatCurrency, formatPercent } from "@/lib/format";
+ import { toast } from "sonner";
+-import { fetchJson, FetchJsonError } from "@/lib/fetch-json";
+ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from "recharts";
+ import { TrendingDown, DollarSign, Users, AlertTriangle, ChevronDown, ChevronRight, Plus, Info, Trash2, Download, ShieldAlert, History, CheckCircle, Clock, Check, X } from "lucide-react";
+ import Link from "next/link";
+@@ -372,15 +371,24 @@ function ChurnPageContent() {
+   const deletarChurn = async (c: ChurnRecord) => {
+     setSelectedChurn(null);
+     if (c.source !== "supabase") return;
+-    let body: { avisos?: string[] };
++    // 407b: fetchJson só devolve "Falha na requisição (status N)"; a mensagem da rota (inclusive a
++    // de cliente sem vínculo na receita) vem no corpo, então a leitura é feita aqui.
++    let body: { avisos?: string[]; error?: string };
+     try {
+-      body = await fetchJson<{ avisos?: string[] }>(`/api/churn-log?cliente_id=${encodeURIComponent(c.id)}`, { method: "DELETE" });
+-    } catch (e) {
+-      toast.error(
+-        e instanceof FetchJsonError && e.status === 404
+-          ? `${c.nome}: nenhuma saída registrada com o cadastro deste cliente. Reverta pelo registro de saídas.`
+-          : `Não foi possível reverter o churn de ${c.nome}`,
+-      );
++      const res = await fetch(`/api/churn-log?cliente_id=${encodeURIComponent(c.id)}`, { method: "DELETE" });
++      body = await res.json().catch(() => ({}));
++      if (!res.ok) {
++        toast.error(
++          res.status === 404
++            ? `${c.nome}: nenhuma saída registrada com o cadastro deste cliente. Reverta pelo registro de saídas.`
++            : typeof body.error === "string" && body.error
++              ? `${c.nome}: ${body.error}`
++              : `Não foi possível reverter o churn de ${c.nome}`,
++        );
++        return;
++      }
++    } catch {
++      toast.error(`Não foi possível reverter o churn de ${c.nome}`);
+       return;
+     }
+     if (Array.isArray(body.avisos) && body.avisos.length > 0) {
+diff --git a/test/churn-log-auth.test.ts b/test/churn-log-auth.test.ts
+index 4c5364b..ecacd32 100644
+--- a/test/churn-log-auth.test.ts
++++ b/test/churn-log-auth.test.ts
+@@ -11,9 +11,9 @@
+ import { describe, it, expect, vi, beforeEach } from "vitest";
+ import { NextRequest } from "next/server";
+ 
+-const { mockFrom } = vi.hoisted(() => ({ mockFrom: vi.fn() }));
++const { mockFrom, mockRpc } = vi.hoisted(() => ({ mockFrom: vi.fn(), mockRpc: vi.fn() }));
+ vi.mock("@supabase/supabase-js", () => ({
+-  createClient: () => ({ from: mockFrom }),
++  createClient: () => ({ from: mockFrom, rpc: mockRpc }),
+ }));
+ 
+ vi.mock("@/lib/session", () => ({
+@@ -99,6 +99,7 @@ const POST_BODY = {
+ beforeEach(() => {
+   vi.clearAllMocks();
+   mockFrom.mockImplementation((table: string) => chainFor(table));
++  mockRpc.mockResolvedValue({ data: null, error: null });
+ });
+ 
+ describe("GET /api/churn-log — gate de sessão", () => {
+@@ -162,14 +163,19 @@ describe("DELETE /api/churn-log — gate de admin (mesmo nível de /api/financei
+     expect(mockGravarFase).not.toHaveBeenCalled();
+   });
+ 
+-  it("200 para admin e aciona os writes (churn_log, clientes_receita, clientes)", async () => {
++  // 407b: a reversão deixou de escrever em churn_log/clientes_receita/clientes pela rota; os
++  // writes viram UMA chamada rpc a fn_reativar_churn com o cliente_id da saída. Antes os
++  // três toContain esperavam as tabelas; agora a rota só LÊ churn_log e não toca as outras duas.
++  it("200 para admin e reverte por UMA chamada rpc (sem tocar clientes_receita nem clientes)", async () => {
+     mockGetSession.mockResolvedValue(ADMIN);
+     const res = await DELETE(makeReq(`/api/churn-log?id=${CHURN_ROW.id}`, "DELETE"));
+     expect(res.status).toBe(200);
+     const tabelas = mockFrom.mock.calls.map((c) => c[0]);
+     expect(tabelas).toContain("churn_log");
+-    expect(tabelas).toContain("clientes_receita");
+-    expect(tabelas).toContain("clientes");
++    expect(tabelas).not.toContain("clientes_receita");
++    expect(tabelas).not.toContain("clientes");
++    expect(mockRpc).toHaveBeenCalledTimes(1);
++    expect(mockRpc).toHaveBeenCalledWith("fn_reativar_churn", { p_cliente_id: CHURN_ROW.cliente_id });
+     expect(mockGravarFase).toHaveBeenCalledWith(expect.anything(), { notionId: "notion-1" }, "Ativo", { id: ADMIN.employeeId, nome: ADMIN.nome });
+   });
+ });
+diff --git a/test/churn-reativar-rota.test.ts b/test/churn-reativar-rota.test.ts
+new file mode 100644
+index 0000000..78def48
+--- /dev/null
++++ b/test/churn-reativar-rota.test.ts
+@@ -0,0 +1,98 @@
++/**
++ * Ticket 407b — o DELETE de /api/churn-log reverte pela função do banco (fn_reativar_churn),
++ * com a chave clientes.id, e nunca escreve direto em clientes_receita.
++ */
++import { describe, it, expect, vi, beforeEach } from "vitest";
++import { NextRequest } from "next/server";
++
++const reg = vi.hoisted(() => ({
++  from: [] as string[],
++  update: [] as string[],
++  rpc: [] as Array<[string, Record<string, unknown>]>,
++  rpcErro: null as { message: string } | null,
++}));
++
++const CLI = "00000000-0000-4000-8000-0000000000d1";
++const SAIDA = { id: "00000000-0000-4000-8000-0000000000c1", cliente_id: CLI, cliente_notion_id: "n-1", data_saida: "2026-09-01" };
++
++vi.mock("@supabase/supabase-js", () => ({
++  createClient: () => ({
++    from: (t: string) => {
++      reg.from.push(t);
++      const o: Record<string, unknown> = {};
++      for (const m of ["select", "eq", "not", "order", "limit", "insert", "upsert", "delete", "gte", "lte"]) o[m] = () => o;
++      o.update = () => { reg.update.push(t); return o; };
++      o.maybeSingle = () => Promise.resolve({ data: SAIDA, error: null });
++      o.single = o.maybeSingle;
++      o.then = (ok: (v: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(ok);
++      return o;
++    },
++    rpc: (fn: string, args: Record<string, unknown>) => {
++      reg.rpc.push([fn, args]);
++      return Promise.resolve({ data: null, error: reg.rpcErro });
++    },
++  }),
++}));
++
++vi.mock("@/lib/session", () => ({
++  getSession: vi.fn(async () => ({ employeeId: "00000000-0000-4000-8000-000000000001", role: "admin", entityId: null, nome: "Admin" })),
++  isSuperAdmin: () => true,
++}));
++vi.mock("@/lib/clientes/espelho-status", () => ({
++  gravarFaseNoEspelho: vi.fn(async () => ({ ok: true, notionIds: ["n-1"], alterados: 1, erro: null })),
++  receitaIdPelaChave: vi.fn(async () => null),
++}));
++vi.mock("@/lib/churn/resumo-mensal", () => ({ recalcularAposSaida: vi.fn(async () => []) }));
++
++import { DELETE } from "@/app/api/churn-log/route";
++import { gravarFaseNoEspelho } from "@/lib/clientes/espelho-status";
++
++const del = (qs: string) => DELETE(new NextRequest("http://x/api/churn-log?" + qs, { method: "DELETE" }));
++const SEM_VINCULO = "cliente sem vínculo na receita: vincule antes de reverter";
++
++beforeEach(() => {
++  reg.from.length = 0; reg.update.length = 0; reg.rpc.length = 0; reg.rpcErro = null;
++  vi.spyOn(console, "error").mockImplementation(() => {});
++  vi.mocked(gravarFaseNoEspelho).mockClear();
++});
++
++describe("DELETE /api/churn-log chama fn_reativar_churn (407b)", () => {
++  it("(a) ?cliente_id= chama o rpc com o clientes.id", async () => {
++    const res = await del("cliente_id=" + CLI);
++    expect(res.status).toBe(200);
++    expect(reg.rpc).toEqual([["fn_reativar_churn", { p_cliente_id: CLI }]]);
++  });
++
++  it("(b) ?id= resolve churn_log.cliente_id e chama com ele", async () => {
++    const res = await del("id=" + SAIDA.id);
++    expect(res.status).toBe(200);
++    expect(reg.rpc).toEqual([["fn_reativar_churn", { p_cliente_id: CLI }]]);
++    expect(gravarFaseNoEspelho).toHaveBeenCalledWith(expect.anything(), { notionId: "n-1" }, "Ativo", expect.anything());
++  });
++
++  it("(c) sem vínculo na receita: 409 com a mensagem, sem update e sem espelho", async () => {
++    reg.rpcErro = { message: SEM_VINCULO };
++    const res = await del("cliente_id=" + CLI);
++    expect(res.status).toBe(409);
++    expect(await res.json()).toEqual({ error: SEM_VINCULO });
++    expect(reg.update).toEqual([]);
++    expect(gravarFaseNoEspelho).not.toHaveBeenCalled();
++  });
++
++  it("outro erro da função: 500 com texto de domínio, sem espelho", async () => {
++    reg.rpcErro = { message: "detalhe interno do banco" };
++    const res = await del("cliente_id=" + CLI);
++    expect(res.status).toBe(500);
++    expect(await res.json()).toEqual({ error: "Nao foi possivel reverter o churn" });
++    expect(gravarFaseNoEspelho).not.toHaveBeenCalled();
++  });
++
++  it("(d) nunca há from('clientes_receita') nem update em qualquer caso", async () => {
++    await del("cliente_id=" + CLI);
++    await del("id=" + SAIDA.id);
++    reg.rpcErro = { message: SEM_VINCULO };
++    await del("cliente_id=" + CLI);
++    expect(reg.from).not.toContain("clientes_receita");
++    expect(reg.update).toEqual([]);
++  });
++});
+diff --git a/test/espelho-fase-churn.test.ts b/test/espelho-fase-churn.test.ts
+index 5c76194..67ea371 100644
+--- a/test/espelho-fase-churn.test.ts
++++ b/test/espelho-fase-churn.test.ts
+@@ -15,7 +15,22 @@ const { db } = mem;
+ 
+ vi.mock("@supabase/supabase-js", async () => {
+   const { clienteMemoria } = await import("./helpers/supabase-memoria");
+-  return { createClient: () => clienteMemoria(mem) };
++  // 407b: fn_reativar_churn simulada em memória, com o mesmo corpo da migration 20261002000000:
++  // sem vínculo na receita levanta o erro; senão receita.status = ativo, cliente volta (ativo, sem
++  // cancelamento) e as saídas ainda não revertidas do cliente ficam revertidas.
++  const rpcMemoria = async (fn: string, args: { p_cliente_id: string }) => {
++    if (fn !== "fn_reativar_churn") return { data: null, error: { message: "função desconhecida" } };
++    const id = args.p_cliente_id;
++    const d = mem.db;
++    if (!(d.clientes ?? []).some((c) => c.id === id)) return { data: null, error: { message: "cliente não encontrado: confira o cadastro antes de reverter" } };
++    const receitas = (d.clientes_receita ?? []).filter((r) => r.cliente_id === id);
++    if (receitas.length === 0) return { data: null, error: { message: "cliente sem vínculo na receita: vincule antes de reverter" } };
++    for (const r of receitas) r.status = "ativo";
++    for (const c of d.clientes.filter((x) => x.id === id)) Object.assign(c, { status: "ativo", data_cancelamento: null, motivo_cancelamento: null, etapa_churn: null });
++    for (const l of (d.churn_log ?? []).filter((x) => x.cliente_id === id && x.revertido !== true)) Object.assign(l, { revertido: true, revertido_em: new Date().toISOString() });
++    return { data: null, error: null };
++  };
++  return { createClient: () => ({ ...clienteMemoria(mem), rpc: rpcMemoria }) };
+ });
+ 
+ const ADMIN = { employeeId: "00000000-0000-4000-8000-000000000001", role: "admin" as const, entityId: null, nome: "Lucas Santos", usuario: "lucas.santos" };
+@@ -33,6 +48,13 @@ import { POST as churnAprovacoes } from "@/app/api/financeiro/churn-aprovacoes/r
+ import { anoMesDe } from "@/lib/churn/resumo-mensal";
+ 
+ const RECEITA = "00000000-0000-4000-8000-0000000000a1";
++// 407b: cadastro (clientes.id) usado nas reversões; a função do banco exige o vínculo na receita.
++const CLI_REV = "00000000-0000-4000-8000-0000000000c1";
++function vincularParaReverter(saidaId?: string) {
++  (db.clientes_receita as Row[])[0].cliente_id = CLI_REV;
++  if (!(db.clientes as Row[]).some((c) => c.id === CLI_REV)) (db.clientes as Row[]).push({ id: CLI_REV, nome: "Acme", status: "cancelado" });
++  if (saidaId) (db.churn_log as Row[]).find((l) => l.id === saidaId)!.cliente_id = CLI_REV;
++}
+ const sb = () => clienteMemoria(mem) as never;
+ const espelho = (id: string) => (db.clientes_notion_mirror as Row[]).find((m) => m.notion_id === id);
+ const auditoria = () => (db.os_audit_log as Row[]).filter((a) => a.entidade === "clientes_notion_mirror");
+@@ -128,6 +150,9 @@ describe("rotas de churn do OS atualizam o espelho", () => {
+     expect(espelho("n-acme")?.status).toBe("Finalizado");
+ 
+     const churnId = (db.churn_log as Row[])[0].id as string;
++    // 407b: a reversão resolve o cliente por churn_log.cliente_id e chama fn_reativar_churn; o
++    // fixture agora tem o cadastro e o vínculo na receita (sem eles a rota devolve 404/409).
++    vincularParaReverter(churnId);
+     const del = await churnLogDelete(new NextRequest(`http://x/api/churn-log?id=${churnId}`, { method: "DELETE" }));
+     expect(del.status).toBe(200);
+     expect(espelho("n-acme")?.status).toBe("Ativo");
+@@ -164,9 +189,14 @@ describe("churn-log casa a receita pela chave, nunca pelo nome (29/09)", () => {
+     expect(receita(HOMONIMO)).toMatchObject({ status: "ativo", status_financeiro: "ativo" });
+ 
+     const churnId = (db.churn_log as Row[])[0].id as string;
++    // 407b: reversão pela função do banco; o vínculo é o cliente_id da receita, e o homônimo
++    // (sem esse vínculo) continua intocado.
++    vincularParaReverter(churnId);
+     const del = await churnLogDelete(new NextRequest(`http://x/api/churn-log?id=${churnId}`, { method: "DELETE" }));
+     expect(del.status).toBe(200);
+-    expect(receita(RECEITA)).toMatchObject({ status: "ativo", status_financeiro: "ativo" });
++    // 407b: fn_reativar_churn só põe status = 'ativo'; status_financeiro fica 'churned' (o que o
++    // POST gravou). Antes a rota escrevia 'ativo' nos dois campos.
++    expect(receita(RECEITA)).toMatchObject({ status: "ativo", status_financeiro: "churned" });
+     expect(receita(HOMONIMO)).toMatchObject({ status: "ativo" });
+   });
+ 
+@@ -198,17 +228,22 @@ describe("tela /churn: reverter é no servidor, por cliente_id (item 4a, 29/09)"
+       { id: "s-nova", cliente_id: CLI, cliente_notion_id: "n-acme", cliente_nome: "Acme", data_saida: "2026-09-01" },
+     ];
+     (db.clientes_receita as Row[])[0].status = "churned";
++    vincularParaReverter();
+     const del = await churnLogDelete(new NextRequest(`http://x/api/churn-log?cliente_id=${CLI}`, { method: "DELETE" }));
+     expect(del.status).toBe(200);
+-    // 407a: o DELETE não apaga mais a saída; as duas linhas continuam e só a mais recente
+-    // (s-nova) fica revertida. Antes da regra nova o esperado era ["s-antiga"].
++    // 407a: o DELETE não apaga mais a saída; as duas linhas continuam. 407b: quem marca é
++    // fn_reativar_churn, que reverte TODAS as saídas não revertidas do cliente (where cliente_id
++    // = p_cliente_id and revertido is not true), não só a mais recente: [true, true]
++    // (antes da 407b, com a marcação feita pela rota em s-nova, era [undefined, true]).
+     expect((db.churn_log as Row[]).map((r) => r.id)).toEqual(["s-antiga", "s-nova"]);
+-    expect((db.churn_log as Row[]).map((r) => r.revertido)).toEqual([undefined, true]);
++    expect((db.churn_log as Row[]).map((r) => r.revertido)).toEqual([true, true]);
+     expect((db.clientes_receita as Row[])[0]).toMatchObject({ status: "ativo" });
+   });
+ 
+   it("407a: depois do DELETE a linha de churn_log continua e fica com revertido true", async () => {
+-    db.churn_log = [{ id: "s1", cliente_id: null, cliente_notion_id: "n-acme", cliente_nome: "Acme", data_saida: "2026-09-01" }];
++    // 407b: a saída precisa do cliente_id (a função reverte por ele); com null a rota dá 404.
++    db.churn_log = [{ id: "s1", cliente_id: CLI_REV, cliente_notion_id: "n-acme", cliente_nome: "Acme", data_saida: "2026-09-01" }];
++    vincularParaReverter();
+     const del = await churnLogDelete(new NextRequest("http://x/api/churn-log?id=s1", { method: "DELETE" }));
+     expect(del.status).toBe(200);
+     expect(db.churn_log).toHaveLength(1);
+@@ -239,7 +274,9 @@ describe("tela /churn: reverter é no servidor, por cliente_id (item 4a, 29/09)"
+       const cadeia = resto.slice(0, Math.min(...cortes));
+       expect(/\.(insert|update|upsert|delete)\s*\(/.test(cadeia), `escrita do navegador em ${m[1]}`).toBe(false);
+     }
+-    expect(src).toContain("fetchJson<{ avisos?: string[] }>(`/api/churn-log?cliente_id=${encodeURIComponent(c.id)}`, { method: \"DELETE\" })");
++    // 407b: a tela lê o corpo da resposta para mostrar a mensagem da rota (fetchJson perdia o
++    // texto), então a chamada passou de fetchJson<...>(...) para fetch(...) com o mesmo URL e método.
++    expect(src).toContain("fetch(`/api/churn-log?cliente_id=${encodeURIComponent(c.id)}`, { method: \"DELETE\" })");
+   });
+ });
+ 
+@@ -374,22 +411,30 @@ describe("reversão devolve o status anterior e o pipeline volta por id (item 4d
+     churnLogPost(new NextRequest("http://x/api/churn-log", { method: "POST", body: JSON.stringify(body), headers: { "content-type": "application/json" } }));
+   const del = (id: string) => churnLogDelete(new NextRequest(`http://x/api/churn-log?id=${id}`, { method: "DELETE" }));
+ 
+-  it("cliente pausado: a saída guarda o status e a reversão devolve 'pausado', não 'ativo'", async () => {
++  it("cliente pausado: a saída guarda o status anterior, e a reversão (função do banco) põe 'ativo'", async () => {
+     Object.assign((db.clientes_receita as Row[])[0], { status: "pausado", status_financeiro: "pausado" });
+     expect((await post({ cliente_notion_id: "n-acme", cliente_nome: "Acme Advocacia", motivo: "Sumiu" })).status).toBe(200);
+     const saida = (db.churn_log as Row[])[0];
+     expect(saida).toMatchObject({ receita_status_anterior: "pausado", receita_status_financeiro_anterior: "pausado" });
+     expect((db.clientes_receita as Row[])[0]).toMatchObject({ status: "churned" });
+ 
++    vincularParaReverter(saida.id as string);
+     expect((await del(saida.id as string)).status).toBe(200);
+-    expect((db.clientes_receita as Row[])[0]).toMatchObject({ status: "pausado", status_financeiro: "pausado" });
++    // 407b: a reversão é a fn_reativar_churn, que põe status = 'ativo' sempre e não lê o status
++    // anterior guardado na saída (a rota deixou de devolvê-lo). Antes: status e status_financeiro
++    // 'pausado'. Agora: status 'ativo'; status_financeiro não é tocado pela função e fica 'churned'
++    // (o que o POST gravou).
++    expect((db.clientes_receita as Row[])[0]).toMatchObject({ status: "ativo", status_financeiro: "churned" });
+   });
+ 
+   it("saída antiga, sem status anterior guardado: volta para 'ativo' (regra de antes)", async () => {
+     Object.assign((db.clientes_receita as Row[])[0], { status: "churned", status_financeiro: "churned" });
+     db.churn_log = [{ id: "velha", cliente_notion_id: "n-acme", cliente_nome: "Acme", data_saida: "2026-01-10" }];
++    vincularParaReverter("velha");
+     expect((await del("velha")).status).toBe(200);
+-    expect((db.clientes_receita as Row[])[0]).toMatchObject({ status: "ativo", status_financeiro: "ativo" });
++    // 407b: a função só altera status (-> 'ativo'); status_financeiro continua 'churned' como no
++    // fixture (antes a rota escrevia 'ativo' nos dois campos).
++    expect((db.clientes_receita as Row[])[0]).toMatchObject({ status: "ativo", status_financeiro: "churned" });
+   });
+ 
+   it("pipeline: volta o estado do cliente pelo id, não apaga nada, e o homônimo fica intacto", async () => {
+@@ -398,6 +443,8 @@ describe("reversão devolve o status anterior e o pipeline volta por id (item 4d
+       { id: HOMONIMO_CLI, nome: "Acme", status: "cancelado", data_cancelamento: "2026-08-01", motivo_cancelamento: "Preço", etapa_churn: "aviso_recebido" },
+     ];
+     db.churn_log = [{ id: "s1", cliente_id: CLI, cliente_notion_id: "n-acme", cliente_nome: "Acme", data_saida: "2026-09-01" }];
++    // 407b: a função exige o vínculo da receita com o cliente (CLI == CLI_REV).
++    (db.clientes_receita as Row[])[0].cliente_id = CLI;
+     const res = await del("s1");
+     expect(res.status).toBe(200);
+     const cli = (id: string) => (db.clientes as Row[]).find((c) => c.id === id);
+@@ -410,7 +457,10 @@ describe("reversão devolve o status anterior e o pipeline volta por id (item 4d
+     db.clientes = [{ id: CLI, nome: "Acme", status: "cancelado" }];
+     db.churn_log = [{ id: "s1", cliente_id: null, cliente_notion_id: "n-acme", cliente_nome: "Acme", data_saida: "2026-09-01" }];
+     const res = await del("s1");
+-    expect((await res.json()).avisos.join(" ")).toMatch(/pipeline não revertido: saída sem cadastro/);
++    // 407b: sem cliente_id a rota não chama a função e responde 404 (antes: 200 com o aviso
++    // "pipeline não revertido: saída sem cadastro"); o cliente segue cancelado.
++    expect(res.status).toBe(404);
++    expect((await res.json()).error).toMatch(/não tem o cadastro do cliente/);
+     expect((db.clientes as Row[])[0]).toMatchObject({ status: "cancelado" });
+   });

@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+# test-fixture-painel.sh — NÃO é teste: é o molde de repos que os test-painel-*.sh
+# CARREGAM (source) para montar N repos instalados num `mktemp -d`, com fila,
+# config, trilha e STATUS escritos aqui, sem nunca ler `docs/fila` de repo real.
+#
+# Quem carrega declara o isolamento ANTES (`export ORQ_TESTE=1` e
+# `ORQ_EXEC_ROOT="$(mktemp -d)/..."`) e define `AQUI` (o diretório do motor).
+# O config sai do mesmo molde da drenagem (`fx_config`), com as duas chaves que
+# o painel lê a mais: `claude_timeout_secs` e `launchd`.
+#
+# Rodado direto, só avisa e sai 0.
+
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+  echo "test-fixture-painel.sh é molde carregado pelos test-painel-*.sh; não roda sozinho"
+  exit 0
+fi
+
+# shellcheck source=test-fixture-drenagem.sh
+source "$AQUI/test-fixture-drenagem.sh"
+
+# TRAVA DO LAUNCHCTL DO SISTEMA (peça K12-E). Carregar este molde põe no TOPO do
+# PATH um `launchctl` que só registra a chamada e sai 99: qualquer caminho do
+# painel que resolva o binário pelo PATH (em vez do stub de ORQ_LAUNCHCTL) cai
+# aqui, e `fp_launchctl_confere` reprova o teste. Entre os blocos C e D da K12,
+# os testes A e B saíram verdes chamando `launchctl print` do sistema: verde não
+# provava nada. Agora o teste falha se a trava for tocada OU se o stub não for.
+FP_TRAVA_DIR="$(dirname "$ORQ_EXEC_ROOT")/trava-launchctl"
+mkdir -p "$FP_TRAVA_DIR"
+cat > "$FP_TRAVA_DIR/launchctl" <<TRAVA
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$FP_TRAVA_DIR/chamadas.log"
+exit 99
+TRAVA
+chmod +x "$FP_TRAVA_DIR/launchctl"
+export PATH="$FP_TRAVA_DIR:$PATH"
+FP_STUB_LOG=''
+
+# fp_epoch_hoje <HH:MM:SS> -> epoch de hoje nessa hora (relógio local).
+# O painel lê `ORQ_PAINEL_AGORA` no lugar do relógio: sem isso, um teste rodado
+# às 00:03 veria "hoje" sem nenhum dos eventos que acabou de escrever.
+fp_epoch_hoje() {
+  date -j -f '%Y-%m-%d %H:%M:%S' "$(date +%Y-%m-%d) $1" +%s 2>/dev/null \
+    || date -d "$(date +%Y-%m-%d) $1" +%s
+}
+
+# fp_iso <epoch> -> o carimbo que `event()` grava (`%Y-%m-%dT%H:%M:%S%z`).
+fp_iso() { date -r "$1" '+%Y-%m-%dT%H:%M:%S%z' 2>/dev/null || date -d "@$1" '+%Y-%m-%dT%H:%M:%S%z'; }
+
+# fp_hhmm <epoch> [formato] -> hora local formatada.
+fp_fmt() { date -r "$1" "+${2:-%H:%M:%S}" 2>/dev/null || date -d "@$1" "+${2:-%H:%M:%S}"; }
+
+# fp_repo <raiz> [filtro-jq do config] — um repo instalado mínimo, sem git: o
+# painel não usa git, e o lib.sh fora de git cai em MAIN_CHECKOUT = ROOT.
+fp_repo() {
+  local raiz="$1" filtro="${2:-.}"
+  fx_config "$raiz" ".claude_timeout_secs = 1800 | .launchd = {\"label\": \"org.fixture.$(basename "$raiz")\", \"start_interval\": 1800} | $filtro"
+}
+
+# fp_ticket <raiz> <id> <status> [dependencias-json] [campos-json] — o primeiro
+# bloco ```json é o ticket; os campos extras entram por merge.
+fp_ticket() {
+  local raiz="$1" id="$2" st="$3" deps="${4:-[]}" extra="${5:-}"
+  [ -n "$extra" ] || extra='{}'
+  {
+    printf '# %s\n\n```json\n' "$id"
+    jq -n --arg id "$id" --arg st "$st" --argjson deps "$deps" --argjson extra "$extra" '
+      {id: $id, slug: ("t-" + $id), status: $st, objetivo: ("Objetivo do " + $id + ". Segunda frase."),
+       pathspec_allowlist: ["src/a.ts"], dependencias: $deps, criterios_aceite: [],
+       risco: "baixo", notas_status: ""} + $extra'
+    printf '```\n\nprosa do ticket, ignorada.\n\n```json\n{"id": "999", "status": "done"}\n```\n'
+  } > "$raiz/docs/fila/$id-t-$id.md"
+}
+
+# fp_evento <raiz> <epoch> <id> <EVENTO> [campos...] — uma linha da trilha, no
+# formato de `event()`.
+fp_evento() {
+  local raiz="$1" ep="$2" id="$3" ev="$4"; shift 4
+  mkdir -p "$raiz/docs/fila/runs"
+  printf '%s %s %s%s\n' "$(fp_iso "$ep")" "$id" "$ev" "${*:+ $*}" >> "$raiz/docs/fila/runs/events.log"
+}
+
+# fp_status <raiz> <estado> <ticket> <desde> <ultimo> [motivo] — o STATUS.md como
+# `status_render` o escreve.
+fp_status() {
+  local raiz="$1"
+  mkdir -p "$raiz/docs/fila/runs"
+  {
+    printf 'ORQUESTRADOR · %s\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+    printf 'ESTADO   %s\nTICKET   %s\nDESDE    %s\nFASE     %s\n' "$2" "$3" "$4" "$([ "$2" = executando ] && echo agente || echo —)"
+    printf 'FILA     —\nSTAGING  —\nÚLTIMO   %s\n' "$5"
+    [ -z "${6:-}" ] || printf 'MOTIVO   %s\n' "$6"
+  } > "$raiz/docs/fila/runs/STATUS.md"
+}
+
+# fp_repos <arquivo> <raiz>... — o ~/.orq/repos.json do painel.
+fp_repos() {
+  local arq="$1"; shift
+  printf '%s\n' "$@" | jq -R . | jq -s '{"$schema_versao": 1, repos: map({caminho: .})}' > "$arq"
+}
+
+# fp_painel [args] — o painel sob teste, com os repos e o relógio do fixture.
+fp_painel() { python3 "$AQUI/orq-painel.py" "$@"; }
+
+# fp_launchctl_stub <dir> — um launchctl FALSO em <dir>/bin, apontado por
+# ORQ_LAUNCHCTL (o painel nunca chama o de verdade sob teste). Registra cada
+# chamada em <dir>/launchctl.log. `print` responde como job CARREGADO, com o
+# `last exit code` lido de <dir>/stub-exit (padrão 0); com <dir>/stub-descarregado
+# presente, responde como o launchctl real para job ausente (rc 113).
+fp_launchctl_stub() {
+  local d="$1"
+  mkdir -p "$d/bin"
+  cat > "$d/bin/launchctl" <<STUB
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$d/launchctl.log"
+if [ "\${1:-}" = print ]; then
+  if [ -e "$d/stub-descarregado" ]; then echo "Could not find service \"\${2##*/}\" in domain" >&2; exit 113; fi
+  printf '%s = {\n\tstate = waiting\n\tlast exit code = %s\n}\n' "\${2:-}" "\$(cat "$d/stub-exit" 2>/dev/null || echo 0)"
+fi
+exit 0
+STUB
+  chmod +x "$d/bin/launchctl"
+  export ORQ_LAUNCHCTL="$d/bin/launchctl"
+  FP_STUB_LOG="$d/launchctl.log"
+}
+
+# fp_launchctl_confere — o fecho de todo test-painel-*.sh (usa ok/falha do
+# chamador): nenhuma chamada ao launchctl do PATH, e ao menos uma ao stub. A
+# segunda metade é a que pega o teste que esqueceu o stub: sem ela, o painel
+# recusando o launchctl sob ORQ_TESTE=1 passaria em silêncio por "job sem dado".
+fp_launchctl_confere() {
+  local n
+  if [ -s "$FP_TRAVA_DIR/chamadas.log" ]; then
+    falha "o launchctl do PATH foi chamado $(grep -c . "$FP_TRAVA_DIR/chamadas.log") vez(es): $(sort -u "$FP_TRAVA_DIR/chamadas.log" | tr '\n' ';')"
+  else
+    ok "nenhuma chamada ao launchctl do PATH"
+  fi
+  n="$(grep -c . "${FP_STUB_LOG:-/dev/null}" 2>/dev/null || true)"
+  if [ "${n:-0}" -gt 0 ]; then ok "o stub de launchctl respondeu $n chamada(s)"
+  else falha "o stub de launchctl não foi chamado (o teste não passou por ORQ_LAUNCHCTL)"; fi
+}
+
+# fp_servidor_sobe <dir> — sobe o painel numa porta livre (porta 0) e define URL.
+fp_servidor_sobe() {
+  local d="$1" i
+  python3 "$AQUI/orq-painel.py" --porta 0 > "$d/srv.log" 2>&1 &
+  PID_SRV=$!
+  disown "$PID_SRV" 2>/dev/null || true
+  for i in $(seq 1 50); do
+    URL="$(sed -n 's|^orq-painel em \(http://[0-9.:]*\).*|\1|p' "$d/srv.log" | head -1)"
+    [ -n "$URL" ] && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
+# fp_post <rota> <json> -> corpo da resposta; o código HTTP fica para fp_http.
+fp_post() {
+  curl -s -o "$TMP/.resp" -w '%{http_code}' -H 'Content-Type: application/json' \
+    -d "$2" "$URL/api/$1" > "$TMP/.http"
+  cat "$TMP/.resp"
+}
+fp_http() { cat "$TMP/.http" 2>/dev/null; }

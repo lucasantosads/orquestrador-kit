@@ -1,0 +1,9 @@
+== A. executor.sh: chamada do executor ==
+  ✗ executor: falta --strict-mcp-config
+  ✗ executor: falta --mcp-config <arquivo>
+== B. avaliador.sh: chamada do juiz ==
+  ✓ juiz rodou e reprovou pelo stub (rc=10)
+  ✗ juiz: falta --strict-mcp-config
+  ✗ juiz: falta --mcp-config <arquivo>
+
+== resultado: 1 ok, 4 falhas ==

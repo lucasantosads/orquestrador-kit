@@ -1,0 +1,158 @@
+
+ RUN  v2.1.9 /Users/lucasantos/Projetos/_worktrees/kit-k12
+
+ ❯ test/orq-pausa-trilha.test.ts (8 tests | 7 failed) 992ms
+   × orq pausar grava PAUSA na trilha > uma linha, id ---, motivo em token e por=terminal 128ms
+     → expected [] to have a length of 1 but got +0
+   × orq pausar grava PAUSA na trilha > sem motivo: o motivo padrão vira token 112ms
+     → .toMatch() expects to receive a string, but got undefined
+   × orq retomar grava RETOMADA e diz quem pausou, quando e por quê > RETOMADA por=terminal dur=<N>min, depois da PAUSA 199ms
+     → expected [] to have a length of 2 but got +0
+   × orq retomar grava RETOMADA e diz quem pausou, quando e por quê > imprime quem, quando e o motivo ANTES do RETOMADO 194ms
+     → expected 'RETOMADO (pausar_file removido)\n' to match /pausado por terminal/
+   × orq retomar grava RETOMADA e diz quem pausou, quando e por quê > pausa feita pelo painel: o retomar do terminal diz "painel" e conta a duração da PAUSA 94ms
+     → expected 'RETOMADO (pausar_file removido)\n' to match /pausado por painel/
+   × orq retomar grava RETOMADA e diz quem pausou, quando e por quê > PAUSAR criado à mão, sem PAUSA na trilha: diz que não há registro e conta pelo conteúdo 95ms
+     → expected 'RETOMADO (pausar_file removido)\n' to match /pausado por \(sem PAUSA na trilha\)/
+   × um token só para os dois emissores > pausa_token (lib.sh) tira acento, baixa a caixa e troca o resto por - 77ms
+     → expected '\n' to be 'manutencao-a-noite-2a-parte\nmanual' // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/orq-pausa-trilha.test.ts > orq pausar grava PAUSA na trilha > uma linha, id ---, motivo em token e por=terminal
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ test/orq-pausa-trilha.test.ts:27:15
+     25|     expect(r.rc).toBe(0);
+     26|     const l = linhas(raiz);
+     27|     expect(l).toHaveLength(1);
+       |               ^
+     28|     expect(l[0]).toMatch(new RegExp(`^${ISO} --- PAUSA motivo=promocao…
+     29|     // o texto livre continua no arquivo, como sempre (§7)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  test/orq-pausa-trilha.test.ts > orq pausar grava PAUSA na trilha > sem motivo: o motivo padrão vira token
+TypeError: .toMatch() expects to receive a string, but got undefined
+ ❯ test/orq-pausa-trilha.test.ts:36:29
+     34|     const raiz = criarFixture();
+     35|     orq(raiz, 'pausar');
+     36|     expect(linhas(raiz)[0]).toMatch(/ --- PAUSA motivo=pausa-manual po…
+       |                             ^
+     37|   });
+     38| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  test/orq-pausa-trilha.test.ts > orq retomar grava RETOMADA e diz quem pausou, quando e por quê > RETOMADA por=terminal dur=<N>min, depois da PAUSA
+AssertionError: expected [] to have a length of 2 but got +0
+
+- Expected
++ Received
+
+- 2
++ 0
+
+ ❯ test/orq-pausa-trilha.test.ts:48:15
+     46|     expect(existsSync(PAUSAR(raiz))).toBe(false);
+     47|     const l = linhas(raiz);
+     48|     expect(l).toHaveLength(2);
+       |               ^
+     49|     expect(l[1]).toMatch(new RegExp(`^${ISO} --- RETOMADA por=terminal…
+     50|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  test/orq-pausa-trilha.test.ts > orq retomar grava RETOMADA e diz quem pausou, quando e por quê > imprime quem, quando e o motivo ANTES do RETOMADO
+AssertionError: expected 'RETOMADO (pausar_file removido)\n' to match /pausado por terminal/
+
+- Expected: 
+/pausado por terminal/
+
++ Received: 
+"RETOMADO (pausar_file removido)
+"
+
+ ❯ test/orq-pausa-trilha.test.ts:56:17
+     54|     orq(raiz, 'pausar', 'leva da tarde');
+     55|     const out = orq(raiz, 'retomar').out;
+     56|     expect(out).toMatch(/pausado por terminal/);
+       |                 ^
+     57|     expect(out).toMatch(/em \d{4}-\d{2}-\d{2} \d{2}:\d{2}/);
+     58|     expect(out).toMatch(/motivo: leva da tarde/);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  test/orq-pausa-trilha.test.ts > orq retomar grava RETOMADA e diz quem pausou, quando e por quê > pausa feita pelo painel: o retomar do terminal diz "painel" e conta a duração da PAUSA
+AssertionError: expected 'RETOMADO (pausar_file removido)\n' to match /pausado por painel/
+
+- Expected: 
+/pausado por painel/
+
++ Received: 
+"RETOMADO (pausar_file removido)
+"
+
+ ❯ test/orq-pausa-trilha.test.ts:72:17
+     70|     escrever(PAUSAR(raiz), `${iso.slice(0, 10)} ${iso.slice(11, 16)} |…
+     71|     const out = orq(raiz, 'retomar').out;
+     72|     expect(out).toMatch(/pausado por painel/);
+       |                 ^
+     73|     const ult = linhas(raiz).at(-1) ?? '';
+     74|     // 21 min contados da PAUSA da trilha (segundos), não do minuto do…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  test/orq-pausa-trilha.test.ts > orq retomar grava RETOMADA e diz quem pausou, quando e por quê > PAUSAR criado à mão, sem PAUSA na trilha: diz que não há registro e conta pelo conteúdo
+AssertionError: expected 'RETOMADO (pausar_file removido)\n' to match /pausado por \(sem PAUSA na trilha\)/
+
+- Expected: 
+/pausado por \(sem PAUSA na trilha\)/
+
++ Received: 
+"RETOMADO (pausar_file removido)
+"
+
+ ❯ test/orq-pausa-trilha.test.ts:84:17
+     82|     escrever(PAUSAR(raiz), `${t.getFullYear()}-${p(t.getMonth() + 1)}-…
+     83|     const out = orq(raiz, 'retomar').out;
+     84|     expect(out).toMatch(/pausado por \(sem PAUSA na trilha\)/);
+       |                 ^
+     85|     expect(out).toMatch(/motivo: à mão/);
+     86|     expect(linhas(raiz).at(-1)).toMatch(/ --- RETOMADA por=terminal du…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  test/orq-pausa-trilha.test.ts > um token só para os dois emissores > pausa_token (lib.sh) tira acento, baixa a caixa e troca o resto por -
+AssertionError: expected '\n' to be 'manutencao-a-noite-2a-parte\nmanual' // Object.is equality
+
+- Expected
++ Received
+
+- manutencao-a-noite-2a-parte
+- manual
++
++
+
+ ❯ test/orq-pausa-trilha.test.ts:100:22
+     98|     const raiz = criarFixture();
+     99|     const r = bashNoFixture(raiz, `pausa_token "Manutenção à noite: 2ª…
+    100|     expect(r.stdout).toBe('manutencao-a-noite-2a-parte\nmanual');
+       |                      ^
+    101|   });
+    102| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 1 passed (8)
+   Start at  13:38:20
+   Duration  1.31s (transform 41ms, setup 0ms, collect 39ms, tests 992ms, environment 0ms, prepare 66ms)
+
+rc=1

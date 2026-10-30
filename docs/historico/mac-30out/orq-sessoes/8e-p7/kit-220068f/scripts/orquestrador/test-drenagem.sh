@@ -1,0 +1,342 @@
+#!/usr/bin/env bash
+# test-drenagem.sh — prova os guards da drenagem sem tocar o repo.
+# Carrega o local-loop.sh em modo SOURCED (só define funções, nada roda) e
+# exercita merge_em_alvo() nos caminhos que precisam RECUSAR.
+#
+# A segunda seção (peça 6 da sessão B) exercita `drenar` inteira num ROOT
+# sintético, para o caminho de `refatiar`: ROOT sintético porque `drenar`
+# ESCREVE status de ticket, e rodá-la contra o checkout real mexeria na fila.
+#
+# Uso: bash scripts/orquestrador/test-drenagem.sh
+
+set -uo pipefail
+AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ISOLAMENTO (peça 0d): a trilha, o STATUS e o ledger de custo DESTE script vivem
+# num fixture temporário, e o `ORQ_TESTE=1` faz o `lib.sh` RECUSAR qualquer
+# escrita fora dele. Sem as duas linhas, o `source` abaixo herda o checkout
+# PRINCIPAL — `lib.sh` resolve `MAIN_CHECKOUT` por `git rev-parse
+# --git-common-dir`, de qualquer worktree — e um `event` disparado aqui grava na
+# trilha de produção. Foi assim que os `EXECUTOR_MORREU` espúrios de 2026-09-04
+# 20:45/20:47 entraram no `events.log` real.
+#
+# FIXTURE PRÓPRIA (peça 7a-1): fila e config nascem AQUI, em heredoc, e nada é
+# copiado do checkout. Até a 7a-1 o config vinha de
+# `$CHECKOUT_REAL/docs/fila/000-config.json`, que o KIT não tem (a fila é do
+# repo instalado): rodado na raiz do kit o `cp` falhava, o `source` morria no
+# `jq` e o script saía rc 2 — e o assert "seguiu para o próximo ticket" nunca
+# tinha sido exercido fora de um fixture vendorizado. O checkout real continua
+# sendo usado para UMA coisa, só leitura: provar que a branch protegida dele
+# não se move (casos 2 e 3).
+# A raiz do checkout que contém este script vem do GIT, não do layout (peça
+# 7b-9): o script viaja, e subir com `..` a partir dele é depender de onde o kit
+# o põe. Worktree: o comum (o checkout principal); fora dele, o toplevel.
+CHECKOUT_REAL="$(git -C "$AQUI" rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's#/\.git/*$##' || true)"
+[ -n "$CHECKOUT_REAL" ] || CHECKOUT_REAL="$(git -C "$AQUI" rev-parse --show-toplevel 2>/dev/null || true)"
+
+# escrever_config <raiz> — o 000-config.json MÍNIMO que o lib.sh e o
+# local-loop.sh leem no carregamento e na drenagem (config-chaves.ts). Nada de
+# gate, juiz ou modelo: o executor aqui é sempre stub.
+escrever_config() {
+  mkdir -p "$1/docs/fila/runs"
+  cat > "$1/docs/fila/000-config.json" <<'JSON'
+{ "$schema_versao": 2,
+  "branch_alvo": "staging-auto", "branch_protegida": "main",
+  "max_retries": 2, "cooldown_minutes": 60, "diff_cap_linhas": 600,
+  "migrations_dir": "db/migrations", "worktrees_dir": "../_worktrees",
+  "worktrees_prefixo": "fx-", "runs_dir": "docs/fila/runs",
+  "liberacoes_file": "docs/fila/liberacoes.json",
+  "decisoes_file": "docs/fila/decisoes-pendentes.md",
+  "pausar_file": "docs/fila/PAUSAR",
+  "repo_origin_deve_conter": "example.invalid", "ambiente_id": "fixture",
+  "canal_notificacao": "arquivo",
+  "executor": { "trailer_commit": "Orq-Ticket" },
+  "orcamento": { "custo_file": "docs/fila/runs/custo.json",
+                 "usd_dia": 50, "tokens_dia": 5000000, "usd_ticket": 5,
+                 "campos_usage": { "custo_usd": "total_cost_usd", "tokens_in": "usage.input_tokens",
+                                   "tokens_out": "usage.output_tokens", "tokens_cache": "usage.cache_read_input_tokens" } } }
+JSON
+  echo '{"$schema_versao": 2, "tokens": []}' > "$1/docs/fila/liberacoes.json"
+}
+
+export ORQ_TESTE=1
+ORQ_EXEC_ROOT="$(mktemp -d)/checkout"; export ORQ_EXEC_ROOT
+escrever_config "$ORQ_EXEC_ROOT"
+trap 'rm -rf "$(dirname "$ORQ_EXEC_ROOT")"' EXIT
+LOCAL_LOOP_SOURCED=1
+# shellcheck source=local-loop.sh
+source "$AQUI/local-loop.sh"
+# lib.sh (via local-loop.sh) liga `set -e`; aqui rc != 0 é o RESULTADO esperado
+# de metade dos casos, então errexit tem que sair.
+set +e
+
+FALHAS=0
+ok()    { printf '  ok    %s\n' "$*"; }
+falha() { printf '  FALHA %s\n' "$*"; FALHAS=$((FALHAS + 1)); }
+
+echo "== config lida =="
+echo "  branch_alvo=$BRANCH_ALVO  branch_protegida=$BRANCH_PROTEGIDA"
+[ "$BRANCH_ALVO" != "$BRANCH_PROTEGIDA" ] && ok "alvo != protegida" || falha "alvo é a protegida"
+
+echo
+echo "== merge_em_alvo RECUSA a branch protegida =="
+
+# Caso 1: alvo configurado como a própria protegida.
+BRANCH_ALVO_ORIG="$BRANCH_ALVO"
+BRANCH_ALVO="$BRANCH_PROTEGIDA"
+saida="$(merge_em_alvo 000 /tmp 2>&1)"; rc=$?
+BRANCH_ALVO="$BRANCH_ALVO_ORIG"
+[ "$rc" = 2 ] && ok "alvo == protegida => rc=2 (recusado)" || falha "alvo == protegida deu rc=$rc"
+printf '%s' "$saida" | grep -q "PROTEGIDA" && ok "recusa diz o motivo" || falha "recusa sem motivo claro"
+
+# Caso 2: o worktree de merge está NA protegida (o checkout principal está em
+# main). Aqui o alvo está certo, mas o destino real não — tem que recusar igual.
+# O checkout REAL de propósito: o que se prova aqui é que a branch protegida
+# do repo de verdade não se move. A trilha é que fica no fixture.
+principal="$CHECKOUT_REAL"
+branch_do_principal="$(git -C "$principal" rev-parse --abbrev-ref HEAD)"
+echo "  (worktree de teste: $principal, em '$branch_do_principal')"
+if [ "$branch_do_principal" = "$BRANCH_PROTEGIDA" ]; then
+  saida="$(merge_em_alvo 000 "$principal" 2>&1)"; rc=$?
+  [ "$rc" = 2 ] && ok "worktree em '$BRANCH_PROTEGIDA' => rc=2 (recusado)" || falha "worktree na protegida deu rc=$rc"
+  printf '%s' "$saida" | grep -q "protegida" && ok "recusa nomeia a protegida" || falha "recusa sem menção à protegida"
+else
+  echo "  (pulado: o checkout principal não está em $BRANCH_PROTEGIDA agora)"
+fi
+
+# Caso 3: e a protegida continua intacta — nenhum merge aconteceu.
+antes="$(git -C "$principal" rev-parse "$BRANCH_PROTEGIDA")"
+merge_em_alvo 000 "$principal" >/dev/null 2>&1 || true
+depois="$(git -C "$principal" rev-parse "$BRANCH_PROTEGIDA")"
+[ "$antes" = "$depois" ] && ok "$BRANCH_PROTEGIDA intacta (${antes:0:8})" || falha "$BRANCH_PROTEGIDA MUDOU"
+
+echo
+echo "== drenar TRATA o status refatiar (regra 19) =="
+# ROOT SINTÉTICO, nunca o checkout real: `drenar` escreve status de ticket e
+# commita. O executor entra como stub que devolve o ticket em `refatiar`, que é
+# o desfecho novo da peça 2 — o que se prova aqui é que a drenagem NÃO tenta
+# mergear um ticket assim, não o conta como aprovado nem como bloqueado, e
+# segue para o próximo em vez de parar por "sem progresso".
+fx="$(mktemp -d)"
+escrever_config "$fx"
+for id in 901 902; do
+  cat > "$fx/docs/fila/$id-t.md" <<TICKET
+# $id
+
+\`\`\`json
+{"id": "$id", "slug": "t", "status": "pendente", "origem": "humano",
+ "objetivo": "x", "pathspec_allowlist": ["src/a.ts"], "dependencias": [],
+ "criterios_aceite": []}
+\`\`\`
+TICKET
+done
+
+saida="$(ORQ_EXEC_ROOT="$fx" LOCAL_LOOP_SOURCED=1 bash -c "
+  source '$AQUI/local-loop.sh'
+  set +e
+  ensure_staging_worktree() { echo /tmp; }
+  ticket_commit() { return 0; }
+  merge_em_alvo() { echo 'MERGE TENTADO' >&2; return 0; }
+  run_executor_once() {
+    # o executor devolveria o ticket em refatiar; aqui só o status importa
+    echo \"CHAMADA \$(ticket_field \"\$2\" .id)\" >&2
+    ticket_set_status \"\$2\" refatiar
+    return 0
+  }
+  drenar
+" 2>&1)"
+
+printf '%s' "$saida" | grep -q "MERGE TENTADO" \
+  && falha "tentou mergear um ticket em refatiar" || ok "refatiar NÃO vai para o merge"
+printf '%s' "$saida" | grep -q "voltou para REFATIAR" \
+  && ok "a drenagem diz que o ticket voltou" || falha "refatiar passou em silêncio"
+# "Seguiu" é afirmado pelo que ACONTECEU, não só pela ausência da frase: as
+# duas chamadas, na ordem da fila. Sem a primeira linha o assert passaria com
+# uma drenagem que nem começou.
+chamadas="$(printf '%s\n' "$saida" | sed -n 's/^CHAMADA //p' | tr '\n' ' ')"
+if [ "$chamadas" = "901 902 " ] && ! printf '%s' "$saida" | grep -q "sem progresso"; then
+  ok "seguiu para o próximo ticket (executor chamado para: $chamadas)"
+else
+  falha "não seguiu para o próximo: chamadas='$chamadas'"
+fi
+grep -q "DRENAGEM_FIM .*refatiar=2" "$fx/docs/fila/runs/events.log" 2>/dev/null \
+  && ok "o placar da drenagem conta os 2 refatiados" \
+  || falha "refatiar não apareceu no DRENAGEM_FIM: $(grep DRENAGEM_FIM "$fx/docs/fila/runs/events.log" 2>/dev/null | tail -1)"
+grep -q "DRENAGEM_FIM aprovados=0 bloqueados=0" "$fx/docs/fila/runs/events.log" 2>/dev/null \
+  && ok "não conta como aprovado nem como bloqueado" || falha "refatiar contaminou outro contador"
+rm -rf "$fx"
+
+# --- COOLDOWN GLOBAL só com limite REAL de conta (porte do Actus, 9e109cb) ----
+# No Actus, em 21/09 13:52Z (471), 22/09 13:21Z (481) e 22/09 15:00Z (470c), os
+# três tickets foram ADIADOS por causa 'ambiente' e o mark_adiado armou o
+# cooldown de 60 min da drenagem INTEIRA, com 7 tickets prontos na fila. No kit
+# a regra já é da peça 7b-2 (armaCooldown: só rate_limit e quota); este bloco é
+# o teste do Actus, com a causa nova 'ambiente' na tabela. O `arma` sai do MESMO
+# armaCooldown que o executor usa, pelo tsx do checkout (resolvido pelo git).
+TSX_REAL="$CHECKOUT_REAL/node_modules/.bin/tsx"
+arma_da_causa() {
+  "$TSX_REAL" -e "import('$AQUI/decisao.ts').then((m) => console.log(m.armaCooldown('$1') ? 'sim' : 'nao'))" 2>/dev/null
+}
+fx_fila() {  # fx_fila <dir> <ids...> — ROOT sintético com tickets pendentes
+  local d="$1" id; shift
+  escrever_config "$d"
+  for id in "$@"; do
+    cat > "$d/docs/fila/$id-t.md" <<TICKET
+# $id
+
+\`\`\`json
+{"id": "$id", "slug": "t", "status": "pendente", "origem": "humano",
+ "objetivo": "x", "pathspec_allowlist": ["src/a.ts"], "dependencias": [],
+ "criterios_aceite": []}
+\`\`\`
+TICKET
+  done
+}
+# drena_com <dir> <corpo-do-run_executor_once> [extra] — roda `drenar` inteira
+# com o executor em stub. O stub recebe o ticket em $2 e anota EXECUTADO <id>.
+drena_com() {
+  ORQ_EXEC_ROOT="$1" LOCAL_LOOP_SOURCED=1 bash -c "
+    source '$AQUI/local-loop.sh'
+    set +e
+    ensure_staging_worktree() { echo /tmp; }
+    ticket_commit() { return 0; }
+    merge_em_alvo() { return 0; }
+    cleanup_frente() { return 0; }
+    ${3:-}
+    run_executor_once() {
+      local id; id=\"\$(ticket_field \"\$2\" '.id')\"
+      echo \"EXECUTADO \$id\" >&2
+      $2
+      return 0
+    }
+    drenar
+  " 2>&1
+}
+
+echo
+echo "== mark_adiado: cooldown global só para limite real de conta (Actus 9e109cb) =="
+[ -x "$TSX_REAL" ] && ok "tsx do checkout: $TSX_REAL" || falha "tsx ausente em $TSX_REAL"
+for caso in "ambiente:0" "juiz_ilegivel:0" "timeout:0" "rate_limit:1" "quota:1"; do
+  causa="${caso%%:*}"; espera="${caso##*:}"
+  arma="$(arma_da_causa "$causa")"
+  fx="$(mktemp -d)"; fx_fila "$fx" 911
+  ORQ_EXEC_ROOT="$fx" LOCAL_LOOP_SOURCED=1 bash -c "
+    source '$AQUI/local-loop.sh'; set +e
+    ticket_commit() { return 0; }
+    mark_adiado '$fx/docs/fila/911-t.md' executor 'infraestrutura: $causa' '$arma'
+  " >/dev/null 2>&1
+  tem=0; [ -f "$fx/docs/fila/runs/.cooldown-until" ] && tem=1
+  if [ "$tem" = "$espera" ]; then
+    ok "causa '$causa' (arma=$arma) => cooldown global $([ "$espera" = 1 ] && echo ARMADO || echo 'NÃO armado')"
+  else
+    falha "causa '$causa' (arma=$arma) => cooldown $([ "$tem" = 1 ] && echo armado || echo 'não armado') (esperado: $([ "$espera" = 1 ] && echo armado || echo 'não armado'))"
+  fi
+  rm -rf "$fx"
+done
+
+echo
+echo "== drenar: 1º ADIADO por 'ambiente' => o 2º roda na MESMA drenagem (Actus 9e109cb) =="
+fx="$(mktemp -d)"; fx_fila "$fx" 921 922
+saida="$(drena_com "$fx" "
+      if [ \"\$id\" = 921 ]; then
+        mark_adiado \"\$2\" executor 'infraestrutura: ambiente' $(arma_da_causa ambiente)
+      else
+        ticket_set_status \"\$2\" aguardando_merge
+      fi")"
+printf '%s' "$saida" | grep -q "EXECUTADO 922" \
+  && ok "o 2º ticket (922) foi executado" || falha "922 NÃO rodou: $(printf '%s' "$saida" | grep -E 'COOLDOWN|sem progresso|encerr' | head -2 | tr '\n' ' ')"
+[ -f "$fx/docs/fila/runs/.cooldown-until" ] \
+  && falha "adiamento de UM ticket armou cooldown GLOBAL" || ok "nenhum cooldown global armado"
+[ "$(printf '%s' "$saida" | grep -c 'EXECUTADO 921')" = 1 ] \
+  && ok "o adiado (921) roda UMA vez só nesta drenagem" || falha "921 rodou $(printf '%s' "$saida" | grep -c 'EXECUTADO 921')x"
+grep -q '"status": "done"' "$fx/docs/fila/922-t.md" \
+  && ok "922 terminou done" || falha "922 não chegou a done"
+rm -rf "$fx"
+
+echo
+echo "== drenar: 1º adiado por orcamento_ticket => o 2º roda na MESMA drenagem (Actus 9e109cb) =="
+fx="$(mktemp -d)"; fx_fila "$fx" 931 932
+saida="$(drena_com "$fx" 'ticket_set_status "$2" aguardando_merge' '
+    orcamento_veredito() { [ "$1" = 931 ] && echo ticket || echo ok; }')"
+printf '%s' "$saida" | grep -q "EXECUTADO 932" \
+  && ok "o 2º ticket (932) foi executado" || falha "932 NÃO rodou"
+printf '%s' "$saida" | grep -q "EXECUTADO 931" \
+  && falha "931 rodou apesar do teto por ticket" || ok "931 não foi ao executor"
+rm -rf "$fx"
+
+echo
+echo "== drenar: executor adia por orcamento_ticket POR DENTRO => o 2º roda (Actus 9e109cb) =="
+fx="$(mktemp -d)"; fx_fila "$fx" 941 942
+saida="$(drena_com "$fx" '
+      if [ "$id" = 941 ]; then mark_adiado_orcamento "$2" ticket
+      else ticket_set_status "$2" aguardando_merge; fi')"
+printf '%s' "$saida" | grep -q "EXECUTADO 942" \
+  && ok "o 2º ticket (942) foi executado" || falha "942 NÃO rodou: $(printf '%s' "$saida" | grep -E 'sem progresso|encerr' | head -1)"
+rm -rf "$fx"
+
+# --- K3 (dashboard-comercial, 24/10/2026): o merge lê o PAUSAR -----------------
+# Git DE VERDADE, com o merge_em_alvo REAL (sem stub): checkout com main e
+# staging-auto, worktree da staging, e a frente do ticket com um commit. O stub
+# do executor faz o que aconteceu no 001 do dashboard: o PAUSAR aparece DURANTE
+# a execução, e o ticket sai aprovado (aguardando_merge). O controle no mesmo
+# bloco roda o mesmo cenário SEM o PAUSAR e prova que o merge acontece — sem
+# ele, "a staging não andou" passaria com um harness que nunca mergeia nada.
+fx_git_merge() {  # fx_git_merge <dir> <id> — fila com 1 ticket, git e frente prontos
+  local d="$1" id="$2"
+  fx_fila "$d" "$id"
+  git -C "$d" init -q -b main
+  git -C "$d" -c user.name=t -c user.email=t@t add -A
+  git -C "$d" -c user.name=t -c user.email=t@t commit -q -m base
+  git -C "$d" branch staging-auto
+  git -C "$d" worktree add -q "$d.staging" staging-auto
+  git -C "$d" worktree add -q -b "frente/$id" "$d.frente" main
+  echo x > "$d.frente/a.txt"
+  git -C "$d.frente" -c user.name=t -c user.email=t@t add a.txt
+  git -C "$d.frente" -c user.name=t -c user.email=t@t commit -q -m "frente $id"
+}
+drena_merge_real() {  # drena_merge_real <dir> <pausar: 1|0>
+  ORQ_EXEC_ROOT="$1" LOCAL_LOOP_SOURCED=1 bash -c "
+    source '$AQUI/local-loop.sh'
+    set +e
+    ensure_staging_worktree() { echo '$1.staging'; }
+    ticket_commit() { return 0; }
+    cleanup_frente() { echo 'CLEANUP' >&2; return 0; }
+    run_executor_once() {
+      [ '$2' = 1 ] && : > '$1/docs/fila/PAUSAR'
+      ticket_set_status \"\$2\" aguardando_merge
+      return 0
+    }
+    drenar
+  " 2>&1
+}
+
+echo
+echo "== K3: ticket aprovado com o PAUSAR presente NÃO entra na staging-auto =="
+fx="$(mktemp -d)/c"; mkdir -p "$fx"; fx_git_merge "$fx" 951
+antes="$(git -C "$fx" rev-parse staging-auto)"
+saida="$(drena_merge_real "$fx" 1)"
+depois="$(git -C "$fx" rev-parse staging-auto)"
+[ "$antes" = "$depois" ] && ok "staging-auto não andou (${antes:0:8})" || falha "staging-auto ANDOU com o PAUSAR presente (${antes:0:8} -> ${depois:0:8})"
+git -C "$fx" merge-base --is-ancestor frente/951 staging-auto 2>/dev/null \
+  && falha "frente/951 está na staging-auto" || ok "frente/951 fora da staging-auto"
+grep -q '"status": "aguardando_merge"' "$fx/docs/fila/951-t.md" \
+  && ok "951 segue em aguardando_merge" || falha "951 saiu de aguardando_merge: $(grep -o '"status": "[a-z_]*"' "$fx/docs/fila/951-t.md")"
+grep -q " 951 MERGE_SUSPENSO motivo=pausa alvo=staging-auto" "$fx/docs/fila/runs/events.log" 2>/dev/null \
+  && ok "a trilha diz MERGE_SUSPENSO" || falha "sem MERGE_SUSPENSO na trilha"
+printf '%s' "$saida" | grep -q "CLEANUP" && falha "a frente foi limpa (o merge futuro precisa dela)" || ok "frente e worktree intactas"
+git -C "$fx" show-ref --verify --quiet refs/heads/frente/951 && ok "branch frente/951 existe" || falha "frente/951 sumiu"
+
+echo
+echo "== K3 controle: o MESMO cenário sem o PAUSAR mergeia =="
+fx2="$(mktemp -d)/c"; mkdir -p "$fx2"; fx_git_merge "$fx2" 952
+antes="$(git -C "$fx2" rev-parse staging-auto)"
+drena_merge_real "$fx2" 0 >/dev/null
+git -C "$fx2" merge-base --is-ancestor frente/952 staging-auto 2>/dev/null \
+  && ok "sem pausa, frente/952 entrou na staging-auto (${antes:0:8} -> $(git -C "$fx2" rev-parse --short staging-auto))" \
+  || falha "sem pausa o merge não aconteceu: o harness não prova o K3"
+grep -q '"status": "done"' "$fx2/docs/fila/952-t.md" && ok "952 terminou done" || falha "952 não chegou a done"
+rm -rf "$(dirname "$fx")" "$(dirname "$fx2")"
+
+echo
+if [ "$FALHAS" = 0 ]; then echo "TODOS OS CHECKS PASSARAM"; exit 0; fi
+echo "$FALHAS CHECK(S) FALHARAM"; exit 1

@@ -1,0 +1,12 @@
+
+ RUN  v2.1.9 /Users/lucasantos/Projetos/_worktrees/kit-k12
+
+ ✓ test/orq-pausa-trilha.test.ts (8 tests) 1326ms
+   ✓ orq retomar grava RETOMADA e diz quem pausou, quando e por quê > RETOMADA por=terminal dur=<N>min, depois da PAUSA 307ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  13:41:14
+   Duration  1.64s (transform 40ms, setup 0ms, collect 37ms, tests 1.33s, environment 0ms, prepare 69ms)
+
+rc=0

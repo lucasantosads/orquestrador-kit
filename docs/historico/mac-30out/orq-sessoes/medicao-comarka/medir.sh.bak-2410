@@ -1,0 +1,714 @@
+#!/usr/bin/env bash
+# medir.sh [DIAS] [--ate AAAA-MM-DD]
+#
+# Mede o orquestrador do comarka-operacional (C1, C2, C3) SO LENDO:
+#   - docs/fila/runs/*/meta.json e runs/*.pre-requeue-*/meta.json (historico de tentativas)
+#   - docs/fila/runs/local-loop.log.20260821 + local-loop.log (bloqueios, pausas, atividade)
+#   - git (GIT_OPTIONAL_LOCKS=0; so log, show, cat-file, for-each-ref, rev-parse)
+#   - ~/.orq/diagnosticos/comarka-operacional/*.json e classes-medicao.tsv (contrafactual do resolvedor)
+#
+# Janela: DIAS dias corridos (padrao 14) terminando em --ate (padrao: ONTEM, data local -03).
+# O corte e o fim do dia --ate (23:59:59 -03). Tudo depois do corte e ignorado, por isso
+# duas rodadas seguidas dao arquivos identicos mesmo com o loop vivo.
+#
+# Saida: out/<DIAS>d/{tickets,intervencoes,loop,playbook}.csv + resumo.json
+# rc 0 so se tudo rodou. Escreve so em out/ e tmp/ ao lado deste script.
+set -euo pipefail
+export LC_ALL=C TZ=America/Bahia GIT_OPTIONAL_LOCKS=0
+
+AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="${COMARKA_REPO:-$HOME/Projetos/comarka-operacional}"
+DIAG="${ORQ_DIAG:-$HOME/.orq/diagnosticos/comarka-operacional}"
+
+DIAS=14; ATE=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --ate) ATE="$2"; shift 2 ;;
+    [0-9]*) DIAS="$1"; shift ;;
+    *) echo "uso: medir.sh [DIAS] [--ate AAAA-MM-DD]" >&2; exit 2 ;;
+  esac
+done
+[ -n "$ATE" ] || ATE="$(date -v-1d '+%Y-%m-%d')"
+
+[ -d "$REPO/docs/fila/runs" ] || { echo "repo sem docs/fila/runs: $REPO" >&2; exit 1; }
+OUT="$AQUI/out/${DIAS}d"
+mkdir -p "$OUT" "$AQUI/tmp"
+
+python3 -I - "$REPO" "$DIAG" "$AQUI/classes-medicao.tsv" "$OUT" "$DIAS" "$ATE" <<'PY'
+import csv, json, os, re, subprocess, sys
+from datetime import datetime, timedelta, timezone, date
+
+REPO, DIAG, CLASSES, OUT, DIAS, ATE = sys.argv[1:7]
+DIAS = int(DIAS)
+TZL = timezone(timedelta(hours=-3))          # America/Bahia, sem horario de verao
+UTC = timezone.utc
+ATE_D = date.fromisoformat(ATE)
+INI_D = ATE_D - timedelta(days=DIAS - 1)
+CORTE = datetime(ATE_D.year, ATE_D.month, ATE_D.day, 23, 59, 59, tzinfo=TZL)
+INI = datetime(INI_D.year, INI_D.month, INI_D.day, 0, 0, 0, tzinfo=TZL)
+HIST_D = date(2026, 8, 8)                    # primeiro done com meta.json
+FILA = os.path.join(REPO, "docs/fila")
+RUNS = os.path.join(FILA, "runs")
+
+def git(*args):
+    r = subprocess.run(["git", "-C", REPO] + list(args), capture_output=True, text=True)
+    if r.returncode != 0:
+        raise SystemExit("git %s falhou: %s" % (" ".join(args[:3]), r.stderr.strip()[:300]))
+    return r.stdout
+
+def loc(dt): return dt.astimezone(TZL)
+def dstr(dt): return loc(dt).strftime("%Y-%m-%d")
+def tstr(dt): return loc(dt).strftime("%Y-%m-%d %H:%M")
+def na_janela(dt): return INI <= dt <= CORTE
+
+# ---------------------------------------------------------------- 1. meta.json
+TID = re.compile(r"^([0-9]{3,4}[a-z0-9]*)(\..*)?$")
+meta = {}   # id -> lista de linhas
+for d in sorted(os.listdir(RUNS)):
+    m = TID.match(d)
+    f = os.path.join(RUNS, d, "meta.json")
+    if not m or not os.path.isfile(f):
+        continue
+    try:
+        rows = json.load(open(f))
+    except Exception as e:
+        raise SystemExit("meta.json ilegivel: %s (%s)" % (f, e))
+    for r in rows:
+        ts = r.get("ts")
+        if not ts or ts == "?":
+            continue
+        dt = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+        if dt > CORTE:
+            continue
+        meta.setdefault(m.group(1), []).append({
+            "ts": dt, "attempt": r.get("attempt"), "res": r.get("resultado"),
+            "dur": r.get("claude_dur_secs") or 0, "fonte": "runs/%s/meta.json" % d})
+for k in meta:
+    seen, uniq = set(), []
+    for r in sorted(meta[k], key=lambda r: (r["ts"], str(r["attempt"]), r["res"], r["fonte"])):
+        key = (r["ts"], r["attempt"], r["res"])
+        if key in seen:
+            continue
+        seen.add(key); uniq.append(r)
+    meta[k] = uniq
+TENTA = ("done", "reprovado", "bloqueado")
+
+# ---------------------------------------------------------------- 2. log do loop
+HDR = re.compile(r"^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})([+-]\d{4})\] (.*)$")
+ORQ = re.compile(r"^\[orq (\d{2}):(\d{2}):(\d{2})\] (.*)$")
+logs = [os.path.join(RUNS, "local-loop.log.20260821"), os.path.join(RUNS, "local-loop.log")]
+ev = []          # (dt, tipo, dado, fonte)
+base = None
+for lf in logs:
+    nome = os.path.basename(lf)
+    with open(lf, errors="replace") as fh:
+        for n, line in enumerate(fh, 1):
+            line = line.rstrip("\n")
+            m = HDR.match(line)
+            if m:
+                dt = datetime.strptime(m.group(1) + m.group(2), "%Y-%m-%d %H:%M:%S%z")
+                base = dt; txt = m.group(3)
+            else:
+                m2 = ORQ.match(line)
+                if not m2 or base is None:
+                    continue
+                bu = base.astimezone(UTC)
+                dt = bu.replace(hour=int(m2.group(1)), minute=int(m2.group(2)), second=int(m2.group(3)))
+                if dt < bu - timedelta(hours=1):
+                    dt += timedelta(days=1)
+                base = dt; txt = m2.group(4)
+            if dt > CORTE:
+                continue
+            src = "%s:%d" % (nome, n)
+            if "local-loop início" in txt:
+                ev.append((dt, "inicio", "", src))
+            elif txt.startswith("PAUSA ATIVA"):
+                mot = re.sub(r"^PAUSA ATIVA \([^)]*\): ", "", txt)
+                mot = re.sub(r"\. Encerrando sem drenar\.$", "", mot)
+                ev.append((dt, "pausa", mot, src))
+            elif "GATE STREAK:" in txt and "PAUSANDO" in txt:
+                ev.append((dt, "gate_streak", txt.strip(), src))
+            elif "outra execução em andamento" in txt or "COOLDOWN" in txt:
+                ev.append((dt, "ativo", "", src))
+            elif re.search(r"drenagem: ticket \S+", txt):
+                ev.append((dt, "drenou", re.search(r"drenagem: ticket (\S+)", txt).group(1), src))
+            elif "fila sem ticket processável" in txt:
+                ev.append((dt, "vazio", "", src))
+            elif txt.startswith("ABORTA"):
+                ev.append((dt, "aborta", txt[:120], src))
+            else:
+                mb = re.search(r"ticket (\S+): .*BLOQUEADO", txt) or re.search(r"DISJUNTOR: ticket (\S+) bloqueado", txt)
+                if mb:
+                    ev.append((dt, "bloqueio", mb.group(1).rstrip(":"), src))
+                elif ORQ.match(line):
+                    ev.append((dt, "ativo", "", src))
+ev.sort(key=lambda e: (e[0], e[3]))
+
+def tipo_pausa(mot):
+    s = mot.lower()
+    if "gate sistemico" in s or "gate sistêmico" in s:
+        return "gate_streak"
+    if any(k in s for k in ("promocao", "promoção", "ritual", "publicar", "release")):
+        return "operacional"
+    return "manual"
+
+# bloqueios (dedupe por ticket+minuto)
+bloqueios, vistos = [], set()
+for dt, t, d, src in ev:
+    if t == "bloqueio":
+        k = (d, dt.replace(second=0))
+        if k not in vistos:
+            vistos.add(k); bloqueios.append({"id": d, "ts": dt, "fonte": src})
+
+# episodios de pausa: linhas PAUSA ATIVA consecutivas com o mesmo motivo
+episodios = []
+for dt, t, d, src in ev:
+    if t != "pausa":
+        continue
+    norm = re.sub(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}", "", d)
+    if episodios and episodios[-1]["norm"] == norm and dt - episodios[-1]["fim"] < timedelta(days=4):
+        episodios[-1]["fim"] = dt; episodios[-1]["n"] += 1
+    else:
+        episodios.append({"ini": dt, "fim": dt, "n": 1, "mot": d, "norm": norm,
+                          "tipo": tipo_pausa(d), "fonte": src})
+
+# ---------------------------------------------------------------- 3. git
+SEP, FS = "\x1e", "\x1f"
+def commits_log(*extra):
+    out = git("log", "--branches", "--no-merges", "--since=2026-08-01", "-M", "--name-status",
+              "--format=" + SEP + "%H" + FS + "%at" + FS + "%an" + FS + "%s" + FS +
+              "%(trailers:key=Co-Authored-By,valueonly,separator=;)" + FS +
+              "%(trailers:key=Orq-Resolvedor,valueonly,separator=;)" + FS, *extra)
+    res = []
+    for blk in out.split(SEP)[1:]:
+        cab, _, resto = blk.partition(FS + "\n")
+        if not resto and blk.endswith(FS):
+            cab = blk[:-1]
+        h, at, an, s, coa, orr = (cab.split(FS) + [""] * 6)[:6]
+        arqs = []
+        for l in resto.splitlines():
+            p = l.split("\t")
+            if len(p) >= 2:
+                arqs.append((p[0][0], p[1:]))
+        res.append({"h": h, "dt": datetime.fromtimestamp(int(at), UTC), "an": an, "s": s,
+                    "coa": coa, "orr": orr.strip(), "arqs": arqs})
+    return res
+
+commits = [c for c in commits_log() if c["dt"] <= CORTE]
+
+# commits do agente executor: lado frente/<id> dos merges do loop + frente/* nao mergeadas
+agente = set()
+for l in git("log", "--branches", "--merges", "--since=2026-08-01", "--format=%H %P" + FS + "%s").splitlines():
+    hp, _, s = l.partition(FS)
+    p = hp.split()
+    if s.startswith("orquestrador: merge frente/") and len(p) >= 3:
+        agente.update(git("log", "--format=%H", p[1] + ".." + p[2]).split())
+for ref in git("for-each-ref", "--format=%(refname:short)", "refs/heads/frente").split():
+    agente.update(git("log", "--format=%H", ref, "--not", "main", "staging-auto").split())
+
+# criacao de ticket: 1o commit que adiciona docs/fila/**/<id>-*.md (historia toda)
+TFILE = re.compile(r"^docs/fila/(?:_hold/|_to_delete/)?([0-9]{3,4}[a-z0-9]*)-[^/]*\.md$")
+criacao = {}
+out = git("log", "--branches", "--diff-filter=A", "--name-only", "--format=" + SEP + "%at", "--", "docs/fila")
+for blk in out.split(SEP)[1:]:
+    ls = blk.strip().splitlines()
+    if not ls:
+        continue
+    dt = datetime.fromtimestamp(int(ls[0]), UTC)
+    for p in ls[1:]:
+        m = TFILE.match(p)
+        if m and (m.group(1) not in criacao or dt < criacao[m.group(1)]):
+            criacao[m.group(1)] = dt
+
+# leitura de blobs em lote
+cat = subprocess.Popen(["git", "-C", REPO, "cat-file", "--batch"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+def blob(spec):
+    cat.stdin.write((spec + "\n").encode()); cat.stdin.flush()
+    head = cat.stdout.readline().decode()
+    if head.endswith("missing\n"):
+        return None
+    n = int(head.split()[2]); data = cat.stdout.read(n); cat.stdout.read(1)
+    return data.decode("utf-8", "replace")
+
+JBLK = re.compile(r"^```json\n(.*?)\n```$", re.S | re.M)
+def partes(txt):
+    if txt is None:
+        return None, None
+    m = JBLK.search(txt)
+    j = None
+    if m:
+        try:
+            j = json.loads(m.group(1))
+        except Exception:
+            j = None
+    prosa = JBLK.sub("", txt)
+    return j, prosa
+
+NOTA_LOOP = ("aprovado (tentativa", "reprovado (tentativa", "reprovado apos", "reprovado após",
+             "motivo repetido", "enforcement:", "disjuntor:", "pausa cross-ticket", "adiado (",
+             "obsoleto (recon", "reconciliado:")
+
+def tentou_antes(tid, dt):
+    return any(r["ts"] < dt and r["res"] in TENTA for r in meta.get(tid, [])) or \
+           any(b["id"] == tid and b["ts"] < dt for b in bloqueios)
+
+def mudanca(antes, depois):
+    """tipo pela regra mais forte entre os campos do json que mudaram"""
+    a, d = antes or {}, depois or {}
+    if a.get("pathspec_allowlist") != d.get("pathspec_allowlist"): return "allowlist"
+    if a.get("criterios_aceite") != d.get("criterios_aceite"): return "criterio"
+    if a.get("dependencias") != d.get("dependencias"): return "dependencia"
+    if a.get("status") != d.get("status") and d.get("status") == "pendente": return "reabertura"
+    return "outro"
+
+def so_loop(antes, depois, pa, pd):
+    """True se a unica mudanca e status/notas_status escrita pelo loop"""
+    if antes is None or depois is None:
+        return False
+    a = {k: v for k, v in antes.items() if k not in ("status", "notas_status")}
+    d = {k: v for k, v in depois.items() if k not in ("status", "notas_status")}
+    if a != d or pa != pd:
+        return False
+    if antes.get("notas_status") != depois.get("notas_status") or antes.get("status") != depois.get("status"):
+        nota = str(depois.get("notas_status") or "")
+        if not nota.startswith(NOTA_LOOP):
+            return False
+    return True
+
+FORCA = {"intervencao": 6, "intervencao_embutida": 5, "curadoria": 4, "alimentar_fila": 3,
+         "liberacao": 2, "fora_da_fila": 1}
+classif, done_git = [], {}
+n_loop = n_agente = n_resolvedor = 0
+for c in commits:
+    if c["h"] in agente:
+        n_agente += 1; continue
+    if c["orr"]:
+        n_resolvedor += 1; continue
+    auto = c["s"].startswith("fila: status automatico do loop")
+    paths = [p[-1] for _, p in c["arqs"]]
+    cands = []   # (classe, tipo, tickets)
+    motor = [p for p in paths if p.startswith("scripts/orquestrador/")]
+    if motor:
+        cands.append(("intervencao", "motor", []))
+    if "docs/fila/000-config.json" in paths:
+        cands.append(("intervencao", "config", []))
+    if "docs/fila/liberacoes.json" in paths:
+        cands.append(("liberacao", "dependencia", []))
+    for st, p in c["arqs"]:
+        novo = p[-1]; velho = p[0]
+        m = TFILE.match(novo) or TFILE.match(velho)
+        if not m:
+            continue
+        tid = m.group(1)
+        if st == "A":
+            j, _ = partes(blob(c["h"] + ":" + novo))
+            if j and j.get("status") == "done":
+                done_git.setdefault(tid, c["dt"])
+            cands.append(("alimentar_fila", "", [tid])); continue
+        ja, pa = partes(blob(c["h"] + "^:" + velho))
+        jd, pd = partes(blob(c["h"] + ":" + novo)) if st != "D" else (None, None)
+        if jd and jd.get("status") == "done" and (not ja or ja.get("status") != "done"):
+            done_git.setdefault(tid, c["dt"])
+        if so_loop(ja, jd, pa, pd):
+            if auto:
+                continue
+            # humano commitando o status que o loop escreveu (defeito 2026-09-29 writeback fora do git)
+            cands.append(("intervencao", "writeback", [tid]) if tentou_antes(tid, c["dt"])
+                         else ("curadoria", "writeback", [tid]))
+            continue
+        tipo = mudanca(ja, jd) if st == "M" else "outro"
+        if auto:
+            cands.append(("intervencao_embutida", tipo, [tid]))
+        elif tentou_antes(tid, c["dt"]):
+            cands.append(("intervencao", tipo, [tid]))
+        else:
+            cands.append(("curadoria", tipo, [tid]))
+    if auto and not cands:
+        n_loop += 1; continue
+    if not cands:
+        cands.append(("fora_da_fila", "", []))
+    top = max(FORCA[x[0]] for x in cands)
+    sel = [x for x in cands if FORCA[x[0]] == top]
+    tipos = [x[1] for x in sel if x[1]]
+    ordem = ["motor", "config", "allowlist", "criterio", "dependencia", "reabertura", "outro", "writeback"]
+    tipo = min(tipos, key=ordem.index) if tipos else ""
+    tks = sorted({t for x in sel for t in x[2]})
+    classif.append({"c": c, "classe": sel[0][0], "tipo": tipo, "tickets": tks})
+cat.stdin.close(); cat.wait()
+
+# ---------------------------------------------------------------- 4. contrafactual do resolvedor
+cls_ev = []   # (dt, id, classe, subtipo, firme, fonte, prioridade_da_fonte)
+with open(CLASSES) as fh:
+    for l in fh:
+        if l.startswith("#") or not l.strip():
+            continue
+        e, tid, dl, cl, sub, fonte = l.rstrip("\n").split("\t")
+        dt = datetime.strptime(dl, "%Y-%m-%d %H:%M").replace(tzinfo=TZL)
+        cls_ev.append((dt, tid, cl, sub, True, "medicao-bloqueios-out.md " + fonte.split(",")[0], 0))
+for f in sorted(os.listdir(DIAG)) if os.path.isdir(DIAG) else []:
+    if not f.endswith(".json"):
+        continue
+    j = json.load(open(os.path.join(DIAG, f)))
+    q = (j.get("bloqueio") or {}).get("quando")
+    if not q:
+        continue
+    dt = datetime.strptime(q, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    cl = (j.get("classe") or "").rstrip("?")
+    firme = bool(j.get("firme"))
+    regra = j.get("regra") or ""
+    ext = j.get("extracao") or {}
+    nota = (j.get("bloqueio") or {}).get("nota_do_motor") or ""
+    # caminho D6b: enforcement com UMA violacao fora_do_pathspec de arquivo vermelho fora da allowlist e do diff
+    mviol = re.fullmatch(r"enforcement: fora_do_pathspec: (\S+)", nota.strip())
+    if (j.get("bloqueio") or {}).get("token") == "enforcement" and mviol and \
+            mviol.group(1) in (ext.get("fora_da_allowlist_e_do_diff") or []):
+        cl, firme, regra = "R1", True, "D6b"
+    sub = {"D1": "arvore", "D4": "maquina", "D5": "base"}.get(regra, "")
+    cls_ev.append((dt, j["id"], cl, sub, firme, "~/.orq/diagnosticos/comarka-operacional/%s (%s %s)" % (f, j.get("classe"), regra), 1))
+
+def resolvedor(tid, dt):
+    cand = [e for e in cls_ev if e[1] == tid and e[0] <= dt + timedelta(minutes=5)]
+    if not cand:
+        if any(b["id"] == tid and b["ts"] <= dt for b in bloqueios):
+            return "sem dado", "bloqueio sem classe em diagnostico nem na medicao"
+        return "nao", "ticket sem bloqueio antes da intervencao"
+    e = max(cand, key=lambda e: (e[0], e[6]))
+    cl, sub, firme = e[2], e[3], e[4]
+    if not firme:
+        r = "nao"
+    elif cl == "R1":
+        r = "sim R1"
+    elif cl == "R5" and sub in ("arvore", "maquina"):
+        r = "sim R5"
+    elif cl == "R2":
+        r = "so proposta R2"
+    else:
+        r = "nao"
+    return r, e[5]
+
+PRI = {"sim R1": 4, "sim R5": 3, "so proposta R2": 2, "nao": 1, "sem dado": 0}
+
+# ---------------------------------------------------------------- 5. intervencoes
+INTERV = ("intervencao", "intervencao_embutida")
+linhas_int = []
+for x in classif:
+    c = x["c"]
+    if x["tipo"] in ("motor", "config", "writeback") or not x["tickets"] or x["classe"] not in INTERV:
+        rv, rf = "nao", ""
+    else:
+        rs = [resolvedor(t, c["dt"]) for t in x["tickets"]]
+        rv, rf = max(rs, key=lambda r: PRI[r[0]])
+    arqs = ";".join(p[-1] for _, p in c["arqs"])
+    if len(arqs) > 300:
+        arqs = arqs[:297] + "..."
+    linhas_int.append({"dt": c["dt"], "data": tstr(c["dt"]), "commit": c["h"][:9], "autor": c["an"] +
+                       (" + sessao Claude" if "Claude" in c["coa"] else ""),
+                       "arquivos": arqs, "classe": x["classe"], "tipo": x["tipo"] or "-",
+                       "ticket": ";".join(x["tickets"]) or "-", "motivo": c["s"][:160],
+                       "resolvedor_teria_agido": rv,
+                       "fonte": "git show %s%s" % (c["h"][:9], ("; classe: " + rf) if rf else "")})
+for e in episodios:
+    if e["tipo"] == "operacional":
+        continue
+    linhas_int.append({"dt": e["ini"], "data": tstr(e["ini"]), "commit": "-", "autor": "-",
+                       "arquivos": "docs/fila/.orq-pause", "classe": "intervencao",
+                       "tipo": "pausa_" + e["tipo"], "ticket": "-",
+                       "motivo": ("%s (ate %s, %d disparos)" % (e["mot"][:120], tstr(e["fim"]), e["n"])),
+                       "resolvedor_teria_agido": "nao", "fonte": e["fonte"]})
+for dt, t, d, src in ev:
+    if t == "gate_streak":
+        mt = re.search(r"\(([^)]*)\)", d)
+        linhas_int.append({"dt": dt, "data": tstr(dt), "commit": "-", "autor": "motor (streak)",
+                           "arquivos": "docs/fila/.orq-pause", "classe": "intervencao",
+                           "tipo": "gate_streak", "ticket": (mt.group(1).replace(",", ";") if mt else "-"),
+                           "motivo": d[:160], "resolvedor_teria_agido": "nao", "fonte": src})
+linhas_int.sort(key=lambda r: (r["dt"], r["commit"], r["fonte"]))
+
+# dias com intervencao (historia toda desde HIST_D)
+dias_int = {}
+def marca(d, motivo):
+    dias_int.setdefault(d, []).append(motivo)
+for r in linhas_int:
+    if r["classe"] in INTERV and r["tipo"] not in ("pausa_manual", "pausa_gate_streak"):
+        marca(loc(r["dt"]).date(), r["tipo"] + ":" + (r["commit"] if r["commit"] != "-" else r["fonte"]))
+for e in episodios:
+    if e["tipo"] in ("manual", "gate_streak"):
+        d = loc(e["ini"]).date()
+        while d <= loc(e["fim"]).date():
+            marca(d, "pausa_" + e["tipo"]); d += timedelta(days=1)
+
+def sequencias(dias_ruins, ini, fim):
+    """maior sequencia de dias sem dia ruim em [ini, fim] e a sequencia que termina em fim"""
+    best, cur, cur_ini, best_ini = 0, 0, ini, None
+    d = ini
+    while d <= fim:
+        if d in dias_ruins:
+            cur = 0; cur_ini = d + timedelta(days=1)
+        else:
+            cur += 1
+            if cur > best:
+                best, best_ini = cur, cur_ini
+        d += timedelta(days=1)
+    return {"maior": best, "maior_de": str(best_ini) if best else None,
+            "maior_ate": str(best_ini + timedelta(days=best - 1)) if best else None, "atual": cur}
+
+# ---------------------------------------------------------------- 6. tickets
+tickets = {}
+for tid, rows in meta.items():
+    for r in rows:
+        if r["res"] == "done" and na_janela(r["ts"]):
+            tickets[tid] = True
+for b in bloqueios:
+    if na_janela(b["ts"]):
+        tickets[b["id"]] = True
+for tid, dt in done_git.items():
+    if na_janela(dt) and not any(r["res"] == "done" for r in meta.get(tid, [])):
+        tickets[tid] = True
+
+def tsort(t):
+    m = re.match(r"(\d+)(.*)", t); return (int(m.group(1)), m.group(2))
+
+linhas_t = []
+for tid in sorted(tickets, key=tsort):
+    rows = meta.get(tid, [])
+    evs = [(r["ts"], "done") for r in rows if r["res"] == "done"] + \
+          [(b["ts"], "bloqueado") for b in bloqueios if b["id"] == tid] + \
+          [(r["ts"], "tentativa") for r in rows if r["res"] in ("reprovado",)]
+    if tid in done_git and not any(r["res"] == "done" for r in rows):
+        evs.append((done_git[tid], "done_sem_meta"))
+    evs.sort()
+    # a linha "reprovado" do meta.json e gravada segundos depois do BLOQUEADO do log: nao reabre
+    evs = [e for i, e in enumerate(evs) if not (e[1] == "tentativa" and any(
+        b[1] == "bloqueado" and timedelta(0) <= e[0] - b[0] <= timedelta(minutes=5) for b in evs[:i]))]
+    ult = evs[-1][1] if evs else "sem dado"
+    status = {"done": "done", "done_sem_meta": "done", "bloqueado": "bloqueado"}.get(ult, "pendente")
+    term = [e for e in evs if e[1] in ("done", "done_sem_meta", "bloqueado") and na_janela(e[0])]
+    dterm = tstr(term[-1][0]) if term else "-"
+    ntent = sum(1 for r in rows if r["res"] in TENTA)
+    if status == "done" and rows and any(r["res"] == "done" for r in rows):
+        prim = "sim" if (len(rows) == 1 and rows[0]["res"] == "done") else "nao"
+    elif status == "done":
+        prim = "sem dado"
+    else:
+        prim = "-"
+    fontes = sorted({r["fonte"] for r in rows})
+    fb = [b["fonte"] for b in bloqueios if b["id"] == tid and na_janela(b["ts"])]
+    linhas_t.append({"id": tid, "status": status,
+                     "data_criacao": tstr(criacao[tid]) if tid in criacao else "sem dado",
+                     "data_done_ou_bloqueio": dterm,
+                     "tentativas": str(ntent) if rows else "sem dado",
+                     "aprovado_de_primeira": prim,
+                     "custo_usd": "sem dado",
+                     "esforco_claude_dur_secs": str(sum(r["dur"] for r in rows if r["res"] in TENTA)) if rows else "sem dado",
+                     "primeira_linha_meta": rows[0]["res"] if rows else "-",
+                     "fonte": "; ".join(fontes + fb[:3]) or ("git: status done em commit sem meta.json" if tid in done_git else "-")})
+
+# ---------------------------------------------------------------- 7. loop por dia/hora
+info = [(dt, t, d) for dt, t, d, _ in ev if t in ("drenou", "vazio", "pausa")]
+ativ_h = {}
+for dt, t, d, _ in ev:
+    h = loc(dt).replace(minute=0, second=0)
+    ativ_h.setdefault(h, []).append((t, d))
+for tid, rows in meta.items():
+    for r in rows:
+        h = loc(r["ts"]).replace(minute=0, second=0)
+        ativ_h.setdefault(h, []).append(("ativo", ""))
+
+import bisect
+info_dt = [i[0] for i in info]
+def estado_hora(h):
+    evs = ativ_h.get(h, [])
+    ps = [d for t, d in evs if t == "pausa"]
+    if ps:
+        return "pausa_" + tipo_pausa(ps[-1])
+    if any(t in ("drenou", "vazio", "ativo", "gate_streak", "bloqueio", "inicio") and t != "inicio" for t, d in evs):
+        return "ativo"
+    if any(t == "inicio" for t, d in evs) and not any(t == "aborta" for t, d in evs):
+        return "ativo"
+    fim_h = (h + timedelta(hours=1)).astimezone(UTC)
+    i = bisect.bisect_left(info_dt, fim_h)
+    prox = info[i] if i < len(info) else None
+    ant = info[i - 1] if i > 0 else None
+    if prox is None:
+        return "sem_dado"
+    if prox[1] == "drenou":
+        return "parado"
+    if prox[1] == "vazio":
+        return "ocioso"
+    if ant is not None and ant[1] == "pausa":
+        return "pausa_" + tipo_pausa(prox[2])
+    return "sem_dado"
+
+linhas_l = []
+d = INI_D
+while d <= ATE_D:
+    cont = {}
+    for hh in range(24):
+        h = datetime(d.year, d.month, d.day, hh, tzinfo=TZL)
+        s = estado_hora(h)
+        cont[s] = cont.get(s, 0) + 1
+    done_d = sum(1 for rows in meta.values() for r in rows if r["res"] == "done" and loc(r["ts"]).date() == d)
+    bloq_d = sum(1 for b in bloqueios if loc(b["ts"]).date() == d)
+    linhas_l.append({"data": str(d), "tickets_done": done_d, "tickets_bloqueados": bloq_d,
+                     "horas_loop_parado": cont.get("parado", 0),
+                     "horas_ativo": cont.get("ativo", 0), "horas_ocioso_sem_processavel": cont.get("ocioso", 0),
+                     "horas_pausa_operacional": cont.get("pausa_operacional", 0),
+                     "horas_pausa_manual": cont.get("pausa_manual", 0),
+                     "horas_pausa_gate_streak": cont.get("pausa_gate_streak", 0),
+                     "horas_sem_dado": cont.get("sem_dado", 0),
+                     "dia_com_intervencao": "sim" if d in dias_int else "nao",
+                     "fonte": "runs/*/meta.json; local-loop.log"})
+    d += timedelta(days=1)
+
+# ---------------------------------------------------------------- 8. playbook
+# Licao nova = linha adicionada no PLAYBOOK, no arquivo daquele commit, que e
+#   (a) bullet "- DD/MM · ..." em qualquer ponto depois do "## 7.", ou bullet "- **...**" direto sob o "## 7."; ou
+#   (b) cabecalho "## " depois do "## 7." que nao seja Registro/Pendencia.
+# Dedupe pelo texto (a mesma licao movida ou duplicada conta uma vez, na 1a aparicao).
+PB = "docs/orquestrador/PLAYBOOK.md"
+out = git("log", "--branches", "-p", "--unified=0", "--format=" + SEP + "%H" + FS + "%at", "--", PB)
+cat2 = subprocess.Popen(["git", "-C", REPO, "cat-file", "--batch"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+def blob2(spec):
+    cat2.stdin.write((spec + "\n").encode()); cat2.stdin.flush()
+    head = cat2.stdout.readline().decode()
+    if head.endswith("missing\n"):
+        return None
+    n = int(head.split()[2]); data = cat2.stdout.read(n); cat2.stdout.read(1)
+    return data.decode("utf-8", "replace")
+BUL = re.compile(r"^- (?:\*\*(.+?)\*\*|(\d{2}/\d{2})(?:/\d{2,4})?\s*·\s*(.*))")
+licoes = []
+for blk in out.split(SEP)[1:]:
+    cab, _, corpo = blk.partition("\n")
+    h, at = cab.split(FS)
+    dt = datetime.fromtimestamp(int(at), UTC)
+    if dt > CORTE:
+        continue
+    novas = []   # numeros de linha (1-based) adicionados
+    ln = 0
+    for l in corpo.splitlines():
+        mh = re.match(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@", l)
+        if mh:
+            ln = int(mh.group(1)); continue
+        if l.startswith("+") and not l.startswith("+++"):
+            novas.append(ln); ln += 1
+    if not novas:
+        continue
+    txt = blob2(h + ":" + PB)
+    if txt is None:
+        continue
+    linhas = txt.split("\n")
+    sec7 = next((k + 1 for k, l in enumerate(linhas) if l.startswith("## 7.")), None)
+    if sec7 is None:
+        continue
+    for n in novas:
+        if n < sec7 or n > len(linhas):
+            continue
+        l = linhas[n - 1]
+        sup = next((linhas[k] for k in range(n - 2, -1, -1) if linhas[k].startswith("## ")), "")
+        mb = BUL.match(l)
+        if mb and (sup.startswith("## 7.") or mb.group(2)):
+            t = (mb.group(1) or mb.group(3) or "").strip()
+            licoes.append({"dt": dt, "h": h, "dl": mb.group(2) or "", "txt": t, "linha": n})
+        elif l.startswith("## ") and n > sec7 and not re.match(r"## (Registro|Pend)", l):
+            md = re.search(r"\((\d{2}/\d{2})", l)
+            licoes.append({"dt": dt, "h": h, "dl": md.group(1) if md else "", "txt": l[3:].strip(), "linha": n})
+cat2.stdin.close(); cat2.wait()
+licoes.sort(key=lambda r: (r["dt"], r["h"], r["linha"]))
+seen, linhas_p = set(), []
+for r in licoes:
+    k = re.sub(r"\s+", " ", r["txt"])[:200]
+    if k in seen:
+        continue
+    seen.add(k)
+    linhas_p.append({"dt": r["dt"], "data": tstr(r["dt"]), "commit": r["h"][:9],
+                     "data_na_licao": r["dl"] or "-", "licao": r["txt"][:140],
+                     "fonte": "git show %s:%s linha %d" % (r["h"][:9], PB, r["linha"])})
+dias_licao = {loc(r["dt"]).date() for r in linhas_p}
+
+# ---------------------------------------------------------------- 9. escrita
+def grava(nome, linhas, cols):
+    with open(os.path.join(OUT, nome), "w", newline="") as fh:
+        w = csv.writer(fh, lineterminator="\n")
+        w.writerow(cols)
+        for r in linhas:
+            w.writerow([r[c] for c in cols])
+
+grava("tickets.csv", linhas_t, ["id", "status", "data_criacao", "data_done_ou_bloqueio", "tentativas",
+                                "aprovado_de_primeira", "custo_usd", "esforco_claude_dur_secs",
+                                "primeira_linha_meta", "fonte"])
+grava("intervencoes.csv", [r for r in linhas_int if na_janela(r["dt"])],
+      ["data", "commit", "autor", "arquivos", "classe", "tipo", "ticket", "motivo",
+       "resolvedor_teria_agido", "fonte"])
+grava("loop.csv", linhas_l, ["data", "tickets_done", "tickets_bloqueados", "horas_loop_parado", "horas_ativo",
+                             "horas_ocioso_sem_processavel", "horas_pausa_operacional", "horas_pausa_manual",
+                             "horas_pausa_gate_streak", "horas_sem_dado", "dia_com_intervencao", "fonte"])
+grava("playbook.csv", linhas_p, ["data", "commit", "data_na_licao", "licao", "fonte"])
+
+# resumo
+done_t = [r for r in linhas_t if r["status"] == "done" and r["data_done_ou_bloqueio"] != "-"]
+c2_num = sum(1 for r in done_t if r["aprovado_de_primeira"] == "sim")
+c2_den = sum(1 for r in done_t if r["aprovado_de_primeira"] in ("sim", "nao"))
+adiado_1a = sum(1 for r in done_t if r["aprovado_de_primeira"] == "nao" and r["primeira_linha_meta"] in ("adiado", "pausado"))
+# tempo bloqueado ate a proxima tentativa
+dur_b, seguem = [], []
+for b in bloqueios:
+    if not na_janela(b["ts"]):
+        continue
+    prox = [r for r in meta.get(b["id"], []) if r["ts"] > b["ts"] + timedelta(minutes=1)]
+    if prox:
+        ini = prox[0]["ts"] - timedelta(seconds=prox[0]["dur"] or 0)
+        dur_b.append(max(0.0, (ini - b["ts"]).total_seconds() / 3600))
+    else:
+        seguem.append(b["id"])
+jan = [r for r in linhas_int if na_janela(r["dt"])]
+por_classe, por_tipo, por_res = {}, {}, {}
+for r in jan:
+    por_classe[r["classe"]] = por_classe.get(r["classe"], 0) + 1
+    if r["classe"] in INTERV:
+        por_tipo[r["tipo"]] = por_tipo.get(r["tipo"], 0) + 1
+        por_res[r["resolvedor_teria_agido"]] = por_res.get(r["resolvedor_teria_agido"], 0) + 1
+c1_j = sequencias(set(dias_int), INI_D, ATE_D)
+c1_h = sequencias(set(dias_int), HIST_D, ATE_D)
+dias_sem_wb = {d for d, ms in dias_int.items() if any(not m.startswith("writeback:") for m in ms)}
+c1_j_wb = sequencias(dias_sem_wb, INI_D, ATE_D)
+c1_h_wb = sequencias(dias_sem_wb, HIST_D, ATE_D)
+c3_j = sequencias(dias_licao, INI_D, ATE_D)
+c3_h = sequencias(dias_licao, HIST_D, ATE_D)
+tent_done = [int(r["tentativas"]) for r in done_t if r["tentativas"] != "sem dado"]
+esf_done = [int(r["esforco_claude_dur_secs"]) for r in done_t if r["esforco_claude_dur_secs"] != "sem dado"]
+res = {
+    "janela": {"dias": DIAS, "de": str(INI_D), "ate": str(ATE_D), "corte": CORTE.isoformat()},
+    "C1": {"dias_com_intervencao_na_janela": sorted(str(d) for d in dias_int if INI_D <= d <= ATE_D),
+           "janela": c1_j, "desde_2026-08-08": c1_h,
+           "sem_dias_so_de_writeback": {"janela": c1_j_wb, "desde_2026-08-08": c1_h_wb},
+           "motivos_por_dia": {str(d): sorted(ms) for d, ms in sorted(dias_int.items()) if INI_D <= d <= ATE_D}},
+    "C2": {"done_na_janela": len(done_t), "aprovados_de_primeira": c2_num, "denominador": c2_den,
+           "done_sem_meta": sum(1 for r in done_t if r["aprovado_de_primeira"] == "sem dado"),
+           "nao_por_adiado_ou_pausado_na_1a_linha": adiado_1a,
+           "pct": round(100.0 * c2_num / c2_den, 1) if c2_den else None},
+    "C3": {"licoes_na_janela": sum(1 for r in linhas_p if na_janela(r["dt"])),
+           "ultima_licao": linhas_p[-1]["data"] if linhas_p else None,
+           "janela": c3_j, "desde_2026-08-08": c3_h},
+    "volume": {"done": len(done_t), "done_por_dia": round(len(done_t) / DIAS, 2),
+               "tentativas_medias_por_done": round(sum(tent_done) / len(tent_done), 2) if tent_done else None,
+               "bloqueios": sum(1 for b in bloqueios if na_janela(b["ts"])),
+               "bloqueios_por_dia": round(sum(1 for b in bloqueios if na_janela(b["ts"])) / DIAS, 2),
+               "horas_medias_bloqueado_ate_proxima_tentativa": round(sum(dur_b) / len(dur_b), 1) if dur_b else None,
+               "bloqueios_com_retomada": len(dur_b), "bloqueios_sem_retomada_ate_o_corte": sorted(set(seguem)),
+               "horas_loop_parado": sum(r["horas_loop_parado"] for r in linhas_l),
+               "horas_pausa_operacional": sum(r["horas_pausa_operacional"] for r in linhas_l),
+               "horas_pausa_manual": sum(r["horas_pausa_manual"] for r in linhas_l),
+               "horas_pausa_gate_streak": sum(r["horas_pausa_gate_streak"] for r in linhas_l)},
+    "intervencoes": {"linhas_por_classe": por_classe, "intervencoes_por_tipo": por_tipo,
+                     "resolvedor_teria_agido": por_res,
+                     "commits_excluidos": {"agente_executor": sum(1 for c in commits if c["h"] in agente and INI <= c["dt"]),
+                                           "resolvedor_Orq-Resolvedor": n_resolvedor}},
+    "esforco": {"claude_dur_secs_total_done": sum(esf_done),
+                "claude_dur_secs_por_done": round(sum(esf_done) / len(esf_done)) if esf_done else None,
+                "custo_usd": "sem dado"},
+}
+with open(os.path.join(OUT, "resumo.json"), "w") as fh:
+    json.dump(res, fh, ensure_ascii=False, indent=1, sort_keys=True); fh.write("\n")
+print("ok %s: tickets=%d intervencoes=%d loop=%d playbook=%d" % (
+    OUT, len(linhas_t), len([r for r in linhas_int if na_janela(r["dt"])]), len(linhas_l), len(linhas_p)))
+PY

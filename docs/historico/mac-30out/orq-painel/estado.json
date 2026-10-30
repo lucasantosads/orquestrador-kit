@@ -1,0 +1,37 @@
+{
+  "actus-saas": {
+    "nivel": "alerta",
+    "titulo": "parado ha 1h46 COM 1 ticket(s) prontos",
+    "bloqueados": [
+      "431",
+      "461",
+      "462",
+      "471",
+      "472",
+      "481",
+      "483",
+      "490",
+      "900"
+    ],
+    "exit": "0"
+  },
+  "conteudos-infinitos": {
+    "nivel": "alerta",
+    "titulo": "3 bloqueado(s): 231, 235, 242",
+    "bloqueados": [
+      "231",
+      "235",
+      "242"
+    ],
+    "exit": "0"
+  },
+  "comarka-operacional": {
+    "nivel": "ok",
+    "titulo": "rodando ticket 351",
+    "bloqueados": [],
+    "exit": "0"
+  },
+  "_concorrencia": [
+    "comarka-operacional"
+  ]
+}

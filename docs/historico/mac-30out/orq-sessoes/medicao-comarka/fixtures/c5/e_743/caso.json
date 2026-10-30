@@ -1,0 +1,34 @@
+{
+ "ticket": {
+  "id": "743",
+  "loop": "plataforma",
+  "done_em": "2026-10-05 18:55",
+  "prim": "sim",
+  "sha_aprovado": "907ad050baaaac7fe3d1dc7ca0ba17afdec8b32c",
+  "merge": "ae812fd178d6cf7cc9bd50479d869351dc01a8fd"
+ },
+ "commit": {
+  "sha": "e48094409d353b5c329e33daf64a583bc4a02029",
+  "dt": "2026-10-08T12:53:43-03:00",
+  "assunto": "feat(crm): Etapa 2 do mapeamento de etapas (RM/RR/VENDA por pipeline) sobre a release 08/10",
+  "arquivos": [
+   "src/app/api/clientes/[id]/comercial/route.ts",
+   "src/app/api/perf/qualificacao-regras/config-schemas.ts",
+   "src/app/dashboard/clientes/[id]/tabs/qualificacao-cliente-bloco.tsx",
+   "src/components/crm/regra-mql-cliente.tsx",
+   "src/lib/comercial/funil-cliente.ts",
+   "src/lib/qualificacao/mapeamento-etapas.ts",
+   "src/lib/qualificacao/motor.ts",
+   "supabase/migrations/20261008132631_perf_leads_datas_rm_rr_venda.sql",
+   "test/etapa2-funil-motor.test.ts",
+   "test/etapa2-mapeamento-pipeline.test.ts",
+   "test/etapa2-motor-fases.test.ts",
+   "test/qualificacao-motor.test.ts",
+   "test/tela-regra-mql-cliente.test.ts"
+  ]
+ },
+ "esperado": {
+  "tipo": "linha_sem_fix",
+  "forca": "fraco"
+ }
+}

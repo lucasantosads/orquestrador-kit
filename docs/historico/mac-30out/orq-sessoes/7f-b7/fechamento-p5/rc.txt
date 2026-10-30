@@ -1,0 +1,4 @@
+tsc rc=0
+vitest rc=0
+test-shell rc=0
+test-instalar rc=0

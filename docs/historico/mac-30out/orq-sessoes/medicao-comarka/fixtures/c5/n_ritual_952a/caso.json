@@ -1,0 +1,27 @@
+{
+ "ticket": {
+  "id": "952a",
+  "loop": "plataforma",
+  "done_em": "2026-10-09 16:16",
+  "prim": "sim",
+  "sha_aprovado": "e5938313d5ef576f7e3a7b078463bcf2a1df95cf",
+  "merge": "115931778c47c4ff972a402de0cbc216dbe31d32"
+ },
+ "commit": {
+  "sha": "079d3f465eeb3525ddec95ad1e796c2687a8a862",
+  "dt": "2026-10-11T00:42:10-03:00",
+  "assunto": "release(1110): perf_leads_origem e regra 972 renomeadas para as versoes aplicadas (ledger 20261011033743 e 20261011033749); tokens ddl-perf-leads-origem-aplicada e ddl-972",
+  "arquivos": [
+   "docs/fila/952a-perf-leads-origem-ddl.md",
+   "docs/fila/972-alerta-coleta-conta-falhando.md",
+   "docs/fila/liberacoes.json",
+   "supabase/migrations/20261011033743_perf_leads_origem.sql",
+   "supabase/migrations/20261011033749_alerta_regra_coleta_conta_falhando.sql",
+   "test/perf-leads-origem-ddl.test.ts"
+  ]
+ },
+ "esperado": {
+  "tipo": "ritual",
+  "forca": "ritual"
+ }
+}

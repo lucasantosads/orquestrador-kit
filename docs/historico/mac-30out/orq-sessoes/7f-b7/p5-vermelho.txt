@@ -1,0 +1,99 @@
+
+ RUN  v2.1.9 /Users/lucasantos/Projetos/_worktrees/kit-etapa7f7
+
+ ❯ test/orquestrador-resolvedor-r1-multi-isolado.test.ts (2 tests | 2 failed) 3397ms
+   × 7f-b7 P5: r1_multi isolado e limite depois do R1 > (b) duas reprovas por limite depois de r1_multi: nenhum desfecho ruim, R1 segue em auto, proposta gravada e uma notificação por ação 1453ms
+     → expected [ Array(1) ] to deeply equal []
+   × 7f-b7 P5: r1_multi isolado e limite depois do R1 > (a) 2 desfechos ruins de r1_multi devolvem só o r1_multi a sombra; o R1 de um teste segue aplicando 1942ms
+     → expected [ Array(1) ] to deeply equal [ ObjectContaining{…} ]
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/orquestrador-resolvedor-r1-multi-isolado.test.ts > 7f-b7 P5: r1_multi isolado e limite depois do R1 > (b) duas reprovas por limite depois de r1_multi: nenhum desfecho ruim, R1 segue em auto, proposta gravada e uma notificação por ação
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- Array []
++ Array [
++   Object {
++     "classe": "R1",
++     "considerados": Array [
++       Object {
++         "bom": false,
++         "tipo": "desfecho",
++         "ts": "2026-10-18T13:00:00Z",
++       },
++       Object {
++         "bom": false,
++         "tipo": "desfecho",
++         "ts": "2026-10-18T13:00:00Z",
++       },
++     ],
++     "de": "auto",
++     "motivo": "2 desfechos ruins seguidos",
++     "para": "sombra",
++     "repo": "cmk",
++     "tipo": "rebaixamento",
++     "ts": "2026-10-18T13:00:00Z",
++   },
++ ]
+
+ ❯ test/orquestrador-resolvedor-r1-multi-isolado.test.ts:94:36
+     92|     passa(T0 + 2 * H)
+     93| 
+     94|     expect(ledger('rebaixamento')).toEqual([])
+       |                                    ^
+     95|     expect(modos()).toMatchObject({ R1: 'auto' })
+     96|     expect(modos().r1_multi ?? 'auto').toBe('auto')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/orquestrador-resolvedor-r1-multi-isolado.test.ts > 7f-b7 P5: r1_multi isolado e limite depois do R1 > (a) 2 desfechos ruins de r1_multi devolvem só o r1_multi a sombra; o R1 de um teste segue aplicando
+AssertionError: expected [ Array(1) ] to deeply equal [ ObjectContaining{…} ]
+
+- Expected
++ Received
+
+  Array [
+-   ObjectContaining {
+-     "classe": "r1_multi",
++   Object {
++     "classe": "R1",
++     "considerados": Array [
++       Object {
++         "bom": false,
++         "tipo": "desfecho",
++         "ts": "2026-10-18T13:00:00Z",
++       },
++       Object {
++         "bom": false,
++         "tipo": "desfecho",
++         "ts": "2026-10-18T13:00:00Z",
++       },
++     ],
+      "de": "auto",
++     "motivo": "2 desfechos ruins seguidos",
+      "para": "sombra",
++     "repo": "cmk",
++     "tipo": "rebaixamento",
++     "ts": "2026-10-18T13:00:00Z",
+    },
+  ]
+
+ ❯ test/orquestrador-resolvedor-r1-multi-isolado.test.ts:129:36
+    127|     for (const id of ['1054', '1055b']) gravar(c[id]!, bloquear(ler(c[…
+    128|     passa(T0 + H)
+    129|     expect(ledger('rebaixamento')).toEqual([expect.objectContaining({ …
+       |                                    ^
+    130|     expect(modos()).toMatchObject({ R1: 'auto', r1_multi: 'sombra' })
+    131|     // agora bloqueiam o 1006 (um teste) e o 1058 (dois)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  13:46:49
+   Duration  3.67s (transform 99ms, setup 0ms, collect 130ms, tests 3.40s, environment 0ms, prepare 24ms)
+

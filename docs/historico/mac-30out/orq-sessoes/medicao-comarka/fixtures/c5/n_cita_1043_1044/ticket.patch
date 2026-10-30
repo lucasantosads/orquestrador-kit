@@ -1,0 +1,78 @@
+diff --git a/src/app/dashboard/onboarding/motor/[id]/page.tsx b/src/app/dashboard/onboarding/motor/[id]/page.tsx
+index 6229e69..d2b67a0 100644
+--- a/src/app/dashboard/onboarding/motor/[id]/page.tsx
++++ b/src/app/dashboard/onboarding/motor/[id]/page.tsx
+@@ -17,6 +17,9 @@ import { cn } from "@/lib/utils";
+ import { toast } from "sonner";
+ import { ArrowLeft, Play, Check, RotateCcw, CircleDot } from "lucide-react";
+ import { ROTULO_SEGUE_NO_CONTRATO, contaParaOnboarding, progressoOnboarding } from "@/lib/ops/onboarding/conclusao";
++import { etapaPorRegra } from "@/lib/ops/onboarding/etapa-por-regra";
++import { fetchJson } from "@/lib/fetch-json";
++import { GrupoWhatsappEtapa } from "./_components/grupo-whatsapp-etapa";
+ 
+ const NENHUM = "__none__";
+ 
+@@ -40,8 +43,14 @@ interface Etapa {
+   sla: SlaViol | null;
+   conta_para_onboarding?: boolean | null;
+ }
++interface ItemEtapa {
++  onboarding_etapa_id: string;
++  texto: string;
++  auto_regra: string | null;
++}
+ interface Onboarding {
+   id: string;
++  cliente_id: string;
+   cliente_nome: string | null;
+   produto: { nome: string; slug: string } | null;
+   nome_snapshot: string | null;
+@@ -73,15 +82,18 @@ export default function OnboardingDetailPage() {
+   const id = params.id as string;
+   const [onb, setOnb] = useState<Onboarding | null>(null);
+   const [employees, setEmployees] = useState<{ id: string; nome: string }[]>([]);
++  const [itens, setItens] = useState<ItemEtapa[] | null>(null);
+   const [loading, setLoading] = useState(true);
+   const [etapaComDropdownAberto, setEtapaComDropdownAberto] = useState<string | null>(null);
+ 
+   const load = useCallback(async () => {
+     setLoading(true);
+-    const [onbRes, refsRes] = await Promise.all([
++    const [onbRes, refsRes, itensRes] = await Promise.all([
+       fetch(`/api/ops/onboarding/instancias/${id}`).then((r) => r.json()),
+       fetch("/api/ops/onboarding/refs").then((r) => r.json()),
++      fetchJson<{ data: ItemEtapa[] }>(`/api/ops/onboarding/instancias/${id}/itens`).catch(() => null),
+     ]);
++    setItens(Array.isArray(itensRes?.data) ? itensRes.data : null);
+     if (onbRes.data) setOnb(onbRes.data);
+     if (refsRes.data) setEmployees(refsRes.data.employees);
+     setLoading(false);
+@@ -123,6 +135,9 @@ export default function OnboardingDetailPage() {
+ 
+   // Critério 5: progresso só pelas etapas que contam para o onboarding.
+   const { pct, concluidas, total: totalContam } = progressoOnboarding(onb.etapas);
++  // Grupo de WhatsApp só em onboarding em andamento; sem etapa que o peça, o bloco vai ao topo das etapas.
++  const mostraGrupo = onb.status === "em_andamento";
++  const etapaGrupoId = etapaPorRegra(onb.etapas, itens ?? [], "grupo_whatsapp");
+ 
+   return (
+     <div className="space-y-6">
+@@ -162,6 +177,10 @@ export default function OnboardingDetailPage() {
+         </div>
+       </div>
+ 
++      {mostraGrupo && etapaGrupoId === null && (
++        <Card><CardContent className="py-3"><GrupoWhatsappEtapa clienteId={onb.cliente_id} /></CardContent></Card>
++      )}
++
+       {/* Etapas */}
+       <div className="space-y-2">
+         {onb.etapas.map((e) => (
+@@ -197,6 +216,7 @@ export default function OnboardingDetailPage() {
+                     )}
+                   </div>
+                   {e.descricao && <p className="text-[11px] text-muted-foreground mt-1">{e.descricao}</p>}
++                  {mostraGrupo && e.id === etapaGrupoId && <GrupoWhatsappEtapa clienteId={onb.cliente_id} />}
+                   <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
+                     {fmt(e.iniciada_em) && <span>início {fmt(e.iniciada_em)}</span>}
+                     {fmt(e.concluida_em) && <span>conclusão {fmt(e.concluida_em)}</span>}

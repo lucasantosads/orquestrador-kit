@@ -1,0 +1,71 @@
+diff --git a/src/app/r/escritorio/[token]/page.tsx b/src/app/r/escritorio/[token]/page.tsx
+new file mode 100644
+index 0000000..4f79cd4
+--- /dev/null
++++ b/src/app/r/escritorio/[token]/page.tsx
+@@ -0,0 +1,65 @@
++"use client";
++
++/**
++ * Portal do escritório em /r/escritorio/[token]. Página PÚBLICA (middleware libera /r/).
++ * O token só aparece na URL das chamadas; nunca em texto da tela nem em log.
++ */
++
++import { useCallback, useEffect, useState } from "react";
++import { useParams } from "next/navigation";
++import { fetchJson, FetchJsonError } from "@/lib/fetch-json";
++import type { InicioPortal } from "@/lib/portal-escritorio/carregar";
++import { ABAS_PRONTAS, PortalShell, TelaEstado, type EstadoTela } from "../_components/portal-shell";
++import { AbaInicio } from "../_components/aba-inicio";
++
++const abaDoHash = () => {
++  const h = typeof window === "undefined" ? "" : window.location.hash.replace("#", "");
++  return ABAS_PRONTAS.includes(h) ? h : "inicio";
++};
++const irPara = (aba: string) => {
++  window.location.hash = aba;
++};
++
++export default function PortalEscritorioPage() {
++  const token = useParams<{ token: string }>()?.token;
++  const [dados, setDados] = useState<InicioPortal | null>(null);
++  const [estado, setEstado] = useState<EstadoTela | "ok">("carregando");
++  const [aba, setAba] = useState("inicio");
++
++  const carregar = useCallback(
++    (silencioso = false) => {
++      if (!token) return;
++      if (!silencioso) setEstado("carregando");
++      fetchJson<InicioPortal>(`/api/publico/portal/${token}?aba=inicio`)
++        .then((d) => {
++          setDados(d);
++          setEstado("ok");
++        })
++        .catch((e) => {
++          if (silencioso) return;
++          setEstado(e instanceof FetchJsonError && e.status === 404 ? "invalido" : "erro");
++        });
++    },
++    [token],
++  );
++
++  useEffect(() => {
++    carregar();
++  }, [carregar]);
++  useEffect(() => {
++    const f = () => setAba(abaDoHash());
++    f();
++    window.addEventListener("hashchange", f);
++    return () => window.removeEventListener("hashchange", f);
++  }, []);
++
++  if (estado !== "ok" || !dados) {
++    return <TelaEstado estado={estado === "ok" ? "carregando" : estado} onTentar={() => carregar()} />;
++  }
++
++  return (
++    <PortalShell cliente={dados.cliente} aba={aba} onAba={irPara}>
++      <AbaInicio dados={dados} token={token} onAtualizar={() => carregar(true)} irParaAba={irPara} />
++    </PortalShell>
++  );
++}

@@ -1,0 +1,42 @@
+variante | total | deveria reprovar | deveria aprovar | ilegível | custo médio/chamada | custo total
+V0 | 8/23 (35%) | 5/17 (29%) | 3/6 (50%) | 0 | 0.1804 | 4.1485
+V1 | 12/23 (52%) | 9/17 (53%) | 3/6 (50%) | 0 | 0.1032 | 2.3740
+V2 | 12/23 (52%) | 11/17 (65%) | 1/6 (17%) | 1 | 0.1108 | 2.5494
+
+padrão | V0 | V1 | V2
+1 | 2/3 (67%) | 3/3 (100%) | 2/3 (67%)
+1;2 | 1/2 (50%) | 1/2 (50%) | 1/2 (50%)
+2 | 0/4 (0%) | 1/4 (25%) | 2/4 (50%)
+3 | 0/1 (0%) | 0/1 (0%) | 1/1 (100%)
+4 | 1/1 (100%) | 1/1 (100%) | 1/1 (100%)
+5 | 0/1 (0%) | 1/1 (100%) | 1/1 (100%)
+aprovar | 3/6 (50%) | 3/6 (50%) | 1/6 (17%)
+outro | 1/5 (20%) | 2/5 (40%) | 3/5 (60%)
+
+caso | esperado | V0 | V1 | V2
+D003-0 | aprovar | reprova | reprova | reprova
+C715 | reprovar | aprova | reprova | ilegível
+C734 | reprovar | reprova | reprova | reprova
+C740 | reprovar | reprova | reprova | reprova
+A821 | aprovar | aprova | aprova | aprova
+C741a | reprovar | aprova | aprova | aprova
+C861 | reprovar | reprova | reprova | reprova
+C694 | reprovar | aprova | reprova | reprova
+A850 | aprovar | aprova | aprova | reprova
+C699 | reprovar | aprova | aprova | reprova
+C705 | reprovar | aprova | aprova | aprova
+C763 | reprovar | aprova | aprova | aprova
+A407b | aprovar | reprova | reprova | reprova
+C737 | reprovar | aprova | aprova | reprova
+C924c | reprovar | reprova | reprova | reprova
+C953 | reprovar | aprova | reprova | reprova
+A713 | aprovar | aprova | aprova | reprova
+C761 | reprovar | aprova | aprova | aprova
+C762 | reprovar | aprova | reprova | reprova
+C974 | reprovar | aprova | aprova | reprova
+A889c | aprovar | reprova | reprova | reprova
+C1303 | reprovar | reprova | reprova | reprova
+C938 | reprovar | aprova | aprova | aprova
+
+tokens de entrada médios por chamada: V0 53729, V1 22181, V2 24138
+modelos vistos: claude-sonnet-5-5

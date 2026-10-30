@@ -1,0 +1,1 @@
+[dry-run] -- 0 bloqueado(s): 0 aplicado(s), 0 proposta(s), 0 faria (dry-run)

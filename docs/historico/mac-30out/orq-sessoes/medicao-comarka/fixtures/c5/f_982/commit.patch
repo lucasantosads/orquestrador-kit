@@ -1,0 +1,101 @@
+diff --git a/src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx b/src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx
+index 6c0569a..06c5e96 100644
+--- a/src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx
++++ b/src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx
+@@ -63,7 +63,7 @@
+ //    catálogo (src/lib/perf/colunas-campanhas.ts) e vale nos três níveis.
+ //    Campanha é sempre visível. ?vis=<id> abre o link na mesma visualização.
+ 
+-import { Fragment, useCallback, useEffect, useId, useMemo, useState, type ReactNode } from "react";
++import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+ import { ChevronRight } from "lucide-react";
+ import { toast } from "sonner";
+ import { fetchJson } from "@/lib/fetch-json";
+@@ -752,11 +752,13 @@ export function PilulaFunil({ tipo, onTrocar, salvando, detectado }: {
+   );
+ }
+ 
+-export function CelulaTese({ nome, teses, onVincular, salvando }: {
+-  nome: string | null; teses: TeseCatalogo[]; onVincular: (teseId: string) => void; salvando: boolean;
++export function CelulaTese({ teseId = null, nome, teses, onVincular, salvando }: {
++  teseId?: string | null; nome: string | null; teses: TeseCatalogo[]; onVincular: (teseId: string) => void; salvando: boolean;
+ }) {
++  // Tese atual fora do catálogo filtrado (ex.: nicho trocado) continua marcada no seletor.
++  const atualForaDaLista = !!teseId && !teses.some((t) => t.id === teseId);
+   return (
+-    <span className="relative inline-flex items-center">
++    <span className="relative inline-flex items-center" title={nome ?? undefined}>
+       {nome ? (
+         <span
+           data-testid="chip-tese"
+@@ -767,16 +769,18 @@ export function CelulaTese({ nome, teses, onVincular, salvando }: {
+           {nome}
+         </span>
+       ) : <span className={CLASSE_ACAO}>+ tese</span>}
+-      {/* Campanha com tese só troca desvinculando antes (regra da rota): sem seletor. */}
+-      {!nome && teses.length > 0 && (
++      {/* O chip segue clicável depois de classificado: o mesmo seletor troca a tese. */}
++      {teses.length > 0 && (
+         <select
+-          aria-label="Vincular tese"
++          aria-label={nome ? "Trocar tese" : "Vincular tese"}
++          title={nome ?? undefined}
+           disabled={salvando}
+-          value=""
+-          onChange={(e) => e.target.value && onVincular(e.target.value)}
++          value={teseId ?? ""}
++          onChange={(e) => e.target.value && e.target.value !== teseId && onVincular(e.target.value)}
+           className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+         >
+-          <option value="">Escolher tese</option>
++          <option value="" disabled={!!teseId}>Escolher tese</option>
++          {atualForaDaLista && <option value={teseId} disabled>{nome ?? "Tese atual"}</option>}
+           {teses.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+         </select>
+       )}
+@@ -1070,6 +1074,7 @@ export function CorpoTabela({ contas, contasCliente, estado, filtro, filtroStatu
+                 </td>}
+                 {vis.has("tese") && <td className="px-2 py-1.5">
+                   <CelulaTese
++                    teseId={teseId ?? null}
+                     nome={teseId ? nomeTese.get(teseId) ?? null : null}
+                     teses={teses}
+                     salvando={salvandoId === c.campaign_id}
+@@ -1145,6 +1150,8 @@ export function TabelaCampanhas({ contas, periodo, onAbrirMetricas, cplAlvo, fil
+ }) {
+   const { perfClienteId, contaSel } = useFicha();
+   const [estado, setEstado] = useState<EstadoCampanhas>({ tipos: {}, teseDe: {}, catalogo: [], statusDe: {} });
++  const teseDeRef = useRef(estado.teseDe);
++  teseDeRef.current = estado.teseDe;
+   const [filtro, setFiltro] = useState(FILTRO_TODOS);
+   const [filtroStatusLocal, setFiltroStatusLocal] = useState<FiltroStatus>(FILTRO_STATUS_PADRAO);
+   const filtroStatus = filtroStatusProp ?? filtroStatusLocal;
+@@ -1208,17 +1215,25 @@ export function TabelaCampanhas({ contas, periodo, onAbrirMetricas, cplAlvo, fil
+     } finally { setSalvandoId(null); }
+   }, []);
+ 
++  // Otimista: o chip troca na hora; se a rota recusar, volta à tese anterior (ou a nenhuma).
+   const gravarTese = useCallback(async (c: CampanhaLinha, conta: ContaCampanhas, teseId: string) => {
++    const anterior = teseDeRef.current[c.campaign_id];
++    setEstado((e) => ({ ...e, teseDe: { ...e.teseDe, [c.campaign_id]: teseId } }));
+     setSalvandoId(c.campaign_id);
+     try {
+       await fetchJson("/api/perf/campanha-tese", {
+         method: "PUT", headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ campaign_id: c.campaign_id, ad_account_id: conta.ad_account_id, tese_id: teseId }),
+       });
+-      setEstado((e) => ({ ...e, teseDe: { ...e.teseDe, [c.campaign_id]: teseId } }));
+-      toast.success("Tese vinculada");
++      toast.success(anterior ? "Tese trocada" : "Tese vinculada");
+     } catch (err) {
+-      toast.error(err instanceof Error ? err.message : "Não foi possível vincular a tese");
++      setEstado((e) => {
++        if (e.teseDe[c.campaign_id] !== teseId) return e;
++        const teseDe = { ...e.teseDe };
++        if (anterior) teseDe[c.campaign_id] = anterior; else delete teseDe[c.campaign_id];
++        return { ...e, teseDe };
++      });
++      toast.error(err instanceof Error ? err.message : "Não foi possível salvar a tese");
+     } finally { setSalvandoId(null); }
+   }, []);
+ 

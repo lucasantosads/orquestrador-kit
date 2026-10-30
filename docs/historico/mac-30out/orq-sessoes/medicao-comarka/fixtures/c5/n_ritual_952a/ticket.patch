@@ -1,0 +1,73 @@
+diff --git a/test/perf-leads-origem-ddl.test.ts b/test/perf-leads-origem-ddl.test.ts
+new file mode 100644
+index 0000000..55b4b9f
+--- /dev/null
++++ b/test/perf-leads-origem-ddl.test.ts
+@@ -0,0 +1,67 @@
++// Ticket 952a: a migration só adiciona perf_leads.origem (check de 7 origens) e
++// perf_leads.ultimo_toque, com índice (cliente_id, origem). Leitura de fonte, sem banco.
++import { describe, it, expect } from "vitest";
++import { readFileSync } from "node:fs";
++import { join } from "node:path";
++
++const sql = readFileSync(
++  join("supabase", "migrations", "20261009210000_perf_leads_origem.sql"),
++  "utf8",
++);
++const linhas = sql.split("\n");
++const cabecalho = linhas.slice(0, 25).join("\n");
++const corpo = linhas.filter((l) => !l.trim().startsWith("--")).join("\n");
++
++const ORIGENS = [
++  "formulario_meta",
++  "anuncio_meta",
++  "whatsapp_anuncio",
++  "instagram_dm",
++  "site",
++  "manual",
++  "desconhecida",
++];
++
++describe("migration perf_leads_origem", () => {
++  it("o cabeçalho cita APLICAR E HUMANO, REVERSAO e o token", () => {
++    expect(cabecalho).toContain("APLICAR E HUMANO");
++    expect(cabecalho).toContain("REVERSAO");
++    expect(cabecalho).toContain("humano:ddl-perf-leads-origem-aplicada");
++  });
++
++  it("adiciona origem e ultimo_toque de forma idempotente", () => {
++    expect(corpo).toMatch(/add column if not exists origem text null/i);
++    expect(corpo).toMatch(/add column if not exists ultimo_toque jsonb null/i);
++  });
++
++  it("a check nomeada lista as 7 origens, guardada por pg_constraint", () => {
++    expect(corpo).toContain("perf_leads_origem_check");
++    expect(corpo).toContain("pg_constraint");
++    for (const origem of ORIGENS) expect(corpo).toContain(`'${origem}'`);
++  });
++
++  it("cria o índice (cliente_id, origem)", () => {
++    expect(corpo).toMatch(
++      /create index if not exists perf_leads_cliente_origem_idx on public\.perf_leads \(cliente_id, origem\)/i,
++    );
++  });
++
++  it("não tem função, security definer, drop table nem update", () => {
++    expect(corpo).not.toMatch(/create (or replace )?function/i);
++    expect(corpo).not.toMatch(/security definer/i);
++    expect(corpo).not.toMatch(/drop table/i);
++    expect(corpo).not.toMatch(/\bupdate /i);
++  });
++
++  it("não toca tabela da zona C0", () => {
++    const c0 = [
++      "clientes_receita",
++      "leads_crm",
++      "ads_metadata",
++      "ads_performance",
++      "trafego_",
++      "vw_",
++    ];
++    for (const nome of c0) expect(sql).not.toContain(nome);
++  });
++});

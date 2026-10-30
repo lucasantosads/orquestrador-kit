@@ -1,0 +1,30 @@
+  servidor em http://127.0.0.1:57872
+== 1. duas chamadas seguidas respondem abaixo de 1 s ==
+  ok    1ª chamada em 0.580221s
+  ok    2ª chamada em 0.001092s
+
+== 2. o repo rápido vem completo; o lento vem marcado ==
+  ok    rápido: razões apuradas
+  ok    rápido: 1 pronto
+  ok    rápido: o token dele está na faixa
+  ok    lento: apurando
+  ok    lento: o cartão diz que está apurando
+  ok    lento: fora da conta da faixa, e dito
+
+== 3. depois do timeout: sem apurar, com a hora da última tentativa, e o processo morto ==
+  ok    lento: sem apurar
+  ok    última tentativa às 14:01
+  ok    o cartão diz a última tentativa
+  ok    recuo de 1 min: próxima em 57s
+  ok    o processo do lento morreu no timeout
+  ok    rápido segue completo
+
+== 4. no recuo, nada de tentar de novo a cada chamada ==
+  ok    uma tentativa só
+
+== launchctl: só o stub, nunca o do sistema (K12-E) ==
+  ok    nenhuma chamada ao launchctl do PATH
+  ok    o stub de launchctl respondeu 6 chamada(s)
+
+TODOS OS CHECKS PASSARAM
+rc=0

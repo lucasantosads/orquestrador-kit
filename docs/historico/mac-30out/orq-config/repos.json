@@ -1,0 +1,58 @@
+{
+  "$schema_versao": 1,
+  "repos": [
+    {
+      "caminho": "/Users/lucasantos/Projetos/conteudos-infinitos"
+    },
+    {
+      "caminho": "/Users/lucasantos/Projetos/actus-saas"
+    },
+    {
+      "caminho": "/Users/lucasantos/Projetos/comarka-operacional",
+      "resolvedor": {
+        "padrao": "diagnostico",
+        "R1": "auto",
+        "R5": "auto",
+        "R2": "sombra"
+      },
+      "pausa_gate": "auto"
+    }
+  ],
+  "migrations": {
+    "bancos": {
+      "comarka": {
+        "ferramenta": "supabase",
+        "banco_id": "ogfnojbbvumujzfklkhh",
+        "repos": [
+          {
+            "repo": "comarka-operacional",
+            "dir": "supabase/migrations",
+            "refs": [
+              "HEAD",
+              "origin/staging-auto",
+              "origin/staging-apolo"
+            ],
+            "credencial_env": "SUPABASE_ACCESS_TOKEN",
+            "env_arquivo": ".env.local",
+            "token": {
+              "formato": "liberadas",
+              "molde": "migration-{id}-aplicada",
+              "por": "lucas"
+            },
+            "pre_check": [
+              "python3",
+              "scripts/roadmap/checar-promocao.py",
+              "--aplicar",
+              "{arquivo}"
+            ]
+          },
+          {
+            "caminho": "~/Projetos/dashboard-comercial",
+            "dir": "supabase/migrations",
+            "somente_leitura": true
+          }
+        ]
+      }
+    }
+  }
+}

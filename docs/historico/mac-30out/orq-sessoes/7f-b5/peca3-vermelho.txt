@@ -1,0 +1,4 @@
+   × peça 3: allowlist sobreposta, só diagnóstico > os pares: 826 depois do 866 (o gabarito) e 921 depois do 920 (glob); nada onde já há dependência ou haveria ciclo 3ms
+   × peça 3: allowlist sobreposta, só diagnóstico > a passada registra cada par novo uma vez (R8 D13, firme false, diagnostico) e nunca toca o repo 106ms
+AssertionError: expected [] to deeply equal [ { menor: '826', …(3) }, …(1) ]
+Error: ENOENT: no such file or directory, open '/var/folders/_7/dqmkt89n7lg_9sf9qkzm7fxr0000gn/T/resolvedor-xUdTf6/orq/resolvedor/ledger.jsonl'

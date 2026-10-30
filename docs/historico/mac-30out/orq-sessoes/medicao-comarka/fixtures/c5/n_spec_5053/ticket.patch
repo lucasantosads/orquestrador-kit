@@ -1,0 +1,90 @@
+diff --git a/test/inteligencia/escritor-forma.test.ts b/test/inteligencia/escritor-forma.test.ts
+new file mode 100644
+index 0000000..5a88442
+--- /dev/null
++++ b/test/inteligencia/escritor-forma.test.ts
+@@ -0,0 +1,84 @@
++import { afterEach, describe, expect, it } from "vitest";
++import { spawnSync } from "node:child_process";
++import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++
++const ID = "5997";
++const SAIDA = `docs/fila/apolo/${ID}-molde-forma.md`;
++const MOLDE = readdirSync("docs/fila/apolo").find((f) => f.startsWith("5042-"))!;
++
++function molde() {
++  const md = readFileSync(`docs/fila/apolo/${MOLDE}`, "utf-8");
++  const campos = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(md)![1]);
++  return { titulo: "Molde", slug: "molde-forma", prosa: "prosa", recon: "recon", campos };
++}
++
++afterEach(() => rmSync(SAIDA, { force: true }));
++
++function rodar(resp: unknown) {
++  const dir = mkdtempSync(join(tmpdir(), "escritor-forma-"));
++  const arq = join(dir, "resp.json");
++  writeFileSync(arq, JSON.stringify(resp));
++  try {
++    const p = spawnSync(
++      "python3",
++      ["scripts/apolo/escritor-tickets.py", "--item", "F1-03", "--id", ID, "--resposta-fixture", arq, "--sem-validar"],
++      { encoding: "utf-8" },
++    );
++    return { rc: p.status, saida: `${p.stdout}${p.stderr}` };
++  } finally {
++    rmSync(dir, { recursive: true, force: true });
++  }
++}
++
++function com(mut: (c: any) => void) {
++  const r = molde();
++  mut(r.campos);
++  return rodar(r);
++}
++
++const versaoExistente = () =>
++  readdirSync("supabase/migrations")
++    .find((f) => /^\d+_.*\.sql$/.test(f))!
++    .split("_")[0];
++
++describe("escritor-tickets: forma antes do validar-fila", () => {
++  it("a resposta do molde 5042 passa na forma", () => {
++    const r = rodar(molde());
++    expect(r.saida).toContain("GRAVADO");
++    expect(r.rc).toBe(0);
++    expect(existsSync(SAIDA)).toBe(true);
++  });
++
++  it.each([
++    ["criterios_aceite string", (c: any) => (c.criterios_aceite = "tsc ok"), "criterios_aceite"],
++    ["criterio sem espera", (c: any) => delete c.criterios_aceite[0].espera, "criterios_aceite"],
++    ["glob na allowlist", (c: any) => c.pathspec_allowlist.push("scripts/apolo/*.py"), "com '*'"],
++    ["glob em cria_novo", (c: any) => c.cria_novo.push("scripts/apolo/*.py"), "com '*'"],
++    ["cria_novo fora da allowlist", (c: any) => c.cria_novo.push("scripts/apolo/novo.py"), "fora da pathspec_allowlist"],
++    [
++      "sql sem _inteligencia_",
++      (c: any) => {
++        c.pathspec_allowlist = c.cria_novo = ["supabase/migrations/20261231000000_raw_x.sql"];
++      },
++      "sem '_inteligencia_'",
++    ],
++    [
++      "versao ja existente",
++      (c: any) => {
++        c.pathspec_allowlist = c.cria_novo = [`supabase/migrations/${versaoExistente()}_inteligencia_x.sql`];
++      },
++      "ja existe",
++    ],
++    ["dependencia fora do padrao", (c: any) => c.dependencias.push("apolo-5035"), "dependencia"],
++    ["timeout no comando", (c: any) => (c.criterios_aceite[0].cmd = "timeout 5 npx tsc"), "timeout"],
++    ["grep -P no comando", (c: any) => (c.recon_esperado[0].cmd = "grep -P 'a' x"), "grep -P"],
++  ])("recusa: %s", (_nome, mut, trecho) => {
++    const r = com(mut);
++    expect(r.rc).toBe(1);
++    expect(r.saida).toContain("forma recusada");
++    expect(r.saida).toContain(trecho);
++    expect(existsSync(SAIDA)).toBe(false);
++  });
++});

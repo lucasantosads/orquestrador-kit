@@ -1,0 +1,266 @@
+{
+  "seed": 20261024,
+  "elegiveis": 111,
+  "sorteio": [
+    "821@a5ea0b22d",
+    "850@467cb047b",
+    "407b@584870632",
+    "713@daea7ed4f",
+    "889c@d9611c07d"
+  ],
+  "casos": [
+    {
+      "nome": "D003-0",
+      "repo": "dashboard",
+      "id": "003",
+      "sha": "1bfcbc1d72ed0b57e8d312a33246acf6539810fa",
+      "base": "3c5f3768",
+      "esperado": "aprovar",
+      "padrao": "aprovar",
+      "defeito": "",
+      "ticketArq": "docs/fila/003-liga-conquistas-guarda-count.md"
+    },
+    {
+      "nome": "C715",
+      "repo": "comarka",
+      "id": "715",
+      "sha": "020e33ef99ae56073cae85c421d3b9515c5ac772",
+      "base": "3eb240b61693c5e77b9158bc99d9babc2026761d",
+      "esperado": "reprovar",
+      "padrao": "1",
+      "defeito": "le mensagens com .limit(5000); o servidor devolve no maximo 1000 e as mais recentes somem",
+      "ticketArq": "020e33ef99ae56073cae85c421d3b9515c5ac772:docs/fila/715-eventos-resposta-grupo.md"
+    },
+    {
+      "nome": "C734",
+      "repo": "comarka",
+      "id": "734",
+      "sha": "a8ea88e1a00559d2a123e99e5f5bfce39de2a041",
+      "base": "1aa88303d5d8d69f30b0132e706ae65f505c9b50",
+      "esperado": "reprovar",
+      "padrao": "1;2",
+      "defeito": "vacuo: mesmo teto de 1000 nas mensagens e contatos lidos cliente a cliente",
+      "ticketArq": "a8ea88e1a00559d2a123e99e5f5bfce39de2a041:docs/fila/734-vacuo-grupo-deterministico.md"
+    },
+    {
+      "nome": "C740",
+      "repo": "comarka",
+      "id": "740",
+      "sha": "6c64499935816e66527b5a86a975aa579a6314a2",
+      "base": "09b11dd25c2730c77746c6ebbfd268685c883997",
+      "esperado": "reprovar",
+      "padrao": "1",
+      "defeito": "fecharPromessas le .limit(5000): a entrega recente nunca chega ao modelo",
+      "ticketArq": "6c64499935816e66527b5a86a975aa579a6314a2:docs/fila/740-promessa-fechar-e-avisar.md"
+    },
+    {
+      "nome": "A821",
+      "repo": "comarka",
+      "id": "821",
+      "sha": "a5ea0b22d6d4b1620b3836d5e300dc7b241c9093",
+      "base": "b6d9e327691c6d8e8cf28fcea905e2322f91ae5f",
+      "esperado": "aprovar",
+      "padrao": "aprovar",
+      "defeito": "",
+      "ticketArq": "a5ea0b22d6d4b1620b3836d5e300dc7b241c9093:docs/fila/821-resolver-cliente-rota-resultado-mensal.md"
+    },
+    {
+      "nome": "C741a",
+      "repo": "comarka",
+      "id": "741a",
+      "sha": "e006c6b19b674850e7af6df439be8f9c2e051c61",
+      "base": "e202b050f93759836341a482b21f586a4349232b",
+      "esperado": "reprovar",
+      "padrao": "1;2",
+      "defeito": "detectar promessas: teto de 1000 nas mensagens e contatos lidos cliente a cliente",
+      "ticketArq": "e006c6b19b674850e7af6df439be8f9c2e051c61:docs/fila/741a-promessas-avaliar-pura.md"
+    },
+    {
+      "nome": "C861",
+      "repo": "comarka",
+      "id": "861",
+      "sha": "a9114d6a8fb37e474c80488aea8133d4a994d95a",
+      "base": "a6432bbfb54b8aed60d0dafe6dc0452347b948df",
+      "esperado": "reprovar",
+      "padrao": "1",
+      "defeito": "detectar promessas: .order(asc).limit(5000) perde as mensagens mais recentes",
+      "ticketArq": "a9114d6a8fb37e474c80488aea8133d4a994d95a:docs/fila/861-promessa-par-pedido.md"
+    },
+    {
+      "nome": "C694",
+      "repo": "comarka",
+      "id": "694",
+      "sha": "03f0d77f09343a588fb93425584c6cc428ebdf6a",
+      "base": "7a69328f3111f8574f15f86136b3e4923aeaf10a",
+      "esperado": "reprovar",
+      "padrao": "2",
+      "defeito": "Inicio lento: duas consultas em serie por cliente",
+      "ticketArq": "03f0d77f09343a588fb93425584c6cc428ebdf6a:docs/fila/694-api-inicio-resumo.md"
+    },
+    {
+      "nome": "A850",
+      "repo": "comarka",
+      "id": "850",
+      "sha": "467cb047b7f276263d37a0be2a92590639dc05eb",
+      "base": "53cd96557dc69a2c52672fac65c368ee2679c306",
+      "esperado": "aprovar",
+      "padrao": "aprovar",
+      "defeito": "",
+      "ticketArq": "467cb047b7f276263d37a0be2a92590639dc05eb:docs/fila/850-meta-contas-sem-insights-tela.md"
+    },
+    {
+      "nome": "C699",
+      "repo": "comarka",
+      "id": "699",
+      "sha": "419a9276282e74593f848f0cf9f208647a8da812",
+      "base": "1042bdeb41da7243f66ac2a894e3185d44e6f377",
+      "esperado": "reprovar",
+      "padrao": "2",
+      "defeito": "equipe do head: uma carga por gestor e mais uma em serie para o head",
+      "ticketArq": "419a9276282e74593f848f0cf9f208647a8da812:docs/fila/699-api-inicio-equipe.md"
+    },
+    {
+      "nome": "C705",
+      "repo": "comarka",
+      "id": "705",
+      "sha": "ad532d736a65b683bdb9e3d7e6a5b5390cc8a925",
+      "base": "c8131ff08a2cf6925e4f43296b4b33b1ff4a107c",
+      "esperado": "reprovar",
+      "padrao": "2",
+      "defeito": "carregar-carteira: leituras independentes feitas em serie",
+      "ticketArq": "ad532d736a65b683bdb9e3d7e6a5b5390cc8a925:docs/fila/705-override-cor-api.md"
+    },
+    {
+      "nome": "C763",
+      "repo": "comarka",
+      "id": "763",
+      "sha": "652f46458a2db9d42addc3eee2a10c389f01fba8",
+      "base": "f373db6742b7ef148727b67545574b6d74ae970a",
+      "esperado": "reprovar",
+      "padrao": "2",
+      "defeito": "backfill grava e requalifica oportunidade por oportunidade em serie (~2 s por item)",
+      "ticketArq": "652f46458a2db9d42addc3eee2a10c389f01fba8:docs/fila/763-ghl-backfill-oportunidades.md"
+    },
+    {
+      "nome": "A407b",
+      "repo": "comarka",
+      "id": "407b",
+      "sha": "5848706328f2abea7934638af4312b4c7483fb3d",
+      "base": "0d37aff0fd1b7b0f371fc56305865934a1986e8f",
+      "esperado": "aprovar",
+      "padrao": "aprovar",
+      "defeito": "",
+      "ticketArq": "5848706328f2abea7934638af4312b4c7483fb3d:docs/fila/407b-churn-reativar-rota-e-ui.md"
+    },
+    {
+      "nome": "C737",
+      "repo": "comarka",
+      "id": "737",
+      "sha": "e79eaf5ad7cd7c5ceeea8df8fb705803c9ae91d3",
+      "base": "d9bb12d48fe875772645f4e097a39cef871ba895",
+      "esperado": "reprovar",
+      "padrao": "3",
+      "defeito": "page passa String(id) cru da URL (notion id) para ResponderAgora, que exige uuid",
+      "ticketArq": "e79eaf5ad7cd7c5ceeea8df8fb705803c9ae91d3:docs/fila/737-tela-responder-agora-ficha.md"
+    },
+    {
+      "nome": "C924c",
+      "repo": "comarka",
+      "id": "924c",
+      "sha": "788f92272745f6e552e83eb6b4bcf313ce68cf0c",
+      "base": "a0b08394083750f80037926dac11c97cc00128df",
+      "esperado": "reprovar",
+      "padrao": "4",
+      "defeito": "status do grupo WhatsApp lido de whatsapp_group_url (legado): 25 clientes com grupo aparecem sem link",
+      "ticketArq": "788f92272745f6e552e83eb6b4bcf313ce68cf0c:docs/fila/924c-conta-conexoes-linhas.md"
+    },
+    {
+      "nome": "C953",
+      "repo": "comarka",
+      "id": "953",
+      "sha": "52f3ffc80760b3a75306e4063ff1831144d65c52",
+      "base": "25e80c0f6d18e94eb512c5b157eb38e5cbdb8db2",
+      "esperado": "reprovar",
+      "padrao": "5",
+      "defeito": "funil compara datas como texto sem o dia de Sao Paulo (d >= from && d < aposTo)",
+      "ticketArq": "52f3ffc80760b3a75306e4063ff1831144d65c52:docs/fila/953-funil-por-evento-sem-dm.md"
+    },
+    {
+      "nome": "A713",
+      "repo": "comarka",
+      "id": "713",
+      "sha": "daea7ed4f9cb6e4ef62ad9905d1e99610aa2a21b",
+      "base": "dc7265194d6755fafb73c89c9de20fb92cab1ea7",
+      "esperado": "aprovar",
+      "padrao": "aprovar",
+      "defeito": "",
+      "ticketArq": "daea7ed4f9cb6e4ef62ad9905d1e99610aa2a21b:docs/fila/713-avisos-operacao-job.md"
+    },
+    {
+      "nome": "C761",
+      "repo": "comarka",
+      "id": "761",
+      "sha": "b548169e878653abd9040d4ea29d4f7e2da7fa55",
+      "base": "7699b4990cf99f728dae4dbc62009dcd489a5d1e",
+      "esperado": "reprovar",
+      "padrao": "outro",
+      "defeito": "falha engolida no catch do backfill nao vira ultimo_erro na retomada",
+      "ticketArq": "b548169e878653abd9040d4ea29d4f7e2da7fa55:docs/fila/761-ghl-backfill-contatos-lib.md"
+    },
+    {
+      "nome": "C762",
+      "repo": "comarka",
+      "id": "762",
+      "sha": "3179addbafdd4636a74242feb510d3bd296123ce",
+      "base": "755d1511bb2b751f298d4b56496f6827560a8bb9",
+      "esperado": "reprovar",
+      "padrao": "outro",
+      "defeito": "conclusao e erro do backfill sem registro para a retomada",
+      "ticketArq": "3179addbafdd4636a74242feb510d3bd296123ce:docs/fila/762-ghl-backfill-job-conexao.md"
+    },
+    {
+      "nome": "C974",
+      "repo": "comarka",
+      "id": "974",
+      "sha": "c4a7986cf800d6a9c50be46fb0acf6e34a1fac6e",
+      "base": "ef7cc18a08f2f15f81a020c8b189b2cb1267e2e4",
+      "esperado": "reprovar",
+      "padrao": "outro",
+      "defeito": "ritmo guarda estado em memoria do modulo numa funcao serverless",
+      "ticketArq": "c4a7986cf800d6a9c50be46fb0acf6e34a1fac6e:docs/fila/974-whatsapp-ritmo-de-envio.md"
+    },
+    {
+      "nome": "A889c",
+      "repo": "comarka",
+      "id": "889c",
+      "sha": "d9611c07d2aefbbd8adf81cfd09070409d390e17",
+      "base": "e2143e8ea2304d8d0872e9b796fe76dc57e059e6",
+      "esperado": "aprovar",
+      "padrao": "aprovar",
+      "defeito": "",
+      "ticketArq": "d9611c07d2aefbbd8adf81cfd09070409d390e17:docs/fila/889c-crise-relacao-tela.md"
+    },
+    {
+      "nome": "C1303",
+      "repo": "comarka",
+      "id": "1303",
+      "sha": "354ab59456c2c38ec1a9939282bd0ab4758a2caa",
+      "base": "56b379bec5b07bea44cee396752c63b826a7343d",
+      "esperado": "reprovar",
+      "padrao": "outro",
+      "defeito": "troca de aba renderiza antes do fetch e a aba nova recebe o payload da anterior",
+      "ticketArq": "2a8b661fe0331cbba5e7db8c24b3c2530f9dce50:docs/fila/1303-portal-previa-tela-e-botao-ficha.md"
+    },
+    {
+      "nome": "C938",
+      "repo": "comarka",
+      "id": "938",
+      "sha": "6c228d877502f1c84b9c406f0d5de731cef22793",
+      "base": "4e0561282c8bb78dda67b3c0c4acfff3fe865667",
+      "esperado": "reprovar",
+      "padrao": "outro",
+      "defeito": "ticket_tese = gerado / contratos somava os contratos de clientes sem gerado informado; o teste não tinha cliente sem valor",
+      "ticketArq": "6c228d877502f1c84b9c406f0d5de731cef22793:docs/fila/938-verba-recomendada-pela-tese.md"
+    }
+  ]
+}

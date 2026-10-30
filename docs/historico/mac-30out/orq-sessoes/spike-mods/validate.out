@@ -1,0 +1,12 @@
+Validating plugin manifest: /Users/lucasantos/orq-sessoes/spike-mods/guarda-escopo/.claude-plugin/plugin.json
+
+Validating hooks: /Users/lucasantos/orq-sessoes/spike-mods/guarda-escopo/hooks/hooks.json
+
+  ❯ ./register.ts hooks: tool.call{tool=Edit|Write|MultiEdit|NotebookEdit}
+  ❯ ./register.ts gating hook with .catch: tool.call{tool=Edit|Write|MultiEdit|NotebookEdit}
+  ❯ ./register.ts calls: $.env.get (via decidir, registrar), $.fs.read (via decidir, registrar), $.fs.stat (via decidir, situar), $.fs.write (via registrar), $.session.root (via decidir), $.ui.log (via registrar)
+  ❯ ./register.ts env writes: nothing
+  ❯ ./register.ts env reads: ORQ_ESCOPO_FILE, ORQ_ESCOPO_LOG
+
+✔ Validation passed
+rc=0

@@ -1,0 +1,419 @@
+diff --git a/src/lib/qualificacao/motor.ts b/src/lib/qualificacao/motor.ts
+index f33e8cd..fb72cc3 100644
+--- a/src/lib/qualificacao/motor.ts
++++ b/src/lib/qualificacao/motor.ts
+@@ -44,8 +44,11 @@ const supabase = createClient(
+ // -------------------------------------------------------
+ export type EscopoRegra = "cliente" | "tese" | "global";
+ export type TipoRegra = "estagio_pipeline" | "tag_crm" | "mensagem_whatsapp" | "campo_custom" | "crm_ghl";
+-// RM/RR/VENDA (557) são só do mapeamento de etapas: o cálculo MQL/SQL abaixo não os usa.
++// RM/RR/VENDA (557) vêm do mapeamento de etapas; desde a Etapa 2 o motor também os avalia
++// e grava rm_em, rr_em e venda_em (primeira data, nunca sobrescrita, fase pulada não inferida).
+ export type ClassificaComo = "MQL" | "SQL" | "RM" | "RR" | "VENDA";
++/** crm_ghl: historico = esteve na etapa alguma vez; atual = está nela agora. */
++export type ModoCrm = "historico" | "atual";
+ 
+ export interface RegraQualificacao {
+   id: string;
+@@ -69,8 +72,17 @@ export interface LeadParaQualificar {
+   tags?: string[] | null;
+   primeira_mensagem?: string | null;
+   payload?: Record<string, unknown> | null;
++  rm_em?: string | null;
++  rr_em?: string | null;
++  venda_em?: string | null;
+   /** ids de perf_crm_etapas em que o contato do lead já esteve (atual ou histórico). */
+   etapas_atingidas?: string[] | null;
++  /** etapa -> primeira data em que o contato chegou nela (histórico da oportunidade). */
++  etapas_atingidas_em?: Record<string, string | null> | null;
++  /** etapas das oportunidades vivas (não removidas, abertas ou ganhas). */
++  etapas_atuais?: string[] | null;
++  /** toda oportunidade viva do contato está perdida ou abandonada no CRM. */
++  oportunidade_perdida?: boolean;
+ }
+ 
+ export interface ResultadoQualificacao {
+@@ -78,6 +90,9 @@ export interface ResultadoQualificacao {
+   is_sql: boolean;
+   mql_em: string | null;
+   sql_em: string | null;
++  rm_em: string | null;
++  rr_em: string | null;
++  venda_em: string | null;
+   motivo_qualificacao: string | null;
+ }
+ 
+@@ -154,6 +169,36 @@ function compararValores(valorLead: unknown, operador: string, valorRegra: unkno
+ interface AvaliacaoTipo {
+   passou: boolean;
+   detalhe: string;
++  /** crm_ghl: etapas marcadas que o lead atingiu (para a data da fase). */
++  casadas?: string[];
++}
++
++export function modoDaRegra(regra: Pick<RegraQualificacao, "tipo_regra" | "config">): ModoCrm {
++  return regra.tipo_regra === "crm_ghl" && regra.config?.modo === "atual" ? "atual" : "historico";
++}
++
++function idsDe(v: unknown): string[] {
++  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
++}
++
++/**
++ * Desqualificado/perdido: toda oportunidade viva perdida/abandonada no CRM, ou a etapa
++ * atual marcada como bloqueio em alguma regra crm_ghl do lead.
++ */
++export function leadBloqueado(lead: LeadParaQualificar, regras: RegraQualificacao[]): boolean {
++  if (lead.oportunidade_perdida) return true;
++  const atuais = Array.isArray(lead.etapas_atuais) ? lead.etapas_atuais : [];
++  return regras.some((r) => r.tipo_regra === "crm_ghl" && idsDe(r.config?.bloqueio_etapa_ids).some((id) => atuais.includes(id)));
++}
++
++/** Primeira data em que o lead chegou numa das etapas casadas; sem histórico, a data da avaliação. */
++export function dataDaFase(lead: LeadParaQualificar, casadas: string[] | undefined, agora: string): string {
++  const mapa = lead.etapas_atingidas_em ?? {};
++  const datas = (casadas ?? [])
++    .map((id) => mapa[id])
++    .filter((d): d is string => typeof d === "string" && !Number.isNaN(new Date(d).getTime()))
++    .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
++  return datas[0] ?? agora;
+ }
+ 
+ function avaliarTipoRegra(regra: RegraQualificacao, lead: LeadParaQualificar): AvaliacaoTipo {
+@@ -225,8 +270,10 @@ function avaliarTipoRegra(regra: RegraQualificacao, lead: LeadParaQualificar): A
+ 
+     case "crm_ghl": {
+       const cfg = regra.config as { etapa_ids?: string[]; tags?: string[] };
+-      const marcadas = Array.isArray(cfg.etapa_ids) ? cfg.etapa_ids : [];
+-      const atingidas: string[] = Array.isArray(lead.etapas_atingidas) ? lead.etapas_atingidas : [];
++      const marcadas = idsDe(cfg?.etapa_ids);
++      const modo = modoDaRegra(regra);
++      const fonte = modo === "atual" ? lead.etapas_atuais : lead.etapas_atingidas;
++      const atingidas: string[] = Array.isArray(fonte) ? fonte : [];
+       const casadas = marcadas.filter((id) => atingidas.includes(id));
+       const tagsRegra = (Array.isArray(cfg.tags) ? cfg.tags : []).map((t) => normalizar(String(t)));
+       const tagsLead = (Array.isArray(lead.tags) ? lead.tags : []).map((t) => normalizar(String(t)));
+@@ -238,7 +285,8 @@ function avaliarTipoRegra(regra: RegraQualificacao, lead: LeadParaQualificar): A
+       ].filter(Boolean).join(" e ") || "nada";
+       return {
+         passou,
+-        detalhe: `crm_ghl com ${marcadas.length} etapa(s) e ${tagsRegra.length} tag(s) marcada(s), casou ${casou} (${passou ? "aprovado" : "reprovado"})`,
++        casadas,
++        detalhe: `crm_ghl (${modo}) com ${marcadas.length} etapa(s) e ${tagsRegra.length} tag(s) marcada(s), casou ${casou} (${passou ? "aprovado" : "reprovado"})`,
+       };
+     }
+ 
+@@ -252,9 +300,12 @@ function avaliarTipoRegra(regra: RegraQualificacao, lead: LeadParaQualificar): A
+ // -------------------------------------------------------
+ /**
+  * Aplica as regras vencedoras (D1: cliente → tese → global) ao lead e devolve
+- * o novo estado de qualificação. Nunca rebaixa is_mql/is_sql já verdadeiros.
+- * SQL só é avaliado se o lead já é MQL (mesma regra de negócio do motor de
+- * ingestão em src/lib/perf/qualificacao.ts).
++ * o novo estado de qualificação. Nunca rebaixa is_mql/is_sql já verdadeiros nem
++ * sobrescreve data de fase já gravada. SQL só é avaliado se o lead já é MQL
++ * (mesma regra do motor de ingestão em src/lib/perf/qualificacao.ts); RM, RR e
++ * VENDA são avaliados cada um por si: fase pulada não é inferida.
++ * Data da fase: primeira chegada pelo histórico da oportunidade (crm_ghl), senão a
++ * data da avaliação. Regra crm_ghl em modo atual não marca lead desqualificado/perdido.
+  */
+ export function qualificarLead(
+   lead: LeadParaQualificar,
+@@ -262,34 +313,57 @@ export function qualificarLead(
+ ): ResultadoQualificacao {
+   const now = new Date().toISOString();
+   const vencedoras = resolverRegras(lead.cliente_id, lead.tese_id, regras);
++  const bloqueado = leadBloqueado(lead, vencedoras);
+ 
+   const resultado: ResultadoQualificacao = {
+     is_mql: lead.is_mql,
+     is_sql: lead.is_sql,
+     mql_em: lead.mql_em,
+     sql_em: lead.sql_em,
++    rm_em: lead.rm_em ?? null,
++    rr_em: lead.rr_em ?? null,
++    venda_em: lead.venda_em ?? null,
+     motivo_qualificacao: null,
+   };
+ 
+   const motivos: string[] = [];
+ 
+-  const regraMql = vencedoras.find((r) => r.classifica_como === "MQL");
+-  if (regraMql && !resultado.is_mql) {
+-    const { passou, detalhe } = avaliarTipoRegra(regraMql, lead);
+-    if (passou) {
++  // Regra que pode marcar a classe agora: existe e não está travada pelo bloqueio do modo atual.
++  const avaliar = (classe: ClassificaComo): { regra: RegraQualificacao; av: AvaliacaoTipo } | null => {
++    const regra = vencedoras.find((r) => r.classifica_como === classe);
++    if (!regra) return null;
++    if (bloqueado && modoDaRegra(regra) === "atual") return null;
++    const av = avaliarTipoRegra(regra, lead);
++    return av.passou ? { regra, av } : null;
++  };
++  const motivo = (classe: ClassificaComo, regra: RegraQualificacao, detalhe: string) =>
++    `${classe} via regra ${regra.id} (escopo=${regra.escopo}, tipo=${regra.tipo_regra}): ${detalhe}`;
++
++  if (!resultado.is_mql) {
++    const m = avaliar("MQL");
++    if (m) {
+       resultado.is_mql = true;
+-      resultado.mql_em = now;
+-      motivos.push(`MQL via regra ${regraMql.id} (escopo=${regraMql.escopo}, tipo=${regraMql.tipo_regra}): ${detalhe}`);
++      resultado.mql_em = dataDaFase(lead, m.av.casadas, now);
++      motivos.push(motivo("MQL", m.regra, m.av.detalhe));
+     }
+   }
+ 
+-  const regraSql = vencedoras.find((r) => r.classifica_como === "SQL");
+-  if (regraSql && resultado.is_mql && !resultado.is_sql) {
+-    const { passou, detalhe } = avaliarTipoRegra(regraSql, lead);
+-    if (passou) {
++  if (resultado.is_mql && !resultado.is_sql) {
++    const m = avaliar("SQL");
++    if (m) {
+       resultado.is_sql = true;
+-      resultado.sql_em = now;
+-      motivos.push(`SQL via regra ${regraSql.id} (escopo=${regraSql.escopo}, tipo=${regraSql.tipo_regra}): ${detalhe}`);
++      resultado.sql_em = dataDaFase(lead, m.av.casadas, now);
++      motivos.push(motivo("SQL", m.regra, m.av.detalhe));
++    }
++  }
++
++  const fases: [ClassificaComo, "rm_em" | "rr_em" | "venda_em"][] = [["RM", "rm_em"], ["RR", "rr_em"], ["VENDA", "venda_em"]];
++  for (const [classe, campo] of fases) {
++    if (resultado[campo]) continue;
++    const m = avaliar(classe);
++    if (m) {
++      resultado[campo] = dataDaFase(lead, m.av.casadas, now);
++      motivos.push(motivo(classe, m.regra, m.av.detalhe));
+     }
+   }
+ 
+@@ -300,6 +374,36 @@ export function qualificarLead(
+   return resultado;
+ }
+ 
++// -------------------------------------------------------
++// Fase atual — histórico de idas e vindas em perf_lead_eventos
++// -------------------------------------------------------
++export type FaseLead = "MQL" | "RM" | "RR" | "VENDA" | "PERDIDO";
++const ORDEM_FASE: FaseLead[] = ["MQL", "RM", "RR", "VENDA"];
++
++/**
++ * Fase em que o lead está agora pelas etapas das oportunidades vivas e as regras
++ * crm_ghl: a mais adiantada entre as etapas atuais; PERDIDO se desqualificado/perdido.
++ * null quando o lead não tem regra crm_ghl ou não está em etapa mapeada.
++ */
++export function faseAtualDoLead(lead: LeadParaQualificar, regras: RegraQualificacao[]): FaseLead | null {
++  const vencedoras = resolverRegras(lead.cliente_id, lead.tese_id, regras).filter((r) => r.tipo_regra === "crm_ghl");
++  if (vencedoras.length === 0) return null;
++  if (leadBloqueado(lead, vencedoras)) return "PERDIDO";
++  const atuais = Array.isArray(lead.etapas_atuais) ? lead.etapas_atuais : [];
++  let fase: FaseLead | null = null;
++  for (const r of vencedoras) {
++    const i = ORDEM_FASE.indexOf(r.classifica_como as FaseLead);
++    if (i < 0 || !idsDe(r.config?.etapa_ids).some((id) => atuais.includes(id))) continue;
++    if (fase === null || i > ORDEM_FASE.indexOf(fase)) fase = ORDEM_FASE[i];
++  }
++  return fase;
++}
++
++/** Passagem = o lead está numa fase e ela difere da última registrada. */
++export function houvePassagem(ultima: string | null, atual: FaseLead | null): atual is FaseLead {
++  return atual !== null && atual !== ultima;
++}
++
+ // -------------------------------------------------------
+ // aplicarQualificacao — única função que toca banco
+ // -------------------------------------------------------
+@@ -319,27 +423,45 @@ function mapEscopoDbParaMotor(escopoDb: string): EscopoRegra {
+   return "cliente";
+ }
+ 
++export interface ContextoCrm {
++  etapas_atingidas: string[];
++  etapas_atingidas_em: Record<string, string | null>;
++  etapas_atuais: string[];
++  oportunidade_perdida: boolean;
++}
++
++const STATUS_VIVO = ["open", "won"];
++const STATUS_PERDIDO = ["lost", "abandoned"];
++
++function maisCedo(a: string | null | undefined, b: string | null | undefined): string | null {
++  if (!a) return b ?? null;
++  if (!b) return a;
++  return new Date(a).getTime() <= new Date(b).getTime() ? a : b;
++}
++
+ /**
+- * União (sem repetir) das etapas atuais e das etapas de destino do histórico
+- * das oportunidades do contato: "atingiu" = esteve na etapa alguma vez.
+- * Erro de leitura sobe; nunca vira lista vazia.
++ * Oportunidades do contato e seu histórico: etapas atingidas (alguma vez) com a
++ * primeira data de chegada, etapas atuais das oportunidades vivas e se o contato
++ * está perdido. Erro de leitura sobe; nunca vira lista vazia.
+  */
+-export async function carregarEtapasAtingidas(clienteId: string, ghlContactId: string): Promise<string[]> {
++export async function carregarContextoCrm(clienteId: string, ghlContactId: string): Promise<ContextoCrm> {
+   const { data: oportunidades, error: errOp } = await supabase
+     .from("perf_crm_oportunidades")
+-    .select("id, etapa_id")
++    .select("id, etapa_id, status, removido_em, etapa_mudou_em, ghl_criado_em")
+     .eq("cliente_id", clienteId)
+     .eq("ghl_contact_id", ghlContactId);
+ 
+   if (errOp) {
+     throw new Error(`Falha ao ler oportunidades do contato: ${errOp.message}`);
+   }
+-  const ops: { id: string; etapa_id: string | null }[] = Array.isArray(oportunidades) ? oportunidades : [];
+-  if (ops.length === 0) return [];
++  type Op = { id: string; etapa_id: string | null; status?: string | null; removido_em?: string | null; etapa_mudou_em?: string | null; ghl_criado_em?: string | null };
++  const ops: Op[] = Array.isArray(oportunidades) ? oportunidades : [];
++  const vazio: ContextoCrm = { etapas_atingidas: [], etapas_atingidas_em: {}, etapas_atuais: [], oportunidade_perdida: false };
++  if (ops.length === 0) return vazio;
+ 
+   const { data: historico, error: errHist } = await supabase
+     .from("perf_crm_oportunidade_historico")
+-    .select("etapa_para_id")
++    .select("etapa_para_id, mudou_em")
+     .in("oportunidade_id", ops.map((o) => o.id));
+ 
+   if (errHist) {
+@@ -347,18 +469,43 @@ export async function carregarEtapasAtingidas(clienteId: string, ghlContactId: s
+   }
+ 
+   const ids: string[] = [];
+-  for (const o of ops) if (o.etapa_id) ids.push(o.etapa_id);
+-  const hist: { etapa_para_id: string | null }[] = Array.isArray(historico) ? historico : [];
++  const em: Record<string, string | null> = {};
++  for (const o of ops) {
++    if (!o.etapa_id) continue;
++    ids.push(o.etapa_id);
++    em[o.etapa_id] = maisCedo(em[o.etapa_id], o.etapa_mudou_em ?? o.ghl_criado_em ?? null);
++  }
++  const hist: { etapa_para_id: string | null; mudou_em?: string | null }[] = Array.isArray(historico) ? historico : [];
+   for (const h of hist) {
+-    if (h.etapa_para_id) ids.push(h.etapa_para_id);
++    if (!h.etapa_para_id) continue;
++    ids.push(h.etapa_para_id);
++    em[h.etapa_para_id] = maisCedo(em[h.etapa_para_id], h.mudou_em ?? null);
+   }
+-  return Array.from(new Set(ids));
++
++  const vivas = ops.filter((o) => !o.removido_em);
++  const abertas = vivas.filter((o) => STATUS_VIVO.includes(String(o.status ?? "")));
++  const atuais = abertas.map((o) => o.etapa_id).filter((id): id is string => !!id);
++  return {
++    etapas_atingidas: Array.from(new Set(ids)),
++    etapas_atingidas_em: em,
++    etapas_atuais: Array.from(new Set(atuais)),
++    oportunidade_perdida: abertas.length === 0 && vivas.some((o) => STATUS_PERDIDO.includes(String(o.status ?? ""))),
++  };
++}
++
++/**
++ * União (sem repetir) das etapas atuais e das etapas de destino do histórico
++ * das oportunidades do contato: "atingiu" = esteve na etapa alguma vez.
++ * Erro de leitura sobe; nunca vira lista vazia.
++ */
++export async function carregarEtapasAtingidas(clienteId: string, ghlContactId: string): Promise<string[]> {
++  return (await carregarContextoCrm(clienteId, ghlContactId)).etapas_atingidas;
+ }
+ 
+ async function buscarLeadParaQualificar(leadId: string): Promise<LeadParaQualificar> {
+   const { data: lead, error } = await supabase
+     .from("perf_leads")
+-    .select("id, cliente_id, tese_id, is_mql, is_sql, mql_em, sql_em, etapa, primeira_mensagem, ghl_contact_id, tags")
++    .select("id, cliente_id, tese_id, is_mql, is_sql, mql_em, sql_em, rm_em, rr_em, venda_em, etapa, primeira_mensagem, ghl_contact_id, tags")
+     .eq("id", leadId)
+     .single();
+ 
+@@ -366,9 +513,9 @@ async function buscarLeadParaQualificar(leadId: string): Promise<LeadParaQualifi
+     throw new Error(`Lead nao encontrado: ${leadId}`);
+   }
+ 
+-  const etapasAtingidas = lead.ghl_contact_id
+-    ? await carregarEtapasAtingidas(lead.cliente_id, lead.ghl_contact_id)
+-    : [];
++  const crm = lead.ghl_contact_id
++    ? await carregarContextoCrm(lead.cliente_id, lead.ghl_contact_id)
++    : null;
+ 
+   return {
+     id: lead.id,
+@@ -378,9 +525,15 @@ async function buscarLeadParaQualificar(leadId: string): Promise<LeadParaQualifi
+     is_sql: lead.is_sql,
+     mql_em: lead.mql_em,
+     sql_em: lead.sql_em,
++    rm_em: lead.rm_em ?? null,
++    rr_em: lead.rr_em ?? null,
++    venda_em: lead.venda_em ?? null,
+     etapa: lead.etapa,
+     primeira_mensagem: lead.primeira_mensagem,
+-    etapas_atingidas: etapasAtingidas,
++    etapas_atingidas: crm?.etapas_atingidas ?? [],
++    etapas_atingidas_em: crm?.etapas_atingidas_em ?? {},
++    etapas_atuais: crm?.etapas_atuais ?? [],
++    oportunidade_perdida: crm?.oportunidade_perdida ?? false,
+     tags: lead.tags ?? null,
+   };
+ }
+@@ -407,8 +560,10 @@ async function buscarRegrasAtivas(): Promise<RegraQualificacao[]> {
+ }
+ 
+ /**
+- * Lê o lead e as regras ativas, qualifica com `qualificarLead`, e grava as 5
+- * colunas (is_mql, is_sql, mql_em, sql_em, motivo_qualificacao) em perf_leads.
++ * Lê o lead e as regras ativas, qualifica com `qualificarLead`, grava as 8
++ * colunas (is_mql, is_sql, mql_em, sql_em, rm_em, rr_em, venda_em,
++ * motivo_qualificacao) em perf_leads e, se o lead passou de fase, um evento
++ * mudou_etapa em perf_lead_eventos.
+  */
+ export async function aplicarQualificacao(leadId: string): Promise<ResultadoQualificacao> {
+   const lead = await buscarLeadParaQualificar(leadId);
+@@ -423,6 +578,9 @@ export async function aplicarQualificacao(leadId: string): Promise<ResultadoQual
+       is_sql: resultado.is_sql,
+       mql_em: resultado.mql_em,
+       sql_em: resultado.sql_em,
++      rm_em: resultado.rm_em,
++      rr_em: resultado.rr_em,
++      venda_em: resultado.venda_em,
+       motivo_qualificacao: resultado.motivo_qualificacao,
+     })
+     .eq("id", leadId);
+@@ -431,5 +589,34 @@ export async function aplicarQualificacao(leadId: string): Promise<ResultadoQual
+     throw new Error(`Falha ao gravar qualificacao: ${updateErr.message}`);
+   }
+ 
++  await registrarPassagem(lead, regras);
++
+   return resultado;
+ }
++
++/** Grava mudou_etapa quando a fase atual difere da última registrada (idas e vindas). */
++async function registrarPassagem(lead: LeadParaQualificar, regras: RegraQualificacao[]): Promise<void> {
++  const fase = faseAtualDoLead(lead, regras);
++  if (fase === null) return;
++
++  const { data: ultimo, error: errUlt } = await supabase
++    .from("perf_lead_eventos")
++    .select("payload")
++    .eq("lead_id", lead.id)
++    .eq("tipo", "mudou_etapa")
++    .order("at", { ascending: false })
++    .limit(1)
++    .maybeSingle();
++  if (errUlt) throw new Error(`Falha ao ler a ultima passagem do lead: ${errUlt.message}`);
++
++  const anterior = (ultimo?.payload as { fase_para?: string } | null)?.fase_para ?? null;
++  if (!houvePassagem(anterior, fase)) return;
++
++  const { error: errIns } = await supabase.from("perf_lead_eventos").insert({
++    lead_id: lead.id,
++    tipo: "mudou_etapa",
++    payload: { fase_de: anterior, fase_para: fase, etapa_ids: lead.etapas_atuais ?? [], origem: "motor" },
++    at: new Date().toISOString(),
++  });
++  if (errIns) throw new Error(`Falha ao gravar a passagem do lead: ${errIns.message}`);
++}

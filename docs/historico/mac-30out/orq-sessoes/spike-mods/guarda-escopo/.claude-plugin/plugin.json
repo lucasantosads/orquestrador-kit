@@ -1,0 +1,6 @@
+{
+  "name": "guarda-escopo",
+  "version": "0.1.0",
+  "description": "Nega Edit/Write/MultiEdit/NotebookEdit fora dos globs do ticket ($ORQ_ESCOPO_FILE). So nega, nunca aprova.",
+  "author": { "name": "orquestrador-kit (spike)" }
+}

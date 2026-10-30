@@ -1,0 +1,342 @@
+Você é o JUIZ de uma esteira automatizada. Julgue SOMENTE pelo material abaixo:
+o diff cru da tentativa, a saída dos gates mecânicos e os critérios do ticket.
+Você NÃO recebe o prompt do executor nem resumo nenhum do agente, de propósito:
+o que o agente diz que fez nunca é evidência. Se algo não está no diff, não aconteceu.
+
+VOCÊ NÃO TEM FERRAMENTAS. Não leia arquivo, não rode comando, não abra o
+repositório: a chamada está sem ferramenta nenhuma e qualquer tentativa só
+gasta turno. Se o material abaixo não basta para aprovar, REPROVE dizendo o
+que faltou — nunca aprove no benefício da dúvida.
+
+Os gates mecânicos JÁ PASSARAM (enforcement, typecheck, testes, critérios, build).
+Você não os reexecuta: o seu trabalho é o que eles não conseguem ver.
+
+O QUE VOCÊ COBRA, item a item:
+
+1. INTEGRAÇÃO, não existência. Componente/função/rota criada mas nunca importada,
+   montada ou chamada passa em "arquivo existe" e falha em produção. Siga a
+   variável ou o símbolo até o ponto de uso real; um resultado calculado e
+   descartado não vale.
+2. O TESTE EXERCITA O COMPORTAMENTO DO OBJETIVO. Teste tautológico
+   (expect(true), expect(x).toBeDefined() sobre algo trivialmente definido,
+   asserção que passaria com o código antigo) NÃO prova nada. Pergunte-se: este
+   teste ficaria VERMELHO se a mudança fosse revertida? Se não, reprove.
+3. CRITÉRIO DE AUSÊNCIA EXIGE CONTROLE POSITIVO. Um teste que só afirma que algo
+   NÃO aparece passa igual quando o componente não renderiza nada. Exija, no
+   MESMO render/execução, ao menos uma asserção POSITIVA de que a coisa certa
+   apareceu. Reprove ausência provada no vazio.
+
+4. ANTI-AFROUXAMENTO (a allowlist deste ticket inclui arquivo de teste).
+   No diff dos arquivos de teste, REPROVE se encontrar qualquer um destes:
+   - asserção removida (expect apagado) sem que o comportamento tenha deixado de existir;
+   - toBe/toEqual trocado por toBeDefined/toBeTruthy/objectContaining mais frouxo;
+   - .skip, .todo, .only, teste comentado ou arquivo de teste deletado;
+   - valor esperado alterado SEM comentário dizendo por que a regra nova o muda.
+   Valor RECALCULADO sob a regra nova, com o porquê em comentário, é o único
+   caminho aceito. Renomear símbolo para satisfazer contagem também é afrouxar.
+
+RESPONDA SÓ COM ESTE JSON, sem cerca de código, sem texto antes ou depois:
+{"aprovado": true|false, "motivo": "<=2 frases, concreto, citando arquivo e linha>",
+ "criterios_falhos": ["descrição exata do critério que você reprova", ...]}
+
+criterios_falhos: use a DESCRIÇÃO do critério, copiada como está na lista acima.
+Vazio quando aprovado. Na dúvida entre aprovar e reprovar, REPROVE e diga o que falta.
+
+TICKET 938
+Objetivo: ORCAMENTO DE DIFF: teto de 460 linhas (~120 em verba-recomendada.ts, ~80 em assistente-metas.tsx, ~220 no teste NOVO, ~30 em test/metas-guiado.test.tsx). Se passar do teto, pare e reporte. DECISOES DO LUCAS (09/10/2026), valem para a frente inteira: (a) tese vem da campanha (perf_campanha_tese ativo=true); cliente com mais de uma tese entra em cada tese e conta 1 vez no total do nicho. (b) Metricas-norte: %MQL, CPMQL e CAC. Valor de linha = MEDIANA entre os clientes, com faixa (minimo a maximo) embaixo; tese ou nicho com menos de 3 clientes nao ranqueia e mostra 'sem amostra · N clientes'. (c) Custo por resultado segue o objetivo da campanha (src/lib/perf/objetivo-campanha.ts); engajamento entra no Investido e fica fora do custo. Tipo de funil: Todos, Formulario, Mensagem, LP, Webinar; em Todos o custo aparece por tipo ('Form R$ 44 / Msg R$ 2,30'), nunca somado. (d) Score do ranking: CAC 50%, CPMQL 30%, %MQL 20% (posicao normalizada); sem venda registrada a tese entra so com CPMQL e %MQL, renormalizados, e fica marcada 'parcial'. (e) Periodo: o seletor padrao do OS (usePeriodoUrl), um so para a aba. (f) Aba Avaliacao: so superadmin e Head de Trafego, pelo RBAC existente, nunca lista de e-mails. (g) Desvio: CPMQL 50% ou mais acima da mediana da tese por 2 semanas seguidas, numeros em constante exportada unica. (h) Sem dado = 's/ dado' em cinza com o motivo, nunca zero; todo numero com o denominador na mesma linha. (i) Regra 19: nenhum R$ de mensalidade, MRR ou LTV da agencia; dinheiro DO CLIENTE (contratos, faturamento gerado, ROAS, investimento em anuncio) e permitido. (j) Zona C0 intocavel; DDL e cron novo so com token humano; nunca editar vercel.json. TELA: leia docs/roadmap/mockups/performance-tese/README.md (ordem dos blocos e data-testid), DESIGN.md secao 6 e src/components/estados/sem-dado.tsx (SemDado, ValorOuSemDado) antes de escrever; cor e sinal: azul acao, verde saudavel, vermelho risco; sem cartao dentro de cartao, sem badge soup, sem gradiente; vazio vira uma linha de texto, nunca cartao vazio. DEPENDE DO 940b e DO 936 (tesePrincipal, periodoDeReferencia e a busca de /api/perf/nicho-tese no assistente). COLUNAS CONFERIDAS EM 09/10: perf_cliente_meta_mensal(cliente_id, competencia_mes, metrica_ancora em faturamento|contratos, meta_valor, ticket_medio_alvo, investimento_alvo), lida pela rota existente GET /api/perf/calculadora/meta?cliente_id=&competencia=YYYY-MM (devolve { data: [...] }); perf_tese_premissas.ticket_inicial. PASSO 1: leia assistente-metas.tsx (com o 936 aplicado), src/lib/perf/nicho-tese/meta-sugerida.ts, src/app/api/perf/calculadora/meta/route.ts linhas 1-60 e test/metas-guiado.test.tsx. FAZER: (1) NOVO src/lib/perf/nicho-tese/verba-recomendada.ts PURA: export function recomendarVerba({meta, tese, ticket_tese}) => { valor: number|null, contratos: number|null, cac_tese: number|null, conta: texto, motivo: string|null }: contratos = meta.meta_valor quando metrica_ancora 'contratos'; quando 'faturamento', contratos = arredonda para cima(meta_valor / ticket), com ticket = meta.ticket_medio_alvo ou ticket_tese (sem ticket: motivo 'sem ticket para converter faturamento em contratos'); valor = contratos x mediana de CAC da tese, arredondado a 2 casas; sem meta: motivo 'cliente sem meta de contratos ou faturamento no mes'; tese sem amostra: motivo 'sem amostra na tese: N clientes'; tese sem CAC (sem venda registrada): motivo 'sem base: a tese nao tem venda registrada no periodo'. Conta em texto: 'R$ 12.000,00 = 10 contratos x CAC mediano R$ 1.200,00 de <tese> (6 clientes)'. Dinheiro aqui e do CLIENTE (verba de anuncio): permitido. (2) assistente-metas.tsx: com escopo 'cliente' e metrica 'investimento', no passo valor, busque a meta do mes com fetchJson('/api/perf/calculadora/meta?cliente_id=...&competencia=YYYY-MM') (falha => linha 'verba recomendada indisponivel agora') e mostre 'Verba recomendada pela tese: R$ X' com a conta e o botao 'Usar sugestao' que so preenche o campo; sem base: a linha em cinza com o motivo. Nada gravado sem o clique em salvar; meta existente nunca trocada. (3) NOVO test/perf-verba-recomendada-tese.test.ts: contratos x CAC; faturamento / ticket da meta e, sem ele, ticket da tese; os 4 motivos; por readFileSync, 'Verba recomendada pela tese' no assistente e o fetch da rota da calculadora. (4) test/metas-guiado.test.tsx: so ACRESCENTE its se precisar; os existentes ficam. FORA DE ESCOPO: gravar meta ou verba, perf_cliente_verba e o alerta de verba, rotas, DDL. REGRAS: zona C0 (clientes_receita, leads_crm, leads_crm_historico, ads_metadata, ads_performance, fn_mql_sql_by_month, prefixos trafego_* e vw_*) e leitura pura: nada de escrita, DDL, grant, RLS ou trigger nelas; vercel.json intocado; chave oficial do cliente e cliente_id (uuid); churn_log: nunca leia mensalidade nem ltv_total; falha de leitura nunca vira zero, lista vazia ou verde: nada de `?? []`, `|| []` ou `|| 0` numa leitura, o erro sobe com o motivo (500 na rota, ErrorState na tela); dado ausente aparece como 's/ dado' ou 'sem base' com o motivo; nenhum jargao de banco em texto de tela (nome de tabela, coluna ou operador); nenhum travessao (U+2014) em texto de tela nem em string de copy (guarda travessao-mudo); numeros de tela em font-mono; Set e Map so com Array.from (tsc sem downlevelIteration); nenhum .json() literal novo em src (cliente: fetchJson de @/lib/fetch-json; rota: lerCorpoJson de @/lib/fetch-json); getSession e server-only, nunca em arquivo 'use client'; supabase, fetch e getSession sempre mockados nos testes (vi.mock), nunca banco real; fixture de uuid RFC-4122 (00000000-0000-4000-8000-000000000000 ou crypto.randomUUID()); testes sem JSX (React.createElement + renderToStaticMarkup, esbuild transformSync no molde de test/bloco-vazio-linha.test.ts, ou readFileSync da fonte; o projeto nao tem jsdom nem @testing-library); teste ancora em texto visivel, data-testid ou nome exportado, nunca em classe de estilo; nunca toEqual numa lista inteira; var() nao resolve em atributo de apresentacao SVG. TESTES EXISTENTES da allowlist: se a mudanca quebrar uma assercao, RECALCULE o valor sob a regra nova com comentario acima citando o ticket e de onde veio o numero; PROIBIDO remover assercao, trocar toBe/toEqual/toMatch por toBeDefined/toBeTruthy, usar .skip/.only/.todo, apagar it( ou o arquivo. GUARDAS GLOBAIS (fora da allowlist, nao edite): test/fetch-json-teto.test.ts, test/consistencia-contagens.test.ts, test/bloco-vazio-linha.test.ts, test/abas-montadas.test.ts, test/travessao-mudo.test.ts, test/c0-guard.test.ts, test/regra19.test.ts, test/ui-guard.test.ts. Se um teste FORA da allowlist quebrar, PARE e descreva. Motor do orquestrador (scripts/orquestrador/, docs/orquestrador/) intocado.
+
+Allowlist do ticket:
+  - src/lib/perf/nicho-tese/verba-recomendada.ts
+  - src/app/dashboard/performance/assistente-metas.tsx
+  - test/perf-verba-recomendada-tese.test.ts
+  - test/metas-guiado.test.tsx
+
+Critérios de aceite:
+  - [guarda · já verificado por comando] tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)
+      cmd: ( [ "$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\.next/')" = 3 ] ) && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] nenhum .sql novo (zero DDL)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff --name-only "$b" HEAD | grep -c '[.]sql$'); [ "$n" = 0 ] && echo SEM_SQL || echo SQL_$n · espera: SEM_SQL
+  - [guarda · já verificado por comando] guardas globais seguem verdes
+      cmd: npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/travessao-mudo.test.ts test/c0-guard.test.ts test/regra19.test.ts test/ui-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [guarda · já verificado por comando] nenhuma guarda global foi editada
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/travessao-mudo.test.ts test/c0-guard.test.ts test/regra19.test.ts test/ui-guard.test.ts | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADAS || echo EDITOU_$n · espera: INTOCADAS
+  - [guarda · já verificado por comando] vercel.json intocado
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- vercel.json | wc -l | tr -d ' '); [ "$n" = 0 ] && echo VERCEL_INTOCADO || echo VERCEL_EDITADO · espera: VERCEL_INTOCADO
+  - [guarda · já verificado por comando] nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- src/lib/perf/nicho-tese/verba-recomendada.ts src/app/dashboard/performance/assistente-metas.tsx | grep -cE '^[+][^+].*[.]json[(][)]'); [ "$n" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n · espera: ZERO_JSON_NOVO
+  - [guarda · já verificado por comando] so arquivos da allowlist foram tocados
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; r=SO_ALLOWLIST; for f in $(git diff --name-only "$b" HEAD); do printf '%s\n' src/lib/perf/nicho-tese/verba-recomendada.ts src/app/dashboard/performance/assistente-metas.tsx test/perf-verba-recomendada-tese.test.ts test/metas-guiado.test.tsx | grep -Fxq "$f" || r=FORA_$f; done; echo $r · espera: SO_ALLOWLIST
+  - [guarda · já verificado por comando] diff dentro do orcamento (<= 460 linhas somando adicoes e remocoes)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; t=$(git diff --numstat "$b" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ "$t" -le 460 ] && echo NO_TETO || echo ESTOUROU_$t · espera: NO_TETO
+  - [guarda · já verificado por comando] zero escrita em banco nas linhas adicionadas dos arquivos de src do ticket
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- src/lib/perf/nicho-tese/verba-recomendada.ts src/app/dashboard/performance/assistente-metas.tsx | grep -E '^[+][^+]' | grep -cE '[.](insert|update|upsert|delete|rpc)[(]'); [ "$n" = 0 ] && echo SEM_ESCRITA || echo ESCRITA_$n · espera: SEM_ESCRITA
+  - [guarda · já verificado por comando] anti-afrouxamento: nenhum teste existente da allowlist perdeu it(/expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (contra o merge-base com staging-auto)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; r=NAO_AFROUXOU; for f in test/metas-guiado.test.tsx; do [ -f "$f" ] || { git cat-file -e "$b:$f" 2>/dev/null && r=APAGOU_$f; continue; }; for p in 'expect(' 'it('; do a=$(git show "$b:$f" 2>/dev/null | grep -cF "$p"); n=$(grep -cF "$p" "$f"); [ "${n:-0}" -ge "${a:-0}" ] || r=CAIU_$f; done; s0=$(git show "$b:$f" 2>/dev/null | grep -cE '\.(skip|only|todo)\('); s1=$(grep -cE '\.(skip|only|todo)\(' "$f"); [ "${s1:-0}" -le "${s0:-0}" ] || r=SKIP_NOVO_$f; d0=$(git show "$b:$f" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' "$f"); [ "${d1:-0}" -le "${d0:-0}" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r · espera: NAO_AFROUXOU
+  - [? · já verificado por comando] recomendarVerba pura exportada
+      cmd: n=$(grep -cF 'export function recomendarVerba' src/lib/perf/nicho-tese/verba-recomendada.ts 2>/dev/null); [ "${n:-0}" -ge 1 ] && echo VERBA_OK || echo FALTA_${n:-0} · espera: VERBA_OK
+  - [? · já verificado por comando] motivo sem base sem venda na tese
+      cmd: n=$(grep -cF 'sem base' src/lib/perf/nicho-tese/verba-recomendada.ts 2>/dev/null); [ "${n:-0}" -ge 1 ] && echo SEM_BASE_OK || echo FALTA_${n:-0} · espera: SEM_BASE_OK
+  - [? · já verificado por comando] assistente mostra a verba recomendada
+      cmd: n=$(grep -cF 'Verba recomendada pela tese' src/app/dashboard/performance/assistente-metas.tsx 2>/dev/null); [ "${n:-0}" -ge 1 ] && echo TELA_OK || echo FALTA_${n:-0} · espera: TELA_OK
+  - [? · já verificado por comando] teste(s) novo(s) verde(s) (test/perf-verba-recomendada-tese.test.ts, test/metas-guiado.test.tsx, test/metas-meses-cadastro.test.ts)
+      cmd: test -f test/perf-verba-recomendada-tese.test.ts && test -f test/metas-guiado.test.tsx && test -f test/metas-meses-cadastro.test.ts && npx vitest run test/perf-verba-recomendada-tese.test.ts test/metas-guiado.test.tsx test/metas-meses-cadastro.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [avaliador · JULGUE VOCÊ] avaliador: assistente, escopo cliente e metrica Investimento, mostra a verba recomendada = contratos da meta x CAC mediano da tese principal, convertendo faturamento pelo ticket; sem CAC 'sem base'; so preenche o campo no clique. REPROVE se: grava sozinho; R$ da agencia; numero sem a conta; erro some calado.
+
+
+SAÍDA DOS GATES MECÂNICOS:
+ok   build
+       
+       ○  (Static)   prerendered as static content
+       ƒ  (Dynamic)  server-rendered on demand
+ok   tsc
+       src/app/api/perf/qualificacao-regras/[id]/route.ts(55,34): error TS2538: Type 'undefined' cannot be used as an index type.
+       src/app/api/perf/qualificacao-regras/estagios/route.ts(31,21): error TS2802: Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+       src/app/dashboard/clientes/qualificacao/qualificacao-block.tsx(74,29): error TS2802: Type 'MapIterator<ClienteTese>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+ok   vitest
+       Tests  9551 passed (9551)
+       Start at  06:13:17
+       Duration  20.44s (transform 14.53s, setup 0ms, import 63.92s, tests 22.28s, environment 63ms)
+VEREDITO: APROVADO
+
+DIFF CRU DA TENTATIVA (git diff base...HEAD):
+diff --git a/src/app/dashboard/performance/assistente-metas.tsx b/src/app/dashboard/performance/assistente-metas.tsx
+index 2ca0db5..d3fb209 100644
+--- a/src/app/dashboard/performance/assistente-metas.tsx
++++ b/src/app/dashboard/performance/assistente-metas.tsx
+@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
+ import { fetchJson } from "@/lib/fetch-json";
+ import type { ResultadoNichoTese } from "@/lib/perf/nicho-tese/agregar";
+ import { periodoDeReferencia, sugerirMetaMql, tesePrincipal } from "@/lib/perf/nicho-tese/meta-sugerida";
++import { recomendarVerba, type MetaMensalEntrada } from "@/lib/perf/nicho-tese/verba-recomendada";
+ import {
+   METRICAS,
+   METRICA_LABEL,
+@@ -61,7 +62,9 @@ export function AssistenteMetas({ escopo, escopoId, grade, mesesSelecionaveis, o
+   // Sugestão da tese (ticket 936): só leitura, nunca grava. Falha vira linha visível.
+   const buscaTese = escopo === "cliente" && metrica === "mql" && passo === "valor" && !!escopoId && !!mes;
+   const [tese, setTese] = useState<{ chave: string; dados: ResultadoNichoTese | null; falhou: boolean } | null>(null);
+-  const chaveTese = buscaTese ? `${escopoId}|${mes}` : "";
++  // Verba recomendada (ticket 938): mesma busca da tese, só leitura.
++  const buscaVerba = escopo === "cliente" && metrica === "investimento" && passo === "valor" && !!escopoId && !!mes;
++  const chaveTese = buscaTese || buscaVerba ? `${escopoId}|${mes}` : "";
+   useEffect(() => {
+     if (!chaveTese) return;
+     let vivo = true;
+@@ -74,6 +77,32 @@ export function AssistenteMetas({ escopo, escopoId, grade, mesesSelecionaveis, o
+     };
+   }, [chaveTese, mes]);
+ 
++  const [metaMes, setMetaMes] = useState<{ chave: string; meta: MetaMensalEntrada | null; falhou: boolean } | null>(null);
++  const chaveVerba = buscaVerba ? chaveTese : "";
++  useEffect(() => {
++    if (!chaveVerba || !escopoId) return;
++    let vivo = true;
++    fetchJson<{ data: { metrica_ancora: "faturamento" | "contratos"; meta_valor: number | string; ticket_medio_alvo: number | string | null }[] }>(
++      `/api/perf/calculadora/meta?cliente_id=${escopoId}&competencia=${mes.slice(0, 7)}`,
++    )
++      .then((r) => {
++        const m = r.data[0];
++        const meta = m ? { metrica_ancora: m.metrica_ancora, meta_valor: Number(m.meta_valor), ticket_medio_alvo: m.ticket_medio_alvo === null ? null : Number(m.ticket_medio_alvo) } : null;
++        if (vivo) setMetaMes({ chave: chaveVerba, meta, falhou: false });
++      })
++      .catch(() => vivo && setMetaMes({ chave: chaveVerba, meta: null, falhou: true }));
++    return () => {
++      vivo = false;
++    };
++  }, [chaveVerba, escopoId, mes]);
++
++  const verba = useMemo(() => {
++    if (!buscaVerba || !tese || tese.chave !== chaveTese || !tese.dados || !metaMes || metaMes.chave !== chaveVerba || metaMes.falhou || !escopoId) return null;
++    const principal = tesePrincipal(tese.dados, escopoId);
++    const ticket_tese = principal && principal.contratos > 0 && principal.gerado !== null ? principal.gerado / principal.contratos : null;
++    return recomendarVerba({ meta: metaMes.meta, tese: principal, ticket_tese });
++  }, [buscaVerba, tese, chaveTese, metaMes, chaveVerba, escopoId]);
++
+   const sugestaoTese = useMemo(() => {
+     if (!buscaTese || !tese || tese.chave !== chaveTese || !tese.dados || !escopoId) return null;
+     const principal = tesePrincipal(tese.dados, escopoId);
+@@ -238,6 +267,30 @@ export function AssistenteMetas({ escopo, escopoId, grade, mesesSelecionaveis, o
+                 )}
+               </div>
+             )}
++            {buscaVerba && (
++              <div className="space-y-space-1" data-testid="verba-recomendada">
++                {((tese?.chave === chaveTese && tese.falhou) || (metaMes?.chave === chaveVerba && metaMes.falhou)) && (
++                  <p className="text-fs-label text-muted-foreground">verba recomendada indisponível agora</p>
++                )}
++                {!verba && !(tese?.chave === chaveTese && tese.falhou) && !(metaMes?.chave === chaveVerba && metaMes.falhou) && (
++                  <p className="text-fs-label text-muted-foreground">Buscando a verba recomendada...</p>
++                )}
++                {verba && verba.valor === null && <p className="text-fs-label text-muted-foreground">s/ dado: sem verba recomendada ({verba.motivo})</p>}
++                {verba && verba.valor !== null && (
++                  <>
++                    <div className="flex flex-wrap items-center gap-space-2">
++                      <p className="text-fs-label">
++                        <span className="font-medium">Verba recomendada pela tese:</span> <span className="font-mono">{formatarValor("investimento", verba.valor)}</span>
++                      </p>
++                      <Button type="button" variant="outline" size="sm" disabled={salvando} onClick={() => setValorTexto(String(verba.valor))}>
++                        Usar sugestão
++                      </Button>
++                    </div>
++                    <p className="font-mono text-xs text-muted-foreground">{verba.conta}</p>
++                  </>
++                )}
++              </div>
++            )}
+             <p className="text-fs-label text-muted-foreground">
+               {sugestao !== null
+                 ? `Sugestão calculada a partir do realizado de ${labelMes(mesAnterior(mes))}: ${formatarValor(metrica, sugestao)}`
+diff --git a/src/lib/perf/nicho-tese/verba-recomendada.ts b/src/lib/perf/nicho-tese/verba-recomendada.ts
+new file mode 100644
+index 0000000..8bba563
+--- /dev/null
++++ b/src/lib/perf/nicho-tese/verba-recomendada.ts
+@@ -0,0 +1,53 @@
++/**
++ * Verba recomendada pela tese (ticket 938). Regra pura: sem banco, sem fetch.
++ * A verba é EXIBIDA, nunca gravada: só o clique em salvar do gestor grava.
++ * Dinheiro aqui é do CLIENTE (verba de anúncio), não da agência.
++ */
++import type { LinhaTese } from "./agregar";
++
++export interface MetaMensalEntrada {
++  metrica_ancora: "faturamento" | "contratos";
++  meta_valor: number;
++  ticket_medio_alvo: number | null;
++}
++
++export interface EntradaVerba {
++  meta: MetaMensalEntrada | null;
++  tese: LinhaTese | null;
++  /** Ticket realizado da tese (faturamento gerado / contratos); usado só sem ticket na meta. */
++  ticket_tese: number | null;
++}
++
++export interface VerbaRecomendada {
++  valor: number | null;
++  contratos: number | null;
++  cac_tese: number | null;
++  conta: string;
++  motivo: string | null;
++}
++
++// \s casa o espaço não separável que o Intl põe depois do R$.
++const brl = (n: number): string => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }).replace(/\s/g, " ");
++
++export function recomendarVerba({ meta, tese, ticket_tese }: EntradaVerba): VerbaRecomendada {
++  const vazio = { valor: null, contratos: null, cac_tese: null, conta: "" } as const;
++  if (!meta || !(meta.meta_valor > 0)) return { ...vazio, motivo: "cliente sem meta de contratos ou faturamento no mes" };
++  if (!tese) return { ...vazio, motivo: "cliente sem campanha com tese" };
++  if (tese.sem_amostra) return { ...vazio, motivo: `sem amostra na tese: ${tese.clientes} clientes` };
++
++  const cac = tese.cac.valor;
++  if (cac === null || !(cac > 0)) return { ...vazio, motivo: "sem base: a tese nao tem venda registrada no periodo" };
++
++  let contratos: number;
++  if (meta.metrica_ancora === "contratos") {
++    contratos = meta.meta_valor;
++  } else {
++    const ticket = meta.ticket_medio_alvo ?? ticket_tese;
++    if (ticket === null || !(ticket > 0)) return { ...vazio, motivo: "sem ticket para converter faturamento em contratos" };
++    contratos = Math.ceil(meta.meta_valor / ticket);
++  }
++
++  const valor = Math.round(contratos * cac * 100) / 100;
++  const conta = `${brl(valor)} = ${contratos} contratos x CAC mediano ${brl(cac)} de ${tese.nome} (${tese.clientes} clientes)`;
++  return { valor, contratos, cac_tese: cac, conta, motivo: null };
++}
+diff --git a/test/perf-verba-recomendada-tese.test.ts b/test/perf-verba-recomendada-tese.test.ts
+new file mode 100644
+index 0000000..deb3e16
+--- /dev/null
++++ b/test/perf-verba-recomendada-tese.test.ts
+@@ -0,0 +1,89 @@
++/**
++ * Ticket 938 — verba recomendada pela tese: contratos x CAC mediano da tese.
++ * Função pura; a tela é conferida por leitura da fonte (sem jsdom no projeto).
++ */
++import { describe, it, expect } from "vitest";
++import { readFileSync } from "node:fs";
++import { join } from "node:path";
++import { recomendarVerba } from "@/lib/perf/nicho-tese/verba-recomendada";
++import type { LinhaTese } from "@/lib/perf/nicho-tese/agregar";
++
++function tese(parcial: { cac: number | null; clientes?: number; sem_amostra?: boolean }): LinhaTese {
++  return {
++    tese_id: "00000000-0000-4000-8000-000000000001",
++    nicho_id: "00000000-0000-4000-8000-000000000002",
++    nome: "Previdenciario",
++    clientes: parcial.clientes ?? 6,
++    sem_amostra: parcial.sem_amostra ?? false,
++    cac: { valor: parcial.cac, min: null, max: null, n: 6, motivo: null },
++  } as unknown as LinhaTese;
++}
++
++const contratos = (n: number) => ({ metrica_ancora: "contratos" as const, meta_valor: n, ticket_medio_alvo: null });
++const faturamento = (v: number, ticket: number | null) => ({ metrica_ancora: "faturamento" as const, meta_valor: v, ticket_medio_alvo: ticket });
++
++describe("recomendarVerba (938)", () => {
++  it("meta em contratos: valor = contratos x CAC mediano, com a conta em texto", () => {
++    const r = recomendarVerba({ meta: contratos(10), tese: tese({ cac: 1200 }), ticket_tese: null });
++    expect(r.valor).toBe(12000);
++    expect(r.contratos).toBe(10);
++    expect(r.cac_tese).toBe(1200);
++    expect(r.motivo).toBeNull();
++    expect(r.conta).toMatch(/^R\$ 12\.000,00 = 10 contratos x CAC mediano R\$ 1\.200,00 de Previdenciario \(6 clientes\)$/);
++  });
++
++  it("faturamento: arredonda para cima faturamento / ticket da meta", () => {
++    const r = recomendarVerba({ meta: faturamento(100000, 30000), tese: tese({ cac: 1000 }), ticket_tese: 5000 });
++    expect(r.contratos).toBe(4);
++    expect(r.valor).toBe(4000);
++  });
++
++  it("faturamento sem ticket na meta usa o ticket da tese", () => {
++    const r = recomendarVerba({ meta: faturamento(100000, null), tese: tese({ cac: 1000 }), ticket_tese: 25000 });
++    expect(r.contratos).toBe(4);
++    expect(r.valor).toBe(4000);
++  });
++
++  it("valor arredondado a 2 casas", () => {
++    const r = recomendarVerba({ meta: contratos(3), tese: tese({ cac: 333.333 }), ticket_tese: null });
++    expect(r.valor).toBe(1000);
++  });
++
++  it("motivo: sem ticket", () => {
++    const r = recomendarVerba({ meta: faturamento(100000, null), tese: tese({ cac: 1000 }), ticket_tese: null });
++    expect(r.valor).toBeNull();
++    expect(r.motivo).toBe("sem ticket para converter faturamento em contratos");
++  });
++
++  it("motivo: sem meta", () => {
++    const r = recomendarVerba({ meta: null, tese: tese({ cac: 1000 }), ticket_tese: null });
++    expect(r.valor).toBeNull();
++    expect(r.motivo).toBe("cliente sem meta de contratos ou faturamento no mes");
++  });
++
++  it("motivo: tese sem amostra", () => {
++    const r = recomendarVerba({ meta: contratos(5), tese: tese({ cac: 1000, clientes: 2, sem_amostra: true }), ticket_tese: null });
++    expect(r.valor).toBeNull();
++    expect(r.motivo).toBe("sem amostra na tese: 2 clientes");
++  });
++
++  it("motivo: tese sem venda registrada vira 'sem base', nunca zero", () => {
++    const r = recomendarVerba({ meta: contratos(5), tese: tese({ cac: null }), ticket_tese: null });
++    expect(r.valor).toBeNull();
++    expect(r.motivo).toBe("sem base: a tese nao tem venda registrada no periodo");
++  });
++});
++
++describe("assistente-metas.tsx mostra a verba recomendada (938)", () => {
++  const src = readFileSync(join("src", "app", "dashboard", "performance", "assistente-metas.tsx"), "utf8");
++
++  it("texto visivel e busca da meta do mes na rota da calculadora", () => {
++    expect(src).toContain("Verba recomendada pela tese");
++    expect(src).toContain("/api/perf/calculadora/meta?cliente_id=");
++    expect(src).toContain("verba recomendada indisponível agora");
++  });
++
++  it("o botao so preenche o campo: nenhuma gravacao nasce da verba", () => {
++    expect(src).toMatch(/setValorTexto\(String\(verba\.valor\)\)/);
++  });
++});

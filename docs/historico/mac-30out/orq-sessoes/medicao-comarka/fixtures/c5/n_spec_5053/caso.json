@@ -1,0 +1,29 @@
+{
+ "ticket": {
+  "id": "5053",
+  "loop": "apolo",
+  "done_em": "2026-10-15 13:28",
+  "prim": "sim",
+  "sha_aprovado": "c9f382ecb11126c6ca382559efd13a7519aea0ed",
+  "merge": "a9702859b9248a9a3b0a17ca474cc49cfd637376"
+ },
+ "commit": {
+  "sha": "e15c1e28472c62b3fc02670b98f0e73f0e39a520",
+  "dt": "2026-10-16T14:33:00-03:00",
+  "assunto": "fila(apolo): conserto de spec de 5025, 5042 e 5055 (bloqueados pelo teste, nao pelo codigo) e criterio de 5056 a 5058",
+  "arquivos": [
+   "docs/fila/apolo/5025-sensor-promessa-vencida.md",
+   "docs/fila/apolo/5042-apolo-raw-evolution-mensagens-sql.md",
+   "docs/fila/apolo/5055-apolo-fato-cliente-dia-sql.md",
+   "docs/fila/apolo/5056-apolo-fn-cpl-sql.md",
+   "docs/fila/apolo/5057-apolo-fn-cpmql-sql.md",
+   "docs/fila/apolo/5058-apolo-fn-cac-sql.md",
+   "docs/plano/apolo/aprendizados.md",
+   "test/inteligencia/escritor-forma.test.ts"
+  ]
+ },
+ "esperado": {
+  "tipo": "",
+  "forca": ""
+ }
+}

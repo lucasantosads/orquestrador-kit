@@ -1,0 +1,6 @@
+--- permitido.txt
+OK
+--- proibido.txt
+original
+--- git status
+ M permitido.txt

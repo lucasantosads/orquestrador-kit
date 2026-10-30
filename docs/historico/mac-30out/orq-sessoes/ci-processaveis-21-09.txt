@@ -1,0 +1,60 @@
+== onde estao os tickets
+docs/fila/243-rota-e-tela-publica-de-aprovacao.md
+== pendentes
+######## docs/fila/244-fila-interna-de-aprovacao.md
+{"id":"244","bloco":"B3","frente":"B3-F1","slug":"fila-interna-de-aprovacao","origem":"humano","pathspec_allowlist":["apps/web/src/server/aprovacoes-read.ts","apps/web/src/app/aprovacoes/page.tsx","apps/web/test/aprovacoes-fila.test.tsx"],"cria_novo":["apps/web/src/server/aprovacoes-read.ts","apps/web/src/app/aprovacoes/page.tsx","apps/web/test/aprovacoes-fila.test.tsx"],"dependencias":["241b","242"],"diff_estimado":380,"risco":"","status":"pendente","notas_status":"","hash_candidato":"","sinal_hash":"","gate_ok":""}
+######## docs/fila/232-nome-do-nicho-na-listagem-e-na-edicao.md
+{"id":"232","bloco":"B2","frente":"B2-F6","slug":"nome-do-nicho-na-listagem-e-na-edicao","origem":"humano","pathspec_allowlist":["apps/web/src/lib/nicho-exibicao.ts","apps/web/src/app/personas/page.tsx","apps/web/src/app/personas/PersonaForm.tsx","apps/web/test/personas-nicho-nome.test.tsx"],"cria_novo":["apps/web/src/lib/nicho-exibicao.ts","apps/web/test/personas-nicho-nome.test.tsx"],"dependencias":["230b","231"],"diff_estimado":200,"risco":"","status":"pendente","notas_status":"","hash_candidato":"","sinal_hash":"","gate_ok":""}
+######## docs/fila/243-rota-e-tela-publica-de-aprovacao.md
+{"id":"243","bloco":"B3","frente":"B3-F1","slug":"rota-e-tela-publica-de-aprovacao","origem":"humano","pathspec_allowlist":["apps/web/src/lib/auth/routes.ts","apps/web/src/app/aprovar/[token]/page.tsx","apps/web/test/auth-validation.test.ts","apps/web/test/aprovar-publico.test.tsx"],"cria_novo":["apps/web/src/app/aprovar/[token]/page.tsx","apps/web/test/aprovar-publico.test.tsx"],"dependencias":["241b","242"],"diff_estimado":380,"risco":"alto","status":"pendente","notas_status":"","hash_candidato":"","sinal_hash":"","gate_ok":""}
+######## docs/fila/236-chips-de-sugestao-no-formulario-de-persona.md
+{"id":"236","bloco":"B2","frente":"B2-F7","slug":"chips-de-sugestao-no-formulario-de-persona","origem":"humano","pathspec_allowlist":["apps/web/src/components/fields.tsx","apps/web/src/app/personas/PersonaForm.tsx","apps/web/test/personas-chips-sugestao.test.tsx"],"cria_novo":["apps/web/test/personas-chips-sugestao.test.tsx"],"dependencias":["231","232","235"],"diff_estimado":330,"risco":"","status":"pendente","notas_status":"","hash_candidato":"","sinal_hash":"","gate_ok":""}
+== liberacoes cru
+{
+  "$schema_versao": 2,
+  "tokens": [
+    "humano:migration-0029",
+    {
+      "token": "humano:custo-sinal-real",
+      "liberado_em": "desconhecido",
+      "por": "desconhecido",
+      "origem": "v1:tokens"
+    },
+    {
+      "token": "humano:migration-0025",
+      "liberado_em": "desconhecido",
+      "por": "desconhecido",
+      "origem": "v1:tokens"
+    },
+    {
+      "token": "humano:migration-0026",
+      "liberado_em": "desconhecido",
+      "por": "desconhecido",
+      "origem": "v1:tokens"
+    },
+    {
+      "token": "humano:migration-0027",
+      "liberado_em": "desconhecido",
+      "por": "desconhecido",
+      "origem": "v1:tokens"
+    },
+    {
+      "token": "humano:migration-0028",
+      "liberado_em": "desconhecido",
+      "por": "desconhecido",
+      "origem": "v1:tokens"
+    },
+    {
+      "token": "humano:migration-0030",
+      "liberado_em": "desconhecido",
+      "por": "desconhecido",
+      "origem": "v1:tokens"
+    },
+    {
+      "token": "humano:tk-201-arquetipos",
+      "liberado_em": "desconhecido",
+      "por": "desconhecido",
+      "origem": "v1:tokens"
+    }
+  ]
+}

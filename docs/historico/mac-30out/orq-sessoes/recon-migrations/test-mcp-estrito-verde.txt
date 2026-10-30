@@ -1,0 +1,13 @@
+== A. executor.sh: chamada do executor ==
+  ✓ executor: linha montada tem --strict-mcp-config
+  ✓ executor: linha montada tem --mcp-config <tmp>/scripts/orquestrador/mcp-vazio.json
+  ✓ executor: caminho do --mcp-config é absoluto
+  ✓ executor: o --mcp-config é um JSON sem nenhum servidor
+== B. avaliador.sh: chamada do juiz ==
+  ✓ juiz rodou e reprovou pelo stub (rc=10)
+  ✓ juiz: linha montada tem --strict-mcp-config
+  ✓ juiz: linha montada tem --mcp-config <tmp>/scripts/orquestrador/mcp-vazio.json
+  ✓ juiz: caminho do --mcp-config é absoluto
+  ✓ juiz: o --mcp-config é um JSON sem nenhum servidor
+
+== resultado: 9 ok, 0 falhas ==

@@ -1,0 +1,88 @@
+== 0. pendentes_razoes: a régua do OCIOSO, com o processável dito 'pronto' ==
+  ok    531 pronto
+  ok    601 espera 600
+  ok    ocioso_razoes segue com rc 1 quando há processável
+
+== 1. o estado sai do painel, lido só do contrato ==
+  ok    painel --estado sai 0
+  ok    3 repos, na ordem do repos.json
+
+== 2. Precisa de você: tokens ordenados por quantos pendentes destravam ==
+  ok    1º item: humano:cred-evo
+  ok    cred-evo destrava 3 (600, e 601 e 602 atrás dele)
+  ok    tickets destravados por cred-evo
+  ok    2º item: humano:grupo-wa destrava 1
+  ok    o item diz de qual repo é
+
+== 3. estado em linguagem direta, com tempo ==
+  ok    alfa: tipo
+  ok    alfa: frase
+  ok    alfa: tentativa e último resultado
+  ok    beta: tipo
+  ok    beta: frase
+  ok    beta: o motivo da pausa
+  ok    gama: tipo
+  ok    gama: frase
+  ok    gama: por que não pega
+  ok    cada estado tem rótulo em texto, não só cor
+
+== 4. o dia: aprovados contra reprovas (ontem não conta) ==
+  ok    alfa: 2 aprovados, 2 reprovas
+  ok    alfa: contagem da fila
+
+== 5. próximos: os 3 primeiros da fila, com título ==
+  ok    ids na ordem do loop
+  ok    com título
+  ok    e mais 1
+
+== 6. bloqueados: categoria de motivo e sub, nunca da prosa ==
+  ok    700 (repeticao sub=gate_testes) é teste
+  ok    701 (criterio_qualidade, último sub=juiz) é juiz, apesar de 'fora_do_pathspec' na nota
+  ok    702 (bloqueado sem BLOQUEADO na trilha) é decisão sua
+  ok    243 (adiamentos) é ambiente
+  ok    primeira linha do motivo
+  ok    o resto fica para o clique
+  ok    4 bloqueados nos 3 repos, cada um com o repo
+
+== 7. nenhum ramo por nome de repo ==
+  ok    o mesmo repo com outro nome dá o mesmo estado
+  ok    orq-painel.py não cita nome de repo
+  ok    orq-painel.py não lê meta.json nem log livre
+
+== 8. repos.json ausente: a tela diz o que falta, não quebra ==
+  ok    repos_erro nomeia o arquivo
+
+== 9. a página: atualiza a cada 15 s e tem as seções ==
+  ok    página contém 'Precisa de você'
+  ok    página contém 'Bloqueados'
+  ok    página contém '/api/estado'
+  ok    página contém '15000'
+
+== 10. razões que não se apuram: a faixa diz quem ficou fora da conta (K12-G) ==
+  ok    os tokens do alfa continuam na faixa
+  ok    a faixa diz qual repo ficou fora da conta
+  ok    e por quê
+  ok    timeout: nenhum token apurado
+  ok    timeout: os dois repos fora da conta
+  ok    o erro diz o tempo e quantos pendentes
+  ok    o cartão mostra o erro
+  ok    sem razões, prontos é desconhecido, não zero
+  ok    gama ocioso sem razões: o cartão não diz 'sem ticket para pegar'
+  ok    alfa segue rodando: isso vem do STATUS, não das razões
+  ok    a página tem a frase de quem ficou fora
+
+== 11. motivo longo: primeira frase ou 160 caracteres, o resto no clique (K12-H) ==
+  ok    243: a primeira frase
+  ok    243: o texto inteiro fica para o clique
+  ok    244 sem ponto: cortado em até 160 caracteres mais '…' (160)
+  ok    o corte avisa com '…'
+  ok    o corte cai entre palavras
+  ok    700 (motivo curto em duas linhas) segue igual
+  ok    a página abre o texto inteiro no clique
+
+== launchctl: só o stub, nunca o do sistema (K12-E) ==
+  ok    nenhuma chamada ao launchctl do PATH
+  ok    o stub de launchctl respondeu 8 chamada(s)
+
+TODOS OS CHECKS PASSARAM
+rc=0

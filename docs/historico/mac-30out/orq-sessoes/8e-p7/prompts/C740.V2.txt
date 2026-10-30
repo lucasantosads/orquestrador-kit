@@ -1,0 +1,587 @@
+Você é o JUIZ de uma esteira automatizada. Julgue SOMENTE pelo material abaixo:
+o diff cru da tentativa, a saída dos gates mecânicos e os critérios do ticket.
+Você NÃO recebe o prompt do executor nem resumo nenhum do agente, de propósito:
+o que o agente diz que fez nunca é evidência. Se algo não está no diff, não aconteceu.
+
+VOCÊ NÃO TEM FERRAMENTAS. Não leia arquivo, não rode comando, não abra o
+repositório: a chamada está sem ferramenta nenhuma e qualquer tentativa só
+gasta turno. Se o material abaixo não basta para aprovar, REPROVE dizendo o
+que faltou — nunca aprove no benefício da dúvida.
+
+Os gates mecânicos JÁ PASSARAM (enforcement, typecheck, testes, critérios, build).
+Você não os reexecuta: o seu trabalho é o que eles não conseguem ver.
+
+O QUE VOCÊ COBRA, item a item:
+
+1. INTEGRAÇÃO, não existência. Componente/função/rota criada mas nunca importada,
+   montada ou chamada passa em "arquivo existe" e falha em produção. Siga a
+   variável ou o símbolo até o ponto de uso real; um resultado calculado e
+   descartado não vale.
+2. O TESTE EXERCITA O COMPORTAMENTO DO OBJETIVO. Teste tautológico
+   (expect(true), expect(x).toBeDefined() sobre algo trivialmente definido,
+   asserção que passaria com o código antigo) NÃO prova nada. Pergunte-se: este
+   teste ficaria VERMELHO se a mudança fosse revertida? Se não, reprove.
+3. CRITÉRIO DE AUSÊNCIA EXIGE CONTROLE POSITIVO. Um teste que só afirma que algo
+   NÃO aparece passa igual quando o componente não renderiza nada. Exija, no
+   MESMO render/execução, ao menos uma asserção POSITIVA de que a coisa certa
+   apareceu. Reprove ausência provada no vazio.
+
+4. ANTI-AFROUXAMENTO (a allowlist deste ticket inclui arquivo de teste).
+   No diff dos arquivos de teste, REPROVE se encontrar qualquer um destes:
+   - asserção removida (expect apagado) sem que o comportamento tenha deixado de existir;
+   - toBe/toEqual trocado por toBeDefined/toBeTruthy/objectContaining mais frouxo;
+   - .skip, .todo, .only, teste comentado ou arquivo de teste deletado;
+   - valor esperado alterado SEM comentário dizendo por que a regra nova o muda.
+   Valor RECALCULADO sob a regra nova, com o porquê em comentário, é o único
+   caminho aceito. Renomear símbolo para satisfazer contagem também é afrouxar.
+
+REVIEW.md DO REPO (regras de revisão deste repositório; valem junto com os itens acima):
+# REVIEW — o que o juiz cobra neste repositório (comarka-operacional)
+
+Lido pelo juiz do estado da BASE da tentativa; o loop nunca edita este arquivo.
+Cada seção é uma falha que já passou por aqui. Reprove o diff que tiver a cara dela,
+dizendo arquivo e linha. Na dúvida, reprove e diga o que falta.
+
+## 1. Config apontando para produção
+Cara no diff: teste ou script que lê `.env.local` ou monta cliente do Supabase com a URL ou a
+service role reais; rota GET que grava; escrita sem trava de ambiente.
+Reprove se: o diff conecta no projeto real a partir de teste ou script, ou grava dentro de GET.
+Fonte: dashboard-comercial 0f24c418 (teste v128 lia `.env.local` e rodou contra produção; foram
+18 vezes, 08e6bb67) e 6213cdc8 (GET de /api/financeiro/entradas rodando no Mac contra produção
+gravou ltv_meses +1 em 12 clientes). Aqui: PLAYBOOK, "Secrets só humano". Sem incidente próprio.
+
+## 2. Teste que não testa a regra
+Cara no diff: o servidor do Supabase devolve no máximo 1000 linhas por chamada, e o código pede
+`.limit(N)` com N maior que 1000 (ou nenhum limite) sem paginar com `.range`; o teste usa dublê
+que devolve tudo e ignora `.limit`/`.range` (`for (const m of [... "limit" ...]) cadeia[m] =
+() => cadeia`), então nunca vê o corte. Também: teste só de ausência; teste que passaria com o
+código antigo.
+Reprove se: a regra do objetivo depende de teto, página, fuso ou tipo de id e o teste usa dublê
+que não reproduz esse limite; ou se há `.limit` acima de 1000 lendo tabela que cresce.
+Fonte: 80a212fdb e 29afed53d (vácuo, eventos, promessas e fechar liam `.limit(5000)`; o servidor
+cortou em 1000 e as mensagens mais recentes sumiram; 715, 734, 740, 741a e 861 foram aprovados
+com mock que ignorava limit); kit juiz.ts:7-11 (ticket 204, ausência provada no vazio).
+
+## 3. Doc ou comentário que mente
+Cara no diff: comentário, PLAYBOOK ou doc com número, fonte ou comportamento que o diff não
+prova; campo marcado como legado lido como fonte da verdade.
+Reprove se: o diff afirma fato (contagem, "nenhuma tela grava", "a fonte é X") sem a prova no
+próprio diff ou no material; ou lê campo que o repo trata como legado.
+Fonte: dashboard-comercial 08e6bb67 (PLAYBOOK e vitest.config diziam 3 execuções contra produção;
+eram 18). Aqui: 5912a0dfd (924c lia `whatsapp_group_url`, legado: 25 clientes "Sem link do
+grupo") e f16164c25 (a ficha lia `clientes_extra.meta_account_id`, que nenhuma tela grava).
+
+## 4. Escrita em tabela de outro dono
+Cara no diff: `.from("<tabela>").insert/update/upsert/delete`, RPC ou migration que escreve em
+tabela de `c0_intocavel` (docs/fila/000-config.json: `clientes_receita`, `leads_crm`, ...) ou
+em `clientes_crm_config` (o dashboard comercial lê e grava).
+Reprove se: o diff ADICIONA escrita (não comentário, não linha removida) em tabela de outro dono.
+Fonte: PLAYBOOK, "Lição (04/09)" (ticket 184: o OS escrevia em `clientes_receita`); 262b71c30 e
+f16164c25 (consertos que deixam `clientes_crm_config` intocada porque o dono é o dashboard).
+
+## 5. Consulta em série por item
+Cara no diff: `await` de consulta ao banco ou à API dentro de `for`/`map` por cliente, gestor,
+contato ou oportunidade; leituras independentes uma depois da outra em vez de `.in(...)` em lote
+ou `Promise.all`.
+Reprove se: o número de consultas cresce com o número de itens e o objetivo não exige isso.
+Fonte: a2cd69ec8 (Início lento: 2 consultas em série por cliente; equipe com uma carga por
+gestor; 34 → 108 consultas de 3 para 40 clientes), da1f4f1ce (backfill a ~2 s por item, 15-20
+idas sequenciais ao banco por oportunidade) e 80a212fdb (contatos lidos cliente a cliente).
+
+## 6. Data comparada sem o dia de São Paulo
+Cara no diff: data comparada como texto ou com `new Date(...)` sem o fuso de São Paulo
+(`d >= from && d < ate` sobre ISO em UTC, `getMonth()` de DATE lida como meia-noite UTC).
+Reprove se: o corte de dia, semana ou mês depende do horário da máquina ou do UTC.
+Fonte: 10c88edb9 (revisão pós-release de 12/10, "funil no dia de SP"; ticket 953 comparava
+`d >= periodo.from && d < aposTo`) e dashboard-comercial 6213cdc8 (`getMonth()` em BRT devolveu
+o mês anterior).
+
+RESPONDA SÓ COM ESTE JSON, sem cerca de código, sem texto antes ou depois:
+{"aprovado": true|false, "motivo": "<=2 frases, concreto, citando arquivo e linha>",
+ "criterios_falhos": ["descrição exata do critério que você reprova", ...]}
+
+criterios_falhos: use a DESCRIÇÃO do critério, copiada como está na lista acima.
+Vazio quando aprovado. Na dúvida entre aprovar e reprovar, REPROVE e diga o que falta.
+
+TICKET 740
+Objetivo: ORCAMENTO DE DIFF: teto de 480 linhas (~170 em src/lib/promessas/fechar.ts NOVO, ~70 em src/lib/avisos/promessa.ts NOVO, ~15 em src/lib/jobs/operacao-inicio.ts, ~220 no teste NOVO test/promessa-fechar.test.ts). Se passar do teto, pare e reporte. FONTE: docs/planos/plano-vacuo-promessa-02out.md (plano aprovado em 02/10; as decisoes de 02/10 escritas la valem sobre o plano). Piloto so AQUINO ADV. PASSO 1: leia src/lib/promessas/detectar.ts (861), src/lib/eventos/registrar.ts (714: TIPOS_EVENTO tem promessa_cumprida e promessa_vencida), src/lib/avisos/gravar.ts (702: categoria 'promessa'), src/lib/clientes/quem-cuida.ts, perf_promessas com as colunas do 730 (fechada_por, entrega_wpp_message_id) e src/lib/jobs/operacao-inicio.ts. FAZER: (1) NOVO src/lib/promessas/fechar.ts: export async function fecharPromessas(db, agoraISO, teto = 40): para cada promessa 'aberta': (a) tarefa_id ligada com status 'concluido' = cumprida, fechada_por 'tarefa'; (b) senao, mensagens da EQUIPE no grupo depois da promessa vao a chamarProvider({ funcao: 'promessas', ... }) (no maximo 'teto' chamadas) perguntando se alguma entrega a promessa; saida zod { entregue, wpp_message_id, evidencia }; evidencia literal conferida; entregue = cumprida, fechada_por 'entrega', entrega_wpp_message_id; (c) senao, prazo < agora = vencida. Update so com .eq('status','aberta') (transicao idempotente), fechada_em = agora; evento por registrarEvento: 'promessa_cumprida' chave 'promessa:<id>:cumprida' ou 'promessa_vencida' chave 'promessa:<id>:vencida', colaborador = autor_id, cliente = cliente_id. (2) NOVO src/lib/avisos/promessa.ts: export async function avisarPromessas(db, agoraISO): aberta que vence hoje (America/Sao_Paulo) = gravarAviso categoria 'promessa', chave 'promessa:<id>:hoje'; vencida = chave 'promessa:<id>:vencida'; destinatarios = responsaveisDoCliente; link '/dashboard/clientes/<cliente_id>'. (3) src/lib/jobs/operacao-inicio.ts: etapas 'promessas_fechar' e 'avisos_promessa' depois de 'promessas_detectar'. (4) NOVO test/promessa-fechar.test.ts (mocks, relogio fixo): entrega posterior com evidencia fecha como cumprida com fechada_por 'entrega'; tarefa concluida fecha com 'tarefa'; prazo vencido sem nenhum dos dois vira vencida; rodar duas vezes nao gera segundo evento nem segundo aviso (mesmas chaves); evidencia falsa nao fecha; promessa que vence hoje e vencida geram chaves de aviso distintas. FORA DE ESCOPO: Cumprida/Descartar manual (742), backtest (741), src/lib/promessas/detectar.ts (nao muda). REGRAS: zona C0 (clientes_receita, leads_crm, leads_crm_historico, ads_metadata, ads_performance, fn_mql_sql_by_month, prefixos trafego_* e vw_*) e leitura pura: nada de escrita, DDL, grant, RLS ou trigger nelas; zero migration e zero .sql (so o 730 escreve .sql, e nao aplica); dono do cliente SO por carregarQuemCuida/responsaveisDoCliente/cuidaDoCliente (src/lib/clientes/quem-cuida.ts), nunca clientes.gestor_id nem o analista do espelho; equipe no grupo SO por ehDaEquipe (src/lib/whatsapp/equipe.ts), nunca a marca is_equipe gravada; cliente ativo SO por isClienteAtivo (src/lib/clientes/ativo.ts); papel SO por papelDe (src/lib/nav/papel.ts), nunca is_gestor_trafego nem is_head_operacional como papel; NUNCA rode UPDATE em employees.is_gestor_trafego; produtividade nasce de evento registrado, nunca de cronometro, sessao de tempo ou apontamento manual; dado ausente aparece como 'sem base' com o motivo, nunca zero e nunca verde; nenhum jargao de banco em texto de tela (nome de tabela, view, coluna ou operador); nenhum travessao (U+2014) em texto de tela nem em string de copy (guarda travessao-mudo); numeros de tela em Geist Mono (classe font-mono ja usada no repo); PILOTO DO MONITORAMENTO DE GRUPO (decisao do Lucas, 28/09): so o AQUINO ADV esta vinculado; NUNCA escreva em wpp_grupo (nada de insert/update/upsert), nunca crie vinculo grupo -> cliente e nunca preencha cs_wpp_mensagem.cliente_id de grupo por outro caminho que nao o vinculo ja existente em wpp_grupo; autor de mensagem de grupo SO por classificarAutor (src/lib/whatsapp/classificar-autor.ts, ticket 731): desconhecido nunca vira cliente, nao abre nem fecha vacuo, nao conta como pedido e nao pontua; Set e Map so com Array.from (tsc sem downlevelIteration); nenhum .json() literal novo em src (cliente: fetchJson de @/lib/fetch-json; rota: lerCorpoJson de @/lib/fetch-json, nunca req.json()); getSession e server-only, nunca em arquivo 'use client'; supabase, fetch e getSession sempre mockados nos testes (vi.mock), nunca banco real; fixture de uuid RFC-4122 (00000000-0000-4000-8000-000000000000 ou crypto.randomUUID()); testes sem JSX (React.createElement + renderToStaticMarkup ou leitura de fonte com readFileSync; o projeto nao tem jsdom nem @testing-library); teste ancora em texto visivel ou data-testid, nunca em classe de estilo; nunca toEqual numa lista inteira (afirme itens com toContain/some). TESTES EXISTENTES da allowlist: se a mudanca quebrar uma assercao, RECALCULE o valor sob a regra nova com comentario acima citando o ticket e de onde veio o numero; PROIBIDO remover assercao, trocar toBe/toEqual/toMatch por toBeDefined/toBeTruthy, usar .skip/.only/.todo, apagar it( ou o arquivo. GUARDAS GLOBAIS (fora da allowlist, nao edite): test/fetch-json-teto.test.ts, test/consistencia-contagens.test.ts, test/bloco-vazio-linha.test.ts, test/abas-montadas.test.ts, test/cartao-topo-perfil.test.tsx, test/travessao-mudo.test.ts, test/c0-guard.test.ts. Se um teste FORA da allowlist quebrar, PARE e descreva. Motor do orquestrador (scripts/orquestrador/, docs/orquestrador/) intocado.
+
+Allowlist do ticket:
+  - src/lib/promessas/fechar.ts
+  - src/lib/avisos/promessa.ts
+  - src/lib/jobs/operacao-inicio.ts
+  - test/promessa-fechar.test.ts
+  - test/eventos-resposta-grupo.test.ts
+  - test/avisos-vacuo.test.ts
+  - test/promessa-par.test.ts
+
+Critérios de aceite:
+  - [guarda · já verificado por comando] tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)
+      cmd: ( [ "$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\.next/')" = 3 ] ) && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] nenhum .sql novo (zero DDL)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff --name-only "$b" HEAD | grep -c '[.]sql$'); [ "$n" = 0 ] && echo SEM_SQL || echo SQL_$n · espera: SEM_SQL
+  - [guarda · já verificado por comando] testes existentes da allowlist verdes (mock completado ou valor recalculado, nunca afrouxado)
+      cmd: fs=""; for f in 'test/eventos-resposta-grupo.test.ts' 'test/avisos-vacuo.test.ts' 'test/promessa-par.test.ts'; do [ -f "$f" ] && fs="$fs $f"; done; [ -z "$fs" ] && echo VERDE || { npx vitest run $fs >/dev/null 2>&1 && echo VERDE || echo VERMELHO; } · espera: VERDE
+  - [guarda · já verificado por comando] anti-afrouxamento: nenhum teste existente da allowlist perdeu it(/expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (contra o merge-base com staging-auto)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; r=NAO_AFROUXOU; for f in 'test/eventos-resposta-grupo.test.ts' 'test/avisos-vacuo.test.ts' 'test/promessa-par.test.ts'; do [ -f "$f" ] || { git cat-file -e "$b:$f" 2>/dev/null && r=APAGOU_$f; continue; }; for p in 'expect(' 'it('; do a=$(git show "$b:$f" 2>/dev/null | grep -cF "$p"); n=$(grep -cF "$p" "$f"); [ "${n:-0}" -ge "${a:-0}" ] || r=CAIU_$f; done; s0=$(git show "$b:$f" 2>/dev/null | grep -cE '\.(skip|only|todo)\('); s1=$(grep -cE '\.(skip|only|todo)\(' "$f"); [ "${s1:-0}" -le "${s0:-0}" ] || r=SKIP_NOVO_$f; d0=$(git show "$b:$f" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' "$f"); [ "${d1:-0}" -le "${d0:-0}" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r · espera: NAO_AFROUXOU
+  - [guarda · já verificado por comando] guardas globais seguem verdes
+      cmd: npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [guarda · já verificado por comando] nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADAS || echo EDITOU_$n · espera: INTOCADAS
+  - [guarda · já verificado por comando] nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- 'src/lib/promessas/fechar.ts' 'src/lib/avisos/promessa.ts' 'src/lib/jobs/operacao-inicio.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ "$n" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n · espera: ZERO_JSON_NOVO
+  - [guarda · já verificado por comando] arquivos fora do escopo intocados
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- 'src/lib/promessas/detectar.ts' 'src/lib/eventos/registrar.ts' 'src/lib/avisos/gravar.ts' | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADOS || echo TOCOU_$n · espera: INTOCADOS
+  - [guarda · já verificado por comando] so arquivos da allowlist foram tocados
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; r=SO_ALLOWLIST; for f in $(git diff --name-only "$b" HEAD); do ok=0; for p in 'src/lib/promessas/fechar.ts' 'src/lib/avisos/promessa.ts' 'src/lib/jobs/operacao-inicio.ts' 'test/promessa-fechar.test.ts' 'test/eventos-resposta-grupo.test.ts' 'test/avisos-vacuo.test.ts' 'test/promessa-par.test.ts'; do case "$f" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r · espera: SO_ALLOWLIST
+  - [guarda · já verificado por comando] diff dentro do orcamento (<= 480 linhas somando adicoes e remocoes)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; t=$(git diff --numstat "$b" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ "$t" -le 480 ] && echo NO_TETO || echo ESTOUROU_$t · espera: NO_TETO
+  - [guarda · já verificado por comando] piloto preservado: nenhuma linha nova escreve em wpp_grupo
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- src scripts | grep -E '^[+][^+]' | grep -cE 'wpp_grupo.*[.](insert|update|upsert)[(]|[.](insert|update|upsert)[(].*wpp_grupo'); [ "$n" = 0 ] && echo SEM_ESCRITA_GRUPO || echo ESCREVE_GRUPO_$n · espera: SEM_ESCRITA_GRUPO
+  - [? · já verificado por comando] teste novo verde (test/promessa-fechar.test.ts)
+      cmd: test -f test/promessa-fechar.test.ts && npx vitest run test/promessa-fechar.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [? · já verificado por comando] fechamento por entrega, tarefa ou prazo com evento de chave estavel
+      cmd: f=src/lib/promessas/fechar.ts; [ -f $f ] || { echo AUSENTE; exit 0; }; a=$(grep -c 'registrarEvento' $f); b=$(grep -c 'promessa_cumprida' $f); c=$(grep -c 'promessa_vencida' $f); d=$(grep -c "eq(\"status\", \"aberta\")\|eq('status', 'aberta')" $f); [ "$a" -ge 1 ] && [ "$b" -ge 1 ] && [ "$c" -ge 1 ] && [ "$d" -ge 1 ] && echo TRANSICAO_IDEMPOTENTE || echo PF_${a}_${b}_${c}_${d} · espera: TRANSICAO_IDEMPOTENTE
+  - [? · já verificado por comando] etapas de fechar e avisar promessa registradas no job
+      cmd: a=$(grep -c 'promessas_fechar' src/lib/jobs/operacao-inicio.ts); b=$(grep -c 'avisos_promessa' src/lib/jobs/operacao-inicio.ts); [ "$a" = 1 ] && [ "$b" = 1 ] && echo DUAS_ETAPAS || echo JO_${a}_${b} · espera: DUAS_ETAPAS
+  - [avaliador · JULGUE VOCÊ] avaliador: promessa aberta fecha como cumprida por entrega com evidencia ou tarefa concluida, vence pelo prazo, gera um evento por transicao e avisa quem cuida uma vez no dia do prazo e uma vez quando vence. REPROVE se: fecha sem evidencia; transicao repetida gera segundo evento ou aviso; dono por gestor_id; provedor fixo; escreve em wpp_grupo.
+
+
+MENSAGENS DE COMMIT (escritas pelo agente: declaração, não evidência):
+O que o agente AFIRMA ter feito. Serve para saber o que conferir no diff e nos
+gates; uma afirmação aqui que o diff ou os gates não provam NÃO foi feita.
+
+commit 6c64499935816e66527b5a86a975aa579a6314a2
+
+test(740): fechar promessa e avisar, com chaves estaveis
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+commit 399574c2a97fc4dc7998da00a2c280444191ee1b
+
+feat(740): fechar promessa por tarefa, entrega ou prazo e avisar quem cuida
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+SAÍDA DOS GATES MECÂNICOS:
+ok   build
+       
+       ○  (Static)   prerendered as static content
+       ƒ  (Dynamic)  server-rendered on demand
+ok   tsc
+       src/app/api/perf/qualificacao-regras/[id]/route.ts(55,34): error TS2538: Type 'undefined' cannot be used as an index type.
+       src/app/api/perf/qualificacao-regras/estagios/route.ts(31,21): error TS2802: Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+       src/app/dashboard/clientes/qualificacao/qualificacao-block.tsx(74,29): error TS2802: Type 'MapIterator<ClienteTese>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+ok   vitest
+       Tests  8194 passed (8194)
+       Start at  21:29:08
+       Duration  16.75s (transform 12.61s, setup 0ms, import 52.90s, tests 18.07s, environment 49ms)
+VEREDITO: APROVADO
+
+DIFF CRU DA TENTATIVA (git diff base...HEAD):
+diff --git a/src/lib/avisos/promessa.ts b/src/lib/avisos/promessa.ts
+new file mode 100644
+index 0000000..2be72db
+--- /dev/null
++++ b/src/lib/avisos/promessa.ts
+@@ -0,0 +1,64 @@
++/**
++ * Ticket 740: aviso de promessa para quem cuida do cliente. Uma vez no dia do
++ * prazo (chave promessa:<id>:hoje) e uma vez quando vence (promessa:<id>:vencida).
++ * A chave estável faz o job repetido não duplicar o aviso.
++ */
++import type { Db } from "@/lib/clientes/relacao";
++import { carregarQuemCuida, responsaveisDoCliente } from "@/lib/clientes/quem-cuida";
++import { gravarAviso } from "@/lib/avisos/gravar";
++
++const MS_HORA = 3_600_000;
++const JANELA_VENCIDA_HORAS = 48;
++
++interface Linha {
++  id: string;
++  cliente_id: string | null;
++  texto: string;
++  prazo: string;
++}
++
++// São Paulo não tem horário de verão: dia local = UTC - 3h.
++const diaSp = (iso: string) => new Date(Date.parse(iso) - 3 * MS_HORA).toISOString().slice(0, 10);
++
++export async function avisarPromessas(
++  db: Db,
++  agoraISO: string,
++): Promise<{ promessas: number; avisos_gravados: number; sem_destinatario: number }> {
++  const desde = new Date(Date.parse(agoraISO) - JANELA_VENCIDA_HORAS * MS_HORA).toISOString();
++  const colunas = "id, cliente_id, texto, prazo";
++  const [abertas, vencidas] = await Promise.all([
++    db.from("perf_promessas").select(colunas).eq("status", "aberta"),
++    db.from("perf_promessas").select(colunas).eq("status", "vencida").gte("fechada_em", desde),
++  ]);
++  const hoje = diaSp(agoraISO);
++  const alvos: { p: Linha; sufixo: "hoje" | "vencida" }[] = [
++    ...((abertas.data ?? []) as Linha[]).filter((p) => diaSp(p.prazo) === hoje).map((p) => ({ p, sufixo: "hoje" as const })),
++    ...((vencidas.data ?? []) as Linha[]).map((p) => ({ p, sufixo: "vencida" as const })),
++  ];
++  if (alvos.length === 0) return { promessas: 0, avisos_gravados: 0, sem_destinatario: 0 };
++
++  const quemCuida = await carregarQuemCuida(db);
++  let gravados = 0;
++  let semDestinatario = 0;
++  for (const { p, sufixo } of alvos) {
++    const pessoas = responsaveisDoCliente(quemCuida, p.cliente_id).pessoas;
++    if (pessoas.length === 0) {
++      semDestinatario += 1;
++      continue;
++    }
++    const { data: cli } = await db.from("clientes").select("nome").eq("id", p.cliente_id).maybeSingle();
++    const nome = (cli as { nome?: string | null } | null)?.nome ?? "Cliente";
++    for (const pessoa of pessoas) {
++      const r = await gravarAviso(db, {
++        employeeId: pessoa.id,
++        categoria: "promessa",
++        titulo: nome,
++        mensagem: sufixo === "hoje" ? `Promessa vence hoje: "${p.texto}"` : `Promessa venceu sem entrega: "${p.texto}"`,
++        link: `/dashboard/clientes/${p.cliente_id}`,
++        chave: `promessa:${p.id}:${sufixo}`,
++      });
++      if (r.gravado) gravados += 1;
++    }
++  }
++  return { promessas: alvos.length, avisos_gravados: gravados, sem_destinatario: semDestinatario };
++}
+diff --git a/src/lib/jobs/operacao-inicio.ts b/src/lib/jobs/operacao-inicio.ts
+index ee473a2..03bf85f 100644
+--- a/src/lib/jobs/operacao-inicio.ts
++++ b/src/lib/jobs/operacao-inicio.ts
+@@ -9,6 +9,8 @@ import { avisarVacuos } from "@/lib/avisos/vacuo";
+ import { gerarAvisosComarkaPro } from "@/lib/avisos/comarka-pro";
+ import { gerarAvisosNps, gerarAvisosRenovacao } from "@/lib/avisos/renovacao-nps";
+ import { detectarPromessas } from "@/lib/promessas/detectar";
++import { fecharPromessas } from "@/lib/promessas/fechar";
++import { avisarPromessas } from "@/lib/avisos/promessa";
+ import { derivarRespostas, JANELA_HORAS } from "@/lib/eventos/resposta-grupo";
+ 
+ export interface EtapaOperacao {
+@@ -46,6 +48,20 @@ export const ETAPAS: EtapaOperacao[] = [
+       return `${r.candidatos} candidatos, ${r.gravadas} promessas, ${r.descartadas} descartadas, ${r.falhas} falhas`;
+     },
+   },
++  {
++    nome: "promessas_fechar",
++    rodar: async (db, agoraISO) => {
++      const r = await fecharPromessas(db, agoraISO);
++      return `${r.abertas} abertas, ${r.cumpridas} cumpridas, ${r.vencidas} vencidas, ${r.falhas} falhas`;
++    },
++  },
++  {
++    nome: "avisos_promessa",
++    rodar: async (db, agoraISO) => {
++      const r = await avisarPromessas(db, agoraISO);
++      return `${r.promessas} promessas, ${r.avisos_gravados} avisos` + (r.sem_destinatario ? `, ${r.sem_destinatario} sem responsável` : "");
++    },
++  },
+   {
+     nome: "avisos_operacao",
+     rodar: async (db, agoraISO) => {
+diff --git a/src/lib/promessas/fechar.ts b/src/lib/promessas/fechar.ts
+new file mode 100644
+index 0000000..86277ea
+--- /dev/null
++++ b/src/lib/promessas/fechar.ts
+@@ -0,0 +1,139 @@
++/**
++ * Ticket 740: fecha promessa aberta (piloto AQUINO ADV). Cumprida por tarefa
++ * concluída, ou por mensagem posterior da equipe que entrega (IA com evidência
++ * literal conferida); sem nenhuma das duas, vencida quando o prazo passa. A
++ * transição só vale com status ainda 'aberta' e gera um evento de chave estável.
++ * Do grupo só lê; equipe só por ehDaEquipe.
++ */
++import { z } from "zod";
++import type { Db } from "@/lib/clientes/relacao";
++import { registrarEvento } from "@/lib/eventos/registrar";
++import { chamarProvider } from "@/lib/ia/provider";
++import { COLUNAS_AUTOR, montarMapaLid, type LinhaAutor } from "@/lib/whatsapp/autor";
++import { carregarTelefonesEquipe, ehDaEquipe } from "@/lib/whatsapp/equipe";
++
++const LIMITE_MENSAGENS = 5000;
++const MAX_ENTREGA = 8;
++
++const SaidaSchema = z.object({
++  entregue: z.boolean(),
++  wpp_message_id: z.string().nullable(),
++  evidencia: z.string().nullable(),
++});
++
++const SYSTEM = `Você lê uma promessa da equipe e as mensagens seguintes da equipe num grupo de WhatsApp e responde SOMENTE JSON, sem markdown:
++{"entregue":true|false,"wpp_message_id":"id da mensagem da EQUIPE que entrega a promessa, ou null","evidencia":"trecho copiado literalmente dessa mensagem, ou null"}
++Só é entregue se a mensagem indicada mostra que a promessa foi cumprida. Na dúvida, entregue=false.`;
++
++interface Promessa {
++  id: string;
++  cliente_id: string | null;
++  group_jid: string;
++  wpp_message_id: string;
++  autor_id: string | null;
++  texto: string;
++  prazo: string;
++  tarefa_id: string | null;
++}
++type LinhaMensagem = LinhaAutor & { wpp_message_id: string; remote_jid: string; enviada_em: string; texto: string | null };
++
++export interface ResumoFechamento {
++  abertas: number;
++  cumpridas: number;
++  vencidas: number;
++  chamadas: number;
++  falhas: number;
++}
++
++const norm = (t: string) => t.replace(/\s+/g, " ").trim();
++
++async function fechar(db: Db, p: Promessa, status: "cumprida" | "vencida", agoraISO: string, extra: Record<string, unknown>): Promise<boolean> {
++  const { data, error } = await db
++    .from("perf_promessas")
++    .update({ status, fechada_em: agoraISO, ...extra })
++    .eq("id", p.id)
++    .eq("status", "aberta")
++    .select("id");
++  if (error || !data || data.length === 0) return false;
++  await registrarEvento(db, {
++    colaboradorId: p.autor_id,
++    clienteId: p.cliente_id,
++    tipo: status === "cumprida" ? "promessa_cumprida" : "promessa_vencida",
++    origem: "promessa",
++    chave: `promessa:${p.id}:${status === "cumprida" ? "cumprida" : "vencida"}`,
++    ocorridoEm: agoraISO,
++    metadata: { prazo: p.prazo, ...extra },
++  });
++  return true;
++}
++
++export async function fecharPromessas(db: Db, agoraISO: string, teto: number = 40): Promise<ResumoFechamento> {
++  const resumo: ResumoFechamento = { abertas: 0, cumpridas: 0, vencidas: 0, chamadas: 0, falhas: 0 };
++  const { data } = await db
++    .from("perf_promessas")
++    .select("id, cliente_id, group_jid, wpp_message_id, autor_id, texto, prazo, tarefa_id")
++    .eq("status", "aberta");
++  const promessas = (data ?? []) as Promessa[];
++  resumo.abertas = promessas.length;
++  if (promessas.length === 0) return resumo;
++
++  const tarefaIds = promessas.map((p) => p.tarefa_id).filter((x): x is string => !!x);
++  const concluidas = new Set<string>();
++  if (tarefaIds.length > 0) {
++    const { data: ts } = await db.from("tarefas_kanban").select("id").in("id", tarefaIds).eq("status", "concluido");
++    for (const t of (ts ?? []) as { id: string }[]) concluidas.add(t.id);
++  }
++
++  const { data: origem } = await db.from("cs_wpp_mensagem").select("wpp_message_id, enviada_em").in("wpp_message_id", promessas.map((p) => p.wpp_message_id));
++  const emDaPromessa = new Map<string, string>();
++  for (const o of (origem ?? []) as { wpp_message_id: string; enviada_em: string }[]) emDaPromessa.set(o.wpp_message_id, o.enviada_em);
++  const desde = Array.from(emDaPromessa.values()).sort()[0];
++  let linhas: LinhaMensagem[] = [];
++  if (desde) {
++    const { data: msgs } = await db
++      .from("cs_wpp_mensagem")
++      .select("wpp_message_id, remote_jid, enviada_em, texto, " + COLUNAS_AUTOR)
++      .in("remote_jid", Array.from(new Set(promessas.map((p) => p.group_jid))))
++      .gte("enviada_em", desde)
++      .lte("enviada_em", agoraISO)
++      .order("enviada_em", { ascending: true })
++      .limit(LIMITE_MENSAGENS);
++    linhas = (msgs ?? []) as unknown as LinhaMensagem[];
++  }
++  const telefonesEquipe = await carregarTelefonesEquipe(db);
++  const mapa = montarMapaLid(linhas);
++
++  for (const p of promessas) {
++    try {
++      if (p.tarefa_id && concluidas.has(p.tarefa_id)) {
++        if (await fechar(db, p, "cumprida", agoraISO, { fechada_por: "tarefa" })) resumo.cumpridas++;
++        continue;
++      }
++      const em = emDaPromessa.get(p.wpp_message_id);
++      const equipe = em
++        ? linhas
++            .filter((l) => l.remote_jid === p.group_jid && l.enviada_em > em && l.wpp_message_id !== p.wpp_message_id && (l.texto ?? "").trim() && ehDaEquipe(l, telefonesEquipe, mapa))
++            .slice(0, MAX_ENTREGA)
++        : [];
++      if (equipe.length > 0 && resumo.chamadas < teto) {
++        resumo.chamadas++;
++        const r = await chamarProvider({
++          funcao: "promessas",
++          system: SYSTEM,
++          prompt: `Promessa: ${p.texto}\n\nMensagens seguintes da equipe:\n` + equipe.map((m) => `[${m.wpp_message_id}] ${(m.texto ?? "").trim()}`).join("\n"),
++          contexto: { cliente_id: p.cliente_id },
++        });
++        const ps = SaidaSchema.safeParse(JSON.parse(r.texto.replace(/^```(?:json)?\s*|\s*```$/g, "")));
++        const alvo = ps.success ? equipe.find((m) => m.wpp_message_id === ps.data.wpp_message_id) : undefined;
++        if (ps.success && ps.data.entregue && ps.data.evidencia && alvo && norm(alvo.texto ?? "").includes(norm(ps.data.evidencia))) {
++          if (await fechar(db, p, "cumprida", agoraISO, { fechada_por: "entrega", entrega_wpp_message_id: alvo.wpp_message_id })) resumo.cumpridas++;
++          continue;
++        }
++      }
++      if (Date.parse(p.prazo) < Date.parse(agoraISO) && (await fechar(db, p, "vencida", agoraISO, {}))) resumo.vencidas++;
++    } catch {
++      resumo.falhas++;
++    }
++  }
++  return resumo;
++}
+diff --git a/test/promessa-fechar.test.ts b/test/promessa-fechar.test.ts
+new file mode 100644
+index 0000000..e7227ba
+--- /dev/null
++++ b/test/promessa-fechar.test.ts
+@@ -0,0 +1,151 @@
++/**
++ * Ticket 740: fechar promessa (entrega, tarefa, prazo) e avisar quem cuida.
++ * chamarProvider e banco mockados, relógio fixo.
++ */
++import { describe, it, expect, vi, beforeEach } from "vitest";
++
++vi.mock("@supabase/supabase-js", () => ({ createClient: vi.fn(() => ({ from: vi.fn() })) }));
++const chamar = vi.fn();
++vi.mock("@/lib/ia/provider", () => ({ chamarProvider: (...a: unknown[]) => chamar(...a) }));
++
++import { fecharPromessas } from "@/lib/promessas/fechar";
++import { avisarPromessas } from "@/lib/avisos/promessa";
++
++const GRUPO = "120363000000000001@g.us";
++const CLIENTE = "00000000-0000-4000-8000-000000000001";
++const COLAB = "00000000-0000-4000-8000-000000000002";
++const TAREFA = "00000000-0000-4000-8000-000000000003";
++const PROM = "00000000-0000-4000-8000-000000000004";
++const TEL_EQUIPE = "5511999990001";
++
++// Terça-feira 06/10/2026, 17:00 em São Paulo.
++const AGORA = "2026-10-06T20:00:00.000Z";
++const FUTURO = "2026-10-08T20:00:00.000Z";
++const PASSADO = "2026-10-05T20:00:00.000Z";
++const HOJE = "2026-10-06T21:00:00.000Z";
++
++type Linha = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
++
++function promessa(extra: Linha = {}): Linha {
++  return { id: PROM, cliente_id: CLIENTE, group_jid: GRUPO, wpp_message_id: "P1", autor_id: COLAB, texto: "enviar o relatório", prazo: FUTURO, tarefa_id: null, status: "aberta", ...extra };
++}
++const msgOrigem: Linha = { wpp_message_id: "P1", remote_jid: GRUPO, enviada_em: "2026-10-06T14:00:00.000Z", texto: "Envio o relatório hoje", autor_jid: `${TEL_EQUIPE}@s.whatsapp.net`, chave: { fromMe: false } };
++const msgEntrega: Linha = { wpp_message_id: "E1", remote_jid: GRUPO, enviada_em: "2026-10-06T18:00:00.000Z", texto: "Relatório enviado por e-mail agora", autor_jid: `${TEL_EQUIPE}@s.whatsapp.net`, chave: { fromMe: false } };
++
++function bancoFalso(promessas: Linha[], mensagens: Linha[] = [], tarefas: Linha[] = []) {
++  const tabelas: Record<string, Linha[]> = {
++    perf_promessas: promessas,
++    cs_wpp_mensagem: mensagens,
++    tarefas_kanban: tarefas,
++    employees: [{ id: COLAB, nome: "Ana", telefone: TEL_EQUIPE, ativo: true, is_head_operacional: false }],
++    perf_cliente_gestor: [{ cliente_id: CLIENTE, gestor_id: COLAB, ativo: true, principal: true }],
++    clientes: [{ id: CLIENTE, nome: "AQUINO ADV" }],
++    perf_equipe_telefones: [],
++    notifications: [],
++    perf_eventos_produtividade: [],
++  };
++  const valor = (l: Linha, c: string) => (c === "metadata->>chave" ? l.metadata?.chave : l[c]);
++  const db = {
++    from: (t: string) => {
++      const filtros: [string, unknown][] = [];
++      let atualizar: Linha | null = null;
++      const linhas = () => (tabelas[t] ?? []).filter((l) => filtros.every(([c, v]) => valor(l, c) === v));
++      const cadeia: Record<string, any> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
++      for (const m of ["select", "is", "neq", "in", "gte", "lte", "order", "limit"]) cadeia[m] = () => cadeia;
++      cadeia.eq = (c: string, v: unknown) => {
++        filtros.push([c, v]);
++        return cadeia;
++      };
++      cadeia.update = (campos: Linha) => {
++        atualizar = campos;
++        return cadeia;
++      };
++      cadeia.maybeSingle = () => Promise.resolve({ data: linhas()[0] ?? null, error: null });
++      cadeia.then = (ok: (v: unknown) => unknown) => {
++        const alvo = linhas();
++        if (atualizar) for (const l of alvo) Object.assign(l, atualizar);
++        return ok({ data: alvo, error: null });
++      };
++      cadeia.upsert = (linha: Linha) => {
++        if (!tabelas[t].some((l) => l.chave === linha.chave)) tabelas[t].push(linha);
++        return Promise.resolve({ error: null });
++      };
++      cadeia.insert = (linha: Linha) => {
++        tabelas[t].push(linha);
++        return Promise.resolve({ error: null });
++      };
++      return cadeia;
++    },
++  };
++  return { db: db as never, tabelas };
++}
++
++function resposta(o: Record<string, unknown>) {
++  chamar.mockResolvedValue({ texto: JSON.stringify(o) });
++}
++
++describe("fecharPromessas", () => {
++  beforeEach(() => chamar.mockReset());
++
++  it("entrega posterior com evidência fecha como cumprida por entrega", async () => {
++    resposta({ entregue: true, wpp_message_id: "E1", evidencia: "Relatório enviado por e-mail" });
++    const { db, tabelas } = bancoFalso([promessa()], [msgOrigem, msgEntrega]);
++    const r = await fecharPromessas(db, AGORA);
++    const p = tabelas.perf_promessas[0];
++    expect(r.cumpridas).toBe(1);
++    expect(p.status).toBe("cumprida");
++    expect(p.fechada_por).toBe("entrega");
++    expect(p.entrega_wpp_message_id).toBe("E1");
++    expect(p.fechada_em).toBe(AGORA);
++    expect(tabelas.perf_eventos_produtividade.some((e) => e.chave === `promessa:${PROM}:cumprida` && e.tipo === "promessa_cumprida" && e.colaborador_id === COLAB && e.cliente_id === CLIENTE)).toBe(true);
++    expect(chamar.mock.calls[0][0].funcao).toBe("promessas");
++  });
++
++  it("tarefa concluída fecha como cumprida por tarefa, sem chamar o modelo", async () => {
++    const { db, tabelas } = bancoFalso([promessa({ tarefa_id: TAREFA })], [msgOrigem, msgEntrega], [{ id: TAREFA, status: "concluido" }]);
++    await fecharPromessas(db, AGORA);
++    expect(tabelas.perf_promessas[0].status).toBe("cumprida");
++    expect(tabelas.perf_promessas[0].fechada_por).toBe("tarefa");
++    expect(chamar).not.toHaveBeenCalled();
++  });
++
++  it("prazo vencido sem tarefa nem entrega vira vencida", async () => {
++    const { db, tabelas } = bancoFalso([promessa({ prazo: PASSADO })], [msgOrigem]);
++    const r = await fecharPromessas(db, AGORA);
++    expect(r.vencidas).toBe(1);
++    expect(tabelas.perf_promessas[0].status).toBe("vencida");
++    expect(tabelas.perf_eventos_produtividade.some((e) => e.chave === `promessa:${PROM}:vencida` && e.tipo === "promessa_vencida")).toBe(true);
++  });
++
++  it("evidência falsa não fecha, e dentro do prazo continua aberta", async () => {
++    resposta({ entregue: true, wpp_message_id: "E1", evidencia: "texto que ninguém escreveu" });
++    const { db, tabelas } = bancoFalso([promessa()], [msgOrigem, msgEntrega]);
++    await fecharPromessas(db, AGORA);
++    expect(tabelas.perf_promessas[0].status).toBe("aberta");
++    expect(tabelas.perf_eventos_produtividade.length).toBe(0);
++  });
++
++  it("rodar duas vezes não gera segundo evento", async () => {
++    resposta({ entregue: true, wpp_message_id: "E1", evidencia: "Relatório enviado por e-mail" });
++    const { db, tabelas } = bancoFalso([promessa()], [msgOrigem, msgEntrega]);
++    await fecharPromessas(db, AGORA);
++    const r2 = await fecharPromessas(db, AGORA);
++    expect(r2.abertas).toBe(0);
++    expect(tabelas.perf_eventos_produtividade.length).toBe(1);
++  });
++});
++
++describe("avisarPromessas", () => {
++  it("vence hoje e vencida geram chaves distintas, e repetir não duplica", async () => {
++    const outra = "00000000-0000-4000-8000-000000000005";
++    const { db, tabelas } = bancoFalso([promessa({ prazo: HOJE }), promessa({ id: outra, status: "vencida", prazo: PASSADO, fechada_em: AGORA })]);
++    const r1 = await avisarPromessas(db, AGORA);
++    const r2 = await avisarPromessas(db, AGORA);
++    const chaves = tabelas.notifications.map((n) => n.metadata.chave);
++    expect(r1.avisos_gravados).toBe(2);
++    expect(r2.avisos_gravados).toBe(0);
++    expect(chaves).toContain(`promessa:${PROM}:hoje`);
++    expect(chaves).toContain(`promessa:${outra}:vencida`);
++    expect(tabelas.notifications.every((n) => n.employee_id === COLAB && n.metadata.categoria === "promessa" && n.link === `/dashboard/clientes/${CLIENTE}`)).toBe(true);
++  });
++});

@@ -1,0 +1,417 @@
+Você é o JUIZ de uma esteira automatizada. Julgue SOMENTE pelo material abaixo:
+o diff cru da tentativa, a saída dos gates mecânicos e os critérios do ticket.
+Você NÃO recebe o prompt do executor nem resumo nenhum do agente, de propósito:
+o que o agente diz que fez nunca é evidência. Se algo não está no diff, não aconteceu.
+
+VOCÊ NÃO TEM FERRAMENTAS. Não leia arquivo, não rode comando, não abra o
+repositório: a chamada está sem ferramenta nenhuma e qualquer tentativa só
+gasta turno. Se o material abaixo não basta para aprovar, REPROVE dizendo o
+que faltou — nunca aprove no benefício da dúvida.
+
+Os gates mecânicos JÁ PASSARAM (enforcement, typecheck, testes, critérios, build).
+Você não os reexecuta: o seu trabalho é o que eles não conseguem ver.
+
+O QUE VOCÊ COBRA, item a item:
+
+1. INTEGRAÇÃO, não existência. Componente/função/rota criada mas nunca importada,
+   montada ou chamada passa em "arquivo existe" e falha em produção. Siga a
+   variável ou o símbolo até o ponto de uso real; um resultado calculado e
+   descartado não vale.
+2. O TESTE EXERCITA O COMPORTAMENTO DO OBJETIVO. Teste tautológico
+   (expect(true), expect(x).toBeDefined() sobre algo trivialmente definido,
+   asserção que passaria com o código antigo) NÃO prova nada. Pergunte-se: este
+   teste ficaria VERMELHO se a mudança fosse revertida? Se não, reprove.
+3. CRITÉRIO DE AUSÊNCIA EXIGE CONTROLE POSITIVO. Um teste que só afirma que algo
+   NÃO aparece passa igual quando o componente não renderiza nada. Exija, no
+   MESMO render/execução, ao menos uma asserção POSITIVA de que a coisa certa
+   apareceu. Reprove ausência provada no vazio.
+
+4. ANTI-AFROUXAMENTO (a allowlist deste ticket inclui arquivo de teste).
+   No diff dos arquivos de teste, REPROVE se encontrar qualquer um destes:
+   - asserção removida (expect apagado) sem que o comportamento tenha deixado de existir;
+   - toBe/toEqual trocado por toBeDefined/toBeTruthy/objectContaining mais frouxo;
+   - .skip, .todo, .only, teste comentado ou arquivo de teste deletado;
+   - valor esperado alterado SEM comentário dizendo por que a regra nova o muda.
+   Valor RECALCULADO sob a regra nova, com o porquê em comentário, é o único
+   caminho aceito. Renomear símbolo para satisfazer contagem também é afrouxar.
+
+RESPONDA SÓ COM ESTE JSON, sem cerca de código, sem texto antes ou depois:
+{"aprovado": true|false, "motivo": "<=2 frases, concreto, citando arquivo e linha>",
+ "criterios_falhos": ["descrição exata do critério que você reprova", ...]}
+
+criterios_falhos: use a DESCRIÇÃO do critério, copiada como está na lista acima.
+Vazio quando aprovado. Na dúvida entre aprovar e reprovar, REPROVE e diga o que falta.
+
+TICKET 889c
+Objetivo: ORCAMENTO DE DIFF: teto de 330 linhas (~3 em src/app/dashboard/clientes/[id]/_components/registrar-relacao.tsx, ~90 em src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx, ~6 em src/app/dashboard/clientes/[id]/_components/timeline-relacao.tsx, ~220 no teste NOVO test/relacao-crise-tela.test.ts). Se passar do teto, pare e reporte. DECISAO DO LUCAS (07/10): crise fica na Relacao: registra pelo painel unico, tem destaque no Pulso enquanto aberta e fecha com a resolucao. DEPENDE do 889b (a rota ja aceita tipo crise, GET ?tipo=crise, e o PATCH { registroId, resolucao } que fecha; fechar sem resolucao da 422). PASSO 1: leia os tres componentes inteiros, src/lib/clientes/relacao.ts (TIPOS_REGISTRO e AtualizaRegistroSchema, depois do 889b) e test/ficha-relacao-estados.test.tsx linhas 1-60 e 195-260 (como LinhasPulso e carregado e renderizado). FAZER: (1) src/app/dashboard/clientes/[id]/_components/registrar-relacao.tsx: acrescente { id: "crise", rotulo: "Crise" } no FIM de MAIS_TIPOS (depois de NPS manual). PRINCIPAIS nao muda. A crise nao tem campo proprio no passo 2 (texto e data, como observacao). (2) src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx: (a) PulsoRelacao busca `/api/clientes/${clienteId}/relacao?tipo=crise` com fetchJson, no mesmo molde de carregarTemp (useCallback, relendo quando versaoRegistros muda), em Carga<RegistroCrise[]> com export interface RegistroCrise { id: string; texto: string; status?: string | null; data_interacao: string }; a crise aberta e a primeira da lista com status 'aberta' (a rota ja devolve da mais nova para a mais antiga e sem apagadas). NAO importe valor de runtime de @/lib/clientes/relacao (os testes carregam este arquivo com carregarTsx e um so dublê de @/lib/fetch-json; so `import type` e permitido). (b) LinhasPulso ganha props OPCIONAIS crise?: Carga<RegistroCrise[]>, onTentarCrise?: () => void e onEncerrarCrise?: (id: string, resolucao: string) => Promise<void>. Sem a prop crise nada muda no que renderiza hoje (os testes atuais nao passam crise). Com crise: estado 'erro' renderiza uma linha data-testid="pulso-crise" rotulo 'Crise' com <Falha> (falha nunca vira 'sem crise'); estado 'ok' com crise aberta renderiza ANTES da linha Temperatura uma linha data-testid="pulso-crise" com destaque (texto em text-red-400 e font-semibold, nada de cor nova fora das classes ja usadas no arquivo): 'aberta desde dd/mm' (data em font-mono, mesmo ddmm do arquivo) e o texto da crise, mais um botao outline sm 'Encerrar'; estado 'ok' sem crise aberta ou 'carregando' nao renderiza a linha (o Pulso so ganha linha quando ha crise ou erro). 'Encerrar' abre, na mesma linha, um input aria-label="Como foi resolvida" e um botao sm 'Encerrar crise' desabilitado enquanto o texto estiver vazio; enviar chama onEncerrarCrise; erro mostra role=alert 'Não foi possível encerrar agora. Tente de novo.' e mantem o texto digitado. (c) PulsoRelacao passa crise, onTentarCrise e onEncerrarCrise = PATCH `/api/clientes/${clienteId}/relacao` com fetchJson, metodo PATCH, corpo { registroId, resolucao } e, ao dar certo, rele a crise. (3) src/app/dashboard/clientes/[id]/_components/timeline-relacao.tsx: TITULO_DO_TIPO ganha crise: 'Crise' e CATEGORIA_DO_TIPO ganha crise: 'reclamacoes'; em eventosDeRegistros, crise com status 'concluida' e valor mostra o titulo 'Crise encerrada' e acrescenta ao detalhe `resolvida: "${valor}"`; crise aberta fica 'Crise'. Nenhum outro tipo muda. (4) NOVO test/relacao-crise-tela.test.ts (sem JSX; carregue os componentes com carregarTsx de test/helpers/carregar-tsx.ts e o mesmo dublê stubFetch de test/ficha-relacao-estados.test.tsx): (a) o painel do registrar com 'Mais tipos' aberto mostra 'Crise' depois de 'NPS manual' (ordem pela fonte, molde do it 'o fonte lista os 5 principais' de test/registro-unico-relacao.test.ts); (b) LinhasPulso com crise ok e uma aberta renderiza pulso-crise com 'aberta desde', o texto e 'Encerrar', e a linha vem antes de pulso-temperatura no HTML; (c) crise ok so com concluidas nao renderiza pulso-crise; (d) crise erro renderiza pulso-crise com 'não foi possível carregar' e 'Tentar de novo'; (e) sem a prop crise o HTML de LinhasPulso e identico ao de antes (compare com a renderizacao sem a prop: nenhum pulso-crise); (f) eventosDeRegistros de uma crise concluida com valor da titulo 'Crise encerrada' e detalhe com a resolucao; de uma aberta, titulo 'Crise' e categoria reclamacoes; (g) a fonte do Pulso tem '/relacao?tipo=crise' e 'method: "PATCH"' e nao importa valor de runtime de @/lib/clientes/relacao. FORA DE ESCOPO: src/lib/**, src/app/api/**, migration, bloco-relacao.tsx, barra-relacao.tsx, page.tsx, outros tipos de registro, leitura da IA. REGRAS: zero DDL e zero .sql; zona C0 (clientes_receita, leads_crm, leads_crm_historico, ads_metadata, ads_performance, fn_mql_sql_by_month, prefixos trafego_* e vw_*) e leitura pura: nada de escrita, DDL, grant, RLS ou trigger nelas; chave oficial do cliente e cliente_id (uuid), notion_id e so ponte; falha de leitura nunca vira zero, lista vazia ou verde: nada de `?? []`, `|| []`, `|| 0` ou catch que devolve vazio numa leitura, o erro sobe com o motivo (500 na rota, aviso na tela); dado ausente aparece como 'sem base' com o motivo; nenhum jargao de banco em texto de tela (nome de tabela, coluna, uuid ou codigo de ticket); nenhum travessao (U+2014) em texto de tela nem em string de copy (guarda travessao-mudo); numeros de tela em font-mono; Set e Map so com Array.from (tsc sem downlevelIteration); nenhum .json() literal novo em src (cliente: fetchJson de @/lib/fetch-json; rota: lerCorpoJson de @/lib/fetch-json, nunca req.json()); getSession e server-only, nunca em arquivo 'use client'; supabase, fetch e getSession sempre mockados nos testes (vi.mock ou fonte falsa injetada), nunca banco real; fixture de uuid RFC-4122 (00000000-0000-4000-8000-00000000000N); testes sem JSX (React.createElement + renderToStaticMarkup ou readFileSync da fonte; o projeto nao tem jsdom nem @testing-library); teste ancora em texto visivel, data-testid ou nome exportado, nunca em classe de estilo; nunca toEqual numa lista inteira. TESTES EXISTENTES da allowlist: se a mudanca quebrar uma assercao, RECALCULE o valor sob a regra nova com comentario acima citando o ticket 889c e de onde veio o numero; PROIBIDO remover assercao, trocar toBe/toEqual/toMatch por toBeDefined/toBeTruthy, usar .skip/.only/.todo, apagar it( ou o arquivo. Se um teste FORA da allowlist quebrar, PARE e descreva. Motor do orquestrador (scripts/orquestrador/, docs/orquestrador/) intocado. GUARDAS GLOBAIS (fora da allowlist, nao edite): test/c0-guard.test.ts, test/fetch-json-teto.test.ts, test/travessao-mudo.test.ts, test/tooltip-acessivel.test.ts, test/bloco-vazio-linha.test.ts. Testes que leem estes componentes e devem seguir verdes sem edicao: test/registro-unico-relacao.test.ts, test/relacao-aceite.test.tsx, test/ficha-relacao-estados.test.tsx, test/relacao-sem-escrita-reuniao.test.ts, test/timeline-relacao.test.tsx, test/visao-aceite-estrutura.test.tsx, test/ficha-visao-blocos-vazios.test.ts, test/observacoes-notas-fora.test.ts, test/visao-acoes-botao.test.ts, test/contrato-pendencias-marcos.test.ts, test/relacao-reuniao-operacional.test.ts.
+
+Allowlist do ticket:
+  - src/app/dashboard/clientes/[id]/_components/registrar-relacao.tsx
+  - src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx
+  - src/app/dashboard/clientes/[id]/_components/timeline-relacao.tsx
+  - test/relacao-crise-tela.test.ts
+
+Critérios de aceite:
+  - [guarda · já verificado por comando] tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)
+      cmd: ( [ "$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\.next/')" = 3 ] ) && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] nenhum .sql novo (zero DDL)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff --name-only "$b" HEAD | grep -c '[.]sql$'); [ "$n" = 0 ] && echo SEM_SQL || echo SQL_$n · espera: SEM_SQL
+  - [guarda · já verificado por comando] so arquivos da allowlist foram tocados
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; r=SO_ALLOWLIST; for f in $(git diff --name-only "$b" HEAD); do printf '%s\n' 'src/app/dashboard/clientes/[id]/_components/registrar-relacao.tsx' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx' 'src/app/dashboard/clientes/[id]/_components/timeline-relacao.tsx' 'test/relacao-crise-tela.test.ts' | grep -Fxq "$f" || r=FORA_$f; done; echo $r · espera: SO_ALLOWLIST
+  - [guarda · já verificado por comando] zero escrita nova em banco nas linhas adicionadas (src/app/dashboard/clientes/[id]/_components/registrar-relacao.tsx, src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx, src/app/dashboard/clientes/[id]/_components/timeline-relacao.tsx)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- 'src/app/dashboard/clientes/[id]/_components/registrar-relacao.tsx' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx' 'src/app/dashboard/clientes/[id]/_components/timeline-relacao.tsx' | grep -E '^[+][^+]' | grep -cE '[.](insert|update|upsert|delete|rpc)[(]'); [ "$n" = 0 ] && echo SEM_ESCRITA || echo ESCRITA_$n · espera: SEM_ESCRITA
+  - [guarda · já verificado por comando] diff dentro do orcamento (<= 330 linhas somando adicoes e remocoes)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; t=$(git diff --numstat "$b" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ "$t" -le 330 ] && echo NO_TETO || echo ESTOUROU_$t · espera: NO_TETO
+  - [guarda · já verificado por comando] guardas globais seguem verdes
+      cmd: npx vitest run test/c0-guard.test.ts test/fetch-json-teto.test.ts test/travessao-mudo.test.ts test/tooltip-acessivel.test.ts test/bloco-vazio-linha.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [guarda · já verificado por comando] lib, rotas e o resto da ficha intocados
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff --name-only "$b" HEAD -- src/lib src/app/api 'src/app/dashboard/clientes/[id]/_components/bloco-relacao.tsx' 'src/app/dashboard/clientes/[id]/_components/barra-relacao.tsx' 'src/app/dashboard/clientes/[id]/page.tsx' | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADOS || echo TOCOU_$n · espera: INTOCADOS
+  - [? · já verificado por comando] Crise entrou no fim de Mais tipos
+      cmd: n=$(sed -n '/const MAIS_TIPOS/,/^];/p' 'src/app/dashboard/clientes/[id]/_components/registrar-relacao.tsx' | grep -cF '{ id: "crise", rotulo: "Crise" }'); p=$(sed -n '/const PRINCIPAIS/,/^];/p' 'src/app/dashboard/clientes/[id]/_components/registrar-relacao.tsx' | grep -c 'crise'); [ "$n" = 1 ] && [ "$p" = 0 ] && echo EM_MAIS_TIPOS || echo ST_${n}_${p} · espera: EM_MAIS_TIPOS
+  - [? · já verificado por comando] o Pulso le a crise, tem a linha pulso-crise e fecha pelo PATCH
+      cmd: a=$(grep -cF '/relacao?tipo=crise' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx'); t=$(grep -cF 'pulso-crise' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx'); m=$(grep -cF 'method: "PATCH"' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx'); r=$(grep -cF 'Como foi resolvida' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx'); [ "$a" -ge 1 ] && [ "$t" -ge 1 ] && [ "$m" -ge 1 ] && [ "$r" -ge 1 ] && echo PULSO_CRISE || echo ST_${a}_${t}_${m}_${r} · espera: PULSO_CRISE
+  - [guarda · já verificado por comando] o Pulso nao importa valor de runtime da lib da relacao
+      cmd: n=$(grep -E '^import ' 'src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx' | grep -F '@/lib/clientes/relacao' | grep -vc '^import type'); [ "$n" = 0 ] && echo SO_TIPO || echo ST_$n · espera: SO_TIPO
+  - [? · já verificado por comando] a linha do tempo nomeia a crise e a encerrada
+      cmd: a=$(grep -cF 'crise: "Crise"' 'src/app/dashboard/clientes/[id]/_components/timeline-relacao.tsx'); b=$(grep -cF 'Crise encerrada' 'src/app/dashboard/clientes/[id]/_components/timeline-relacao.tsx'); c=$(grep -cF 'crise: "reclamacoes"' 'src/app/dashboard/clientes/[id]/_components/timeline-relacao.tsx'); [ "$a" = 1 ] && [ "$b" -ge 1 ] && [ "$c" = 1 ] && echo TIMELINE_OK || echo ST_${a}_${b}_${c} · espera: TIMELINE_OK
+  - [? · já verificado por comando] testes verdes (test/relacao-crise-tela.test.ts, test/registro-unico-relacao.test.ts, test/relacao-aceite.test.tsx, test/ficha-relacao-estados.test.tsx, test/relacao-sem-escrita-reuniao.test.ts, test/timeline-relacao.test.tsx, test/visao-aceite-estrutura.test.tsx, test/ficha-visao-blocos-vazios.test.ts, test/observacoes-notas-fora.test.ts, test/visao-acoes-botao.test.ts, test/contrato-pendencias-marcos.test.ts, test/relacao-reuniao-operacional.test.ts)
+      cmd: test -f test/relacao-crise-tela.test.ts && npx vitest run test/relacao-crise-tela.test.ts test/registro-unico-relacao.test.ts test/relacao-aceite.test.tsx test/ficha-relacao-estados.test.tsx test/relacao-sem-escrita-reuniao.test.ts test/timeline-relacao.test.tsx test/visao-aceite-estrutura.test.tsx test/ficha-visao-blocos-vazios.test.ts test/observacoes-notas-fora.test.ts test/visao-acoes-botao.test.ts test/contrato-pendencias-marcos.test.ts test/relacao-reuniao-operacional.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [avaliador · JULGUE VOCÊ] avaliador: crise registra pelo painel unico (Mais tipos), aparece em destaque no topo do Pulso enquanto aberta com 'Encerrar' que pede a resolucao e fecha pelo PATCH, some do Pulso quando fechada e aparece na linha do tempo como 'Crise encerrada' com a resolucao. REPROVE se: erro de leitura da crise some em silencio (sem linha de falha); o Pulso muda o que renderiza sem a prop crise; linha 'sem crise' permanente no Pulso; cor nova fora das usadas no arquivo; jargao de banco na tela; import de runtime de @/lib/clientes/relacao no Pulso; teste que passaria contra HEAD.
+
+
+DEFINIÇÕES CHAMADAS PELOS TESTES NOVOS (estado na base, NÃO fazem parte do diff):
+Funções e fixtures que os testes ADICIONADOS chamam e que estão definidas fora do diff.
+Julgue pelo corpo, nunca pelo nome.
+
+--- test/helpers/carregar-tsx.ts:13 (carregarTsx; estado na base, NÃO faz parte do diff) ---
+export function carregarTsx(arquivo: string, dubles: Record<string, unknown> = {}): Record<string, unknown> {
+  const cache = new Map<string, Record<string, unknown>>();
+  const carregar = (arq: string): Record<string, unknown> => {
+    const pronto = cache.get(arq);
+    if (pronto) return pronto;
+    const { code } = transformSync(readFileSync(arq, "utf-8"), {
+      loader: arq.endsWith(".tsx") ? "tsx" : "ts", jsx: "automatic", format: "cjs", target: "node18", sourcefile: arq,
+    });
+    const mod = new Module(arq, module);
+    mod.filename = arq;
+    mod.paths = (Module as unknown as { _nodeModulePaths(dir: string): string[] })._nodeModulePaths(dirname(arq));
+    cache.set(arq, mod.exports);
+    const req = (id: string) => {
+      if (id in dubles) return dubles[id];
+      const base = id.startsWith("@/") ? resolve(RAIZ, "src", id.slice(2)) : id.startsWith(".") ? resolve(dirname(arq), id) : null;
+      if (!base) return mod.require(id);
+      for (const ext of [".tsx", ".ts"]) {
+        try { readFileSync(base + ext); return carregar(base + ext); } catch { /* tenta a próxima */ }
+      }
+      return mod.require(id);
+    };
+    vm.runInThisContext(Module.wrap(code), { filename: arq }).call(mod.exports, mod.exports, req, mod, arq, dirname(arq));
+    cache.set(arq, mod.exports);
+    return mod.exports;
+  };
+  return carregar(resolve(arquivo));
+}
+--- fim de carregarTsx ---
+
+MENSAGENS DE COMMIT (escritas pelo agente: declaração, não evidência):
+O que o agente AFIRMA ter feito. Serve para saber o que conferir no diff e nos
+gates; uma afirmação aqui que o diff ou os gates não provam NÃO foi feita.
+
+commit d9611c07d2aefbbd8adf81cfd09070409d390e17
+
+feat(relacao): crise no painel unico, destaque no Pulso e linha do tempo (889c)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+SAÍDA DOS GATES MECÂNICOS:
+ok   build
+       
+       ○  (Static)   prerendered as static content
+       ƒ  (Dynamic)  server-rendered on demand
+ok   tsc
+       src/app/api/perf/qualificacao-regras/[id]/route.ts(55,34): error TS2538: Type 'undefined' cannot be used as an index type.
+       src/app/api/perf/qualificacao-regras/estagios/route.ts(31,21): error TS2802: Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+       src/app/dashboard/clientes/qualificacao/qualificacao-block.tsx(74,29): error TS2802: Type 'MapIterator<ClienteTese>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+ok   vitest
+       Tests  8563 passed (8563)
+       Start at  13:41:32
+       Duration  44.29s (transform 58.49s, setup 0ms, import 163.19s, tests 43.50s, environment 133ms)
+VEREDITO: APROVADO
+
+DIFF CRU DA TENTATIVA (git diff base...HEAD):
+diff --git a/src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx b/src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx
+index 1062679..8174664 100644
+--- a/src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx
++++ b/src/app/dashboard/clientes/[id]/_components/pulso-relacao.tsx
+@@ -21,6 +21,7 @@ import { TEMPERATURA_LABEL, isTemperatura } from "@/lib/clientes/badges";
+ 
+ export interface ReuniaoPulso { data_reuniao: string; status: string | null }
+ export interface RegistroTemperatura { valor?: string | null; data_interacao: string }
++export interface RegistroCrise { id: string; texto: string; status?: string | null; data_interacao: string }
+ 
+ const FORA = new Set(["cancelada", "no-show"]);
+ 
+@@ -85,6 +86,38 @@ function MaisGhost({ dica, onClick }: { dica: string; onClick: () => void }) {
+   );
+ }
+ 
++/** Crise aberta: destaque no topo do Pulso; "Encerrar" pede como foi resolvida e fecha pelo PATCH. */
++function CriseAberta({ crise, onEncerrar }: { crise: RegistroCrise; onEncerrar?: (id: string, resolucao: string) => Promise<void> }) {
++  const [abrindo, setAbrindo] = useState(false);
++  const [resolucao, setResolucao] = useState("");
++  const [enviando, setEnviando] = useState(false);
++  const [erro, setErro] = useState(false);
++  const enviar = () => {
++    if (!onEncerrar || !resolucao.trim()) return;
++    setEnviando(true);
++    setErro(false);
++    onEncerrar(crise.id, resolucao.trim()).catch(() => setErro(true)).finally(() => setEnviando(false));
++  };
++  return (
++    <>
++      <span className="font-semibold text-red-400">
++        aberta desde <span className="font-mono">{ddmm(crise.data_interacao)}</span> · {crise.texto}
++      </span>
++      {onEncerrar && !abrindo && <Button variant="outline" size="sm" onClick={() => setAbrindo(true)}>Encerrar</Button>}
++      {abrindo && (
++        <>
++          <input
++            aria-label="Como foi resolvida" value={resolucao} onChange={(e) => setResolucao(e.target.value)}
++            className="h-8 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-sm"
++          />
++          <Button size="sm" disabled={!resolucao.trim() || enviando} onClick={enviar}>Encerrar crise</Button>
++          {erro && <span role="alert" className="text-red-400">Não foi possível encerrar agora. Tente de novo.</span>}
++        </>
++      )}
++    </>
++  );
++}
++
+ interface PulsoProps {
+   clienteId: string;
+   reunioes: Carga<ReuniaoPulso[]>;
+@@ -97,7 +130,22 @@ interface PulsoProps {
+ export function PulsoRelacao({ clienteId, reunioes, onRegistrarTemperatura, versaoRegistros = 0 }: PulsoProps) {
+   const [temp, setTemp] = useState<Carga<RegistroTemperatura[]>>({ estado: "carregando" });
+   const [grupo, setGrupo] = useState<Carga<StatusGrupo>>({ estado: "carregando" });
++  const [crise, setCrise] = useState<Carga<RegistroCrise[]>>({ estado: "carregando" });
+ 
++  const carregarCrise = useCallback(() => {
++    setCrise({ estado: "carregando" });
++    fetchJson<{ registros: RegistroCrise[] }>(`/api/clientes/${clienteId}/relacao?tipo=crise`)
++      .then((d) => setCrise(Array.isArray(d?.registros) ? { estado: "ok", dado: d.registros } : { estado: "erro" }))
++      .catch(() => setCrise({ estado: "erro" }));
++    // versaoRegistros entra só para reler depois de um registro novo.
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [clienteId, versaoRegistros]);
++  const encerrarCrise = useCallback(async (registroId: string, resolucao: string) => {
++    await fetchJson(`/api/clientes/${clienteId}/relacao`, {
++      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ registroId, resolucao }),
++    });
++    carregarCrise();
++  }, [clienteId, carregarCrise]);
+   const carregarTemp = useCallback(() => {
+     setTemp({ estado: "carregando" });
+     fetchJson<{ registros: RegistroTemperatura[] }>(`/api/clientes/${clienteId}/relacao?tipo=temperatura`)
+@@ -114,19 +162,21 @@ export function PulsoRelacao({ clienteId, reunioes, onRegistrarTemperatura, vers
+   }, [clienteId]);
+   useEffect(carregarTemp, [carregarTemp]);
+   useEffect(carregarGrupo, [carregarGrupo]);
++  useEffect(carregarCrise, [carregarCrise]);
+ 
+   return (
+     <div className="space-y-1" data-testid="pulso-relacao">
+       <LinhasPulso
+         temp={temp} grupo={grupo} reunioes={reunioes} agora={Date.now()}
+         onRegistrarTemp={onRegistrarTemperatura} onTentarTemp={carregarTemp} onTentarGrupo={carregarGrupo}
++        crise={crise} onTentarCrise={carregarCrise} onEncerrarCrise={encerrarCrise}
+       />
+     </div>
+   );
+ }
+ 
+ /** As quatro linhas, sem busca: separado para o teste renderizar cada estado. */
+-export function LinhasPulso({ temp, grupo, reunioes, agora, onRegistrarTemp, onTentarTemp, onTentarGrupo }: {
++export function LinhasPulso({ temp, grupo, reunioes, agora, onRegistrarTemp, onTentarTemp, onTentarGrupo, crise, onTentarCrise, onEncerrarCrise }: {
+   temp: Carga<RegistroTemperatura[]>;
+   grupo: Carga<StatusGrupo>;
+   reunioes: Carga<ReuniaoPulso[]>;
+@@ -134,13 +184,23 @@ export function LinhasPulso({ temp, grupo, reunioes, agora, onRegistrarTemp, onT
+   onRegistrarTemp?: () => void;
+   onTentarTemp: () => void;
+   onTentarGrupo: () => void;
++  crise?: Carga<RegistroCrise[]>;
++  onTentarCrise?: () => void;
++  onEncerrarCrise?: (id: string, resolucao: string) => Promise<void>;
+ }) {
++  const criseAberta = crise?.estado === "ok" ? crise.dado.find((c) => c.status === "aberta") : undefined;
+   const t = temp.estado === "ok" ? temperaturaAtual(temp.dado) : null;
+   const ult = reunioes.estado === "ok" ? ultimaReuniao(reunioes.dado, agora) : null;
+   const prox = reunioes.estado === "ok" ? proximaReuniao(reunioes.dado, agora) : null;
+ 
+   return (
+     <>
++      {crise?.estado === "erro" && (
++        <Linha rotulo="Crise" testId="pulso-crise"><Falha onTentar={onTentarCrise ?? (() => {})} /></Linha>
++      )}
++      {criseAberta && (
++        <Linha rotulo="Crise" testId="pulso-crise"><CriseAberta key={criseAberta.id} crise={criseAberta} onEncerrar={onEncerrarCrise} /></Linha>
++      )}
+       <Linha rotulo="Temperatura" testId="pulso-temperatura">
+         {temp.estado === "carregando" ? <span className={MUTED}>carregando</span>
+           : temp.estado === "erro" ? <Falha onTentar={onTentarTemp} />
+diff --git a/src/app/dashboard/clientes/[id]/_components/registrar-relacao.tsx b/src/app/dashboard/clientes/[id]/_components/registrar-relacao.tsx
+index 018c51a..e13e511 100644
+--- a/src/app/dashboard/clientes/[id]/_components/registrar-relacao.tsx
++++ b/src/app/dashboard/clientes/[id]/_components/registrar-relacao.tsx
+@@ -27,6 +27,7 @@ const MAIS_TIPOS: { id: Escolha; rotulo: string }[] = [
+   { id: "elogio", rotulo: "Elogio" },
+   { id: "observacao", rotulo: "Observação" },
+   { id: "nps_manual", rotulo: "NPS manual" },
++  { id: "crise", rotulo: "Crise" },
+ ];
+ 
+ const TEMPERATURAS = [
+diff --git a/src/app/dashboard/clientes/[id]/_components/timeline-relacao.tsx b/src/app/dashboard/clientes/[id]/_components/timeline-relacao.tsx
+index c126e37..c185c69 100644
+--- a/src/app/dashboard/clientes/[id]/_components/timeline-relacao.tsx
++++ b/src/app/dashboard/clientes/[id]/_components/timeline-relacao.tsx
+@@ -39,7 +39,7 @@ export const FILTROS: { id: FiltroRelacao; rotulo: string }[] = [
+ const LIMITE_RECOLHER = 3;
+ 
+ interface RegistroApi {
+-  id: string; tipo: string; texto: string; valor?: string | null; autor_nome?: string | null;
++  id: string; tipo: string; texto: string; valor?: string | null; status?: string | null; autor_nome?: string | null;
+   data_interacao: string; criado_em: string; deleted_at?: string | null;
+ }
+ interface ResumoWhatsappApi { id: string; texto: string; criado_em: string }
+@@ -49,19 +49,20 @@ type ReuniaoApi = Parameters<typeof eventosDeReunioes>[0][number] & { origem?: s
+ const CATEGORIA_DO_TIPO: Record<string, CategoriaRelacao> = {
+   reuniao: "reunioes", contato: "contatos", temperatura: "temperatura", combinado: "combinados",
+   compromisso: "combinados", pendencia_cliente: "pendencias", pendencia_comarka: "pendencias",
+-  reclamacao: "reclamacoes", elogio: "reclamacoes",
++  reclamacao: "reclamacoes", elogio: "reclamacoes", crise: "reclamacoes",
+ };
+ const TITULO_DO_TIPO: Record<string, string> = {
+   reuniao: "Reunião", contato: "Contato", temperatura: "Temperatura", combinado: "Combinado",
+   compromisso: "Compromisso", pendencia_cliente: "Pendência do cliente", pendencia_comarka: "Pendência da Comarka",
+-  reclamacao: "Reclamação", elogio: "Elogio", observacao: "Observação", nps_manual: "Nota de NPS",
++  reclamacao: "Reclamação", elogio: "Elogio", observacao: "Observação", nps_manual: "Nota de NPS", crise: "Crise",
+ };
+ 
+ export function eventosDeRegistros(lista: RegistroApi[]): EventoRelacao[] {
+   return lista.filter((r) => !r.deleted_at).map((r) => {
+-    const base = TITULO_DO_TIPO[r.tipo] ?? "Registro";
++    const encerrada = r.tipo === "crise" && r.status === "concluida" && !!r.valor;
++    const base = encerrada ? "Crise encerrada" : (TITULO_DO_TIPO[r.tipo] ?? "Registro");
+     const titulo = r.tipo === "temperatura" && r.valor ? `${base}: ${r.valor}` : base;
+-    const partes = [r.autor_nome ? `registrada por ${r.autor_nome}` : "", r.texto ? `"${r.texto}"` : ""].filter(Boolean);
++    const partes = [r.autor_nome ? `registrada por ${r.autor_nome}` : "", r.texto ? `"${r.texto}"` : "", encerrada ? `resolvida: "${r.valor}"` : ""].filter(Boolean);
+     return {
+       chave: `registro-${r.id}`, origem: "combinados", categoria: CATEGORIA_DO_TIPO[r.tipo] ?? "outros",
+       quando: r.data_interacao || r.criado_em, titulo, detalhe: partes.join(" · ") || undefined,
+diff --git a/test/relacao-crise-tela.test.ts b/test/relacao-crise-tela.test.ts
+new file mode 100644
+index 0000000..acd0eff
+--- /dev/null
++++ b/test/relacao-crise-tela.test.ts
+@@ -0,0 +1,99 @@
++// Ticket 889c: crise na Relação. Registra pelo painel único (Mais tipos), destaque no
++// Pulso enquanto aberta, fecha pela resolução e aparece na linha do tempo.
++import { describe, it, expect } from "vitest";
++import { readFileSync } from "node:fs";
++import { join, resolve } from "node:path";
++import { createRequire } from "node:module";
++import React from "react";
++import { carregarTsx } from "./helpers/carregar-tsx";
++
++const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/server") as {
++  renderToStaticMarkup: (element: React.ReactElement) => string;
++};
++
++const DIR = join("src", "app", "dashboard", "clientes", "[id]", "_components");
++const ler = (f: string) => readFileSync(join(DIR, f), "utf8");
++const texto = (h: string) => h.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
++
++const stubFetch = { "@/lib/fetch-json": { fetchJson: async () => ({}), parseJsonResponse: async () => ({}), FetchJsonError: class extends Error {} } };
++const pulsoMod = carregarTsx(resolve(DIR, "pulso-relacao.tsx"), stubFetch);
++const timelineMod = carregarTsx(resolve(DIR, "timeline-relacao.tsx"), stubFetch);
++const LinhasPulso = pulsoMod.LinhasPulso as React.ComponentType<Record<string, unknown>>;
++type Evento = { titulo: string; detalhe?: string; categoria: string };
++const eventosDeRegistros = timelineMod.eventosDeRegistros as (l: Record<string, unknown>[]) => Evento[];
++
++const AGORA = new Date("2026-10-08T15:00:00Z").getTime();
++const cargas = (extra: Record<string, unknown> = {}) => ({
++  temp: { estado: "ok", dado: [] }, grupo: { estado: "ok", dado: { conectado: false, ultima_mensagem_em: null } },
++  reunioes: { estado: "ok", dado: [] }, agora: AGORA, onTentarTemp: () => {}, onTentarGrupo: () => {}, ...extra,
++});
++const html = (extra?: Record<string, unknown>) => renderToStaticMarkup(React.createElement(LinhasPulso, cargas(extra)));
++
++describe("889c: crise na Relação", () => {
++  it("o painel do registrar lista Crise depois de NPS manual em Mais tipos", () => {
++    const fonte = ler("registrar-relacao.tsx");
++    const mais = fonte.slice(fonte.indexOf("const MAIS_TIPOS"));
++    const nps = mais.indexOf('rotulo: "NPS manual"');
++    const crise = mais.indexOf('rotulo: "Crise"');
++    expect(nps).toBeGreaterThan(-1);
++    expect(crise).toBeGreaterThan(nps);
++    expect(fonte.slice(fonte.indexOf("const PRINCIPAIS"), fonte.indexOf("const MAIS_TIPOS"))).not.toContain("crise");
++  });
++
++  it("crise aberta aparece antes da temperatura, com data, texto e Encerrar", () => {
++    const h = html({ crise: { estado: "ok", dado: [
++      { id: "00000000-0000-4000-8000-000000000001", texto: "Cliente ameaçou cancelar", status: "aberta", data_interacao: "2026-10-05" },
++    ] }, onEncerrarCrise: async () => {} });
++    const t = texto(h);
++    expect(h).toContain('data-testid="pulso-crise"');
++    expect(t).toContain("aberta desde 05/10");
++    expect(t).toContain("Cliente ameaçou cancelar");
++    expect(t).toContain("Encerrar");
++    expect(h.indexOf("pulso-crise")).toBeLessThan(h.indexOf("pulso-temperatura"));
++  });
++
++  it("crise ok só com concluídas não renderiza a linha", () => {
++    const h = html({ crise: { estado: "ok", dado: [
++      { id: "00000000-0000-4000-8000-000000000002", texto: "Antiga", status: "concluida", data_interacao: "2026-09-01" },
++    ] } });
++    expect(h).not.toContain("pulso-crise");
++  });
++
++  it("crise em erro mostra a falha com Tentar de novo, nunca sem crise", () => {
++    const h = html({ crise: { estado: "erro" }, onTentarCrise: () => {} });
++    const t = texto(h);
++    expect(h).toContain('data-testid="pulso-crise"');
++    expect(t).toContain("Crise não foi possível carregar");
++    expect(t).toContain("Tentar de novo");
++  });
++
++  it("sem a prop crise o Pulso renderiza igual ao de antes", () => {
++    const h = html();
++    expect(h).not.toContain("pulso-crise");
++    const ids = Array.from(h.matchAll(/data-testid="(pulso-[a-z-]+)"/g)).map((m) => m[1]);
++    expect(ids).toContain("pulso-temperatura");
++    expect(ids).toHaveLength(4);
++    expect(html({ crise: { estado: "carregando" } })).toBe(h);
++  });
++
++  it("a linha do tempo nomeia a crise encerrada com a resolução e a aberta como Crise", () => {
++    const [enc, aberta] = eventosDeRegistros([
++      { id: "a", tipo: "crise", texto: "Reclamou do prazo", status: "concluida", valor: "Prazo renegociado", data_interacao: "2026-10-06", criado_em: "2026-10-06" },
++      { id: "b", tipo: "crise", texto: "Sem resposta", status: "aberta", data_interacao: "2026-10-07", criado_em: "2026-10-07" },
++    ]);
++    expect(enc.titulo).toBe("Crise encerrada");
++    expect(enc.detalhe).toContain('resolvida: "Prazo renegociado"');
++    expect(aberta.titulo).toBe("Crise");
++    expect(aberta.categoria).toBe("reclamacoes");
++    expect(aberta.detalhe ?? "").not.toContain("resolvida");
++  });
++
++  it("a fonte do Pulso lê a crise, fecha por PATCH e não importa runtime da lib da relação", () => {
++    const f = ler("pulso-relacao.tsx");
++    expect(f).toContain("/relacao?tipo=crise");
++    expect(f).toContain('method: "PATCH"');
++    expect(f).toContain("Como foi resolvida");
++    const imports = f.split("\n").filter((l) => /^import /.test(l) && l.includes("@/lib/clientes/relacao"));
++    expect(imports.every((l) => l.startsWith("import type"))).toBe(true);
++  });
++});

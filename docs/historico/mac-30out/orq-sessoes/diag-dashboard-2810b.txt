@@ -1,0 +1,277 @@
+######## 005
+=== attempt-0/veredito.json
+{"desfecho":"reprovado","causa":"criterio_qualidade","motivo":"critério(s) reprovado(s): a rota nova não escreve","contaComoRetry":true,"cooldown":false,"sub":"criterio"}
+
+=== attempt-0/enforcement.json
+{
+  "ok": true,
+  "violations": []
+}
+
+=== attempt-0/criterios.txt
+### teste novo de saidas-tela verde
+cmd: node_modules/.bin/vitest run src/lib/financeiro/v2/__tests__/saidas-tela.test.ts >/dev/null 2>&1 && echo OK
+espera: OK
+saida: OK
+
+### suíte do v2 continua verde (Painel e shadow intactos)
+cmd: node_modules/.bin/vitest run src/lib/financeiro/v2 >/dev/null 2>&1 && echo OK
+espera: OK
+saida: OK
+
+### a rota nova não escreve
+cmd: grep -cE '\.(insert|update|upsert|delete)\(' src/app/api/financeiro-v2/saidas/route.ts src/lib/financeiro/v2/saidas-tela.ts
+espera: 0
+saida: src/app/api/financeiro-v2/saidas/route.ts:0
+src/lib/financeiro/v2/saidas-tela.ts:0
+
+
+=== attempt-1/veredito.json
+{
+  "desfecho": "reprovado",
+  "causa": "retry_sem_mudanca",
+  "motivo": "retry_sem_mudanca: diff.patch idêntico ao da tentativa anterior (sha256 0baa457348cf8bd73ff7d949e669514b3a880a87c9a5cd4cf0d3efa6ac5c368d); juiz não chamado",
+  "contaComoRetry": true,
+  "hashAnterior": "0baa457348cf8bd73ff7d949e669514b3a880a87c9a5cd4cf0d3efa6ac5c368d",
+  "hashNovo": "0baa457348cf8bd73ff7d949e669514b3a880a87c9a5cd4cf0d3efa6ac5c368d",
+  "diffAnterior": "/Users/lucasantos/Projetos/dashboard-comercial-orq/docs/fila/runs/005/attempt-0/diff.patch",
+  "diffNovo": "/Users/lucasantos/Projetos/dashboard-comercial-orq/docs/fila/runs/005/attempt-1/diff.patch"
+}
+
+=== attempt-1/claude.txt fim
+},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":49713,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":442,"cache_read_input_tokens":63600,"cache_creation_input_tokens":547,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":547},"type":"message"}],"speed":"standard","fallback_credit":null},"modelUsage":{"claude-sonnet-5-5":{"inputTokens":6,"outputTokens":990,"cacheReadInputTokens":133573,"cacheCreationInputTokens":49713,"webSearchRequests":0,"costUSD":0.22212130000000005,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":192,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"permission_denials":[],"terminal_reason":"completed","fast_mode_state":"off","fast_mode_disabled_reason":"sdk_opt_in_required","subagent_stats":{"spawned":0,"requested":{"background":0,"foreground":0,"unset":0},"started_in_background":0,"max_depth":0,"spawned_by_subagents":0,"completed":0,"failed":0,"killed":{"parent":0,"user":0,"system":0},"refused":{"depth_limit":0,"concurrency_limit":0,"budget":0},"by_type":{}},"safety_stops":0,"is_error":false,"num_turns":6,"subtype":"success","api_error_status":null,"result":"O trabalho do ticket 005 já está commitado em `d4f78c82`, com o trailer `Orq-Ticket: 005`. A árvore está limpa e a suíte `src/lib/financeiro/v2` passa (OK).\n\nCRITÉRIO SUSPEITO: \"a rota nova não escreve\" não consegue passar com o comando dado.\n- **O que rodou:** `grep -cE '\\.(insert|update|upsert|delete)\\(' src/app/api/financeiro-v2/saidas/route.ts src/lib/financeiro/v2/saidas-tela.ts`\n- **O que saiu:**\n  ```\n  src/app/api/financeiro-v2/saidas/route.ts:0\n  src/lib/financeiro/v2/saidas-tela.ts:0\n  ```\n- **O que o critério espera:** `0`\n- **Por que acho que está errado:** com mais de um arquivo, `grep -c` imprime uma contagem por arquivo, no formato `arquivo:N`. A saída nunca será a string `0`. Os dois arquivos têm zero ocorrências, que é a intenção do critério. Não editei código para forçar a saída, porque isso não mudaria o resultado e falsificaria a evidência.\n\nO avaliador deve ler essa saída como satisfeita.","ttft_ms":2896,"type":"result","duration_ms":10017,"uuid":"993b9cfe-b301-48b7-a339-6e806a360070","ttft_stream_ms":1557,"time_to_request_ms":47,"first_content_frame_ms":1557,"queued_turn_count":0,"result_index":0}
+
+=== ticket
+docs/fila/005-fin-v2-rota-saidas.md
+# Ticket: GET /api/financeiro-v2/saidas: contas do mês com chave de confirmação e gasto por grupo
+
+## Objetivo (prosa)
+
+Rota de leitura que a tela Saídas (ticket 006) consome. Somente leitura.
+
+Recon (origin/main 4e441ed):
+- Padrão de rota v2: `src/app/api/financeiro-v2/painel/route.ts` (autorizar, fontesProducao, mesPedido de `src/lib/financeiro/v2/servidor.ts`).
+- `montarContas` em `src/lib/financeiro/v2/saidas.ts:78` devolve `ContaDoMes` SEM `custo_fixo_id`. A confirmação
+  existente (`POST /api/financeiro/custos-fixos/pagamentos`, schema `custoFixoPagamentoSchema` em
+  `src/lib/validation/schemas/financeiro.ts:64`) precisa de custo_fixo_id, tipo, mes_referencia, nome e valor.
+  `ContaRow` (fontes.ts:50) já traz `custo_fixo_id`. Acrescentar o campo em `ContaDoMes` é aditivo: o Painel não usa.
+- `Fontes.despesas(desde, ate)` e `Fontes.contasDoMes(mes)` / `cadastroContas()` já existem (fontes.ts).
+- Valor da conta a confirmar: `valor_pago` da instância é o valor previsto enquanto pendente (é o que montarContas usa).
+
+Lote 1 do Financeiro v2 (28/10/2026). Mapa: docs/roadmap/MAPA.md, bloco B1.
+
+## Campos de máquina
+
+```json
+{
+  "id": "005",
+  "bloco": "B1",
+  "frente": "B1-F1",
+  "slug": "fin-v2-rota-saidas",
+  "origem": "humano",
+  "objetivo": "(1) Em src/lib/financeiro/v2/saidas.ts acrescente custo_fixo_id: string à interface ContaDoMes e preencha em montarContas a partir de ContaRow.custo_fixo_id. Nada mais muda em saidas.ts. (2) Crie src/lib/financeiro/v2/saidas-tela.ts com montarSaidasTela(f: Fontes, mes: string, hoje: Hoje): lê em paralelo f.contasDoMes(mes), f.cadastroContas() e f.despesas(mes, mes); devolve { mes, contas, gasto }. contas: Metrica com { itens: ContaDoMes[] ordenados por dia (null por último) e descrição, totalPrevisto, totalConfirmado, quantidade, confirmadas } ou semDado com o motivo quando contas ou cadastro falham (nunca lista vazia em falha). gasto: resultado de gastoPorPlano (src/lib/financeiro/v2/plano-contas.ts) sobre as despesas do mês, ou semDado quando a leitura de despesas falha. Use semDado/falhasDe de ./tipos como o resto do v2. Somas em centavos. (3) Crie src/app/api/financeiro-v2/saidas/route.ts: GET ?mes=YYYY-MM, mesmo padrão de src/app/api/financeiro-v2/painel/route.ts (autorizar, mesPedido, fontesProducao, Cache-Control no-store, 400 em mês inválido). Somente leitura. (4) Crie src/lib/financeiro/v2/__tests__/saidas-tela.test.ts com Fontes falsa (veja src/lib/financeiro/v2/__tests__/fixture.ts): (a) contas ordenadas e totais confirmado/previsto em centavos; (b) cada item traz custo_fixo_id; (c) falha em contasDoMes vira semDado, não lista vazia; (d) falha só em despesas deixa contas ok e gasto semDado. FORA DE ESCOPO: tela, NavTabs, painel.ts, escrita de qualquer tipo.",
+  "pathspec_allowlist": [
+    "src/lib/financeiro/v2/saidas.ts",
+    "src/lib/financeiro/v2/saidas-tela.ts",
+    "src/app/api/financeiro-v2/saidas/route.ts",
+    "src/lib/financeiro/v2/__tests__/saidas-tela.test.ts"
+  ],
+  "cria_novo": [
+    "src/lib/financeiro/v2/saidas-tela.ts",
+    "src/app/api/financeiro-v2/saidas/route.ts",
+    "src/lib/financeiro/v2/__tests__/saidas-tela.test.ts"
+  ],
+  "dependencias": [
+    "004"
+  ],
+  "diff_estimado": 280,
+  "risco": "",
+  "criterios_aceite": [
+    {
+      "tipo": "alvo",
+      "descricao": "teste novo de saidas-tela verde",
+      "cmd": "node_modules/.bin/vitest run src/lib/financeiro/v2/__tests__/saidas-tela.test.ts >/dev/null 2>&1 && echo OK",
+      "espera": "OK"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "suíte do v2 continua verde (Painel e shadow intactos)",
+      "cmd": "node_modules/.bin/vitest run src/lib/financeiro/v2 >/dev/null 2>&1 && echo OK",
+      "espera": "OK"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "a rota nova não escreve",
+      "cmd": "grep -cE '\\.(insert|update|upsert|delete)\\(' src/app/api/financeiro-v2/saidas/route.ts src/lib/financeiro/v2/saidas-tela.ts",
+      "espera": "0",
+      "exemplos_regex": [
+        {
+          "regex": "\\.(insert|update|upsert|delete)\\(",
+          "positivo": "db.from(\"x\").insert({",
+          "negativo": "insertAfter(x)"
+        }
+      ]
+    },
+    {
+      "tipo": "avaliador",
+      "descricao": "avaliador: a rota chama autorizar() antes de ler e devolve o status dele; o único acréscimo em saidas.ts é custo_fixo_id em ContaDoMes/montarContas; falha de leitura nunca vira zero nem lista vazia; o teste exercita montarSaidasTela real; sem skip.",
+      "cmd": "true",
+      "espera": "avaliador"
+    }
+  ],
+  "status": "bloqueado",
+  "notas_status": "bloqueado: retry_sem_mudanca — o diff.patch da tentativa 2 é idêntico ao da tentativa anterior (sha256 anterior 0baa457348cf8bd73ff7d949e669514b3a880a87c9a5cd4cf0d3efa6ac5c368d; sha256 novo 0baa457348cf8bd73ff7d949e669514b3a880a87c9a5cd4cf0d3efa6ac5c368d); o juiz não foi chamado. Evidência: runs/005/attempt-0/diff.patch e runs/005/attempt-1/diff.patch. O agente não produziu hipótese nova: revise o ticket (objetivo, critérios, allowlist) antes de reabrir.",
+  "hash_candidato": "",
+  "sinal_hash": "",
+######## 008
+=== attempt-0/veredito.json
+{"desfecho":"reprovado","causa":"criterio_qualidade","motivo":"critério(s) reprovado(s): rota de debug removida; rota órfã de clientes removida","contaComoRetry":true,"cooldown":false,"sub":"criterio"}
+
+=== attempt-0/enforcement.json
+{
+  "ok": true,
+  "violations": []
+}
+
+=== attempt-0/criterios.txt
+### teste novo da guarda da auditoria verde
+cmd: node_modules/.bin/vitest run src/__tests__/admin-auditoria-guarda.test.ts >/dev/null 2>&1 && echo OK
+espera: OK
+saida: OK
+
+### rota de debug removida
+cmd: test -f src/app/api/debug-comissao/route.ts || echo REMOVIDA
+espera: REMOVIDA
+saida: 
+
+### rota órfã de clientes removida
+cmd: test -f src/app/api/dashboard/clientes/route.ts || echo REMOVIDA
+espera: REMOVIDA
+saida: 
+
+### teste das guardas do F1 continua verde
+cmd: node_modules/.bin/vitest run src/__tests__/f1-guarda-financeiro.test.ts >/dev/null 2>&1 && echo OK
+espera: OK
+saida: OK
+
+
+=== attempt-1/veredito.json
+{
+  "desfecho": "reprovado",
+  "causa": "retry_sem_mudanca",
+  "motivo": "retry_sem_mudanca: diff.patch idêntico ao da tentativa anterior (sha256 e90173e3dec97499a2b978861a0c9871c826ff0d27121871f7987c0f715aecfc); juiz não chamado",
+  "contaComoRetry": true,
+  "hashAnterior": "e90173e3dec97499a2b978861a0c9871c826ff0d27121871f7987c0f715aecfc",
+  "hashNovo": "e90173e3dec97499a2b978861a0c9871c826ff0d27121871f7987c0f715aecfc",
+  "diffAnterior": "/Users/lucasantos/Projetos/dashboard-comercial-orq/docs/fila/runs/008/attempt-0/diff.patch",
+  "diffNovo": "/Users/lucasantos/Projetos/dashboard-comercial-orq/docs/fila/runs/008/attempt-1/diff.patch"
+}
+
+=== attempt-1/claude.txt fim
+9974,"webSearchRequests":0,"costUSD":0.2276676,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":399,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"permission_denials":[],"terminal_reason":"completed","fast_mode_state":"off","fast_mode_disabled_reason":"sdk_opt_in_required","subagent_stats":{"spawned":0,"requested":{"background":0,"foreground":0,"unset":0},"started_in_background":0,"max_depth":0,"spawned_by_subagents":0,"completed":0,"failed":0,"killed":{"parent":0,"user":0,"system":0},"refused":{"depth_limit":0,"concurrency_limit":0,"budget":0},"by_type":{}},"safety_stops":0,"is_error":false,"num_turns":5,"subtype":"success","api_error_status":null,"result":"Parei sem terminar: não consigo apagar as duas rotas com os comandos que tenho. Os dois critérios de remoção continuam falhando.\n\n- **O que bloqueia:** `git rm` foi negado na tentativa anterior, e a lista autorizada não tem `git rm` nem `rm`. `git add` e `git commit` só registram a remoção depois que o arquivo some do disco, e `Edit`/`Write` não apagam arquivos. Como a instrução diz para não insistir no comando negado, não tentei de novo.\n- **Estado dos arquivos:**\n  - `src/app/api/debug-comissao/route.ts` ainda existe.\n  - `src/app/api/dashboard/clientes/route.ts` ainda existe.\n- **O que já está no HEAD:**\n  - A guarda `exigirAcesso(\"/api/admin/auditoria\", \"GET\", \"admin\")` está na rota da auditoria (`src/app/api/admin/auditoria/route.ts:13`).\n  - `src/__tests__/admin-auditoria-guarda.test.ts` existe.\n  - `src/__tests__/f1-guarda-financeiro.test.ts` não cita mais `debug-comissao`.\n  - A árvore está limpa, então não há nada novo para commitar.\n  - Não rodei vitest, porque o ticket não pede mudança nesses itens e não dá para pôr o trailer `Orq-Ticket: 008` sem commit.\n- **Chamadores:** nenhum chamador de código das duas rotas. O único `/dashboard/clientes` que sobra em `src` é link para a página, que está fora de escopo, e os outros hits são comentários.\n\n**IMPEDIMENTO:** falta executar `git rm src/app/api/debug-comissao/route.ts src/app/api/dashboard/clientes/route.ts` e commitar com a linha `Orq-Ticket: 008` no fim. Isso precisa de um humano ou de uma permissão liberada para `git rm`.","ttft_ms":2987,"type":"result","duration_ms":13532,"uuid":"d0c63b97-b688-4ec3-a253-ed1ecf21ac02","ttft_stream_ms":1732,"time_to_request_ms":82,"first_content_frame_ms":1733,"queued_turn_count":0,"result_index":0}
+
+=== ticket
+docs/fila/008-rotas-mortas-e-auditoria-admin.md
+# Ticket: Remover /api/debug-comissao e /api/dashboard/clientes; /api/admin/auditoria só para admin
+
+## Objetivo (prosa)
+
+Itens F14, F16 e parte do F18 de docs/financeiro-v2/tickets.md.
+
+Recon (origin/main 4e441ed):
+- `src/app/api/debug-comissao/route.ts`: "Endpoint temporário de diagnóstico". Sem chamador em src (grep).
+  Só aparece na lista de `src/__tests__/f1-guarda-financeiro.test.ts:121` (`["debug-comissao", "GET", "admin"]`).
+- `src/app/api/dashboard/clientes/route.ts`: GET com select em clientes_receita e PATCH que escreve nela, só com
+  sessão. Sem chamador em src (as ocorrências de "/dashboard/clientes" são de páginas, não desta rota).
+- `src/app/api/admin/auditoria/route.ts`: só `verifySession`; lê `sistema_auditoria` inteira (inclui o log
+  de acesso negado do F1). Chamador: `src/app/config/diagnostico/page.tsx:205`.
+  Guarda pronta: `exigirAcesso(rota, metodo, "admin")` de `src/lib/acesso/guarda-rota.ts`.
+- Remoção de arquivo: usar `git rm` (o `rm` é ferramenta proibida no config).
+
+Lote 1 do Financeiro v2 (28/10/2026). Mapa: docs/roadmap/MAPA.md, bloco B1.
+
+## Campos de máquina
+
+```json
+{
+  "id": "008",
+  "bloco": "B1",
+  "frente": "B1-F6",
+  "slug": "rotas-mortas-e-auditoria-admin",
+  "origem": "humano",
+  "objetivo": "(1) Remova com git rm os arquivos src/app/api/debug-comissao/route.ts e src/app/api/dashboard/clientes/route.ts. (2) Em src/__tests__/f1-guarda-financeiro.test.ts remova SOMENTE a linha [\"debug-comissao\", \"GET\", \"admin\"] da lista de rotas; nenhuma outra linha ou asserção muda. (3) Em src/app/api/admin/auditoria/route.ts, primeira linha do GET: const acesso = await exigirAcesso(\"/api/admin/auditoria\", \"GET\", \"admin\"); if (!acesso.ok) return acesso.resposta; (import de @/lib/acesso/guarda-rota), mantendo o resto. (4) Crie src/__tests__/admin-auditoria-guarda.test.ts (vitest, sem rede, mock de @/lib/acesso/guarda-rota): negado devolve a resposta da guarda sem ler o banco; liberado lê sistema_auditoria. O caso negado tem de falhar contra o código atual. FORA DE ESCOPO: qualquer outra rota de /api/admin, as páginas /dashboard/clientes, outras linhas do teste do F1.",
+  "pathspec_allowlist": [
+    "src/app/api/debug-comissao/route.ts",
+    "src/app/api/dashboard/clientes/route.ts",
+    "src/__tests__/f1-guarda-financeiro.test.ts",
+    "src/app/api/admin/auditoria/route.ts",
+    "src/__tests__/admin-auditoria-guarda.test.ts"
+  ],
+  "cria_novo": [
+    "src/__tests__/admin-auditoria-guarda.test.ts"
+  ],
+  "dependencias": [],
+  "diff_estimado": 150,
+  "risco": "",
+  "criterios_aceite": [
+    {
+      "tipo": "alvo",
+      "descricao": "teste novo da guarda da auditoria verde",
+      "cmd": "node_modules/.bin/vitest run src/__tests__/admin-auditoria-guarda.test.ts >/dev/null 2>&1 && echo OK",
+      "espera": "OK"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "rota de debug removida",
+      "cmd": "test -f src/app/api/debug-comissao/route.ts || echo REMOVIDA",
+      "espera": "REMOVIDA"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "rota órfã de clientes removida",
+      "cmd": "test -f src/app/api/dashboard/clientes/route.ts || echo REMOVIDA",
+      "espera": "REMOVIDA"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "teste das guardas do F1 continua verde",
+      "cmd": "node_modules/.bin/vitest run src/__tests__/f1-guarda-financeiro.test.ts >/dev/null 2>&1 && echo OK",
+      "espera": "OK"
+    },
+    {
+      "tipo": "avaliador",
+      "descricao": "avaliador: no teste do F1 saiu só a linha do debug-comissao (anti-afrouxamento: nenhuma outra linha, asserção ou expect removido, nenhum skip); a guarda é a primeira linha do GET da auditoria; nenhum chamador das rotas removidas sobrou em src.",
+      "cmd": "true",
+      "espera": "avaliador"
+    }
+  ],
+  "status": "bloqueado",
+  "notas_status": "bloqueado: retry_sem_mudanca — o diff.patch da tentativa 2 é idêntico ao da tentativa anterior (sha256 anterior e90173e3dec97499a2b978861a0c9871c826ff0d27121871f7987c0f715aecfc; sha256 novo e90173e3dec97499a2b978861a0c9871c826ff0d27121871f7987c0f715aecfc); o juiz não foi chamado. Evidência: runs/008/attempt-0/diff.patch e runs/008/attempt-1/diff.patch. O agente não produziu hipótese nova: revise o ticket (objetivo, critérios, allowlist) antes de reabrir.",
+  "hash_candidato": "",
+  "sinal_hash": "",
+  "gate_ok": "",
+  "pid": null,
+  "iniciado_em": "",
+######## harness em test/
+fixtures
+orquestrador-ambiente-merito.test.ts
+orquestrador-arquivo-solto.test.ts
+orquestrador-base-vermelha.test.ts
+orquestrador-contexto-juiz-fixtures.test.ts
+orquestrador-contexto-juiz.test.ts
+orquestrador-criterio-merito.test.ts
+orquestrador-fila-json-quebrado.test.ts
+orquestrador-gate-grep-q.test.ts
+orquestrador-gate-regex-exemplos.test.ts
+orquestrador-gate-vitest-aviso.test.ts
+orquestrador-gates-fonte-unica.test.ts
+orquestrador-morte-por-sinal.test.ts
+orquestrador-pacotes.test.ts
+orquestrador-prefixo-aspas.test.ts
+orquestrador-prompt-como-rodar.test.ts
+orquestrador-reparo-trilha.test.ts
+orquestrador-retry-feedback-juiz.test.ts
+orquestrador-teto-adiamento-ambiente.test.ts
+orquestrador-trilha-uma-linha.test.ts
+19:    exclude: [
+20:      ...configDefaults.exclude,

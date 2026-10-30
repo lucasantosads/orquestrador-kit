@@ -1,0 +1,15 @@
+data,tickets_done,tickets_bloqueados,horas_loop_parado,horas_ativo,horas_ocioso_sem_processavel,horas_pausa_operacional,horas_pausa_manual,horas_pausa_gate_streak,horas_sem_dado,dia_com_intervencao,fonte
+2026-10-04,0,1,6,8,0,0,0,8,2,sim,runs/*/meta.json; local-loop.log
+2026-10-05,7,2,4,1,0,0,1,18,0,sim,runs/*/meta.json; local-loop.log
+2026-10-06,37,1,11,12,0,1,0,0,0,sim,runs/*/meta.json; local-loop.log
+2026-10-07,36,5,0,14,10,0,0,0,0,sim,runs/*/meta.json; local-loop.log
+2026-10-08,39,6,4,16,1,2,0,1,0,sim,runs/*/meta.json; local-loop.log
+2026-10-09,8,3,13,10,0,1,0,0,0,sim,runs/*/meta.json; local-loop.log
+2026-10-10,26,2,9,15,0,0,0,0,0,sim,runs/*/meta.json; local-loop.log
+2026-10-11,36,6,0,23,0,1,0,0,0,sim,runs/*/meta.json; local-loop.log
+2026-10-12,63,14,0,22,0,0,0,2,0,sim,runs/*/meta.json; local-loop.log
+2026-10-13,52,16,2,18,0,4,0,0,0,sim,runs/*/meta.json; local-loop.log
+2026-10-14,32,2,13,10,0,0,1,0,0,sim,runs/*/meta.json; local-loop.log
+2026-10-15,42,1,10,11,0,3,0,0,0,sim,runs/*/meta.json; local-loop.log
+2026-10-16,44,4,0,18,0,3,3,0,0,sim,runs/*/meta.json; local-loop.log
+2026-10-17,136,4,0,20,0,2,2,0,0,sim,runs/*/meta.json; local-loop.log

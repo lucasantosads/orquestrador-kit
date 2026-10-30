@@ -1,0 +1,894 @@
+/**
+ * decisao.ts — lógica de decisão do executor (ORQ-05a). PURA: sem worktree,
+ * sem git, sem claude, sem rede. Recebe estado, devolve decisão.
+ *
+ * O executor.sh (ORQ-05b) vira casca fina que chama estas funções, do mesmo
+ * jeito que enforcement.sh chama enforcement-core.ts. Toda regra vem do
+ * 000-config.json — nenhum limite, código de saída, nome de modelo ou lista de
+ * causas aparece hardcoded aqui.
+ */
+
+import { matchesAllowlist } from './enforcement-core.js'
+
+export interface DecisaoConfig {
+  executor_model: string
+  avaliador_model: string
+  retry_final_model: string
+  max_retries: number
+  diff_cap_linhas: number
+  worktrees_prefixo: string
+  restricao_execucao: {
+    ativa: boolean
+    tickets_permitidos: string[]
+    acao_ticket_fora_da_allowlist: string
+    recusa_exit_code: number
+    recusa_mensagem: string
+  }
+  politica_adiamento: { causas_que_adiam: string[] }
+  politica_retry: { por_causa: Record<string, { modelo: string; acao: string }> }
+}
+
+// ─── 1 · restricao_execucao ────────────────────────────────────────────────
+
+/**
+ * Um papel está indefinido quando seu valor é um marcador PENDENTE_*, não um
+ * modelo. Detectar pelo prefixo em vez de comparar com "PENDENTE_TK104" mantém
+ * a regra viva quando o marcador mudar de número.
+ */
+export function modeloIndefinido(valor: string): boolean {
+  return /^PENDENTE_/.test(valor)
+}
+
+/**
+ * O `claude` aceitou o modelo pedido? Ele NÃO sai com código de erro quando o id
+ * é desconhecido: responde texto e segue, e o run acaba com diff vazio que o
+ * harness lê como reprovação de mérito. Detectar isso pelo TEXTO é o que
+ * permite tratar como erro de CONFIGURAÇÃO no preflight, antes do gasto.
+ */
+export function modeloRecusado(saida: string): boolean {
+  return /unrecognized_model|issue with the selected model|is not a model this version|model[^\n]{0,40}(not found|does not exist|no access)/i.test(
+    saida,
+  )
+}
+
+export function papeisPendentes(config: DecisaoConfig): string[] {
+  return (['executor_model', 'avaliador_model', 'retry_final_model'] as const).filter((p) =>
+    modeloIndefinido(config[p]),
+  )
+}
+
+export interface Recusa {
+  permitido: boolean
+  exitCode: number
+  mensagem?: string
+  motivo?: string
+}
+
+/**
+ * Enquanto QUALQUER papel estiver pendente, só os tickets da allowlist rodam.
+ * Recusa não é falha do ticket: não consome retry, não bloqueia. Sai com o
+ * código do config.
+ */
+export function avaliaRestricaoExecucao(config: DecisaoConfig, ticketSlug: string): Recusa {
+  const r = config.restricao_execucao
+  const pendentes = papeisPendentes(config)
+  if (!r.ativa || pendentes.length === 0) return { permitido: true, exitCode: 0 }
+  if (r.tickets_permitidos.includes(ticketSlug)) return { permitido: true, exitCode: 0 }
+  return {
+    permitido: false,
+    exitCode: r.recusa_exit_code,
+    mensagem: r.recusa_mensagem,
+    motivo: `papéis pendentes: ${pendentes.join(', ')}`,
+  }
+}
+
+// ─── 2 · fronteira adiar vs reprovar ───────────────────────────────────────
+
+export type CausaInfra =
+  | 'conexao'
+  | 'sessao'
+  | 'rate_limit'
+  | 'quota'
+  | 'servidor'
+  | 'timeout'
+  | 'gate_interrompido'
+  | 'gate_crash'
+  | 'juiz_ilegivel'
+  | 'ambiente'
+export type CausaMerito = 'diff_cap' | 'enforcement' | 'criterio_qualidade' | 'arquivo_solto' | 'afrouxamento'
+export type Desfecho = 'aprovado' | 'adiado' | 'reprovado' | 'refatiar'
+
+/**
+ * Qual causa de infra cada rótulo do config representa. O config é a
+ * AUTORIDADE: causa detectada cujo rótulo não esteja em causas_que_adiam não
+ * adia. Tirar um rótulo de lá desliga aquele adiamento.
+ *
+ * Peça 7b-2: as duas causas novas NÃO pedem rótulo novo. `servidor` (5xx,
+ * overloaded) era detectado como `rate_limit` até aqui e continua ligado pelo
+ * mesmo rótulo "rate limit"; `gate_crash` (runner de gate que não rodou) é da
+ * família do gate interrompido e é ligado por "gate interrompido". Pedir rótulo
+ * novo faria todo repo instalado deixar de adiar um 503 no dia da atualização.
+ */
+const ROTULO_PARA_CAUSA: [RegExp, CausaInfra][] = [
+  [/conex/i, 'conexao'],
+  [/sess/i, 'sessao'],
+  [/rate\s*limit/i, 'rate_limit'],
+  [/rate\s*limit/i, 'servidor'],
+  [/quota/i, 'quota'],
+  [/timeout|rel[oó]gio/i, 'timeout'],
+  [/gate\s+interrompido/i, 'gate_interrompido'],
+  [/gate\s+interrompido/i, 'gate_crash'],
+  [/ju[ií]z|veredito/i, 'juiz_ilegivel'],
+  // Porte do Actus (43fccdd, 625): "falha de ambiente da worktree" — o harness
+  // não conseguiu EXECUTAR o comando de um critério (rc 126/127). Sem cooldown.
+  [/ambiente|impedimento/i, 'ambiente'],
+]
+
+/**
+ * Peça 7b-2 · COOLDOWN só para limite REMOTO. Esperar 60 min só ajuda quando
+ * quem recusou foi a API e a recusa tem prazo (limite da assinatura, cota).
+ * Timeout local, 5xx, sessão, rede e gate que não rodou adiam SEM cooldown: do
+ * lado da API nada mudou, e parar a fila uma hora por um blip é o incidente de
+ * 02/09 do Comarka (um pkill devolveu 124 e a fila ficou 1 h parada).
+ */
+const CAUSAS_COM_COOLDOWN: readonly CausaInfra[] = ['rate_limit', 'quota']
+
+export function armaCooldown(causa: CausaInfra | CausaMerito | undefined): boolean {
+  return CAUSAS_COM_COOLDOWN.includes(causa as CausaInfra)
+}
+
+export function causasDeAdiamentoDoConfig(config: DecisaoConfig): Set<CausaInfra> {
+  const out = new Set<CausaInfra>()
+  for (const rotulo of config.politica_adiamento.causas_que_adiam) {
+    for (const [re, causa] of ROTULO_PARA_CAUSA) if (re.test(rotulo)) out.add(causa)
+  }
+  return out
+}
+
+export interface SinalTentativa {
+  /** exit do claude_run: 124 timeout, 129/130 morto por fora. */
+  exitCode: number
+  /** stdout+stderr da tentativa (para casar padrão de rede/sessão/cota). */
+  saida: string
+  diffLines: number
+  /** true quando algum gate foi interrompido no meio (ORQ-04). */
+  gateInterrompido?: boolean
+  /**
+   * true quando a barreira (enforcement-core) reprovou o diff. Campo PRÓPRIO, e
+   * não mais um texto empurrado para dentro de criteriosFalhos: enforcement e
+   * qualidade são causas diferentes e pedem remédios diferentes no retry.
+   */
+  enforcementViolado?: boolean
+  /**
+   * Ticket 631: as violações do enforcement (tipo e detalhe), e não só o
+   * booleano, para separar "arquivo solto" de violação de escopo.
+   */
+  violacoesEnforcement?: { tipo: string; detalhe?: string }[]
+  /**
+   * Ticket 631: caminhos NÃO rastreados na worktree antes do `git add -A` do
+   * commit_do_agente (<rundir>/arquivos-soltos.txt). O harness os varre para o
+   * commit `wip`, e sem esta lista o enforcement não distingue o rascunho que o
+   * agente esqueceu do arquivo que ele commitou fora da allowlist.
+   */
+  arquivosSoltos?: string[]
+  /** critérios de aceite / avaliador que reprovaram por conteúdo. */
+  criteriosFalhos?: string[]
+  /**
+   * Peça 7b-2 · o rc do motor de gates, o gates.txt que ele escreveu e o PAPEL
+   * (typecheck, testes, build, lint) do gate que reprovou. É com os três que
+   * `gateNaoRodou` separa "o runner não rodou" de "o código está errado".
+   */
+  gatesRc?: number
+  gatesSaida?: string
+  gatePapelFalho?: string
+  /**
+   * Peça 7b-3 · a MEDIDA: quanto a chamada do agente durou de verdade e qual é
+   * o teto (`claude_timeout_secs`). Um rc 124 bem abaixo do teto não é o
+   * watchdog cortando: é o processo morto por fora (pkill, sono, outro
+   * `timeout`). No Comarka, o 315a foi rotulado "timeout 1500s" numa execução
+   * de 9 s, oito vezes seguidas.
+   */
+  duracaoSecs?: number
+  timeoutSecs?: number
+  /**
+   * Peça 7b-4 · o juiz rodou e REPROVOU. Campo próprio porque é o único
+   * sub-motivo que escala modelo: as linhas do juiz continuam entrando em
+   * `criteriosFalhos` (para o motivo e o diagnóstico), mas quem decide o sub é
+   * este campo, não o texto.
+   */
+  juizReprovou?: boolean
+  /**
+   * true quando o juiz (passo 7) NÃO produziu veredito legível — resposta
+   * ilegível, ou a chamada do juiz caiu em limite/timeout. Nos dois casos não
+   * houve julgamento do TRABALHO, e reprovar por isso queimaria retry de um
+   * ticket nunca julgado: é a mesma regra do envelope ausente (A9) e da
+   * armadilha do parser na SKILL ("falha de parse = adiado, nunca reprovação").
+   */
+  juizIlegivel?: boolean
+  /**
+   * Ferramentas negadas ao agente durante a sessão (`permission_denials[]` do
+   * envelope). CAMPO PRÓPRIO pela mesma razão: vem do envelope JSON do CLI, não
+   * de padrão em stdout. Alimenta o DIAGNÓSTICO do retry; desde o ticket 625
+   * (23/09/2026) não pesa em desfecho nenhum — ver `criteriosNaoExecutados`.
+   */
+  permissoesNegadas?: string[]
+  /**
+   * Critérios de aceite cujo COMANDO o próprio harness não conseguiu executar
+   * (run_criterios, executor.sh): rc 126 (não executável) ou 127 (não
+   * encontrado). É o único sinal de 'ambiente' por critério (ticket 625): um
+   * critério que RODOU e reprovou é mérito, mesmo que o agente tenha tido uma
+   * permissão negada na mesma tentativa. rc 124 não entra: run_criterios roda o
+   * critério sem timeout, então o harness nunca produz 124 ali — se um timeout
+   * for introduzido, o 124 entra aqui na mesma mudança.
+   */
+  criteriosNaoExecutados?: string[]
+}
+
+const PADRAO_CAUSA: [RegExp, CausaInfra][] = [
+  [/ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|EPIPE|socket hang up|network error|connection (reset|refused|closed)|fetch failed|went to sleep/i, 'conexao'],
+  // K11a-3 · os padrões de AUTENTICAÇÃO do actus-saas (`SINAIS_AUTENTICACAO`,
+  // executor.mjs:189-196), copiados do texto REAL do incidente de 13/08/2026 —
+  // não de uma paráfrase. Eles são `sessao` porque é isso que são: a FERRAMENTA
+  // indisponível, nunca reprovação do trabalho. Ficar de fora custava um retry
+  // por tentativa até o ticket bloquear, sem ninguém ter julgado nada.
+  [/session expired|sess[aã]o expirada|invalid session|session not found|token expired|reauthenticate|please (log ?in|sign ?in) again|failed\s+to\s+authenticate|authentication_error|not\s+authenticated|please\s+run\s+\/login|invalid\s+api\s+key/i, 'sessao'],
+  [/rate[ _-]?limit|too many requests|\(429\)|\b429\b/i, 'rate_limit'],
+  [/quota|usage limit|usage_cap_reached|credit balance/i, 'quota'],
+  // Peça 7b-2 · INDISPONIBILIDADE não é limite. `service unavailable` e `503`
+  // vieram da lista do Actus (executor.mjs:211-221), que trata limite e
+  // indisponibilidade como a mesma família; aqui eles saem de `rate_limit` para
+  // não armar cooldown por um blip. Os números com borda de PALAVRA, e não por
+  // substring como lá: `15039 tokens` numa saída qualquer viraria adiamento.
+  // Depois de rate_limit e quota: uma saída com 429 E overloaded é limite.
+  [/overloaded|service unavailable|internal server error|bad gateway|\b(500|502|503|529)\b/i, 'servidor'],
+]
+
+// ─── 2b · o runner do gate rodou? (peça 7b-2) ──────────────────────────────
+
+/** Sinais de que o PRÓPRIO runner não rodou: binário ausente, sem permissão, script inexistente. */
+const RUNNER_NAO_RODOU = /command not found|^\s*(ba|z)?sh: .*: (not found|Permission denied)\s*$|\bspawn\s+\S+\s+ENOENT\b|Missing script:/im
+/** Placar de testes (vitest, jest, mocha, o `[N pacotes, Xp/Yf]` do baseline). */
+const PLACAR_TESTES = /\bTests?:?\s+.*\b\d+\s+(passed|failed)\b|\b\d+\s+(passing|failing)\b|\[\d+ pacotes, \d+p\/\d+f\]/i
+/** Linha de teste que rodou e falhou: prova de que o runner rodou, mesmo sem o resumo. */
+const TESTE_FALHANDO = /^\s*(FAIL|✕|×)\s|AssertionError|\bexpected\b.*\bto\b/m
+
+/**
+ * O gate que reprovou NÃO RODOU (crash de runner), a partir do gates.txt?
+ *
+ * Em QUALQUER papel: rc 126/127 (`exit N` na linha FALHA), "command not
+ * found", ENOENT do binário, `Missing script`, ou recorte VAZIO com rc != 0.
+ * No papel `testes`, também: nenhum placar e nenhuma linha de teste falhando no
+ * recorte (o vitest que não achou o próprio módulo). Typecheck ou build que
+ * rodou e apontou erro de código continua sendo mérito.
+ *
+ * Existe porque, até aqui, gate quebrado virava `criterio_qualidade` e ESCALAVA
+ * o modelo: 82 de 82 retries do kit foram para opus, pagando capacidade para um
+ * problema de ambiente.
+ */
+export function gateNaoRodou(gatesSaida: string, papel: string): boolean {
+  const linhas = gatesSaida.split('\n')
+  const falha = linhas.find((l) => /^FALHA\s/.test(l))
+  if (!falha) return false
+  const nome = falha.split(/\s+/)[1] ?? ''
+  const rc = Number(/\bexit (\d+)\b/.exec(falha)?.[1] ?? NaN)
+  if (rc === 126 || rc === 127) return true
+  const marca = `--- recorte de ${nome} ---`
+  const i = gatesSaida.indexOf(marca)
+  const recorte = i >= 0 ? gatesSaida.slice(i + marca.length).trim() : ''
+  // Placar ou teste falhando é PROVA de que o runner rodou: vence qualquer
+  // texto de erro que um teste tenha imprimido no caminho.
+  if (PLACAR_TESTES.test(falha) || PLACAR_TESTES.test(recorte) || TESTE_FALHANDO.test(recorte)) return false
+  if (RUNNER_NAO_RODOU.test(recorte)) return true
+  if (recorte === '') return true
+  return papel === 'testes'
+}
+
+function houveGateCrash(sinal: SinalTentativa): boolean {
+  if (!sinal.gatesRc || !sinal.gatesSaida) return false
+  return gateNaoRodou(sinal.gatesSaida, sinal.gatePapelFalho ?? '')
+}
+
+/**
+ * rc 124 é timeout só quando a duração medida alcançou o teto. Sem a medida
+ * (chamador antigo, teste de unidade), vale o rc, como sempre valeu.
+ */
+function cortadoPeloRelogio(sinal: SinalTentativa): boolean {
+  const d = sinal.duracaoSecs
+  const t = sinal.timeoutSecs
+  if (typeof d !== 'number' || typeof t !== 'number' || !(t > 0)) return true
+  return d >= t
+}
+
+/**
+ * A causa em texto, com a MEDIDA ao lado do rótulo (peça 7b-3). É o que vai para
+ * `notas_status` via mark_adiado e, no teto de adiamentos, para a nota do
+ * bloqueio: "rc=124 em 9s" diz o que aconteceu; "timeout" sozinho só repetia o
+ * rótulo.
+ */
+function motivoInfra(infra: CausaInfra, sinal: SinalTentativa): string {
+  if (typeof sinal.duracaoSecs !== 'number') return `infraestrutura: ${infra}`
+  const medida = `rc=${sinal.exitCode} em ${sinal.duracaoSecs}s`
+  if (sinal.exitCode === 124 && infra === 'gate_interrompido') {
+    return `infraestrutura: ${infra} (${medida}, abaixo do limite de ${sinal.timeoutSecs}s: morto por fora)`
+  }
+  return `infraestrutura: ${infra} (${medida})`
+}
+
+/**
+ * Marcadores com que o executor (executor.sh, passo 8) empurra GATE reprovado e
+ * JUIZ que reprovou para dentro de `criteriosFalhos`. Precisam casar com o
+ * literal de lá: "gates reprovados" e o prefixo "juiz: ".
+ */
+const MARCA_GATE = 'gates reprovados'
+const PREFIXO_JUIZ = 'juiz:'
+
+/**
+ * A falha desta tentativa é SÓ de critério de aceite? (porte do Actus, 9ecd02b)
+ * Sem falha nenhuma (entrega verde) também devolve false. Gate, enforcement e
+ * juiz que reprovou são mérito SEMPRE; agente que morreu (rc != 0) também não
+ * é "só critério". Medido no Actus em 22/09/2026: o 470c (typecheck) e o 481
+ * (juiz) foram ADIADOS por 'ambiente' só porque um grep incidental foi negado.
+ */
+function falhaSoDeCriterio(sinal: SinalTentativa): boolean {
+  const cf = sinal.criteriosFalhos ?? []
+  if (cf.length === 0 || sinal.exitCode !== 0 || sinal.enforcementViolado) return false
+  return !cf.some((c) => c.trim() === MARCA_GATE || c.trimStart().startsWith(PREFIXO_JUIZ))
+}
+
+/** Detecta causa de INFRA. null quando nada de infra aconteceu. */
+export function detectarCausaInfra(sinal: SinalTentativa): CausaInfra | null {
+  // ANTES do curto-circuito de exitCode===0: o juiz roda DEPOIS de o agente
+  // sair com rc=0, então a tentativa inteira é bem-sucedida e o único sinal de
+  // que não houve veredito é este campo.
+  if (sinal.juizIlegivel) return 'juiz_ilegivel'
+  // 'ambiente' também passa à frente do curto-circuito de rc=0 — mas, ao
+  // contrário do juiz, SÓ quando há falha real de resultado junto.
+  //
+  // POR QUE A POSIÇÃO NÃO É A MESMA DO `juizIlegivel`, embora as duas linhas
+  // estejam no mesmo lugar do arquivo: `juizIlegivel` significa que NÃO HOUVE
+  // JULGAMENTO — não existe resultado verde para respeitar, então ele adia
+  // incondicionalmente. Permissão negada significa outra coisa: o agente tentou
+  // um caminho, foi barrado, e ACHOU OUTRO. Se gates, critérios e juiz vieram
+  // verdes, o trabalho está feito e o muro que ele contornou é história da
+  // execução, não desfecho. Nada que tenha acontecido DURANTE a execução pode
+  // sobrepor um resultado final verde.
+  //
+  // Medido no 488 (2026-09-20): typecheck/testes/build ok, 48+10 testes
+  // passados, os 3 critérios verdes e o juiz com `aprovado:true` e
+  // `criterios_falhos:[]` — e o ticket foi ADIADO por causa 'ambiente'. Era
+  // para ter mergeado. Ver PLAYBOOK (regra 10).
+  //
+  // E o outro lado (22/09/2026): 'ambiente' só quando a ÚNICA falha é de
+  // CRITÉRIO. Gate, enforcement e juiz reprovado seguem para o caminho de
+  // mérito mesmo com permissão negada — ver `falhaSoDeCriterio`.
+  //
+  // Ticket 625 (23/09/2026): e mesmo só-critério, 'ambiente' exige que o
+  // HARNESS não tenha conseguido executar o comando (criteriosNaoExecutados,
+  // rc 126/127). Permissão negada ao AGENTE deixou de pesar aqui: no 503
+  // attempt-0 o critério reprovou de verdade e o comando negado era o próprio
+  // critério, que o agente tentou conferir — o adiamento escondeu a falha.
+  if (falhaSoDeCriterio(sinal) && sinal.criteriosNaoExecutados && sinal.criteriosNaoExecutados.length > 0) {
+    return 'ambiente'
+  }
+  if (sinal.exitCode === 124) return cortadoPeloRelogio(sinal) ? 'timeout' : 'gate_interrompido'
+  if (sinal.exitCode === 129 || sinal.exitCode === 130) return 'gate_interrompido'
+  if (sinal.gateInterrompido) return 'gate_interrompido'
+  // Gate duplo: texto só conta quando a chamada de fato falhou. Um ticket que
+  // MENCIONE "rate limit" no código sai com rc=0 e nunca dispara adiamento.
+  if (sinal.exitCode === 0) return null
+  // Envelope ausente (A9): com --output-format json, um CLI que chegou a rodar
+  // SEMPRE imprime envelope, mesmo em erro. Saída vazia com rc!=0 é CLI que
+  // morreu antes de falar — login caído, credencial expirada, processo morto.
+  // Classificado como 'sessao' porque é isso que ele é, e porque assim o config
+  // continua sendo a autoridade: tirar "sessão expirada" de causas_que_adiam
+  // desliga este adiamento junto com os outros da mesma família.
+  // Gêmeo do `sem_envelope` no lib.sh — os dois têm que concordar.
+  if (sinal.saida.trim() === '') return 'sessao'
+  for (const [re, causa] of PADRAO_CAUSA) if (re.test(sinal.saida)) return causa
+  return null
+}
+
+export interface Veredito {
+  desfecho: Desfecho
+  causa?: CausaInfra | CausaMerito
+  motivo: string
+  contaComoRetry: boolean
+  /** Peça 7b-2: o adiamento arma cooldown? Só para limite remoto (`armaCooldown`). */
+  cooldown?: boolean
+  /**
+   * Peça 7b-4 · QUAL mérito reprovou: `juiz`, `criterio`, `gate_<papel>` ou
+   * `exit`. Só no reprovado. `criterio_qualidade` era o balde de tudo ("162 de
+   * 162" no Actus) e tudo escalava; o sub é o que separa capacidade de ambiente.
+   */
+  sub?: string
+}
+
+/**
+ * O sub-motivo de uma reprovação de mérito, na ordem em que o pipeline para:
+ * gate (fail-fast), juiz (só roda com o mecânico verde), critério, exit.
+ */
+export function subDoSinal(sinal: SinalTentativa): string {
+  if (sinal.gatesRc) return `gate_${sinal.gatePapelFalho || 'desconhecido'}`
+  if (sinal.juizReprovou) return 'juiz'
+  if (sinal.criteriosFalhos && sinal.criteriosFalhos.length > 0) return 'criterio'
+  return 'exit'
+}
+
+/**
+ * A fronteira, agora com TRÊS lados em vez de dois.
+ *
+ * INFRA adia e nunca reprova. Reprovação MECÂNICA — diff acima do cap, arquivo
+ * fora da allowlist, zona proibida — vira `refatiar` (regra 19): o problema não
+ * é capacidade nem qualidade, é TAMANHO ou FRONTEIRA, e nenhum dos dois se
+ * conserta repetindo a mesma tentativa. Retry é só para erro de implementação
+ * com todos os cheques mecânicos verdes.
+ *
+ * Foi o que travou o 201 duas vezes: as tentativas que respeitaram a fronteira
+ * ficavam vermelhas no gate e as que a cruzaram caíam no enforcement — três
+ * ciclos pagos para chegar a uma conclusão que era do humano, não do agente.
+ */
+/**
+ * Ticket 631: os arquivos soltos quando TODAS as violações do enforcement são
+ * `fora_do_pathspec` de caminhos listados em `arquivosSoltos`; `[]` em qualquer
+ * outro caso (sem violação detalhada, tipo diferente, arquivo commitado pelo
+ * agente, mistura).
+ */
+export function violacaoSoDeArquivoSolto(sinal: SinalTentativa): string[] {
+  const vs = sinal.violacoesEnforcement ?? []
+  const soltos = sinal.arquivosSoltos ?? []
+  if (vs.length === 0 || soltos.length === 0) return []
+  const todas = vs.every((v) => v.tipo === 'fora_do_pathspec' && soltos.includes(v.detalhe ?? ''))
+  return todas ? [...new Set(vs.map((v) => v.detalhe ?? ''))] : []
+}
+
+export function decidirDesfecho(config: DecisaoConfig, sinal: SinalTentativa): Veredito {
+  const adia = causasDeAdiamentoDoConfig(config)
+  const infra = detectarCausaInfra(sinal)
+  if (infra && adia.has(infra)) {
+    return { desfecho: 'adiado', causa: infra, motivo: motivoInfra(infra, sinal), contaComoRetry: false, cooldown: armaCooldown(infra) }
+  }
+  if (sinal.diffLines > config.diff_cap_linhas) {
+    return {
+      desfecho: 'refatiar',
+      causa: 'diff_cap',
+      motivo: `diff de ${sinal.diffLines} linhas acima do cap de ${config.diff_cap_linhas}`,
+      contaComoRetry: false,
+      cooldown: false,
+    }
+  }
+  if (sinal.enforcementViolado) {
+    // Etapa 8c: afrouxamento num teste vizinho ampliado manda sobre qualquer
+    // outra violação. Mérito (a ampliação era a chance de ajustar o teste), mas
+    // sem retry: nenhuma regra de retry nomeia a causa, e `decidirRetry` bloqueia.
+    // Nunca `refatiar`: a pergunta "ampliar ou fatiar?" já foi respondida.
+    const afrouxa = (sinal.violacoesEnforcement ?? []).filter((x) => x.tipo === 'afrouxamento')
+    if (afrouxa.length > 0) {
+      return {
+        desfecho: 'reprovado',
+        causa: 'afrouxamento',
+        motivo: `afrouxamento em teste vizinho ampliado: ${afrouxa.map((x) => x.detalhe ?? '').join('; ')}`,
+        contaComoRetry: true,
+        cooldown: false,
+      }
+    }
+    // Ticket 631 (513, 23/09/2026): TODA violação é fora_do_pathspec de arquivo
+    // que estava solto antes do `add -A` do harness. Não é escopo: é sujeira que
+    // o agente conserta sabendo o nome. Mérito, com retry e o nome no
+    // diagnóstico. Qualquer outra forma (zona proibida, arquivo que o agente
+    // commitou, violação mista) segue em refatiar.
+    const soltos = violacaoSoDeArquivoSolto(sinal)
+    if (soltos.length > 0) {
+      return {
+        desfecho: 'reprovado',
+        causa: 'arquivo_solto',
+        motivo: `arquivo solto fora da allowlist: ${soltos.join(', ')}`,
+        contaComoRetry: true,
+      }
+    }
+    return {
+      desfecho: 'refatiar',
+      causa: 'enforcement',
+      motivo: 'barreira: violação de zona/escopo (ver enforcement.json)',
+      contaComoRetry: false,
+      cooldown: false,
+    }
+  }
+  // Peça 7b-2 · DEPOIS de diff_cap e enforcement (fronteira e tamanho são
+  // certeza sobre o diff; o crash é o ambiente) e ANTES dos critérios: com o
+  // runner de gate quebrado, um critério vermelho pode ser o mesmo ambiente, e
+  // retry nenhum conserta ambiente.
+  if (houveGateCrash(sinal) && adia.has('gate_crash')) {
+    return {
+      desfecho: 'adiado',
+      causa: 'gate_crash',
+      motivo: `infraestrutura: gate_crash (o runner do gate de ${sinal.gatePapelFalho || 'papel desconhecido'} não rodou)`,
+      contaComoRetry: false,
+      cooldown: false,
+    }
+  }
+  if (sinal.criteriosFalhos && sinal.criteriosFalhos.length > 0) {
+    return {
+      desfecho: 'reprovado',
+      causa: 'criterio_qualidade',
+      motivo: `critério(s) reprovado(s): ${sinal.criteriosFalhos.join('; ')}`,
+      contaComoRetry: true,
+      cooldown: false,
+      sub: subDoSinal(sinal),
+    }
+  }
+  if (sinal.exitCode !== 0) {
+    return { desfecho: 'reprovado', causa: 'criterio_qualidade', motivo: `exit ${sinal.exitCode}`, contaComoRetry: true, cooldown: false, sub: subDoSinal(sinal) }
+  }
+  return { desfecho: 'aprovado', motivo: 'gates e critérios verdes', contaComoRetry: false, cooldown: false }
+}
+
+// ─── 3 · política de retry ─────────────────────────────────────────────────
+
+export interface PlanoRetry {
+  deveTentar: boolean
+  modelo: string
+  escalou: boolean
+  estreitarEscopo: boolean
+  acao: string
+  motivo: string
+}
+
+/**
+ * Causas em que ESCALAR modelo é proibido, aconteça o que acontecer com o
+ * config. `diff_cap` é falha de TAMANHO: um modelo mais forte escreve o mesmo
+ * excesso, só mais caro. `enforcement` é violação de FRONTEIRA: a barreira não
+ * julgou o trabalho, disse que o diff saiu do lugar permitido — e capacidade não
+ * é o que faz um diff respeitar a pathspec. Escalar nos dois é gasto sem
+ * hipótese; nos dois o remédio é manter o modelo e estreitar o escopo.
+ * `arquivo_solto` (631): apagar um rascunho não pede modelo maior.
+ */
+const NUNCA_ESCALA: readonly string[] = ['diff_cap', 'enforcement', 'arquivo_solto']
+
+/**
+ * A causa decide o remédio. `diff_cap` e `enforcement` MANTÊM o modelo e
+ * estreitam o escopo; `criterio_qualidade` — falha de CAPACIDADE — escala para
+ * retry_final_model. A asserção abaixo não é decorativa: config que mande
+ * escalar numa causa de NUNCA_ESCALA é REJEITADA, não obedecida.
+ */
+export function decidirRetry(
+  config: DecisaoConfig,
+  veredito: Veredito,
+  tentativaAtual: number,
+  modeloAtual: string,
+): PlanoRetry {
+  const base = { escalou: false, estreitarEscopo: false, modelo: modeloAtual }
+  // `refatiar` cai aqui junto com `adiado` e `aprovado`: reprovação mecânica NÃO
+  // gera retry (regra 19). As regras de `diff_cap`/`enforcement` em
+  // politica_retry seguem valendo como CONTRATO — a proibição de escalar modelo
+  // por tamanho ou fronteira continua sendo verificada abaixo —, mas o caminho
+  // normal já não passa por elas.
+  if (veredito.desfecho !== 'reprovado') {
+    return { ...base, deveTentar: false, acao: 'nenhuma', motivo: `desfecho ${veredito.desfecho} não gera retry` }
+  }
+  if (tentativaAtual >= config.max_retries) {
+    return { ...base, deveTentar: false, acao: 'bloquear', motivo: `max_retries ${config.max_retries} atingido` }
+  }
+  const causa = String(veredito.causa)
+  const regra = config.politica_retry.por_causa[causa]
+  if (!regra) {
+    return { ...base, deveTentar: false, acao: 'bloquear', motivo: `sem regra de retry para a causa '${causa}'` }
+  }
+  // ANTES do ramo ESCALAR: a proibição tem que vencer o config, e não só pegar
+  // valor desconhecido. Com a checagem depois, um config com modelo:'ESCALAR'
+  // em diff_cap escalava de verdade e a asserção nunca era alcançada.
+  if (NUNCA_ESCALA.includes(causa) && regra.modelo !== 'MANTER') {
+    throw new Error(
+      `config inválida: escalar modelo por ${causa} é proibido (falha de ${causa === 'diff_cap' ? 'tamanho' : 'fronteira'}, não de capacidade)`,
+    )
+  }
+  // Peça 7b-4 · ESCALAR vale só para sub=juiz: é o único mérito em que um
+  // modelo mais forte é hipótese (o juiz leu o diff e achou o trabalho fraco).
+  // Critério vermelho, gate vermelho e exit repetem com o MESMO modelo: o que
+  // costuma estar errado ali é critério mal escrito, gate quebrado ou ambiente,
+  // e opus paga o mesmo muro mais caro (82 de 82 retries do kit foram opus).
+  if (regra.modelo === 'ESCALAR' && veredito.sub !== 'juiz') {
+    return {
+      deveTentar: true,
+      modelo: modeloAtual,
+      escalou: false,
+      estreitarEscopo: false,
+      acao: 'repetir com o mesmo modelo e o diagnóstico da reprovação',
+      motivo: `${causa} sub=${veredito.sub ?? '?'}: mantém modelo (só o juiz escala)`,
+    }
+  }
+  if (regra.modelo === 'ESCALAR') {
+    return {
+      deveTentar: true,
+      modelo: config.retry_final_model,
+      escalou: config.retry_final_model !== modeloAtual,
+      estreitarEscopo: false,
+      acao: regra.acao,
+      motivo: `${causa}: escala modelo`,
+    }
+  }
+  // MANTER — chega aqui só quem não é NUNCA_ESCALA ou já passou pela asserção.
+  return {
+    deveTentar: true,
+    modelo: modeloAtual,
+    escalou: false,
+    estreitarEscopo: true,
+    acao: regra.acao,
+    motivo: `${causa}: mantém modelo e estreita escopo`,
+  }
+}
+
+// ─── 3b · corte de repetição (peça 7b-4) ───────────────────────────────────
+
+/**
+ * O sub de uma linha REPROVADO da trilha. Linha nova traz `sub=`; linha de antes
+ * da 7b-4 não traz, e o sub é DERIVADO das linhas da mesma tentativa que vieram
+ * antes dela (desde o INICIO): GATE com um papel `=falha` vira `gate_<papel>`,
+ * JUIZ reprovado vira `juiz`, critérios abaixo do total viram `criterio`, e o
+ * resto é `exit`. É o "sub normalizado": o mesmo nome, venha de onde vier.
+ */
+export function subDaLinha(linhas: string[], i: number): string {
+  const m = / sub=(\S+)/.exec(linhas[i] ?? '')
+  if (m) return m[1]!
+  let gate = ''
+  let juiz = false
+  let criterio = false
+  for (let j = i - 1; j >= 0; j--) {
+    const l = linhas[j]!
+    const ev = l.split(' ')[2]
+    if (ev === 'INICIO') break
+    if (ev === 'GATE') {
+      const f = /\b(typecheck|testes|build|lint)=falha\b/.exec(l)
+      if (f) gate = f[1]!
+      const c = /\bcriterios=(\d+)\/(\d+)\b/.exec(l)
+      if (c && Number(c[1]) < Number(c[2])) criterio = true
+    }
+    if (ev === 'JUIZ' && / veredito=reprovado\b/.test(l)) juiz = true
+  }
+  if (gate) return `gate_${gate}`
+  if (juiz) return 'juiz'
+  if (criterio) return 'criterio'
+  return 'exit'
+}
+
+/**
+ * A reprovação ATUAL (sub, diff) repete a anterior do mesmo ticket? `linhas` são
+ * as linhas da trilha DESTE ticket, antes de a atual ser escrita. A anterior é a
+ * última REPROVADO, desde que nada tenha encerrado a série entre as duas
+ * (APROVADO, MERGE, BLOQUEADO, REFATIAR, RECUPERADO: o ticket saiu de pendente,
+ * e reabrir é decisão de humano). ADIADO no meio não quebra a série.
+ *
+ * Mesmo sub e mesmo `diff=` = o agente entregou o mesmo trabalho e o mesmo
+ * juízo o reprovou: a 3ª volta é gasto sem hipótese. O 461 do Actus foi 717,
+ * 717, 717, duas delas em opus.
+ */
+export function ehRepeticao(linhas: string[], sub: string, diff: number): boolean {
+  for (let i = linhas.length - 1; i >= 0; i--) {
+    const ev = (linhas[i] ?? '').split(' ')[2]
+    if (ev === 'APROVADO' || ev === 'MERGE' || ev === 'BLOQUEADO' || ev === 'REFATIAR' || ev === 'RECUPERADO') return false
+    if (ev !== 'REPROVADO') continue
+    const d = / diff=(\d+)\b/.exec(linhas[i]!)
+    return !!d && Number(d[1]) === diff && subDaLinha(linhas, i) === sub
+  }
+  return false
+}
+
+/**
+ * Peça 7b-8 · o ticket foi DEVOLVIDO por um humano de `bloqueado` para
+ * `pendente`? `linhas` são as linhas da trilha deste ticket; quem chama já
+ * conferiu que o status atual é `pendente`. A resposta é sim quando o último
+ * evento de desfecho do ticket é BLOQUEADO: o loop nunca tira um ticket de
+ * bloqueado, então se ele está pendente depois de um BLOQUEADO, foi a mão de
+ * alguém (o lote 14 fez isso com o 235). RECUPERADO quer dizer que a devolução
+ * já foi processada, e qualquer outro desfecho (INICIO, ADIADO, REPROVADO,
+ * APROVADO, MERGE, REFATIAR) quer dizer que o ticket já voltou a rodar.
+ */
+export function reabertoDeBloqueado(linhas: string[]): boolean {
+  const desfechos = ['BLOQUEADO', 'RECUPERADO', 'INICIO', 'ADIADO', 'REPROVADO', 'RETRY', 'APROVADO', 'MERGE', 'REFATIAR']
+  for (let i = linhas.length - 1; i >= 0; i--) {
+    const ev = (linhas[i] ?? '').split(' ')[2] ?? ''
+    if (!desfechos.includes(ev)) continue
+    return ev === 'BLOQUEADO'
+  }
+  return false
+}
+
+// ─── 4 · registro do meta.json ─────────────────────────────────────────────
+
+export interface RegistroMeta {
+  attempt: number
+  model: string
+  claude_dur_secs: number
+  diff_lines: number
+  resultado: string
+  ts: string
+}
+
+/** Monta a entrada de telemetria de UMA tentativa. `ts` entra injetado. */
+export function registroMeta(entrada: {
+  attempt: number
+  modelo: string
+  duracaoSecs: number
+  diffLines: number
+  resultado: string
+  ts: string
+}): RegistroMeta {
+  return {
+    attempt: entrada.attempt,
+    model: entrada.modelo,
+    claude_dur_secs: Math.max(0, Math.round(entrada.duracaoSecs)),
+    diff_lines: Math.max(0, entrada.diffLines),
+    resultado: entrada.resultado,
+    ts: entrada.ts,
+  }
+}
+
+// ─── 5 · nome da worktree ──────────────────────────────────────────────────
+
+/**
+ * `<prefixo><id>`. O prefixo vem do config porque ../_worktrees é compartilhado
+ * com outros repos: sem ele, dois repos com o mesmo id de ticket colidem — e o
+ * loop remove worktree ao final, então a colisão apagaria trabalho alheio.
+ */
+export function nomeWorktree(prefixo: string, id: string): string {
+  // Colapsa `..` ANTES de trocar o resto: um id como '../fora' não pode virar
+  // nome com travessia nem carregar '..' literal para dentro de _worktrees.
+  const limpo = String(id)
+    .trim()
+    .replace(/\.{2,}/g, '-')
+    .replace(/[^A-Za-z0-9._-]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^[-.]+|[-.]+$/g, '')
+  if (!limpo) throw new Error('id de ticket vazio: worktree sem nome colide com qualquer outra')
+  if (!prefixo) throw new Error('worktrees_prefixo ausente no config: worktree sem prefixo pode colidir com outro repo')
+  return `${prefixo}${limpo}`
+}
+
+/** Lê o prefixo do config, falhando alto se o campo não existir. */
+export function prefixoDeWorktree(config: DecisaoConfig): string {
+  const p = config.worktrees_prefixo
+  if (!p) throw new Error('config sem worktrees_prefixo')
+  return p
+}
+
+// ─── 6 · base vermelha (ticket 632) ────────────────────────────────────────
+
+/**
+ * Arquivos das linhas de falha do vitest num `gates.txt`: ` FAIL  <arquivo>` e
+ * ` FAIL  <arquivo> > <teste>`. Deduplicados, na ordem em que aparecem. Cor
+ * ANSI sai antes (o `gates.ts` grava a saída crua do runner).
+ *
+ * Lista vazia quer dizer "não reconheci a falha", nunca "não houve falha": quem
+ * chama trata vazio como caminho de hoje (fail-closed para o comportamento
+ * atual).
+ */
+export function arquivosFalhosDoVitest(gatesTxt: string): string[] {
+  const vistos: string[] = []
+  for (const cru of gatesTxt.split('\n')) {
+    const linha = cru.replace(/\x1b\[[0-9;]*m/g, '')
+    const m = /^\s*FAIL\s+(\S+?)(?:\s+>\s.*)?\s*$/.exec(linha)
+    if (!m) continue
+    const arquivo = m[1]!
+    if (!vistos.includes(arquivo)) vistos.push(arquivo)
+  }
+  return vistos
+}
+
+/**
+ * Ticket 632 (decisão do Lucas, 23/09/2026). O gate de testes que falha SÓ em
+ * arquivo de teste que o ticket não tocou nem pode tocar é base vermelha, não
+ * mérito do ticket: devolve a lista desses arquivos. Devolve `[]` (caminho de
+ * hoje) quando a falha não foi reconhecida ou quando QUALQUER arquivo falho está
+ * no diff do ticket ou casa um glob da allowlist.
+ *
+ * As outras condições (enforcement ok, critérios verdes, só gate de papel
+ * `testes` reprovado, gates não interrompidos) são do executor, que tem o
+ * estado da tentativa.
+ */
+export function arquivosBaseVermelha(entrada: {
+  gatesTxt: string
+  arquivosDoDiff: string[]
+  allowlist: string[]
+}): string[] {
+  const falhos = arquivosFalhosDoVitest(entrada.gatesTxt)
+  if (falhos.length === 0) return []
+  const proprio = (a: string) => entrada.arquivosDoDiff.includes(a) || matchesAllowlist(a, entrada.allowlist)
+  return falhos.some(proprio) ? [] : falhos
+}
+
+// ─── 7 · teste vizinho liberado só quando falha (etapa 8c) ─────────────────
+
+/** Onde mora teste, em qualquer repo da frota (a mesma régua do gate de ticket). */
+const RE_ARQ_TESTE = /(^|\/)(test|tests|__tests__)\/|\.(test|spec)\.[^/]*$/
+
+export interface ParVizinho {
+  teste: string
+  /** o item de `src/` da allowlist que o teste importa ou cita */
+  item: string
+}
+
+export interface DecisaoVizinhos {
+  amplia: boolean
+  testes: string[]
+  pares: ParVizinho[]
+  motivo: string
+}
+
+/**
+ * Porte do 457856c do Comarka no desenho do kit. Amplia só se TODO arquivo com
+ * FAIL no vitest é teste fora do diff e da allowlist e está na lista de vizinhos
+ * da C11 (`testesVizinhos` do gate-ticket.ts, na árvore do base_ticket: import
+ * direto resolvido ou citação de um item de `src/`). Um que não cumpre cancela
+ * tudo. A ligação é a da C11, não o `teste_cita` do Comarka (decisão do PASSO 0
+ * da 8c): no replay ela amplia 12 de 19 e cobre 11, e não amplia o 762, que só
+ * citava `vercel.json` e cujo conserto era código.
+ *
+ * `vizinhos` é a saída de `testesVizinhos`: item → testes que o importam ou citam.
+ */
+export function decidirVizinhos(entrada: {
+  gatesTxt: string
+  arquivosDoDiff: string[]
+  allowlist: string[]
+  vizinhos: ReadonlyMap<string, string[]>
+}): DecisaoVizinhos {
+  const nao = (motivo: string): DecisaoVizinhos => ({ amplia: false, testes: [], pares: [], motivo })
+  const falhos = arquivosFalhosDoVitest(entrada.gatesTxt)
+  if (falhos.length === 0) return nao('nenhum FAIL legível na saída do vitest')
+  const itemDe = new Map<string, string>()
+  for (const [item, ts] of entrada.vizinhos) for (const t of ts) if (!itemDe.has(t)) itemDe.set(t, item)
+  const pares: ParVizinho[] = []
+  for (const f of falhos) {
+    if (matchesAllowlist(f, entrada.allowlist)) return nao(`falha em ${f}, dentro da allowlist`)
+    if (entrada.arquivosDoDiff.includes(f)) return nao(`falha em ${f}, que está no diff do ticket`)
+    if (!RE_ARQ_TESTE.test(f)) return nao(`falha em ${f}, que não é arquivo de teste`)
+    const item = itemDe.get(f)
+    if (!item) return nao(`${f} falha e não é vizinho (não importa nem cita item de src/ da allowlist)`)
+    pares.push({ teste: f, item })
+  }
+  return {
+    amplia: true,
+    testes: pares.map((p) => p.teste),
+    pares,
+    motivo: `suíte vermelha só em teste vizinho: ${pares.map((p) => `${p.teste} (${p.item})`).join(', ')}`,
+  }
+}
+
+/**
+ * O bloco FAIL de cada teste ampliado, para o prompt da tentativa seguinte: da
+ * primeira linha `FAIL` do teste até o separador `⎯` da vitest (no máximo 40
+ * linhas), e o primeiro `❯ <teste>:L:C` como local. Sem cor.
+ */
+export function blocoFailVitest(gatesTxt: string, pares: ParVizinho[]): string {
+  const ls = gatesTxt.split('\n').map((l) => l.replace(/\x1b\[[0-9;]*m/g, ''))
+  return pares
+    .map(({ teste, item }) => {
+      const ini = ls.findIndex((l) => /^\s*FAIL\s/.test(l) && l.includes(teste))
+      const corpo: string[] = []
+      for (let i = ini; ini >= 0 && i < ls.length && corpo.length < 40; i++) {
+        if (i > ini && ls[i]!.includes('⎯')) break
+        corpo.push(ls[i]!)
+      }
+      const re = new RegExp(`❯\\s+(${teste.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:\\d+:\\d+)`)
+      const local = ls.map((l) => re.exec(l)?.[1]).find(Boolean) ?? '?'
+      return [`--- ${teste} (importa ou cita ${item})`, ...corpo, `local: ${local}`].join('\n')
+    })
+    .join('\n')
+}
+
+/**
+ * Critério de lista fechada (o cmd lista TODA a allowlist entre aspas simples,
+ * como o `SO_ALLOWLIST` do Comarka): os ampliados entram depois do último item,
+ * só na execução, sem editar o ticket. É o passo 2 do conserto do R1
+ * (`resolvedor/r1.ts`). Sem isto, a tentativa ampliada do 1373 consertou o teste
+ * e reprovou com `FORA_test/ia-funcoes-agentes-atendimento.test.ts`.
+ */
+export function cmdComAmpliados(cmd: string, allowlist: string[], ampliados: string[]): string {
+  if (allowlist.length === 0 || !allowlist.every((a) => cmd.includes(`'${a}'`))) return cmd
+  const novos = ampliados.filter((t) => !cmd.includes(`'${t}'`))
+  if (novos.length === 0) return cmd
+  let fim = -1
+  for (const a of allowlist) {
+    const p = cmd.lastIndexOf(`'${a}'`)
+    if (p >= 0) fim = Math.max(fim, p + a.length + 2)
+  }
+  return `${cmd.slice(0, fim)}${novos.map((t) => ` '${t}'`).join('')}${cmd.slice(fim)}`
+}

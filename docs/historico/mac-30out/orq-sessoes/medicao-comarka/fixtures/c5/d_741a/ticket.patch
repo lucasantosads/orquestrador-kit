@@ -1,0 +1,260 @@
+diff --git a/src/lib/promessas/detectar.ts b/src/lib/promessas/detectar.ts
+index 8493015..7721c7e 100644
+--- a/src/lib/promessas/detectar.ts
++++ b/src/lib/promessas/detectar.ts
+@@ -97,64 +97,133 @@ function montarCandidatos(grupo: string, clienteId: string, msgs: Msg[], jaTem:
+   return saida;
+ }
+ 
+-export async function detectarPromessas(db: Db, agoraISO: string, teto: number = TETO_CHAMADAS): Promise<ResumoPromessas> {
+-  const resumo: ResumoPromessas = { candidatos: 0, chamadas: 0, gravadas: 0, descartadas: 0, falhas: 0 };
+-  const { data: gruposData } = await db.from("wpp_grupo").select("group_jid, cliente_id").is("deleted_at", null).neq("status", "inativo");
+-  const clientePorGrupo = new Map<string, string>();
++type Colaborador = Awaited<ReturnType<typeof carregarTelefonesPorColaborador>>[number];
++interface LinhaPromessa {
++  cliente_id: string;
++  group_jid: string;
++  wpp_message_id: string;
++  autor_id: string | null;
++  texto: string;
++  prazo: string;
++  status: "aberta";
++  pedido_wpp_message_id: string;
++  pedido_trecho: string;
++  evidencia: string;
++}
++
++/** Tudo que a avaliação precisa, já lido. Sem Set/Map para poder ser montado à mão. */
++export interface InsumoPromessas {
++  grupos: { group_jid: string; cliente_id: string }[];
++  linhas: LinhaMensagem[];
++  colaboradores: Colaborador[];
++  contatos: Record<string, string[]>;
++  feriados: string[];
++  jaTem: string[];
++}
++
++export interface AvaliacaoPromessa {
++  cliente_id: string;
++  group_jid: string;
++  pedido_id: string;
++  pedido_em: string;
++  pedido_trecho: string;
++  promessa_id: string | null;
++  promessa_em: string | null;
++  promessa_trecho: string | null;
++  prazo: string | null;
++  evidencia: string | null;
++  autor_id: string | null;
++  decisao: "gravar" | "descartar" | "falha" | "fora_do_teto";
++  motivo: string;
++  linha: LinhaPromessa | null;
++}
++
++/** Camada 1: só SELECT. Sem grupo vinculado devolve insumo vazio sem ler mensagens. */
++export async function carregarInsumoPromessas(db: Db, janela: { desdeISO: string; ateISO: string; clienteId?: string }): Promise<InsumoPromessas> {
++  const vazio: InsumoPromessas = { grupos: [], linhas: [], colaboradores: [], contatos: {}, feriados: [], jaTem: [] };
++  let consulta = db.from("wpp_grupo").select("group_jid, cliente_id").is("deleted_at", null).neq("status", "inativo");
++  if (janela.clienteId) consulta = consulta.eq("cliente_id", janela.clienteId);
++  const { data: gruposData } = await consulta;
++  const grupos: InsumoPromessas["grupos"] = [];
+   for (const g of (gruposData ?? []) as { group_jid: string | null; cliente_id: string | null }[]) {
+-    if (g.group_jid && g.cliente_id) clientePorGrupo.set(g.group_jid, g.cliente_id);
++    if (g.group_jid && g.cliente_id && (!janela.clienteId || g.cliente_id === janela.clienteId)) grupos.push({ group_jid: g.group_jid, cliente_id: g.cliente_id });
+   }
+-  const jids = Array.from(clientePorGrupo.keys());
+-  if (jids.length === 0) return resumo;
++  if (grupos.length === 0) return vazio;
+ 
+-  const desde = new Date(Date.parse(agoraISO) - JANELA_HORAS * MS_HORA).toISOString();
+   const { data: msgData } = await db
+     .from("cs_wpp_mensagem")
+     .select("wpp_message_id, remote_jid, enviada_em, texto, " + COLUNAS_AUTOR)
+-    .in("remote_jid", jids)
+-    .gte("enviada_em", desde)
+-    .lte("enviada_em", agoraISO)
++    .in("remote_jid", grupos.map((g) => g.group_jid))
++    .gte("enviada_em", janela.desdeISO)
++    .lte("enviada_em", janela.ateISO)
+     .order("enviada_em", { ascending: true })
+     .limit(LIMITE_MENSAGENS);
+   const linhas = (msgData ?? []) as unknown as LinhaMensagem[];
+ 
+   const colaboradores = await carregarTelefonesPorColaborador(db);
+-  const telefonesEquipe = colaboradores.map((c) => c.telefone);
+   const feriados = await carregarFeriados(db);
+-  const mapa = montarMapaLid(linhas);
+-  const contatos = new Map<string, string[]>();
+-  for (const id of Array.from(new Set(Array.from(clientePorGrupo.values())))) {
+-    contatos.set(id, await contatosEfetivosDoCliente(db as unknown as SupabaseClient, id));
++  const contatos: Record<string, string[]> = {};
++  for (const id of Array.from(new Set(grupos.map((g) => g.cliente_id)))) {
++    contatos[id] = await contatosEfetivosDoCliente(db as unknown as SupabaseClient, id);
+   }
+-
+   const { data: existentes } = await db.from("perf_promessas").select("wpp_message_id").in("wpp_message_id", linhas.map((l) => l.wpp_message_id));
+-  const jaTem = new Set<string>();
+-  for (const e of (existentes ?? []) as { wpp_message_id: string }[]) jaTem.add(e.wpp_message_id);
++  const jaTem = ((existentes ?? []) as { wpp_message_id: string }[]).map((e) => e.wpp_message_id);
++  return { grupos, linhas, colaboradores, contatos, feriados, jaTem };
++}
++
++/** Camada 2, pura: o único efeito é o `chamar` injetado. Candidato além do teto vira fora_do_teto. */
++export async function avaliarCandidatos(insumo: InsumoPromessas, chamar: typeof chamarProvider, teto: number = TETO_CHAMADAS): Promise<AvaliacaoPromessa[]> {
++  const { colaboradores, feriados } = insumo;
++  const clientePorGrupo = new Map<string, string>();
++  for (const g of insumo.grupos) clientePorGrupo.set(g.group_jid, g.cliente_id);
++  const jaTem = new Set<string>(insumo.jaTem);
++  const telefonesEquipe = colaboradores.map((c) => c.telefone);
++  const mapa = montarMapaLid(insumo.linhas);
+ 
+   const porGrupo = new Map<string, Msg[]>();
+   const vistas = new Set<string>();
+-  for (const l of linhas) {
++  for (const l of insumo.linhas) {
+     const clienteId = clientePorGrupo.get(l.remote_jid);
+     const texto = (l.texto ?? "").trim();
+     if (!clienteId || !texto || vistas.has(l.wpp_message_id)) continue;
+     vistas.add(l.wpp_message_id);
+-    const classe = classificarAutor(l, { telefonesEquipe, contatosCliente: contatos.get(clienteId) ?? [] }, mapa);
++    const classe = classificarAutor(l, { telefonesEquipe, contatosCliente: insumo.contatos[clienteId] ?? [] }, mapa);
+     const lista = porGrupo.get(l.remote_jid) ?? [];
+     lista.push({ id: l.wpp_message_id, em: l.enviada_em, texto, classe, linha: l });
+     porGrupo.set(l.remote_jid, lista);
+   }
+ 
+   const candidatos: Candidato[] = [];
+-  for (const jid of jids) {
++  for (const jid of Array.from(clientePorGrupo.keys())) {
+     candidatos.push(...montarCandidatos(jid, clientePorGrupo.get(jid) as string, porGrupo.get(jid) ?? [], jaTem, feriados));
+   }
+-  resumo.candidatos = candidatos.length;
+ 
++  const saida: AvaliacaoPromessa[] = [];
++  let chamadas = 0;
+   for (const c of candidatos) {
+-    if (resumo.chamadas >= teto) break;
+-    resumo.chamadas++;
++    const base: AvaliacaoPromessa = {
++      cliente_id: c.cliente_id,
++      group_jid: c.group_jid,
++      pedido_id: c.pedido.id,
++      pedido_em: c.pedido.em,
++      pedido_trecho: c.pedido.texto.slice(0, TRECHO_MAX),
++      promessa_id: null,
++      promessa_em: null,
++      promessa_trecho: null,
++      prazo: null,
++      evidencia: null,
++      autor_id: null,
++      decisao: "descartar",
++      motivo: "",
++      linha: null,
++    };
++    if (chamadas >= teto) {
++      saida.push({ ...base, decisao: "fora_do_teto", motivo: "teto de chamadas ao modelo atingido" });
++      continue;
++    }
++    chamadas++;
+     try {
+-      const r = await chamarProvider({
++      const r = await chamar({
+         funcao: "promessas",
+         system: SYSTEM,
+         prompt: `Pedido do cliente: ${c.pedido.texto}\n\nRespostas da equipe:\n` + c.equipe.map((m) => `[${m.id}] ${m.texto}`).join("\n"),
+@@ -162,32 +231,83 @@ export async function detectarPromessas(db: Db, agoraISO: string, teto: number =
+       });
+       const ps = SaidaSchema.safeParse(JSON.parse(r.texto.replace(/^```(?:json)?\s*|\s*```$/g, "")));
+       const alvo = ps.success ? c.equipe.find((m) => m.id === ps.data.wpp_message_id) : undefined;
+-      if (!ps.success || !ps.data.eh_promessa || !alvo || alvo.classe !== "equipe" || !norm(alvo.texto).includes(norm(ps.data.evidencia))) {
+-        resumo.descartadas++;
++      const motivo = !ps.success
++        ? "resposta fora do formato"
++        : !ps.data.eh_promessa
++          ? "não é promessa"
++          : !alvo
++            ? "mensagem indicada não está nas respostas da equipe"
++            : alvo.classe !== "equipe"
++              ? "mensagem indicada não é da equipe"
++              : !norm(alvo.texto).includes(norm(ps.data.evidencia))
++                ? "evidência não está no texto da mensagem"
++                : "";
++      if (!ps.success || !alvo || motivo) {
++        saida.push({ ...base, decisao: "descartar", motivo, ...(alvo ? { promessa_id: alvo.id, promessa_em: alvo.em, promessa_trecho: alvo.texto.slice(0, TRECHO_MAX) } : {}) });
+         continue;
+       }
+       const tel = alvo.linha.chave?.fromMe === true ? undefined : pessoaDaLinha(alvo.linha, mapa)?.telefone;
+       const autor = tel ? colaboradores.find((x) => phonesMatch(tel, x.telefone)) : undefined;
+-      const { error } = await db.from("perf_promessas").upsert(
+-        {
++      const prazo = resolverPrazo(ps.data.prazo_iso, alvo.em, feriados);
++      const autorId = autor?.employee_id || null;
++      saida.push({
++        ...base,
++        promessa_id: alvo.id,
++        promessa_em: alvo.em,
++        promessa_trecho: alvo.texto.slice(0, TRECHO_MAX),
++        prazo,
++        evidencia: ps.data.evidencia,
++        autor_id: autorId,
++        decisao: "gravar",
++        motivo: "promessa confirmada",
++        linha: {
+           cliente_id: c.cliente_id,
+           group_jid: c.group_jid,
+           wpp_message_id: alvo.id,
+-          autor_id: autor?.employee_id || null,
++          autor_id: autorId,
+           texto: ps.data.texto_promessa,
+-          prazo: resolverPrazo(ps.data.prazo_iso, alvo.em, feriados),
++          prazo,
+           status: "aberta",
+           pedido_wpp_message_id: c.pedido.id,
+           pedido_trecho: c.pedido.texto.slice(0, TRECHO_MAX),
+           evidencia: ps.data.evidencia,
+         },
+-        { onConflict: "wpp_message_id", ignoreDuplicates: true },
+-      );
+-      if (error) resumo.falhas++;
+-      else resumo.gravadas++;
++      });
++    } catch {
++      saida.push({ ...base, decisao: "falha", motivo: "erro na chamada ao modelo ou resposta ilegível" });
++    }
++  }
++  return saida;
++}
++
++/** Camada 3: a única escrita do arquivo. Um upsert por avaliação 'gravar'. */
++export async function gravarPromessas(db: Db, avaliacoes: AvaliacaoPromessa[]): Promise<{ gravadas: number; falhas: number }> {
++  let gravadas = 0;
++  let falhas = 0;
++  for (const a of avaliacoes) {
++    if (a.decisao !== "gravar" || !a.linha) continue;
++    try {
++      const { error } = await db.from("perf_promessas").upsert(a.linha, { onConflict: "wpp_message_id", ignoreDuplicates: true });
++      if (error) falhas++;
++      else gravadas++;
+     } catch {
+-      resumo.falhas++;
++      falhas++;
+     }
+   }
+-  return resumo;
++  return { gravadas, falhas };
++}
++
++export async function detectarPromessas(db: Db, agoraISO: string, teto: number = TETO_CHAMADAS): Promise<ResumoPromessas> {
++  const desdeISO = new Date(Date.parse(agoraISO) - JANELA_HORAS * MS_HORA).toISOString();
++  const insumo = await carregarInsumoPromessas(db, { desdeISO, ateISO: agoraISO });
++  const avaliacoes = await avaliarCandidatos(insumo, chamarProvider, teto);
++  const gravacao = await gravarPromessas(db, avaliacoes);
++  const conta = (d: AvaliacaoPromessa["decisao"]) => avaliacoes.filter((a) => a.decisao === d).length;
++  return {
++    candidatos: avaliacoes.length,
++    chamadas: avaliacoes.length - conta("fora_do_teto"),
++    gravadas: gravacao.gravadas,
++    descartadas: conta("descartar"),
++    falhas: conta("falha") + gravacao.falhas,
++  };
+ }

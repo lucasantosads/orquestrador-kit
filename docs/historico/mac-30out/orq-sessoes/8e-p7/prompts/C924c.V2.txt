@@ -1,0 +1,705 @@
+Você é o JUIZ de uma esteira automatizada. Julgue SOMENTE pelo material abaixo:
+o diff cru da tentativa, a saída dos gates mecânicos e os critérios do ticket.
+Você NÃO recebe o prompt do executor nem resumo nenhum do agente, de propósito:
+o que o agente diz que fez nunca é evidência. Se algo não está no diff, não aconteceu.
+
+VOCÊ NÃO TEM FERRAMENTAS. Não leia arquivo, não rode comando, não abra o
+repositório: a chamada está sem ferramenta nenhuma e qualquer tentativa só
+gasta turno. Se o material abaixo não basta para aprovar, REPROVE dizendo o
+que faltou — nunca aprove no benefício da dúvida.
+
+Os gates mecânicos JÁ PASSARAM (enforcement, typecheck, testes, critérios, build).
+Você não os reexecuta: o seu trabalho é o que eles não conseguem ver.
+
+O QUE VOCÊ COBRA, item a item:
+
+1. INTEGRAÇÃO, não existência. Componente/função/rota criada mas nunca importada,
+   montada ou chamada passa em "arquivo existe" e falha em produção. Siga a
+   variável ou o símbolo até o ponto de uso real; um resultado calculado e
+   descartado não vale.
+2. O TESTE EXERCITA O COMPORTAMENTO DO OBJETIVO. Teste tautológico
+   (expect(true), expect(x).toBeDefined() sobre algo trivialmente definido,
+   asserção que passaria com o código antigo) NÃO prova nada. Pergunte-se: este
+   teste ficaria VERMELHO se a mudança fosse revertida? Se não, reprove.
+3. CRITÉRIO DE AUSÊNCIA EXIGE CONTROLE POSITIVO. Um teste que só afirma que algo
+   NÃO aparece passa igual quando o componente não renderiza nada. Exija, no
+   MESMO render/execução, ao menos uma asserção POSITIVA de que a coisa certa
+   apareceu. Reprove ausência provada no vazio.
+
+4. ANTI-AFROUXAMENTO (a allowlist deste ticket inclui arquivo de teste).
+   No diff dos arquivos de teste, REPROVE se encontrar qualquer um destes:
+   - asserção removida (expect apagado) sem que o comportamento tenha deixado de existir;
+   - toBe/toEqual trocado por toBeDefined/toBeTruthy/objectContaining mais frouxo;
+   - .skip, .todo, .only, teste comentado ou arquivo de teste deletado;
+   - valor esperado alterado SEM comentário dizendo por que a regra nova o muda.
+   Valor RECALCULADO sob a regra nova, com o porquê em comentário, é o único
+   caminho aceito. Renomear símbolo para satisfazer contagem também é afrouxar.
+
+REVIEW.md DO REPO (regras de revisão deste repositório; valem junto com os itens acima):
+# REVIEW — o que o juiz cobra neste repositório (comarka-operacional)
+
+Lido pelo juiz do estado da BASE da tentativa; o loop nunca edita este arquivo.
+Cada seção é uma falha que já passou por aqui. Reprove o diff que tiver a cara dela,
+dizendo arquivo e linha. Na dúvida, reprove e diga o que falta.
+
+## 1. Config apontando para produção
+Cara no diff: teste ou script que lê `.env.local` ou monta cliente do Supabase com a URL ou a
+service role reais; rota GET que grava; escrita sem trava de ambiente.
+Reprove se: o diff conecta no projeto real a partir de teste ou script, ou grava dentro de GET.
+Fonte: dashboard-comercial 0f24c418 (teste v128 lia `.env.local` e rodou contra produção; foram
+18 vezes, 08e6bb67) e 6213cdc8 (GET de /api/financeiro/entradas rodando no Mac contra produção
+gravou ltv_meses +1 em 12 clientes). Aqui: PLAYBOOK, "Secrets só humano". Sem incidente próprio.
+
+## 2. Teste que não testa a regra
+Cara no diff: o servidor do Supabase devolve no máximo 1000 linhas por chamada, e o código pede
+`.limit(N)` com N maior que 1000 (ou nenhum limite) sem paginar com `.range`; o teste usa dublê
+que devolve tudo e ignora `.limit`/`.range` (`for (const m of [... "limit" ...]) cadeia[m] =
+() => cadeia`), então nunca vê o corte. Também: teste só de ausência; teste que passaria com o
+código antigo.
+Reprove se: a regra do objetivo depende de teto, página, fuso ou tipo de id e o teste usa dublê
+que não reproduz esse limite; ou se há `.limit` acima de 1000 lendo tabela que cresce.
+Fonte: 80a212fdb e 29afed53d (vácuo, eventos, promessas e fechar liam `.limit(5000)`; o servidor
+cortou em 1000 e as mensagens mais recentes sumiram; 715, 734, 740, 741a e 861 foram aprovados
+com mock que ignorava limit); kit juiz.ts:7-11 (ticket 204, ausência provada no vazio).
+
+## 3. Doc ou comentário que mente
+Cara no diff: comentário, PLAYBOOK ou doc com número, fonte ou comportamento que o diff não
+prova; campo marcado como legado lido como fonte da verdade.
+Reprove se: o diff afirma fato (contagem, "nenhuma tela grava", "a fonte é X") sem a prova no
+próprio diff ou no material; ou lê campo que o repo trata como legado.
+Fonte: dashboard-comercial 08e6bb67 (PLAYBOOK e vitest.config diziam 3 execuções contra produção;
+eram 18). Aqui: 5912a0dfd (924c lia `whatsapp_group_url`, legado: 25 clientes "Sem link do
+grupo") e f16164c25 (a ficha lia `clientes_extra.meta_account_id`, que nenhuma tela grava).
+
+## 4. Escrita em tabela de outro dono
+Cara no diff: `.from("<tabela>").insert/update/upsert/delete`, RPC ou migration que escreve em
+tabela de `c0_intocavel` (docs/fila/000-config.json: `clientes_receita`, `leads_crm`, ...) ou
+em `clientes_crm_config` (o dashboard comercial lê e grava).
+Reprove se: o diff ADICIONA escrita (não comentário, não linha removida) em tabela de outro dono.
+Fonte: PLAYBOOK, "Lição (04/09)" (ticket 184: o OS escrevia em `clientes_receita`); 262b71c30 e
+f16164c25 (consertos que deixam `clientes_crm_config` intocada porque o dono é o dashboard).
+
+## 5. Consulta em série por item
+Cara no diff: `await` de consulta ao banco ou à API dentro de `for`/`map` por cliente, gestor,
+contato ou oportunidade; leituras independentes uma depois da outra em vez de `.in(...)` em lote
+ou `Promise.all`.
+Reprove se: o número de consultas cresce com o número de itens e o objetivo não exige isso.
+Fonte: a2cd69ec8 (Início lento: 2 consultas em série por cliente; equipe com uma carga por
+gestor; 34 → 108 consultas de 3 para 40 clientes), da1f4f1ce (backfill a ~2 s por item, 15-20
+idas sequenciais ao banco por oportunidade) e 80a212fdb (contatos lidos cliente a cliente).
+
+## 6. Data comparada sem o dia de São Paulo
+Cara no diff: data comparada como texto ou com `new Date(...)` sem o fuso de São Paulo
+(`d >= from && d < ate` sobre ISO em UTC, `getMonth()` de DATE lida como meia-noite UTC).
+Reprove se: o corte de dia, semana ou mês depende do horário da máquina ou do UTC.
+Fonte: 10c88edb9 (revisão pós-release de 12/10, "funil no dia de SP"; ticket 953 comparava
+`d >= periodo.from && d < aposTo`) e dashboard-comercial 6213cdc8 (`getMonth()` em BRT devolveu
+o mês anterior).
+
+RESPONDA SÓ COM ESTE JSON, sem cerca de código, sem texto antes ou depois:
+{"aprovado": true|false, "motivo": "<=2 frases, concreto, citando arquivo e linha>",
+ "criterios_falhos": ["descrição exata do critério que você reprova", ...]}
+
+criterios_falhos: use a DESCRIÇÃO do critério, copiada como está na lista acima.
+Vazio quando aprovado. Na dúvida entre aprovar e reprovar, REPROVE e diga o que falta.
+
+TICKET 924c
+Objetivo: ORCAMENTO DE DIFF: teto de 560 linhas (~260 em src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx, ~160 em test/conexoes-linhas.test.tsx, ~40 em page.tsx, o resto em recalculo). Se passar do teto, pare e reporte. SPEC: docs/specs/2026-10-09-aba-conta-marcos.md (mockup 'Ficha · aba Conta reorganizada' aprovado pelo Lucas em 09/10, cliente de referencia AQUINO ADV). Leia antes PRODUCT.md, DESIGN.md (cor e sinal: verde saudavel, vermelho risco, azul acao; numeros em Geist Mono; sem Card aninhado; sem badge soup) e a skill de UI do Comarka OS se disponivel. Tela 1, bloco 5, metade esquerda 'Conexões': 4 linhas, status + UMA acao cada; vazio = uma linha com acao, nunca cartao. DEPENDE do 924b. FONTES (as mesmas que os cartoes de hoje ja leem; nenhuma rota nova): Meta Ads = GET /api/perf/dashboard/cliente/{perfClienteId} (coleta: SaudeColeta estado ok|atencao|falha + motivo, de src/lib/perf/saude-coleta.ts; 404 'Nenhuma conta ativa' => 'nenhuma conta vinculada'); CRM GHL = GET /api/clientes/{id}/crm/status (estado agencia_desconectada|desconectado|sincronizando|conectado|erro); Grupo WhatsApp e Link de NPS = o que ConexoesRelacao (_components/conexoes-relacao.tsx) ja le. FAZER: (1) NOVO src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx: export function ConexoesLinhasView(props) pura e export function ConexoesLinhas(props) que busca. Quatro linhas na ordem Meta Ads, CRM GHL, Grupo WhatsApp, Link de NPS; cada uma: nome, status em texto curto com cor de sinal (verde ok, amarelo atencao, vermelho falha, neutro sem dado) e UMA acao. A acao 'Gerenciar' abre, logo abaixo da linha e recolhido por padrao, o cartao que existe hoje: Meta = <MetaSyncSection>, <ClientMetaAdsTab> (onde fica 'Buscar conta'), <ConexaoGoogleAds /> e o link 'Vincular outra conta' (/dashboard/clientes/{id}/setup?passo=contas): 'Buscar conta' e 'Vincular outra conta' passam a viver SO dentro de Gerenciar da linha da Meta; CRM = <ConexaoCrm />; WhatsApp e NPS = as partes de <ConexoesRelacao>. Fonte com erro => status 's/ dado' com o motivo, nunca 'desconectado'. Sem Card no componente (os cartoes antigos so aparecem dentro do Gerenciar aberto). (2) src/app/dashboard/clientes/[id]/page.tsx: na <SecaoConta ordem={3}>, troque o conteudo do grid data-testid="conexoes-grade" por um grid de 2 colunas data-testid="conexoes-cadastro" (md:grid-cols-2, items-stretch, mesma altura) cuja coluna esquerda e <ConexoesLinhas> (a direita fica com o Cadastro atual ate o 924d: <ContatosSection> e <SetupProgresso> saem da SecaoConta 4 para a coluna direita). Os AnchorBlock meta-ads e crm passam a envolver as linhas correspondentes (as chaves ?sub=meta-ads e ?sub=crm abrem a linha com o Gerenciar aberto). O AnchorBlock automacoes fica depois do grid, intocado. (3) NOVO test/conexoes-linhas.test.tsx: 4 linhas na ordem; cada uma com uma acao so; Buscar conta e Vincular outra conta nao aparecem com o Gerenciar fechado; fonte com erro mostra 's/ dado' e nao 'Desconectado'; sem Card. (4) RECALCULE com comentario 'Ticket 924c (spec 09/10): ...': conta-aceite:223-277 (secao 3 agora tem ConexoesLinhas; 'Vincular outra conta' passa a ser conferido dentro de conexoes-linhas.tsx e nao no page); conta-conexoes:84-117 (grid de 2 colunas com ConexoesLinhas; a ordem Meta < CRM < WhatsApp < NPS passa a ser conferida no componente; AnchorBlock config -> ConfigTab segue); conta-conexoes-entregaveis:55-66 (MetaSync e ClientMetaAdsTab agora dentro de conexoes-linhas.tsx); campanhas-aceite-mockup:537-540 idem. PROIBIDO remover assercao ou afrouxar. Regras do repo: nao importe getSession em 'use client'; sem .json() novo em src (fetchJson de @/lib/fetch-json); sem travessao (U+2014) em texto; nenhum nome de tabela, coluna ou operador em texto que o usuario le; label em todo controle (WCAG AA). FORA DE ESCOPO: mudar MetaSyncSection, ClientMetaAdsTab, ConexaoCrm, ConexoesRelacao por dentro; Cadastro em linhas (924d); rotas; a divergencia de chave de clientes_crm_config (notion_id x uuid) apontada no recon (registre em IMPEDIMENTO: se bloquear).
+
+Allowlist do ticket:
+  - src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx
+  - test/conexoes-linhas.test.tsx
+  - src/app/dashboard/clientes/[id]/page.tsx
+  - test/conta-aceite.test.tsx
+  - test/conta-conexoes.test.ts
+  - test/conta-conexoes-entregaveis.test.ts
+  - test/campanhas-aceite-mockup.test.tsx
+
+Critérios de aceite:
+  - [guarda · já verificado por comando] tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)
+      cmd: ( [ "$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\.next/')" = 3 ] ) && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] nenhum .sql novo (zero DDL)
+      cmd: b="$(git merge-base HEAD staging-auto)"; n=$(git diff --name-only "$b" HEAD | grep -c '[.]sql$'); [ "$n" = 0 ] && echo SEM_SQL || echo SQL_$n · espera: SEM_SQL
+  - [guarda · já verificado por comando] so arquivos da allowlist foram tocados
+      cmd: b="$(git merge-base HEAD staging-auto)"; r=SO_ALLOWLIST; for f in $(git diff --name-only "$b" HEAD); do printf '%s\n' 'src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx' 'test/conexoes-linhas.test.tsx' 'src/app/dashboard/clientes/[id]/page.tsx' 'test/conta-aceite.test.tsx' 'test/conta-conexoes.test.ts' 'test/conta-conexoes-entregaveis.test.ts' 'test/campanhas-aceite-mockup.test.tsx' | grep -Fxq "$f" || r=FORA_$f; done; echo $r · espera: SO_ALLOWLIST
+  - [guarda · já verificado por comando] diff dentro do orcamento (<= 560 linhas somando adicoes e remocoes)
+      cmd: b="$(git merge-base HEAD staging-auto)"; t=$(git diff --numstat "$b" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ "$t" -le 560 ] && echo NO_TETO || echo ESTOUROU_$t · espera: NO_TETO
+  - [guarda · já verificado por comando] guardas globais seguem verdes
+      cmd: npx vitest run test/c0-guard.test.ts test/fetch-json-teto.test.ts test/travessao-mudo.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [alvo · já verificado por comando] Conexoes em linhas no grid conexoes-cadastro e Vincular outra conta saiu do page
+      cmd: test -f 'src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx' && g=$(sed -n '/grupoAtivo === "conta" \&\&/,/grupoAtivo === "comercial" \&\&/p' 'src/app/dashboard/clientes/[id]/page.tsx' | grep -c 'data-testid="conexoes-cadastro"') && l=$(sed -n '/grupoAtivo === "conta" \&\&/,/grupoAtivo === "comercial" \&\&/p' 'src/app/dashboard/clientes/[id]/page.tsx' | grep -c '<ConexoesLinhas') && v=$(sed -n '/grupoAtivo === "conta" \&\&/,/grupoAtivo === "comercial" \&\&/p' 'src/app/dashboard/clientes/[id]/page.tsx' | grep -c 'Vincular outra conta</a>') && w=$(grep -c 'Vincular outra conta' 'src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx' || true) && [ "$g" = 1 ] && [ "$l" = 1 ] && [ "$v" = 0 ] && [ "$w" -ge 1 ] && echo CONEXOES_OK || echo ST · espera: CONEXOES_OK
+  - [? · já verificado por comando] densidade: nenhum Card no componente de linhas
+      cmd: test -f 'src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx' && n=$(grep -c '<Card[ >]' 'src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx'); [ "$n" = 0 ] && echo SEM_CARD || echo ST_$n · espera: SEM_CARD
+  - [guarda · já verificado por comando] anti-afrouxamento nos testes recalculados (test/conta-aceite.test.tsx, test/conta-conexoes.test.ts, test/conta-conexoes-entregaveis.test.ts, test/campanhas-aceite-mockup.test.tsx): expect( nao diminui, sem .skip/.only, cita 924c
+      cmd: b="$(git merge-base HEAD staging-auto)"; r=AFROUXAMENTO_OK; for f in 'test/conta-aceite.test.tsx' 'test/conta-conexoes.test.ts' 'test/conta-conexoes-entregaveis.test.ts' 'test/campanhas-aceite-mockup.test.tsx'; do if git diff --quiet "$b" HEAD -- "$f"; then continue; fi; a=$(git show "$b:$f" | grep -c 'expect('); h=$(grep -c 'expect(' "$f"); s=$(git diff "$b" HEAD -- "$f" | grep -cE '^[+].*[.](skip|only)[(]'); c=$(grep -c '924c' "$f"); if [ "$h" -lt "$a" ] || [ "$s" != 0 ] || [ "$c" = 0 ]; then r=AFROUXOU_$f; fi; done; echo $r · espera: AFROUXAMENTO_OK
+  - [? · já verificado por comando] testes verdes (test/conexoes-linhas.test.tsx, test/conta-aceite.test.tsx, test/conta-conexoes.test.ts, test/conta-conexoes-entregaveis.test.ts, test/campanhas-aceite-mockup.test.tsx, test/conta-crm-sem-contradicao.test.ts, test/relacao-config-para-conta.test.ts, test/whatsapp-grupos-ui.test.ts, test/vincular-contas-meta-ficha.test.ts)
+      cmd: test -f test/conexoes-linhas.test.tsx && npx vitest run test/conexoes-linhas.test.tsx test/conta-aceite.test.tsx test/conta-conexoes.test.ts test/conta-conexoes-entregaveis.test.ts test/campanhas-aceite-mockup.test.tsx test/conta-crm-sem-contradicao.test.ts test/relacao-config-para-conta.test.ts test/whatsapp-grupos-ui.test.ts test/vincular-contas-meta-ficha.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [avaliador · JULGUE VOCÊ] avaliador: Conexoes em 4 linhas (Meta Ads, CRM GHL, Grupo WhatsApp, Link de NPS) com status de sinal e uma acao; Buscar conta e Vincular outra conta so dentro de Gerenciar da Meta; cartoes antigos so dentro do Gerenciar. REPROVE se: fonte com erro vira 'desconectado' ou 'ok'; mais de uma acao por linha; vazio em Card; Card na linha; ?sub=meta-ads ou ?sub=crm deixam de abrir a linha; assercao removida ou afrouxada.
+
+
+DEFINIÇÕES CHAMADAS PELOS TESTES NOVOS (estado na base, NÃO fazem parte do diff):
+Funções e fixtures que os testes ADICIONADOS chamam e que estão definidas fora do diff.
+Julgue pelo corpo, nunca pelo nome.
+
+--- test/conta-conexoes.test.ts:13 (ler; estado na base, NÃO faz parte do diff) ---
+const ler = (rel: string) => readFileSync(join(RAIZ, rel), "utf8");
+--- fim de ler ---
+
+MENSAGENS DE COMMIT (escritas pelo agente: declaração, não evidência):
+O que o agente AFIRMA ter feito. Serve para saber o que conferir no diff e nos
+gates; uma afirmação aqui que o diff ou os gates não provam NÃO foi feita.
+
+commit 788f92272745f6e552e83eb6b4bcf313ce68cf0c
+
+teste: conexões em linhas e recálculo dos aceites da Conta (924c)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+commit 17415ad6dc87c59ed528503491c1f6366d4ac2f5
+
+conta: page repassa CRM e relação ao ConexoesLinhas (924c)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+commit 0af8579d9cc520d258cb574870e47a7a6e3e81d4
+
+conta: Conexões em 4 linhas com status e uma ação (924c)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+SAÍDA DOS GATES MECÂNICOS:
+ok   build
+       
+       ○  (Static)   prerendered as static content
+       ƒ  (Dynamic)  server-rendered on demand
+ok   tsc
+       src/app/api/perf/qualificacao-regras/[id]/route.ts(55,34): error TS2538: Type 'undefined' cannot be used as an index type.
+       src/app/api/perf/qualificacao-regras/estagios/route.ts(31,21): error TS2802: Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+       src/app/dashboard/clientes/qualificacao/qualificacao-block.tsx(74,29): error TS2802: Type 'MapIterator<ClienteTese>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+ok   vitest
+       Tests  10391 passed (10391)
+       Start at  20:35:51
+       Duration  27.77s (transform 16.54s, setup 0ms, import 83.58s, tests 28.87s, environment 96ms)
+VEREDITO: APROVADO
+
+DIFF CRU DA TENTATIVA (git diff base...HEAD):
+diff --git a/src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx b/src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx
+new file mode 100644
+index 0000000..07081ee
+--- /dev/null
++++ b/src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx
+@@ -0,0 +1,195 @@
++"use client";
++
++// Ticket 924c (spec 09/10): Conexões em 4 linhas na aba Conta: Meta Ads, CRM GHL, Grupo
++// WhatsApp e Link de NPS. Cada linha: nome, status curto em cor de sinal e UMA ação
++// (Gerenciar). Gerenciar abre, logo abaixo e recolhido por padrão, o cartão que já existia.
++// Fonte com erro vira "s/ dado" com o motivo, nunca "desconectado". Sem Card nas linhas.
++
++import { useEffect, useState, type ReactNode } from "react";
++import { Button } from "@/components/ui/button";
++import { fetchJson, FetchJsonError } from "@/lib/fetch-json";
++import ClientMetaAdsTab from "@/components/client-meta-ads-tab";
++import MetaSyncSection from "@/components/clientes/meta-sync-section";
++import type { SaudeColeta } from "@/lib/perf/saude-coleta";
++import { AnchorBlock } from "../tabs/anchor-block";
++import { CHILD_LABELS } from "../tabs/ficha-types";
++import { useFicha } from "../tabs/ficha-context";
++import { ConexaoGoogleAds, type CrmStatusView } from "../tabs/config-tab";
++
++export type ChaveConexao = "meta-ads" | "crm" | "whatsapp" | "nps";
++export type TomStatus = "ok" | "atencao" | "falha" | "neutro";
++
++export interface StatusConexao {
++  tom: TomStatus;
++  texto: string;
++}
++
++export interface LinhaConexao {
++  chave: ChaveConexao;
++  nome: string;
++  status: StatusConexao;
++  /** Cartão de hoje, só montado com o Gerenciar aberto. */
++  gerenciar: ReactNode;
++  /** Âncora do ?sub= que abre a linha (meta-ads e crm). */
++  ancora?: { id: string; label: string; active: boolean };
++}
++
++const COR_TOM: Record<TomStatus, string> = {
++  ok: "text-green-400",
++  atencao: "text-amber-400",
++  falha: "text-red-400",
++  neutro: "text-muted-foreground",
++};
++
++const semDado = (motivo: string): StatusConexao => ({ tom: "neutro", texto: `s/ dado · ${motivo}` });
++
++export function statusMeta(coleta: SaudeColeta | null | undefined, erro: string | null): StatusConexao {
++  if (erro) return semDado(erro);
++  if (!coleta) return semDado("a coleta ainda não tem leitura");
++  if (coleta.estado === "ok") return { tom: "ok", texto: "Coleta em dia" };
++  const motivo = coleta.motivo ? ` · ${coleta.motivo}` : "";
++  if (coleta.estado === "atencao") return { tom: "atencao", texto: `Atenção${motivo}` };
++  return { tom: "falha", texto: `Coleta com falha${motivo}` };
++}
++
++export function statusCrm(estado: CrmStatusView["estado"] | null, erro: string | null): StatusConexao {
++  if (erro || !estado) return semDado(erro ?? "carregando");
++  switch (estado) {
++    case "conectado": return { tom: "ok", texto: "Conectado" };
++    case "sincronizando": return { tom: "atencao", texto: "Sincronizando" };
++    case "erro": return { tom: "falha", texto: "Falha na sincronização" };
++    case "agencia_desconectada": return { tom: "atencao", texto: "Agência sem acesso" };
++    default: return { tom: "neutro", texto: "Não conectado" };
++  }
++}
++
++export function ConexoesLinhasView({
++  linhas,
++  abertas,
++  onAlternar,
++}: {
++  linhas: LinhaConexao[];
++  abertas: Record<ChaveConexao, boolean>;
++  onAlternar: (chave: ChaveConexao) => void;
++}) {
++  return (
++    <div className="divide-y divide-border/40" data-testid="conexoes-linhas">
++      {linhas.map((l) => {
++        const aberta = abertas[l.chave];
++        const idCorpo = `conexao-corpo-${l.chave}`;
++        const linha = (
++          <div data-testid={`conexao-${l.chave}`} className="py-2">
++            <div className="flex items-center gap-3">
++              <span className="w-32 shrink-0 text-sm font-medium">{l.nome}</span>
++              <span className={`min-w-0 flex-1 truncate text-fs-label ${COR_TOM[l.status.tom]}`} title={l.status.texto}>
++                {l.status.texto}
++              </span>
++              <Button
++                size="sm" variant="ghost" className="h-7 text-fs-label text-primary"
++                aria-expanded={aberta} aria-controls={idCorpo}
++                aria-label={`Gerenciar ${l.nome}`}
++                onClick={() => onAlternar(l.chave)}
++              >
++                Gerenciar
++              </Button>
++            </div>
++            {aberta && <div id={idCorpo} className="mt-3 space-y-4">{l.gerenciar}</div>}
++          </div>
++        );
++        return l.ancora ? (
++          <AnchorBlock key={l.chave} id={l.ancora.id} label={l.ancora.label} active={l.ancora.active}>{linha}</AnchorBlock>
++        ) : (
++          <div key={l.chave}>{linha}</div>
++        );
++      })}
++    </div>
++  );
++}
++
++function motivoDeErro(e: unknown, quando: string): string {
++  return e instanceof FetchJsonError && e.status === 401 ? "sessão expirada" : `${quando} indisponível agora`;
++}
++
++export function ConexoesLinhas({ gerenciarCrm, relacao, abrir }: {
++  /** Cartão do CRM: o page monta o AnchorBlock crm com o ConexaoCrm dentro. */
++  gerenciarCrm: ReactNode;
++  /** ConexoesRelacao montado pelo page: traz o grupo de WhatsApp e o link do NPS lado a lado. */
++  relacao: ReactNode;
++  /** Chave do ?sub= que pede a linha já aberta. */
++  abrir: ChaveConexao | null;
++}) {
++  const { id, perfClienteId, extra, npsToken } = useFicha();
++  const [abertas, setAbertas] = useState<Record<ChaveConexao, boolean>>({
++    "meta-ads": abrir === "meta-ads", crm: abrir === "crm", whatsapp: abrir === "whatsapp", nps: abrir === "nps",
++  });
++  const [meta, setMeta] = useState<{ coleta: SaudeColeta | null; erro: string | null } | null>(null);
++  const [crm, setCrm] = useState<{ estado: CrmStatusView["estado"] | null; erro: string | null } | null>(null);
++
++  useEffect(() => {
++    if (abrir) setAbertas((a) => (a[abrir] ? a : { ...a, [abrir]: true }));
++  }, [abrir]);
++
++  useEffect(() => {
++    if (!perfClienteId) return;
++    let vivo = true;
++    fetchJson<{ coleta?: SaudeColeta | null }>(`/api/perf/dashboard/cliente/${perfClienteId}`)
++      .then((d) => { if (vivo) setMeta({ coleta: d.coleta ?? null, erro: null }); })
++      .catch((e) => {
++        if (!vivo) return;
++        const semConta = e instanceof FetchJsonError && e.status === 404;
++        setMeta({ coleta: null, erro: semConta ? "nenhuma conta vinculada" : motivoDeErro(e, "leitura da coleta") });
++      });
++    fetchJson<CrmStatusView>(`/api/clientes/${perfClienteId}/crm/status`)
++      .then((d) => { if (vivo) setCrm({ estado: d.estado, erro: null }); })
++      .catch((e) => { if (vivo) setCrm({ estado: null, erro: motivoDeErro(e, "leitura do CRM") }); });
++    return () => { vivo = false; };
++  }, [perfClienteId]);
++
++  const semVinculo = "sem vínculo de performance";
++  const statusWhatsapp: StatusConexao = !extra
++    ? semDado("carregando")
++    : extra.whatsapp_group_url ? { tom: "ok", texto: "Link do grupo salvo" } : { tom: "neutro", texto: "Sem link do grupo" };
++  const statusNps: StatusConexao = npsToken
++    ? { tom: "ok", texto: "Link ativo" }
++    : { tom: "neutro", texto: "Nenhum link gerado" };
++
++  const linhas: LinhaConexao[] = [
++    {
++      chave: "meta-ads", nome: "Meta Ads",
++      status: !perfClienteId ? semDado(semVinculo) : meta ? statusMeta(meta.coleta, meta.erro) : semDado("carregando"),
++      ancora: { id: "meta-ads", label: CHILD_LABELS["meta-ads"], active: abrir === "meta-ads" },
++      gerenciar: (
++        <>
++          <MetaSyncSection clienteId={String(id)} />
++          <ClientMetaAdsTab clienteId={String(id)} />
++          <ConexaoGoogleAds />
++          {/* Ticket 625: abre o passo de contas do setup para vincular mais uma conta */}
++          <a href={`/dashboard/clientes/${id}/setup?passo=contas`}
++            className="text-sm text-blue-400 hover:underline">Vincular outra conta</a>
++        </>
++      ),
++    },
++    {
++      chave: "crm", nome: "CRM GHL",
++      status: !perfClienteId ? semDado(semVinculo) : crm ? statusCrm(crm.estado, crm.erro) : semDado("carregando"),
++      gerenciar: gerenciarCrm,
++    },
++    {
++      // ConexoesRelacao traz as duas partes; cada linha esconde a que não é dela.
++      chave: "whatsapp", nome: "Grupo WhatsApp", status: statusWhatsapp,
++      gerenciar: <div className="[&>[data-testid=conexoes-nps]]:hidden">{relacao}</div>,
++    },
++    {
++      chave: "nps", nome: "Link de NPS", status: statusNps,
++      gerenciar: <div className="[&>#bloco-whatsapp]:hidden">{relacao}</div>,
++    },
++  ];
++
++  return (
++    <ConexoesLinhasView
++      linhas={linhas}
++      abertas={abertas}
++      onAlternar={(chave) => setAbertas((a) => ({ ...a, [chave]: !a[chave] }))}
++    />
++  );
++}
+diff --git a/src/app/dashboard/clientes/[id]/page.tsx b/src/app/dashboard/clientes/[id]/page.tsx
+index 0eabb4b..8706be0 100644
+--- a/src/app/dashboard/clientes/[id]/page.tsx
++++ b/src/app/dashboard/clientes/[id]/page.tsx
+@@ -17,8 +17,6 @@ import { Label } from "@/components/ui/label";
+ import { toast } from "sonner";
+ import { ArrowLeft, Activity, AlertTriangle, ClipboardList, Link2, X } from "lucide-react";
+ import Link from "next/link";
+-import ClientMetaAdsTab from "@/components/client-meta-ads-tab";
+-import MetaSyncSection from "@/components/clientes/meta-sync-section";
+ import ClientMetaAnaliseTab from "@/components/client-meta-analise-tab";
+ import ClientePerfPanel from "../perf/_components/ClientePerfPanel";
+ import ContatosSection from "@/components/customer/contatos-section";
+@@ -61,6 +59,7 @@ import { MetricasTab } from "./tabs/metricas-tab";
+ import { CriativosTab } from "./tabs/criativos-tab";
+ import { SecaoConta } from "./_components/secao-conta";
+ import { ComercialCliente } from "./_components/comercial-cliente";
++import { ConexoesLinhas } from "./_components/conexoes-linhas";
+ import { ConexoesRelacao } from "./_components/conexoes-relacao";
+ import { BlocoAutomacoes } from "./_components/bloco-automacoes";
+ import { BlocoConsultorias } from "./_components/bloco-consultorias";
+@@ -76,7 +75,7 @@ import { linkRelatorio } from "@/lib/perf/relatorio-periodo-padrao";
+ import { CockpitNegocio } from "./_components/cockpit-cards";
+ import { LeituraRelacaoBloco, ordemLeituraWhatsapp } from "./_components/leitura-relacao-bloco";
+ import { FinanceiroTab } from "./tabs/financeiro-tab";
+-import { ConfigTab, ConexaoCrm, ConexaoGoogleAds, SetupProgresso } from "./tabs/config-tab";
++import { ConfigTab, ConexaoCrm, SetupProgresso } from "./tabs/config-tab";
+ import { ResumoGrupoBloco } from "./_components/resumo-grupo-bloco";
+ import { PerfilObsTab } from "./tabs/perfil-tab";
+ import { AlertasMetaTab } from "./tabs/alertas-meta-tab";
+@@ -1498,26 +1497,19 @@ Em português BR, forneça uma análise estratégica cruzando TODOS os dados aci
+                 <BlocoConsultorias clienteId={clientePipelineId} />
+               </SecaoConta>
+               <SecaoConta ordem={3}>
+-                {/* Ticket 556: grade de duas colunas do mockup (conta.dc.html:153): Meta Ads (com a
+-                    linha do Google Ads), CRM (GoHighLevel), Grupo de WhatsApp e Link de coleta do NPS. */}
+-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2" data-testid="conexoes-grade">
+-                  <AnchorBlock id="meta-ads" label={CHILD_LABELS["meta-ads"]} active={activeTab === "meta-ads"}>
+-                    <div className="space-y-4">
+-                      <MetaSyncSection clienteId={String(id)} />
+-                      <ClientMetaAdsTab clienteId={String(id)} />
+-                      <ConexaoGoogleAds />
+-                      {/* Ticket 625: abre o passo de contas do setup para vincular mais uma conta */}
+-                      <a href={`/dashboard/clientes/${id}/setup?passo=contas`}
+-                        className="text-sm text-blue-400 hover:underline">Vincular outra conta</a>
+-                    </div>
+-                  </AnchorBlock>
+-                  {/* CRM só por login (OAuth). clientes_crm_config.cliente_id é o notion_id
+-                      (migration-clientes-crm-config.sql), não o uuid do pipeline. */}
+-                  <AnchorBlock id="crm" label={CHILD_LABELS.crm} active={activeTab === "crm"}>
+-                    <ConexaoCrm />
+-                  </AnchorBlock>
+-                  {/* Ticket 550: grupo de WhatsApp e link do NPS, nessa ordem */}
+-                  <ConexoesRelacao clientePipelineId={clientePipelineId} />
++                {/* Ticket 924c (spec 09/10): Conexões em 4 linhas (status + uma ação) na metade esquerda; a
++                    direita segue vazia até o 924d, porque o teste do 558 fixa Contatos e o setup na seção 4.
++                    ?sub=meta-ads e ?sub=crm abrem a linha com o Gerenciar aberto. */}
++                <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2" data-testid="conexoes-cadastro">
++                  <ConexoesLinhas
++                    gerenciarCrm={
++                      <AnchorBlock id="crm" label={CHILD_LABELS.crm} active={activeTab === "crm"}>
++                        <ConexaoCrm />
++                      </AnchorBlock>
++                    }
++                    relacao={<ConexoesRelacao clientePipelineId={clientePipelineId} />}
++                    abrir={activeTab === "meta-ads" ? "meta-ads" : activeTab === "crm" ? "crm" : null}
++                  />
+                 </div>
+                 {/* 29/09: automações internas da equipe para este cliente (liga/desliga). */}
+                 <AnchorBlock id="automacoes" label={CHILD_LABELS.automacoes} active={activeTab === "automacoes"}>
+diff --git a/test/campanhas-aceite-mockup.test.tsx b/test/campanhas-aceite-mockup.test.tsx
+index 2b5aede..aec6560 100644
+--- a/test/campanhas-aceite-mockup.test.tsx
++++ b/test/campanhas-aceite-mockup.test.tsx
+@@ -537,10 +537,14 @@ describe("568 · ausente da aba Campanhas", () => {
+   });
+ 
+   it("ausente: contas Meta e sync na aba Campanhas", () => {
+-    for (const nome of ["<MetaSyncSection", "<ClientMetaAdsTab", 'id="meta-ads"']) {
++    // Ticket 924c (spec 09/10): na Conta, as peças da Meta moram em conexoes-linhas.tsx (Gerenciar da
++    // linha Meta Ads); o ramo conta só monta <ConexoesLinhas>.
++    const linhasConta = lerArq(resolve(DIR, "_components/conexoes-linhas.tsx"));
++    for (const nome of ["<MetaSyncSection", "<ClientMetaAdsTab", 'id: "meta-ads"']) {
+       expect(ramo).not.toContain(nome);
+-      expect(ramoConta).toContain(nome);
++      expect(linhasConta).toContain(nome);
+     }
++    expect(ramoConta).toContain("<ConexoesLinhas");
+     expect(TAB_GROUPS.find((g) => g.key === "performance")?.children).not.toContain("meta-ads");
+   });
+ 
+diff --git a/test/conexoes-linhas.test.tsx b/test/conexoes-linhas.test.tsx
+new file mode 100644
+index 0000000..71d280b
+--- /dev/null
++++ b/test/conexoes-linhas.test.tsx
+@@ -0,0 +1,100 @@
++/**
++ * Ticket 924c (spec 09/10): Conexões em 4 linhas na aba Conta (status + uma ação).
++ * O vitest do repo não transforma JSX: a prova é lida da fonte.
++ */
++import { describe, it, expect } from "vitest";
++import { readFileSync } from "node:fs";
++import { join } from "node:path";
++
++const DIR = join("src", "app", "dashboard", "clientes", "[id]");
++const linhas = readFileSync(join(DIR, "_components", "conexoes-linhas.tsx"), "utf8");
++const page = readFileSync(join(DIR, "page.tsx"), "utf8");
++
++const aposComentarios = (s: string): string => s.replace(/\/\*[^]*?\*\//g, "").replace(/(^|\s)\/\/[^\n]*/g, "$1");
++const codigo = aposComentarios(linhas);
++
++describe("Conexões em linhas", () => {
++  it("quatro linhas na ordem Meta Ads, CRM GHL, Grupo WhatsApp, Link de NPS", () => {
++    const nomes = ['nome: "Meta Ads"', 'nome: "CRM GHL"', 'nome: "Grupo WhatsApp"', 'nome: "Link de NPS"'];
++    const pos = nomes.map((n) => codigo.indexOf(n));
++    expect(pos.every((i) => i > -1)).toBe(true);
++    expect([...pos].sort((a, b) => a - b)).toEqual(pos);
++    expect(codigo.match(/chave: "/g)?.length).toBe(4);
++  });
++
++  it("cada linha tem uma ação só: o botão Gerenciar, desenhado uma vez", () => {
++    expect(codigo.match(/<Button\b/g)?.length).toBe(1);
++    expect(codigo.match(/>\s*Gerenciar\s*</g)?.length).toBe(1);
++    expect(codigo).toContain("aria-expanded={aberta}");
++    expect(codigo).toContain("aria-label={`Gerenciar ${l.nome}`}");
++  });
++
++  it("o Gerenciar nasce fechado e só monta o cartão aberto", () => {
++    expect(codigo).toContain("{aberta && <div");
++    expect(codigo).toContain('"meta-ads": abrir === "meta-ads"');
++    expect(codigo).toContain("crm: abrir === \"crm\"");
++    expect(codigo).toContain("whatsapp: abrir === \"whatsapp\"");
++  });
++
++  it("Buscar conta e Vincular outra conta só existem dentro do Gerenciar da Meta", () => {
++    const gerenciarMeta = codigo.slice(codigo.indexOf('chave: "meta-ads"'), codigo.indexOf('chave: "crm"'));
++    expect(gerenciarMeta).toContain("<ClientMetaAdsTab");
++    expect(gerenciarMeta).toContain("Vincular outra conta</a>");
++    expect(gerenciarMeta).toContain("gerenciar:");
++    // fora de `gerenciar`, nada do cartão antigo entra no desenho da linha
++    const view = codigo.slice(codigo.indexOf("export function ConexoesLinhasView"), codigo.indexOf("function motivoDeErro"));
++    for (const t of ["Buscar conta", "Vincular outra conta", "<ClientMetaAdsTab", "<MetaSyncSection"]) {
++      expect(view).not.toContain(t);
++    }
++    expect(page).not.toContain("Vincular outra conta</a>");
++  });
++
++  it("fonte com erro mostra s/ dado com o motivo e nunca Desconectado nem ok", () => {
++    expect(codigo).toContain("`s/ dado · ${motivo}`");
++    const statusMeta = codigo.slice(codigo.indexOf("export function statusMeta"), codigo.indexOf("export function statusCrm"));
++    expect(statusMeta).toMatch(/if \(erro\) return semDado\(erro\)/);
++    expect(statusMeta).toMatch(/if \(!coleta\) return semDado/);
++    const statusCrm = codigo.slice(codigo.indexOf("export function statusCrm"), codigo.indexOf("export function ConexoesLinhasView"));
++    expect(statusCrm).toMatch(/if \(erro \|\| !estado\) return semDado/);
++    expect(codigo).not.toMatch(/Desconectado/);
++    expect(codigo).toContain('"nenhuma conta vinculada"');
++  });
++
++  it("cores de sinal: verde ok, amarelo atenção, vermelho falha, neutro sem dado", () => {
++    expect(codigo).toContain('ok: "text-green-400"');
++    expect(codigo).toContain('atencao: "text-amber-400"');
++    expect(codigo).toContain('falha: "text-red-400"');
++    expect(codigo).toContain('neutro: "text-muted-foreground"');
++  });
++
++  it("sem Card no componente e sem getSession, .json() ou travessão", () => {
++    expect(linhas).not.toMatch(/<Card[ >]/);
++    expect(linhas).not.toContain("getSession");
++    expect(linhas).not.toMatch(/\.json\(\)/);
++    expect(linhas).not.toContain("—");
++  });
++
++  it("as fontes são as que os cartões já liam, via fetchJson", () => {
++    expect(codigo).toContain("/api/perf/dashboard/cliente/${perfClienteId}");
++    expect(codigo).toContain("/api/clientes/${perfClienteId}/crm/status");
++    expect(codigo).toContain('from "@/lib/fetch-json"');
++  });
++});
++
++describe("Conexões na página", () => {
++  const ini = page.indexOf('grupoAtivo === "conta" &&');
++  const ramo = page.slice(ini, page.indexOf('grupoAtivo === "comercial" &&', ini));
++
++  it("grid de duas colunas conexoes-cadastro com <ConexoesLinhas> e ?sub abrindo a linha", () => {
++    expect(ramo.match(/data-testid="conexoes-cadastro"/g)?.length).toBe(1);
++    expect(ramo.match(/<ConexoesLinhas/g)?.length).toBe(1);
++    expect(ramo).toMatch(/items-stretch[^"]*md:grid-cols-2/);
++    expect(ramo).toContain('activeTab === "meta-ads" ? "meta-ads"');
++    expect(ramo).toContain('activeTab === "crm" ? "crm"');
++    expect(ramo).not.toContain("conexoes-grade");
++  });
++
++  it("o AnchorBlock automacoes segue depois do grid, intocado", () => {
++    expect(ramo.indexOf('data-testid="conexoes-cadastro"')).toBeLessThan(ramo.indexOf('<AnchorBlock id="automacoes"'));
++  });
++});
+diff --git a/test/conta-aceite.test.tsx b/test/conta-aceite.test.tsx
+index 04a70aa..0b51ade 100644
+--- a/test/conta-aceite.test.tsx
++++ b/test/conta-aceite.test.tsx
+@@ -20,6 +20,7 @@ const FICHA = "app/dashboard/clientes/[id]";
+ const page = lerSrc(`${FICHA}/page.tsx`);
+ const secaoContaSrc = lerSrc(`${FICHA}/_components/secao-conta.tsx`);
+ const conexoesRelacao = lerSrc(`${FICHA}/_components/conexoes-relacao.tsx`);
++const conexoesLinhas = lerSrc(`${FICHA}/_components/conexoes-linhas.tsx`);
+ const cockpitCards = lerSrc(`${FICHA}/_components/cockpit-cards.tsx`);
+ const config = lerSrc(`${FICHA}/tabs/config-tab.tsx`);
+ const financeiro = lerSrc(`${FICHA}/tabs/financeiro-tab.tsx`);
+@@ -240,9 +241,11 @@ describe("aceite da aba Conta: conexoes", () => {
+   it("conexoes: Meta Ads com Sincronizar agora", () => {
+     noMockup(155, 155, "Meta Ads", "Sincronizar agora");
+     expect(metaSync).toContain('"Sincronizando..." : "Sincronizar agora"');
+-    const s3 = secao(3);
+-    expect(s3).toContain("<MetaSyncSection");
+-    expect(s3).toContain('CHILD_LABELS["meta-ads"]');
++    // Ticket 924c (spec 09/10): a seção 3 monta <ConexoesLinhas>; MetaSyncSection e o rótulo do
++    // bloco meta-ads vivem em conexoes-linhas.tsx, dentro do Gerenciar da linha da Meta.
++    expect(secao(3)).toContain("<ConexoesLinhas");
++    expect(conexoesLinhas).toContain("<MetaSyncSection");
++    expect(conexoesLinhas).toContain('CHILD_LABELS["meta-ads"]');
+     expect(lerSrc(`${FICHA}/tabs/ficha-types.ts`)).toMatch(/"meta-ads":\s*"Meta Ads"/);
+   });
+   it("conexoes: conta Meta com act_id Sync em dia e ultimo insight", () => {
+@@ -253,9 +256,11 @@ describe("aceite da aba Conta: conexoes", () => {
+   });
+   it("conexoes: Vincular outra conta e Google Ads so com conta", () => {
+     noMockup(157, 157, "Vincular outra conta", "Google Ads só aparece se houver conta");
+-    const s3 = secao(3);
+-    expect(s3).toContain(">Vincular outra conta</a>");
+-    expect(s3).toContain("<ConexaoGoogleAds />");
++    // Ticket 924c (spec 09/10): Vincular outra conta e Google Ads passam a ser conferidos dentro de
++    // conexoes-linhas.tsx (Gerenciar da Meta), não mais no page.
++    expect(conexoesLinhas).toContain(">Vincular outra conta</a>");
++    expect(conexoesLinhas).toContain("<ConexaoGoogleAds />");
++    expect(secao(3)).not.toContain(">Vincular outra conta</a>");
+     const google = trecho(config, "export function ConexaoGoogleAds", "/** Cartão");
+     expect(google).toContain("extra?.google_customer_id && (");
+   });
+diff --git a/test/conta-conexoes-entregaveis.test.ts b/test/conta-conexoes-entregaveis.test.ts
+index 539ee7b..3814267 100644
+--- a/test/conta-conexoes-entregaveis.test.ts
++++ b/test/conta-conexoes-entregaveis.test.ts
+@@ -12,7 +12,8 @@ import { TAB_GROUPS, CHILD_TO_PARENT } from "../src/app/dashboard/clientes/[id]/
+ 
+ const DIR = join("src", "app", "dashboard", "clientes", "[id]");
+ const page = readFileSync(join(DIR, "page.tsx"), "utf8");
+-const secaoFonte = readFileSync(join(DIR, "_components", "secao-conta.tsx"), "utf8");
++const linhas = readFileSync(join(DIR, "_components", "conexoes-linhas.tsx"), "utf8");
++const secaoFonte =readFileSync(join(DIR, "_components", "secao-conta.tsx"), "utf8");
+ 
+ function ramo(grupo: string, proximo: string | null): string {
+   const ini = page.indexOf(`grupoAtivo === "${grupo}" && (<>`);
+@@ -47,8 +48,10 @@ describe("Campanhas sem as conexões e entregáveis", () => {
+ 
+ describe("Conta com as conexões e entregáveis", () => {
+   it("o ramo conta monta os três", () => {
+-    expect(conta).toMatch(/<ClientMetaAdsTab/);
+-    expect(conta).toMatch(/<MetaSyncSection/);
++    // Ticket 924c (spec 09/10): MetaSync e ClientMetaAdsTab agora vivem em conexoes-linhas.tsx.
++    expect(linhas).toMatch(/<ClientMetaAdsTab/);
++    expect(linhas).toMatch(/<MetaSyncSection/);
++    expect(conta).toMatch(/<ConexoesLinhas/);
+     // Ticket 924b (spec 09/10): EntregaveisTab dá lugar ao <EntregasDoMes> no AnchorBlock entregaveis.
+     expect(conta).toMatch(/<EntregasDoMes/);
+   });
+@@ -64,8 +67,10 @@ describe("Conta com as conexões e entregáveis", () => {
+     const sec3 = conta.slice(s3, f3);
+     // Ticket 924b (spec 09/10): a seção 1 tem <EntregasDoMes> dentro do AnchorBlock entregaveis.
+     expect(sec1).toMatch(/<AnchorBlock id="entregaveis"[^>]*>\s*<EntregasDoMes/);
+-    expect(sec3).toMatch(/<MetaSyncSection/);
+-    expect(sec3).toMatch(/<ClientMetaAdsTab/);
++    // Ticket 924c (spec 09/10): a seção 3 monta <ConexoesLinhas>; as duas peças da Meta ficam no componente.
++    expect(sec3).toMatch(/<ConexoesLinhas/);
++    expect(linhas).toMatch(/<MetaSyncSection/);
++    expect(linhas).toMatch(/<ClientMetaAdsTab/);
+   });
+ 
+   it("o Contrato (AnchorBlock financeiro) fica dentro da seção 1", () => {
+diff --git a/test/conta-conexoes.test.ts b/test/conta-conexoes.test.ts
+index 7b1b7a0..cc9d689 100644
+--- a/test/conta-conexoes.test.ts
++++ b/test/conta-conexoes.test.ts
+@@ -23,6 +23,7 @@ const fontes = () => arquivos(RAIZ).filter((x) => /\.tsx?$/.test(x));
+ const config = ler("tabs/config-tab.tsx");
+ const page = ler("page.tsx");
+ const conexoes = ler("_components/conexoes-relacao.tsx");
++const linhas = ler("_components/conexoes-linhas.tsx");
+ 
+ function secao3(): string {
+   const ini = page.indexOf("<SecaoConta ordem={3}>");
+@@ -89,16 +90,22 @@ describe("Ordem e grade da seção Conexões", () => {
+ 
+   it("Meta, Google, CRM, WhatsApp, NPS nessa ordem", () => {
+     const s = secao3();
+-    const meta = s.indexOf("<MetaSyncSection");
+-    const contas = s.indexOf("<ClientMetaAdsTab");
+-    const google = s.indexOf("<ConexaoGoogleAds");
++    // Ticket 924c (spec 09/10): a seção 3 monta <ConexoesLinhas> (grid de 2 colunas, linhas à esquerda);
++    // a ordem Meta < CRM < WhatsApp < NPS passa a ser conferida no componente, e Meta, contas e
++    // Google ficam dentro do Gerenciar da Meta, nessa ordem.
++    const meta = linhas.indexOf("<MetaSyncSection");
++    const contas = linhas.indexOf("<ClientMetaAdsTab");
++    const google = linhas.indexOf("<ConexaoGoogleAds");
+     const crm = s.indexOf("<ConexaoCrm");
+     const rel = s.indexOf("<ConexoesRelacao");
+-    expect([meta, contas, google, crm, rel].every((i) => i > -1)).toBe(true);
++    expect([meta, contas, google, crm, rel, s.indexOf("<ConexoesLinhas")].every((i) => i > -1)).toBe(true);
+     expect(meta).toBeLessThan(contas);
+     expect(contas).toBeLessThan(google);
+-    expect(google).toBeLessThan(crm);
++    expect(s.indexOf("<ConexoesLinhas")).toBeLessThan(crm);
+     expect(crm).toBeLessThan(rel);
++    const ordem = ['chave: "meta-ads"', 'chave: "crm"', 'chave: "whatsapp"', 'chave: "nps"'].map((c) => linhas.indexOf(c));
++    expect(ordem.every((i) => i > -1)).toBe(true);
++    expect([...ordem].sort((a, b) => a - b)).toEqual(ordem);
+     const wa = conexoes.indexOf("<ConexaoWhatsAppLink");
+     const nps = conexoes.indexOf("Link de coleta do NPS");
+     expect(wa).toBeGreaterThan(-1);

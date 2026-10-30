@@ -1,0 +1,40 @@
+seg 21 set 2026 11:15:27 -03
+== status
+fetch rc=0
+## main...origin/main
+== log
+6ff6f29 doutrina: higiene de execucao (licoes de 13/08 no Comarka OS, vindas do actus-saas)
+3c7ef69 docs: T1, M1 e D11 em FEITAS, e o CHANGELOG da etapa 6c
+cff57a2 D11: push_suprimido é INFORMATIVA, não interruptor (contrato; zero motor)
+c496101 M1: o --migrar não sobrescreve um 000-config.proposto.json existente
+9e9b67b T1: tsx é dependência do MOTOR, e o motor para de sair para a rede
+50c061b docs: K11a-4 em FEITAS, CHANGELOG da etapa 6b e a K11b sem a linha do prefixo
+c484de1 K11a-4d: migrations_dir → migrations.dir, e só para quem declarou a faixa
+4c39821 K11a-4c: a exceção estreita de teste-SQL do Actus, por config
+== main x origin
+0	0
+== VERSAO
+./VERSAO
+2.1.0-dev
+== fixture
+docs
+gitignore
+package.json
+src
+test
+tsconfig.json
+vitest.config.ts
+== docs/fila
+ls: docs/fila: No such file or directory
+== drenagem e guarda
+scripts/orquestrador/local-loop.sh
+scripts/orquestrador/test-drenagem.sh
+./scripts/orquestrador/local-loop.sh:199:      say "  ticket $prox_id segue pendente sem cooldown (sem progresso) — encerrando"
+./scripts/orquestrador/local-loop.sh:200:      motivo_ocioso="sem progresso em $prox_id"; break
+./scripts/orquestrador/executor.sh:1129:# drenagem leu como "sem progresso" e encerrou.
+./scripts/orquestrador/lib.sh:862:# Qualquer outro fim com zero processados (pausa, cooldown, sem progresso) cala:
+./scripts/orquestrador/test-drenagem.sh:84:# segue para o próximo em vez de parar por "sem progresso".
+./scripts/orquestrador/test-drenagem.sh:118:printf '%s' "$saida" | grep -q "sem progresso" \
+./scripts/orquestrador/test-drenagem.sh:119:  && falha "encerrou por 'sem progresso' em vez de seguir" || ok "seguiu para o próximo ticket"
+== worktrees
+/Users/lucasantos/Projetos/orquestrador-kit  6ff6f29 [main]

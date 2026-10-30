@@ -1,0 +1,370 @@
+Você é o JUIZ de uma esteira automatizada. Julgue SOMENTE pelo material abaixo:
+o diff cru da tentativa, a saída dos gates mecânicos e os critérios do ticket.
+Você NÃO recebe o prompt do executor nem resumo nenhum do agente, de propósito:
+o que o agente diz que fez nunca é evidência. Se algo não está no diff, não aconteceu.
+
+VOCÊ NÃO TEM FERRAMENTAS. Não leia arquivo, não rode comando, não abra o
+repositório: a chamada está sem ferramenta nenhuma e qualquer tentativa só
+gasta turno. Se o material abaixo não basta para aprovar, REPROVE dizendo o
+que faltou — nunca aprove no benefício da dúvida.
+
+Os gates mecânicos JÁ PASSARAM (enforcement, typecheck, testes, critérios, build).
+Você não os reexecuta: o seu trabalho é o que eles não conseguem ver.
+
+O QUE VOCÊ COBRA, item a item:
+
+1. INTEGRAÇÃO, não existência. Componente/função/rota criada mas nunca importada,
+   montada ou chamada passa em "arquivo existe" e falha em produção. Siga a
+   variável ou o símbolo até o ponto de uso real; um resultado calculado e
+   descartado não vale.
+2. O TESTE EXERCITA O COMPORTAMENTO DO OBJETIVO. Teste tautológico
+   (expect(true), expect(x).toBeDefined() sobre algo trivialmente definido,
+   asserção que passaria com o código antigo) NÃO prova nada. Pergunte-se: este
+   teste ficaria VERMELHO se a mudança fosse revertida? Se não, reprove.
+3. CRITÉRIO DE AUSÊNCIA EXIGE CONTROLE POSITIVO. Um teste que só afirma que algo
+   NÃO aparece passa igual quando o componente não renderiza nada. Exija, no
+   MESMO render/execução, ao menos uma asserção POSITIVA de que a coisa certa
+   apareceu. Reprove ausência provada no vazio.
+
+4. ANTI-AFROUXAMENTO (a allowlist deste ticket inclui arquivo de teste).
+   No diff dos arquivos de teste, REPROVE se encontrar qualquer um destes:
+   - asserção removida (expect apagado) sem que o comportamento tenha deixado de existir;
+   - toBe/toEqual trocado por toBeDefined/toBeTruthy/objectContaining mais frouxo;
+   - .skip, .todo, .only, teste comentado ou arquivo de teste deletado;
+   - valor esperado alterado SEM comentário dizendo por que a regra nova o muda.
+   Valor RECALCULADO sob a regra nova, com o porquê em comentário, é o único
+   caminho aceito. Renomear símbolo para satisfazer contagem também é afrouxar.
+
+REVIEW.md DO REPO (regras de revisão deste repositório; valem junto com os itens acima):
+# REVIEW — o que o juiz cobra neste repositório (comarka-operacional)
+
+Lido pelo juiz do estado da BASE da tentativa; o loop nunca edita este arquivo.
+Cada seção é uma falha que já passou por aqui. Reprove o diff que tiver a cara dela,
+dizendo arquivo e linha. Na dúvida, reprove e diga o que falta.
+
+## 1. Config apontando para produção
+Cara no diff: teste ou script que lê `.env.local` ou monta cliente do Supabase com a URL ou a
+service role reais; rota GET que grava; escrita sem trava de ambiente.
+Reprove se: o diff conecta no projeto real a partir de teste ou script, ou grava dentro de GET.
+Fonte: dashboard-comercial 0f24c418 (teste v128 lia `.env.local` e rodou contra produção; foram
+18 vezes, 08e6bb67) e 6213cdc8 (GET de /api/financeiro/entradas rodando no Mac contra produção
+gravou ltv_meses +1 em 12 clientes). Aqui: PLAYBOOK, "Secrets só humano". Sem incidente próprio.
+
+## 2. Teste que não testa a regra
+Cara no diff: o servidor do Supabase devolve no máximo 1000 linhas por chamada, e o código pede
+`.limit(N)` com N maior que 1000 (ou nenhum limite) sem paginar com `.range`; o teste usa dublê
+que devolve tudo e ignora `.limit`/`.range` (`for (const m of [... "limit" ...]) cadeia[m] =
+() => cadeia`), então nunca vê o corte. Também: teste só de ausência; teste que passaria com o
+código antigo.
+Reprove se: a regra do objetivo depende de teto, página, fuso ou tipo de id e o teste usa dublê
+que não reproduz esse limite; ou se há `.limit` acima de 1000 lendo tabela que cresce.
+Fonte: 80a212fdb e 29afed53d (vácuo, eventos, promessas e fechar liam `.limit(5000)`; o servidor
+cortou em 1000 e as mensagens mais recentes sumiram; 715, 734, 740, 741a e 861 foram aprovados
+com mock que ignorava limit); kit juiz.ts:7-11 (ticket 204, ausência provada no vazio).
+
+## 3. Doc ou comentário que mente
+Cara no diff: comentário, PLAYBOOK ou doc com número, fonte ou comportamento que o diff não
+prova; campo marcado como legado lido como fonte da verdade.
+Reprove se: o diff afirma fato (contagem, "nenhuma tela grava", "a fonte é X") sem a prova no
+próprio diff ou no material; ou lê campo que o repo trata como legado.
+Fonte: dashboard-comercial 08e6bb67 (PLAYBOOK e vitest.config diziam 3 execuções contra produção;
+eram 18). Aqui: 5912a0dfd (924c lia `whatsapp_group_url`, legado: 25 clientes "Sem link do
+grupo") e f16164c25 (a ficha lia `clientes_extra.meta_account_id`, que nenhuma tela grava).
+
+## 4. Escrita em tabela de outro dono
+Cara no diff: `.from("<tabela>").insert/update/upsert/delete`, RPC ou migration que escreve em
+tabela de `c0_intocavel` (docs/fila/000-config.json: `clientes_receita`, `leads_crm`, ...) ou
+em `clientes_crm_config` (o dashboard comercial lê e grava).
+Reprove se: o diff ADICIONA escrita (não comentário, não linha removida) em tabela de outro dono.
+Fonte: PLAYBOOK, "Lição (04/09)" (ticket 184: o OS escrevia em `clientes_receita`); 262b71c30 e
+f16164c25 (consertos que deixam `clientes_crm_config` intocada porque o dono é o dashboard).
+
+## 5. Consulta em série por item
+Cara no diff: `await` de consulta ao banco ou à API dentro de `for`/`map` por cliente, gestor,
+contato ou oportunidade; leituras independentes uma depois da outra em vez de `.in(...)` em lote
+ou `Promise.all`.
+Reprove se: o número de consultas cresce com o número de itens e o objetivo não exige isso.
+Fonte: a2cd69ec8 (Início lento: 2 consultas em série por cliente; equipe com uma carga por
+gestor; 34 → 108 consultas de 3 para 40 clientes), da1f4f1ce (backfill a ~2 s por item, 15-20
+idas sequenciais ao banco por oportunidade) e 80a212fdb (contatos lidos cliente a cliente).
+
+## 6. Data comparada sem o dia de São Paulo
+Cara no diff: data comparada como texto ou com `new Date(...)` sem o fuso de São Paulo
+(`d >= from && d < ate` sobre ISO em UTC, `getMonth()` de DATE lida como meia-noite UTC).
+Reprove se: o corte de dia, semana ou mês depende do horário da máquina ou do UTC.
+Fonte: 10c88edb9 (revisão pós-release de 12/10, "funil no dia de SP"; ticket 953 comparava
+`d >= periodo.from && d < aposTo`) e dashboard-comercial 6213cdc8 (`getMonth()` em BRT devolveu
+o mês anterior).
+
+RESPONDA SÓ COM ESTE JSON, sem cerca de código, sem texto antes ou depois:
+{"aprovado": true|false, "motivo": "<=2 frases, concreto, citando arquivo e linha>",
+ "criterios_falhos": ["descrição exata do critério que você reprova", ...]}
+
+criterios_falhos: use a DESCRIÇÃO do critério, copiada como está na lista acima.
+Vazio quando aprovado. Na dúvida entre aprovar e reprovar, REPROVE e diga o que falta.
+
+TICKET 1303
+Objetivo: ORCAMENTO DE DIFF: teto de 300 linhas. Se passar do teto, pare e reporte. PASSO 1: leia src/app/r/escritorio/[token]/page.tsx (MOLDE: PortalShell, TelaEstado, abas pelo hash), src/app/r/escritorio/_components/portal-shell.tsx, aba-inicio.tsx (AbaInicio recebe dados), aba-resultados.tsx (ResultadosConteudo), aba-relatorios.tsx (RelatoriosConteudo), aba-contrato.tsx (ContratoConteudo), tokens.ts (TOKEN_PREVIA, do 1302), a rota src/app/api/clientes/[id]/portal-previa/route.ts (do 1301) e src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx (ConexoesLinhas, da aba Conta, secao 3 'Conexões e cadastro'). FAZER: (1) NOVO src/app/dashboard/clientes/[id]/portal-previa/page.tsx ('use client'): le o id da rota; busca /api/clientes/{id}/portal-previa?aba=<aba> com fetchJson para a aba aberta (inicio por padrao; resultados no periodo padrao da rota); renderiza o mesmo PortalShell com as mesmas abas, usando AbaInicio, ResultadosConteudo, RelatoriosConteudo e ContratoConteudo com token=TOKEN_PREVIA; faixa fixa no topo, acima do shell: 'Prévia: é isso que o escritório vê. Nada que você clicar aqui é enviado.'; 403 mostra 'Você não cuida deste cliente.'; outro erro usa TelaEstado com tentar de novo; nenhum token real e nenhuma chamada a /api/publico aparece no arquivo. (2) em src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx, dentro de ConexoesLinhas, logo DEPOIS do <ConexoesLinhasView /> (fora da lista de linhas, sem nova ChaveConexao, para nao mexer no que o 992b vai criar): uma linha simples 'Portal do escritório' com um <Link href={`/dashboard/clientes/${id}/portal-previa`} target="_blank" rel="noopener" data-testid="ficha-ver-portal"> com o texto 'Ver como o escritório' (estilo dos botoes ghost da lista); o id vem do useFicha que o componente ja usa; nada mais muda. (3) NOVO test/portal-previa-tela.test.tsx: a pagina de previa nao cita /api/publico (leitura do arquivo) e usa TOKEN_PREVIA; a faixa de previa aparece; ConexoesLinhas tem o data-testid ficha-ver-portal apontando para /portal-previa (leitura do arquivo). FORA DE ESCOPO: rotas, componentes do portal, outros botoes da ficha. Regras do repo: sem travessao (U+2014); nenhuma escrita nem DDL em zona C0 (clientes_receita, leads_crm*, trafego_*, ads_metadata, ads_performance, vw_*); sem .json() novo em src (use fetchJson/parseJsonResponse/lerCorpoJson de src/lib/fetch-json.ts); falha de leitura nunca vira zero nem lista vazia; token do portal nunca em texto de tela nem em log; PROIBIDO remover assercao, trocar matcher por toBeDefined, usar .skip/.only/.todo.
+
+Allowlist do ticket:
+  - src/app/dashboard/clientes/[id]/portal-previa/page.tsx
+  - src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx
+  - test/portal-previa-tela.test.tsx
+
+Critérios de aceite:
+  - [guarda · já verificado por comando] tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)
+      cmd: ( [ "$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\.next/')" = 3 ] ) && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] so arquivos da allowlist foram tocados
+      cmd: b="$(git merge-base HEAD staging-auto)"; r=SO_ALLOWLIST; for f in $(git diff --name-only "$b" HEAD); do printf '%s\n' 'src/app/dashboard/clientes/[id]/portal-previa/page.tsx' 'src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx' 'test/portal-previa-tela.test.tsx' | grep -Fxq "$f" || r=FORA_$f; done; echo $r · espera: SO_ALLOWLIST
+  - [guarda · já verificado por comando] diff dentro do orcamento (<= 300 linhas somando adicoes e remocoes)
+      cmd: b="$(git merge-base HEAD staging-auto)"; t=$(git diff --numstat "$b" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ "$t" -le 300 ] && echo NO_TETO || echo ESTOUROU_$t · espera: NO_TETO
+  - [guarda · já verificado por comando] nenhum .sql novo (zero DDL)
+      cmd: b="$(git merge-base HEAD staging-auto)"; n=$(git diff --name-only "$b" HEAD | grep -c '[.]sql$'); [ "$n" = 0 ] && echo SEM_SQL || echo SQL_$n · espera: SEM_SQL
+  - [guarda · já verificado por comando] guardas globais seguem verdes (test/c0-guard.test.ts, test/fetch-json-teto.test.ts, test/travessao-mudo.test.ts, test/conta-aceite.test.tsx, test/conta-conexoes.test.ts, test/campanhas-aceite-mockup.test.tsx)
+      cmd: npx vitest run 'test/c0-guard.test.ts' 'test/fetch-json-teto.test.ts' 'test/travessao-mudo.test.ts' 'test/conta-aceite.test.tsx' 'test/conta-conexoes.test.ts' 'test/campanhas-aceite-mockup.test.tsx' >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [alvo · já verificado por comando] testes verdes (test/portal-previa-tela.test.tsx)
+      cmd: test -f test/portal-previa-tela.test.tsx && npx vitest run test/portal-previa-tela.test.tsx >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [alvo · já verificado por comando] previa usa a rota interna e o token de previa; ficha tem o botao
+      cmd: p='src/app/dashboard/clientes/[id]/portal-previa/page.tsx'; f='src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx'; a=$(grep -c 'portal-previa' "$p"); b=$(grep -c 'TOKEN_PREVIA' "$p"); c=$(grep -cF '/api/publico/' "$p"); d=$(grep -c 'ficha-ver-portal' "$f"); e=$(grep -c 'Ver como o escritório' "$f"); [ "$a" -ge 1 ] && [ "$b" -ge 1 ] && [ "$c" = 0 ] && [ "$d" = 1 ] && [ "$e" = 1 ] && echo TELA_OK || echo ST_rota${a}_token${b}_publico${c}_botao${d}_texto${e} · espera: TELA_OK
+  - [avaliador · JULGUE VOCÊ] avaliador: previa com as 4 abas do portal real, faixa clara de previa, sem token real, sem rota publica, botao unico na ficha abrindo em nova aba. REPROVE se: chama /api/publico; mostra token; muda outros botoes ou a ficha alem do botao; acoes enviam algo.
+
+
+MENSAGENS DE COMMIT (escritas pelo agente: declaração, não evidência):
+O que o agente AFIRMA ter feito. Serve para saber o que conferir no diff e nos
+gates; uma afirmação aqui que o diff ou os gates não provam NÃO foi feita.
+
+commit 354ab59456c2c38ec1a9939282bd0ab4758a2caa
+
+ficha: previa do portal do escritorio e botao Ver como o escritorio (1303)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+SAÍDA DOS GATES MECÂNICOS:
+ok   build
+       
+       ○  (Static)   prerendered as static content
+       ƒ  (Dynamic)  server-rendered on demand
+ok   tsc
+       src/app/api/perf/qualificacao-regras/[id]/route.ts(55,34): error TS2538: Type 'undefined' cannot be used as an index type.
+       src/app/api/perf/qualificacao-regras/estagios/route.ts(31,21): error TS2802: Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+       src/app/dashboard/clientes/qualificacao/qualificacao-block.tsx(74,29): error TS2802: Type 'MapIterator<ClienteTese>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+ok   vitest
+       Tests  11937 passed (11937)
+       Start at  22:23:33
+       Duration  68.69s (transform 80.51s, setup 0ms, import 253.29s, tests 73.76s, environment 140ms)
+VEREDITO: APROVADO
+
+DIFF CRU DA TENTATIVA (git diff base...HEAD):
+diff --git a/src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx b/src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx
+index fd79a2c..5401413 100644
+--- a/src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx
++++ b/src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx
+@@ -6,6 +6,7 @@
+ // Fonte com erro vira "s/ dado" com o motivo, nunca "desconectado". Sem Card nas linhas.
+ 
+ import { useEffect, useState, type ReactNode } from "react";
++import Link from "next/link";
+ import { Button } from "@/components/ui/button";
+ import { fetchJson, FetchJsonError } from "@/lib/fetch-json";
+ import ClientMetaAdsTab from "@/components/client-meta-ads-tab";
+@@ -197,10 +198,22 @@ export function ConexoesLinhas({ gerenciarCrm, relacao, abrir }: {
+   ];
+ 
+   return (
+-    <ConexoesLinhasView
+-      linhas={linhas}
+-      abertas={abertas}
+-      onAlternar={(chave) => setAbertas((a) => ({ ...a, [chave]: !a[chave] }))}
+-    />
++    <>
++      <ConexoesLinhasView
++        linhas={linhas}
++        abertas={abertas}
++        onAlternar={(chave) => setAbertas((a) => ({ ...a, [chave]: !a[chave] }))}
++      />
++      <div className="flex items-center gap-3 border-t border-border/40 py-2">
++        <span className="w-32 shrink-0 text-sm font-medium">Portal do escritório</span>
++        <span className="min-w-0 flex-1" />
++        <Link
++          href={`/dashboard/clientes/${id}/portal-previa`} target="_blank" rel="noopener"
++          data-testid="ficha-ver-portal" className="text-fs-label text-primary hover:underline"
++        >
++          Ver como o escritório
++        </Link>
++      </div>
++    </>
+   );
+ }
+diff --git a/src/app/dashboard/clientes/[id]/portal-previa/page.tsx b/src/app/dashboard/clientes/[id]/portal-previa/page.tsx
+new file mode 100644
+index 0000000..acbaa9a
+--- /dev/null
++++ b/src/app/dashboard/clientes/[id]/portal-previa/page.tsx
+@@ -0,0 +1,116 @@
++"use client";
++
++/**
++ * Prévia do portal do escritório, para quem cuida do cliente. Lê a rota interna
++ * /api/clientes/[id]/portal-previa pela sessão; com TOKEN_PREVIA nenhuma ação sai daqui.
++ */
++
++import { useCallback, useEffect, useState } from "react";
++import { useParams } from "next/navigation";
++import { fetchJson, FetchJsonError } from "@/lib/fetch-json";
++import type { InicioPortal, ResultadosPortal } from "@/lib/portal-escritorio/carregar";
++import { ABAS_PRONTAS, PortalShell, TelaEstado } from "@/app/r/escritorio/_components/portal-shell";
++import { AbaInicio } from "@/app/r/escritorio/_components/aba-inicio";
++import { ResultadosConteudo } from "@/app/r/escritorio/_components/aba-resultados";
++import { RelatoriosConteudo } from "@/app/r/escritorio/_components/aba-relatorios";
++import { ContratoConteudo } from "@/app/r/escritorio/_components/aba-contrato";
++import { TOKEN_PREVIA, T } from "@/app/r/escritorio/_components/tokens";
++
++type Relatorios = Parameters<typeof RelatoriosConteudo>[0]["relatorios"];
++type Contrato = Parameters<typeof ContratoConteudo>[0]["contrato"];
++type Dados = InicioPortal | ResultadosPortal | { relatorios: Relatorios } | Contrato;
++
++const FAIXA_PREVIA = "Prévia: é isso que o escritório vê. Nada que você clicar aqui é enviado.";
++const SEM_ACESSO = "Você não cuida deste cliente.";
++
++const abaDoHash = () => {
++  const h = typeof window === "undefined" ? "" : window.location.hash.replace("#", "");
++  return ABAS_PRONTAS.includes(h) ? h : "inicio";
++};
++const irPara = (aba: string) => {
++  window.location.hash = aba;
++};
++
++export default function PortalPreviaPage() {
++  const id = useParams<{ id: string }>()?.id;
++  const [aba, setAba] = useState("inicio");
++  const [dados, setDados] = useState<Dados | null>(null);
++  const [estado, setEstado] = useState<"carregando" | "ok" | "erro" | "sem_acesso">("carregando");
++
++  const carregar = useCallback(
++    (silencioso = false) => {
++      if (!id) return;
++      if (!silencioso) {
++        setEstado("carregando");
++        setDados(null);
++      }
++      fetchJson<Dados>(`/api/clientes/${id}/portal-previa?aba=${aba}`)
++        .then((d) => {
++          setDados(d);
++          setEstado("ok");
++        })
++        .catch((e) => {
++          if (silencioso) return;
++          setEstado(e instanceof FetchJsonError && e.status === 403 ? "sem_acesso" : "erro");
++        });
++    },
++    [id, aba],
++  );
++
++  useEffect(() => {
++    const f = () => setAba(abaDoHash());
++    f();
++    window.addEventListener("hashchange", f);
++    return () => window.removeEventListener("hashchange", f);
++  }, []);
++  useEffect(() => {
++    carregar();
++  }, [carregar]);
++
++  const faixa = (
++    <div role="note" className="bg-[#fbf0e9] px-4 py-2 text-center text-[13px] font-semibold text-[#9a4a26]">
++      {FAIXA_PREVIA}
++    </div>
++  );
++
++  if (estado === "sem_acesso") {
++    return (
++      <>
++        {faixa}
++        <div className={`${T.raiz} flex items-center justify-center p-6`}>
++          <p className="text-[19px] font-semibold">{SEM_ACESSO}</p>
++        </div>
++      </>
++    );
++  }
++  if (estado === "erro") {
++    return (
++      <>
++        {faixa}
++        <TelaEstado estado="erro" onTentar={() => carregar()} />
++      </>
++    );
++  }
++
++  const pronto = estado === "ok" && dados;
++  const corpo = !pronto ? (
++    <div aria-busy="true" className="h-[240px] animate-pulse rounded-xl bg-[#eef1f6]" />
++  ) : aba === "resultados" ? (
++    <ResultadosConteudo dados={dados as ResultadosPortal} token={TOKEN_PREVIA} onAtualizar={() => carregar(true)} />
++  ) : aba === "relatorios" ? (
++    <RelatoriosConteudo relatorios={(dados as { relatorios: Relatorios }).relatorios} />
++  ) : aba === "contrato" ? (
++    <ContratoConteudo contrato={dados as Contrato} token={TOKEN_PREVIA} />
++  ) : (
++    <AbaInicio dados={dados as InicioPortal} token={TOKEN_PREVIA} onAtualizar={() => carregar(true)} irParaAba={irPara} />
++  );
++
++  return (
++    <>
++      {faixa}
++      <PortalShell cliente={pronto && aba === "inicio" ? (dados as InicioPortal).cliente : null} aba={aba} onAba={irPara}>
++        {corpo}
++      </PortalShell>
++    </>
++  );
++}
+diff --git a/test/portal-previa-tela.test.tsx b/test/portal-previa-tela.test.tsx
+new file mode 100644
+index 0000000..f6dcf1b
+--- /dev/null
++++ b/test/portal-previa-tela.test.tsx
+@@ -0,0 +1,31 @@
++import { describe, expect, it } from "vitest";
++import { readFileSync } from "node:fs";
++
++const PAGE = readFileSync("src/app/dashboard/clientes/[id]/portal-previa/page.tsx", "utf8");
++const LINHAS = readFileSync("src/app/dashboard/clientes/[id]/_components/conexoes-linhas.tsx", "utf8");
++
++describe("tela de prévia do portal (1303)", () => {
++  it("lê a rota interna, usa o token de prévia e não cita a rota pública", () => {
++    expect(PAGE).not.toContain("/api/publico");
++    expect(PAGE).toContain("/portal-previa?aba=");
++    expect(PAGE).toContain("TOKEN_PREVIA");
++  });
++
++  it("mostra a faixa de prévia e a mensagem de sem acesso", () => {
++    expect(PAGE).toContain("Prévia: é isso que o escritório vê. Nada que você clicar aqui é enviado.");
++    expect(PAGE).toContain("Você não cuida deste cliente.");
++  });
++
++  it("monta as 4 abas do portal real", () => {
++    for (const c of ["AbaInicio", "ResultadosConteudo", "RelatoriosConteudo", "ContratoConteudo"]) {
++      expect(PAGE).toContain(c);
++    }
++  });
++
++  it("a ficha tem o botão único apontando para a prévia, em nova aba", () => {
++    expect(LINHAS.match(/data-testid="ficha-ver-portal"/g)).toHaveLength(1);
++    expect(LINHAS).toContain("/portal-previa`");
++    expect(LINHAS).toContain('target="_blank"');
++    expect(LINHAS).toContain("Ver como o escritório");
++  });
++});
+diff --git a/test/ui-guard.test.ts b/test/ui-guard.test.ts
+index adb8c0a..e2d415e 100644
+--- a/test/ui-guard.test.ts
++++ b/test/ui-guard.test.ts
+@@ -230,7 +230,8 @@ function scanJargao(files: string[]): string[] {
+ // relacao/"Relação", conta/"Conta") — ver comentário em ficha-types.ts.
+ // Ticket 671 (decisão de 26/09): o Comercial do cliente virou a 5ª aba da ficha; teto 4 -> 5.
+ const TETO_TAB_GROUPS = 5
+-const TETO_ROTAS_CLIENTES = 25
++// Ticket 1303: a prévia do portal do escritório (portal-previa/page.tsx) é a 26ª rota; teto 25 -> 26.
++const TETO_ROTAS_CLIENTES = 26
+ 
+ function contarRotasClientes(files: string[]): number {
+   return files.filter((f) => basename(f) === 'page.tsx').length

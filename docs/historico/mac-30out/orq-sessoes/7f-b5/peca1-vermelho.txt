@@ -1,0 +1,6 @@
+   × peça 1: pulado pelo teto do dia volta ao modelo uma vez por dia > pulado ontem e o teto ainda cheio hoje: triado uma vez hoje (pulado de novo), e não de novo hoje 5ms
+   × peça 1: pulado pelo teto do dia volta ao modelo uma vez por dia > pulado ontem, teto livre hoje: triado hoje com o modelo, uma chamada; e nunca mais com a mesma assinatura 2ms
+ FAIL  test/orquestrador-resolvedor-pulado-teto.test.ts > peça 1: pulado pelo teto do dia volta ao modelo uma vez por dia > pulado ontem e o teto ainda cheio hoje: triado uma vez hoje (pulado de novo), e não de novo hoje
+AssertionError: expected { '$schema_versao': 1, …(21) } to match object { …(2) }
+ FAIL  test/orquestrador-resolvedor-pulado-teto.test.ts > peça 1: pulado pelo teto do dia volta ao modelo uma vez por dia > pulado ontem, teto livre hoje: triado hoje com o modelo, uma chamada; e nunca mais com a mesma assinatura
+AssertionError: expected +0 to be 1 // Object.is equality

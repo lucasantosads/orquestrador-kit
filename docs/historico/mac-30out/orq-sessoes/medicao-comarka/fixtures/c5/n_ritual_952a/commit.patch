@@ -1,0 +1,13 @@
+diff --git a/test/perf-leads-origem-ddl.test.ts b/test/perf-leads-origem-ddl.test.ts
+index 55b4b9f..8686858 100644
+--- a/test/perf-leads-origem-ddl.test.ts
++++ b/test/perf-leads-origem-ddl.test.ts
+@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
+ import { join } from "node:path";
+ 
+ const sql = readFileSync(
+-  join("supabase", "migrations", "20261009210000_perf_leads_origem.sql"),
++  join("supabase", "migrations", "20261011033743_perf_leads_origem.sql"),
+   "utf8",
+ );
+ const linhas = sql.split("\n");

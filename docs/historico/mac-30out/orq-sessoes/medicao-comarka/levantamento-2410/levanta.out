@@ -1,0 +1,93 @@
+done na janela: 561  apolo(5xxx): 136
+done sem merge do loop: 3 ['1082b', '1116', '751']
+
+== reverts (todas as branches, desde 15/09)
+  7e05534 2026-10-02 12:33 migration 407a/407c: receita volta ao status anterior da saida revertida; datas nulas por ultimo (decisao 02/10, antes d
+  614ec84 2026-10-02 10:45 fix(migration 407c): fn_reativar_churn atualiza so uma linha de receita e a saida mais recente; search_path em reverter_
+  5848706 2026-10-01 23:13 407b: DELETE de churn-log reverte por fn_reativar_churn; tela mostra o erro da rota; testes recalculados
+  29fa315 2026-10-01 23:07 407a: fn_reativar_churn (migration), churn-log DELETE marca revertido em vez de apagar
+  5d9f93b 2026-10-01 20:16 fila: 407a volta a pendente com spec corrigida (paridade, filtro revertido, colunas em churn_aprovacoes, timestamp)
+  d77ab1e 2026-09-29 13:20 fix(churn): tela /churn reverte pelo DELETE do churn-log; nenhuma escrita do navegador
+  812f085 2026-09-21 12:53 Revert "fila: 481b resolve campanha->conta por ads_metadata + insights (coleta Meta parada desde 11/09)"
+  66b120a 2026-09-16 20:08 Revert "fila: libera ddl-400 (contrato ops_jobs aplicado)"
+
+== top 20 arquivos por commits nao-merge na janela (fora docs/fila) | n tickets done que tocaram
+    25   18 src/app/dashboard/clientes/[id]/page.tsx
+    14    8 src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx
+    14    0 docs/roadmap/BACKLOG-MAPEADO.md
+    12    0 docs/plano/apolo/glossario.md
+    11    0 docs/plano/apolo/aprendizados.md
+    11    5 src/lib/perf/ghl-backfill.ts
+     9    7 src/lib/jobs/handlers/index.ts
+     9    3 src/app/api/webhooks/ghl/app/route.ts
+     9    7 vercel.json
+     9    7 src/middleware.ts
+     9    7 src/app/dashboard/clientes/page.tsx
+     8    5 src/app/dashboard/clientes/[id]/tabs/ficha-types.ts
+     8    7 src/lib/perf/alertas-engine.ts
+     8    6 src/app/api/dashboard/clientes/route.ts
+     8    0 src/app/dashboard/clientes/[id]/_components/metricas-diarias.tsx
+     7    7 test/erro-cru-teto.test.ts
+     7    7 src/app/portal/page.tsx
+     7    1 docs/plano/apolo/04-ROADMAP.md
+     7    7 src/app/dashboard/clientes/[id]/tabs/atendimento-tab.tsx
+     7    5 src/lib/perf/sync-insights-anuncio.ts
+
+== top 20 arquivos por n de tickets done da janela que tocaram
+    18 src/app/dashboard/clientes/[id]/page.tsx
+     8 src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx
+     7 src/app/portal/page.tsx
+     7 src/app/dashboard/clientes/page.tsx
+     7 src/lib/jobs/handlers/index.ts
+     7 src/middleware.ts
+     7 vercel.json
+     7 src/lib/perf/alertas-engine.ts
+     7 src/app/dashboard/clientes/[id]/tabs/atendimento-tab.tsx
+     7 test/erro-cru-teto.test.ts
+     6 src/app/dashboard/performance/nichos-teses/nichos-teses-aba.tsx
+     6 src/lib/nav/papel.ts
+     6 src/lib/jobs/operacao-inicio.ts
+     6 src/app/api/dashboard/clientes/route.ts
+     6 test/conta-aceite.test.tsx
+     6 src/lib/ia/funcoes.ts
+     6 src/lib/apolo/ciclo.ts
+     6 src/lib/apolo/agentes/decisor.ts
+     6 src/lib/apolo/pipeline.ts
+     5 src/lib/clientes/relacao.ts
+
+== item 5
+commits fora do loop na janela: 301
+tocam arquivo de ticket done nos 14d anteriores: 55
+  ... com fix/corrige na mensagem: 27
+  ... excluindo os 20 quentes: 49  com fix: 26
+   FIX e15c1e284 10-16 14:33 Claude | tickets 5053 | fila(apolo): conserto de spec de 5025, 5042 e 5055 (bloqueados pelo teste, nao pelo codigo) e criterio de 5056
+   FIX 5912a0dfd 10-15 20:36 Lucas Santos | tickets 924c | fix(ficha): status do Grupo WhatsApp vem do vínculo em wpp_grupo, não do link
+   FIX d85c866bc 10-15 20:31 Lucas Santos | tickets 982 | fix(perf): troca de tese da campanha vai para os_audit_log
+   FIX 07b6ae52f 10-15 20:24 Lucas Santos | tickets 982 | fix(perf): tese da campanha pode ser trocada depois de classificada
+   FIX af7e20725 10-15 12:39 Lucas Santos | tickets 747,760 | fix(webhook-ghl): appId comparado ao prefixo do client id; 401 loga so o motivo
+   FIX e12dff3eb 10-14 19:39 Lucas Santos | tickets 747,760,761,762,763,883 | fix(crm): erro do banco na gravacao do lead nunca vira sucesso
+   FIX 3c906e889 10-14 19:28 Lucas Santos | tickets 747,760,761,762,763,883 | fix(crm): dado mal formatado nao derruba o lead; erro permanente nao gasta tentativas
+   FIX bbd3e6c93 10-14 16:11 Lucas Santos | tickets 735,896,961,961b,970 | fix(insights): recusa do sync antes da Meta grava perf_sync_logs; leitura das contas que falhou nao vira 'nenh
+   FIX 85a69a377 10-14 16:10 Lucas Santos | tickets 1087,711b3,735,737,742,826 | fix(ficha): fila de resposta e alertas resolvem o apelido antigo (local_...) para clientes.id
+   FIX da1f4f1ce 10-14 16:10 Lucas Santos | tickets 761,762,763,883,973 | fix(ghl-backfill): oportunidades em lotes concorrentes, sync_cursor espelha o checkpoint e falha sem registro 
+   FIX 1d5940d5c 10-13 14:12 Lucas Santos | tickets 711b3,826,831,875,896,908 | fix(perf): página de captura pelo lead do pixel, tipo único no por-tipo e teses do topo pela campanha
+   FIX 90aeb1e05 10-13 14:07 Lucas Santos | tickets 831 | fix(perf): lead e CPL únicos na aba Campanhas (por tipo e teses pela regra de captação)
+   FIX caef86f60 10-13 12:00 Lucas Santos | tickets 859,927 | fix(test): aponta auditoria para migrations renomeadas em 0fe70d1
+   FIX 8124e3e8c 10-13 11:48 Lucas Santos | tickets 747,952b,954 | feat(perf): origem whatsapp_sem_referral para WhatsApp do STEVO sem anúncio (bug 7b)
+   FIX bc3fae812 10-13 11:24 Lucas Santos | tickets 747,760,761,762,763,883 | feat(perf): precedência única de fonte da atribuição: Meta > nota do STEVO > tag (bug 7b)
+   FIX fcc533de7 10-13 00:55 Lucas Santos | tickets 747,760,762,883,952b,971 | feat(perf): captura do anúncio click-to-WhatsApp pela nota do STEVO (bug 7b)
+   FIX 262b71c30 10-13 00:40 Lucas Santos | tickets 711a,876,928 | fix(clientes): CRM da Carteira e da ficha pelo status único e pelas regras (bug 7c, parte CRM)
+   FIX f16164c25 10-13 00:33 Lucas Santos | tickets 711b3,737,826,826b,866,867 | fix(clientes): conta Meta da ficha vem de perf_ad_accounts (bug 7c, parte Meta)
+   FIX 10c88edb9 10-12 15:57 Lucas Santos | tickets 1004,1006,318b,747,803,896 | fix: revisao pos-release 12/10 (funil no dia de SP, %MQL na mesma base, reaper do worker, teste do recon, reso
+   FIX 681284de3 10-11 00:35 Lucas Santos | tickets 727 | fix(validar-fila): fechar_arvore remove so a propria arvore, sem worktree prune global
+   FIX 29afed53d 10-08 13:48 Lucas Santos | tickets 740 | fix(promessas): fechar lê as mensagens por página, sem cortar as mais recentes
+   FIX 80a212fdb 10-08 13:34 Lucas Santos | tickets 715,734,741,741a,861 | fix(pos-release-0810): paginação das mensagens e contatos em lote (vácuo, eventos, promessas)
+   FIX a2cd69ec8 10-08 13:21 Lucas Santos | tickets 694,699,705,711a,728,728b | fix(pos-release-0810): chip Saúde da ficha e Início lento
+   FIX 9a81d7081 10-08 10:56 Lucas Santos | tickets 553,556,557,558,625,635 | fix(ghl-backfill): backfill resumível com checkpoint, fases próprias e status no card da ficha
+   FIX 780c1a627 10-08 11:07 Lucas Santos | tickets 711b3 | fix(test): saude-chip-ficha mocka useAcaoUnica e nicho-origem no loader proprio
+   FIX d1f2df32c 10-08 00:17 Lucas Santos | tickets 555,556,596c,597,598,599 | fix(ficha): Nicho híbrido no cabeçalho e gate de destino dos campos editáveis
+   FIX e931b00c1 10-08 00:11 Lucas Santos | tickets 544b,548,550,555,556,596c | fix(ficha): Plataformas grava em ops_cliente_perfil e PUT do ops-perfil vira parcial
+
+== item 3: done -> outro status em ate 14d
+
+== maturidade: done da janela com 14d completos ate 2026-10-24 : 154

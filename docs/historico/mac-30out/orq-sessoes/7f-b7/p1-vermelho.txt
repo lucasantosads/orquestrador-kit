@@ -1,0 +1,258 @@
+
+ RUN  v2.1.9 /Users/lucasantos/Projetos/_worktrees/kit-etapa7f7
+
+ ❯ test/orquestrador-resolvedor-r1-multi.test.ts (7 tests | 7 failed) 3219ms
+   × 7f-b7 P1: R1 com mais de um vermelho, tudo ou nada > 1054: os dois vermelhos firmes, um commit só, a allowlist do humano 559ms
+     → expected [ { repo: 'cmk', id: '1054', …(8) } ] to deeply equal [ ObjectContaining{…} ]
+   × 7f-b7 P1: R1 com mais de um vermelho, tudo ou nada > 1055b: os dois vermelhos firmes, um commit só, a allowlist do humano 494ms
+     → expected [ { repo: 'cmk', id: '1055b', …(8) } ] to deeply equal [ ObjectContaining{…} ]
+   × 7f-b7 P1: R1 com mais de um vermelho, tudo ou nada > 1058: os dois vermelhos firmes, um commit só, a allowlist do humano 490ms
+     → expected [ { repo: 'cmk', id: '1058', …(8) } ] to deeply equal [ ObjectContaining{…} ]
+   × 7f-b7 P1: R1 com mais de um vermelho, tudo ou nada > 924a: um dos vermelhos não cumpre D6 nem D6b sozinho, nenhuma ação (nem para o outro) 436ms
+     → expected [ { repo: 'cmk', id: '924a', …(8) } ] to deeply equal [ ObjectContaining{…} ]
+   × 7f-b7 P1: R1 com mais de um vermelho, tudo ou nada > uma ação por ticket por assinatura, teto de 2 > o mesmo bloqueio de novo depois de uma ação vai para humano, mesmo com o ticket reescrito 483ms
+     → expected [ { repo: 'cmk', id: '1058', …(8) } ] to deeply equal [ ObjectContaining{…} ]
+   × 7f-b7 P1: R1 com mais de um vermelho, tudo ou nada > uma ação por ticket por assinatura, teto de 2 > outra série: a segunda ação no ticket acontece 420ms
+     → expected [ { repo: 'cmk', id: '1054', …(8) } ] to deeply equal [ ObjectContaining{…} ]
+   × 7f-b7 P1: R1 com mais de um vermelho, tudo ou nada > uma ação por ticket por assinatura, teto de 2 > com 2 ações no ticket, a terceira vira só aviso 335ms
+     → expected [ { repo: 'cmk', id: '1055b', …(8) } ] to deeply equal [ ObjectContaining{…} ]
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/orquestrador-resolvedor-r1-multi.test.ts > 7f-b7 P1: R1 com mais de um vermelho, tudo ou nada > 1054: os dois vermelhos firmes, um commit só, a allowlist do humano
+AssertionError: expected [ { repo: 'cmk', id: '1054', …(8) } ] to deeply equal [ ObjectContaining{…} ]
+
+- Expected
++ Received
+
+  Array [
+-   ObjectContaining {
++   Object {
+      "acao": "r1_allowlist",
+      "classe": "R1",
+-     "feito": "aplicado",
++     "dependentes": 0,
++     "feito": "nao_consegui",
++     "firme": true,
+      "id": "1054",
++     "modo": "auto",
++     "motivo": "mais de um vermelho fora da allowlist (test/resolver-cliente-rota-diagnostico.test.ts, test/resolver-cliente-rota-resumo.test.ts): um conserto só não destrava",
+      "regra": "D6",
++     "repo": "cmk",
+    },
+  ]
+
+ ❯ test/orquestrador-resolvedor-r1-multi.test.ts:70:21
+     68|       const antesHead = git(r.raiz, 'rev-parse', 'HEAD').trim()
+     69|       const itens = passa()
+     70|       expect(itens).toEqual([expect.objectContaining({ id, classe: 'R1…
+       |                     ^
+     71|       const agora = readFileSync(join(r.raiz, r.ticket), 'utf8')
+     72|       // o mesmo conjunto de arquivos novos na allowlist que o commit …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  test/orquestrador-resolvedor-r1-multi.test.ts > 7f-b7 P1: R1 com mais de um vermelho, tudo ou nada > 1055b: os dois vermelhos firmes, um commit só, a allowlist do humano
+AssertionError: expected [ { repo: 'cmk', id: '1055b', …(8) } ] to deeply equal [ ObjectContaining{…} ]
+
+- Expected
++ Received
+
+  Array [
+-   ObjectContaining {
++   Object {
+      "acao": "r1_allowlist",
+      "classe": "R1",
+-     "feito": "aplicado",
++     "dependentes": 0,
++     "feito": "nao_consegui",
++     "firme": true,
+      "id": "1055b",
++     "modo": "auto",
++     "motivo": "mais de um vermelho fora da allowlist (test/acoes-recomendadas-chave.test.ts, test/relatorio-sem-cliente-id.test.ts): um conserto só não destrava",
+      "regra": "D6",
++     "repo": "cmk",
+    },
+  ]
+
+ ❯ test/orquestrador-resolvedor-r1-multi.test.ts:70:21
+     68|       const antesHead = git(r.raiz, 'rev-parse', 'HEAD').trim()
+     69|       const itens = passa()
+     70|       expect(itens).toEqual([expect.objectContaining({ id, classe: 'R1…
+       |                     ^
+     71|       const agora = readFileSync(join(r.raiz, r.ticket), 'utf8')
+     72|       // o mesmo conjunto de arquivos novos na allowlist que o commit …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  test/orquestrador-resolvedor-r1-multi.test.ts > 7f-b7 P1: R1 com mais de um vermelho, tudo ou nada > 1058: os dois vermelhos firmes, um commit só, a allowlist do humano
+AssertionError: expected [ { repo: 'cmk', id: '1058', …(8) } ] to deeply equal [ ObjectContaining{…} ]
+
+- Expected
++ Received
+
+  Array [
+-   ObjectContaining {
++   Object {
+      "acao": "r1_allowlist",
+      "classe": "R1",
+-     "feito": "aplicado",
++     "dependentes": 0,
++     "feito": "nao_consegui",
++     "firme": true,
+      "id": "1058",
++     "modo": "auto",
++     "motivo": "mais de um vermelho fora da allowlist (test/negocio-temperatura.test.ts, test/quem-cuida.test.ts): um conserto só não destrava",
+      "regra": "D6",
++     "repo": "cmk",
+    },
+  ]
+
+ ❯ test/orquestrador-resolvedor-r1-multi.test.ts:70:21
+     68|       const antesHead = git(r.raiz, 'rev-parse', 'HEAD').trim()
+     69|       const itens = passa()
+     70|       expect(itens).toEqual([expect.objectContaining({ id, classe: 'R1…
+       |                     ^
+     71|       const agora = readFileSync(join(r.raiz, r.ticket), 'utf8')
+     72|       // o mesmo conjunto de arquivos novos na allowlist que o commit …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  test/orquestrador-resolvedor-r1-multi.test.ts > 7f-b7 P1: R1 com mais de um vermelho, tudo ou nada > 924a: um dos vermelhos não cumpre D6 nem D6b sozinho, nenhuma ação (nem para o outro)
+AssertionError: expected [ { repo: 'cmk', id: '924a', …(8) } ] to deeply equal [ ObjectContaining{…} ]
+
+- Expected
++ Received
+
+  Array [
+-   ObjectContaining {
++   Object {
++     "acao": "r1_allowlist",
++     "classe": "R1",
++     "dependentes": 0,
+      "feito": "nao_consegui",
++     "firme": true,
+      "id": "924a",
+-     "motivo": StringMatching /tudo ou nada.*test\/conta-entregas-vazio-unico\.test\.ts/,
++     "modo": "auto",
++     "motivo": "mais de um vermelho fora da allowlist (test/conta-entregas-vazio-unico.test.ts, test/visao-aceite-mockup.test.tsx): um conserto só não destrava",
++     "regra": "D6",
++     "repo": "cmk",
+    },
+  ]
+
+ ❯ test/orquestrador-resolvedor-r1-multi.test.ts:96:19
+     94|     const antesHead = git(r.raiz, 'rev-parse', 'HEAD').trim()
+     95|     const itens = passa()
+     96|     expect(itens).toEqual([
+       |                   ^
+     97|       expect.objectContaining({ id: '924a', feito: 'nao_consegui', mot…
+     98|     ])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  test/orquestrador-resolvedor-r1-multi.test.ts > 7f-b7 P1: R1 com mais de um vermelho, tudo ou nada > uma ação por ticket por assinatura, teto de 2 > o mesmo bloqueio de novo depois de uma ação vai para humano, mesmo com o ticket reescrito
+AssertionError: expected [ { repo: 'cmk', id: '1058', …(8) } ] to deeply equal [ ObjectContaining{…} ]
+
+- Expected
++ Received
+
+  Array [
+-   ObjectContaining {
+-     "feito": "aplicado",
++   Object {
++     "acao": "r1_allowlist",
++     "classe": "R1",
++     "dependentes": 0,
++     "feito": "nao_consegui",
++     "firme": true,
++     "id": "1058",
++     "modo": "auto",
++     "motivo": "mais de um vermelho fora da allowlist (test/negocio-temperatura.test.ts, test/quem-cuida.test.ts): um conserto só não destrava",
++     "regra": "D6",
++     "repo": "cmk",
+    },
+  ]
+
+ ❯ test/orquestrador-resolvedor-r1-multi.test.ts:125:23
+    123|     it('o mesmo bloqueio de novo depois de uma ação vai para humano, m…
+    124|       const r = caso('1058')
+    125|       expect(passa()).toEqual([expect.objectContaining({ feito: 'aplic…
+       |                       ^
+    126|       // o ticket volta ao antes (como no orq desfazer): o mtime muda,…
+    127|       writeFileSync(join(r.raiz, r.ticket), r.antes)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  test/orquestrador-resolvedor-r1-multi.test.ts > 7f-b7 P1: R1 com mais de um vermelho, tudo ou nada > uma ação por ticket por assinatura, teto de 2 > outra série: a segunda ação no ticket acontece
+AssertionError: expected [ { repo: 'cmk', id: '1054', …(8) } ] to deeply equal [ ObjectContaining{…} ]
+
+- Expected
++ Received
+
+  Array [
+-   ObjectContaining {
+-     "feito": "aplicado",
++   Object {
++     "acao": "r1_allowlist",
++     "classe": "R1",
++     "dependentes": 0,
++     "feito": "nao_consegui",
++     "firme": true,
+      "id": "1054",
++     "modo": "auto",
++     "motivo": "segunda vez bloqueado depois de uma ação do resolvedor: vai para humano",
++     "regra": "D6",
++     "repo": "cmk",
+    },
+  ]
+
+ ❯ test/orquestrador-resolvedor-r1-multi.test.ts:135:23
+    133|       const r = caso('1054')
+    134|       semear('1054', ['assinatura-de-outra-serie'])
+    135|       expect(passa()).toEqual([expect.objectContaining({ id: '1054', f…
+       |                       ^
+    136|       expect(ledger().filter((e) => e.tipo === 'acao')).toHaveLength(2)
+    137|       expect(readFileSync(join(r.raiz, r.ticket), 'utf8')).not.toBe(r.…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  test/orquestrador-resolvedor-r1-multi.test.ts > 7f-b7 P1: R1 com mais de um vermelho, tudo ou nada > uma ação por ticket por assinatura, teto de 2 > com 2 ações no ticket, a terceira vira só aviso
+AssertionError: expected [ { repo: 'cmk', id: '1055b', …(8) } ] to deeply equal [ ObjectContaining{…} ]
+
+- Expected
++ Received
+
+  Array [
+-   ObjectContaining {
+-     "feito": "aviso",
++   Object {
++     "acao": "r1_allowlist",
++     "classe": "R1",
++     "dependentes": 0,
++     "feito": "nao_consegui",
++     "firme": true,
+      "id": "1055b",
+-     "motivo": StringMatching /teto de 2 ações/,
++     "modo": "auto",
++     "motivo": "segunda vez bloqueado depois de uma ação do resolvedor: vai para humano",
++     "regra": "D6",
++     "repo": "cmk",
+    },
+  ]
+
+ ❯ test/orquestrador-resolvedor-r1-multi.test.ts:144:21
+    142|       semear('1055b', ['serie-a', 'serie-b'])
+    143|       const itens = passa()
+    144|       expect(itens).toEqual([expect.objectContaining({ id: '1055b', fe…
+       |                     ^
+    145|       expect(readFileSync(join(r.raiz, r.ticket), 'utf8')).toBe(r.ante…
+    146|       expect(ledger().filter((e) => e.tipo === 'aviso')).toEqual([expe…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+ Test Files  1 failed (1)
+      Tests  7 failed (7)
+   Start at  13:22:36
+   Duration  3.65s (transform 172ms, setup 0ms, collect 225ms, tests 3.22s, environment 0ms, prepare 40ms)
+

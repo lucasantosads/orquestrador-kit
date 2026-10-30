@@ -1,0 +1,564 @@
+id,status,data_criacao,data_done_ou_bloqueio,tentativas,aprovado_de_primeira,custo_usd,esforco_claude_dur_secs,primeira_linha_meta,fonte
+318b,done,2026-09-04 21:21,2026-10-12 04:07,1,sim,sem dado,156,done,runs/318b/meta.json
+318c,done,2026-10-09 13:49,2026-10-12 17:35,6,nao,sem dado,705,reprovado,runs/318c/meta.json; local-loop.log:91371; local-loop.log:93758
+367,done,2026-09-04 21:21,2026-10-08 01:52,2,nao,sem dado,306,reprovado,runs/367/meta.json
+694,done,2026-09-30 16:42,2026-10-07 15:16,3,nao,sem dado,1049,reprovado,runs/694/meta.json
+696,done,2026-09-30 16:42,2026-10-07 15:36,2,nao,sem dado,383,reprovado,runs/696/meta.json
+697,done,2026-09-30 16:42,2026-10-07 15:56,1,sim,sem dado,72,done,runs/697/meta.json
+698,done,2026-09-30 16:42,2026-10-07 16:10,1,sim,sem dado,202,done,runs/698/meta.json
+699,done,2026-09-30 16:42,2026-10-07 16:25,1,sim,sem dado,180,done,runs/699/meta.json
+700,done,2026-09-30 16:42,2026-10-07 16:44,1,sim,sem dado,156,done,runs/700/meta.json
+701,done,2026-09-30 16:42,2026-10-08 18:35,1,sim,sem dado,79,done,runs/701/meta.json
+705,done,2026-09-30 16:42,2026-10-07 17:13,1,sim,sem dado,175,done,runs/705/meta.json
+706,done,2026-09-30 16:42,2026-10-07 17:33,2,nao,sem dado,379,reprovado,runs/706/meta.json
+707,done,2026-09-30 16:42,2026-10-08 14:55,10,nao,sem dado,2427,reprovado,runs/707/meta.json; local-loop.log:79202; local-loop.log:83026
+707a,done,2026-10-08 13:45,2026-10-08 14:15,2,nao,sem dado,196,reprovado,runs/707a/meta.json
+707b,done,2026-10-08 13:45,2026-10-08 14:31,2,nao,sem dado,229,reprovado,runs/707b/meta.json
+709,done,2026-09-30 16:42,2026-10-08 18:54,1,sim,sem dado,75,done,runs/709/meta.json
+710,done,2026-09-30 16:42,2026-10-07 18:01,1,sim,sem dado,104,done,runs/710/meta.json
+711a,done,2026-10-01 19:06,2026-10-07 19:16,4,nao,sem dado,934,reprovado,runs/711a/meta.json; local-loop.log:78138
+711b1,done,2026-10-06 19:26,2026-10-07 19:41,1,sim,sem dado,71,done,runs/711b1/meta.json
+711b2,done,2026-10-06 19:26,2026-10-07 19:54,1,sim,sem dado,94,done,runs/711b2/meta.json
+711b3,done,2026-10-06 19:26,2026-10-08 00:49,5,nao,sem dado,862,reprovado,runs/711b3/meta.json; local-loop.log:78647
+711b4,done,2026-10-06 19:26,2026-10-08 01:00,1,sim,sem dado,44,done,runs/711b4/meta.json
+713,done,2026-09-30 16:42,2026-10-07 20:38,1,sim,sem dado,99,done,runs/713/meta.json
+717,done,2026-09-30 16:42,2026-10-07 11:57,1,sim,sem dado,99,done,runs/717/meta.json
+718,done,2026-09-30 16:42,2026-10-12 03:42,1,sim,sem dado,85,done,runs/718/meta.json
+719,done,2026-09-30 16:42,2026-10-07 20:51,1,sim,sem dado,134,done,runs/719/meta.json
+720,done,2026-09-30 16:42,2026-10-07 21:10,2,nao,sem dado,421,reprovado,runs/720/meta.json
+739,done,2026-10-02 13:07,2026-10-06 14:10,4,nao,sem dado,282,reprovado,runs/739/meta.json
+740,done,2026-10-02 13:07,2026-10-07 21:30,1,sim,sem dado,330,done,runs/740/meta.json
+741,done,2026-10-02 13:07,2026-10-08 12:24,3,nao,sem dado,165,reprovado,runs/741/meta.json; local-loop.log:79081
+741a,done,2026-10-08 10:54,2026-10-08 12:12,5,nao,sem dado,960,reprovado,runs/741a/meta.json; local-loop.log:82726
+742,done,2026-10-02 13:07,2026-10-07 21:55,2,nao,sem dado,563,reprovado,runs/742/meta.json
+743,done,2026-10-05 10:56,2026-10-05 18:55,1,sim,sem dado,83,done,runs/743/meta.json
+744,done,2026-10-05 10:56,2026-10-05 19:18,3,nao,sem dado,582,reprovado,runs/744/meta.json
+745,done,2026-10-05 10:56,2026-10-06 11:53,1,sim,sem dado,221,done,runs/745/meta.json
+746,done,2026-10-05 10:56,2026-10-06 12:33,1,sim,sem dado,53,done,runs/746/meta.json
+747,done,2026-10-05 10:56,2026-10-07 11:27,1,sim,sem dado,111,done,runs/747/meta.json
+748,done,2026-10-05 10:56,2026-10-07 11:41,1,sim,sem dado,130,done,runs/748/meta.json
+750,done,2026-10-03 16:29,2026-10-06 12:06,1,sim,sem dado,118,done,runs/750/meta.json
+751,done,2026-10-03 16:29,2026-10-05 10:54,sem dado,sem dado,sem dado,sem dado,-,git: status done em commit sem meta.json
+752,done,2026-10-03 16:29,2026-10-06 12:46,1,sim,sem dado,144,done,runs/752/meta.json
+760,done,2026-10-05 10:56,2026-10-05 14:25,3,nao,sem dado,504,reprovado,runs/760/meta.json; local-loop.log:72407
+761,done,2026-10-05 10:56,2026-10-05 14:40,3,nao,sem dado,553,reprovado,runs/761/meta.json
+762,done,2026-10-05 10:56,2026-10-05 18:30,4,nao,sem dado,622,reprovado,runs/762/meta.json; local-loop.log:72665
+763,done,2026-10-05 10:56,2026-10-05 18:43,1,sim,sem dado,159,done,runs/763/meta.json
+801,done,2026-10-03 16:14,2026-10-06 17:01,3,nao,sem dado,11049,reprovado,runs/801/meta.json; local-loop.log:72121
+802,done,2026-10-03 16:14,2026-10-06 18:38,3,nao,sem dado,10567,reprovado,runs/802/meta.json
+803,done,2026-10-03 16:14,2026-10-06 18:51,1,sim,sem dado,127,done,runs/803/meta.json
+804,done,2026-10-03 16:14,2026-10-06 19:04,1,sim,sem dado,149,done,runs/804/meta.json
+805,done,2026-10-03 16:14,2026-10-06 19:17,1,sim,sem dado,97,done,runs/805/meta.json
+806,done,2026-10-03 16:14,2026-10-06 19:32,1,sim,sem dado,110,done,runs/806/meta.json
+807,done,2026-10-03 16:14,2026-10-08 01:09,1,sim,sem dado,95,done,runs/807/meta.json
+808,done,2026-10-03 16:14,2026-10-06 19:47,2,nao,sem dado,214,reprovado,runs/808/meta.json
+809,done,2026-10-03 16:14,2026-10-06 20:00,1,sim,sem dado,146,done,runs/809/meta.json
+810,done,2026-10-03 16:14,2026-10-06 20:14,2,nao,sem dado,174,reprovado,runs/810/meta.json
+811,done,2026-10-03 16:14,2026-10-06 20:22,1,sim,sem dado,67,done,runs/811/meta.json
+812,done,2026-10-03 16:14,2026-10-06 20:32,1,sim,sem dado,103,done,runs/812/meta.json
+813,done,2026-10-03 16:14,2026-10-06 20:41,1,sim,sem dado,72,done,runs/813/meta.json
+814,done,2026-10-03 16:14,2026-10-06 20:50,1,sim,sem dado,90,done,runs/814/meta.json
+815,done,2026-10-03 16:14,2026-10-06 21:00,1,sim,sem dado,92,done,runs/815/meta.json
+816,done,2026-10-03 16:14,2026-10-06 21:11,1,sim,sem dado,100,done,runs/816/meta.json
+817,done,2026-10-03 16:14,2026-10-06 21:23,1,sim,sem dado,102,done,runs/817/meta.json
+818,done,2026-10-03 16:14,2026-10-06 21:44,3,nao,sem dado,465,reprovado,runs/818/meta.json
+819,done,2026-10-03 16:14,2026-10-06 21:59,2,nao,sem dado,171,reprovado,runs/819/meta.json
+820,done,2026-10-03 16:14,2026-10-06 22:10,1,sim,sem dado,104,done,runs/820/meta.json
+821,done,2026-10-03 16:14,2026-10-06 22:21,1,sim,sem dado,80,done,runs/821/meta.json
+822,done,2026-10-03 16:14,2026-10-06 22:32,1,sim,sem dado,138,done,runs/822/meta.json
+823,done,2026-10-03 16:14,2026-10-06 22:43,1,sim,sem dado,92,done,runs/823/meta.json
+824,done,2026-10-03 16:14,2026-10-06 22:54,1,sim,sem dado,86,done,runs/824/meta.json
+825,done,2026-10-03 16:14,2026-10-06 23:10,2,nao,sem dado,199,reprovado,runs/825/meta.json
+826,done,2026-10-03 16:14,2026-10-09 11:48,6,nao,sem dado,1705,reprovado,runs/826/meta.json; local-loop.log:80362
+826b,done,2026-10-08 18:56,2026-10-12 02:23,1,sim,sem dado,101,done,runs/826b/meta.json
+827,done,2026-10-03 16:14,2026-10-10 21:19,1,sim,sem dado,42,done,runs/827/meta.json
+828,done,2026-10-03 16:14,2026-10-09 13:49,1,sim,sem dado,164,done,runs/828/meta.json
+829,done,2026-10-03 16:14,2026-10-09 14:33,1,sim,sem dado,79,done,runs/829/meta.json
+830,done,2026-10-03 16:14,2026-10-12 12:23,4,nao,sem dado,224,reprovado,runs/830/meta.json; local-loop.log:90450
+831,done,2026-10-03 16:14,2026-10-09 18:04,1,sim,sem dado,84,done,runs/831/meta.json
+832,done,2026-10-03 16:14,2026-10-10 13:09,1,sim,sem dado,109,done,runs/832/meta.json
+833,done,2026-10-03 16:14,2026-10-10 13:41,1,sim,sem dado,105,done,runs/833/meta.json
+834,done,2026-10-03 16:14,2026-10-10 14:15,1,sim,sem dado,84,done,runs/834/meta.json
+834b,done,2026-10-12 11:29,2026-10-12 12:06,1,sim,sem dado,146,done,runs/834b/meta.json
+835,done,2026-10-03 16:14,2026-10-12 16:18,5,nao,sem dado,280,reprovado,runs/835/meta.json; local-loop.log:90496; local-loop.log:93621
+836,done,2026-10-03 16:14,2026-10-10 17:46,1,sim,sem dado,72,done,runs/836/meta.json
+837,done,2026-10-03 16:14,2026-10-10 18:15,1,sim,sem dado,110,done,runs/837/meta.json
+838,done,2026-10-03 16:14,2026-10-10 18:47,1,sim,sem dado,114,done,runs/838/meta.json
+839,done,2026-10-03 16:14,2026-10-10 19:21,1,sim,sem dado,109,done,runs/839/meta.json
+840,done,2026-10-03 16:14,2026-10-12 20:33,5,nao,sem dado,642,reprovado,runs/840/meta.json; local-loop.log:86356; local-loop.log:94671
+841,done,2026-10-03 16:14,2026-10-10 20:17,1,sim,sem dado,69,done,runs/841/meta.json
+842,done,2026-10-03 16:14,2026-10-10 20:38,1,sim,sem dado,61,done,runs/842/meta.json
+843,done,2026-10-03 16:14,2026-10-12 21:37,1,sim,sem dado,71,done,runs/843/meta.json
+844,done,2026-10-03 16:14,2026-10-10 20:59,1,sim,sem dado,107,done,runs/844/meta.json
+845,done,2026-10-03 16:14,2026-10-12 21:48,1,sim,sem dado,59,done,runs/845/meta.json
+849,done,2026-10-03 16:14,2026-10-06 13:02,1,sim,sem dado,90,done,runs/849/meta.json
+850,done,2026-10-03 16:14,2026-10-06 13:18,1,sim,sem dado,129,done,runs/850/meta.json
+851,done,2026-10-03 16:14,2026-10-06 11:26,3,nao,sem dado,220,reprovado,runs/851/meta.json
+852,done,2026-10-03 16:14,2026-10-06 11:39,2,nao,sem dado,173,reprovado,runs/852/meta.json
+854,done,2026-10-03 16:14,2026-10-12 16:30,5,nao,sem dado,403,reprovado,runs/854/meta.json; local-loop.log:90601; local-loop.log:93702
+855,done,2026-10-03 16:14,2026-10-12 22:04,3,nao,sem dado,218,reprovado,runs/855/meta.json; local-loop.log:94163
+855a,done,2026-10-11 11:43,2026-10-12 16:55,1,sim,sem dado,81,done,runs/855a/meta.json
+855b,done,2026-10-11 11:43,2026-10-12 17:07,1,sim,sem dado,97,done,runs/855b/meta.json
+856,done,2026-10-03 16:14,2026-10-06 14:46,3,nao,sem dado,205,reprovado,runs/856.pre-requeue-06out/meta.json; runs/856/meta.json; local-loop.log:73817
+857,done,2026-10-03 16:14,2026-10-06 15:02,1,sim,sem dado,57,done,runs/857/meta.json
+858,done,2026-10-03 16:14,2026-10-12 03:55,2,nao,sem dado,131,reprovado,runs/858/meta.json
+859,done,2026-10-03 16:14,2026-10-06 13:32,1,sim,sem dado,39,done,runs/859/meta.json
+860,done,2026-10-05 14:49,2026-10-05 15:02,2,nao,sem dado,435,reprovado,runs/860/meta.json
+861,done,sem dado,2026-10-07 21:18,1,sim,sem dado,164,done,runs/861/meta.json
+862,done,2026-10-05 15:35,2026-10-12 16:43,1,sim,sem dado,189,done,runs/862/meta.json
+863,done,2026-10-05 16:04,2026-10-12 02:14,1,sim,sem dado,46,done,runs/863/meta.json
+864,done,2026-10-05 16:16,2026-10-06 12:20,1,sim,sem dado,123,done,runs/864/meta.json
+865,done,2026-10-07 12:08,2026-10-07 16:57,1,sim,sem dado,125,done,runs/865/meta.json
+866,done,2026-10-07 12:08,2026-10-12 02:49,1,sim,sem dado,89,done,runs/866/meta.json
+867,done,2026-10-07 12:42,2026-10-07 14:12,4,nao,sem dado,553,reprovado,runs/867/meta.json; local-loop.log:76790
+868,done,2026-10-07 12:42,2026-10-07 18:55,2,nao,sem dado,297,reprovado,runs/868/meta.json
+869,done,2026-10-07 12:34,2026-10-07 13:18,1,sim,sem dado,47,done,runs/869/meta.json
+870,done,2026-10-07 12:42,2026-10-07 20:26,1,sim,sem dado,126,done,runs/870/meta.json
+871,done,2026-10-07 17:02,2026-10-07 22:20,1,sim,sem dado,45,done,runs/871/meta.json
+873,done,2026-10-07 17:02,2026-10-07 22:31,1,sim,sem dado,66,done,runs/873/meta.json
+874,done,2026-10-07 17:02,2026-10-07 22:41,1,sim,sem dado,51,done,runs/874/meta.json
+875,done,2026-10-07 17:02,2026-10-07 22:52,1,sim,sem dado,109,done,runs/875/meta.json
+876,done,2026-10-07 17:02,2026-10-07 23:03,1,sim,sem dado,105,done,runs/876/meta.json
+877,done,2026-10-07 17:02,2026-10-07 23:13,1,sim,sem dado,41,done,runs/877/meta.json
+878,done,2026-10-07 17:02,2026-10-07 23:26,1,sim,sem dado,162,done,runs/878/meta.json
+879,done,2026-10-07 17:02,2026-10-07 23:36,1,sim,sem dado,46,done,runs/879/meta.json
+880,done,2026-10-07 17:02,2026-10-07 23:47,1,sim,sem dado,97,done,runs/880/meta.json
+882,done,2026-10-07 17:02,2026-10-07 23:57,1,sim,sem dado,51,done,runs/882/meta.json
+883,done,2026-10-07 18:14,2026-10-08 00:10,1,sim,sem dado,127,done,runs/883/meta.json
+884,done,2026-10-07 18:14,2026-10-08 00:27,1,sim,sem dado,95,done,runs/884/meta.json
+885,done,2026-10-07 18:14,2026-10-08 02:03,1,sim,sem dado,77,done,runs/885/meta.json
+886,done,2026-10-07 18:14,2026-10-08 02:14,1,sim,sem dado,95,done,runs/886/meta.json
+887,done,2026-10-07 18:14,2026-10-08 02:24,1,sim,sem dado,50,done,runs/887/meta.json
+888,done,2026-10-07 18:14,2026-10-08 02:39,2,nao,sem dado,221,reprovado,runs/888/meta.json
+889,done,2026-10-07 18:14,2026-10-08 02:52,2,nao,sem dado,118,reprovado,runs/889/meta.json
+889b,done,2026-10-07 18:14,2026-10-08 13:20,1,sim,sem dado,138,done,runs/889b/meta.json
+889c,done,2026-10-07 18:14,2026-10-08 13:43,1,sim,sem dado,130,done,runs/889c/meta.json
+890,done,2026-10-07 18:14,2026-10-08 03:03,1,sim,sem dado,128,done,runs/890/meta.json
+890b,done,2026-10-07 18:14,2026-10-08 03:14,1,sim,sem dado,76,done,runs/890b/meta.json
+891,done,2026-10-07 18:14,2026-10-08 03:30,2,nao,sem dado,376,reprovado,runs/891/meta.json
+892,done,2026-10-07 18:14,2026-10-08 03:39,1,sim,sem dado,45,done,runs/892/meta.json
+893,done,2026-10-07 18:14,2026-10-08 03:50,1,sim,sem dado,102,done,runs/893/meta.json
+894,done,2026-10-07 18:14,2026-10-08 04:00,1,sim,sem dado,54,done,runs/894/meta.json
+896,done,2026-10-07 18:14,2026-10-08 04:11,1,sim,sem dado,58,done,runs/896/meta.json
+897,done,2026-10-07 18:14,2026-10-08 04:21,1,sim,sem dado,28,done,runs/897/meta.json
+897b,done,2026-10-07 18:14,2026-10-08 15:06,1,sim,sem dado,89,done,runs/897b/meta.json
+898,done,2026-10-07 18:14,2026-10-08 18:10,6,nao,sem dado,554,reprovado,runs/898/meta.json; local-loop.log:82594; local-loop.log:83625
+898b,done,2026-10-07 19:12,2026-10-08 18:25,1,sim,sem dado,91,done,runs/898b/meta.json
+898c,done,2026-10-07 19:12,2026-10-12 05:18,1,sim,sem dado,141,done,runs/898c/meta.json
+899,done,2026-10-07 18:14,2026-10-08 04:31,1,sim,sem dado,119,done,runs/899/meta.json
+900,done,2026-10-07 18:14,2026-10-08 15:33,3,nao,sem dado,262,reprovado,runs/900/meta.json; local-loop.log:81564
+903,done,2026-10-07 18:14,2026-10-08 04:54,1,sim,sem dado,62,done,runs/903/meta.json
+904,done,2026-10-07 18:14,2026-10-08 05:05,1,sim,sem dado,125,done,runs/904/meta.json
+905,done,2026-10-07 18:23,2026-10-08 05:16,1,sim,sem dado,68,done,runs/905/meta.json
+906,done,2026-10-08 13:57,2026-10-08 15:56,1,sim,sem dado,68,done,runs/906/meta.json
+907,done,2026-10-08 13:57,2026-10-08 15:46,2,nao,sem dado,139,reprovado,runs/907/meta.json
+908,done,2026-10-08 18:56,2026-10-12 02:37,1,sim,sem dado,277,done,runs/908/meta.json
+909,done,2026-10-08 18:56,2026-10-08 19:09,1,sim,sem dado,91,done,runs/909/meta.json
+909b,done,2026-10-08 18:56,2026-10-09 11:24,2,nao,sem dado,368,reprovado,runs/909b/meta.json
+920,done,2026-10-09 13:11,2026-10-12 05:29,1,sim,sem dado,97,done,runs/920/meta.json
+921,done,2026-10-09 13:11,2026-10-12 17:49,3,nao,sem dado,498,reprovado,runs/921/meta.json
+921b,done,2026-10-09 13:11,2026-10-12 22:51,2,nao,sem dado,184,reprovado,runs/921b/meta.json
+922,done,2026-10-09 13:11,2026-10-12 23:00,1,sim,sem dado,130,done,runs/922/meta.json
+922b,done,2026-10-09 13:11,2026-10-12 23:08,1,sim,sem dado,127,done,runs/922b/meta.json
+923,done,2026-10-09 13:11,2026-10-12 23:37,1,sim,sem dado,110,done,runs/923/meta.json
+923b,done,2026-10-09 13:11,2026-10-12 23:47,1,sim,sem dado,247,done,runs/923b/meta.json
+923c,done,2026-10-09 13:11,2026-10-12 23:58,2,nao,sem dado,236,reprovado,runs/923c/meta.json
+924,done,2026-10-09 13:11,2026-10-13 00:15,1,sim,sem dado,146,done,runs/924/meta.json
+924a,done,2026-10-09 13:11,2026-10-13 01:03,3,nao,sem dado,838,reprovado,runs/924a/meta.json; local-loop.log:95742
+924b,done,2026-10-09 13:11,2026-10-13 07:06,4,nao,sem dado,924,reprovado,runs/924b/meta.json; local-loop.log:95926
+924c,done,2026-10-09 13:11,2026-10-13 20:37,8,nao,sem dado,3319,reprovado,runs/924c/meta.json; local-loop.log:97492; local-loop.log:99993
+924d,done,2026-10-09 13:11,2026-10-13 20:49,1,sim,sem dado,317,done,runs/924d/meta.json
+924e,done,2026-10-09 13:11,2026-10-14 10:21,1,sim,sem dado,96,done,runs/924e/meta.json
+924f,done,2026-10-09 13:11,2026-10-14 10:37,2,nao,sem dado,442,reprovado,runs/924f/meta.json
+925,done,2026-10-09 13:11,2026-10-12 05:40,1,sim,sem dado,104,done,runs/925/meta.json
+926,done,2026-10-09 13:11,2026-10-14 11:21,3,nao,sem dado,445,reprovado,runs/926/meta.json
+926b,done,2026-10-09 13:11,2026-10-14 13:00,1,sim,sem dado,97,done,runs/926b/meta.json
+927,done,2026-10-09 13:11,2026-10-12 03:09,3,nao,sem dado,460,reprovado,runs/927/meta.json
+928,done,2026-10-09 13:11,2026-10-12 05:07,4,nao,sem dado,627,reprovado,runs/928/meta.json; local-loop.log:91438
+929,done,2026-10-09 13:49,2026-10-10 21:37,3,nao,sem dado,477,reprovado,runs/929/meta.json; local-loop.log:85996
+930,done,2026-10-09 13:49,2026-10-11 22:03,1,sim,sem dado,114,done,runs/930/meta.json
+931,done,2026-10-09 13:49,2026-10-10 16:49,1,sim,sem dado,118,done,runs/931/meta.json
+931b,done,2026-10-09 13:49,2026-10-11 23:30,2,nao,sem dado,253,reprovado,runs/931b/meta.json
+932,done,2026-10-09 13:49,2026-10-10 17:17,3,nao,sem dado,136,reprovado,runs/932/meta.json; local-loop.log:85272
+933,done,2026-10-09 13:49,2026-10-12 11:37,3,nao,sem dado,627,reprovado,runs/933/meta.json; local-loop.log:90709
+934,done,2026-10-09 13:49,2026-10-12 01:31,1,sim,sem dado,140,done,runs/934/meta.json
+934b,done,2026-10-09 13:49,2026-10-12 12:38,3,nao,sem dado,411,reprovado,runs/934b/meta.json; local-loop.log:90762
+935,done,2026-10-09 13:49,2026-10-12 13:07,6,nao,sem dado,1276,reprovado,runs/935/meta.json; local-loop.log:91112
+936,done,2026-10-09 13:49,2026-10-12 04:51,1,sim,sem dado,137,done,runs/936/meta.json
+937,done,2026-10-09 13:49,2026-10-12 06:03,1,sim,sem dado,88,done,runs/937/meta.json
+938,done,2026-10-09 13:49,2026-10-12 06:14,1,sim,sem dado,105,done,runs/938/meta.json
+939,done,2026-10-09 13:49,2026-10-10 15:50,1,sim,sem dado,132,done,runs/939/meta.json
+940,done,2026-10-09 13:49,2026-10-10 14:50,3,nao,sem dado,541,reprovado,runs/940/meta.json; local-loop.log:85222
+940b,done,2026-10-09 13:49,2026-10-10 15:21,1,sim,sem dado,160,done,runs/940b/meta.json
+950,done,sem dado,2026-10-09 18:33,3,nao,sem dado,229,reprovado,runs/950/meta.json; local-loop.log:85145
+951a,done,sem dado,2026-10-09 19:03,1,sim,sem dado,101,done,runs/951a/meta.json
+951b,done,sem dado,2026-10-10 11:28,1,sim,sem dado,78,done,runs/951b/meta.json
+952a,done,sem dado,2026-10-09 16:16,1,sim,sem dado,37,done,runs/952a/meta.json
+952b,done,sem dado,2026-10-11 10:41,1,sim,sem dado,138,done,runs/952b/meta.json
+953,done,sem dado,2026-10-11 16:21,7,nao,sem dado,1502,reprovado,runs/953/meta.json; local-loop.log:89239
+954,done,sem dado,2026-10-11 17:19,1,sim,sem dado,103,done,runs/954/meta.json
+960,done,2026-10-09 16:14,2026-10-10 11:58,1,sim,sem dado,80,done,runs/960/meta.json
+961,done,2026-10-09 16:14,2026-10-11 19:14,1,sim,sem dado,77,done,runs/961/meta.json
+961b,done,2026-10-11 12:31,2026-10-11 20:25,3,nao,sem dado,600,reprovado,runs/961b/meta.json
+962,done,2026-10-09 16:14,2026-10-11 23:44,1,sim,sem dado,101,done,runs/962/meta.json
+963,done,2026-10-09 16:14,2026-10-10 12:36,2,nao,sem dado,307,reprovado,runs/963/meta.json
+963b,done,2026-10-11 12:31,2026-10-11 21:29,1,sim,sem dado,114,done,runs/963b/meta.json
+964,done,2026-10-11 12:31,2026-10-11 22:18,1,sim,sem dado,119,done,runs/964/meta.json
+965,done,2026-10-11 12:31,2026-10-11 22:59,1,sim,sem dado,71,done,runs/965/meta.json
+966,done,2026-10-11 12:31,2026-10-12 11:52,3,nao,sem dado,590,reprovado,runs/966/meta.json; local-loop.log:91808
+970,done,2026-10-10 21:40,2026-10-10 22:01,2,nao,sem dado,399,reprovado,runs/970/meta.json
+971,done,2026-10-10 21:40,2026-10-10 23:06,1,sim,sem dado,306,done,runs/971/meta.json
+972,done,2026-10-10 21:40,2026-10-10 22:40,1,sim,sem dado,128,done,runs/972/meta.json
+973,done,2026-10-10 21:40,2026-10-10 23:30,2,nao,sem dado,235,reprovado,runs/973/meta.json
+974,done,2026-10-10 21:40,2026-10-11 11:30,1,sim,sem dado,75,done,runs/974/meta.json
+980,done,2026-10-10 21:40,2026-10-10 22:23,2,nao,sem dado,295,reprovado,runs/980/meta.json
+981,done,2026-10-10 21:40,2026-10-11 11:48,1,sim,sem dado,156,done,runs/981/meta.json
+982,done,2026-10-10 21:40,2026-10-11 12:36,1,sim,sem dado,154,done,runs/982/meta.json
+983,done,2026-10-10 21:40,2026-10-11 16:45,2,nao,sem dado,477,reprovado,runs/983/meta.json
+984,done,2026-10-10 21:40,2026-10-11 17:35,3,nao,sem dado,260,reprovado,runs/984/meta.json; local-loop.log:89400
+991,done,2026-10-11 00:33,2026-10-12 18:15,1,sim,sem dado,76,done,runs/991/meta.json
+992,done,2026-10-11 00:33,2026-10-11 19:30,1,sim,sem dado,99,done,runs/992/meta.json
+993,done,2026-10-11 00:33,2026-10-11 20:41,1,sim,sem dado,100,done,runs/993/meta.json
+994,done,2026-10-11 00:33,2026-10-11 20:58,1,sim,sem dado,119,done,runs/994/meta.json
+994b,done,2026-10-11 00:33,2026-10-11 21:48,1,sim,sem dado,214,done,runs/994b/meta.json
+994c,done,2026-10-11 00:33,2026-10-11 22:45,3,nao,sem dado,722,reprovado,runs/994c/meta.json
+995,done,2026-10-11 00:33,2026-10-12 19:08,2,nao,sem dado,256,reprovado,runs/995/meta.json
+996,done,2026-10-11 00:33,2026-10-12 19:21,1,sim,sem dado,165,done,runs/996/meta.json
+996b,done,2026-10-11 00:33,2026-10-12 19:33,1,sim,sem dado,110,done,runs/996b/meta.json
+996c,done,2026-10-11 00:33,2026-10-12 19:46,1,sim,sem dado,165,done,runs/996c/meta.json
+997,done,2026-10-11 00:33,2026-10-12 20:17,1,sim,sem dado,313,done,runs/997/meta.json
+997b,done,2026-10-11 00:33,2026-10-12 22:17,1,sim,sem dado,432,done,runs/997b/meta.json
+997c,done,2026-10-11 00:33,2026-10-12 22:31,2,nao,sem dado,362,reprovado,runs/997c/meta.json
+998,done,2026-10-11 00:33,2026-10-11 23:57,1,sim,sem dado,72,done,runs/998/meta.json
+999,done,2026-10-11 00:33,2026-10-12 00:21,1,sim,sem dado,90,done,runs/999/meta.json
+999b,done,2026-10-11 00:33,2026-10-11 18:41,1,sim,sem dado,111,done,runs/999b/meta.json
+999c,done,2026-10-11 00:33,2026-10-13 06:25,3,nao,sem dado,290,reprovado,runs/999c/meta.json; local-loop.log:95880
+999d,done,2026-10-11 00:37,2026-10-13 00:06,1,sim,sem dado,126,done,runs/999d/meta.json
+1000,done,2026-10-11 00:16,2026-10-10 23:48,1,sim,sem dado,59,done,runs/1000/meta.json
+1001,done,2026-10-11 00:16,2026-10-11 00:06,1,sim,sem dado,66,done,runs/1001/meta.json
+1002,done,2026-10-11 00:16,2026-10-11 18:09,1,sim,sem dado,114,done,runs/1002/meta.json
+1003,done,2026-10-11 00:16,2026-10-11 18:58,1,sim,sem dado,186,done,runs/1003/meta.json
+1004,done,2026-10-11 00:16,2026-10-11 21:13,3,nao,sem dado,242,reprovado,runs/1004/meta.json; local-loop.log:89762
+1005,done,2026-10-11 00:16,2026-10-14 13:26,2,nao,sem dado,499,reprovado,runs/1005/meta.json
+1006,done,2026-10-11 00:16,2026-10-11 12:54,3,nao,sem dado,546,reprovado,runs/1006/meta.json; local-loop.log:88744
+1007,done,2026-10-11 00:16,2026-10-11 13:11,1,sim,sem dado,106,done,runs/1007/meta.json
+1008,done,2026-10-11 00:16,2026-10-11 13:39,1,sim,sem dado,109,done,runs/1008/meta.json
+1009,done,2026-10-11 00:16,2026-10-11 15:19,4,nao,sem dado,662,reprovado,runs/1009/meta.json; local-loop.log:89034
+1010,done,2026-10-11 00:16,2026-10-11 16:04,1,sim,sem dado,165,done,runs/1010/meta.json
+1011,done,2026-10-11 00:16,2026-10-11 18:25,3,nao,sem dado,291,reprovado,runs/1011/meta.json; local-loop.log:89499
+1012,done,2026-10-11 00:16,2026-10-11 23:12,1,sim,sem dado,45,done,runs/1012/meta.json
+1013,done,2026-10-11 00:16,2026-10-12 00:09,1,sim,sem dado,28,done,runs/1013/meta.json
+1014,done,2026-10-11 00:16,2026-10-12 01:05,1,sim,sem dado,106,done,runs/1014/meta.json
+1015,done,2026-10-11 00:27,2026-10-11 11:13,1,sim,sem dado,76,done,runs/1015/meta.json
+1016,done,2026-10-11 00:27,2026-10-11 10:47,2,nao,sem dado,87,reprovado,runs/1016/meta.json
+1017,done,2026-10-12 17:41,2026-10-12 18:05,1,sim,sem dado,63,done,runs/1017/meta.json
+1018,done,2026-10-12 17:41,2026-10-12 21:04,3,nao,sem dado,609,reprovado,runs/1018/meta.json
+1019,done,2026-10-12 17:41,2026-10-12 21:15,1,sim,sem dado,120,done,runs/1019/meta.json
+1019b,done,2026-10-12 17:41,2026-10-12 21:25,1,sim,sem dado,138,done,runs/1019b/meta.json
+1020,done,2026-10-12 17:41,2026-10-12 23:15,1,sim,sem dado,64,done,runs/1020/meta.json
+1020b,done,2026-10-12 17:41,2026-10-12 23:22,1,sim,sem dado,77,done,runs/1020b/meta.json
+1021,done,2026-10-12 17:41,2026-10-12 22:39,1,sim,sem dado,96,done,runs/1021/meta.json
+1021b,done,2026-10-12 17:41,2026-10-12 23:29,1,sim,sem dado,64,done,runs/1021b/meta.json
+1022,done,2026-10-12 17:41,2026-10-12 17:56,1,sim,sem dado,27,done,runs/1022/meta.json
+1023,done,2026-10-12 17:41,2026-10-12 21:56,1,sim,sem dado,95,done,runs/1023/meta.json
+1024,done,2026-10-12 17:41,2026-10-12 18:26,1,sim,sem dado,53,done,runs/1024/meta.json
+1025,done,2026-10-12 17:41,2026-10-12 18:38,1,sim,sem dado,63,done,runs/1025/meta.json
+1025b,done,2026-10-12 17:41,2026-10-12 18:52,2,nao,sem dado,108,reprovado,runs/1025b/meta.json
+1029,done,2026-10-13 11:16,2026-10-13 04:14,1,sim,sem dado,24,done,runs/1029/meta.json
+1030,done,2026-10-13 11:16,2026-10-13 11:23,4,nao,sem dado,804,reprovado,runs/1030/meta.json; local-loop.log:96416
+1030b,done,2026-10-13 11:16,2026-10-13 04:21,1,sim,sem dado,105,done,runs/1030b/meta.json
+1031,done,2026-10-13 11:16,2026-10-13 11:39,1,sim,sem dado,180,done,runs/1031/meta.json
+1032,done,2026-10-13 11:16,2026-10-13 04:39,1,sim,sem dado,89,done,runs/1032/meta.json
+1033,done,2026-10-13 11:16,2026-10-13 11:50,1,sim,sem dado,261,done,runs/1033/meta.json
+1034,done,2026-10-13 11:16,2026-10-13 14:26,3,nao,sem dado,868,reprovado,runs/1034/meta.json; local-loop.log:99126
+1034b,done,2026-10-13 11:16,2026-10-13 14:34,1,sim,sem dado,155,done,runs/1034b/meta.json
+1040,done,2026-10-13 11:16,2026-10-13 04:46,1,sim,sem dado,89,done,runs/1040/meta.json
+1041,done,2026-10-13 11:16,2026-10-13 04:58,2,nao,sem dado,257,reprovado,runs/1041/meta.json
+1041b,done,2026-10-13 11:16,2026-10-13 05:05,1,sim,sem dado,100,done,runs/1041b/meta.json
+1041c,done,2026-10-13 11:16,2026-10-13 05:12,1,sim,sem dado,81,done,runs/1041c/meta.json
+1042,done,2026-10-13 11:16,2026-10-13 14:46,2,nao,sem dado,151,reprovado,runs/1042/meta.json
+1043,done,2026-10-13 11:16,2026-10-13 05:19,1,sim,sem dado,97,done,runs/1043/meta.json
+1044,done,2026-10-13 11:16,2026-10-13 05:26,1,sim,sem dado,118,done,runs/1044/meta.json
+1050,done,2026-10-13 11:16,2026-10-13 05:33,1,sim,sem dado,56,done,runs/1050/meta.json
+1050b,done,2026-10-13 11:16,2026-10-13 05:42,1,sim,sem dado,225,done,runs/1050b/meta.json
+1051,done,2026-10-13 11:16,2026-10-13 14:54,1,sim,sem dado,147,done,runs/1051/meta.json
+1052,done,2026-10-13 11:16,2026-10-13 15:03,1,sim,sem dado,126,done,runs/1052/meta.json
+1052b,done,2026-10-13 11:16,2026-10-13 15:11,1,sim,sem dado,182,done,runs/1052b/meta.json
+1053,done,2026-10-13 11:16,2026-10-13 17:30,5,nao,sem dado,969,reprovado,runs/1053/meta.json; local-loop.log:99440; local-loop.log:99695
+1053b,done,2026-10-13 11:16,2026-10-13 17:39,6,nao,sem dado,1423,reprovado,runs/1053b/meta.json; local-loop.log:99476; local-loop.log:99752
+1053c,done,2026-10-13 11:16,2026-10-13 18:15,3,nao,sem dado,317,reprovado,runs/1053c/meta.json; local-loop.log:100107
+1054,done,2026-10-13 11:16,2026-10-13 18:51,4,nao,sem dado,1126,reprovado,runs/1054/meta.json; local-loop.log:100167
+1054b,done,2026-10-13 11:16,2026-10-13 19:11,3,nao,sem dado,403,reprovado,runs/1054b/meta.json; local-loop.log:100461
+1055,done,2026-10-13 11:16,2026-10-13 19:46,3,nao,sem dado,795,reprovado,runs/1055/meta.json; local-loop.log:100551
+1055b,done,2026-10-13 11:16,2026-10-13 20:57,4,nao,sem dado,1215,reprovado,runs/1055b/meta.json; local-loop.log:100707
+1056,done,2026-10-13 11:16,2026-10-13 21:04,1,sim,sem dado,128,done,runs/1056/meta.json
+1056b,done,2026-10-13 11:16,2026-10-14 19:33,1,sim,sem dado,146,done,runs/1056b/meta.json
+1057,done,2026-10-13 11:16,2026-10-14 19:57,3,nao,sem dado,698,reprovado,runs/1057/meta.json
+1058,done,2026-10-13 11:16,2026-10-15 12:24,3,nao,sem dado,682,reprovado,runs/1058/meta.json; local-loop.log:103224
+1058b,done,2026-10-13 11:16,2026-10-15 12:43,2,nao,sem dado,724,reprovado,runs/1058b/meta.json
+1059,done,2026-10-13 11:16,2026-10-14 20:35,6,nao,sem dado,927,reprovado,runs/1059/meta.json; local-loop.log:101480
+1060,done,2026-10-13 11:16,2026-10-15 18:23,3,nao,sem dado,352,reprovado,runs/1060/meta.json; local-loop.log:103837
+1060a,done,2026-10-15 17:48,2026-10-15 18:12,2,nao,sem dado,359,reprovado,runs/1060a/meta.json
+1060b,done,2026-10-13 11:16,2026-10-17 02:06,1,sim,sem dado,284,done,runs/1060b/meta.json
+1061,done,2026-10-13 11:16,2026-10-13 05:49,1,sim,sem dado,70,done,runs/1061/meta.json
+1062,done,2026-10-13 11:16,2026-10-13 05:55,1,sim,sem dado,35,done,runs/1062/meta.json
+1063,done,2026-10-13 11:16,2026-10-13 06:03,1,sim,sem dado,108,done,runs/1063/meta.json
+1070,done,2026-10-13 11:16,2026-10-13 15:47,2,nao,sem dado,345,reprovado,runs/1070/meta.json
+1071,done,2026-10-13 11:16,2026-10-13 19:35,1,sim,sem dado,149,done,runs/1071/meta.json
+1080,done,2026-10-13 11:16,2026-10-13 18:21,1,sim,sem dado,81,done,runs/1080/meta.json
+1081,done,2026-10-13 11:16,2026-10-13 06:10,1,sim,sem dado,77,done,runs/1081/meta.json
+1082,done,2026-10-13 11:16,2026-10-13 06:17,1,sim,sem dado,49,done,runs/1082/meta.json
+1082b,done,2026-10-13 11:16,2026-10-16 17:14,sem dado,sem dado,sem dado,sem dado,-,git: status done em commit sem meta.json
+1083,done,2026-10-13 11:16,2026-10-13 06:32,1,sim,sem dado,68,done,runs/1083/meta.json
+1084,done,2026-10-13 11:16,2026-10-13 15:54,1,nao,sem dado,62,obsoleto,runs/1084/meta.json
+1085,done,2026-10-13 11:16,2026-10-13 06:46,2,nao,sem dado,231,reprovado,runs/1085/meta.json
+1086,done,2026-10-13 11:16,2026-10-14 10:54,1,sim,sem dado,80,done,runs/1086/meta.json
+1086b,done,2026-10-13 11:16,2026-10-14 12:52,1,sim,sem dado,96,done,runs/1086b/meta.json
+1087,done,2026-10-13 11:16,2026-10-14 11:00,1,sim,sem dado,98,done,runs/1087/meta.json
+1088,done,2026-10-13 11:16,2026-10-13 16:03,1,nao,sem dado,116,obsoleto,runs/1088/meta.json
+1089,done,2026-10-13 11:16,2026-10-14 14:19,1,sim,sem dado,67,done,runs/1089/meta.json
+1100,done,2026-10-13 11:16,2026-10-13 16:42,1,sim,sem dado,65,done,runs/1100/meta.json
+1101,done,2026-10-13 11:16,2026-10-13 18:30,1,nao,sem dado,167,obsoleto,runs/1101/meta.json
+1101b,done,2026-10-13 11:16,2026-10-13 18:41,2,nao,sem dado,192,reprovado,runs/1101b/meta.json
+1102,done,2026-10-13 11:16,2026-10-14 14:29,1,sim,sem dado,152,done,runs/1102/meta.json
+1103,done,2026-10-13 11:16,2026-10-14 14:39,1,sim,sem dado,141,done,runs/1103/meta.json
+1104,done,2026-10-13 11:16,2026-10-14 14:49,1,sim,sem dado,172,done,runs/1104/meta.json
+1105,done,2026-10-13 11:16,2026-10-14 15:03,1,sim,sem dado,285,done,runs/1105/meta.json
+1106,done,2026-10-13 11:16,2026-10-14 15:16,1,sim,sem dado,254,done,runs/1106/meta.json
+1106b,done,2026-10-13 11:16,2026-10-14 15:26,1,sim,sem dado,120,done,runs/1106b/meta.json
+1107,done,2026-10-13 11:16,2026-10-14 15:34,1,sim,sem dado,111,done,runs/1107/meta.json
+1110,done,2026-10-13 11:16,2026-10-13 16:54,1,sim,sem dado,28,done,runs/1110/meta.json
+1110b,done,2026-10-13 11:16,2026-10-14 15:47,2,nao,sem dado,277,reprovado,runs/1110b/meta.json
+1111,done,2026-10-13 11:16,2026-10-14 15:54,1,sim,sem dado,30,done,runs/1111/meta.json
+1111b,done,2026-10-13 11:16,2026-10-15 10:58,1,sim,sem dado,98,done,runs/1111b/meta.json
+1112,done,2026-10-13 11:16,2026-10-15 11:10,2,nao,sem dado,230,reprovado,runs/1112/meta.json
+1115,done,2026-10-13 11:16,2026-10-13 07:42,1,sim,sem dado,85,done,runs/1115/meta.json
+1116,done,2026-10-16 19:08,2026-10-16 19:08,sem dado,sem dado,sem dado,sem dado,-,git: status done em commit sem meta.json
+1137,done,2026-10-14 13:13,2026-10-14 13:46,2,nao,sem dado,155,reprovado,runs/1137/meta.json
+1138,done,2026-10-14 13:13,2026-10-16 22:44,3,nao,sem dado,280,reprovado,runs/1138/meta.json; local-loop.log:108484
+1139,done,2026-10-14 13:13,2026-10-14 14:02,1,sim,sem dado,56,done,runs/1139/meta.json
+1140,done,2026-10-14 13:13,2026-10-16 22:53,1,sim,sem dado,68,done,runs/1140/meta.json
+1141,done,2026-10-14 13:13,2026-10-16 23:02,1,sim,sem dado,59,done,runs/1141/meta.json
+1142,done,2026-10-15 12:31,2026-10-17 02:39,1,sim,sem dado,78,done,runs/1142/meta.json
+1142b,done,2026-10-15 12:31,2026-10-15 13:51,1,sim,sem dado,81,done,runs/1142b/meta.json
+1142c,done,2026-10-15 12:31,2026-10-17 02:47,1,sim,sem dado,87,done,runs/1142c/meta.json
+1143,done,2026-10-15 12:31,2026-10-15 13:19,1,sim,sem dado,70,done,runs/1143/meta.json
+1144,done,2026-10-15 12:31,2026-10-15 14:10,1,sim,sem dado,85,done,runs/1144/meta.json
+1145,done,2026-10-15 12:31,2026-10-15 13:45,1,sim,sem dado,52,done,runs/1145/meta.json
+1160,done,2026-10-15 13:20,2026-10-15 18:40,1,sim,sem dado,96,done,runs/1160/meta.json
+1161,done,2026-10-15 13:20,2026-10-15 18:47,1,sim,sem dado,129,done,runs/1161/meta.json
+1162,done,2026-10-15 13:20,2026-10-15 19:14,1,sim,sem dado,1363,done,runs/1162/meta.json
+1162b,done,2026-10-15 13:44,2026-10-15 19:41,1,sim,sem dado,176,done,runs/1162b/meta.json
+1163,done,2026-10-15 13:20,2026-10-15 14:26,1,sim,sem dado,26,done,runs/1163/meta.json
+1163b,done,2026-10-15 13:20,2026-10-15 19:27,1,sim,sem dado,96,done,runs/1163b/meta.json
+1164,done,2026-10-15 13:44,2026-10-15 19:33,1,sim,sem dado,89,done,runs/1164/meta.json
+1165,bloqueado,2026-10-16 14:28,2026-10-16 14:43,sem dado,-,sem dado,sem dado,-,local-loop.log:107592
+1171,done,2026-10-16 14:48,2026-10-16 19:24,1,sim,sem dado,162,done,runs/1171/meta.json
+1180,done,sem dado,2026-10-16 23:10,1,sim,sem dado,107,done,runs/1180/meta.json
+1181,done,sem dado,2026-10-16 23:23,2,nao,sem dado,197,reprovado,runs/1181/meta.json
+1182,done,sem dado,2026-10-17 03:17,2,nao,sem dado,173,reprovado,runs/1182/meta.json
+1183,done,sem dado,2026-10-16 23:33,1,sim,sem dado,131,done,runs/1183/meta.json
+1184,done,sem dado,2026-10-16 23:43,1,sim,sem dado,148,done,runs/1184/meta.json
+1186,done,2026-10-16 16:26,2026-10-16 19:33,1,sim,sem dado,247,done,runs/1186/meta.json
+1190,done,2026-10-16 16:27,2026-10-16 19:39,1,sim,sem dado,78,done,runs/1190/meta.json
+1191,done,2026-10-16 16:27,2026-10-17 02:17,3,nao,sem dado,626,reprovado,runs/1191/meta.json; local-loop.log:108371
+1192,done,2026-10-16 16:27,2026-10-16 19:52,1,sim,sem dado,110,done,runs/1192/meta.json
+1193,done,2026-10-16 16:27,2026-10-17 02:32,2,nao,sem dado,383,reprovado,runs/1193/meta.json
+1194,done,2026-10-16 16:27,2026-10-17 02:55,1,sim,sem dado,187,done,runs/1194/meta.json
+1195,done,2026-10-16 16:27,2026-10-17 03:54,3,nao,sem dado,489,reprovado,runs/1195/meta.json; local-loop.log:109677
+1196,done,2026-10-16 16:27,2026-10-17 04:05,1,sim,sem dado,325,done,runs/1196/meta.json
+1200,done,2026-10-16 17:19,2026-10-16 20:31,1,sim,sem dado,98,done,runs/1200/meta.json; local-loop.log:107719
+1220,done,2026-10-16 16:59,2026-10-16 19:45,1,sim,sem dado,54,done,runs/1220/meta.json
+1221,done,2026-10-16 16:59,2026-10-16 23:51,1,sim,sem dado,89,done,runs/1221/meta.json
+1222,done,2026-10-16 16:59,2026-10-16 23:59,1,sim,sem dado,74,done,runs/1222/meta.json
+1223,done,2026-10-16 16:59,2026-10-17 00:10,1,sim,sem dado,129,done,runs/1223/meta.json
+1224,done,2026-10-16 16:59,2026-10-17 03:24,1,sim,sem dado,68,done,runs/1224/meta.json
+1225,done,2026-10-16 16:59,2026-10-17 03:32,1,sim,sem dado,121,done,runs/1225/meta.json
+1226,done,2026-10-16 16:59,2026-10-17 03:39,1,sim,sem dado,65,done,runs/1226/meta.json
+1227,done,2026-10-16 16:59,2026-10-17 03:47,1,sim,sem dado,113,done,runs/1227/meta.json
+1230,done,2026-10-17 11:29,2026-10-17 04:13,1,sim,sem dado,47,done,runs/1230/meta.json
+1231,done,2026-10-17 11:29,2026-10-17 04:20,1,sim,sem dado,53,done,runs/1231/meta.json
+1232,done,2026-10-17 11:29,2026-10-17 04:27,1,sim,sem dado,61,done,runs/1232/meta.json
+1233,done,2026-10-17 11:29,2026-10-17 04:35,1,sim,sem dado,60,done,runs/1233/meta.json
+1234,done,2026-10-17 11:29,2026-10-17 04:42,1,sim,sem dado,73,done,runs/1234/meta.json
+1235,done,2026-10-17 11:29,2026-10-17 04:49,1,sim,sem dado,76,done,runs/1235/meta.json
+1236,done,2026-10-17 11:29,2026-10-17 04:57,1,sim,sem dado,52,done,runs/1236/meta.json
+1237,done,2026-10-17 11:29,2026-10-17 05:04,1,sim,sem dado,93,done,runs/1237/meta.json
+1238,done,2026-10-17 11:29,2026-10-17 05:11,1,sim,sem dado,68,done,runs/1238/meta.json
+1239,done,2026-10-17 11:29,2026-10-17 05:16,1,sim,sem dado,54,done,runs/1239/meta.json
+1240,done,2026-10-17 11:29,2026-10-17 05:21,1,sim,sem dado,71,done,runs/1240/meta.json
+1241,done,2026-10-17 11:29,2026-10-17 05:27,1,sim,sem dado,79,done,runs/1241/meta.json
+1242,done,2026-10-17 11:29,2026-10-17 05:34,1,sim,sem dado,121,done,runs/1242/meta.json
+1243,done,2026-10-17 14:17,2026-10-17 13:03,1,sim,sem dado,121,done,runs/1243/meta.json
+1244,done,2026-10-17 14:17,2026-10-17 13:13,1,sim,sem dado,152,done,runs/1244/meta.json
+1245,done,2026-10-17 14:17,2026-10-17 13:23,1,sim,sem dado,112,done,runs/1245/meta.json
+1246,done,2026-10-17 14:17,2026-10-17 13:34,1,sim,sem dado,117,done,runs/1246/meta.json
+1247,done,2026-10-17 14:17,2026-10-17 13:56,3,nao,sem dado,520,reprovado,runs/1247/meta.json
+1248,bloqueado,2026-10-17 14:17,2026-10-17 14:22,3,-,sem dado,695,reprovado,runs/1248/meta.json; local-loop.log:111879
+1249,done,2026-10-17 14:17,2026-10-17 14:43,1,sim,sem dado,142,done,runs/1249/meta.json
+1250,done,2026-10-17 14:17,2026-10-17 14:57,1,sim,sem dado,169,done,runs/1250/meta.json
+1251,done,2026-10-17 14:17,2026-10-17 15:10,1,sim,sem dado,140,done,runs/1251/meta.json
+1252,done,2026-10-17 14:17,2026-10-17 15:22,1,sim,sem dado,164,done,runs/1252/meta.json
+1253,done,2026-10-17 14:17,2026-10-17 15:37,1,sim,sem dado,284,done,runs/1253/meta.json
+1254,done,2026-10-17 14:17,2026-10-17 15:47,1,sim,sem dado,107,done,runs/1254/meta.json
+1255,done,2026-10-17 14:17,2026-10-17 15:57,1,sim,sem dado,130,done,runs/1255/meta.json
+1256,done,2026-10-17 14:17,2026-10-17 16:05,4,nao,sem dado,978,reprovado,runs/1256/meta.json; local-loop.log:111557
+1257,done,2026-10-17 14:17,2026-10-17 16:14,1,sim,sem dado,134,done,runs/1257/meta.json
+1258,done,2026-10-17 14:17,2026-10-17 16:22,1,sim,sem dado,125,done,runs/1258/meta.json
+1259,done,2026-10-17 14:17,2026-10-17 16:30,1,sim,sem dado,97,done,runs/1259/meta.json
+1260,done,2026-10-17 13:39,2026-10-17 16:38,1,sim,sem dado,101,done,runs/1260/meta.json
+1261,done,2026-10-17 13:39,2026-10-17 16:46,1,sim,sem dado,116,done,runs/1261/meta.json
+1270,done,2026-10-17 20:26,2026-10-17 20:50,1,sim,sem dado,75,done,runs/1270/meta.json
+1271,done,2026-10-17 20:26,2026-10-17 21:11,1,sim,sem dado,188,done,runs/1271/meta.json
+1272,done,2026-10-17 20:26,2026-10-17 21:32,1,sim,sem dado,95,done,runs/1272/meta.json
+1273,done,2026-10-17 20:26,2026-10-17 22:18,1,sim,sem dado,119,done,runs/1273/meta.json
+1274,done,2026-10-17 20:26,2026-10-17 22:34,1,sim,sem dado,76,done,runs/1274/meta.json
+1275,done,2026-10-17 20:26,2026-10-17 22:45,2,nao,sem dado,132,reprovado,runs/1275/meta.json
+1276,done,2026-10-17 20:26,2026-10-17 22:53,1,sim,sem dado,59,done,runs/1276/meta.json
+1277,done,2026-10-17 20:26,2026-10-17 23:01,1,sim,sem dado,53,done,runs/1277/meta.json
+1278,done,2026-10-17 20:26,2026-10-17 23:09,1,sim,sem dado,60,done,runs/1278/meta.json
+1279,done,2026-10-17 20:26,2026-10-17 23:16,1,sim,sem dado,49,done,runs/1279/meta.json
+1280,done,2026-10-17 20:26,2026-10-17 23:24,1,sim,sem dado,90,done,runs/1280/meta.json
+1281,done,2026-10-17 20:26,2026-10-17 23:31,1,sim,sem dado,59,done,runs/1281/meta.json
+1298,done,2026-10-17 21:08,2026-10-17 21:20,1,sim,sem dado,89,done,runs/1298/meta.json
+1301,done,2026-10-17 21:35,2026-10-17 21:40,1,sim,sem dado,73,done,runs/1301/meta.json
+1302,done,2026-10-17 21:35,2026-10-17 21:48,1,sim,sem dado,132,done,runs/1302/meta.json
+1303,done,2026-10-17 21:35,2026-10-17 22:26,3,nao,sem dado,302,reprovado,runs/1303/meta.json; local-loop.log:113760
+1326,done,2026-10-17 23:31,2026-10-17 23:38,1,sim,sem dado,64,done,runs/1326/meta.json
+1332,done,2026-10-17 23:31,2026-10-17 23:55,1,sim,sem dado,60,done,runs/1332/meta.json
+5019,done,sem dado,2026-10-14 14:29,1,sim,sem dado,46,done,runs/5019/meta.json
+5020,done,sem dado,2026-10-14 14:47,1,sim,sem dado,82,done,runs/5020/meta.json
+5021,done,sem dado,2026-10-14 14:53,1,sim,sem dado,83,done,runs/5021/meta.json
+5022,done,sem dado,2026-10-14 14:57,1,sim,sem dado,40,done,runs/5022/meta.json
+5023,done,sem dado,2026-10-15 18:04,1,sim,sem dado,144,done,runs/5023/meta.json
+5024,done,sem dado,2026-10-15 20:35,3,nao,sem dado,307,reprovado,runs/5024/meta.json
+5025,done,sem dado,2026-10-16 14:52,3,nao,sem dado,354,reprovado,runs/5025/meta.json
+5026,done,sem dado,2026-10-16 15:12,2,nao,sem dado,199,reprovado,runs/5026/meta.json
+5027,done,sem dado,2026-10-15 19:50,1,sim,sem dado,167,done,runs/5027/meta.json
+5028,done,sem dado,2026-10-15 19:56,1,sim,sem dado,153,done,runs/5028/meta.json
+5029,done,sem dado,2026-10-14 15:04,1,sim,sem dado,78,done,runs/5029/meta.json
+5029b,done,sem dado,2026-10-15 18:23,2,nao,sem dado,192,reprovado,runs/5029b/meta.json
+5030,done,sem dado,2026-10-15 20:01,1,sim,sem dado,90,done,runs/5030/meta.json
+5031,done,sem dado,2026-10-14 15:12,1,sim,sem dado,224,done,runs/5031/meta.json
+5032,done,sem dado,2026-10-14 15:17,1,sim,sem dado,52,done,runs/5032/meta.json
+5032b,done,sem dado,2026-10-15 20:05,1,sim,sem dado,73,done,runs/5032b/meta.json
+5033,done,sem dado,2026-10-14 15:23,1,sim,sem dado,91,done,runs/5033/meta.json
+5033b,done,sem dado,2026-10-15 20:10,1,sim,sem dado,135,done,runs/5033b/meta.json
+5035,done,sem dado,2026-10-14 19:41,1,sim,sem dado,56,done,runs/5035/meta.json
+5036,done,sem dado,2026-10-15 20:18,2,nao,sem dado,199,reprovado,runs/5036/meta.json
+5036b,done,sem dado,2026-10-15 20:47,1,sim,sem dado,150,done,runs/5036b/meta.json
+5040,done,sem dado,2026-10-15 20:52,1,sim,sem dado,90,done,runs/5040/meta.json
+5041,done,sem dado,2026-10-15 20:56,1,sim,sem dado,31,done,runs/5041/meta.json
+5042,done,sem dado,2026-10-16 22:49,3,nao,sem dado,141,reprovado,runs/5042/meta.json
+5043,done,sem dado,2026-10-15 21:05,1,sim,sem dado,33,done,runs/5043/meta.json
+5044,done,sem dado,2026-10-15 21:08,1,sim,sem dado,67,done,runs/5044/meta.json
+5045,done,sem dado,2026-10-15 15:43,1,sim,sem dado,86,done,runs/5045/meta.json
+5046,done,sem dado,2026-10-15 15:51,1,sim,sem dado,35,done,runs/5046/meta.json
+5047,done,sem dado,2026-10-15 15:55,1,sim,sem dado,34,done,runs/5047/meta.json
+5048,done,sem dado,2026-10-15 21:13,1,sim,sem dado,84,done,runs/5048/meta.json
+5049,done,sem dado,2026-10-17 02:01,1,sim,sem dado,32,done,runs/5049/meta.json
+5050,done,sem dado,2026-10-17 02:07,1,sim,sem dado,110,done,runs/5050/meta.json
+5051,done,sem dado,2026-10-17 02:13,1,sim,sem dado,88,done,runs/5051/meta.json
+5052,done,sem dado,2026-10-17 01:56,1,sim,sem dado,34,done,runs/5052/meta.json
+5053,done,sem dado,2026-10-15 13:28,1,sim,sem dado,104,done,runs/5053/meta.json
+5054,done,sem dado,2026-10-16 07:33,1,sim,sem dado,58,done,runs/5054/meta.json
+5055,done,sem dado,2026-10-16 22:55,3,nao,sem dado,164,reprovado,runs/5055/meta.json
+5056,done,sem dado,2026-10-17 02:20,1,sim,sem dado,125,done,runs/5056/meta.json
+5057,done,sem dado,2026-10-17 02:26,1,sim,sem dado,85,done,runs/5057/meta.json
+5058,done,sem dado,2026-10-17 02:30,1,sim,sem dado,66,done,runs/5058/meta.json
+5060,done,sem dado,2026-10-15 14:04,1,sim,sem dado,47,done,runs/5060/meta.json
+5061,done,sem dado,2026-10-15 14:11,1,sim,sem dado,131,done,runs/5061/meta.json
+5062,done,sem dado,2026-10-15 15:27,3,nao,sem dado,468,reprovado,runs/5062/meta.json
+5063,done,sem dado,2026-10-15 15:33,1,sim,sem dado,147,done,runs/5063/meta.json
+5064,done,sem dado,2026-10-15 15:48,1,sim,sem dado,82,done,runs/5064/meta.json
+5065,done,sem dado,2026-10-15 15:39,1,sim,sem dado,111,done,runs/5065/meta.json
+5067,done,sem dado,2026-10-16 18:52,2,nao,sem dado,2999,reprovado,runs/5067/meta.json
+5068,done,sem dado,2026-10-16 20:37,1,sim,sem dado,80,done,runs/5068/meta.json
+5069,done,sem dado,2026-10-16 20:49,2,nao,sem dado,267,reprovado,runs/5069/meta.json
+5070,done,sem dado,2026-10-16 20:53,1,sim,sem dado,66,done,runs/5070/meta.json
+5071,done,sem dado,2026-10-16 20:59,1,sim,sem dado,146,done,runs/5071/meta.json
+5072,done,sem dado,2026-10-16 21:04,1,sim,sem dado,106,done,runs/5072/meta.json
+5080,done,sem dado,2026-10-16 21:10,1,sim,sem dado,35,done,runs/5080/meta.json
+5081,done,sem dado,2026-10-16 21:14,1,sim,sem dado,54,done,runs/5081/meta.json
+5082,done,sem dado,2026-10-16 21:19,1,sim,sem dado,90,done,runs/5082/meta.json
+5083,done,sem dado,2026-10-16 21:24,1,sim,sem dado,27,done,runs/5083/meta.json
+5084,done,sem dado,2026-10-16 21:28,1,sim,sem dado,80,done,runs/5084/meta.json
+5085,done,sem dado,2026-10-16 21:35,1,sim,sem dado,126,done,runs/5085/meta.json
+5086,done,sem dado,2026-10-16 21:51,1,sim,sem dado,87,done,runs/5086/meta.json
+5087,done,sem dado,2026-10-16 21:57,1,sim,sem dado,77,done,runs/5087/meta.json
+5088,done,sem dado,2026-10-16 22:01,1,sim,sem dado,60,done,runs/5088/meta.json
+5089,done,sem dado,2026-10-16 22:07,1,sim,sem dado,108,done,runs/5089/meta.json
+5090,done,sem dado,2026-10-16 22:43,1,sim,sem dado,91,done,runs/5090/meta.json
+5130,done,sem dado,2026-10-16 23:08,2,nao,sem dado,220,reprovado,runs/5130/meta.json
+5131,done,sem dado,2026-10-16 23:15,1,sim,sem dado,108,done,runs/5131/meta.json
+5132,done,sem dado,2026-10-16 23:22,1,sim,sem dado,114,done,runs/5132/meta.json
+5133,done,sem dado,2026-10-17 02:35,1,sim,sem dado,86,done,runs/5133/meta.json
+5134,done,sem dado,2026-10-17 02:46,1,sim,sem dado,102,done,runs/5134/meta.json
+5135,done,sem dado,2026-10-16 23:28,1,sim,sem dado,118,done,runs/5135/meta.json
+5136,done,sem dado,2026-10-16 23:35,1,sim,sem dado,125,done,runs/5136/meta.json
+5137,done,sem dado,2026-10-16 23:41,1,sim,sem dado,80,done,runs/5137/meta.json
+5138,done,sem dado,2026-10-17 02:40,1,sim,sem dado,94,done,runs/5138/meta.json
+5139,done,sem dado,2026-10-16 23:55,2,nao,sem dado,303,reprovado,runs/5139/meta.json
+5140,done,sem dado,2026-10-17 02:51,1,sim,sem dado,123,done,runs/5140/meta.json
+5141,done,sem dado,2026-10-17 00:03,1,sim,sem dado,142,done,runs/5141/meta.json
+5142,done,sem dado,2026-10-17 02:57,1,sim,sem dado,111,done,runs/5142/meta.json
+5143,done,sem dado,2026-10-17 00:16,2,nao,sem dado,269,reprovado,runs/5143/meta.json
+5144,done,sem dado,2026-10-17 00:21,1,sim,sem dado,89,done,runs/5144/meta.json
+5145,done,sem dado,2026-10-17 03:02,1,sim,sem dado,127,done,runs/5145/meta.json
+5146,done,sem dado,2026-10-17 03:07,1,sim,sem dado,107,done,runs/5146/meta.json
+5147,done,sem dado,2026-10-17 03:12,1,sim,sem dado,81,done,runs/5147/meta.json
+5148,done,sem dado,2026-10-17 00:43,1,sim,sem dado,103,done,runs/5148/meta.json
+5149,done,sem dado,2026-10-17 03:18,1,sim,sem dado,134,done,runs/5149/meta.json
+5150,done,sem dado,2026-10-17 03:24,1,sim,sem dado,109,done,runs/5150/meta.json
+5151,done,sem dado,2026-10-17 00:59,1,sim,sem dado,89,done,runs/5151/meta.json
+5152,done,sem dado,2026-10-17 01:04,1,sim,sem dado,97,done,runs/5152/meta.json
+5153,done,sem dado,2026-10-17 00:27,1,sim,sem dado,139,done,runs/5153/meta.json
+5154,done,sem dado,2026-10-17 00:32,1,sim,sem dado,94,done,runs/5154/meta.json
+5155,done,sem dado,2026-10-17 00:38,1,sim,sem dado,135,done,runs/5155/meta.json
+5156,done,sem dado,2026-10-17 00:49,1,sim,sem dado,102,done,runs/5156/meta.json
+5157,done,sem dado,2026-10-17 00:53,1,sim,sem dado,84,done,runs/5157/meta.json
+5158,done,sem dado,2026-10-17 01:09,1,sim,sem dado,90,done,runs/5158/meta.json
+5159,done,sem dado,2026-10-17 03:29,3,nao,sem dado,331,reprovado,runs/5159/meta.json
+5160,done,sem dado,2026-10-17 03:35,1,sim,sem dado,109,done,runs/5160/meta.json
+5161,done,sem dado,2026-10-17 01:21,1,sim,sem dado,112,done,runs/5161/meta.json
+5162,done,sem dado,2026-10-17 03:41,1,sim,sem dado,140,done,runs/5162/meta.json
+5163,done,sem dado,2026-10-17 01:26,1,sim,sem dado,113,done,runs/5163/meta.json
+5164,done,sem dado,2026-10-17 03:51,2,nao,sem dado,256,reprovado,runs/5164/meta.json
+5165,done,sem dado,2026-10-17 03:56,1,sim,sem dado,113,done,runs/5165/meta.json
+5166,done,sem dado,2026-10-17 01:32,1,sim,sem dado,105,done,runs/5166/meta.json
+5167,done,sem dado,2026-10-17 01:41,2,nao,sem dado,212,reprovado,runs/5167/meta.json
+5168,done,sem dado,2026-10-17 04:01,1,sim,sem dado,102,done,runs/5168/meta.json
+5169,done,sem dado,2026-10-17 04:07,1,sim,sem dado,161,done,runs/5169/meta.json
+5170,done,sem dado,2026-10-17 04:29,3,nao,sem dado,664,reprovado,runs/5170/meta.json
+5171,done,sem dado,2026-10-17 04:35,1,sim,sem dado,143,done,runs/5171/meta.json
+5172,done,sem dado,2026-10-17 04:41,1,sim,sem dado,126,done,runs/5172/meta.json
+5173,done,sem dado,2026-10-17 04:47,1,sim,sem dado,137,done,runs/5173/meta.json
+5174,done,sem dado,2026-10-17 04:52,1,sim,sem dado,115,done,runs/5174/meta.json
+5175,done,sem dado,2026-10-17 04:58,1,sim,sem dado,96,done,runs/5175/meta.json
+5176,done,sem dado,2026-10-17 05:03,1,sim,sem dado,116,done,runs/5176/meta.json
+5177,done,sem dado,2026-10-17 05:08,1,sim,sem dado,130,done,runs/5177/meta.json
+5178,done,sem dado,2026-10-17 06:12,1,sim,sem dado,84,done,runs/5178/meta.json
+5179,done,sem dado,2026-10-17 12:56,1,sim,sem dado,128,done,runs/5179/meta.json
+5180,done,sem dado,2026-10-17 13:03,1,sim,sem dado,112,done,runs/5180/meta.json
+5181,done,sem dado,2026-10-17 13:09,1,sim,sem dado,150,done,runs/5181/meta.json
+5182,done,sem dado,2026-10-17 13:16,1,sim,sem dado,129,done,runs/5182/meta.json
+5183,done,sem dado,2026-10-17 14:50,3,nao,sem dado,513,reprovado,runs/5183/meta.json
+5184,done,sem dado,2026-10-17 12:49,3,nao,sem dado,627,reprovado,runs/5184/meta.json
+5185,done,sem dado,2026-10-17 15:44,1,sim,sem dado,131,done,runs/5185/meta.json
+5186,done,sem dado,2026-10-17 13:28,2,nao,sem dado,267,reprovado,runs/5186/meta.json
+5187,done,sem dado,2026-10-17 14:56,1,sim,sem dado,105,done,runs/5187/meta.json
+5188,done,sem dado,2026-10-17 15:03,1,sim,sem dado,140,done,runs/5188/meta.json
+5189,done,sem dado,2026-10-17 15:11,1,sim,sem dado,128,done,runs/5189/meta.json
+5190,done,sem dado,2026-10-17 15:17,1,sim,sem dado,139,done,runs/5190/meta.json
+5191,done,sem dado,2026-10-17 13:36,1,sim,sem dado,182,done,runs/5191/meta.json
+5192,done,sem dado,2026-10-17 15:37,3,nao,sem dado,595,reprovado,runs/5192/meta.json
+5193,done,sem dado,2026-10-17 13:43,1,sim,sem dado,138,done,runs/5193/meta.json
+5194,done,sem dado,2026-10-17 13:50,1,sim,sem dado,152,done,runs/5194/meta.json
+5196,done,sem dado,2026-10-17 14:03,2,nao,sem dado,350,reprovado,runs/5196/meta.json
+5197,done,sem dado,2026-10-17 14:10,1,sim,sem dado,139,done,runs/5197/meta.json
+5198,done,sem dado,2026-10-17 15:51,1,sim,sem dado,155,done,runs/5198/meta.json
+5202,done,sem dado,2026-10-17 21:35,3,nao,sem dado,429,reprovado,runs/5202/meta.json
+5205,done,sem dado,2026-10-17 21:16,1,sim,sem dado,134,done,runs/5205/meta.json
+5206,done,sem dado,2026-10-17 21:09,1,sim,sem dado,56,done,runs/5206/meta.json
+5207,done,sem dado,2026-10-17 21:28,2,nao,sem dado,269,reprovado,runs/5207/meta.json
+5220,done,sem dado,2026-10-17 23:41,1,sim,sem dado,83,done,runs/5220/meta.json

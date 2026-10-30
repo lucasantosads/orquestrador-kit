@@ -1,0 +1,85 @@
+######## comarka-operacional  log=
+sem events.log
+######## actus-saas  log=/Users/lucasantos/Projetos/actus-saas/docs/fila/runs/events.log
+== linhas e periodo
+     974
+2026-09-11T13:06:43-0300 
+2026-09-21T10:52:26-0300 
+== eventos
+ 206 DRENAGEM_INICIO
+ 205 DRENAGEM_FIM
+ 110 INICIO
+ 109 GATE
+  81 REPROVADO
+  61 RETRY
+  56 WORKTREE
+  40 JUIZ
+  21 MERGE
+  21 APROVADO
+  20 BLOQUEADO
+  18 PERMISSAO_NEGADA
+  10 ORCAMENTO
+   7 EXECUTOR_MORREU
+   5 ADIADO
+   2 REFATIAR
+   1 IMPEDIMENTO
+   1 COMMIT_HARNESS
+== motivos
+ 162 motivo=criterio_qualidade
+  14 motivo=pausado
+   5 motivo=ambiente
+   2 motivo=enforcement
+   1 motivo=agente
+== attempt nos aprovados
+  14 attempt=1
+   6 attempt=2
+   1 attempt=3
+== amostra aprovado e merge
+2026-09-20T21:37:38-0300 498 MERGE alvo=staging-auto sha=cea05d2
+2026-09-20T23:00:11-0300 500 APROVADO merge=aguardando dur=345s attempt=3
+2026-09-20T23:00:14-0300 500 MERGE alvo=staging-auto sha=2b6e697
+######## conteudos-infinitos  log=/Users/lucasantos/Projetos/conteudos-infinitos/docs/fila/runs/events.log
+== linhas e periodo
+    1331
+2026-09-03T14:06:57-0300 
+2026-09-21T10:52:24-0300 
+== eventos
+ 287 DRENAGEM_INICIO
+ 286 DRENAGEM_FIM
+  76 INICIO
+  72 GATE
+  45 MERGE
+  45 APROVADO
+  44 JUIZ
+  36 PERMISSAO_NEGADA
+  30 criterio
+  27 
+  26 REPROVADO
+  21 RETRY
+  20 test
+  16 -c
+  13 WORKTREE
+  13 'it('
+  11 -oE
+  11 --name-only
+  10 grep
+   7 in
+   6 'expect('
+   6 -cE
+   5 EXECUTOR_MORREU
+   5 BLOQUEADO
+   5 &&
+== motivos
+  52 motivo=criterio_qualidade
+   6 motivo=pausado
+   2 motivo=agente
+   1 motivo=enforcement
+== attempt nos aprovados
+   3 attempt=0
+  35 attempt=1
+   6 attempt=2
+   1 attempt=3
+== amostra aprovado e merge
+2026-09-09T16:44:47-0300 265 MERGE alvo=staging-auto sha=fea603f
+2026-09-09T16:59:03-0300 266 APROVADO merge=aguardando dur=754s attempt=1
+2026-09-09T16:59:03-0300 266 MERGE alvo=staging-auto sha=761a0e3

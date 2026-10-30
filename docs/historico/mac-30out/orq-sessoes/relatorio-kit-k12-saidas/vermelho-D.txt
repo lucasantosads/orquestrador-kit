@@ -1,0 +1,35 @@
+== 1. launchd_exit: last exit code != 0 ==
+  FALHA rc 127 com trilha recente: alarme 'launchd_exit' com 'rc 127' ausente (alarmes: '', texto: '')
+  FALHA o card diz travado: esperado 'travado', veio 'ocioso'
+  ok    rc 0 e drenagem dentro da janela: silêncio
+  ok    job NÃO carregado (desagendado de propósito): silêncio
+
+== 2. mudo: nenhum DRENAGEM_INICIO há mais de 2x o start_interval ==
+  FALHA DRENAGEM_INICIO de 3x o start_interval atrás: alarme 'mudo' com 'há 1h30' ausente (alarmes: '', texto: '')
+  FALHA e diz o intervalo do job: alarme 'mudo' com 'a cada 30 min' ausente (alarmes: '', texto: '')
+  FALHA o card diz travado: esperado 'travado', veio 'ocioso'
+  ok    DRENAGEM_INICIO dentro de 2x o start_interval: silêncio
+  ok    velho, mas job descarregado: silêncio
+  FALHA trilha sem nenhum DRENAGEM_INICIO, job carregado: alarme 'mudo' com 'nenhum DRENAGEM_INICIO' ausente (alarmes: '', texto: '')
+
+== 3. pausa_furada: PAUSAR de pé e a drenagem seguiu depois dele ==
+  FALHA DRENAGEM_INICIO sem motivo=pausado depois da PAUSA: alarme 'pausa_furada' com '11:40' ausente (alarmes: '', texto: '')
+  ok    pausa respeitada (motivo=pausado) e retry do 530, que já corria: sem pausa_furada
+  FALHA INICIO de OUTRO ticket depois da pausa: alarme 'pausa_furada' com '531' ausente (alarmes: '', texto: '')
+
+== 4. pausa_longa: PAUSAR há mais de 40 min ==
+  FALHA 41 min: alarme 'pausa_longa' com 'há 41 min' ausente (alarmes: '', texto: '')
+  ok    39 min: silêncio
+
+== 5. execucao_longa: além do timeout do config mais a margem ==
+  FALHA 41 min com timeout de 30 e margem de 10: alarme 'execucao_longa' com 'timeout é 30 min' ausente (alarmes: '', texto: '')
+  FALHA o card diz travado: esperado 'travado', veio 'rodando'
+  ok    30 min, dentro do timeout mais a margem: silêncio
+
+== 6. todo alarme é texto, e o que falta no config vira 'sem dado' ==
+jq: error (at <stdin>:207): Cannot iterate over null (null)
+  FALHA sem_dado não nomeia as chaves: ''
+  FALHA página não renderiza o texto dos alarmes
+
+13 CHECK(S) FALHARAM
+rc=1

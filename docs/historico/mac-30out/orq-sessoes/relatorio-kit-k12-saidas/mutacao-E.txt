@@ -1,0 +1,14 @@
+=== test-painel-visao.sh SEM o stub, painel de de hoje ===
+rc do teste: 1
+== launchctl: só o stub, nunca o do sistema (K12-E) ==
+  ok    nenhuma chamada ao launchctl do PATH
+  FALHA o stub de launchctl não foi chamado (o teste não passou por ORQ_LAUNCHCTL)
+
+1 CHECK(S) FALHARAM
+=== test-painel-visao.sh SEM o stub, painel de do commit C (85e4796) ===
+rc do teste: 1
+== launchctl: só o stub, nunca o do sistema (K12-E) ==
+  FALHA o launchctl do PATH foi chamado 4 vez(es): print gui/501/org.fixture.alfa;print gui/501/org.fixture.beta;print gui/501/org.fixture.gama;
+  FALHA o stub de launchctl não foi chamado (o teste não passou por ORQ_LAUNCHCTL)
+
+2 CHECK(S) FALHARAM

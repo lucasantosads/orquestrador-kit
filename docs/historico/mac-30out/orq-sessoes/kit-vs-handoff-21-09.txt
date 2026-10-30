@@ -1,0 +1,33 @@
+== lock
+5: * A auto-limpeza no bash usa estas funções; a decisão de "é stale?" é exercida
+13:  pid: number
+20:  const pid = parseInt(lines[0] ?? '', 10)
+22:  if (isNaN(pid) || isNaN(timestamp)) return null
+23:  return { pid, timestamp }
+27: * Decide se um lock é órfão (stale).
+28: * Stale se: idade > maxAgeSeconds OU pid não está vivo (isPidAlive retorna false).
+35:  isPidAlive: (pid: number) => boolean,
+38:  if (!isPidAlive(lock.pid)) return true
+orquestrador-lock.test.ts
+== em_execucao
+== plist
+scripts/orquestrador/com.orquestrador.plist.template:70:  <key>StandardOutPath</key>
+scripts/orquestrador/com.orquestrador.plist.template:72:  <key>StandardErrorPath</key>
+== prefixo no motor
+grep: scripts/orquestrador/*.sh: No such file or directory
+grep: scripts/orquestrador/*.ts: No such file or directory
+== prefixo nos repos
+conteudos-infinitos {"worktrees_dir":"../_worktrees","worktrees_prefixo":"ci-","worktree_prefix":null}
+actus-saas {"worktrees_dir":"../_worktrees","worktrees_prefixo":"orq-","worktree_prefix":null}
+comarka-operacional {"worktrees_dir":"../_worktrees","worktrees_prefixo":null,"worktree_prefix":"orq-comarka-"}
+== adiamento e guardas
+scripts/orquestrador/migrar-tickets.ts:16: *     não têm `tipo`, e o valor certo (`alvo` | `guarda` | `avaliador`) depende
+scripts/orquestrador/local-loop.sh:400:    if [ "$st" = "aguardando_merge" ]; then
+scripts/orquestrador/gate-ticket.ts:13: * se já passa, rodar `guarda` para ver se já falha, e execução de `recon[]`.
+scripts/orquestrador/gate-ticket.ts:58:export const TIPOS_CRITERIO = ['alvo', 'guarda', 'avaliador'] as const
+scripts/orquestrador/executor.sh:238:# o ticket anterior mudou codigo em apps/web, o cache guarda o grafo de
+scripts/orquestrador/executor.sh:651:# tem UMA sequência de tentativas em disco, monotônica, e `meta.json` guarda o
+scripts/orquestrador/executor.sh:1056:      ticket_set_status "$file" "aguardando_merge"
+scripts/orquestrador/executor.sh:1058:      ticket_commit "$file" "fila: $id aguardando merge"
+scripts/orquestrador/executor.sh:1059:      # merge=aguardando: quem mergeia é a drenagem (ORQ-06) e ela emite o MERGE.
+scripts/orquestrador/executor.sh:1060:      event "$id" APROVADO "merge=aguardando" "dur=${DUR}s" "attempt=$((attempt + 1))"

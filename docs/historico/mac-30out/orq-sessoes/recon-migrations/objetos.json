@@ -1,0 +1,864 @@
+{
+ "20260525_cs_module_tables": {
+  "path": "supabase/migrations/20260525_cs_module_tables.sql",
+  "branch": "main",
+  "linhas": 109,
+  "objs": [
+   [
+    "table",
+    "client_cs_profile"
+   ],
+   [
+    "table",
+    "client_cs_observations"
+   ],
+   [
+    "table",
+    "client_meta_connections"
+   ],
+   [
+    "table",
+    "client_meta_snapshots"
+   ],
+   [
+    "table",
+    "client_meta_alerts"
+   ],
+   [
+    "table",
+    "client_whatsapp_summaries"
+   ],
+   [
+    "function",
+    "update_client_cs_profile_updated_at"
+   ],
+   [
+    "index",
+    "idx_client_cs_profile_cliente_id"
+   ],
+   [
+    "index",
+    "idx_client_cs_observations_cliente_id"
+   ],
+   [
+    "index",
+    "idx_client_meta_connections_cliente_id"
+   ],
+   [
+    "index",
+    "idx_client_meta_snapshots_cliente_id"
+   ],
+   [
+    "index",
+    "idx_client_meta_alerts_cliente_id"
+   ],
+   [
+    "index",
+    "idx_client_whatsapp_summaries_cliente_id"
+   ],
+   [
+    "trigger",
+    "trg_client_cs_profile_updated_at"
+   ]
+  ],
+  "head": "-- Migration: Modulo CS de Clientes — todas as tabelas -- Projeto: Comarka Operacional -- Nota: Tabelas ja aplicadas via MCP no Supabase. Arquivo para referencia local."
+ },
+ "20260525_meta_insights_campaigns": {
+  "path": "supabase/migrations/20260525_meta_insights_campaigns.sql",
+  "branch": "main",
+  "linhas": 12,
+  "objs": [
+   [
+    "index",
+    "meta_insights_cache_unique_key"
+   ],
+   [
+    "index",
+    "idx_meta_insights_cache_campaign"
+   ],
+   [
+    "column",
+    "meta_insights_cache",
+    "level"
+   ],
+   [
+    "column",
+    "meta_insights_cache",
+    "campaign_id"
+   ],
+   [
+    "column",
+    "meta_insights_cache",
+    "campaign_name"
+   ]
+  ],
+  "head": "-- Add campaign-level support to meta_insights_cache -- Allows storing both account-level and campaign-level daily insights ALTER TABLE meta_insights_cache ADD COLUMN IF NOT EXISTS level TEXT NOT NULL"
+ },
+ "20260601_create_perf_teses": {
+  "path": "supabase/migrations/perf/20260601_create_perf_teses.sql",
+  "branch": "main",
+  "linhas": 39,
+  "objs": [
+   [
+    "table",
+    "public.perf_teses"
+   ],
+   [
+    "index",
+    "idx_perf_teses_nicho_id"
+   ],
+   [
+    "index",
+    "idx_perf_ad_accounts_tese_id"
+   ],
+   [
+    "policy",
+    "only_service_role"
+   ],
+   [
+    "trigger",
+    "trg_perf_teses_updated"
+   ],
+   [
+    "column",
+    "public.perf_ad_accounts",
+    "tese_id"
+   ],
+   [
+    "revoke",
+    "public.perf_teses"
+   ]
+  ],
+  "head": "-- Migration: create perf_teses + add tese_id to perf_ad_accounts -- Applied: 2026-06-01 via Supabase MCP "
+ },
+ "20260601_perf_nichos": {
+  "path": "supabase/migrations/20260601_perf_nichos.sql",
+  "branch": "main",
+  "linhas": 53,
+  "objs": [
+   [
+    "table",
+    "perf_nichos"
+   ],
+   [
+    "index",
+    "idx_perf_ad_accounts_nicho_id"
+   ],
+   [
+    "policy",
+    "only_service_role"
+   ],
+   [
+    "trigger",
+    "trg_perf_nichos_updated"
+   ],
+   [
+    "column",
+    "perf_ad_accounts",
+    "nicho_id"
+   ],
+   [
+    "revoke",
+    "perf_nichos"
+   ]
+  ],
+  "head": "-- ============================================================= -- Migration: perf_nichos + nicho_id em perf_ad_accounts -- Catálogo de nichos PRÓPRIO do módulo perf (sem FK para agência)"
+ },
+ "20260620_tkt-dossie_ac_backfill_e_sync": {
+  "path": "supabase/migrations/20260620_tkt-dossie_ac_backfill_e_sync.sql",
+  "branch": "main",
+  "linhas": 156,
+  "objs": [
+   [
+    "function",
+    "public.fn_revincular_clientes_lead"
+   ],
+   [
+    "function",
+    "public.fn_sincronizar_dossie_clientes"
+   ]
+  ],
+  "head": "-- TKT-DOSSIE · TAREFA A (backfill assistido) + TAREFA C (propagação do dossiê) -- CREATE-only. Funções idempotentes. Só carimbam lead_id em casos 1:1 inequívocos. "
+ },
+ "20260620_tkt-dossie_b_ponte_lead": {
+  "path": "supabase/migrations/20260620_tkt-dossie_b_ponte_lead.sql",
+  "branch": "main",
+  "linhas": 74,
+  "objs": [
+   [
+    "function",
+    "public.resolve_lead_clientes_receita"
+   ],
+   [
+    "trigger",
+    "trg_resolve_lead_clientes_receita"
+   ],
+   [
+    "column",
+    "public.clientes_receita",
+    "lead_id"
+   ]
+  ],
+  "head": "-- TKT-DOSSIE · TAREFA B — Instrumentar a origem (cliente novo nasce ligado ao lead) -- CREATE-only. NÃO altera o trigger de espelhamento clientes_notion_mirror existente: -- criamos um trigger IRMÃO "
+ },
+ "20260620_tkt-dossie_t1_revinculo": {
+  "path": "supabase/migrations/20260620_tkt-dossie_t1_revinculo.sql",
+  "branch": "main",
+  "linhas": 149,
+  "objs": [
+   [
+    "function",
+    "public.fn_normaliza_nome"
+   ],
+   [
+    "function",
+    "public.fn_revincular_reunioes"
+   ],
+   [
+    "column",
+    "public.reunioes_cliente",
+    "lead_match_score"
+   ]
+  ],
+  "head": "-- TKT-DOSSIE · TAREFA 1 — Endurecer vínculo reunião↔lead (CREATE-only, shadow mode) -- Adiciona colunas de confiança do matching + função determinística de revínculo. -- Nada é apagado: vínculos susp"
+ },
+ "20260620_tkt-dossie_t2_dossie_colunas": {
+  "path": "supabase/migrations/20260620_tkt-dossie_t2_dossie_colunas.sql",
+  "branch": "main",
+  "linhas": 13,
+  "objs": [
+   [
+    "column",
+    "public.reunioes_cliente",
+    "dossie_comercial"
+   ]
+  ],
+  "head": "-- TKT-DOSSIE · TAREFA 2 — Colunas do dossiê comercial estruturado (CREATE-only, shadow mode) -- Não altera nenhuma coluna existente. resumo_ia permanece intocado. "
+ },
+ "20260623_tkt-rbac_v2_ops_permissao_fundacao": {
+  "path": "supabase/migrations/20260623_tkt-rbac_v2_ops_permissao_fundacao.sql",
+  "branch": "main",
+  "linhas": 102,
+  "objs": [
+   [
+    "table",
+    "public.ops_permissao_catalogo"
+   ],
+   [
+    "table",
+    "public.ops_cargo_nivel"
+   ],
+   [
+    "table",
+    "public.ops_permissao_cargo"
+   ],
+   [
+    "table",
+    "public.ops_permissao_colaborador"
+   ],
+   [
+    "table",
+    "public.ops_permissao_log"
+   ],
+   [
+    "table",
+    "public.ops_escopo_dados"
+   ],
+   [
+    "index",
+    "idx_ops_perm_cargo_lookup"
+   ],
+   [
+    "index",
+    "idx_ops_perm_colab_lookup"
+   ],
+   [
+    "index",
+    "idx_ops_perm_log_alvo"
+   ],
+   [
+    "trigger",
+    "trg_ops_permissao_catalogo_updated_at"
+   ],
+   [
+    "trigger",
+    "trg_ops_cargo_nivel_updated_at"
+   ],
+   [
+    "trigger",
+    "trg_ops_permissao_cargo_updated_at"
+   ],
+   [
+    "trigger",
+    "trg_ops_permissao_colaborador_updated_at"
+   ],
+   [
+    "trigger",
+    "trg_ops_escopo_dados_updated_at"
+   ]
+  ],
+  "head": "-- RBAC v2 — fundação (namespace ops_*). Aplicada via MCP em 2026-06-23. -- Lastro versionado do DDL já vivo no banco (projeto ogfnojbbvumujzfklkhh). -- Aditivo: NÃO toca permissoes_cargo/colaborador."
+ },
+ "20260626_ops_esta_na_subarvore": {
+  "path": "supabase/migrations/20260626_ops_esta_na_subarvore.sql",
+  "branch": "main",
+  "linhas": 15,
+  "objs": [
+   [
+    "function",
+    "ops_esta_na_subarvore"
+   ]
+  ],
+  "head": "-- Função recursiva: retorna true se alvo_id está na subárvore de gestor_id -- Aplicada manualmente via MCP em 2026-06-26. NÃO reaplicar (já existe no banco). CREATE OR REPLACE FUNCTION ops_esta_na_su"
+ },
+ "20260628_perf_health_snapshot": {
+  "path": "supabase/migrations/20260628_perf_health_snapshot.sql",
+  "branch": "main",
+  "linhas": 70,
+  "objs": [
+   [
+    "table",
+    "public.perf_health_snapshot"
+   ],
+   [
+    "index",
+    "idx_perf_health_snapshot_data_ref"
+   ],
+   [
+    "policy",
+    "only_service_role"
+   ],
+   [
+    "trigger",
+    "trg_perf_health_snapshot_updated"
+   ],
+   [
+    "revoke",
+    "public.perf_health_snapshot"
+   ]
+  ],
+  "head": "-- ============================================================= -- Migration: perf_health_snapshot -- Materialização DIÁRIA do Health Score do cockpit (hoje calculado"
+ },
+ "20260628_perf_reuniao": {
+  "path": "supabase/migrations/20260628_perf_reuniao.sql",
+  "branch": "main",
+  "linhas": 102,
+  "objs": [
+   [
+    "table",
+    "public.perf_reuniao"
+   ],
+   [
+    "index",
+    "perf_reuniao_cliente_id_idx"
+   ],
+   [
+    "index",
+    "perf_reuniao_data_idx"
+   ],
+   [
+    "index",
+    "perf_reuniao_match_status_idx"
+   ],
+   [
+    "policy",
+    "only_service_role"
+   ],
+   [
+    "trigger",
+    "trg_perf_reuniao_updated"
+   ],
+   [
+    "revoke",
+    "public.perf_reuniao"
+   ]
+  ],
+  "head": "-- ============================================================= -- Migration: perf_reuniao (TKT-032 — Reuniões tl;dv) -- Ingestão + classificação de transcrições de reunião por cliente,"
+ },
+ "20260715000000_meta_ad_accounts_cliente_id": {
+  "path": "supabase/migrations/20260715000000_meta_ad_accounts_cliente_id.sql",
+  "branch": "main",
+  "linhas": 7,
+  "objs": [
+   [
+    "index",
+    "idx_meta_ad_accounts_cliente"
+   ],
+   [
+    "column",
+    "meta_ad_accounts",
+    "cliente_id"
+   ]
+  ],
+  "head": "-- Vincula meta_ad_accounts a clientes (uuid). -- NAO aplicar automaticamente — aplicacao manual do Lucas. -- O codigo (api/cron/meta-sync) tolera a ausencia desta coluna."
+ },
+ "20260716000002_ops_acoes_recomendadas": {
+  "path": "supabase/migrations/20260716000002_ops_acoes_recomendadas.sql",
+  "branch": "main",
+  "linhas": 23,
+  "objs": [
+   [
+    "table",
+    "public.ops_acoes_recomendadas"
+   ],
+   [
+    "revoke",
+    "public.ops_acoes_recomendadas"
+   ]
+  ],
+  "head": "-- ops_acoes_recomendadas — persistencia do dismiss de acoes recomendadas (T8) -- Fonte: DDL draft inline em src/app/api/acoes-recomendadas/route.ts:12-21 --   + contrato vivo confirmado por recon rea"
+ },
+ "20260818000001_vw_onboarding_atraso_ancora": {
+  "path": "supabase/migrations/20260818000001_vw_onboarding_atraso_ancora.sql",
+  "branch": "main",
+  "linhas": 96,
+  "objs": [
+   [
+    "view",
+    "public.vw_onboarding_atraso"
+   ]
+  ],
+  "head": "-- Ticket 097: SLA de onboarding com âncora POR CLIENTE (reabre 046/008) -- -- RECON — view é OS-side, não é C0:"
+ },
+ "20260819000000_employees_drop_senha_legado": {
+  "path": "supabase/migrations/20260819000000_employees_drop_senha_legado.sql",
+  "branch": "main",
+  "linhas": 42,
+  "objs": [
+   [
+    "dropcol",
+    "public.employees",
+    "senha_visivel"
+   ],
+   [
+    "drop",
+    "COLUMN",
+    "senha_visivel"
+   ]
+  ],
+  "head": "-- T4.2 fase 1: drop de senha_visivel em public.employees -- -- PRE-CONDICAO HUMANA: aplicar SOMENTE apos dias de logins validados em producao"
+ },
+ "20260903120000_revoke_anon_views_publicas": {
+  "path": "supabase/migrations/20260903120000_revoke_anon_views_publicas.sql",
+  "branch": "main",
+  "linhas": 43,
+  "objs": [],
+  "head": "-- Fase 1 do fechamento da superficie anon (03/09/2026). -- -- 25 views/matviews em public tinham SELECT para anon e authenticated com"
+ },
+ "20260916_perf_crm_cliente": {
+  "path": "supabase/migrations/20260916_perf_crm_cliente.sql",
+  "branch": "main",
+  "linhas": 255,
+  "objs": [
+   [
+    "table",
+    "public.perf_crm_conexoes"
+   ],
+   [
+    "table",
+    "public.perf_crm_pipelines"
+   ],
+   [
+    "table",
+    "public.perf_crm_etapas"
+   ],
+   [
+    "table",
+    "public.perf_crm_oportunidades"
+   ],
+   [
+    "table",
+    "public.perf_crm_oportunidade_historico"
+   ],
+   [
+    "index",
+    "idx_perf_crm_conexoes_cliente_id"
+   ],
+   [
+    "index",
+    "idx_perf_crm_pipelines_location"
+   ],
+   [
+    "index",
+    "idx_perf_crm_etapas_pipeline"
+   ],
+   [
+    "index",
+    "idx_perf_crm_etapas_canonica"
+   ],
+   [
+    "index",
+    "idx_perf_crm_oportunidades_cliente_status"
+   ],
+   [
+    "index",
+    "idx_perf_crm_oportunidades_pipeline_status"
+   ],
+   [
+    "index",
+    "idx_perf_crm_oportunidades_etapa"
+   ],
+   [
+    "index",
+    "idx_perf_crm_oportunidades_location"
+   ],
+   [
+    "index",
+    "idx_perf_crm_oportunidades_atualizado"
+   ],
+   [
+    "index",
+    "idx_perf_crm_historico_oportunidade"
+   ],
+   [
+    "index",
+    "idx_perf_crm_historico_etapa_para"
+   ],
+   [
+    "index",
+    "idx_perf_crm_historico_etapa_de"
+   ],
+   [
+    "policy",
+    "only_service_role"
+   ],
+   [
+    "trigger",
+    "trg_perf_crm_conexoes_updated"
+   ],
+   [
+    "trigger",
+    "trg_perf_crm_pipelines_updated"
+   ],
+   [
+    "trigger",
+    "trg_perf_crm_etapas_updated"
+   ],
+   [
+    "trigger",
+    "trg_perf_crm_oportunidades_updated"
+   ],
+   [
+    "revoke",
+    "public.perf_crm_conexoes"
+   ],
+   [
+    "revoke",
+    "public.perf_crm_pipelines"
+   ],
+   [
+    "revoke",
+    "public.perf_crm_etapas"
+   ]
+  ],
+  "head": "-- ============================================================= -- Onda CRM: espelho somente leitura do CRM (GHL) de cada cliente --"
+ },
+ "20260921120000_espelho_config_funil_campanha": {
+  "path": "supabase/migrations/20260921120000_espelho_config_funil_campanha.sql",
+  "branch": "main",
+  "linhas": 35,
+  "objs": [
+   [
+    "table",
+    "public.config_funil_campanha"
+   ]
+  ],
+  "head": "-- ESPELHO JA APLICADO: NAO REAPLICAR. Descreve o estado vivo medido em 21/09. -- -- Ticket 507. Nenhuma DDL nova: este arquivo so DOCUMENTA o estado atual de"
+ },
+ "20260922100001_d1_metricas_por_tipo": {
+  "path": "supabase/migrations/20260922100001_d1_metricas_por_tipo.sql",
+  "branch": "main",
+  "linhas": 96,
+  "objs": [
+   [
+    "table",
+    "public.perf_meta_campanhas"
+   ],
+   [
+    "index",
+    "perf_meta_campanhas_cliente_idx"
+   ],
+   [
+    "policy",
+    "only_service_role"
+   ],
+   [
+    "column",
+    "public.perf_insights_daily",
+    "link_clicks"
+   ],
+   [
+    "revoke",
+    "public.perf_meta_campanhas"
+   ]
+  ],
+  "head": "-- ============================================================= -- APLICADA em 22/09 (Supabase, verificada). Escrita em 22/09/2026. -- Token: humano:ddl-metricas (docs/fila/liberacoes.json, liberadas"
+ },
+ "20260922100002_d2_perf_otimizacoes": {
+  "path": "supabase/migrations/20260922100002_d2_perf_otimizacoes.sql",
+  "branch": "main",
+  "linhas": 79,
+  "objs": [
+   [
+    "table",
+    "public.perf_otimizacoes"
+   ],
+   [
+    "index",
+    "perf_otimizacoes_meta_event_uidx"
+   ],
+   [
+    "index",
+    "perf_otimizacoes_cliente_ocorrido_idx"
+   ],
+   [
+    "policy",
+    "only_service_role"
+   ],
+   [
+    "revoke",
+    "public.perf_otimizacoes"
+   ]
+  ],
+  "head": "-- ============================================================= -- APLICADA em 22/09 (Supabase, verificada). Escrita em 22/09/2026. -- Token: humano:ddl-otimizacoes (docs/fila/liberacoes.json, libera"
+ },
+ "20260922100003_d3_relatorio_gerado": {
+  "path": "supabase/migrations/20260922100003_d3_relatorio_gerado.sql",
+  "branch": "main",
+  "linhas": 84,
+  "objs": [
+   [
+    "table",
+    "public.perf_relatorios_gerados"
+   ],
+   [
+    "index",
+    "perf_relatorios_gerados_cliente_idx"
+   ],
+   [
+    "policy",
+    "only_service_role"
+   ],
+   [
+    "column",
+    "public.perf_relatorio_cliente_config",
+    "cpl_limite"
+   ],
+   [
+    "revoke",
+    "public.perf_relatorios_gerados"
+   ]
+  ],
+  "head": "-- ============================================================= -- APLICADA em 22/09 (Supabase, verificada). Escrita em 22/09/2026. -- Token: humano:ddl-relatorio (docs/fila/liberacoes.json, liberada"
+ },
+ "20260922100004_d4_relacao_tipos": {
+  "path": "supabase/migrations/20260922100004_d4_relacao_tipos.sql",
+  "branch": "main",
+  "linhas": 52,
+  "objs": [],
+  "head": "-- ============================================================= -- APLICADA em 22/09 (Supabase, verificada). Escrita em 22/09/2026. -- Token: humano:ddl-relacao-tipos (docs/fila/liberacoes.json, libe"
+ },
+ "20260922100005_d5_leitura_relacao": {
+  "path": "supabase/migrations/20260922100005_d5_leitura_relacao.sql",
+  "branch": "main",
+  "linhas": 77,
+  "objs": [
+   [
+    "table",
+    "public.perf_leituras_relacao"
+   ],
+   [
+    "index",
+    "perf_leituras_relacao_cliente_gerado_idx"
+   ],
+   [
+    "policy",
+    "only_service_role"
+   ],
+   [
+    "revoke",
+    "public.perf_leituras_relacao"
+   ]
+  ],
+  "head": "-- ============================================================= -- APLICADA em 22/09 (Supabase, verificada). Escrita em 22/09/2026. -- Token: humano:ddl-leitura-relacao (docs/fila/liberacoes.json, li"
+ },
+ "20260922100006_d6_qualificacao_etapas": {
+  "path": "supabase/migrations/20260922100006_d6_qualificacao_etapas.sql",
+  "branch": "main",
+  "linhas": 37,
+  "objs": [],
+  "head": "-- ============================================================= -- APLICADA em 22/09 (Supabase, verificada). Escrita em 22/09/2026. -- Token: humano:ddl-qualificacao (docs/fila/liberacoes.json, liber"
+ },
+ "20260922100007_d7_contrato_etapas": {
+  "path": "supabase/migrations/20260922100007_d7_contrato_etapas.sql",
+  "branch": "main",
+  "linhas": 100,
+  "objs": [
+   [
+    "table",
+    "public.ops_produto_etapas_contratuais"
+   ],
+   [
+    "table",
+    "public.ops_cliente_contrato_etapas"
+   ],
+   [
+    "index",
+    "ops_cliente_contrato_etapas_cliente_idx"
+   ],
+   [
+    "policy",
+    "only_service_role"
+   ],
+   [
+    "column",
+    "public.ops_cliente_produtos",
+    "start_em"
+   ],
+   [
+    "revoke",
+    "public.ops_produto_etapas_contratuais"
+   ],
+   [
+    "revoke",
+    "public.ops_cliente_contrato_etapas"
+   ]
+  ],
+  "head": "-- ============================================================= -- APLICADA em 22/09 (Supabase, verificada). Escrita em 22/09/2026. -- Token: humano:ddl-contrato-etapas (docs/fila/liberacoes.json, li"
+ },
+ "20260922100008_d8_fechamentos_cliente": {
+  "path": "supabase/migrations/20260922100008_d8_fechamentos_cliente.sql",
+  "branch": "main",
+  "linhas": 102,
+  "objs": [
+   [
+    "table",
+    "public.perf_fechamento_tokens"
+   ],
+   [
+    "table",
+    "public.perf_fechamentos_informados"
+   ],
+   [
+    "index",
+    "perf_fechamentos_informados_cliente_idx"
+   ],
+   [
+    "policy",
+    "only_service_role"
+   ],
+   [
+    "column",
+    "public.perf_fechamentos",
+    "confirmado_por"
+   ],
+   [
+    "revoke",
+    "public.perf_fechamento_tokens"
+   ],
+   [
+    "revoke",
+    "public.perf_fechamentos_informados"
+   ]
+  ],
+  "head": "-- ============================================================= -- APLICADA em 22/09 (Supabase, verificada). Escrita em 22/09/2026. -- Token: humano:ddl-fechamentos-cliente (docs/fila/liberacoes.json"
+ },
+ "20260922100009_d9_documentos_etapa": {
+  "path": "supabase/migrations/20260922100009_d9_documentos_etapa.sql",
+  "branch": "main",
+  "linhas": 89,
+  "objs": [
+   [
+    "table",
+    "public.ops_template_etapa_documentos"
+   ],
+   [
+    "table",
+    "public.ops_onboarding_etapa_documentos"
+   ],
+   [
+    "index",
+    "ops_onboarding_etapa_documentos_etapa_idx"
+   ],
+   [
+    "policy",
+    "only_service_role"
+   ],
+   [
+    "revoke",
+    "public.ops_template_etapa_documentos"
+   ],
+   [
+    "revoke",
+    "public.ops_onboarding_etapa_documentos"
+   ]
+  ],
+  "head": "-- ============================================================= -- APLICADA em 22/09 (Supabase, verificada). Escrita em 22/09/2026. -- Token: humano:ddl-documentos-etapa (docs/fila/liberacoes.json, l"
+ },
+ "20260922100010_d10_pacote_flags": {
+  "path": "supabase/migrations/20260922100010_d10_pacote_flags.sql",
+  "branch": "main",
+  "linhas": 33,
+  "objs": [
+   [
+    "column",
+    "public.ops_produtos",
+    "tem_etapas_contratuais"
+   ]
+  ],
+  "head": "-- ============================================================= -- APLICADA em 22/09 (Supabase, verificada). Escrita em 22/09/2026. -- Token: humano:ddl-pacote-flags (docs/fila/liberacoes.json, liber"
+ },
+ "20260922100011_d11_fechamento_campanha": {
+  "path": "supabase/migrations/20260922100011_d11_fechamento_campanha.sql",
+  "branch": "main",
+  "linhas": 44,
+  "objs": [
+   [
+    "index",
+    "ix_perf_fechamentos_cliente_campanha"
+   ],
+   [
+    "column",
+    "public.perf_fechamentos",
+    "campaign_id"
+   ],
+   [
+    "column",
+    "public.perf_fechamentos_informados",
+    "campaign_id"
+   ]
+  ],
+  "head": "-- ============================================================= -- APLICADA em 22/09 (Supabase, verificada). Escrita em 22/09/2026. -- Token: humano:ddl-fechamento-campanha (docs/fila/liberacoes.json"
+ },
+ "20260922100012_d12_marco_onboarding": {
+  "path": "supabase/migrations/20260922100012_d12_marco_onboarding.sql",
+  "branch": "main",
+  "linhas": 51,
+  "objs": [
+   [
+    "column",
+    "public.ops_template_etapas",
+    "marco_contrato"
+   ],
+   [
+    "column",
+    "public.ops_onboarding_etapas",
+    "marco_contrato"
+   ]
+  ],
+  "head": "-- ============================================================= -- APLICADA em 22/09 (Supabase, verificada). Escrita em 22/09/2026. -- Token: humano:ddl-marco-onboarding (docs/fila/liberacoes.json, l"
+ },
+ "20260929000002_employees_nivel_acesso": {
+  "path": "supabase/migrations/20260929000002_employees_nivel_acesso.sql",
+  "branch": "main",
+  "linhas": 27,
+  "objs": [
+   [
+    "column",
+    "public.employees",
+    "nivel_acesso"
+   ]
+  ],
+  "head": "-- ============================================================================= -- employees.nivel_acesso — parte 2 de 2. NÃO APLICAR ainda (decisão do Lucas, 29/09). -- A sidebar, o portal e a ficha"
+ }
+}

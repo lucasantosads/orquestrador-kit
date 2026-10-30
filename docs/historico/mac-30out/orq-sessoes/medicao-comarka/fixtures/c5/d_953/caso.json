@@ -1,0 +1,40 @@
+{
+ "ticket": {
+  "id": "953",
+  "loop": "plataforma",
+  "done_em": "2026-10-11 16:21",
+  "prim": "nao",
+  "sha_aprovado": "52f3ffc80760b3a75306e4063ff1831144d65c52",
+  "merge": "3b5c52916757a9ca33b6f9495fa034da976a9874"
+ },
+ "commit": {
+  "sha": "10c88edb92f4b40a01bdff66f668135fb2bf26aa",
+  "dt": "2026-10-12T15:57:12-03:00",
+  "assunto": "fix: revisao pos-release 12/10 (funil no dia de SP, %MQL na mesma base, reaper do worker, teste do recon, resolvedor, verba, ritmo, ranking)",
+  "arquivos": [
+   "docs/fila/992b-conexoes-linha-portal.md",
+   "src/app/api/clientes/[id]/comercial/route.ts",
+   "src/app/api/clientes/alertas-campanha/route.ts",
+   "src/app/api/jobs/worker/route.ts",
+   "src/app/dashboard/clientes/[id]/_components/kpis-visao.tsx",
+   "src/app/dashboard/clientes/[id]/_components/linha-comercial.tsx",
+   "src/app/dashboard/performance/assistente-metas.tsx",
+   "src/lib/comercial/funil-cliente.ts",
+   "src/lib/perf/criativos/resolver.ts",
+   "src/lib/perf/qualificacao.ts",
+   "src/lib/perf/verba-sobra.ts",
+   "src/lib/trafego/ranking-criativos.ts",
+   "src/lib/whatsapp/ritmo.ts",
+   "test/comercial-cliente-funil.test.ts",
+   "test/criativos-resolver.test.ts",
+   "test/funil-cliente-fuso-sp.test.ts",
+   "test/jobs-motor-geral.test.ts",
+   "test/recon-esperado.test.ts",
+   "test/whatsapp-ritmo.test.ts"
+  ]
+ },
+ "esperado": {
+  "tipo": "fix_na_linha",
+  "forca": "forte"
+ }
+}

@@ -1,0 +1,108 @@
+diff --git a/src/lib/qualificacao/motor.ts b/src/lib/qualificacao/motor.ts
+index 6f7ab05..4d27030 100644
+--- a/src/lib/qualificacao/motor.ts
++++ b/src/lib/qualificacao/motor.ts
+@@ -43,7 +43,7 @@ const supabase = createClient(
+ // Tipos
+ // -------------------------------------------------------
+ export type EscopoRegra = "cliente" | "tese" | "global";
+-export type TipoRegra = "estagio_pipeline" | "tag_crm" | "mensagem_whatsapp" | "campo_custom";
++export type TipoRegra = "estagio_pipeline" | "tag_crm" | "mensagem_whatsapp" | "campo_custom" | "crm_ghl";
+ // RM/RR/VENDA (557) são só do mapeamento de etapas: o cálculo MQL/SQL abaixo não os usa.
+ export type ClassificaComo = "MQL" | "SQL" | "RM" | "RR" | "VENDA";
+ 
+@@ -69,6 +69,8 @@ export interface LeadParaQualificar {
+   tags?: string[] | null;
+   primeira_mensagem?: string | null;
+   payload?: Record<string, unknown> | null;
++  /** ids de perf_crm_etapas em que o contato do lead já esteve (atual ou histórico). */
++  etapas_atingidas?: string[] | null;
+ }
+ 
+ export interface ResultadoQualificacao {
+@@ -221,6 +223,18 @@ function avaliarTipoRegra(regra: RegraQualificacao, lead: LeadParaQualificar): A
+       };
+     }
+ 
++    case "crm_ghl": {
++      const cfg = regra.config as { etapa_ids?: string[] };
++      const marcadas = Array.isArray(cfg.etapa_ids) ? cfg.etapa_ids : [];
++      const atingidas: string[] = Array.isArray(lead.etapas_atingidas) ? lead.etapas_atingidas : [];
++      const casadas = marcadas.filter((id) => atingidas.includes(id));
++      const passou = casadas.length > 0;
++      return {
++        passou,
++        detalhe: `crm_ghl com ${marcadas.length} etapa(s) marcada(s), casaram [${casadas.join(", ")}] (${passou ? "aprovado" : "reprovado"})`,
++      };
++    }
++
+     default:
+       return { passou: false, detalhe: `tipo_regra '${regra.tipo_regra}' nao suportado (reprovado)` };
+   }
+@@ -298,10 +312,46 @@ function mapEscopoDbParaMotor(escopoDb: string): EscopoRegra {
+   return "cliente";
+ }
+ 
++/**
++ * União (sem repetir) das etapas atuais e das etapas de destino do histórico
++ * das oportunidades do contato: "atingiu" = esteve na etapa alguma vez.
++ * Erro de leitura sobe; nunca vira lista vazia.
++ */
++export async function carregarEtapasAtingidas(clienteId: string, ghlContactId: string): Promise<string[]> {
++  const { data: oportunidades, error: errOp } = await supabase
++    .from("perf_crm_oportunidades")
++    .select("id, etapa_id")
++    .eq("cliente_id", clienteId)
++    .eq("ghl_contact_id", ghlContactId);
++
++  if (errOp) {
++    throw new Error(`Falha ao ler oportunidades do contato: ${errOp.message}`);
++  }
++  const ops: { id: string; etapa_id: string | null }[] = Array.isArray(oportunidades) ? oportunidades : [];
++  if (ops.length === 0) return [];
++
++  const { data: historico, error: errHist } = await supabase
++    .from("perf_crm_oportunidade_historico")
++    .select("etapa_para_id")
++    .in("oportunidade_id", ops.map((o) => o.id));
++
++  if (errHist) {
++    throw new Error(`Falha ao ler historico das oportunidades do contato: ${errHist.message}`);
++  }
++
++  const ids: string[] = [];
++  for (const o of ops) if (o.etapa_id) ids.push(o.etapa_id);
++  const hist: { etapa_para_id: string | null }[] = Array.isArray(historico) ? historico : [];
++  for (const h of hist) {
++    if (h.etapa_para_id) ids.push(h.etapa_para_id);
++  }
++  return Array.from(new Set(ids));
++}
++
+ async function buscarLeadParaQualificar(leadId: string): Promise<LeadParaQualificar> {
+   const { data: lead, error } = await supabase
+     .from("perf_leads")
+-    .select("id, cliente_id, tese_id, is_mql, is_sql, mql_em, sql_em, etapa, primeira_mensagem")
++    .select("id, cliente_id, tese_id, is_mql, is_sql, mql_em, sql_em, etapa, primeira_mensagem, ghl_contact_id")
+     .eq("id", leadId)
+     .single();
+ 
+@@ -309,6 +359,10 @@ async function buscarLeadParaQualificar(leadId: string): Promise<LeadParaQualifi
+     throw new Error(`Lead nao encontrado: ${leadId}`);
+   }
+ 
++  const etapasAtingidas = lead.ghl_contact_id
++    ? await carregarEtapasAtingidas(lead.cliente_id, lead.ghl_contact_id)
++    : [];
++
+   return {
+     id: lead.id,
+     cliente_id: lead.cliente_id,
+@@ -319,6 +373,7 @@ async function buscarLeadParaQualificar(leadId: string): Promise<LeadParaQualifi
+     sql_em: lead.sql_em,
+     etapa: lead.etapa,
+     primeira_mensagem: lead.primeira_mensagem,
++    etapas_atingidas: etapasAtingidas,
+   };
+ }
+ 

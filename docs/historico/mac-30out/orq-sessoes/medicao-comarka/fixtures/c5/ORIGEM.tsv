@@ -1,0 +1,12 @@
+# fixtures do C5 copiadas do comarka-operacional (main b4c0ca0 em 24/10/2026); casos s_* do teste sao sinteticos
+caso	ticket	merge	frente_p2	commit	arquivo	fonte
+d_763	763	915d44ad1	652f46458	da1f4f1ce	src/lib/perf/ghl-backfill.ts	git diff f373db674...652f46458 -- ARQ; git show da1f4f1ce -- ARQ
+d_741a	741a	553df03b9	e006c6b19	80a212fdb	src/lib/promessas/detectar.ts	git diff e202b050f...e006c6b19 -- ARQ; git show 80a212fdb -- ARQ
+d_953	953	3b5c52916	52f3ffc80	10c88edb9	src/lib/comercial/funil-cliente.ts	git diff 25e80c0f6...52f3ffc80 -- ARQ; git show 10c88edb9 -- ARQ
+e_743	743	ae812fd17	907ad050b	e48094409	src/lib/qualificacao/motor.ts	git diff 915d44ad1...907ad050b -- ARQ; git show e48094409 -- ARQ
+f_982	982	cb63efff6	58e384d4f	07b6ae52f	src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx	git diff 98630d01c...58e384d4f -- ARQ; git show 07b6ae52f -- ARQ
+n_ritual_5135	5135	d129b945e	7a7546239	daa34e62e	test/inteligencia/fn-ingerir-raw-meta-insights.test.ts	git diff f24ee8765...7a7546239 -- ARQ; git show daa34e62e -- ARQ
+n_ritual_952a	952a	115931778	e5938313d	079d3f465	test/perf-leads-origem-ddl.test.ts	git diff 021a1b5f0...e5938313d -- ARQ; git show 079d3f465 -- ARQ
+n_spec_5053	5053	a9702859b	c9f382ecb	e15c1e284	test/inteligencia/escritor-forma.test.ts	git diff 623e0e4ed...c9f382ecb -- ARQ; git show e15c1e284 -- ARQ
+n_cita_1043_1044	1043	9c9f49bea	24fdbbd46	a2b4efe8c (merge do 1044)	src/app/dashboard/onboarding/motor/[id]/page.tsx	git diff 45b6f90a2...24fdbbd46; git diff 9c9f49bea...bc1ec1beb; git show 3718afa:docs/fila/1044-*.md
+m_997_movido	997	6b7f8aeac	af11b9fa3	2c76b10f7	src/app/r/escritorio/[token]/page.tsx (commit.patch inteiro, sem docs/fila)	git diff 3543cc9a1...af11b9fa3 -- ARQ; git show 2c76b10f7 -- . :!docs/fila

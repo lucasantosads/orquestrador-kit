@@ -1,0 +1,108 @@
+<!doctype html><meta charset=utf-8>
+<meta http-equiv=refresh content=120>
+<title>Orquestradores</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#c9d1d9;font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;padding:24px}
+h1{font-size:15px;font-weight:600;color:#e6edf3;margin-bottom:2px}
+.sub{color:#7d8590;font-size:12px;margin-bottom:20px}
+.p{border:1px solid #30363d;border-radius:8px;margin-bottom:14px;overflow:hidden}
+.p.ok{border-left:4px solid #3fb950}
+.p.atencao{border-left:4px solid #d29922}
+.p.alerta{border-left:4px solid #f85149}
+.h{padding:11px 14px;background:#161b22;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.n{font-weight:600;color:#e6edf3}
+.v{font-size:12px}
+.ok .v{color:#3fb950}.atencao .v{color:#d29922}.alerta .v{color:#f85149}
+.b{padding:12px 14px}
+.exp{color:#8b949e;font-size:12px;margin-bottom:10px}
+.st{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin-bottom:10px}
+.st b{color:#e6edf3;font-weight:600}
+.done b{color:#3fb950}.bloq b{color:#f85149}.pend b{color:#58a6ff}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+th{text-align:left;color:#7d8590;font-weight:500;padding:5px 8px;border-bottom:1px solid #21262d}
+td{padding:5px 8px;border-bottom:1px solid #161b22;vertical-align:top}
+td.id{color:#58a6ff;white-space:nowrap;font-weight:600}
+td.nota{color:#8b949e}
+.tok{display:inline-block;background:#161b22;border:1px solid #30363d;border-radius:11px;padding:2px 9px;margin:2px 3px 2px 0;font-size:11px}
+.tok b{color:#d29922}
+.sec{color:#7d8590;font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 5px}
+.f{color:#484f58;font-size:11px;margin-top:18px;text-align:center}
+</style>
+<h1>Orquestradores</h1>
+<div class=sub>atualizado 14/09 15:47:33 · recarrega sozinho a cada 2 min</div>
+<div class="p alerta">
+<div class=h><span class=n>actus-saas</span><span class=v>parado ha 1h46 COM 1 ticket(s) prontos</span></div>
+<div class=b>
+<div class=exp>Prontos: 470. O loop devia ter pegado. Confira launchctl e o StartInterval do plist. (Ha tambem 9 bloqueado.)</div>
+<div class=st>
+<span class=done>done <b>68</b></span>
+<span class=pend>pendente <b>1</b></span>
+<span class=bloq>bloqueado <b>9</b></span>
+<span>obsoleto <b>0</b></span>
+<span>prontos <b>1</b></span>
+<span>24h: <b>5</b> feitos, <b>24</b> reprovas</span>
+<span>ultimo run <b>14/09 14:00</b> (497 refatiar)</span>
+</div>
+<div class=sec>bloqueados — por que</div><table><tr><th>id</th><th>tent.</th><th>motivo registrado</th></tr>
+<tr><td class=id>431</td><td>?</td><td class=nota>bloqueado: aguarda a 0264 do ticket 430 ser aplicada em producao via MCP. Criterios com 'grep -c' corrigidos em 13/09 pelo mesmo motivo do 430. Criterios com 'main...HEAD' trocados para 'HEAD~1...HEAD' em 13/09/2026: a frente nasce de staging-auto e herda migrations de tickets anteriores (a 0264 do 430), entao comparar com main acusa arquivo que o ticket nao escreveu. Travou o 460 em 9 tentativas </td></tr>
+<tr><td class=id>461</td><td>?</td><td class=nota>bloqueado: aguarda a 460 em main. Trocar para pendente depois. Reescrito em 13/09/2026 para dois campos (categoria do enum e texto livre). Criterios usam HEAD~1...HEAD, nunca main...HEAD.</td></tr>
+<tr><td class=id>462</td><td>?</td><td class=nota>bloqueado: aguarda a 461 em producao. Inverter a ordem quebra a rejeicao com 400. Reescrito em 13/09/2026: os dois campos viram obrigatorios juntos. Criterios usam HEAD~1...HEAD, nunca main...HEAD.</td></tr>
+<tr><td class=id>471</td><td>0</td><td class=nota>bloqueado: aguarda o 470 em main (sem as etapas reais sincronizadas nao ha o que descrever). Criterios com 'main...HEAD' trocados para 'HEAD~1...HEAD' em 13/09/2026: a frente nasce de staging-auto e herda migrations de tickets anteriores (a 0264 do 430), entao comparar com main acusa arquivo que o ticket nao escreveu. Travou o 460 em 9 tentativas e o 480 em 3.</td></tr>
+<tr><td class=id>472</td><td>0</td><td class=nota>bloqueado: aguarda o 471 em main (a sugestao le os criterios que o cliente preenche la). Criterios com 'main...HEAD' trocados para 'HEAD~1...HEAD' em 13/09/2026: a frente nasce de staging-auto e herda migrations de tickets anteriores (a 0264 do 430), entao comparar com main acusa arquivo que o ticket nao escreveu. Travou o 460 em 9 tentativas e o 480 em 3.</td></tr>
+<tr><td class=id>481</td><td>0</td><td class=nota>critério(s) reprovado(s): o script existe e tem teste (max_retries 2 atingido)</td></tr>
+<tr><td class=id>483</td><td>0</td><td class=nota>critério(s) reprovado(s): juiz: Em supabase/migrations/0267_sugestao_resolver_motivo.sql, o `create or replace function public.fn_sugestao_resolver(... p_motivo text default null)` muda a lista de tipos para (uuid,text,text,uuid,text,text). Isso não substitui a função da 0181: cria um overload, e como as duas têm defaults a partir do 3º parâmetro, toda chamada com 2 a 5 argumentos passa a dar erro</td></tr>
+<tr><td class=id>490</td><td>0</td><td class=nota>critério(s) reprovado(s): juiz: Em supabase/migrations/0269_teses_catalogo.sql (seção 9, idx_tese_catalogo_busca_nome/nicho), o índice é criado direto sobre lower(unaccent(nome)). Como unaccent() é STABLE e não IMMUTABLE, o Postgres recusa o CREATE INDEX e a migration inteira sofre rollback na aplicação via MCP — o próprio comentário do arquivo admite esse risco; o grep por 'unaccent' passa, mas o</td></tr>
+<tr><td class=id>900</td><td>0</td><td class=nota>critério(s) reprovado(s): gates reprovados (max_retries 2 atingido)</td></tr>
+</table>
+<div class=sec>prontos para rodar</div><div class=exp>470</div>
+</div></div>
+<div class="p alerta">
+<div class=h><span class=n>conteudos-infinitos</span><span class=v>3 bloqueado(s): 231, 235, 242</span></div>
+<div class=b>
+<div class=exp>Bloqueado nao volta sozinho — precisa de requeue com a spec corrigida.</div>
+<div class=st>
+<span class=done>done <b>75</b></span>
+<span class=pend>pendente <b>4</b></span>
+<span class=bloq>bloqueado <b>3</b></span>
+<span>obsoleto <b>0</b></span>
+<span>prontos <b>0</b></span>
+<span>24h: <b>0</b> feitos, <b>0</b> reprovas</span>
+<span>ultimo run <b>09/09 16:59</b> (266 aprovado)</span>
+</div>
+<div class=sec>bloqueados — por que</div><table><tr><th>id</th><th>tent.</th><th>motivo registrado</th></tr>
+<tr><td class=id>231</td><td>?</td><td class=nota>colisao NAO declarada, achada na sessao de 2026-09-07: tirar o campo de CTA e trocar faixa de renda e tom de voz por seletor quebra tres assercoes de apps/web/test/personas-form-preserva.test.tsx (linhas 74, 77 e 78), que esta FORA da allowlist deste ticket — e a mesma classe de defeito que bloqueou o 230 cinco vezes. Antes de enfileirar: ampliar a allowlist com esse arquivo e anti-afrouxamento po</td></tr>
+<tr><td class=id>235</td><td>?</td><td class=nota>critério(s) reprovado(s): gates reprovados (max_retries 2 atingido)</td></tr>
+<tr><td class=id>242</td><td>?</td><td class=nota>critério(s) reprovado(s): os testes dos tickets 240 e 241 nao foram editados e nao perderam caso (max_retries 2 atingido)</td></tr>
+</table>
+</div></div>
+<div class="p ok">
+<div class=h><span class=n>comarka-operacional</span><span class=v>rodando ticket 351</span></div>
+<div class=b>
+<div class=st>
+<span class=done>done <b>370</b></span>
+<span class=pend>pendente <b>26</b></span>
+<span class=bloq>bloqueado <b>0</b></span>
+<span>obsoleto <b>43</b></span>
+<span>prontos <b>0</b></span>
+<span>24h: <b>24</b> feitos, <b>21</b> reprovas</span>
+<span>ultimo run <b>14/09 15:45</b> (351 reprovado)</span>
+</div>
+<div class=sec>esperando decisao sua — por impacto</div><div>
+<span class=tok><b>6x</b> contas-meta-vinculadas</span>
+<span class=tok><b>2x</b> ghl-locations-mapeadas</span>
+<span class=tok><b>2x</b> calendar-gestores-conectados</span>
+<span class=tok><b>1x</b> backfill-clientes-receita-cliente-id</span>
+<span class=tok><b>1x</b> lote-onboarding-309b</span>
+<span class=tok><b>1x</b> teses-classificadas</span>
+<span class=tok><b>1x</b> nps-ciclo-1</span>
+<span class=tok><b>1x</b> decisao-obrigacoes-lista</span>
+<span class=tok><b>1x</b> credencial-evolution</span>
+<span class=tok><b>1x</b> wpp-grupos-mapeados</span>
+<span class=tok><b>1x</b> briefing-modelo-escrito</span>
+<span class=tok><b>1x</b> decisao-C2</span>
+<span class=tok><b>1x</b> ligar-cron-ia</span>
+<span class=tok><b>1x</b> ligar-cron-whatsapp</span>
+</div>
+</div></div>
+<div class=f>le docs/fila e runs/*/meta.json · nao escreve nada nos repos</div>

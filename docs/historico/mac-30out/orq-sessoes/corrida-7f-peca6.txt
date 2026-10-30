@@ -1,0 +1,38 @@
+01-559-L55054	esperado R3	extração R4? (D9)	final R4 [modelo]	errado	US$ 0.2862
+02-559-L55209	esperado R4	extração R4? (D9)	final R4 [modelo]	CERTO	US$ 0.2614
+03-627-L55356	esperado R2	extração R4? (D9)	final R2 [modelo]	CERTO	US$ 0.2516
+04-600-L55898	esperado R4	extração R4? (D9)	final R4 [modelo]	CERTO	US$ 0.2997
+05-627b-L56021	esperado R2	extração R1|R2? (D11)	final R2 [modelo]	CERTO	US$ 0.2913
+06-549c-L57053	esperado R2	extração R2? (D12)	final R2 [modelo]	CERTO	US$ 0.2497
+07-627j-L57368	esperado R1	extração R1 (D6)	final R1 [extracao]	CERTO	
+08-635-L58105	esperado R3	extração R5? (D7)	final R5? [extracao]	errado	
+09-654-L59896	esperado R1	extração R1|R2? (D11)	final R1 [modelo]	CERTO	US$ 0.2857
+10-407a-L64280	esperado R2	extração R2? (D12)	final R2 [modelo]	CERTO	US$ 0.2858
+11-689-L65280	esperado R1	extração R1 (D6)	final R1 [extracao]	CERTO	
+12-691-L65374	esperado R2	extração R2? (D12)	final R2 [modelo]	classe certa, evidência fora	US$ 0.1757
+13-346d-L66187	esperado R1	extração R1? (D6)	final R1 [modelo]	classe certa, evidência fora	US$ 0.2424
+14-407a-L67585	esperado R2	extração R1|R2? (D11)	final R1|R2? [extracao]	errado	
+15-722-L67970	esperado R1	extração R1 (D6)	final R1 [extracao]	CERTO	
+16-723-L68736	esperado R6	extração R6 (D2)	final R6 [extracao]	CERTO	
+17-715-L68793	esperado R1	extração R1 (D6)	final R1 [extracao]	CERTO	
+18-737-L69920	esperado R2	extração R2? (D12)	final R2 [modelo]	classe certa, evidência fora	US$ 0.2645
+19-739-L71699	esperado R3	extração R1? (D8)	final R2 [modelo]	errado	US$ 0.2391
+20-801-L72121	esperado R5	extração R5 (D4)	final R5 [extracao]	CERTO	
+21-760-L72407	esperado R5	extração R5 (D5)	final R5 [extracao]	CERTO	
+22-762-L72665	esperado R1	extração R1 (D6)	final R1 [extracao]	CERTO	
+23-856-L73817	esperado R1	extração R1 (D6)	final R1 [extracao]	CERTO	
+24-867-L76790	esperado R3	extração R2? (D12)	final R3 [modelo]	classe certa, evidência fora	US$ 0.2656
+25-711a-L78138	esperado R1	extração R1|R2? (D11)	final R1|R2? [extracao]	errado	
+26-711b3-L78647	esperado R1	extração R1 (D6)	final R1 [extracao]	classe certa, evidência fora	
+27-741-L79081	esperado R4	extração R2? (D12)	final R4 [modelo]	classe certa, evidência fora	US$ 0.2395
+28-707-L79202	esperado R7	extração R4? (D9)	final R4? [extracao]	errado	
+29-826-L80362	esperado R3	extração - (-)	final - [extracao]	errado	
+30-900-L81564	esperado R2	extração R2? (D12)	final R2 [modelo]	classe certa, evidência fora	US$ 0.2422
+31-898-L82594	esperado R5	extração R5 (D5)	final R5 [extracao]	CERTO	
+32-741a-L82726	esperado R5	extração R5 (D5)	final R5 [extracao]	CERTO	
+33-707-L83026	esperado R4	extração R4? (D9)	final R4? [extracao]	errado	
+34-898-L83625	esperado R2	extração R2? (D12)	final R2 [modelo]	classe certa, evidência fora	US$ 0.2572
+35-950-L85145	esperado R1	extração R1 (D6)	final R1 [extracao]	CERTO	
+36-940-L85222	esperado R5	extração R5 (D1)	final R5 [extracao]	CERTO	
+37-932-L85272	esperado R5	extração R5 (D1)	final R5 [extracao]	CERTO	
+-- (C) classe e evidência certas: 21/37 (aceite: >= 30); chamadas novas: 22; custo desta corrida: US$ 4.1376

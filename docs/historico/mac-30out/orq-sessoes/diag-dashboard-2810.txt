@@ -1,0 +1,171 @@
+c17cca64 sync main: fix orq liberar
+2.1.0-dev
+---kit
+fb1f98e MELHORIAS-0 P5: M-11 parcial (L12), o resíduo de 1 ticket do c2ae29b fechou
+---harness
+grep: test/orquestrador-contexto-juiz*.test.ts: No such file or directory
+135:      "node_modules/.bin/vitest run",
+439:      "cmd": "node_modules/.bin/vitest run",
+442:      "_dc_testes": "O vitest.config.ts não restringe include: os 19 testes de harness que o --novo copia para test/ entram nesta suíte. Remedir depois do --novo."
+510:  "_dc_k2": "K2 (24/10/2026): Read(~/**/.env*) e a forma absoluta Read(//Users/lucasantos/**/.env*) no piso de --disallowedTools. As worktrees do loop ficam em ~/Projetos/_worktrees, ao lado de checkouts humanos com .env.local de produção; linkar_env false tira o link, não o caminho. O motor carrega a regra intacta (teste K2 do kit); quem barra a leitura é o CLI do Claude Code. Bash(cat …) não é coberto por regra de Read: a última trava é a guarda de produção do vitest (setup-sem-credencial.ts)."
+---arvore
+docs/fila/runs/001
+docs/fila/runs/001/attempt-0
+docs/fila/runs/001/attempt-0/arquivos-soltos.txt
+docs/fila/runs/001/attempt-0/claude.txt
+docs/fila/runs/001/attempt-0/criterios.txt
+docs/fila/runs/001/attempt-0/diff.patch
+docs/fila/runs/001/attempt-0/enforcement.json
+docs/fila/runs/001/attempt-0/gates.txt
+docs/fila/runs/001/attempt-0/juiz.prompt.txt
+docs/fila/runs/001/attempt-0/juiz.raw.json
+docs/fila/runs/001/attempt-0/juiz.veredito.json
+docs/fila/runs/001/attempt-0/prompt.txt
+docs/fila/runs/001/attempt-0/veredito.json
+docs/fila/runs/001/attempt-1
+docs/fila/runs/001/attempt-1/arquivos-soltos.txt
+docs/fila/runs/001/attempt-1/claude.txt
+docs/fila/runs/001/attempt-1/criterios.txt
+docs/fila/runs/001/attempt-1/diff.patch
+docs/fila/runs/001/attempt-1/enforcement.json
+docs/fila/runs/001/attempt-1/gates.txt
+docs/fila/runs/001/attempt-1/prompt.txt
+docs/fila/runs/001/attempt-1/veredito.json
+docs/fila/runs/001/attempt-1/vizinhos.json
+docs/fila/runs/001/meta.json
+docs/fila/runs/005
+docs/fila/runs/005/attempt-0
+docs/fila/runs/005/attempt-0/arquivos-soltos.txt
+docs/fila/runs/005/attempt-0/claude.txt
+docs/fila/runs/005/attempt-0/criterios.txt
+docs/fila/runs/005/attempt-0/diff.patch
+docs/fila/runs/005/attempt-0/enforcement.json
+docs/fila/runs/005/attempt-0/gates.txt
+docs/fila/runs/005/attempt-0/prompt.txt
+docs/fila/runs/005/attempt-0/veredito.json
+docs/fila/runs/005/attempt-1
+docs/fila/runs/005/attempt-1/arquivos-soltos.txt
+docs/fila/runs/005/attempt-1/claude.txt
+docs/fila/runs/005/attempt-1/diff.patch
+docs/fila/runs/005/attempt-1/prompt.txt
+docs/fila/runs/005/attempt-1/veredito.json
+docs/fila/runs/005/meta.json
+docs/fila/runs/008
+docs/fila/runs/008/attempt-0
+docs/fila/runs/008/attempt-0/arquivos-soltos.txt
+docs/fila/runs/008/attempt-0/claude.txt
+docs/fila/runs/008/attempt-0/criterios.txt
+docs/fila/runs/008/attempt-0/diff.patch
+docs/fila/runs/008/attempt-0/enforcement.json
+docs/fila/runs/008/attempt-0/gates.txt
+docs/fila/runs/008/attempt-0/prompt.txt
+docs/fila/runs/008/attempt-0/veredito.json
+docs/fila/runs/008/attempt-1
+docs/fila/runs/008/attempt-1/arquivos-soltos.txt
+docs/fila/runs/008/attempt-1/claude.txt
+docs/fila/runs/008/attempt-1/diff.patch
+docs/fila/runs/008/attempt-1/prompt.txt
+docs/fila/runs/008/attempt-1/veredito.json
+docs/fila/runs/008/meta.json
+######## 001
+[{"attempt":0,"model":"claude-sonnet-5-5","claude_dur_secs":81,"diff_lines":134,"resultado":"reprovado","ts":"2026-10-24T19:02:23Z","dir":"attempt-0","commitDoHarness":false},{"attempt":1,"model":"claude-opus-5-5","claude_dur_secs":151,"diff_lines":278,"resultado":"bloqueado","ts":"2026-10-24T19:07:02Z","dir":"attempt-1","commitDoHarness":false}]
+=== docs/fila/runs/001/attempt-0 gates
+ok   typecheck             29940ms
+ok   testes                63543ms
+ok   build                211170ms
+VEREDITO: APROVADO
+=== docs/fila/runs/001/attempt-0 juiz
+{"duration_api_ms":4414,"stop_reason":"end_turn","session_id":"c0120915-33ac-4136-abc8-9255c81f5ea3","total_cost_usd":0.216139,"usage":{"input_tokens":2,"cache_creation_input_tokens":52883,"cache_read_input_tokens":13030,"output_tokens":330,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":52883,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":330,"cache_read_input_tokens":13030,"cache_creation_input_tokens":52883,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":52883},"type":"message"}],"speed":"standard","fallback_credit":null},"modelUsage":{"claude-sonnet-5-5":{"inputTokens":2,"outputTokens":330,"cacheReadInputTokens":13030,"cacheCreationInputTokens":52883,"webSearchRequests":0,"costUSD":0.216139,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":0,"canonicalModel":"claude-sonnet-5-5","provider":"firstParty","costBasis":"list"}},"permission_denials":[],"terminal_reason":"completed","fast_mode_state":"off","fast_mode_disabled_reason":"sdk_opt_in_required","subagent_stats":{"spawned":0,"requested":{"background":0,"foreground":0,"unset":0},"started_in_background":0,"max_depth":0,"spawned_by_subagents":0,"completed":0,"failed":0,"killed":{"parent":0,"user":0,"system":0},"refused":{"depth_limit":0,"concurrency_limit":0,"budget":0},"by_type":{}},"safety_stops":0,"is_error":false,"num_turns":1,"subtype":"success","api_error_status":null,"result":"{\"aprovado\": false, \"motivo\": \"Não consigo confirmar pelo diff que os arquivo:linha citados batem com o disco (nenhum trecho do insert aparece no material), e o relatório tem inconsistências internas: o chamador `_gerenciar-content.tsx:406` é listado para `ativar` e `pausar` (ok pelo template), mas `verificar-regras` é classificada como 'Nenhum chamador' enquanto a tabela já cita `FAQ.md` e `vercel.json` sem prova no diff; a coluna 'desde quando' usa commits (`a30331ab`, `0872421b`, `94eb0345`) sem a saída do `git log -S` que os sustente.\", \"criterios_falhos\": [\"Cada arquivo:linha citado bate com o disco da base (a linha tem o insert em trafego_regras_historico).\", \"Nenhuma afirmação sem prova; o que não foi verificado está marcado como não verificado.\"]}","ttft_ms":4490,"type":"result","duration_ms":4519,"uuid":"961f8443-5258-4add-9a5b-6779f1d71bc8","ttft_stream_ms":1929,"time_to_request_ms":105,"first_content_frame_ms":1929,"queued_turn_count":0,"result_index":0}
+{"aprovado":false,"motivo":"Não consigo confirmar pelo diff que os arquivo:linha citados batem com o disco (nenhum trecho do insert aparece no material), e o relatório tem inconsistências internas: o chamador `_gerenciar-content.tsx:406` é listado para `ativar` e `pausar` (ok pelo template), mas `verificar-regras` é classificada como 'Nenhum chamador' enquanto a tabela já cita `FAQ.md` e `vercel.json` sem prova no diff; a coluna 'desde quando' usa commits (`a30331ab`, `0872421b`, `94eb0345`) sem a saída do `git log -S` que os sustente.","criterios_falhos":["Cada arquivo:linha citado bate com o disco da base (a linha tem o insert em trafego_regras_historico).","Nenhuma afirmação sem prova; o que não foi verificado está marcado como não verificado."]}
+=== docs/fila/runs/001/attempt-0 diff
+ docs/auditoria/dc-0005-trafego-regras-historico.md |  134 ++++++++++++++++++++
+ 1 file changed, 134 insertions(+)
+=== docs/fila/runs/001/attempt-1 gates
+ ❯ test/orquestrador-contexto-juiz-fixtures.test.ts (8 tests | 2 failed) 14723ms
+     × (a)(d) o corpo INTEIRO do helper, com arquivo:linha, entra no prompt, lido da BASE 6177ms
+     × (b) helper definido no próprio diff não entra no bloco e aparece UMA vez; o de fora aparece no bloco, no MESMO prompt 5594ms
+ ❯ test/orquestrador-contexto-juiz.test.ts (14 tests | 2 failed) 22384ms
+     × o critério cita um arquivo fora do diff: o material do juiz passa a conter esse arquivo, rotulado 5515ms
+     × o conteúdo é o da BASE da tentativa, não o da HEAD 5176ms
+ FAIL  test/orquestrador-contexto-juiz-fixtures.test.ts > 628 · run_juiz com teste novo chamando helper de fora do diff > (a)(d) o corpo INTEIRO do helper, com arquivo:linha, entra no prompt, lido da BASE
+Error: Test timed out in 5000ms.
+ ❯ test/orquestrador-contexto-juiz-fixtures.test.ts:125:3
+ FAIL  test/orquestrador-contexto-juiz-fixtures.test.ts > 628 · run_juiz com teste novo chamando helper de fora do diff > (b) helper definido no próprio diff não entra no bloco e aparece UMA vez; o de fora aparece no bloco, no MESMO prompt
+Error: Test timed out in 5000ms.
+ ❯ test/orquestrador-contexto-juiz-fixtures.test.ts:151:3
+ FAIL  test/orquestrador-contexto-juiz.test.ts > run_juiz com contexto_juiz > o critério cita um arquivo fora do diff: o material do juiz passa a conter esse arquivo, rotulado
+Error: Test timed out in 5000ms.
+ ❯ test/orquestrador-contexto-juiz.test.ts:138:3
+ FAIL  test/orquestrador-contexto-juiz.test.ts > run_juiz com contexto_juiz > o conteúdo é o da BASE da tentativa, não o da HEAD
+Error: Test timed out in 5000ms.
+ ❯ test/orquestrador-contexto-juiz.test.ts:148:3
+    150|
+    151|   it('(b) helper definido no próprio diff não entra no bloco e aparece…
+       |   ^
+    152|     const f = fixture({
+    153|       novoIt: [
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+    136|
+    137| describe('run_juiz com contexto_juiz', () => {
+    138|   it('o critério cita um arquivo fora do diff: o material do juiz pass…
+       |   ^
+    139|     const f = fixture([REF], '-- gabarito\nLINHA_DA_BASE_0264\n');
+    140|     const r = rodarJuiz(f);
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+    146|   });
+    147|
+    148|   it('o conteúdo é o da BASE da tentativa, não o da HEAD', () => {
+       |   ^
+    149|     const r = rodarJuiz(fixture([REF], 'LINHA_DA_BASE_0264\n'));
+    150|     expect(r.prompt).toContain('LINHA_DA_BASE_0264');
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+=== docs/fila/runs/001/attempt-1 juiz
+=== docs/fila/runs/001/attempt-1 diff
+ docs/auditoria/dc-0005-trafego-regras-historico.md |  278 ++++++++++++++++++++
+ 1 file changed, 278 insertions(+)
+######## 005
+[{"attempt":0,"model":"claude-sonnet-5-5","claude_dur_secs":44,"diff_lines":164,"resultado":"reprovado","ts":"2026-10-28T22:52:13Z","dir":"attempt-0","commitDoHarness":false},{"attempt":1,"model":"claude-sonnet-5-5","claude_dur_secs":14,"diff_lines":164,"resultado":"reprovado","ts":"2026-10-28T22:52:29Z","dir":"attempt-1","commitDoHarness":false}]
+=== docs/fila/runs/005/attempt-0 gates
+ok   typecheck             22490ms
+ok   testes                 9741ms
+ok   build                143592ms
+VEREDITO: APROVADO
+=== docs/fila/runs/005/attempt-0 juiz
+=== docs/fila/runs/005/attempt-0 diff
+ src/app/api/financeiro-v2/saidas/route.ts          |   21 ++++++
+ .../financeiro/v2/__tests__/saidas-tela.test.ts    |   71 ++++++++++++++++++++
+ src/lib/financeiro/v2/saidas-tela.ts               |   69 +++++++++++++++++++
+ src/lib/financeiro/v2/saidas.ts                    |    3 +
+ 4 files changed, 163 insertions(+), 1 deletion(-)
+=== docs/fila/runs/005/attempt-1 gates
+tail: docs/fila/runs/005/attempt-1/gates.txt: No such file or directory
+=== docs/fila/runs/005/attempt-1 juiz
+=== docs/fila/runs/005/attempt-1 diff
+ src/app/api/financeiro-v2/saidas/route.ts          |   21 ++++++
+ .../financeiro/v2/__tests__/saidas-tela.test.ts    |   71 ++++++++++++++++++++
+ src/lib/financeiro/v2/saidas-tela.ts               |   69 +++++++++++++++++++
+ src/lib/financeiro/v2/saidas.ts                    |    3 +
+ 4 files changed, 163 insertions(+), 1 deletion(-)
+######## 008
+[{"attempt":0,"model":"claude-sonnet-5-5","claude_dur_secs":37,"diff_lines":67,"resultado":"reprovado","ts":"2026-10-28T22:59:50Z","dir":"attempt-0","commitDoHarness":false},{"attempt":1,"model":"claude-sonnet-5-5","claude_dur_secs":18,"diff_lines":67,"resultado":"reprovado","ts":"2026-10-28T23:00:10Z","dir":"attempt-1","commitDoHarness":false}]
+=== docs/fila/runs/008/attempt-0 gates
+ok   typecheck             29326ms
+ok   testes                10201ms
+ok   build                 89539ms
+VEREDITO: APROVADO
+=== docs/fila/runs/008/attempt-0 juiz
+=== docs/fila/runs/008/attempt-0 diff
+ src/__tests__/admin-auditoria-guarda.test.ts |   60 ++++++++++++++++++++++++++
+ src/__tests__/f1-guarda-financeiro.test.ts   |    1 
+ src/app/api/admin/auditoria/route.ts         |    6 +--
+ 3 files changed, 63 insertions(+), 4 deletions(-)
+=== docs/fila/runs/008/attempt-1 gates
+tail: docs/fila/runs/008/attempt-1/gates.txt: No such file or directory
+=== docs/fila/runs/008/attempt-1 juiz
+=== docs/fila/runs/008/attempt-1 diff
+ src/__tests__/admin-auditoria-guarda.test.ts |   60 ++++++++++++++++++++++++++
+ src/__tests__/f1-guarda-financeiro.test.ts   |    1 
+ src/app/api/admin/auditoria/route.ts         |    6 +--
+ 3 files changed, 63 insertions(+), 4 deletions(-)

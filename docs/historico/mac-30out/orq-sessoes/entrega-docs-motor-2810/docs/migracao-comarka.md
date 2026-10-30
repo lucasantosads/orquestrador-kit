@@ -1,0 +1,240 @@
+# Migração comarka-operacional → kit
+
+Inventário de 02/10/2026. Fonte: `bash instalar.sh --atualizar ~/Projetos/comarka-operacional --dry-run`
+(kit 2.1.0-dev, comarka main 718206d): **126 diferenças** — 28 só no comarka, 74 só no kit, 24 nos dois com conteúdo diferente.
+
+O motor do comarka é de linhagem própria (nunca instalado pelo kit, sem `VERSAO`). O `--atualizar` hoje
+recusaria só por o loop não estar pausado; não é por isso que ele não roda: rodar agora perde capacidade
+(seção "Antes de migrar"). O PORTE-PENDENTE de comarka 6307912 já é equivalente ao kit e167e0d e fecha na migração.
+
+Lembrete de mecânica: o `--atualizar` copia por cima, sem `--delete` (`instalar.sh:16`). Arquivo do grupo (a)
+não some — fica no disco e para de funcionar quando o `lib.sh`/`executor.sh`/`local-loop.sh`/`orq-painel.py`/`fila-read.ts`
+de que depende é sobrescrito.
+
+Legenda: **ESP** = específico do comarka → vira configuração ou extensão no kit · **GEN** = melhoria genérica → sobe
+para o kit antes da migração · **OBS** = obsoleto/artefato, já coberto pelo kit ou sem uso.
+
+---
+
+## a) Só no comarka (28)
+
+| # | arquivo | o que faz | par no kit | classe |
+|---|---|---|---|---|
+| 1 | `scripts/orquestrador/.impeccable/` | cache do hook do impeccable, não versionado | — | OBS |
+| 2 | `avaliador.sh` | juiz: chama o claude, lê o veredito, merge `--no-ff` em staging-auto | total: `juiz.ts` + executor + `merge_em_alvo` do local-loop | OBS |
+| 3 | `avisa-bloqueio.sh` | osascript quando `.orq-pause` passa de 40 min (crontab `*/20`). Até 02/10 estava morto (caminho relativo, cron roda do `$HOME`); consertado no comarka bed7c14 (PORTE-PENDENTE, ver abaixo) | parcial: `notificar()` + alarmes do painel | ESP |
+| 4 | `avisa-fila-parada.sh` | osascript quando 0 prontos e 0 em execução por mais de 40 min (crontab `*/20`) | parcial: evento OCIOSO + `deve_notificar` | ESP |
+| 5 | `com.comarka.orq-server.plist.template` | launchd de **serviço** (RunAtLoad + KeepAlive) do painel em 127.0.0.1:8787 | nenhum: o kit não tem plist de serviço para o painel | GEN |
+| 6 | `com.comarka.orquestrador.plist.template` | job do loop, label fixo, StartInterval 900 | total: `com.orquestrador.plist.template` com `{{LABEL}}`/`{{START_INTERVAL}}` | OBS |
+| 7 | `instalar-orq-server.sh` | instala o plist do serviço do painel | nenhum | GEN (com o #5) |
+| 8 | `limpar-worktrees.sh` | varre worktrees órfãs de todos os repos de `~/Projetos` (N dias, árvore limpa), dry-run por padrão | parcial: o kit só remove a worktree do ticket corrente | GEN (raiz vira config) |
+| 9 | `orq-contrato.py` | conformidade com o contrato antigo entre repos | total: `CONTRATO.md` + `gate-ticket.ts` + `schemas/` | OBS |
+| 10 | `orq-granularidade.py` | régua de granularidade + backtest sobre os runs | parcial: só em prosa (`doutrina/SKILL.md`) e triagem em `PECAS.md` | GEN com ressalva (dá falso sinal: score 6 em todo ticket) |
+| 11 | `orq-server.py` | painel HTTP multi-repo com pausar/retomar/kick/instalar_agente; `LABELS` fixo | quase total: `orq-painel.py` K12 (mesma porta 8787). Falta `instalar_agente` | OBS |
+| 12 | `orq-telemetria.py` | métricas do `meta.json` + 8 baldes de motivo | total via trilha (`orq`, `orq custo`); baldes em `schemas/motivo_categoria.json` | OBS (dependência do #11) |
+| 13 | `relatorio-email.ts` | relatório diário via Resend (GitHub Actions `30 11 * * *`) | parcial: `notificar()` canal arquivo | ESP |
+| 14 | `telemetria.ts` | agregador quebrado (0 de 313) | total | OBS |
+| 15 | `test-adiado.sh` | rate limit volta a pendente sem gastar retry | total: `test-causa-adiamento.sh`, `test-ambiente-adiado.sh` | OBS |
+| 16 | `test-cleanup-worktree.sh` | prova `limpar_worktrees_orfaos` (ticket 282) | nenhum | GEN (com o #8) |
+| 17 | `test-cooldown-causa.sh` | cooldown só para causa remota | total: `test-causa-adiamento.sh` (porte declarado) | OBS |
+| 18 | `test-disjuntor.sh` | disjuntor sem progresso | total: `test-sem-progresso-limite.sh` | OBS |
+| 19 | `test-drenagem-divergente.sh` | drena 2 tickets com push por ticket | parcial: `test-drenagem.sh`/`test-ocioso.sh`; push proibido (D11) | OBS |
+| 20 | `test-gate-streak.sh` | pausa quando o mesmo gate reprova N tickets diferentes | nenhum (`config-tabela.ts`: "conceito novo") | GEN |
+| 21 | `test-parser-verdict.sh` | parser do veredito, lixo vira ADIADO | total: `test/orquestrador-juiz.test.ts` | OBS |
+| 22 | `test-prioridade.sh` | campo `prioridade` na seleção (menor vence, default 50, respeita dependência) | nenhum: o loop do kit ignora o campo | GEN |
+| 23 | `test-worktree-prefix.sh` | prefixo de worktree por repo (colisão com o actus, 21/09) | total: `worktrees_prefixo` + `decisao.ts:nomeWorktree` | OBS |
+| 24 | `writeback-notion.ts` | upsert do estado da fila numa página do Notion (`NOTION_PAGE_ID` fixo); importado por 2 testes vitest | nenhum (`config-tabela.ts:443`) | ESP |
+| 25 | `scripts/roadmap/estado-fila.py` | contagem da fila, grava `_estado.json`; lê o **último** bloco json | parcial: `orq fila` | ESP (vira OBS depois) |
+| 26 | `scripts/roadmap/gerar-a11y-a1.py` | gerador único dos 60 tickets a11y A1, já executado | nenhum | OBS |
+| 27 | `scripts/roadmap/prontos.py` | prontos/presos/travados na ordem do loop; lê só `.liberadas` | quase total: `pendentes_razoes` + card do painel | ESP (vira OBS depois) |
+| 28 | `docs/orquestrador/skill/references/instalacao-portavel.md` | guia de instalação portável; Fase 2 = adaptador de writeback para board | parcial: `fase-0-arquitetar.md`, `setup.md`, `docs/launchd.md` | GEN (Fase 2; tirar exemplos do comarka) |
+
+Totais: GEN 8 (#5, 7, 8, 10, 16, 20, 22, 28) · ESP 6 (#3, 4, 13, 24, 25, 27) · OBS 14.
+
+## b) Só no kit (74), por capacidade
+
+| capacidade | arquivos | o que traz | par no comarka |
+|---|---|---|---|
+| CLI único | `scripts/orq` | fila, eventos, erro, ticket, custo, decisoes, mapa, validar, versao, config, prevoo; escreve só pausar/retomar/liberar | peças soltas: `orq-pause.sh`, painel, `prontos.py`, `estado-fila.py` |
+| Config v2 | `config-chaves.ts`, `config-cli.ts`, `config-tabela.ts` | chaves lidas pelo motor com `arquivo:linha`; `orq config` acusa placeholder e obrigatória ausente; de-para v1→v2 | nenhum. Hoje o comarka não tem **32 das 40** chaves obrigatórias |
+| Migração de `docs/fila` | `migrar-comum.ts`, `migrar-config.ts`, `migrar-liberacoes.ts`, `migrar-tickets.ts`, `liberacoes-core.ts` | dry-run por padrão, `--aplicar` com `.bak`, só via `instalar.sh --migrar` | nenhum |
+| Liberação humana | `liberar-cli.ts` | `orq liberar humano:token [nota]`, exige liberações v2 | edição à mão |
+| Decisão e diagnóstico | `decisao.ts`, `decisao-cli.ts`, `diagnostico.ts` | adiar/reprovar, retry e escada de modelo por causa, reabertura humana, base vermelha (632), diagnóstico de retry em JSON | espalhado em `lib.sh` (`is_adiavel`, `cooldown_*`, `gate_streak_*`) e `local-loop.sh` (`disjuntor_*`) |
+| Gates genéricos | `gates.ts` | percorre `.gates[]` do config, tipo `baseline` com direção | `gate_tsc/vitest/build` fixos em `executor.sh` |
+| Gate de ticket | `gate-ticket.ts` | schema, id, critérios, segurança do `cmd`, deps, sobreposição; pré-voo por ticket (`aviso` por padrão) | `scripts/validar-fila.py`, que faz **mais**: executa o recon e o discrim contra HEAD |
+| Juiz | `juiz.ts` | risco baixo/alto por diff, paths e palavras; dois modelos; `contexto_juiz` | `avaliador.sh`, um modelo só |
+| Pré-voo da drenagem | `prevoo.ts` | spec vendorizada, identidade, estrutura da fila, tsx, sondagem; NO-GO deixa ocioso | `preflight()` do executor, por ticket |
+| Reparo de trilha | `reparar-trilha.sh` | reparo único do `events.log` | sem `events.log` no comarka |
+| Lint do roadmap | `scripts/roadmap/lint-mapa.py` | cruza `MAPA.md` × `mapa.json` × config | o comarka não tem `mapa.json`/`MAPA.md` (outro modelo: frente/onda/serie/camada) |
+| launchd | `com.orquestrador.plist.template` | label e intervalo vêm do config | template próprio, label fixo |
+| Doutrina | `EXECUTOR.md` (raiz da skill), `CHANGELOG-v2.md`, `templates/PECAS-seed.md` | prefixo do prompt (já existe no comarka só em `templates/`), mudanças v1→v2, semente do backlog de harness | `CHANGELOG-v3.md` local |
+| Testes de shell (24) | `test-adiamentos-limite`, `-ambiente`, `-ambiente-adiado`, `-causa-adiamento`, `-notificacao-ambiente`, `-reprovado-sub`, `-retry-worktree`, `-tentativas-persistidas`, `-reabertura-humana`, `-sem-progresso-limite`, `-ocioso`, `-rc-executor`, `-orq-pause`, `-lib-config`, `-gate-prevoo`, `-preflight`, `-painel-{alarmes,detalhe,lento,pausa,visao}`, fixtures `-fixture-{drenagem,executor,painel}` | cobrem decisão, drenagem, gate de ticket, pré-voo e painel | portes de `test-cooldown-causa`, `test-disjuntor` |
+| Testes vitest (19) e fixtures (8) | `test/orquestrador-*.test.ts`, `test/fixtures/orq-harness.ts`, `criterios/`, `trilha/`, `gate-ticket-grep-q/`, `orquestrador-base-vermelha/` | juiz, gates, gate de ticket, trilha, executor/prompt, decisão | — |
+
+Atenção: os testes vitest entram em `test/` do comarka, logo no `include` do tsconfig e no gate de tsc (baseline 3).
+Qualquer erro de tipo neles muda a contagem.
+
+## c) Nos dois, comportamento divergente (18)
+
+| arquivo | diferença | o que o comarka tem e o kit não | classe |
+|---|---|---|---|
+| `executor.sh` (899 × 1659) | o kit tem juiz em dois níveis, refatiar, pré-voo, custo, retry por causa, base vermelha; o comarka tem gates fixos, recon, dev server e avaliador.sh | `run_recon` executado antes do agente | **GEN** |
+| | | `Bash(git rm:*)` nas tools (64eb67d) | **GEN** |
+| | | `aviso_allowlist` (só avisa) | GEN menor |
+| | | gates tsc/vitest/build com `baseline_scope_regex`; C0 e baseline no prompt; `serve_up/down` para critério curl; chamada ao `avaliador.sh` | ESP |
+| `lib.sh` (712 × 1495) | o kit tem trilha, custo, notificação, ambiente; faltam no kit 13 funções do comarka | `ticket_prioridade`/`selecionar_pendente` | **GEN** |
+| | | `gate_streak_*`/`extrai_gate_motivo` | **GEN** |
+| | | `limpar_worktrees_orfaos` | **GEN** |
+| | | `wt_add_or_die` (stderr visível) | GEN menor |
+| `local-loop.sh` (444 × 859) | o kit tem lock em TS, pré-voo, guarda da branch protegida, razões de ociosidade | orq-runner/`ORQ_EXEC_ROOT`, push por ticket e do autocommit, writeback Notion | ESP (push conflita com D11; orq-runner é defeito aberto, 8fb9047) |
+| | | fetch com retry 3×20s ao acordar | GEN menor |
+| `enforcement-core.ts` | o C0 do comarka está no código; no kit vem do config (zona_proibida, migration, credencial, coluna) | `normalizarEntradaAllowlist` (`dir/` → `dir/**`, ticket 295) | **GEN** |
+| | | `ehComentario` tira comentário da varredura C0/DDL (184) | **GEN** |
+| | | `ehArquivoDeTeste` isenta DDL em teste vitest (170) | **GEN** |
+| | | lista C0 | ESP → `zona_proibida` |
+| `enforcement.sh` | o comarka manda só `c0_intocavel` e roda do MAIN_CHECKOUT por causa do orq-runner; o kit manda o config inteiro | rodar do MAIN_CHECKOUT | ESP |
+| `launchd-run.sh` | o comarka carrega `~/.env.orquestrador`; o kit recusa e recupera STATUS congelado | eco do motivo da pausa no log | ESP (env); GEN menor (eco) |
+| `instalar-launchd.sh` | label e template fixos × `launchd.*` do config com dry-run | label, intervalo 900 | ESP → config |
+| `orq-pause.sh` | o comarka usa só `.orq-pause`; o kit trata `PAUSAR` + `.orq-pause` com trilha | — | kit é superconjunto |
+| `perfil.ts` | o comarka tem `toolsForPerfil` sem uso; o kit deriva as tools dos gates | `perfis_tools` | ESP opcional |
+| `fila-read.ts` | o kit tem a classe `refatiar` e tipos exactOptional | — | kit é superconjunto |
+| `orq-painel.py` | HTML estático + `orq-server.py` × servidor K12 com `repos.json` | coluna de prioridade | ESP (substituído pelo K12) |
+| `test-drenagem.sh` | cada um testa o próprio `drenar()` | cenário de ordem por prioridade | GEN (com a prioridade) |
+| `doutrina SKILL.md` | o kit tem motor versionado, ID global, `risco` derivado | regra 21 (ticket humano validado por máquina), lições de `grep -rc` em alvo único, "critério impossível ensina a driblar o gate", "`recon_esperado` é campo" | **GEN** |
+| `references/autoalimentacao.md` | v1 (faixa de IDs) × v2 (ID global) | — | kit é superconjunto |
+| `references/setup.md` | fluxo v1 ("gere os scripts", board Notion) × `instalar.sh --novo` | §6.5 board Notion | ESP; resto obsoleto |
+| `templates/PLAYBOOK-seed.md` | o kit acrescenta 15 lições do conteudos-infinitos | — | kit é superconjunto |
+| `templates/TICKET.md` | o comarka tem o exemplo de `recon_esperado`; o kit tem `contexto_juiz`/`exemplos_regex` | exemplo de recon | GEN (com o recon) |
+| `templates/config.json` | o kit acrescenta branch_protegida, launchd, políticas; o comarka tem `proibicoes_absolutas` em prosa | — | kit é superconjunto (migrar a prosa é humano) |
+
+## d) Nos dois, diferença cosmética ou de caminho (6)
+
+| arquivo | tipo |
+|---|---|
+| `lock.ts` | só o comentário de cabeçalho (nota de porte) |
+| `test-diff-lines.sh` | mesmo teste do numstat (6307912 = e167e0d); variável `dl` → `DIFF_LINES` |
+| `test-drenagem-sem-progresso.sh` | porte declarado, comportamento equivalente; fixture diferente |
+| `references/fase-0-arquitetar.md` | só o trecho de faixa de IDs (v1 → v2) |
+| `templates/MAPA.md` | faixa de IDs por bloco removida |
+| `templates/mapa.json` | `faixa_ids` → `_sem_faixa_ids` |
+
+Já portados do comarka para o kit (não contam como divergência): 6307912 → e167e0d (numstat), 5f2785d → 23aa9f0
+(autocommit, sem push), 50c6b02 → `worktrees_prefixo`, e0973b0/c31cfc8/a082b79 → `sem_progresso_*` e `--ticket`,
+be8b0a7 → RunAtLoad (porte Actus 7b-7).
+
+---
+
+## Antes de migrar
+
+### Sobe para o kit: melhorias genéricas (10)
+
+1. **Recon executado no loop** antes do agente: `run_recon`, o exemplo no `TICKET.md` e a lição do `SKILL.md`. O kit adiou de propósito ("peça 1b", `gate-ticket.ts:12`); cerca de 44 pendentes do comarka usam.
+2. **Allowlist `dir/` → `dir/**`**: `normalizarEntradaAllowlist`.
+3. **Comentário fora da varredura C0/DDL** (`ehComentario`) e **DDL em teste vitest isento** (`ehArquivoDeTeste`). Os dois estão em `enforcement-core.ts`; um porte só.
+4. **Campo `prioridade`** com seleção num único lugar (`selecionar_pendente`), mais o cenário de `test-prioridade.sh`/`test-drenagem.sh`.
+5. **Gate streak**: `gate_streak_*`, `extrai_gate_motivo` e `test-gate-streak.sh`. O comarka roda com `gate_streak_limite=2`.
+6. **`Bash(git rm:*)`** em `BASE_TOOLS` do `perfil.ts`.
+7. **Limpeza de worktree órfã**: `limpar_worktrees_orfaos` no início da drenagem + `limpar-worktrees.sh` (raiz em config) + `test-cleanup-worktree.sh`.
+8. **Painel como serviço launchd**: template RunAtLoad/KeepAlive + instalador, apontando para o `orq-painel.py` do kit. Inclui ou descarta `instalar_agente`.
+9. **Doutrina**: regra 21 e as lições de critério do `SKILL.md`, e a Fase 2 de `instalacao-portavel.md` sem os exemplos do comarka.
+15. **Aviso de loop parado, não só de fila pausada** (registrado 02/10; numerado 15 para não renumerar as referências ao item 10). O `avisa-bloqueio.sh` só olha a idade do `docs/fila/.orq-pause`. Não detecta o LaunchAgent descarregado nem o loop sem rodar há horas: em 01→02/10 o loop ficou desligado a madrugada inteira via `launchctl bootout` e nenhum aviso saiu. Proposta: alertar quando o run mais recente em `docs/fila/runs/*/meta.json` tiver mais de N horas (N em config) **e** houver ticket pendente elegível (mesma seleção do `selecionar_pendente`, para não alertar com a fila vazia ou toda bloqueada). Entra como caso do gancho do item 10. Só registrado, não implementado.
+
+Opcionais (o comarka não perde nada que use todo dia): fetch com retry ao acordar, `aviso_allowlist`, `wt_add_or_die` com stderr, eco do motivo da pausa, `orq-granularidade.py` (só depois de corrigir o falso sinal).
+
+### Sobe para o kit: pontos de configuração/extensão para o que é do comarka (5)
+
+10. **Gancho de extensão pós-drenagem/notificação** para plugar writeback Notion (`writeback-notion.ts`), relatório por e-mail (`relatorio-email.ts`) e os avisos de fila parada/bloqueada sem tocar no motor.
+    - **Nota (02/10):** desde 29/09/2026 o Notion não é mais usado na operação da Comarka. Decidido em 02/10:
+      o `writeback-notion.ts` e tudo que depende dele **não é portado; remover na migração** (já está desligado, nada
+      sai antes). O gancho fica só para e-mail e avisos. Remover na migração, no comarka (02/10, 718206d):
+      - `scripts/orquestrador/local-loop.sh:414-436` — passo 4 da drenagem (`npx tsx scripts/orquestrador/writeback-notion.ts sync`); só roda com `ORQ_NOTION_WRITEBACK=1`, que não está no plist instalado, então já está inativo localmente
+      - `.github/workflows/orquestrador.yml:84` — `writeback-notion.ts sync` no workflow (disparo manual)
+      - `test/writeback.test.ts` e `test/writeback-notion-chunking.test.ts` — importam o módulo; apagar o `.ts` sem apagar os dois quebra o vitest
+      - `docs/fila/000-config.json:14-15` — chave `writeback_notion: true` e sua descrição (lida pelo local-loop)
+      - doutrina: `references/setup.md` §6.5 (board Notion) e a Fase 2 de `references/instalacao-portavel.md` (adaptador de writeback)
+11. **Escopo no gate `baseline`** (o equivalente de `baseline_scope_regex`): sem ele a contagem do tsc do comarka (baseline 3, filtro `^\.next/`) deixa de valer.
+12. **Dev server para critério curl/localhost** (`serve_up/down`) como capacidade opcional de config.
+13. **`migrar-config` cobre os nomes do comarka**: `worktree_prefix` → `worktrees_prefixo` (sem isso volta a colisão com o actus) e `disjuntor_sem_progresso_limite` → `sem_progresso_limite`. Grep vazio hoje.
+14. **Execução fora do checkout principal**: o caso orq-runner/`ORQ_EXEC_ROOT` (defeito aberto 8fb9047) precisa de resposta no kit — suporte ou decisão escrita de abandonar o orq-runner — porque o `enforcement.sh` do comarka depende disso.
+
+Fica como configuração no comarka, sem mudança no kit: `zona_proibida` (lista C0), `launchd.label` + `start_interval: 900`, `perfis_tools`, `modelos.juiz_*` (de `avaliador_model`). Fica fora do motor: push por ticket e do autocommit (D11 proíbe; vira passo humano ou extensão do item 10).
+
+### PORTE-PENDENTE abertos no comarka
+
+Atualização de 28/10/2026 (comarka 236b680, kit 2c0f469). Os 14 commits `PORTE-PENDENTE:` de 11 a 19/10 foram lidos com `git show` no Comarka e comparados ao código do kit por leitura e `git grep`, com arquivo:linha. Nada foi executado, salvo um `grep -qiE` com a regex do kit sobre as mensagens do caso 6ad8fbd. Resultado: 1 portado, 2 equivalentes, 11 abertos, mais 2 consertos sem prefixo (c2ae29b e 54fccc1) registrados como defeito em `docs/defeitos/`. Dos abertos, 4 formam o lote do gate de instável (dc90c8d, 906259f, 86dec07 Fix A, 9ee36a9), 1 tem destino "ficar no Comarka" (7464018) e 1 tem destino "descartar" (1f0ddc9). Estado e destino são proposta, até o Lucas confirmar.
+
+Revisão de 28/10/2026 à tarde (comarka 6995f49): triagem do Lucas conferida sha a sha. Concordo, com quatro acertos. (a) `31104d0` não é "provável": está portado (`48c031a`, `executor.sh:571-576`). (b) `fab89d5` fica aberto, não obsoleto. (c) `dc90c8d`, `906259f` e `bb59341` não estão na main do Comarka, só no `backup/fix-motor-gate-vitest-3commits`; o conteúdo entrou reescrito no `86dec07`. A main tem 15 commits com `PORTE-PENDENTE:` na mensagem, mais esses 3 do backup. (d) `457856c` não estava na tabela e tem cinco pedaços, ver a linha dele. `6307912`, `bed7c14` e `5f2785d` já estão (linhas do `6307912` e do `bed7c14` na tabela; `5f2785d` portado no `23aa9f0`, no parágrafo "Já portados"). `6ad8fbd` foi o primeiro a virar etapa (L5a).
+
+| commit comarka | o que é | estado no kit |
+|---|---|---|
+| 6307912 | `diff_lines` via numstat | equivalente ao kit e167e0d; fecha na migração |
+| bed7c14 (02/10) | `avisa-bloqueio.sh`: shebang bash e repo resolvido por `dirname "${BASH_SOURCE[0]}"`. Antes testava `~/docs/fila/.orq-pause` (cron roda do `$HOME`) e nunca avisava. Provado com repo falso pausado há 2h: antes silêncio, depois `IDADE=120` e osascript | o kit não tem o arquivo (grupo a, #3, ESP). Não porta como script: entra como caso do gancho do item 10, e a lição genérica é "script de cron do motor resolve o repo pelo próprio caminho" |
+| fab89d5 (11/10) | `orq-server.py`: o painel lê o PID do `launchctl list` antes do exit (PID vivo ignora exit -15 herdado de `kickstart -k`) | **aberto**. O painel K12 do kit tem a mesma falha: `alarmes_do_repo` (`orq-painel.py:934`) levanta `launchd_exit` com `last_exit` diferente de 0 sem olhar se o job está rodando, e a leitura do job (`orq-painel.py:1006-1033`) só pega o `last exit code` do `launchctl print`. Destino: portar a precedência (PID vivo = rodando) para o K12. O `orq-server.py` em si é OBS (grupo a, #11) Revisão de 28/10 à tarde: não é obsoleto. O arquivo `orq-server.py` é obsoleto no kit, a falha não: o K12 repete o alarme falso |
+| 31104d0 (12/10) | critério e recon rodam num bash novo, não por `eval` | **portado**: kit 48c031a (7f-b6-0), `executor.sh:571-576`, `test-criterio-isolado.sh`. Fecha |
+| 6df04cc (14/10) | loop Apolo: `ORQ_LOOP`, faixa 5000 a 5999, `validar-fila` por pasta, dependência entre filas (12 arquivos) | **aberto**. O kit tem uma fila por repo: sem `ORQ_LOOP`, sem `docs/fila/apolo`, sem dependência entre filas (`git grep` em `scripts/` e `schemas/` não acha; só o resolvedor conhece `staging-apolo` e `promocao-apolo` como donos de pausa, `resolvedor/modos.ts:46`). Destino: decisão do Lucas, porque o modo sombra só cobre a fila Apolo do Comarka se o kit souber duas filas. Pode ser etapa própria |
+| 7464018 (14/10) | `ritual-staging.sh --loop apolo` traz a main para a `staging-apolo` | **aberto**, destino: ficar no Comarka. O ritual é script do repo, sem par no kit; só acompanha o 6df04cc |
+| eb010cf (14/10) | cartão próprio da fila `docs/fila/apolo` no `orq-server.py` | **aberto**, depende do 6df04cc. Se a fila Apolo entrar no kit, o cartão sai do K12 (`orq-painel.py` e `repos.json`); o `orq-server.py` é OBS |
+| 6ad8fbd (18/10) | `RATE_LIMIT_REGEX` reconhece "You've hit your session limit" (CLI 2.1.30x) | **aberto**. O commit diz que o kit porta o padrão e o caso de teste, e não portou: a regex do kit (`lib.sh:926`) não casa "hit your session limit" nem "hit your weekly limit" (testado com `grep -qiE`, o mesmo do `is_rate_limited`); só "5-hour session limit" casa. Efeito esperado pela leitura: o run com limite vira falha comum e consome retentativa, em vez de armar cooldown. Destino: portar `hit your [a-z ]{0,30}limit` e o teste (3 mensagens e a negativa "limite de verba"). É o menor do lote Revisão de 28/10 à tarde: o gêmeo `PADRAO_CAUSA` de `decisao.ts:235` também não casa, por leitura. Medido com a regex extraída de `lib.sh:926`: "hit your session limit", "weekly limit" e "Opus limit" ficam de fora (3 de 3), "5-hour session limit reached" casa. Não portar `overloaded`, `capacity` e `(529)` que o Comarka ainda tem na regex: o kit tirou em 7b-2. Etapa L5a aberta |
+| dc90c8d (18/10) | o gate vitest roda isolado o arquivo que falha fora do diff antes de reprovar (`vitest_instaveis`, `roda_vitest_isolado`, `test-gate-instavel.sh`, 21 casos) | **aberto, prioridade alta**. O kit não tem (`git grep -i instav` em `scripts/orquestrador` vazio) e já pagou por isso: no dashboard-comercial, em 24/10, o ticket 001 tentativa 1 caiu em `base_vermelha` falsa por 4 testes de harness do kit com timeout de 5 s sob carga, que isolados passam 22/22. Destino: portar como etapa própria, junto com 906259f, 86dec07 (Fix A) e 9ee36a9 Atenção: este sha não está na main do Comarka, só em `backup/fix-motor-gate-vitest-3commits`. O conteúdo entrou reescrito no `86dec07` (`git log -S` acha `roda_vitest_isolado` e `Unhandled` ali). Contar como um porte só, o do `86dec07`. |
+| 906259f (18/10) | o juiz sabe do instável, guarda de `Unhandled Error` sem SIGPIPE, `unset ORQ_ALLOWLIST_AMPLIADA` entre tickets | **aberto**, no lote do dc90c8d. O aviso ao juiz e a guarda de Unhandled dependem do gate de instável (o kit não tem `Unhandled`). O `unset` não se aplica: o kit não usa `ORQ_ALLOWLIST_AMPLIADA` (a ampliação vai por `VIZ_AMPLIADA`, zerada em `drive_ticket`, `executor.sh:1489`) Atenção: este sha não está na main do Comarka, só em `backup/fix-motor-gate-vitest-3commits`. O conteúdo entrou reescrito no `86dec07` (`git log -S` acha `roda_vitest_isolado` e `Unhandled` ali). Contar como um porte só, o do `86dec07`. |
+| 86dec07 (18/10) | Fix A: instável fora da conta. Fix B: ampliação de vizinho vale até o fim do ticket e no `SO_ALLOWLIST` | **aberto** só no Fix A (lote do dc90c8d). O Fix B é **equivalente** ao 8c (`d3ce1b0`): `VIZ_AMPLIADA` persiste no drive (`executor.sh:1489,1734`) e o critério de lista fechada é derivado com os ampliados (`cmdComAmpliados`, `decisao.ts:884`, CONTRATO §21). Mecanismo diferente: o Comarka reroda o `cmd` com um git filtrado, o kit reescreve o `cmd` |
+| 483f3e3 (18/10) | o texto do prompt e do juiz diz que a ampliação vale nesta e nas próximas tentativas | **equivalente**: o prompt do kit já diz "allowlist ampliada até o fim deste ticket" (`executor.sh:493`) e o bloco do juiz não limita a ampliação a uma tentativa (`juiz.ts:186-196`) |
+| bb59341 (18/10) | a allowlist ampliada vale até o fim do ticket e no `SO_ALLOWLIST` | **equivalente**: 8c (`d3ce1b0`), mesmos arquivos do 86dec07 Fix B, evento `VIZINHO_AMPLIADO` no CONTRATO §21 (linha 204). Diferença: o Comarka tirou a guarda de "uma vez por ticket" (o teste já ampliado que segue vermelho conta como dentro da allowlist); o kit mantém "uma vez por versão do ticket" (`hash`). Decidir na sombra qual vale Atenção: este sha não está na main do Comarka, só em `backup/fix-motor-gate-vitest-3commits`. O conteúdo entrou reescrito no `86dec07` (`git log -S` acha `roda_vitest_isolado` e `Unhandled` ali). Contar como um porte só, o do `86dec07`. |
+| 4318257 (18/10) | o loop sincroniza o checkout principal com `origin/main` a cada disparo (`sincronizar_main_checkout`, `test-sync-main.sh`, ticket 1364) | **aberto**. O kit não sincroniza (`git grep` de `sincronizar_main_checkout` e `ff-only` em `scripts/` vazio). Destino: portar só o `ff-only` e as recusas com log (stage sujo, rebase em curso, commit local fora de `docs/fila`). Não portar o rebase e a publicação do commit local de `docs/fila`: conflita com D11 (o motor não pusha). Liga com o clone do loop do dashboard-comercial atrás da origin (24/10), onde o prevoo deveria avisar |
+| 1f0ddc9 (18/10) | `estado-plano-orfas` mostra rc, erro e stderr em todo `expect` (ticket 1398) | **aberto**, destino: descartar. Só mexe em `test/estado-plano-orfas.test.ts`, teste do produto do Comarka: não é motor e não há o que portar. O prefixo PORTE-PENDENTE foi usado sem necessidade. É o mesmo teste instável que motivou o dc90c8d |
+| 9ee36a9 (19/10) | `registra_instavel` abre rascunho de ticket no 3º registro do mesmo teste instável (ticket 1400, `test-instavel-recorrente.sh`) | **aberto**, depois do dc90c8d (o kit não tem registro de instável). Decidir se o motor pode abrir rascunho de ticket sozinho |
+| c2ae29b (28/10) | o disjuntor não conta falha de infra do preflight (claude CLI, repo errado, banco errado, env faltando, sintaxe) e encerra a drenagem; "bloco json inválido" continua contando | **aberto**, sem prefixo PORTE-PENDENTE no commit de origem. Defeito registrado em `docs/defeitos/2026-10-28-disjuntor-conta-falha-de-infra.md`. O kit tem caminho próprio (`preflight_ou_adia`, `executor.sh:1869-1885`) e fica com um resíduo só no caso de 1 ticket elegível (`adiamentos`, limite 4); ver a conferência no defeito |
+| 54fccc1 (28/10) | `ensure_runner_worktree` move para `.quebrada-<ddHHMMSS>` e recria a runner quando o diretório existe com gitdir quebrado | **aberto**, sem prefixo PORTE-PENDENTE no commit de origem. Defeito registrado em `docs/defeitos/2026-10-28-runner-worktree-gitdir-quebrado.md`. O kit não tem `orq-runner`; falta verificar se `lib.sh:869-894` cobre "diretório sem gitdir" |
+| 457856c (17/10) | `harness: consertos das reprovas de 13 a 17/10`, 11 arquivos, cinco pedaços. (1) teste vizinho: allowlist ampliada, `vitest_vizinhos`, camada 15 do validar-fila. (2) evidência do attempt nunca sobrescrita (`preservar_rundir`, `.prevK`). (3) autocommit de status com rebase sobre a origin (`rebase_status_fila`). (4) `ritual-staging` espera o lock. (5) camada 16 do validar-fila: `falha_st_sem_rotulo` (aviso) e `grep_rota_sem_delimitador` (erro) | **misto, linha que faltava na tabela.** (1) **portado** no 8c (`docs/PECAS.md` 8c, `decisao.ts:817`, `gate-ticket.ts:1443`, `executor.sh:1236`). (2) **equivalente por desenho**: `slot_base_attempt` (`executor.sh:929`, peça 0b) numera o próximo attempt livre, nada é sobrescrito. (3) **não porta o rebase e o push** (D11); o aprendizado entra no lote do `4318257`: o status gravado pelo loop não pode desfazer reabertura humana feita na origin (caso 5159). (4) **fica no Comarka**, mesmo destino do `7464018`. (5) **aberto**: `gate-ticket.ts` não tem nada equivalente (os C2c e C14 tratam de `grep -c`, que é outra coisa). Portar como avisos novos no molde de C13 a C16, com medição de falso positivo no corpus |
+
+### Lado do comarka, na hora da migração (não é item do kit)
+
+- Preencher as 32 chaves obrigatórias que faltam no `000-config.json` (orçamento, `branch_protegida`, `juiz.*`, `gate_ticket.*`, `ambiente_id`…).
+- `migrar-liberacoes`: a chave `liberadas` some. Ajustar quem lê: `prontos.py`, `orq-painel.py`, `orq-server.py`, `validar-fila.py`, `test-validar-fila.py`.
+- `migrar-tickets`: `recon_esperado` → `recon`. Ajustar `validar-fila.py`, `test-validar-fila.py`, `orq-telemetria.py`, `test/recon-esperado.test.ts`.
+- Os 35 pendentes não têm `bloco` nem `risco` (aviso no pré-voo).
+- Os scripts que ficam no repo leem o **último** bloco json; o contrato do kit lê o **primeiro** (`estado-fila.py`, `orq-contrato.py`).
+- Criar `docs/roadmap/MAPA.md` + `mapa.json` ou desligar o lint do mapa.
+- Descarregar `com.comarka.orq-server` antes (KeepAlive na porta 8787, que é a mesma do painel do kit; o `orq-server.py` importa funções que o `orq-painel.py` do kit não tem).
+- Remover os crons `*/20` dos avisos e trocar pelo item 10; revisar o job do GitHub Actions do relatório.
+- Remover o writeback Notion (decidido 02/10): `writeback-notion.ts`, o passo 4 de `local-loop.sh:414-436`, a chamada em `.github/workflows/orquestrador.yml:84`, `test/writeback.test.ts` + `test/writeback-notion-chunking.test.ts`, e a chave `writeback_notion` em `docs/fila/000-config.json:14-15`.
+- Rodar a contagem do tsc com os testes vitest do kit dentro de `test/`.
+
+## Estimativa
+
+**15 itens precisam subir para o kit** antes de o comarka poder ser instalado sem perder capacidade:
+10 melhorias genéricas + 5 pontos de configuração/extensão. Os maiores são o recon no loop (1), a prioridade (4),
+o gate streak (5) e o gancho de extensão (10). Os outros são portes de função ou de chave.
+Mais 5 opcionais pequenos. Do lado do comarka são 10 frentes de adaptação, a maioria mecânica via `--migrar`.
+
+Classificação: grupo (a) e (c) do comarka lidos arquivo a arquivo; (b) agrupado por capacidade. As afirmações
+"quebra depois da troca" sobre `orq-server.py` e os `test-*.sh` são inferência por leitura, não execução.
+
+## Etapa 8b: o conserto do autocommit, sugerido ao Comarka (C4)
+
+O kit fechou na 8b o defeito do F5 da convergência (CONTRATO §19.1, commit `9b0addc`): o
+commit do loop leva só as chaves do motor, e a edição alheia fica no working tree com
+`EDICAO_ALHEIA`. O Comarka tem o mesmo defeito em `scripts/orquestrador/local-loop.sh:376-393`
+(`autocommit_status_fila`) e em `:350` (`rebase_status_fila`), que fazem `git add` do arquivo
+inteiro; o caso real é o ba731d8 (18/10 07:39: o `objetivo` do 1361 e o `cmd` do 1371 e do
+1377). O mesmo conserto foi sugerido ao chat do Comarka como C4 do relatório de convergência
+(`~/orq-sessoes/convergencia-comarka-kit.md`, seção C), com PORTE-PENDENTE. Lá as chaves do
+motor são só `status` e `notas_status` (`lib.sh:150-151`), e o conserto precisa cobrir também
+o rebase. Até ele entrar, o "humano mexeu" do resolvedor (§19.4) reconhece o autocommit do
+Comarka pelo assunto, e um autocommit com edição alheia passa como do loop.
+
+---
+
+## Decisão sobre o ticket 015-writer-proprio (28/10/2026)
+
+Rascunho em `docs/fila/rascunhos/015-writer-proprio.md` do Comarka (commit bcce961, igual à cópia em `historico-24out/`), com `dependencias: ["017"]`, fora da fila viva. Pede um writer que transforma `docs/briefs/BRIEF-*.md` em rascunhos de ticket com recon de fonte obrigatório: tabela, coluna e rota são verificadas no repo antes de emitir, e fonte não confirmada vira `REVISAR:fonte-nao-verificada` e rascunho bloqueado. Entra no lugar do `create-story` do BMAD, descartado no 018. A allowlist é `scripts/orquestrador/writer.ts`, `writer-recon.ts`, `writer-prompt.md` e `test-writer.sh`.
+
+**Decisão: não vira etapa do kit agora.** Três motivos:
+
+1. Como está, não pode rodar pelo loop. A allowlist escreve no motor, e o `.claude/rules/motor.md` do Comarka diz que ticket de fila nunca altera o motor. O rascunho precisa sair da fila de ticket e virar frente de motor (sessão humana, commit `MOTOR:`) ou mudar de pasta.
+2. É o planejador do marco D, que vem depois dos marcos A, B e C do roteiro. Fazê-lo agora no kit disputa atenção com a convergência (B) sem atacar os resgates medidos.
+3. A parte reaproveitável tem lugar no kit: o gate de ticket (8a). Candidato, sem implementar: um aviso novo "fonte citada no ticket não verificada" (tabela, coluna ou rota citada no objetivo que não aparece no repo nem na lista de tabelas do config), no molde dos avisos C13 a C16. Não portar o writer inteiro.
+
+Insumo para o marco D: os rascunhos 018a, 018b e 018c do Comarka registram o que o SM do BMAD fez (o brief citava `onboarding_tracking`, que não existe; o SM inventou um disparo automático por WhatsApp e sugeriu uma view materializada, que é DDL). É evidência de que o planejador do kit precisa de recon de fonte antes de emitir, e de que o desenho do marco D com BMAD na arquitetura deve ser revisto com esse dado.
+
+Pendente do Lucas: dizer se o 015 segue como frente `MOTOR:` fora da fila do loop. O `.claude/rules/motor.md` do Comarka, nas 40 primeiras linhas, ainda fala em PORTE-PENDENTE e em dono único no kit; a regra `MOTOR:` de 18/10 não aparece ali.

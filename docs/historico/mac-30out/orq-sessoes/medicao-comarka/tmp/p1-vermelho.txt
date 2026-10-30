@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/Users/lucasantos/orq-sessoes/medicao-comarka/test_c5.py", line 8, in <module>
+    import c5
+ModuleNotFoundError: No module named 'c5'

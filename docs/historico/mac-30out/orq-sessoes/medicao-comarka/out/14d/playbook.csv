@@ -1,0 +1,51 @@
+data,commit,data_na_licao,licao,fonte
+2026-08-08 01:33,31642c814,-,Log ≠ verdade; git é o ground truth.,git show 31642c814:docs/orquestrador/PLAYBOOK.md linha 94
+2026-08-08 01:33,31642c814,-,Executor rodando da casa errada cria ESTADO PARALELO.,git show 31642c814:docs/orquestrador/PLAYBOOK.md linha 97
+2026-08-08 01:33,31642c814,-,Lock robusto = pid + idade máxima + cleanup em TODO caminho de saída.,git show 31642c814:docs/orquestrador/PLAYBOOK.md linha 101
+2026-08-08 01:33,31642c814,-,"Deps referenciam o campo `.id` do schema, nunca o nome do arquivo.",git show 31642c814:docs/orquestrador/PLAYBOOK.md linha 104
+2026-08-08 01:33,31642c814,-,Campo fora do schema é ignorado em silêncio.,git show 31642c814:docs/orquestrador/PLAYBOOK.md linha 107
+2026-08-08 01:33,31642c814,-,`tail -f` prende o terminal.,git show 31642c814:docs/orquestrador/PLAYBOOK.md linha 110
+2026-08-08 02:17,1d5f126ec,-,Formato de story (BMAD) ≠ formato de ticket.,git show 1d5f126ec:docs/orquestrador/PLAYBOOK.md linha 113
+2026-08-08 02:17,1d5f126ec,-,Nunca `kickstart -k` (forçar reinício) com um run vivo.,git show 1d5f126ec:docs/orquestrador/PLAYBOOK.md linha 118
+2026-08-12 10:55,5945b3dcb,-,Motivo de reprova idêntico em 3+ tickets = defeito de spec/harness.,git show 5945b3dcb:docs/orquestrador/PLAYBOOK.md linha 131
+2026-08-12 10:55,5945b3dcb,-,"Se mora fora do repo, não existe.",git show 5945b3dcb:docs/orquestrador/PLAYBOOK.md linha 134
+2026-08-12 10:55,5945b3dcb,-,O orquestrador tem que evoluir pela própria fila.,git show 5945b3dcb:docs/orquestrador/PLAYBOOK.md linha 141
+2026-08-13 19:55,b23b33a05,-,Guard com flag desligada mede a dívida sem travar o CI.,git show b23b33a05:docs/orquestrador/PLAYBOOK.md linha 151
+2026-08-13 21:34,4016c79ef,-,Registrar a key não é o mesmo que religar o componente.,git show 4016c79ef:docs/orquestrador/PLAYBOOK.md linha 158
+2026-08-14 10:12,28155d882,-,"Critério de build é código de saída, nunca substring da saída.",git show 28155d882:docs/orquestrador/PLAYBOOK.md linha 151
+2026-08-14 10:12,28155d882,-,Aba registrada no shell não é aba montada.,git show 28155d882:docs/orquestrador/PLAYBOOK.md linha 163
+2026-08-14 10:12,28155d882,-,"Ticket serial precisa de trava de máquina, não de aviso em prosa.",git show 28155d882:docs/orquestrador/PLAYBOOK.md linha 175
+2026-08-14 10:12,28155d882,-,"""O computador dormiu"" é falha de ambiente: adiado, não reprovado.",git show 28155d882:docs/orquestrador/PLAYBOOK.md linha 185
+2026-08-14 10:12,28155d882,-,"Um ticket, um eixo. Ticket com dois objetivos é reprovado pelo que faltou.",git show 28155d882:docs/orquestrador/PLAYBOOK.md linha 194
+2026-08-14 10:12,28155d882,-,`var()` não resolve em atributo de apresentação SVG.,git show 28155d882:docs/orquestrador/PLAYBOOK.md linha 207
+2026-08-14 10:15,0ef46c4dd,-,"Matar o watchdog não mata o agente: `$!` é a casca, não o processo.",git show 0ef46c4dd:docs/orquestrador/PLAYBOOK.md linha 211
+2026-08-14 10:18,80dd45bae,-,Interrupção de ambiente não é reprovação de mérito — e não é rate limit.,git show 80dd45bae:docs/orquestrador/PLAYBOOK.md linha 225
+2026-08-14 10:19,98143aa1a,-,Pausa que mora em variável de ambiente não é pausa.,git show 98143aa1a:docs/orquestrador/PLAYBOOK.md linha 239
+2026-08-14 10:38,cf2ff4a04,-,`.next/` stale produz falso vermelho no tsc — e já enganou duas vezes.,git show cf2ff4a04:docs/orquestrador/PLAYBOOK.md linha 272
+2026-08-14 14:19,61f980b3b,-,"Agendador é artefato do repo, não do sistema.",git show 61f980b3b:docs/orquestrador/PLAYBOOK.md linha 250
+2026-08-25 18:27,bf26696e0,-,Critério e recon só entram na fila depois de rodar no shell que executa.,git show bf26696e0:docs/orquestrador/PLAYBOOK.md linha 294
+2026-08-25 18:27,bf26696e0,-,Colisão de teste: a allowlist tem que incluir o teste que a mudança quebra.,git show bf26696e0:docs/orquestrador/PLAYBOOK.md linha 315
+2026-08-25 18:27,bf26696e0,-,"Guard `aplica_migration` casa string literal, inclusive em comentário.",git show bf26696e0:docs/orquestrador/PLAYBOOK.md linha 326
+2026-08-26 00:01,bd8c63dcd,26/08,Licao (26/08) — criterio negativo nao pode proibir o que a propria tarefa exige,git show bd8c63dcd:docs/orquestrador/PLAYBOOK.md linha 334
+2026-09-03 15:58,b1ec8be14,03/09,"Licao (03/09) — allowlist em forma de diretorio nao casava com nada, e o circuit breaker culpou o gate errado",git show b1ec8be14:docs/orquestrador/PLAYBOOK.md linha 356
+2026-09-03 17:24,abe788abd,03/09,"Licao (03/09, mesma noite) — o gate consertado rodava de uma copia congelada",git show abe788abd:docs/orquestrador/PLAYBOOK.md linha 403
+2026-09-03 17:24,abe788abd,03/09,"Licao (03/09) — o validador roda em main, o executor roda em staging-auto",git show abe788abd:docs/orquestrador/PLAYBOOK.md linha 430
+2026-09-04 16:58,02e00a592,04/09,"Licao (04/09) — um teste E2E que parou de exercitar o caminho, em silencio",git show 02e00a592:docs/orquestrador/PLAYBOOK.md linha 456
+2026-09-04 16:58,02e00a592,04/09,"Licao (04/09) — comentario nao executa, mas o gate achava que sim",git show 02e00a592:docs/orquestrador/PLAYBOOK.md linha 501
+2026-09-04 16:58,02e00a592,04/09,Licao (04/09) — o furo foi tapado no consumidor e ficou aberto na origem,git show 02e00a592:docs/orquestrador/PLAYBOOK.md linha 550
+2026-09-04 20:17,d1a5e6e29,04/09,Lição — allowlist incompleta torna o ticket impossível (04/09/2026),git show d1a5e6e29:docs/orquestrador/PLAYBOOK.md linha 577
+2026-09-08 19:32,690690912,-,"Licoes (07 e 08/09): spec, allowlist e as duas arvores",git show 690690912:docs/orquestrador/PLAYBOOK.md linha 697
+2026-09-15 10:46,793196ce8,-,"Edição de ticket em disco, sem commit, com o loop ativo",git show 793196ce8:docs/orquestrador/PLAYBOOK.md linha 727
+2026-09-21 19:53,b40517863,21/09,Licao (21/09) — criterio que so prova presenca deixa o antigo na tela,git show b40517863:docs/orquestrador/PLAYBOOK.md linha 923
+2026-09-22 14:44,1334d5d84,22/09,Licao (22/09) — criterio de ausencia amplo sem excecao obriga o executor a esconder,git show 1334d5d84:docs/orquestrador/PLAYBOOK.md linha 937
+2026-09-22 20:16,fb0ef60f2,22/09,Licao (22/09) — aceite escrito contra ticket superado briga com o que a serie entregou,git show fb0ef60f2:docs/orquestrador/PLAYBOOK.md linha 961
+2026-09-22 23:57,ceb326594,23/09,Licao (23/09) — item de aceite ancora no elemento e aceita dado OU ausencia,git show ceb326594:docs/orquestrador/PLAYBOOK.md linha 974
+2026-09-23 12:40,9290c0e3c,23/09,Licao (23/09) — item de aceite nunca ancora em classe de estilo,git show 9290c0e3c:docs/orquestrador/PLAYBOOK.md linha 996
+2026-09-23 13:47,478e60925,23/09,Licao (23/09) — teste de estrutura nao fixa a lista inteira,git show 478e60925:docs/orquestrador/PLAYBOOK.md linha 1016
+2026-09-23 20:25,4a4dc344e,23/09,Licao (23/09) — recon errado some com o ticket da fila sem ninguem ver,git show 4a4dc344e:docs/orquestrador/PLAYBOOK.md linha 1057
+2026-09-26 11:31,64eb67d33,26/09,"Teste que depende do relógio (rota com regra de fim de semana, ticket 386) passou no gate na sexta e deixou a base vermelha no sábado, repro",git show 64eb67d33:docs/orquestrador/PLAYBOOK.md linha 1093
+2026-09-26 11:31,64eb67d33,26/09,"Executor headless não tinha `Bash(git rm:*)`: todo ticket que apaga arquivo bloqueava com trabalho pela metade (caso 635, ""negado pela permi",git show 64eb67d33:docs/orquestrador/PLAYBOOK.md linha 1094
+2026-09-26 15:30,83b2023f5,26/09,Cadeia de tickets que tocam o mesmo arquivo: o teste NOVO criado por um ticket anterior da cadeia não existe no recon do posterior e fica fo,git show 83b2023f5:docs/orquestrador/PLAYBOOK.md linha 1096
+2026-09-26 15:30,83b2023f5,26/09,"Branch frente/<id> de ticket bloqueado não é preservada (635 e 654): contraria a regra de evidência. Pendência de harness, conserto fora da ",git show 83b2023f5:docs/orquestrador/PLAYBOOK.md linha 1097
+2026-09-26 16:00,9810775e6,26/09,default de IA era gemini sem credencial e rotas com provedor fixo claude: IA do OS parada. Regra: call site nunca fixa provedor; usa o defau,git show 9810775e6:docs/orquestrador/PLAYBOOK.md linha 1098
+2026-10-05 15:32,ea5a43c54,05/10,"Ticket que renomeia tabela (739, comarka_pro_penalizacoes → penalizacoes) caiu em duas armadilhas que nenhum gate pegava. (1) O critério `gr",git show ea5a43c54:docs/orquestrador/PLAYBOOK.md linha 1099

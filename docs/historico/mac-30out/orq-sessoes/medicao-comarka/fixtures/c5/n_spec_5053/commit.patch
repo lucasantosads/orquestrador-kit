@@ -1,0 +1,17 @@
+diff --git a/test/inteligencia/escritor-forma.test.ts b/test/inteligencia/escritor-forma.test.ts
+index 5a88442..43e5fe2 100644
+--- a/test/inteligencia/escritor-forma.test.ts
++++ b/test/inteligencia/escritor-forma.test.ts
+@@ -10,7 +10,11 @@ const MOLDE = readdirSync("docs/fila/apolo").find((f) => f.startsWith("5042-"))!
+ 
+ function molde() {
+   const md = readFileSync(`docs/fila/apolo/${MOLDE}`, "utf-8");
+-  const campos = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(md)![1]);
++  const lido = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(md)![1]);
++  // Quando o 5042 roda, a migration dele passa a existir e o escritor recusa a versao
++  // repetida (16/10, 5042 attempt-2). O molde troca a versao por uma que nunca existe.
++  const versao = String(lido.pathspec_allowlist[0]).split("/").pop()!.split("_")[0];
++  const campos = JSON.parse(JSON.stringify(lido).split(versao).join("20991231235900"));
+   return { titulo: "Molde", slug: "molde-forma", prosa: "prosa", recon: "recon", campos };
+ }
+ 

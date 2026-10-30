@@ -1,0 +1,1620 @@
+#!/usr/bin/env bash
+# lib.sh — helpers compartilhados do Orquestrador Autônomo.
+# Sourced por executor.sh / avaliador.sh / enforcement.sh.
+# Requisitos: bash, git, jq, awk. Nada que gaste dinheiro ou aplique DDL.
+#
+# PORTE (ORQ-01): vindo de comarka-os (scripts/orquestrador/lib.sh), repo irmão
+# com o orquestrador em produção. Adaptações desta porta, e SÓ estas:
+#   1. Identidade: lá o config expõe .supabase_project_id; aqui é .ambiente_id.
+#   2. is_adiavel: a política deste repo (politica_adiamento.causas_que_adiam)
+#      lista 6 causas; a de lá cobria limite/quota/timeout e interrupção de
+#      ambiente. Erro de conexão e sessão expirada entraram explicitamente.
+# Não vieram: baseline_scope_regex e diff_cap do config deles (o nosso baseline
+# é 0 e o diff_cap é 600), nem nada de Notion, email ou dev server.
+
+set -euo pipefail
+
+# --- Raízes ---------------------------------------------------------------
+# ROOT = raiz de EXECUÇÃO do run (git ops + guard de árvore suja do executor).
+# Por padrão é o checkout de invocação (dois níveis acima deste arquivo), mas o
+# local-loop pode apontá-lo para um worktree LIMPO dedicado via ORQ_EXEC_ROOT.
+# Assim o guard de sujeira vale para a árvore de EXECUÇÃO — NUNCA para o
+# checkout principal, que pode estar sujo à vontade.
+ORQ_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${ORQ_EXEC_ROOT:-$(cd "$ORQ_LIB_DIR/../.." && pwd)}"
+
+# MAIN_CHECKOUT = checkout PRINCIPAL (pai do .git comum). É a FONTE ÚNICA da fila:
+# docs/fila (tickets, config, liberações) e docs/fila/runs (evidência) vivem SÓ
+# aqui, e o executor lê/escreve status SEMPRE aqui — mesmo rodando de outro
+# worktree. Resolver a fila contra ROOT fazia o run gravar status numa cópia
+# paralela: o status aprovado nunca chegava ao canônico e a drenagem
+# re-selecionava um ticket já pronto. node_modules/.env.local (não-versionados)
+# e worktrees_dir também são relativos a ELE — não à raiz de execução.
+_git_common="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+if [ -n "$_git_common" ] && [ -d "$_git_common" ]; then
+  MAIN_CHECKOUT="$(cd "$_git_common/.." && pwd)"
+else
+  MAIN_CHECKOUT="$ROOT"   # fallback: fora de git (fixtures de teste), execução == principal
+fi
+
+# Fila/config/runs: SEMPRE no checkout principal (fonte única), nunca no ROOT de
+# execução. Sob fixture não-git, MAIN_CHECKOUT cai em ROOT e isto resolve igual.
+FILA_DIR="$MAIN_CHECKOUT/docs/fila"
+CONFIG="$FILA_DIR/000-config.json"
+
+# --- Toolchain: o `tsx` (peça T1) --------------------------------------------
+# O motor é TypeScript e NADA dele roda sem `tsx` — gates, juiz, decisão, lock,
+# pré-voo, enforcement. Até esta peça as 14 chamadas eram `npx tsx` cru, e o
+# `npx` sem flag BAIXA da rede o pacote que não encontra: num repo instalado sem
+# `tsx` nas devDependencies isso é prompt interativo num TTY e erro fora dele —
+# sob o launchd, um tick que morre sem dizer por quê.
+# Medido em 2026-09-09 no ~/Projetos/actus-saas: `node_modules/.bin/` tem `next`,
+# `tsc` e `vitest`, e NÃO tem `tsx`.
+#
+# A resolução é UMA, aqui, e vale para todo mundo que carrega o lib.sh:
+#   1. `$MAIN_CHECKOUT/node_modules/.bin/tsx`, se existir e for executável. É o
+#      binário DO REPO, resolvido contra o checkout PRINCIPAL e não contra ROOT:
+#      a worktree tem `node_modules` symlinkado para o dele, então os dois dão o
+#      mesmo arquivo — e o principal dá por um caminho que não depende de
+#      symlink existir.
+#   2. `npx --no-install tsx`. A rede fica de fora POR CONSTRUÇÃO: `--no-install`
+#      falha rápido em vez de baixar. Não existe terceiro caminho.
+#
+# O fallback (2) é o que mantém os verbos READ-ONLY do `orq` funcionando num
+# checkout de layout diferente; ele NÃO é rota do loop, porque o `local-loop.sh`
+# e a `cat.7` do pré-voo exigem o binário local (1) antes de qualquer coisa. É a
+# separação deliberada: o fallback deixa consultar, o gate impede drenar.
+#
+# `ORQ_TSX` é ARRAY porque o fallback tem TRÊS palavras: `$(tsx_bin)` sem aspas
+# resolveria isso por word-splitting e quebraria no primeiro checkout com espaço
+# no caminho. Quem chama usa `"${ORQ_TSX[@]}"`; `tsx_bin` existe para MENSAGEM e
+# para teste — imprime o comando resolvido como uma linha legível.
+TSX_LOCAL="$MAIN_CHECKOUT/node_modules/.bin/tsx"
+if [ -x "$TSX_LOCAL" ]; then
+  ORQ_TSX=( "$TSX_LOCAL" )
+else
+  ORQ_TSX=( npx --no-install tsx )
+fi
+tsx_bin() { printf '%s\n' "${ORQ_TSX[*]}"; }
+
+# tsx_local_ok — 0 quando o `tsx` DO REPO existe e é executável. Não roda nada,
+# não abre rede, não custa processo: é `test -x`, e é a MESMA pergunta que o
+# `instalar.sh` faz antes de instalar e que a `cat.7` do pré-voo responde.
+tsx_local_ok() { [ -x "$TSX_LOCAL" ]; }
+
+# --- Logging --------------------------------------------------------------
+log()  { printf '[orq %s] %s\n' "$(date -u +%H:%M:%S 2>/dev/null || echo '--:--:--')" "$*" >&2; }
+die()  { printf '[orq ERRO] %s\n' "$*" >&2; exit 1; }
+
+# --- Config ---------------------------------------------------------------
+cfg() { jq -r "$1" "$CONFIG"; }
+
+CFG_BRANCH_ALVO="$(cfg '.branch_alvo')"
+CFG_MAX_RETRIES="$(cfg '.max_retries')"
+CFG_MIGRATIONS_DIR="$(cfg '.migrations_dir')"
+CFG_RUNS_DIR="$(cfg '.runs_dir')"
+CFG_LIBERACOES="$MAIN_CHECKOUT/$(cfg '.liberacoes_file')"
+CFG_WORKTREES_DIR="$(cfg '.worktrees_dir')"
+CFG_DIFF_CAP="$(cfg '.diff_cap_linhas')"
+
+# --- Identidade (ADAPTAÇÃO 1) ------------------------------------------------
+# Trava de identidade: antes de qualquer gasto, o executor confirma repo e
+# ambiente certos. O origin do checkout DEVE conter CFG_REPO_ORIGIN; o
+# identificador de ambiente extraído do .env DEVE ser igual a CFG_AMBIENTE_ID.
+# Divergência = aborta o run inteiro, zero tentativa.
+# O config do comarka-os chama esse campo de `supabase_project_id`; o nosso
+# chama `ambiente_id` — é a única diferença de nome, o papel é o mesmo.
+CFG_REPO_ORIGIN="$(cfg '.repo_origin_deve_conter')"
+CFG_AMBIENTE_ID="$(cfg '.ambiente_id')"
+
+# Base ABSOLUTA da evidência de runs — canônica no checkout principal (fonte
+# única), independente da raiz de execução.
+RUNS_BASE="$MAIN_CHECKOUT/$CFG_RUNS_DIR"
+
+# Base ABSOLUTA dos worktrees, resolvida contra o checkout PRINCIPAL (não o de
+# invocação). worktrees_dir é relativo (ex.: ../_worktrees); normaliza para
+# absoluto para nunca dobrar. O dir base já existe; se não, mantém o caminho cru.
+WORKTREES_BASE="$(cd "$MAIN_CHECKOUT/$CFG_WORKTREES_DIR" 2>/dev/null && pwd || echo "$MAIN_CHECKOUT/$CFG_WORKTREES_DIR")"
+
+# --- Tickets --------------------------------------------------------------
+# Arquivos de ticket: docs/fila/NNN-*.md  (exclui _TEMPLATE.md).
+ticket_files() {
+  find "$FILA_DIR" -maxdepth 1 -type f -name '[0-9]*.md' 2>/dev/null | sort
+}
+
+# Extrai o PRIMEIRO bloco ```json ... ``` de um ticket .md.
+#
+# Divergência 10 do CONTRATO, FECHADA: o ticket é o PRIMEIRO bloco; qualquer
+# outro bloco JSON no arquivo é PROSA (exemplo de payload, saída esperada — o
+# que um ticket sobre API descreve o tempo todo). Antes esta função concatenava
+# TODOS os blocos, e com dois o resultado não parseava: `jq` morria, o preflight
+# derrubava o run inteiro e ninguém sabia por quê. Os outros dois leitores
+# (`gate-ticket.ts:blocoJson`, `fila-read.ts:extractJsonBlock`) já liam o
+# primeiro; agora os três dão a mesma resposta.
+#
+# A cerca é comparada com `gsub` de espaço em volta, e não literalmente, porque
+# os dois leitores de TS usam `linha.trim() === '```json'`. Três leitores que
+# concordam sobre QUAL bloco e discordam sobre o que é uma cerca não concordam.
+ticket_json() {
+  awk '
+    { cerca = $0; gsub(/^[ \t]+|[ \t]+$/, "", cerca) }
+    !feito && !inblk && cerca == "```json" { inblk=1; next }
+    inblk && cerca == "```" { inblk=0; feito=1; next }
+    inblk { print }
+  ' "$1"
+}
+
+# ticket_field <arquivo> <jq-filter>
+ticket_field() { ticket_json "$1" | jq -r "$2"; }
+
+# ticket_file_by_id <id>  ->  caminho do .md, ou vazio.
+ticket_file_by_id() {
+  local id="$1" f
+  for f in $(ticket_files); do
+    [ "$(ticket_field "$f" '.id')" = "$id" ] && { echo "$f"; return 0; }
+  done
+  return 0
+}
+
+# ticket_set <arquivo> <jq-filter> [args-extra-do-jq...]
+# Reescreve SÓ o bloco json do .md preservando o resto (prosa) intacto.
+# Ex.: ticket_set f '.status = $s' --arg s done
+ticket_set() {
+  local file="$1" filter="$2"; shift 2
+  local tmpjson tmpout
+  tmpjson="$(mktemp)"; tmpout="$(mktemp)"
+  ticket_json "$file" | jq "$@" "$filter" > "$tmpjson"
+  # SÓ o primeiro bloco é reescrito (divergência 10). Sem o `feito`, a segunda
+  # cerca ```json da prosa disparava a mesma regra e o JSON do ticket era
+  # DESPEJADO por cima do exemplo — um ticket com dois blocos saía do
+  # `ticket_set` com o bloco de máquina duplicado e a prosa destruída.
+  awk -v f="$tmpjson" '
+    { cerca = $0; gsub(/^[ \t]+|[ \t]+$/, "", cerca) }
+    !feito && !inblk && cerca == "```json" { print; while ((getline line < f) > 0) print line; close(f); inblk=1; next }
+    inblk && cerca == "```" { print; inblk=0; feito=1; next }
+    inblk { next }
+    { print }
+  ' "$file" > "$tmpout"
+  mv "$tmpout" "$file"
+  rm -f "$tmpjson"
+}
+
+# Toda transição para fora de `pendente` zera o contador do teto de adiamento
+# por ambiente (ver ADIAMENTOS POR AMBIENTE, abaixo): passar de fase quebra a
+# sequência. E como bloqueado também passa por aqui, o ticket reaberto à mão
+# (bloqueado -> pendente) volta sem contador.
+ticket_set_status() {
+  ticket_set "$1" '.status = $s | if $s != "pendente" then del(.adiamentos_ambiente) else . end' --arg s "$2"
+}
+ticket_set_nota()   { ticket_set "$1" '.notas_status = $v' --arg v "$2"; }
+
+# --- TENTATIVAS PERSISTIDAS (peça 7b-4, porte do f3aaa89 do Actus) ------------
+# `tentativas` no ticket é a FONTE DA VERDADE do contador de retry: quantas
+# tentativas este ticket já consumiu, somando todas as drenagens. O drive_ticket
+# lê no início, grava attempt+1 ANTES de rodar a tentativa (crash no meio conta)
+# e devolve o valor anterior quando o desfecho não é reprovação (adiado,
+# aprovado, refatiar não consomem). Zera na transição para done (local-loop.sh)
+# e quando um humano reabre o ticket. Ausente ou não numérico = 0 (ticket
+# antigo). É o nome do schema (`tentativas_consumidas` é o v1, e o
+# migrar-tickets renomeia).
+ticket_tentativas() {
+  local n
+  n="$(ticket_field "$1" '.tentativas // 0' 2>/dev/null || echo 0)"
+  case "$n" in ''|*[!0-9]*) n=0 ;; esac
+  echo "$n"
+}
+ticket_set_tentativas()  { ticket_set "$1" '.tentativas = ($n | tonumber)' --arg n "$2"; }
+ticket_zera_tentativas() { ticket_set_tentativas "$1" 0; }
+
+# --- DEVOLUÇÃO HUMANA ZERA OS CONTADORES (peça 7b-8) --------------------------
+# reabertura_humana <arquivo> -> 0 quando zerou (o ticket estava bloqueado e um
+# humano o devolveu para pendente); 1 quando não havia nada a fazer.
+#
+# Um ticket bloqueado por max_retries e devolvido à mão (status editado e
+# commitado, como o lote 14 fez com o 235) voltava com `tentativas` no limite:
+# rodava UMA tentativa e bloqueava de novo. O mesmo com os contadores da
+# drenagem (.sem-progresso, .adiamentos). Aqui os três zeram, o zero de
+# `tentativas` passa pelo `ticket_commit` (a árvore fica limpa, como em toda
+# transição) e a trilha ganha `RECUPERADO motivo=reaberto de=bloqueado`, que é
+# também o que impede zerar duas vezes. A decisão (o último desfecho do ticket
+# na trilha é BLOQUEADO) é do decisao.ts; sem trilha legível, nada é zerado.
+reabertura_humana() {
+  local file="$1" id
+  [ "$(ticket_field "$file" '.status' 2>/dev/null || true)" = pendente ] || return 1
+  id="$(ticket_field "$file" '.id' 2>/dev/null || true)"
+  [ -n "$id" ] && [ -s "$EVENTS_FILE" ] || return 1
+  awk -v id="$id" '$2 == id' "$EVENTS_FILE" 2>/dev/null \
+    | "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/decisao-cli.ts" "$MAIN_CHECKOUT" reaberto >/dev/null 2>&1 || return 1
+  ticket_zera_tentativas "$file"
+  # Porte do Actus (ae29dcd): o contador de adiamentos por 'ambiente' zera junto.
+  ticket_zera_adiamentos_ambiente "$file"
+  ticket_commit "$file" "fila: $id reaberto de bloqueado (contadores zerados)"
+  if escrita_de_teste_permitida "$RUNS_BASE/$id"; then
+    rm -f "$RUNS_BASE/$id/.sem-progresso" "$RUNS_BASE/$id/.adiamentos" 2>/dev/null || true
+  fi
+  event "$id" RECUPERADO "motivo=reaberto" "de=bloqueado"
+  log "  $id devolvido de bloqueado para pendente: tentativas, .sem-progresso e .adiamentos zerados"
+  return 0
+}
+
+# --- ADIAMENTOS POR AMBIENTE (teto, harness manual 2026-09-22) ---------------
+# Adiamento não consome tentativa, e é de propósito: infra caída não é defeito do
+# trabalho. Só que a causa 'ambiente' (permissão negada junto com falha de
+# resultado) nem sempre passa sozinha. O 481 foi adiado por 'ambiente' em
+# drenagem atrás de drenagem, cada uma pagando agente e juiz inteiros (888 s em
+# 22/09), sem desfecho. Adiamento sem teto é retry sem teto disfarçado.
+#
+# `adiamentos_ambiente` no ticket conta os adiamentos CONSECUTIVOS por essa
+# causa. No TETO, o drive_ticket bloqueia com a causa na nota. Zera quando o
+# ticket passa de fase (ticket_set_status para qualquer coisa que não seja
+# pendente, ou reprovação, que quebra a sequência) ou é reaberto. Adiamento por
+# OUTRA causa (rate limit, sessão, timeout...) nem conta nem zera. Constante e
+# não config: mexer no 000-config.json é decisão humana.
+TETO_ADIAMENTO_AMBIENTE=3
+ticket_adiamentos_ambiente() {
+  local n
+  n="$(ticket_field "$1" '.adiamentos_ambiente // 0')"
+  case "$n" in ''|*[!0-9]*) n=0 ;; esac
+  echo "$n"
+}
+ticket_set_adiamentos_ambiente() { ticket_set "$1" '.adiamentos_ambiente = ($n | tonumber)' --arg n "$2"; }
+# Só reescreve o ticket quando o campo existe: não mexe na formatação de quem
+# nunca foi adiado por ambiente.
+ticket_zera_adiamentos_ambiente() {
+  [ "$(ticket_field "$1" 'has("adiamentos_ambiente")')" = true ] || return 0
+  ticket_set "$1" 'del(.adiamentos_ambiente)'
+}
+
+# --- O COMMIT DO LOOP LEVA SÓ AS CHAVES DO MOTOR (etapa 8b, peça 1) ----------
+# O `git add` do arquivo inteiro levava junto qualquer edição que não fosse do
+# loop. Caso real: o ba731d8 do comarka-operacional (18/10/2026 07:39) commitou
+# como "status automatico" o `objetivo` do 1361 e o `cmd` de critério do 1371 e
+# do 1377, editados no working tree por outra sessão, sem trailer e sem autor.
+#
+# Agora o commit do motor é montado num índice TEMPORÁRIO a partir da HEAD:
+#   - ticket sem edição alheia: entra o arquivo do working tree, como antes;
+#   - com edição alheia (fora de campos-do-motor.json, inclusive a prosa): entra
+#     a versão da HEAD com só as chaves do motor trocadas, e a edição alheia
+#     fica no working tree, sem commit, com EDICAO_ALHEIA na trilha e um aviso
+#     (uma vez por edição, não a cada escrita);
+#   - ticket fora da HEAD (criado e não commitado): não entra, e EDICAO_ALHEIA
+#     com campos=nao_rastreado.
+# O commit é `git commit` de verdade (os hooks do repo rodam) e leva um trailer
+# `Orq-Loop: <id>` por ticket: é por ele que o resolvedor separa commit do loop
+# de commit humano (peça 4), já que o assunto "fila: <id> …" é igual.
+CAMPOS_DO_MOTOR_FILE="$ORQ_LIB_DIR/campos-do-motor.json"
+
+# Tudo do ticket fora do primeiro bloco json (a prosa, com as cercas).
+_ticket_prosa() {
+  awk '
+    { cerca = $0; gsub(/^[ \t]+|[ \t]+$/, "", cerca) }
+    !feito && !inblk && cerca == "```json" { print; inblk=1; next }
+    inblk && cerca == "```" { print; inblk=0; feito=1; next }
+    inblk { next }
+    { print }
+  ' "$1"
+}
+
+# _ticket_rel <arquivo> -> caminho no repo, vazio se não está na HEAD.
+_ticket_rel() {
+  git -C "$(dirname "$1")" ls-tree --full-name --name-only HEAD -- "$(basename "$1")" 2>/dev/null || true
+}
+
+# ticket_alheio <arquivo> -> os campos que não são do motor e diferem da HEAD
+# (separados por vírgula; `prosa` para fora do bloco; `nao_rastreado` se o
+# arquivo não está na HEAD). Vazio: só o motor mexeu.
+ticket_alheio() {
+  local file="$1" rel tmp campos
+  rel="$(_ticket_rel "$file")"
+  [ -n "$rel" ] || { echo nao_rastreado; return 0; }
+  tmp="$(mktemp)"
+  git -C "$MAIN_CHECKOUT" show "HEAD:$rel" > "$tmp" 2>/dev/null
+  campos="$(jq -rn --slurpfile a <(ticket_json "$tmp") --slurpfile b <(ticket_json "$file") \
+      --slurpfile c "$CAMPOS_DO_MOTOR_FILE" '
+    ($a[0] // {}) as $a | ($b[0] // {}) as $b
+    | [ (($a | keys_unsorted) + ($b | keys_unsorted)) | unique[]
+        | select(. as $k | $c[0] | index($k) | not)
+        | select($a[.] != $b[.]) ] | join(",")' 2>/dev/null || echo bloco_ilegivel)"
+  if ! cmp -s <(_ticket_prosa "$tmp") <(_ticket_prosa "$file"); then campos="${campos:+$campos,}prosa"; fi
+  rm -f "$tmp"
+  printf '%s' "$campos"
+}
+
+# ticket_so_motor <arquivo> -> a versão da HEAD com só as chaves do motor do
+# working tree (ausente no working tree = apagada).
+ticket_so_motor() {
+  local file="$1" rel tmp wt
+  rel="$(_ticket_rel "$file")"
+  tmp="$(mktemp)"
+  git -C "$MAIN_CHECKOUT" show "HEAD:$rel" > "$tmp"
+  wt="$(ticket_json "$file" | jq -c .)"
+  ticket_set "$tmp" 'reduce $c[0][] as $k (.; if ($w | has($k)) then .[$k] = $w[$k] else del(.[$k]) end)' \
+    --argjson w "$wt" --slurpfile c "$CAMPOS_DO_MOTOR_FILE"
+  cat "$tmp"
+  rm -f "$tmp"
+}
+
+# Evento e aviso de edição alheia, uma vez por edição: a marca guarda o hash do
+# ticket SEM as chaves do motor, que muda só quando a edição alheia muda.
+_aviso_edicao_alheia() {
+  local file="$1" id="$2" campos="$3" marca h
+  marca="$RUNS_BASE/$id/.edicao-alheia"
+  h="$( { ticket_json "$file" | jq -S -c --slurpfile c "$CAMPOS_DO_MOTOR_FILE" 'reduce $c[0][] as $k (.; del(.[$k]))' 2>/dev/null; _ticket_prosa "$file"; } | shasum -a 256 | cut -c1-12)"
+  [ "$(cat "$marca" 2>/dev/null)" = "$h" ] && return 0
+  if escrita_de_teste_permitida "$marca"; then mkdir -p "$(dirname "$marca")" && printf '%s\n' "$h" > "$marca"; fi
+  event "$id" EDICAO_ALHEIA "arquivo=$(basename "$file")" "campos=$campos" "hash=$h"
+  log "  AVISO: edição que não é do loop em $(basename "$file") ($campos): fica no working tree, sem commit; o loop commitou só as chaves dele"
+}
+
+# commit_motor <mensagem> <arquivo>... — o commit do loop com os tickets dados.
+# Idempotente: sem diferença para a HEAD, não cria commit. Falha não é fatal.
+commit_motor() {
+  local msg="$1"; shift
+  local idx f rel id campos blob modo trailers="" ok=1
+  local -a rels=()
+  idx="$(mktemp)"
+  GIT_INDEX_FILE="$idx" git -C "$MAIN_CHECKOUT" read-tree HEAD || { rm -f "$idx"; return 1; }
+  for f in "$@"; do
+    id="$(ticket_field "$f" '.id' 2>/dev/null || true)"
+    campos="$(ticket_alheio "$f")"
+    if [ "$campos" = nao_rastreado ]; then _aviso_edicao_alheia "$f" "${id:-—}" "$campos"; continue; fi
+    rel="$(_ticket_rel "$f")"
+    if [ -z "$campos" ]; then
+      blob="$(git -C "$MAIN_CHECKOUT" hash-object -w -- "$f")"
+    else
+      blob="$(ticket_so_motor "$f" | git -C "$MAIN_CHECKOUT" hash-object -w --stdin)"
+      _aviso_edicao_alheia "$f" "$id" "$campos"
+    fi
+    modo="$(git -C "$MAIN_CHECKOUT" ls-tree HEAD -- "$rel" | awk '{print $1}')"
+    GIT_INDEX_FILE="$idx" git -C "$MAIN_CHECKOUT" update-index --cacheinfo "${modo:-100644},$blob,$rel" || ok=0
+    rels+=("$rel")
+    trailers="${trailers:+$trailers
+}Orq-Loop: $id"
+  done
+  if [ "${#rels[@]}" -eq 0 ] || [ "$ok" = 0 ] || GIT_INDEX_FILE="$idx" git -C "$MAIN_CHECKOUT" diff --cached --quiet; then
+    rm -f "$idx"; [ "$ok" = 1 ]; return
+  fi
+  GIT_INDEX_FILE="$idx" git -C "$MAIN_CHECKOUT" commit -q -m "$msg" -m "$trailers" || { rm -f "$idx"; return 1; }
+  rm -f "$idx"
+  # O índice real volta a casar a HEAD nesses caminhos; a edição alheia segue no working tree.
+  git -C "$MAIN_CHECKOUT" reset -q -- "${rels[@]}" 2>/dev/null || true
+}
+
+# ticket_commit <arquivo> <mensagem>
+# Commita a mudança de status/nota do ticket no MAIN_CHECKOUT imediatamente
+# apos escreve-la. Sem isso a arvore fica suja entre disparos e o preflight
+# do PROXIMO ticket aborta com "arvore de execucao suja" — incidente visto
+# 6+ vezes (ver ticket 012). Desde a 8b passa pelo commit_motor: só as chaves
+# do motor, nunca `git add` do arquivo inteiro.
+ticket_commit() { commit_motor "$2" "$1"; }
+
+# --- Observabilidade (contrato: skill/references/observabilidade.md §1 e §2) --
+# Duas irmãs do `log`, no mesmo lugar onde o loop já registra progresso:
+#   status_set <chave=valor>...  reescreve o snapshot INTEIRO (nunca append)
+#   event <id> <EVENTO> [k=v]... anexa UMA linha à trilha
+# Best-effort por desenho: telemetria nunca derruba um run. Todo caminho de erro
+# termina em `return 0`.
+STATUS_FILE="$RUNS_BASE/STATUS.md"
+STATUS_STATE="$RUNS_BASE/.status.json"   # estado entre chamadas; o .md é derivado
+EVENTS_FILE="$RUNS_BASE/events.log"
+
+# --- ISOLAMENTO DE TESTE (peça 0d) -------------------------------------------
+# `ORQ_TESTE=1` é a declaração "quem está rodando é script de TESTE". Sob ela, a
+# trilha, o STATUS e o ledger de custo só podem ser escritos DENTRO do fixture
+# (`$ORQ_EXEC_ROOT`). Qualquer outro destino é a trilha de PRODUÇÃO.
+#
+# Por que existe: `lib.sh` resolve `MAIN_CHECKOUT` por `git rev-parse
+# --git-common-dir`, então um `source lib.sh` no TOPO de um script de teste —
+# rodado de qualquer worktree — herda o checkout PRINCIPAL e escreve na trilha
+# real. Foi por essa porta que entraram os dois `EXECUTOR_MORREU rc=1 fase=?` das
+# 20:45 e 20:47 de 2026-09-04 no `events.log` real (linhas 153, 155 e 156), sem
+# drenagem nenhuma por trás: evidência falsa, indistinguível de morte de verdade,
+# e a peça 10 do PLAYBOOK já tinha mostrado a versão cara do mesmo buraco (o
+# `test-preflight.sh` cobrando US$ 0,34 por rodar contra o config real).
+#
+# A recusa é SILENCIOSA no desfecho — telemetria nunca derruba run, contrato §1 —
+# e RUIDOSA no log: quem esqueceu o `ORQ_EXEC_ROOT` precisa ver, e o teste que
+# afirma o isolamento precisa de algo para grepar.
+escrita_de_teste_permitida() {
+  [ "${ORQ_TESTE:-0}" = 1 ] || return 0
+  local alvo="${1:-$RUNS_BASE}" raiz="${ORQ_EXEC_ROOT:-}"
+  if [ -n "$raiz" ]; then
+    # FÍSICO dos dois lados. No macOS `mktemp -d` devolve /var/folders/… e o
+    # `git rev-parse --path-format=absolute` devolve /private/var/folders/… para
+    # o MESMO diretório (/var é symlink de /private/var). Comparar texto cru
+    # recusaria escrita legítima dentro do fixture — guarda que dá falso
+    # positivo é guarda que alguém desliga.
+    case "$alvo/" in "${raiz%/}"/*) return 0 ;; esac
+    if [ -d "$raiz" ]; then
+      local raiz_fis alvo_fis
+      raiz_fis="$(cd "$raiz" && pwd -P)"
+      alvo_fis="$(caminho_fisico "$alvo")"
+      case "$alvo_fis/" in "${raiz_fis%/}"/*) return 0 ;; esac
+    fi
+  fi
+  log "ORQ_TESTE=1: destino '$alvo' FORA de ORQ_EXEC_ROOT='${ORQ_EXEC_ROOT:-<vazio>}' — escrita RECUSADA (é a trilha de produção)"
+  return 1
+}
+
+# caminho_fisico <caminho> -> o mesmo caminho com o ancestral EXISTENTE resolvido
+# fisicamente (o alvo em si pode ainda não existir: é o arquivo que se vai criar).
+caminho_fisico() {
+  local alvo="$1" dir="$1" resto=""
+  while [ -n "$dir" ] && [ "$dir" != / ] && [ ! -d "$dir" ]; do
+    resto="/${dir##*/}$resto"; dir="${dir%/*}"; [ -n "$dir" ] || dir=/
+  done
+  if [ -d "$dir" ]; then printf '%s%s' "$(cd "$dir" && pwd -P)" "$resto"; else printf '%s' "$alvo"; fi
+}
+
+# ticket_corrompido <arquivo> -> 0 se o bloco ```json falta, está vazio ou não
+# passa em `jq empty`.
+#
+# Ticket 630 (23/09/2026). `ticket_json` de arquivo sem bloco ou com bloco vazio
+# não imprime nada, e `jq empty` com entrada vazia sai 0: o teste de vazio vem
+# antes, senão o bloco vazio passa por válido. O teste é `=~` e não
+# `${j//[[:space:]]/}`: a substituição do bash é quadrática e levou minutos na
+# fila real (blocos de dezenas de KB).
+ticket_corrompido() {
+  local j
+  j="$(ticket_json "$1" 2>/dev/null)"
+  [[ "$j" =~ [^[:space:]] ]] || return 0
+  printf '%s' "$j" | jq empty >/dev/null 2>&1 && return 1
+  return 0
+}
+
+# tickets_status_stream -> "<status>\t<arquivo>" por linha, um `jq` POR TICKET.
+#
+# Ticket 630: era UM jq para a fila inteira (N tickets × 2 jq fazia o
+# status_set custar segundos), e um único ticket quebrado derrubava o parse de
+# todos: o placar virava "sem ticket" com 4 tickets válidos na fila. Um jq por
+# arquivo isola o quebrado, que sai com status `corrompido` (bloco ausente,
+# vazio ou que não parseia: o mesmo critério do ticket_corrompido). O basename
+# vai junto para o status_render tirar placar e lista de corrompidos de UMA
+# passada pela fila.
+tickets_status_stream() {
+  local f j st
+  for f in $(ticket_files); do
+    j="$(ticket_json "$f" 2>/dev/null)"
+    st=""
+    if [[ "$j" =~ [^[:space:]] ]]; then
+      st="$(printf '%s' "$j" | jq -r '.status // "?"' 2>/dev/null)" || st=""
+    fi
+    printf '%s\t%s\n' "${st:-corrompido}" "$(basename "$f")"
+  done
+}
+
+# placar_do_stream -> lê tickets_status_stream no stdin e imprime o placar.
+placar_do_stream() {
+  awk -F '\t' '
+    $1 == "" { next }
+    { n[$1]++ }
+    END {
+      split("pendente aguardando_merge refatiar bloqueado done", o, " ")
+      for (i = 1; i <= 5; i++) { k = o[i]; if (k in n) { printf "%s%d %s", (s++ ? " · " : ""), n[k], k; delete n[k] } }
+      for (k in n) printf "%s%d %s", (s++ ? " · " : ""), n[k], k
+      if (!s) printf "sem ticket"
+      printf "\n"
+    }'
+}
+
+# corrompidos_do_stream -> lê tickets_status_stream no stdin e imprime o
+# basename de cada ticket corrompido, um por linha.
+corrompidos_do_stream() {
+  awk -F '\t' '$1 == "corrompido" { print $2 }'
+}
+
+# placar_fila -> "3 pendente · 5 bloqueado · 41 done" (ordem fixa; extras no fim).
+placar_fila() { tickets_status_stream | placar_do_stream; }
+
+# fila_corrompida -> o basename de cada ticket corrompido, um por linha.
+fila_corrompida() { tickets_status_stream | corrompidos_do_stream; }
+
+# staging_linha -> HEAD curto da branch alvo + estado do push (regra 12: a
+# supressão esquecida tem que aparecer no snapshot).
+staging_linha() {
+  local sha
+  sha="$(git -C "$ROOT" rev-parse --short "$CFG_BRANCH_ALVO" 2>/dev/null || echo '—')"
+  printf '%s · push suprimido (publicar é humano neste repo)\n' "$sha"
+}
+
+# uma_linha <texto> [max] -> o texto com \n, \r e \t ESCAPADOS (dois caracteres
+# cada) e, se `max` > 0, cortado em `max` caracteres.
+#
+# Peça 0e(a). O formato da trilha é UMA LINHA POR EVENTO, e era só convenção: um
+# `\n` dentro de um valor quebrava o evento em várias linhas, e toda linha a
+# partir da segunda ficava sem timestamp — invisível para `grep`, `tail`,
+# contagem e para o `orq erro`, que lê a trilha por linha. Medido em 2026-09-05
+# 13:40, com o loop drenando: 427 linhas, 243 eventos e 184 linhas sem timestamp;
+# trinta minutos antes eram 413/237/176. O dano cresce a cada drenagem.
+#
+# NÃO escapa a barra invertida: o valor é comando de shell (`grep -E 'fetch\('`),
+# e dobrar `\` mudaria os bytes do que a trilha afirma. O objetivo é o formato de
+# UMA linha, não um encoding reversível.
+uma_linha() {
+  local s="${1-}" max="${2:-0}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\t'/\\t}"
+  if [ "$max" -gt 0 ] && [ "${#s}" -gt "$max" ]; then s="${s:0:$max}"; fi
+  printf '%s' "$s"
+}
+
+# event <id> <EVENTO> [chave=valor ...]
+# Uma linha, formato fixo: <iso8601> <id> <EVENTO> chave=valor...
+# `motivo=` é sempre TOKEN curto e estável (grepável), nunca frase: quem quer a
+# frase abre a evidência do run.
+event() {
+  local id="${1:-—}" ev="${2:-?}"
+  [ $# -ge 2 ] && shift 2 || shift $#
+  escrita_de_teste_permitida "$EVENTS_FILE" || return 0
+  mkdir -p "$RUNS_BASE" 2>/dev/null || true
+  {
+    printf '%s %s %s' "$(date '+%Y-%m-%dT%H:%M:%S%z' 2>/dev/null || echo '?')" \
+      "$(uma_linha "$id")" "$(uma_linha "$ev")"
+    # O escape é AQUI, no ponto de estrangulamento: qualquer evento que carregue
+    # comando passa por esta linha, e nenhum chamador precisa lembrar do assunto.
+    if [ $# -gt 0 ]; then printf ' %s' "$(uma_linha "$*")"; fi
+    printf '\n'
+  } >> "$EVENTS_FILE" 2>/dev/null || true
+  return 0
+}
+
+# anotacao <texto> — evento `ANOTACAO` na trilha (peça 0d).
+#
+# É como o harness registra NA trilha algo que ele sabe SOBRE a trilha: evento
+# espúrio, janela de teste, reparo de formato. Nunca apaga nem reescreve linha
+# nenhuma — a trilha só cresce, e o que ela afirmou continua afirmado. Uma
+# anotação ao lado é a única correção honesta de um registro append-only.
+anotacao() { event '---' ANOTACAO "nota=${1:-}"; }
+
+# status_set <chave=valor> ...
+# Chaves: estado ticket desde desde_epoch fase ultimo motivo.
+# FILA e STAGING NÃO são chaves: são relidos do disco/git a cada render (regra 9,
+# read-back sempre) — snapshot com placar velho é pior que sem placar.
+status_set() {
+  local kv k v tmp filtro='.' arg
+  local -a args=()
+  escrita_de_teste_permitida "$STATUS_STATE" || return 0
+  for kv in "$@"; do
+    k="${kv%%=*}"; v="${kv#*=}"
+    case "$k" in
+      estado|ticket|desde|desde_epoch|fase|ultimo|motivo|gates_ausentes) : ;;
+      *) log "status_set: chave desconhecida '$k' (ignorada)"; continue ;;
+    esac
+    arg="v_$k"
+    args+=(--arg "$arg" "$v")
+    filtro="$filtro | .$k = \$$arg"
+  done
+  mkdir -p "$RUNS_BASE" 2>/dev/null || true
+  [ -s "$STATUS_STATE" ] || echo '{}' > "$STATUS_STATE" 2>/dev/null || return 0
+  if [ ${#args[@]} -gt 0 ]; then
+    tmp="$(mktemp 2>/dev/null)" || return 0
+    if jq "${args[@]}" "$filtro" "$STATUS_STATE" > "$tmp" 2>/dev/null; then
+      mv -f "$tmp" "$STATUS_STATE" 2>/dev/null || rm -f "$tmp"
+    else
+      rm -f "$tmp"
+    fi
+  fi
+  status_render
+  return 0
+}
+
+# status_render — REESCREVE $STATUS_FILE inteiro a partir do estado + do disco.
+# Nunca append: se o arquivo crescer, está errado (contrato §1).
+status_render() {
+  local estado ticket desde desde_epoch fase ultimo motivo tmp agora decorrido tout resta gates_ausentes corr fila_stream
+  escrita_de_teste_permitida "$STATUS_FILE" || return 0
+  [ -s "$STATUS_STATE" ] || return 0
+  IFS=$'\t' read -r estado ticket desde desde_epoch fase ultimo motivo < <(
+    jq -r '[(.estado // "—"), (.ticket // "—"), (.desde // "—"), (.desde_epoch // "0"),
+            (.fase // "—"), (.ultimo // "—"), (.motivo // "")] | @tsv' "$STATUS_STATE" 2>/dev/null
+  ) || return 0
+  gates_ausentes="$(jq -r '.gates_ausentes // ""' "$STATUS_STATE" 2>/dev/null || true)"
+
+  # Ocioso não tem ticket nem fase: campo preenchido aqui é estado velho lido
+  # como atual, que é a origem nº 1 de diagnóstico errado.
+  if [ "$estado" = ocioso ] || [ "$estado" = encerrado ]; then ticket='—'; fase='—'; fi
+
+  decorrido=""
+  if [ "$estado" = executando ] && [ "$desde_epoch" != 0 ]; then
+    agora="$(date +%s 2>/dev/null || echo 0)"
+    decorrido=" ($(( (agora - desde_epoch) / 60 ))min)"
+    tout="$(cfg '.claude_timeout_secs' 2>/dev/null)"
+    case "$tout" in ''|null|*[!0-9]*) tout="" ;; esac
+    if [ -n "$tout" ]; then
+      resta=$(( (desde_epoch + tout - agora) / 60 ))
+      [ "$resta" -ge 0 ] && decorrido="$decorrido · timeout em ${resta}min"
+    fi
+  fi
+
+  # Uma passada pela fila para o placar e para as linhas CORROMPIDA (630).
+  fila_stream="$(tickets_status_stream)"
+
+  tmp="$(mktemp 2>/dev/null)" || return 0
+  {
+    printf 'ORQUESTRADOR · %s\n' "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo '?')"
+    printf 'ESTADO   %s\n' "$estado"
+    printf 'TICKET   %s\n' "$ticket"
+    printf 'DESDE    %s%s\n' "$desde" "$decorrido"
+    printf 'FASE     %s\n' "$fase"
+    printf 'FILA     %s\n' "$(printf '%s\n' "$fila_stream" | placar_do_stream)"
+    printf '%s\n' "$fila_stream" | corrompidos_do_stream | while IFS= read -r corr; do
+      [ -n "$corr" ] && printf 'CORROMPIDA fila corrompida: %s\n' "$corr"
+    done
+    printf 'STAGING  %s\n' "$(staging_linha)"
+    printf 'ÚLTIMO   %s\n' "$ultimo"
+    if [ -n "$gates_ausentes" ]; then printf 'GATES    ausentes: %s\n' "$gates_ausentes"; fi
+    if [ "$estado" != executando ] && [ -n "$motivo" ]; then printf 'MOTIVO   %s\n' "$motivo"; fi
+  } > "$tmp" 2>/dev/null && mv -f "$tmp" "$STATUS_FILE" 2>/dev/null || rm -f "$tmp"
+  return 0
+}
+
+# --- STATUS CONGELADO (peça 11) ----------------------------------------------
+# LEITURA pura, compartilhada pelo `orq` e pelo `launchd-run.sh`. Mora aqui, e
+# não em cada um, porque duas implementações da mesma pergunta divergem no
+# primeiro ajuste — e a pergunta é "o que o snapshot diz é verdade agora?".
+
+# status_campo <chave> -> o valor no estado, ou vazio.
+status_campo() {
+  [ -s "$STATUS_STATE" ] || return 0
+  jq -r --arg k "$1" '.[$k] // empty' "$STATUS_STATE" 2>/dev/null || true
+}
+
+# status_congelado_secs -> há quantos segundos o STATUS está `executando` ALÉM do
+# `claude_timeout_secs`; vazio se não está congelado.
+#
+# A régua é o timeout da chamada porque é o teto de tudo que o executor faz num
+# passo: `claude_run` mata o grupo de processos ao fim dele. `DESDE` mais velho
+# que isso não é "demorando" — é processo que não existe mais e STATUS que ficou.
+# Em 2026-09-06 o STATUS ficou `executando` desde 12:38 e assim passou 22 h,
+# enquanto todo disparo do launchd saía 0.
+status_congelado_secs() {
+  local estado epoch tout agora
+  estado="$(status_campo estado)"
+  [ "$estado" = executando ] || return 0
+  epoch="$(status_campo desde_epoch)"
+  case "$epoch" in ''|*[!0-9]*) return 0 ;; esac
+  [ "$epoch" -gt 0 ] || return 0
+  tout="$(cfg '.claude_timeout_secs' 2>/dev/null)"
+  case "$tout" in ''|null|*[!0-9]*) return 0 ;; esac
+  agora="$(date +%s 2>/dev/null || echo 0)"
+  [ $((agora - epoch)) -gt "$tout" ] || return 0
+  printf '%s' $((agora - epoch))
+}
+
+# dur_humana <segundos> -> "22h", "45min", "12s". Para humano ler, não para parse.
+dur_humana() {
+  local s="${1:-0}"
+  case "$s" in ''|*[!0-9]*) s=0 ;; esac
+  if   [ "$s" -ge 3600 ]; then printf '%sh' $((s / 3600))
+  elif [ "$s" -ge 60 ];   then printf '%smin' $((s / 60))
+  else                         printf '%ss' "$s"; fi
+}
+
+# status_ticket_inicio <id> <slug> <attempt> <max> — TICKET + DESDE num lugar só.
+status_ticket_inicio() {
+  status_set "estado=executando" "ticket=$1 $2 · tentativa $(( $3 + 1 ))/$(( $4 + 1 ))" \
+    "desde=$(date '+%H:%M:%S' 2>/dev/null || echo '?')" "desde_epoch=$(date +%s 2>/dev/null || echo 0)" \
+    "fase=agente" "motivo="
+}
+
+# motivo_token <veredito-json> -> token curto e grepável para o `motivo=`.
+# Usa a `causa` do decisao.ts (diff_cap, enforcement, criterio_qualidade,
+# rate_limit, timeout, ...), que já é estável; só cai no texto se faltar.
+motivo_token() {
+  local v="$1" t
+  t="$(printf '%s' "$v" | jq -r '.causa // empty' 2>/dev/null || true)"
+  if [ -z "$t" ]; then
+    t="$(norm_motivo "$(printf '%s' "$v" | jq -r '.motivo // empty' 2>/dev/null || true)" \
+      | tr ' ' '-' | cut -c1-32)"
+  fi
+  printf '%s' "${t:-desconhecido}"
+}
+
+# --- Dependências ---------------------------------------------------------
+# liberacao_ok <token-INTEIRO>  (ex.: liberacao_ok "humano:migration-0025")
+#
+# Formato de DESTINO (v2, schemas/liberacoes.schema.json):
+#   {"tokens": [{"token": "humano:<t>", "liberado_em": "...", "por": "..."}]}
+#
+# Formas VIVAS que esta função TAMBÉM resolve. Todas foram levantadas por `jq`
+# no disco dos três repos em 2026-09-08 (peça K8b-1); as cópias byte a byte
+# estão em test/fixtures/liberacoes/, com a procedência de cada uma:
+#
+#   CI       {"tokens": ["humano:migration-0025", ...]}       strings COM prefixo
+#   Actus    {"tokens": ["migration-0255-aplicada", ...]}     strings SEM prefixo
+#   Comarka  {"liberadas": [{"token","em","por","nota"}],
+#             "tokens": ["decisao-D1", ...]}                  objetos + strings, sem prefixo
+#
+# Um arquivo que MISTURE as formas resolve a UNIÃO delas. Ler só uma das listas
+# quando o disco tem duas é exatamente como um token liberado deixa de destravar
+# um ticket: o Comarka tem 47 tokens únicos espalhados pelas duas, e 34 deles
+# moram em uma lista só.
+#
+# A comparação IGNORA o prefixo `humano:` dos dois lados. A v1 consultava
+# `.liberadas[] | select(.token == $t)` com o token SEM prefixo enquanto o
+# ticket declarava a dependência COM: nenhum token liberado resolvia dependência
+# nenhuma, e o ticket ficava pendente para sempre, em silêncio (PLAYBOOK
+# 2026-09-03). Normalizar os DOIS lados é o que fecha a família inteira desse
+# defeito, e não só a instância que apareceu.
+#
+# Duas passadas, e não uma, por causa do AVISO. A primeira aceita só a forma
+# canônica (`.tokens[]` com o token inteiro, string ou objeto v2) e é MUDA: é o
+# que o CI tem hoje, e avisar a cada dependência resolvida encheria a trilha de
+# ruído sobre um arquivo que não tem problema nenhum. A segunda é a compat, e
+# GRAVA o aviso — com o comando que resolve, não só com o diagnóstico.
+liberacao_ok() {
+  local token="$1"
+  [ -f "$CFG_LIBERACOES" ] || return 1
+
+  # 1. canônico: .tokens[] com o token INTEIRO — string (v1) ou objeto (v2).
+  jq -e --arg t "$token" '
+    [ (.tokens // [])[]
+      | if type == "string" then . elif type == "object" then (.token // empty) else empty end ]
+    | index($t) != null' "$CFG_LIBERACOES" >/dev/null 2>&1 && return 0
+
+  # 2. compat: a UNIÃO das duas listas, com o prefixo removido dos dois lados.
+  #    `token_de` devolve `empty` para o que não é string nem objeto com
+  #    `.token`: entrada malformada é IGNORADA, nunca casa com tudo.
+  if jq -e --arg t "${token#humano:}" '
+    def token_de:
+      if type == "string" then . elif type == "object" then (.token // empty) else empty end;
+    [ ((.tokens // [])[], (.liberadas // [])[]) | token_de | sub("^humano:"; "") ]
+    | index($t) != null' "$CFG_LIBERACOES" >/dev/null 2>&1; then
+    log "AVISO: '$token' resolveu por forma LEGADA de $CFG_LIBERACOES (token sem o prefixo 'humano:', ou lista .liberadas[])."
+    log "AVISO: migre $CFG_LIBERACOES — do kit: 'bash instalar.sh --atualizar $MAIN_CHECKOUT --migrar'. A forma legada sai na próxima versão."
+    return 0
+  fi
+  return 1
+}
+
+# razao_nao_processavel <arquivo> -> vazio se o ticket está LIBERADO para rodar
+# agora; senão UMA razão curta, sem espaço, grepável:
+#   adiado_ate:<AAAA-MM-DD>          adiamento por orçamento ainda vigente
+#   liberacao:<token-inteiro>        dependência humana sem liberação
+#   dependencia:<id>:<status>        dependência que não está done
+#   dependencia:<id>:inexistente     dependência que não existe na fila
+# É a MESMA régua do `deps_resolvidas` (que a usa), para que "por que não
+# roda?" (evento OCIOSO, peça 7a-4) e "roda ou não roda?" nunca divirjam. Para
+# na primeira razão, na ordem das `dependencias` do ticket.
+razao_nao_processavel() {
+  local file="$1" dep tf st ate
+  # adiado_ate no futuro (adiamento por orçamento) = não processável hoje. Fica
+  # aqui, e não em proximo_pendente, porque quem seleciona ticket são DOIS
+  # lugares (executor e drenagem) e os dois já passam por esta função.
+  ate="$(ticket_field "$file" '.adiado_ate // empty' 2>/dev/null || true)"
+  if [ -n "$ate" ] && [[ "$ate" > "$(hoje)" ]]; then
+    printf 'adiado_ate:%s\n' "$ate"; return 0
+  fi
+  while IFS= read -r dep; do
+    [ -z "$dep" ] && continue
+    if [[ "$dep" == humano:* ]]; then
+      # Token INTEIRO, com prefixo: é a forma que liberacoes.json guarda.
+      liberacao_ok "$dep" || { printf 'liberacao:%s\n' "$dep"; return 0; }
+    else
+      tf="$(ticket_file_by_id "$dep")"
+      [ -n "$tf" ] || { printf 'dependencia:%s:inexistente\n' "$dep"; return 0; }
+      st="$(ticket_field "$tf" '.status')"
+      [ "$st" = "done" ] || { printf 'dependencia:%s:%s\n' "$dep" "$st"; return 0; }
+    fi
+  done < <(ticket_field "$file" '.dependencias[]?')
+  return 0
+}
+
+# deps_resolvidas <arquivo> -> 0 se o ticket está LIBERADO para rodar agora:
+# dependências satisfeitas E nenhum adiamento com data ainda vigente. A decisão
+# é a de `razao_nao_processavel`; aqui só se loga a razão.
+deps_resolvidas() {
+  local file="$1" r dep
+  r="$(razao_nao_processavel "$file")"
+  [ -n "$r" ] || return 0
+  case "$r" in
+    adiado_ate:*) log "  adiado até ${r#adiado_ate:}: $(ticket_field "$file" '.id')" ;;
+    liberacao:*)  log "  dep pendente: ${r#liberacao:} (sem liberação humana)" ;;
+    dependencia:*:inexistente)
+      dep="${r#dependencia:}"; log "  dep inexistente: ${dep%:*}" ;;
+    dependencia:*)
+      dep="${r#dependencia:}"; log "  dep não-done: ${dep%:*} (status=${dep##*:})" ;;
+  esac
+  return 1
+}
+
+# proximo_pendente [ids] -> caminho do primeiro ticket pendente com deps
+# resolvidas, PULANDO os ids da lista (separados por espaço).
+#
+# A lista é a memória de UMA drenagem (peça 7a-2): o ticket que já foi tentado
+# nesta drenagem e não avançou fica de fora da seleção, para que a drenagem siga
+# para o próximo em vez de reescolhê-lo para sempre. String e não array: o
+# motor roda no bash 3.2 do macOS, sem array associativo. Sem argumento, o
+# comportamento é o de sempre — é assim que o executor a chama.
+#
+# Ticket 630 (porte do Actus): ticket corrompido não para a fila (os válidos
+# seguem sendo selecionados), mas deixa de sumir em silêncio: vai para o log
+# aqui e para o STATUS.md pelo status_render.
+proximo_pendente() {
+  local f id pular=" ${1:-} "
+  for f in $(ticket_files); do
+    if ticket_corrompido "$f"; then log "fila corrompida: $(basename "$f")"; continue; fi
+    [ "$(ticket_field "$f" '.status')" = "pendente" ] || continue
+    if [ -n "${1:-}" ]; then
+      id="$(ticket_field "$f" '.id')"
+      case "$pular" in *" $id "*) continue ;; esac
+    fi
+    if deps_resolvidas "$f"; then echo "$f"; return 0; fi
+  done
+  return 0
+}
+
+# --- Git / branch alvo ----------------------------------------------------
+branch_existe() { git -C "$ROOT" show-ref --verify --quiet "refs/heads/$1"; }
+
+# Garante a branch alvo (staging-auto), criando-a da branch protegida se faltar.
+# Sem push.
+ensure_branch_alvo() {
+  if ! branch_existe "$CFG_BRANCH_ALVO"; then
+    local base; base="$(cfg '.branch_protegida')"
+    log "criando branch alvo $CFG_BRANCH_ALVO a partir de $base (local, sem push)"
+    git -C "$ROOT" branch "$CFG_BRANCH_ALVO" "$base"
+  fi
+}
+
+# Caminho do worktree da branch alvo (para merges sem tocar o checkout principal).
+#
+# PREFIXADO, como todo worktree deste loop. worktrees_dir (../_worktrees) é
+# COMPARTILHADO entre repos — o próprio config avisa disso em _worktrees_prefixo,
+# mas o prefixo só estava sendo aplicado aos worktrees de TICKET. O de staging
+# nascia como "<base>/<branch_alvo>", que colide com o worktree homônimo de
+# outro repo: como o outro repo também tem uma branch chamada staging-auto e a
+# árvore dele está limpa, os DOIS guards de merge_em_alvo passam e a drenagem
+# tenta mergear no repo errado. Medido neste checkout: o diretório pertencia a
+# comarka-operacional, e só não houve escrita porque a ref frente/<id> não
+# existe lá — o merge morreu em "not something we can merge", por acidente.
+staging_worktree_path() { echo "$WORKTREES_BASE/$(cfg '.worktrees_prefixo')$CFG_BRANCH_ALVO"; }
+
+# Caminho ABSOLUTO do .git comum a que um diretório pertence; vazio se não for
+# repo. É o que distingue "nosso worktree" de "worktree de outro repo com o
+# mesmo nome" — comparar por nome de branch ou por árvore limpa NÃO distingue.
+git_common_abs() {
+  (cd "$1" 2>/dev/null && cd "$(git rev-parse --git-common-dir 2>/dev/null)" 2>/dev/null && pwd) || true
+}
+
+ensure_staging_worktree() {
+  local wt nosso dele; wt="$(staging_worktree_path)"
+  ensure_branch_alvo
+  nosso="$(git_common_abs "$ROOT")"
+  if [ -d "$wt" ]; then
+    # Diretório preexistente NÃO é prova de que é nosso. Verifica o dono antes
+    # de reusar: adotar worktree alheio é como a drenagem foi parar noutro repo.
+    dele="$(git_common_abs "$wt")"
+    if [ "$dele" != "$nosso" ]; then
+      die "worktree de merge '$wt' NÃO pertence a este repo.
+  dono encontrado: ${dele:-<não é um repo git>}
+  esperado:        $nosso
+$WORKTREES_BASE é compartilhado entre repos; reusar esse diretório mergearia no
+repo errado. Remova/renomeie o diretório, ou ajuste worktrees_prefixo/branch_alvo
+no config. Nenhum merge foi tentado."
+    fi
+  else
+    log "adicionando worktree de $CFG_BRANCH_ALVO em $wt"
+    git -C "$ROOT" worktree add "$wt" "$CFG_BRANCH_ALVO" >/dev/null
+  fi
+  echo "$wt"
+}
+
+# ticket_mergeado_em_alvo <id> -> 0 se existe um merge deste ticket na branch
+# alvo. O avaliador grava a marca "... (ticket <id>) em <alvo>" no merge; um
+# merge MANUAL com a mesma marca também conta. Base do reconcile de status.
+ticket_mergeado_em_alvo() {
+  local id="$1"
+  branch_existe "$CFG_BRANCH_ALVO" || return 1
+  git -C "$ROOT" log "$CFG_BRANCH_ALVO" --grep "(ticket $id)" --oneline 2>/dev/null | grep -q .
+}
+
+# --- Resiliência a limite de assinatura (rate limit / quota / sobrecarga) ----
+# Padrões REAIS emitidos pelo claude CLI 2.x em modo -p ao bater o limite da
+# assinatura Max/Pro ou sobrecarga da API: tipos de erro `rate_limit_error`,
+# `overloaded_error`/529, `usage_cap_reached`; mensagens "usage limit reached",
+# "Request rejected (429)", "credit balance ... too low", "5-hour session limit".
+# ERE portável (sem \b — BSD grep do macOS): 429 casa com o formato
+# "(429)"/"Request rejected"/"error 429", não um "429" solto qualquer.
+# Cobre as causas 'rate limit' e 'quota estourada' do politica_adiamento.
+#
+# Peça 7b-2: `overloaded`, `capacity` e 529 SAÍRAM daqui para o
+# SERVIDOR_REGEX. Indisponibilidade não é limite: não tem prazo, e armar 60 min
+# de cooldown por um blip de API é o que o Comarka viu travar o 291 três vezes
+# em 03/09 (lib.sh:343 de lá).
+RATE_LIMIT_REGEX='rate[ _-]?limit|rate_limit_error|limit reached|usage limit|usage_cap_reached|too many requests|quota|credit balance|5-hour session limit|\(429\)|(error|status|rejected[^0-9]{0,20})[ (]?42[0-9]'
+
+# Erro TRANSITÓRIO de servidor (500/502/503/529, overloaded). Adia SEM cooldown.
+# Gêmeo do `servidor` do decisao.ts: os dois têm de concordar.
+SERVIDOR_REGEX='overloaded|service unavailable|internal server error|bad gateway|at capacity|API Error: 5[0-9][0-9]|\((500|502|503|529)\)|(error|status)[ (]?5(00|02|03|29)'
+
+# is_rate_limited <output_file> <rc> -> 0 se a chamada ao claude bateu num limite.
+# GATE DUPLO por design (distingue limite de erro real):
+#   1. rc != 0  — a chamada FALHOU. Um run que só *menciona* "rate limit" no
+#      texto (ex.: ticket sobre implementar rate limiting) sai com rc=0 e NUNCA
+#      dispara adiamento.
+#   2. o output casa RATE_LIMIT_REGEX (case-insensitive).
+is_rate_limited() {
+  local out="$1" rc="${2:-1}"
+  [ "$rc" != 0 ] || return 1
+  [ -f "$out" ] || return 1
+  LC_ALL=C grep -qiE "$RATE_LIMIT_REGEX" "$out"
+}
+
+# is_servidor <output_file> <rc> -> 0 se a chamada caiu em 5xx/overloaded.
+# Mesmo GATE DUPLO do is_rate_limited.
+is_servidor() {
+  local out="$1" rc="${2:-1}"
+  [ "$rc" != 0 ] || return 1
+  [ -f "$out" ] || return 1
+  LC_ALL=C grep -qiE "$SERVIDOR_REGEX" "$out"
+}
+
+# --- Cooldown compartilhado ---------------------------------------------------
+# Arquivo (epoch de expiração) que sinaliza "não dispare novos runs até lá".
+# Vive em runs/ (efêmero). Escrito quando um ticket é adiado por limite; lido
+# pelo local-loop para encerrar cedo e não bater no mesmo limite no disparo
+# seguinte.
+COOLDOWN_FILE="$ROOT/$CFG_RUNS_DIR/.cooldown-until"
+
+# cooldown_arm -> grava (agora + cooldown_minutes, default 60) no COOLDOWN_FILE.
+cooldown_arm() {
+  local mins now until
+  mins="$(cfg '.cooldown_minutes' 2>/dev/null)"
+  case "$mins" in ''|null|*[!0-9]*) mins=60 ;; esac
+  now="$(date +%s 2>/dev/null || echo 0)"
+  until=$((now + mins * 60))
+  mkdir -p "$(dirname "$COOLDOWN_FILE")" 2>/dev/null || true
+  echo "$until" > "$COOLDOWN_FILE" 2>/dev/null || true
+  log "  cooldown armado: sem novos runs por ${mins}min (até epoch $until)"
+}
+
+# cooldown_active -> 0 se o cooldown ainda está valendo (agora < expiração).
+cooldown_active() {
+  [ -f "$COOLDOWN_FILE" ] || return 1
+  local until now
+  until="$(cat "$COOLDOWN_FILE" 2>/dev/null || echo 0)"
+  case "$until" in ''|*[!0-9]*) return 1 ;; esac
+  now="$(date +%s 2>/dev/null || echo 0)"
+  [ "$now" -lt "$until" ]
+}
+
+# cooldown_ate -> a hora (HH:MM, relógio local) em que o cooldown expira; vazio
+# se não há cooldown legível. `date -r` é o do macOS, `date -d @` o do GNU.
+cooldown_ate() {
+  local until
+  until="$(cat "$COOLDOWN_FILE" 2>/dev/null || true)"
+  case "$until" in ''|*[!0-9]*) return 0 ;; esac
+  date -r "$until" '+%H:%M' 2>/dev/null || date -d "@$until" '+%H:%M' 2>/dev/null || true
+}
+
+# cooldown_remaining_min -> minutos (arredondados p/ cima) até o cooldown expirar.
+cooldown_remaining_min() {
+  local until now
+  until="$(cat "$COOLDOWN_FILE" 2>/dev/null || echo 0)"
+  case "$until" in ''|*[!0-9]*) echo 0; return ;; esac
+  now="$(date +%s 2>/dev/null || echo 0)"
+  local rem=$(( (until - now + 59) / 60 ))
+  [ "$rem" -lt 0 ] && rem=0
+  echo "$rem"
+}
+
+# --- PAUSA MANUAL (estado de segurança mora em ARQUIVO) -----------------------
+# Sentinela em disco. Env var morre com o processo — no comarka-os isso custou
+# um "pausar a fila" que só teve saída matando processo a mão, porque a variável
+# só existia no ambiente da invocação.
+#
+# DOIS caminhos, de propósito:
+#   CFG_PAUSAR_FILE  o do config (`pausar_file`), no checkout PRINCIPAL — é o que
+#                    a doutrina, o pré-voo (cat. 8) e o `orq pausar` usam, e o
+#                    que vale como fonte única.
+#   PAUSA_FILE       o sentinela v1, relativo à raiz de EXECUÇÃO. Continua sendo
+#                    lido para que uma pausa já colocada por alguém não seja
+#                    silenciosamente ignorada por esta mudança.
+# Qualquer um dos dois presente = pausado.
+CFG_PAUSAR_FILE="$MAIN_CHECKOUT/$(cfg '.pausar_file')"
+PAUSA_FILE="$ROOT/docs/fila/.orq-pause"
+
+# pausa_ativa -> 0 se a fila está pausada.
+pausa_ativa() { [ -f "$CFG_PAUSAR_FILE" ] || [ -f "$PAUSA_FILE" ]; }
+
+# pausa_conteudo -> a 1ª linha CRUA da primeira sentinela presente
+# ("<AAAA-MM-DD HH:MM> | motivo"), sem o caminho. É o que pausa_registro e
+# pausa_inicio_epoch leem para achar a data (K12-F). O pausa_motivo passou a
+# prefixar o caminho (porte do 514) e deixou de servir para isso.
+pausa_conteudo() {
+  local f
+  for f in "$CFG_PAUSAR_FILE" "$PAUSA_FILE"; do
+    [ -f "$f" ] && { head -1 "$f" 2>/dev/null || true; return 0; }
+  done
+  return 0
+}
+
+# pausa_motivo -> "<sentinela>: <conteúdo>" de CADA sentinela presente,
+# separadas por "; ". Ticket 514: o STATUS dizia só "pausado", e ninguém sabia,
+# olhando para ele, qual arquivo segurava o loop.
+pausa_motivo() {
+  local f p out=""
+  for f in "$CFG_PAUSAR_FILE" "$PAUSA_FILE"; do
+    [ -f "$f" ] || continue
+    p="${f#"$MAIN_CHECKOUT"/}"; p="${p#"$ROOT"/}"
+    out="${out:+$out; }$p: $(tr '\n' ' ' < "$f" 2>/dev/null | sed 's/ *$//')"
+  done
+  printf '%s\n' "${out:-sem motivo registrado}"
+}
+
+# --- PAUSA NA TRILHA (peças K12-C e K12-F) -----------------------------------
+# Pausar e retomar deixam UMA linha cada na trilha, venham do painel ou do
+# terminal, no mesmo formato:
+#   --- PAUSA motivo=<token> por=<painel|terminal>
+#   --- RETOMADA por=<painel|terminal> dur=<N>min
+# O texto livre do motivo fica no sentinela (§7); a trilha leva o token. As
+# funções moram aqui, e não em cada emissor, porque dois emissores com duas
+# réguas gravam duas trilhas diferentes para a mesma pausa.
+
+# pausa_token <texto> -> o motivo como token grepável: sem acento, minúsculas,
+# `-` no lugar do resto, até 40 caracteres; `manual` se nada sobrar. Byte a
+# byte (LC_ALL=C), para dar o mesmo resultado sob launchd e num terminal.
+pausa_token() {
+  local t
+  t="$(printf '%s' "${1:-}" | LC_ALL=C sed \
+    -e 's/á/a/g; s/à/a/g; s/â/a/g; s/ã/a/g; s/ä/a/g; s/ª/a/g' \
+    -e 's/Á/a/g; s/À/a/g; s/Â/a/g; s/Ã/a/g; s/Ä/a/g' \
+    -e 's/é/e/g; s/è/e/g; s/ê/e/g; s/ë/e/g; s/É/e/g; s/È/e/g; s/Ê/e/g' \
+    -e 's/í/i/g; s/ì/i/g; s/î/i/g; s/ï/i/g; s/Í/i/g; s/Î/i/g' \
+    -e 's/ó/o/g; s/ò/o/g; s/ô/o/g; s/õ/o/g; s/ö/o/g; s/º/o/g' \
+    -e 's/Ó/o/g; s/Ò/o/g; s/Ô/o/g; s/Õ/o/g; s/Ö/o/g' \
+    -e 's/ú/u/g; s/ù/u/g; s/û/u/g; s/ü/u/g; s/Ú/u/g; s/Ü/u/g' \
+    -e 's/ç/c/g; s/Ç/c/g; s/ñ/n/g; s/Ñ/n/g' \
+    | LC_ALL=C tr 'A-Z' 'a-z' \
+    | LC_ALL=C sed -E 's/[^a-z0-9]+/-/g; s/^-+//' | cut -c1-40 | LC_ALL=C sed -E 's/-+$//')"
+  printf '%s' "${t:-manual}"
+}
+
+# epoch_de <formato BSD> <texto> -> epoch, ou vazio. `date -j -f` no macOS,
+# `date -d` no GNU (que lê as duas formas usadas aqui sem formato).
+epoch_de() {
+  date -j -f "$1" "$2" +%s 2>/dev/null || date -d "$2" +%s 2>/dev/null || true
+}
+
+# pausa_registro -> "<epoch>|<por>|<iso>" da pausa DE PÉ, pela trilha: a
+# primeira PAUSA depois da última RETOMADA. Só vale se não for mais velha que o
+# minuto escrito no sentinela: uma PAUSA de uma pausa antiga, apagada à mão sem
+# RETOMADA, não pode assinar a pausa de agora. Vazio sem registro válido.
+pausa_registro() {
+  local l iso por ep cont ep_cont
+  [ -f "$EVENTS_FILE" ] || return 0
+  l="$(awk '$3 == "PAUSA" && l == "" { l = $0 } $3 == "RETOMADA" { l = "" } END { print l }' "$EVENTS_FILE" 2>/dev/null)"
+  [ -n "$l" ] || return 0
+  iso="${l%% *}"
+  por="$(printf '%s\n' "$l" | tr ' ' '\n' | sed -n 's/^por=//p' | head -1)"
+  ep="$(epoch_de '%Y-%m-%dT%H:%M:%S%z' "$iso")"
+  [ -n "$ep" ] || return 0
+  cont="$(pausa_conteudo)"
+  ep_cont="$(epoch_de '%Y-%m-%d %H:%M' "${cont%% |*}")"
+  if [ -n "$ep_cont" ] && [ "$ep" -lt $((ep_cont - 60)) ]; then return 0; fi
+  printf '%s|%s|%s\n' "$ep" "${por:-?}" "$iso"
+}
+
+# pausa_inicio_epoch -> quando a pausa de pé começou: a PAUSA da trilha, ou,
+# sem ela, o minuto escrito no sentinela. Vazio se nenhum dos dois é legível.
+# Quem retoma chama ANTES de apagar o sentinela.
+pausa_inicio_epoch() {
+  local r cont
+  r="$(pausa_registro)"
+  if [ -n "$r" ]; then printf '%s\n' "${r%%|*}"; return 0; fi
+  cont="$(pausa_conteudo)"
+  epoch_de '%Y-%m-%d %H:%M' "${cont%% |*}"
+}
+
+# pausa_registrar <por> <motivo livre> — a linha PAUSA.
+pausa_registrar() { event '---' PAUSA "motivo=$(pausa_token "${2:-}")" "por=$1"; }
+
+# retomada_registrar <por> <epoch do início> — a linha RETOMADA; `dur=?` sem início.
+retomada_registrar() {
+  local d='?'
+  case "${2:-}" in ''|*[!0-9]*) : ;; *) d="$(( ($(date +%s) - $2) / 60 ))min" ;; esac
+  event '---' RETOMADA "por=$1" "dur=$d"
+}
+
+# --- Interrupção de ambiente (ADAPTAÇÃO 2) -----------------------------------
+# Falha de AMBIENTE da máquina — sono, rede, sessão caindo — distinta de limite
+# de cota. Não arma cooldown: o próximo disparo pode rodar na hora.
+# No comarka-os isso nasceu de um attempt que saiu com "API Error: Your computer
+# went to sleep mid-response", diff 0, e o harness contou como reprovação de
+# mérito, queimando o retry final de um ticket que já tinha passado em todos os
+# critérios mecânicos duas vezes.
+#
+# ADAPTAÇÃO: politica_adiamento.causas_que_adiam deste repo lista 6 causas. As
+# de rede e de sessão ganharam padrões explícitos aqui — o regex de lá cobria
+# ECONNRESET/ETIMEDOUT/socket hang up/network error, mas nada de sessão expirada
+# nem de conexão recusada.
+INTERRUPCAO_REGEX='went to sleep|API Error|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|EPIPE|socket hang up|network error|connection (reset|refused|closed|error)|fetch failed|session expired|sess[aã]o expirada|invalid session|session not found|not authenticated|please (log ?in|sign ?in) again|reauthenticate|token expired'
+
+# is_interrompido <output_file> <rc> -> 0 se foi interrupção de ambiente.
+# GATE DUPLO igual ao is_rate_limited: exige rc!=0 E casamento de texto, para
+# que um ticket que MENCIONE "API Error" no código não dispare adiamento.
+is_interrompido() {
+  local out="$1" rc="${2:-1}"
+  [ "$rc" != 0 ] || return 1
+  [ -f "$out" ] || return 1
+  LC_ALL=C grep -qiE "$INTERRUPCAO_REGEX" "$out"
+}
+
+# --- Envelope ausente (A9) ---------------------------------------------------
+# Toda chamada paga do harness passa --output-format json, e um `claude -p` que
+# CHEGOU a rodar sempre imprime o envelope — inclusive quando o desfecho é erro
+# (`is_error:true` com a mensagem em `.result`; medido nesta máquina no CLI
+# 2.1.259, tanto para 429 quanto para conexão recusada). Saída VAZIA com rc!=0
+# é a assinatura de um CLI que morreu ANTES de falar: sem login, credencial
+# expirada, binário ausente, processo morto por fora.
+#
+# Nada disso é defeito do diff. Sem esta regra, o caminho caía em `exit N` =>
+# reprovado por criterio_qualidade e QUEIMAVA retry de um ticket que nunca
+# chegou a ser julgado — o mesmo desenho de falha do rc=130.
+#
+# Contrapartida aceita e deliberada: com login caído o preflight passa a ADIAR
+# (com cooldown) em vez de abortar. Adiar se recupera sozinho no próximo
+# disparo; reprovação, não.
+#
+# Como o claude_run junta stdout+stderr no mesmo arquivo, "vazio" aqui é o
+# arquivo inteiro sem um byte — erro de uso do CLI (`unknown option`) escreve em
+# stderr, cai no arquivo e NÃO passa por aqui.
+sem_envelope() {
+  local out="$1" rc="${2:-1}"
+  [ "$rc" != 0 ] || return 1
+  [ ! -s "$out" ]
+}
+
+# is_adiavel <output_file> <rc> -> 0 se o desfecho deve ser ADIADO (não reprova).
+# Cobre as 6 causas de politica_adiamento.causas_que_adiam:
+#   timeout de claude_timeout_secs -> rc 124 (normalizado pelo claude_run)
+#   gate interrompido no meio      -> rc 129/130 (morto por fora) ou is_interrompido
+#   erro de conexão, sessão expirada -> is_interrompido
+#   rate limit, quota estourada      -> is_rate_limited
+#   5xx, overloaded (peça 7b-2)      -> is_servidor
+# Nenhuma delas é defeito do código, então nenhuma queima retry. Qual delas ARMA
+# cooldown é outra pergunta: só o limite remoto (is_rate_limited).
+is_adiavel() {
+  local out="$1" rc="${2:-1}"
+  [ "$rc" = 124 ] && return 0    # claude_run cortou por timeout (normalizado p/ 124)
+  # 129 SIGHUP (terminal fechou), 130 SIGINT (Ctrl-C / sessão interrompida):
+  # o agente foi MORTO por fora, não falhou por mérito. No comarka-os um ticket
+  # saiu 3x com rc=130 e diff 0 em ~1s cada, queimando os dois retries e a
+  # tentativa final em 37 segundos, sem nenhum defeito de código.
+  { [ "$rc" = 129 ] || [ "$rc" = 130 ]; } && return 0
+  sem_envelope "$out" "$rc" && return 0   # o CLI não chegou a emitir envelope
+  is_interrompido "$out" "$rc" && return 0
+  is_servidor "$out" "$rc" && return 0
+  is_rate_limited "$out" "$rc"
+}
+
+# mark_adiado <arquivo_ticket> <origem> [detalhe] [arma: sim|nao]
+# Desfecho ADIADO: status VOLTA a pendente (nunca bloqueado), nota com
+# timestamp. NÃO mexe em retries — quem conta retry é o drive_ticket, e o
+# caminho de adiamento nunca passa por lá, então a tentativa não é consumida.
+#
+# Peça 7b-2: o cooldown deixou de ser incondicional. `arma` vem do veredito
+# (`decisao.ts:armaCooldown`): `sim` só para limite REMOTO (rate_limit, quota);
+# timeout local, 5xx, sessão, rede e gate que não rodou passam `nao` e o próximo
+# disparo retoma sem espera. O padrão `sim` é o comportamento antigo, para quem
+# chamar sem o quarto argumento.
+mark_adiado() {
+  local file="$1" origem="${2:-executor}" detalhe="${3:-limite da sessão}" arma="${4:-sim}" ts id
+  ts="$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo '?')"
+  id="$(ticket_field "$file" '.id')"
+  ticket_set_status "$file" "pendente"
+  ticket_set_nota "$file" "adiado ($origem) por $detalhe em $ts — retomará no próximo disparo"
+  ticket_commit "$file" "fila: $id adiado ($origem)"
+  if [ "$arma" = nao ]; then
+    log "  causa LOCAL ou transitória: cooldown NÃO armado, o próximo disparo retoma sem espera"
+  else
+    cooldown_arm
+    log "  causa REMOTA (limite da assinatura ou cota): cooldown armado"
+  fi
+  log "  adiado: $detalhe — retomará no próximo disparo (origem: $origem, $ts)"
+}
+
+# --- DECISÃO PENDENTE (o que a máquina não pode decidir volta para o dono) ----
+# Uma LINHA por pendência na tabela de docs/fila/decisoes-pendentes.md (regra 15
+# e §1 de autoalimentacao). Nunca reescreve o arquivo: acrescenta uma linha e
+# DEDUPLICA por ticket + pergunta — a mesma drenagem pode voltar ao mesmo ticket
+# e uma tabela com a pendência repetida é uma tabela que ninguém lê.
+#
+# O `|` é o separador da tabela: qualquer um vindo do conteúdo vira `/`, senão a
+# linha quebra a coluna e a pendência some da renderização.
+CFG_DECISOES_FILE="$MAIN_CHECKOUT/$(cfg '.decisoes_file')"
+
+# decisao_pendente <origem> <ticket-ou-frente> <pergunta> <o-que-a-maquina-viu>
+decisao_pendente() {
+  local origem="$1" alvo="$2" pergunta="$3" visto="$4" linha
+  local esc_p esc_v
+  esc_p="$(printf '%s' "$pergunta" | tr '|\n' '/ ')"
+  esc_v="$(printf '%s' "$visto"    | tr '|\n' '/ ')"
+  linha="| $(hoje) | $origem | $alvo | $esc_p | $esc_v |"
+  if [ -f "$CFG_DECISOES_FILE" ] && grep -Fqx "$linha" "$CFG_DECISOES_FILE" 2>/dev/null; then
+    log "  decisão pendente já registrada para $alvo — nada a acrescentar"
+    return 0
+  fi
+  [ -f "$CFG_DECISOES_FILE" ] || {
+    log "  decisão pendente: $CFG_DECISOES_FILE não existe — nada escrito"
+    return 0
+  }
+  printf '%s\n' "$linha" >> "$CFG_DECISOES_FILE" 2>/dev/null || return 0
+  git -C "$MAIN_CHECKOUT" add -- "$CFG_DECISOES_FILE" 2>/dev/null || true
+  git -C "$MAIN_CHECKOUT" diff --cached --quiet -- "$CFG_DECISOES_FILE" 2>/dev/null || \
+    git -C "$MAIN_CHECKOUT" commit -q -m "fila: decisão pendente ($alvo)" -- "$CFG_DECISOES_FILE" 2>/dev/null || true
+  event "$alvo" DECISAO_PENDENTE "origem=$origem"
+  log "  decisão pendente registrada: $alvo"
+  return 0
+}
+
+# --- NOTIFICAÇÃO DE FIM DE DRENAGEM (contrato §4) -----------------------------
+# "Acabou?" não pode exigir polling — polling manual vira não olhar.
+#
+# FALLBACK EM ARQUIVO SEMPRE, inclusive quando o canal nativo funciona. A
+# armadilha conhecida é o contrário: relatório que só existe no canal, e no dia
+# em que o canal falha (credencial, máquina sem GUI, sessão do launchd sem
+# acesso ao Notification Center) ninguém descobre que a drenagem terminou —
+# nem depois, porque não sobrou registro.
+NOTIF_FILE="$RUNS_BASE/notificacoes.log"
+
+# --- PEÇA 13: notificação só quando houve o que notificar ---------------------
+# Cartão que chega quando nada aconteceu treina o operador a ignorar o cartão que
+# importa. Em 07/09 11:0x o launchd cuspiu "0 aprovados · duração 0min · último
+# —" a cada tick enquanto o 240 ainda rodava: a drenagem não achava processável,
+# encerrava em 0 e notificava mesmo assim.
+#
+# A regra tem duas metades, e a segunda é a que não pode virar spam:
+#   1. processou ao menos um ticket (aprovado, bloqueado, adiado, refatiado ou
+#      EXECUTOR_MORREU) -> notifica SEMPRE;
+#   2. fila sem processável -> notifica só na PRIMEIRA vez desde a última
+#      drenagem que processou. Daí o marcador em disco: a memória tem de
+#      sobreviver ao fim do processo, porque cada tick do launchd é um processo
+#      novo e a repetição é exatamente o que se quer calar.
+# Qualquer outro fim com zero processados (pausa, cooldown, sem progresso) cala:
+# nenhum deles é "a fila acabou", e quem pausou já sabe que pausou.
+NOTIF_VAZIA_FILE="$RUNS_BASE/.notificacao-fila-vazia"
+
+# MOTIVO do fim de drenagem por fila vazia. Constante compartilhada porque a
+# decisão de notificar compara com ela: string repetida em dois arquivos é dois
+# arquivos que divergem no dia em que alguém reescreve a frase.
+MOTIVO_FILA_VAZIA='sem ticket processável'
+
+# contar_eventos <EVENTO> -> quantas linhas da trilha são desse evento.
+# Serve para medir o que aconteceu DURANTE um trecho: conta antes, conta depois.
+contar_eventos() {
+  local n
+  n="$(grep -c " ${1:-} " "$EVENTS_FILE" 2>/dev/null)" || n=0
+  case "$n" in ''|*[!0-9]*) n=0 ;; esac
+  printf '%s\n' "$n"
+}
+
+# deve_notificar <processados> <motivo_ocioso> -> rc 0 = notifica.
+#
+# Além de decidir, MANTÉM o marcador — decisão e memória no mesmo lugar para que
+# não exista caminho que notifique sem lembrar, nem que lembre sem notificar.
+deve_notificar() {
+  local processados="${1:-0}" motivo="${2:-}"
+  case "$processados" in ''|*[!0-9]*) processados=0 ;; esac
+  if [ "$processados" -gt 0 ]; then
+    rm -f "$NOTIF_VAZIA_FILE" 2>/dev/null || true
+    return 0
+  fi
+  [ "$motivo" = "$MOTIVO_FILA_VAZIA" ] || return 1
+  if [ -e "$NOTIF_VAZIA_FILE" ]; then return 1; fi
+  mkdir -p "$RUNS_BASE" 2>/dev/null || true
+  : > "$NOTIF_VAZIA_FILE" 2>/dev/null || true
+  return 0
+}
+
+# --- PEÇA 7b-5: AMBIENTE avisa na transição, e só nela -----------------------
+# Desde a 7a-8 a drenagem que termina em AMBIENTE conta os adiados como
+# processados, e a regra 1 acima notificava toda drenagem assim: com o ambiente
+# quebrado, um cartão por disparo. A regra agora é a da fila vazia, com memória
+# em disco: avisa quando ENTRA, cala enquanto continua, avisa uma vez quando SAI.
+NOTIF_AMBIENTE_FILE="$RUNS_BASE/.notificacao-ambiente"
+
+# transicao_ambiente <motivo_ocioso> [causa] -> imprime o que a drenagem faz:
+#   entrou  terminou em ambiente e não estava: avisa (e grava a causa)
+#   calado  terminou em ambiente e já estava: silêncio
+#   saiu    não terminou em ambiente e estava: um aviso de saída (e apaga)
+#   (vazio) nada a ver com ambiente: segue a regra de sempre (deve_notificar)
+# Pausa não conta como saída: quem pausou já sabe, e o ambiente pode seguir
+# quebrado atrás da pausa.
+transicao_ambiente() {
+  local motivo="${1:-}" causa="${2:-}"
+  if [ "$motivo" = ambiente ]; then
+    if [ -e "$NOTIF_AMBIENTE_FILE" ]; then echo calado; return 0; fi
+    mkdir -p "$RUNS_BASE" 2>/dev/null || true
+    printf '%s\n' "$causa" > "$NOTIF_AMBIENTE_FILE" 2>/dev/null || true
+    echo entrou; return 0
+  fi
+  [ "$motivo" != pausado ] || return 0
+  if [ -e "$NOTIF_AMBIENTE_FILE" ]; then
+    rm -f "$NOTIF_AMBIENTE_FILE" 2>/dev/null || true
+    echo saiu
+  fi
+  return 0
+}
+
+# causa_ambiente_avisada -> a causa gravada na entrada (para o aviso de saída).
+causa_ambiente_avisada() { head -1 "$NOTIF_AMBIENTE_FILE" 2>/dev/null || true; }
+
+# notificar <titulo> <corpo> — a ENTREGA, sem nenhuma regra de quando notificar.
+#
+# Extraída do `notificar_fim` na peça K11a-2, sem mudar um byte do que ela faz:
+# o pré-voo em NO-GO também precisa avisar, e o corpo dele não é um placar de
+# drenagem. Duas cópias desta função seriam dois lugares para o canal divergir.
+notificar() {
+  local titulo="${1:-Orquestrador}" corpo="${2:-}" canal
+  # 1) arquivo, sempre e primeiro: é a única entrega garantida.
+  mkdir -p "$RUNS_BASE" 2>/dev/null || true
+  printf '%s | %s | %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z' 2>/dev/null || echo '?')" "$titulo" "$corpo" \
+    >> "$NOTIF_FILE" 2>/dev/null || true
+
+  # 2) canal nativo, best-effort.
+  canal="$(cfg '.canal_notificacao' 2>/dev/null || echo '')"
+  if [ "$canal" != notificacao_nativa ]; then
+    log "notificação: canal '$canal' não é nativo — só arquivo ($NOTIF_FILE)"
+    return 0
+  fi
+  if ! command -v osascript >/dev/null 2>&1; then
+    log "notificação: osascript ausente — só arquivo ($NOTIF_FILE)"
+    return 0
+  fi
+  # Aspas e barras quebram o literal do AppleScript: saem antes de entrar.
+  local t c
+  t="$(printf '%s' "$titulo" | tr -d '"\\')"
+  c="$(printf '%s' "$corpo"  | tr -d '"\\')"
+  if osascript -e "display notification \"$c\" with title \"$t\"" >/dev/null 2>&1; then
+    log "notificação: enviada (e registrada em $NOTIF_FILE)"
+  else
+    log "notificação: osascript falhou — vale o arquivo ($NOTIF_FILE)"
+  fi
+  return 0
+}
+
+# notificar_fim <aprovados> <bloqueados> <adiados> <dur_min>
+notificar_fim() {
+  local ap="${1:-0}" bl="${2:-0}" ad="${3:-0}" dur="${4:-0}" ultimo
+  ultimo="$(jq -r '.ultimo // "—"' "$STATUS_STATE" 2>/dev/null || echo '—')"
+  notificar "Orquestrador CI: $ap aprovados, $bl bloqueados" \
+            "duração ${dur}min · adiados $ad · último: ${ultimo:-—}"
+}
+
+# --- ORÇAMENTO E CUSTO (regra 17: orçamento é GATE, não relatório) ------------
+# Contabilidade real, por script, a partir do usage que o CLI devolve. Os NOMES
+# dos campos vêm do config (`orcamento.campos_usage`), confirmados por sondagem
+# nesta máquina — nunca chutados aqui: mudou o CLI, muda o config, não o código.
+CFG_CUSTO_FILE="$MAIN_CHECKOUT/$(cfg '.orcamento.custo_file')"
+
+hoje()        { date '+%Y-%m-%d' 2>/dev/null || echo '1970-01-01'; }
+proximo_dia() { date -v+1d '+%Y-%m-%d' 2>/dev/null || date -d '+1 day' '+%Y-%m-%d' 2>/dev/null || hoje; }
+
+# custo_registrar <papel> <ticket> <attempt> <arquivo-de-saida-do-claude>
+# Acrescenta um registro em dias.<AAAA-MM-DD>[]. FALHA DE PARSE NUNCA BLOQUEIA:
+# loga e segue. Custo é contabilidade; barrar um ticket porque o usage veio
+# ilegível troca um problema de medição por um problema de entrega.
+custo_registrar() {
+  local papel="$1" ticket="$2" attempt="$3" out="$4"
+  local dia reg="" tmp p_custo p_in p_out p_cache
+  escrita_de_teste_permitida "$CFG_CUSTO_FILE" || return 0
+  [ -s "$out" ] || { log "  custo: saída vazia — sem usage para registrar ($papel/$ticket)"; return 0; }
+  p_custo="$(cfg '.orcamento.campos_usage.custo_usd')"
+  p_in="$(cfg '.orcamento.campos_usage.tokens_in')"
+  p_out="$(cfg '.orcamento.campos_usage.tokens_out')"
+  p_cache="$(cfg '.orcamento.campos_usage.tokens_cache')"
+  dia="$(hoje)"
+  # O arquivo carrega stdout+stderr juntos (claude_run redireciona os dois), então
+  # nem sempre é JSON puro. Duas tentativas, nesta ordem: arquivo inteiro como
+  # fluxo de JSON; senão, a última linha que É um objeto JSON.
+  local bruto
+  bruto="$(jq -s -c 'map(select(type == "object")) | last // empty' "$out" 2>/dev/null || true)"
+  [ -n "$bruto" ] || bruto="$(grep -o '^{.*}$' "$out" 2>/dev/null | tail -1 || true)"
+  if [ -n "$bruto" ]; then
+    reg="$(printf '%s' "$bruto" | jq -c --arg d "$dia" --arg pa "$papel" --arg tk "$ticket" \
+            --argjson at "${attempt:-0}" --arg pc "$p_custo" --arg pi "$p_in" --arg po "$p_out" --arg pch "$p_cache" '
+          {data: $d, papel: $pa, ticket: $tk, attempt: $at,
+           tokens_in:    ((getpath($pi  | split("."))) // 0),
+           tokens_out:   ((getpath($po  | split("."))) // 0),
+           tokens_cache: ((getpath($pch | split("."))) // 0),
+           custo_usd:    ((getpath($pc  | split("."))) // 0)}' 2>/dev/null || true)"
+  fi
+  if [ -z "$reg" ]; then
+    log "  custo: usage ilegível em $out — seguindo sem registrar (custo nunca bloqueia ticket)"
+    return 0
+  fi
+  mkdir -p "$(dirname "$CFG_CUSTO_FILE")" 2>/dev/null || true
+  [ -s "$CFG_CUSTO_FILE" ] || echo '{"dias":{}}' > "$CFG_CUSTO_FILE" 2>/dev/null || return 0
+  tmp="$(mktemp 2>/dev/null)" || return 0
+  if jq --arg d "$dia" --argjson r "$reg" '.dias[$d] = ((.dias[$d] // []) + [$r])' \
+       "$CFG_CUSTO_FILE" > "$tmp" 2>/dev/null; then
+    mv -f "$tmp" "$CFG_CUSTO_FILE" 2>/dev/null || rm -f "$tmp"
+    log "  custo: $papel/$ticket US$ $(printf '%s' "$reg" | jq -r '.custo_usd') · $(printf '%s' "$reg" | jq -r '.tokens_in + .tokens_out') tok"
+  else
+    rm -f "$tmp"
+    log "  custo: não consegui gravar $CFG_CUSTO_FILE — seguindo"
+  fi
+  return 0
+}
+
+# orcamento_veredito <ticket-id> -> "ok" | "dia" | "ticket"
+# Roda ANTES de cada chamada cara. "dia": teto diário (USD ou tokens) atingido.
+# "ticket": o que este ticket já consumiu atingiu orcamento.usd_ticket, então a
+# PRÓXIMA tentativa é a que estouraria.
+# FAIL-OPEN, com aviso. O ledger é MEDIÇÃO: ausente, vazio, corrompido ou com
+# forma inesperada, o veredito é "ok" e a fila segue — parar a entrega porque a
+# contabilidade quebrou troca um problema por um pior. O aviso não é decoração:
+# um "ok" silencioso de arquivo ilegível é indistinguível de um "ok" de consumo
+# zero, e é assim que um teto deixa de valer sem ninguém notar.
+orcamento_veredito() {
+  local id="${1:-—}" v
+  if [ ! -s "$CFG_CUSTO_FILE" ]; then
+    log "  orçamento: sem ledger legível em $CFG_CUSTO_FILE — veredito ok (fail-open)"
+    echo ok; return 0
+  fi
+  v="$(jq -r --arg d "$(hoje)" --arg t "$id" \
+     --argjson tu "$(cfg '.orcamento.usd_dia')" \
+     --argjson tt "$(cfg '.orcamento.tokens_dia')" \
+     --argjson ut "$(cfg '.orcamento.usd_ticket')" '
+    (.dias[$d] // []) as $r
+    | ($r | map(.custo_usd // 0) | add // 0) as $usd
+    | ($r | map((.tokens_in // 0) + (.tokens_out // 0)) | add // 0) as $tok
+    | ($r | map(select(.ticket == $t) | .custo_usd // 0) | add // 0) as $tusd
+    | if $usd >= $tu or $tok >= $tt then "dia"
+      elif $tusd >= $ut then "ticket"
+      else "ok" end' "$CFG_CUSTO_FILE" 2>/dev/null || true)"
+  case "$v" in
+    ok|dia|ticket) printf '%s\n' "$v" ;;
+    *) log "  orçamento: ledger ilegível em $CFG_CUSTO_FILE — veredito ok (fail-open; custo nunca para a fila)"
+       echo ok ;;
+  esac
+}
+
+# custo_resumo_dia -> "US$ 7.40/50 · 38000/5000000 tok" (para evento e STATUS).
+custo_resumo_dia() {
+  [ -s "$CFG_CUSTO_FILE" ] || { printf 'US$ 0/%s' "$(cfg '.orcamento.usd_dia')"; return 0; }
+  jq -r --arg d "$(hoje)" --argjson tu "$(cfg '.orcamento.usd_dia')" --argjson tt "$(cfg '.orcamento.tokens_dia')" '
+    (.dias[$d] // []) as $r
+    | "US$ \((($r | map(.custo_usd // 0) | add // 0) * 100 | round) / 100)/\($tu) · \($r | map((.tokens_in // 0) + (.tokens_out // 0)) | add // 0)/\($tt) tok"
+  ' "$CFG_CUSTO_FILE" 2>/dev/null || printf 'US$ ?'
+}
+
+# mark_adiado_orcamento <arquivo_ticket> <escopo: dia|ticket>
+# ADIADO, não reprovado: volta a pendente com adiado_ate = próximo dia e NÃO
+# passa pelo contador de retry (regra 3). Sem isso o teto de orçamento comeria
+# as tentativas de um ticket que nunca chegou a rodar.
+mark_adiado_orcamento() {
+  local file="$1" escopo="${2:-dia}" id ate token
+  id="$(ticket_field "$file" '.id')"
+  ate="$(proximo_dia)"
+  case "$escopo" in
+    ticket) token=orcamento_ticket ;;
+    *)      token=orcamento ;;
+  esac
+  ticket_set "$file" '.status = "pendente" | .adiado_ate = $a | .notas_status = $n' \
+    --arg a "$ate" --arg n "$token — teto de orçamento atingido em $(hoje); retoma em $ate"
+  ticket_commit "$file" "fila: $id adiado ($token)"
+  event "$id" ORCAMENTO "escopo=$escopo" "adiado_ate=$ate" "consumo=$(custo_resumo_dia)"
+  log "  ADIADO por orçamento ($token): retoma em $ate, sem consumir tentativa"
+}
+
+# --- Timeout portável para `claude -p` (macOS não tem coreutils `timeout`) -----
+# claude_run <workdir> <outfile> <secs> -- <args de claude...>
+# Roda `claude <args>` a partir de <workdir>, com stdout+stderr em <outfile>, e
+# CORTA em <secs> via watchdog puro-bash (TERM, depois KILL). Retorna o rc do
+# claude; se foi cortado pelo watchdog, NORMALIZA para 124 (convenção do timeout)
+# para o is_adiavel tratar como adiamento de infra, não reprova.
+claude_run() {
+  local dir="$1" outf="$2" secs="$3"; shift 3
+  [ "${1:-}" = "--" ] && shift
+  local rc=0
+  # Process group próprio: o watchdog mata o GRUPO, não só a casca.
+  # Sem `set -m` + `exec`, $pid é o subshell e o `claude` filho vira órfão
+  # (PPID 1), seguindo a queimar cota depois do desfecho por timeout.
+  ( set -m; cd "$dir" && exec claude "$@" ) > "$outf" 2>&1 &
+  local pid=$!
+  ( sleep "$secs"
+    kill -TERM -"$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null
+    sleep 10
+    kill -KILL -"$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null
+  ) >/dev/null 2>&1 &
+  local wpid=$!
+  wait "$pid" 2>/dev/null || rc=$?
+  # claude terminou sozinho: mata o watchdog para não segurar o run 30min.
+  kill "$wpid" 2>/dev/null || true
+  wait "$wpid" 2>/dev/null || true
+  # 143 = TERM, 137 = KILL: foi o watchdog que cortou => timeout.
+  if [ "$rc" = 143 ] || [ "$rc" = 137 ]; then rc=124; fi
+  return "$rc"
+}
+
+# --- Veredicto mecânico de critério (código verifica, modelo julga) -----------
+# criterio_match <saida> <espera> -> 0 se casa. Regra:
+#   - 'espera' puramente numérica  => IGUALDADE exata (evita "13" casar "3");
+#   - 'espera' não-numérica        => igualdade OU match como regex ERE.
+# Ambos os lados são trimados (espaços das pontas). Multi-linha: no caso regex,
+# casa se QUALQUER linha bater; no caso numérico, compara a saída trimada inteira.
+criterio_match() {
+  local out esp
+  out="$(printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+  esp="$(printf '%s' "$2" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+  case "$esp" in
+    ''|*[!0-9]*) : ;;                       # não é número puro -> segue p/ regex
+    *) [ "$out" = "$esp" ]; return $? ;;     # número puro -> igualdade exata
+  esac
+  [ "$out" = "$esp" ] && return 0
+  printf '%s' "$out" | grep -qE -- "$esp"
+}
+
+# --- Normalização de motivo (circuit breaker) ---------------------------------
+# Dois motivos "iguais na essência" (mesma falha, attempt/números diferentes)
+# devem colidir. Minúsculas, sem dígitos, espaços colapsados.
+norm_motivo() {
+  printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -cs 'a-z ' ' ' | tr -s ' ' \
+    | sed -e 's/^ *//' -e 's/ *$//'
+}
+
+# --- Preflight de env ---------------------------------------------------------
+# env_key_present <KEY> -> 0 se a chave existe (não-vazia) no processo OU está
+# definida em MAIN_CHECKOUT/.env.local. Aceita o prefixo NEXT_PUBLIC_ (ex.:
+# SUPABASE_URL casa NEXT_PUBLIC_SUPABASE_URL, que é a chave real do projeto).
+env_key_present() {
+  local k="$1" v
+  v="$(printenv "$k" 2>/dev/null || true)"
+  [ -n "$v" ] && return 0
+  [ -f "$MAIN_CHECKOUT/.env.local" ] || return 1
+  grep -qE "^(NEXT_PUBLIC_)?${k}=[^[:space:]]" "$MAIN_CHECKOUT/.env.local"
+}
+
+# env_value <KEY> -> imprime o VALOR (não só presença) do processo OU de
+# MAIN_CHECKOUT/.env.local. Aceita o prefixo NEXT_PUBLIC_ (igual env_key_present).
+# Tira aspas e CR/espaço das pontas. Usado pela trava de identidade de ambiente.
+env_value() {
+  local k="$1" v
+  v="$(printenv "$k" 2>/dev/null || true)"
+  if [ -z "$v" ] && [ -f "$MAIN_CHECKOUT/.env.local" ]; then
+    v="$(grep -E "^(NEXT_PUBLIC_)?${k}=" "$MAIN_CHECKOUT/.env.local" | head -1 | cut -d= -f2-)"
+  fi
+  v="${v%$'\r'}"; v="${v#\"}"; v="${v%\"}"; v="${v#\'}"; v="${v%\'}"
+  printf '%s' "$v"
+}
+
+# --- Telemetria por attempt (runs/<id>/meta.json = array de tentativas) --------
+# write_meta <runs_id_dir> <attempt> <model> <dur_secs> <diff_lines> <resultado>
+# Anexa um objeto ao array em <dir>/meta.json (cria [] se faltar). Best-effort:
+# telemetria nunca derruba o run.
+write_meta() {
+  local dir="$1" attempt="$2" model="$3" dur="$4" difflines="$5" resultado="$6"
+  local metaf="$dir/meta.json" ts tmp
+  ts="$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo '?')"
+  mkdir -p "$dir" 2>/dev/null || true
+  [ -s "$metaf" ] || echo '[]' > "$metaf"
+  tmp="$(mktemp)"
+  if jq --argjson at "${attempt:-0}" --arg m "${model:-?}" \
+        --argjson d "${dur:-0}" --argjson dl "${difflines:-0}" \
+        --arg r "${resultado:-?}" --arg ts "$ts" \
+        '. + [{attempt:$at, model:$m, claude_dur_secs:$d, diff_lines:$dl, resultado:$r, ts:$ts}]' \
+        "$metaf" > "$tmp" 2>/dev/null; then
+    mv "$tmp" "$metaf"
+  else
+    rm -f "$tmp"
+  fi
+}
+
+# --- Versão do ticket e teste vizinho (etapa 8c) -----------------------------
+# ticket_versao <arquivo> -> 12 hex do bloco JSON SEM as chaves que o motor
+# reescreve (campos-do-motor.json, 8b): editar o ticket gera versão nova. É a
+# régua do "uma vez por versão" do aviso do gate de ticket e da ampliação.
+ticket_versao() {
+  ticket_json "$1" | jq -S -c --slurpfile c "$CAMPOS_DO_MOTOR_FILE" 'reduce $c[0][] as $k (.; del(.[$k]))' 2>/dev/null \
+    | shasum -a 256 | cut -c1-12
+}
+
+# vizinho_ja_ampliado <id> <versao> -> 0 se a trilha já tem VIZINHO_AMPLIADO
+# desta versão do ticket (a ampliação é uma vez por versão, decisão da 8c).
+vizinho_ja_ampliado() {
+  grep -F " $1 VIZINHO_AMPLIADO " "$EVENTS_FILE" 2>/dev/null | grep -qE " hash=$2( |\$)"
+}

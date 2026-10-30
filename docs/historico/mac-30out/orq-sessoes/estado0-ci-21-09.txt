@@ -1,0 +1,104 @@
+seg 21 set 2026 11:15:40 -03
+== status
+fetch rc=0
+## main...origin/main
+023130b merge: promocao staging-auto -> main (261-266: primeiro uso completo)
+07e092a gitignore: docs/fila/PAUSAR (kill switch nao e arquivo solto)
+b98a047 motor: kit 2.1.0-dev, etapa 6c (tsx como dependencia do motor, --migrar sem sobrescrever proposto, push_suprimido informativo)
+761a0e3 orq: frente/266 (ticket 266) em staging-auto
+72feedd fila: 266 done (mergeado em staging-auto)
+a58ee24 fila: 266 aguardando merge
+== main x origin
+0	0
+== main x staging-auto
+0	1
+== worktrees
+/Users/lucasantos/Projetos/conteudos-infinitos         023130b [main]
+/Users/lucasantos/Projetos/_worktrees/ci-fila-13       023130b [fila/lote-13]
+/Users/lucasantos/Projetos/_worktrees/ci-harness-d     711ab5e [harness/etapa6]
+/Users/lucasantos/Projetos/_worktrees/ci-staging-auto  2a2e519 [staging-auto]
+== orq
+ORQUESTRADOR · 2026-09-21 10:52:24
+ESTADO   ocioso
+TICKET   —
+DESDE    16:44:56
+FASE     —
+FILA     4 pendente · 3 bloqueado · 75 done
+STAGING  2a2e519 · push suprimido (publicar é humano neste repo)
+ÚLTIMO   266 DONE 16:59:03 (merge em staging-auto)
+MOTIVO   sem ticket processável
+== pausa
+ls: .orq-pause: No such file or directory
+ls: docs/fila/PAUSAR: No such file or directory
+== launchd
+	state = not running
+	runs = 16
+	last exit code = 0
+		state = active
+		state = active
+== drenagens
+2026-09-20T19:47:52-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=0
+2026-09-20T19:47:54-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=0 refatiar=0 dur=0min
+2026-09-20T20:17:58-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=0
+2026-09-20T20:18:00-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=0 refatiar=0 dur=0min
+2026-09-20T20:48:05-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=0
+2026-09-20T20:48:06-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=0 refatiar=0 dur=0min
+2026-09-20T21:18:14-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=0
+2026-09-20T21:18:17-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=0 refatiar=0 dur=0min
+2026-09-20T21:48:28-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=0
+2026-09-20T21:48:38-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=0 refatiar=0 dur=0min
+2026-09-21T10:19:43-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=0
+2026-09-21T10:19:46-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=0 refatiar=0 dur=0min
+2026-09-21T10:52:19-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=0
+2026-09-21T10:52:24-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=0 refatiar=0 dur=0min
+== trilha
+2026-09-20T19:17:48-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=0 refatiar=0 dur=0min
+2026-09-20T19:47:52-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=0
+2026-09-20T19:47:54-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=0 refatiar=0 dur=0min
+2026-09-20T20:17:58-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=0
+2026-09-20T20:18:00-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=0 refatiar=0 dur=0min
+2026-09-20T20:48:05-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=0
+2026-09-20T20:48:06-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=0 refatiar=0 dur=0min
+2026-09-20T21:18:14-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=0
+2026-09-20T21:18:17-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=0 refatiar=0 dur=0min
+2026-09-20T21:48:28-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=0
+2026-09-20T21:48:38-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=0 refatiar=0 dur=0min
+2026-09-21T10:19:43-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=0
+2026-09-21T10:19:46-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=0 refatiar=0 dur=0min
+2026-09-21T10:52:19-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=0
+2026-09-21T10:52:24-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=0 refatiar=0 dur=0min
+== launchd.log
+=== [launchd-run] fim    2026-09-20 19:17:48 -0300 (exit 0) ===
+=== [launchd-run] início 2026-09-20 19:47:48 -0300 (pid 25293) ===
+=== [launchd-run] fim    2026-09-20 19:47:54 -0300 (exit 0) ===
+=== [launchd-run] início 2026-09-20 20:17:54 -0300 (pid 81822) ===
+=== [launchd-run] fim    2026-09-20 20:18:00 -0300 (exit 0) ===
+=== [launchd-run] início 2026-09-20 20:48:00 -0300 (pid 70194) ===
+=== [launchd-run] fim    2026-09-20 20:48:06 -0300 (exit 0) ===
+=== [launchd-run] início 2026-09-20 21:18:06 -0300 (pid 25936) ===
+=== [launchd-run] fim    2026-09-20 21:18:17 -0300 (exit 0) ===
+=== [launchd-run] início 2026-09-20 21:48:18 -0300 (pid 64123) ===
+=== [launchd-run] fim    2026-09-20 21:48:39 -0300 (exit 0) ===
+=== [launchd-run] início 2026-09-21 10:19:35 -0300 (pid 91038) ===
+=== [launchd-run] fim    2026-09-21 10:19:47 -0300 (exit 0) ===
+=== [launchd-run] início 2026-09-21 10:52:11 -0300 (pid 57487) ===
+=== [launchd-run] fim    2026-09-21 10:52:24 -0300 (exit 0) ===
+== validar pendentes
+validar rc=0
+243-rota-e-tela-publica-de-aprovacao.md:criterios_aceite[15] ISENCAO '$(' no segmento 1 pelo prefixo permitido 'test $(' — cmd: test $(grep -c 'it(' apps/web/test/auth-validation.test.ts) -ge 9 && echo ok
+243-rota-e-tela-publica-de-aprovacao.md:criterios_aceite[16] ISENCAO '$(' no segmento 1 pelo prefixo permitido 'test $(' — cmd: test $(grep -c 'expect(' apps/web/test/auth-validation.test.ts) -ge 40 && echo ok
+243-rota-e-tela-publica-de-aprovacao.md:criterios_aceite[18] ISENCAO '$(' no segmento 1 pelo prefixo permitido 'test $(' — cmd: test $(grep -c 'it(' apps/web/test/briefing-gate.test.ts) -ge 9 && echo ok
+243-rota-e-tela-publica-de-aprovacao.md:criterios_aceite[19] ISENCAO '$(' no segmento 1 pelo prefixo permitido 'test $(' — cmd: test $(grep -c 'expect(' apps/web/test/briefing-gate.test.ts) -ge 16 && echo ok
+244-fila-interna-de-aprovacao.md:criterios_aceite[2] ISENCAO '$(' no segmento 1 pelo prefixo permitido 'test $(' — cmd: test $(grep -c 'it(' apps/web/test/aprovacoes-fila.test.tsx) -ge 9 && echo ok
+244-fila-interna-de-aprovacao.md:criterios_aceite[4] ISENCAO '$(' no segmento 1 pelo prefixo permitido 'test $(' — cmd: test $(grep -cE 'export async function listarFilaDeAprovacao' apps/web/src/server/aprovacoes-read.ts) -eq 1 && echo ok
+244-fila-interna-de-aprovacao.md:criterios_aceite[6] ISENCAO '$(' no segmento 1 pelo prefixo permitido 'test $(' — cmd: test $(grep -oE "'(sem_link|aguardando|aprovado|ajuste_pedido|revogado|expirado)'" apps/web/src/server/aprovacoes-read.ts | wc -l) -ge 6 && echo ok
+244-fila-interna-de-aprovacao.md:criterios_aceite[9] ISENCAO '$(' no segmento 1 pelo prefixo permitido 'test $(' — cmd: test $(grep -oE 'gerarLinkAprovacao|revogarLinkAprovacao' apps/web/src/app/aprovacoes/page.tsx | wc -l) -ge 2 && echo ok
+244-fila-interna-de-aprovacao.md:criterios_aceite[11] ISENCAO '$(' no segmento 1 pelo prefixo permitido 'test $(' — cmd: test $(grep -oE 'roteiro_aprovacoes|roteiros' apps/web/src/server/aprovacoes-read.ts | wc -l) -ge 2 && echo ok
+244-fila-interna-de-aprovacao.md:criterios_aceite[18] ISENCAO '$(' no segmento 1 pelo prefixo permitido 'test $(' — cmd: test $(grep -c 'it(' apps/web/test/aprovacoes-link.test.ts) -ge 8 && echo ok
+244-fila-interna-de-aprovacao.md:criterios_aceite[19] ISENCAO '$(' no segmento 1 pelo prefixo permitido 'test $(' — cmd: test $(grep -c 'it(' apps/web/test/aprovacoes-publico.test.ts) -ge 10 && echo ok
+244-fila-interna-de-aprovacao.md:criterios_aceite[20] ISENCAO '$(' no segmento 1 pelo prefixo permitido 'test $(' — cmd: test $(grep -c 'it(' apps/web/test/aprovar-publico.test.tsx) -ge 6 && echo ok
+== verificar
+verificar rc=1
+só no kit   docs/orquestrador/skill/references/higiene-de-execucao.md
+
+1 diferença(s)

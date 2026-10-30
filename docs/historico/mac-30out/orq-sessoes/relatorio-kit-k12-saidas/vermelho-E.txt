@@ -1,0 +1,21 @@
+=== test-painel-visao.sh como estava em 7062e86, PATH=<espião>:$PATH, sem ORQ_LAUNCHCTL ===
+rc do teste: 0
+TODOS OS CHECKS PASSARAM
+chamadas ao launchctl do PATH: 0
+=== test-painel-detalhe.sh como estava em b32a6c2, PATH=<espião>:$PATH, sem ORQ_LAUNCHCTL ===
+rc do teste: 0
+TODOS OS CHECKS PASSARAM
+chamadas ao launchctl do PATH: 0
+=== test-painel-visao.sh como estava em 85e4796, PATH=<espião>:$PATH, sem ORQ_LAUNCHCTL ===
+rc do teste: 0
+TODOS OS CHECKS PASSARAM
+chamadas ao launchctl do PATH: 4
+   1 CHAMADA AO LAUNCHCTL DO PATH: print gui/501/org.fixture.alfa
+   1 CHAMADA AO LAUNCHCTL DO PATH: print gui/501/org.fixture.beta
+   2 CHAMADA AO LAUNCHCTL DO PATH: print gui/501/org.fixture.gama
+=== test-painel-detalhe.sh como estava em 85e4796, PATH=<espião>:$PATH, sem ORQ_LAUNCHCTL ===
+rc do teste: 0
+TODOS OS CHECKS PASSARAM
+chamadas ao launchctl do PATH: 2
+   1 CHAMADA AO LAUNCHCTL DO PATH: print gui/501/org.fixture.delta
+   1 CHAMADA AO LAUNCHCTL DO PATH: print gui/501/org.fixture.eco

@@ -1,0 +1,24 @@
+{
+ "ticket": {
+  "id": "763",
+  "loop": "plataforma",
+  "done_em": "2026-10-05 18:43",
+  "prim": "sim",
+  "sha_aprovado": "652f46458a2db9d42addc3eee2a10c389f01fba8",
+  "merge": "915d44ad1d6225647a4f1649196e52c1276dbfff"
+ },
+ "commit": {
+  "sha": "da1f4f1ce6a28998b0b88b239dfb7f2718521e0d",
+  "dt": "2026-10-14T16:10:08-03:00",
+  "assunto": "fix(ghl-backfill): oportunidades em lotes concorrentes, sync_cursor espelha o checkpoint e falha sem registro vira ultimo_erro na retomada",
+  "arquivos": [
+   "src/lib/perf/ghl-backfill.ts",
+   "test/ghl-backfill-job.test.ts",
+   "test/ghl-backfill-oportunidades.test.ts"
+  ]
+ },
+ "esperado": {
+  "tipo": "fix_na_linha",
+  "forca": "forte"
+ }
+}

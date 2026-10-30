@@ -1,0 +1,143 @@
+163a164,292
+>  "C5": {
+>   "apolo": {
+>    "com_forte": 0,
+>    "pct": null,
+>    "universo": 0
+>   },
+>   "aprovados_de_primeira_com_forte": [
+>    "666b",
+>    "699",
+>    "705",
+>    "734",
+>    "740",
+>    "763",
+>    "861"
+>   ],
+>   "com_14_dias": 225,
+>   "coorte_ate": "2026-10-09",
+>   "coorte_de": "2026-09-26",
+>   "dias_acompanhados_min": 14,
+>   "fortes_por_tipo": {
+>    "fix_na_linha": 18,
+>    "revert": 0,
+>    "saiu_de_done": 0,
+>    "ticket_conserto": 0
+>   },
+>   "fracos_por_tipo": {
+>    "fix_no_arquivo": 34,
+>    "linha_sem_fix": 32
+>   },
+>   "plataforma": {
+>    "com_forte": 18,
+>    "pct": 8.0,
+>    "universo": 225
+>   },
+>   "quentes_excluidos_do_fraco": [
+>    "CLAUDE.md",
+>    "docs/migrations-aplicadas.md",
+>    "docs/plano/apolo/aprendizados.md",
+>    "docs/plano/apolo/glossario.md",
+>    "docs/roadmap/BACKLOG-MAPEADO.md",
+>    "src/app/dashboard/clientes/[id]/_components/kpis-visao.tsx",
+>    "src/app/dashboard/clientes/[id]/_components/metricas-diarias.tsx",
+>    "src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx",
+>    "src/app/dashboard/clientes/[id]/page.tsx",
+>    "src/app/dashboard/clientes/[id]/setup/page.tsx",
+>    "src/app/dashboard/clientes/[id]/tabs/atendimento-tab.tsx",
+>    "src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx",
+>    "src/app/dashboard/clientes/page.tsx",
+>    "src/middleware.ts",
+>    "test/erro-cru-teto.test.ts",
+>    "test/espelho-fase-churn.test.ts",
+>    "test/relacao-aceite.test.tsx",
+>    "test/visao-aceite-estrutura.test.tsx",
+>    "test/visao-aceite-mockup.test.tsx",
+>    "vercel.json"
+>   ],
+>   "tickets_com_fraco_sem_forte": 47,
+>   "total": {
+>    "com_forte": 18,
+>    "pct": 8.0,
+>    "universo": 225
+>   }
+>  },
+>  "C5_parcial": {
+>   "apolo": {
+>    "com_forte": 0,
+>    "pct": 0.0,
+>    "universo": 173
+>   },
+>   "aprovados_de_primeira_com_forte": [
+>    "318b",
+>    "898c",
+>    "908",
+>    "938",
+>    "952b",
+>    "954",
+>    "974",
+>    "982",
+>    "997",
+>    "1301"
+>   ],
+>   "com_14_dias": 0,
+>   "coorte_ate": "2026-10-23",
+>   "coorte_de": "2026-10-10",
+>   "dias_acompanhados_min": 1,
+>   "fortes_por_tipo": {
+>    "fix_na_linha": 16,
+>    "revert": 0,
+>    "saiu_de_done": 0,
+>    "ticket_conserto": 0
+>   },
+>   "fracos_por_tipo": {
+>    "fix_no_arquivo": 18,
+>    "linha_sem_fix": 10
+>   },
+>   "plataforma": {
+>    "com_forte": 16,
+>    "pct": 3.7,
+>    "universo": 436
+>   },
+>   "quentes_excluidos_do_fraco": [
+>    "CLAUDE.md",
+>    "docs/migrations-aplicadas.md",
+>    "docs/plano/apolo/aprendizados.md",
+>    "docs/plano/apolo/glossario.md",
+>    "docs/roadmap/BACKLOG-MAPEADO.md",
+>    "src/app/dashboard/clientes/[id]/_components/kpis-visao.tsx",
+>    "src/app/dashboard/clientes/[id]/_components/metricas-diarias.tsx",
+>    "src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx",
+>    "src/app/dashboard/clientes/[id]/page.tsx",
+>    "src/app/dashboard/clientes/[id]/setup/page.tsx",
+>    "src/app/dashboard/clientes/[id]/tabs/atendimento-tab.tsx",
+>    "src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx",
+>    "src/app/dashboard/clientes/page.tsx",
+>    "src/middleware.ts",
+>    "test/erro-cru-teto.test.ts",
+>    "test/espelho-fase-churn.test.ts",
+>    "test/relacao-aceite.test.tsx",
+>    "test/visao-aceite-estrutura.test.tsx",
+>    "test/visao-aceite-mockup.test.tsx",
+>    "vercel.json"
+>   ],
+>   "tickets_com_fraco_sem_forte": 24,
+>   "total": {
+>    "com_forte": 16,
+>    "pct": 2.6,
+>    "universo": 609
+>   }
+>  },
+207a337,348
+>  "ritual": {
+>   "C5": {
+>    "commits": 4,
+>    "pares": 6,
+>    "tickets": 6
+>   },
+>   "C5_parcial": {
+>    "commits": 5,
+>    "pares": 38,
+>    "tickets": 38
+>   }
+>  },

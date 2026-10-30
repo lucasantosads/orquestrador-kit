@@ -1,0 +1,97 @@
+seg 21 set 2026 11:15:35 -03
+== status
+fetch rc=0
+## main...origin/main [ahead 46]
+43d05ed fila: 481 adiado (executor)
+831ba9b fila: 481 adiado (executor)
+7397d55 fila: 431 bloqueado
+0613693 fila: 501 bloqueado
+35b92cb fila: 500 done (mergeado em staging-auto)
+35f405b fila: 500 aguardando merge
+== refs
+main 43d05ed
+origin/main f9f14ad
+staging-auto 2b6e697
+legado/harness-2026-09 9a94885
+origin/legado/harness-2026-09 9a94885
+== staging-auto atras de main
+74
+== worktrees
+/Users/lucasantos/Projetos/actus-saas                                             43d05ed [main]
+/sessions/rcw-012j6fcvr2hmdhfkwwkbtx1v/mnt/Projetos/_worktrees/fix-staging-gates  0a468a8 [fix/staging-auto-testes-typecheck] locked
+/Users/lucasantos/Projetos/_worktrees/actus-deploy                                e3e1db2 (detached HEAD)
+/Users/lucasantos/Projetos/_worktrees/actus-saas-mediabridge                      62c585c [feat/media-bridge-ctwa]
+/Users/lucasantos/Projetos/_worktrees/actus-saas-saude                            1336dfa [feat/e17-monitor-conexao]
+/Users/lucasantos/Projetos/_worktrees/actus-saas-score                            86f8cd6 [feat/score-validado-headline]
+/Users/lucasantos/Projetos/_worktrees/actus-saas-slamin                           3935021 [feat/sla-minutos]
+/Users/lucasantos/Projetos/_worktrees/actus-saas-sugestao-acionavel               2a8a1af [feat/sugestao-acionavel]
+/Users/lucasantos/Projetos/_worktrees/orq-440                                     5f1da23 [frente/440]
+/Users/lucasantos/Projetos/_worktrees/orq-441                                     735fec5 [frente/441]
+/Users/lucasantos/Projetos/_worktrees/orq-442                                     e13c58c [frente/442]
+/Users/lucasantos/Projetos/_worktrees/orq-488                                     8632826 [frente/488]
+/Users/lucasantos/Projetos/_worktrees/orq-staging-auto                            2b6e697 [staging-auto]
+/Users/lucasantos/Projetos/_worktrees/wt-450                                      45d6682 [fix/ghl-direcao]
+/Users/lucasantos/Projetos/_worktrees/wt-480                                      cbadb75 [resgate/480]
+/Users/lucasantos/Projetos/_worktrees/wt-etapa-conversa                           3ff7311 [feat/etapa-conversa-inteira]
+/Users/lucasantos/Projetos/_worktrees/wt-etl-rodada2                              956c611 [feat/etl-reancoragem-rodada2]
+/Users/lucasantos/Projetos/_worktrees/wt-ingest-endpoint                          92a9e21 [feat/ingest-endpoint]
+/Users/lucasantos/Projetos/_worktrees/wt-resgate                                  0a5e66d [resgate/harness-2026-09]
+== orq
+ORQUESTRADOR · 2026-09-21 10:52:26
+ESTADO   ocioso
+TICKET   —
+DESDE    10:50:15
+FASE     —
+FILA     6 pendente · 2 refatiar · 5 bloqueado · 82 done
+STAGING  2b6e697 · push suprimido (publicar é humano neste repo)
+ÚLTIMO   481 ADIADO 10:52:25 (77s)
+MOTIVO   cooldown ~60min
+== VERSAO
+2.1.0-dev
+== PAUSAR
+ls: docs/fila/PAUSAR: No such file or directory
+== launchd
+	state = not running
+	runs = 14
+	last exit code = 0
+		state = active
+		state = active
+== tickets
+900 docs/fila/900-fixture-adocao.md "status": "bloqueado"
+212 docs/fila/212-monitor-whatsapp-alarme.md "status": "done"
+321 docs/fila/321-camada-acesso-mt.md "status": "done"
+443 docs/fila/443-alarme-conector-ghl-parado.md "status": "done"
+444 docs/fila/444-env-ausente-nao-vira-status-http.md "status": "done"
+445 docs/fila/445-logar-corpo-erro-ghl-redigido.md "status": "done"
+447 docs/fila/447-taxonomia-nicho-area-tese.md "status": "done"
+== trilha
+2026-09-21T03:02:58-0300 431 INICIO attempt=3 model=opus
+2026-09-21T03:33:38-0300 431 GATE typecheck=ok testes=ok enforcement=ok criterios=4/5 build=ok
+2026-09-21T03:33:38-0300 431 REPROVADO motivo=criterio_qualidade attempt=3 diff=429
+2026-09-21T03:33:38-0300 431 BLOQUEADO motivo=criterio_qualidade attempt=3
+2026-09-21T04:03:52-0300 481 INICIO attempt=1 model=sonnet
+2026-09-21T07:12:33-0300 481 GATE typecheck=ok testes=ok enforcement=ok criterios=2/3 build=ok
+2026-09-21T07:12:33-0300 481 REPROVADO motivo=criterio_qualidade attempt=1 diff=501
+2026-09-21T07:12:33-0300 481 RETRY attempt=2 model=opus motivo=criterio_qualidade worktree=reaproveitada
+2026-09-21T07:12:33-0300 481 WORKTREE modo=reaproveitada de=attempt-0 base=2b6e697b
+2026-09-21T07:12:33-0300 481 INICIO attempt=2 model=opus
+2026-09-21T07:54:30-0300 481 PERMISSAO_NEGADA n=3 cmds=cp scripts/backfill-webhook-events-ghl.test.ts /tmp/orq481-test-backup.ts | grep -m1 "\"version\"" node_modules/vitest/package.json | ls -la node_modules
+2026-09-21T08:06:34-0300 481 GATE typecheck=ok testes=falha enforcement=ok criterios=2/3 build=nao-rodou
+2026-09-21T08:06:34-0300 481 ADIADO motivo=ambiente attempt=2
+2026-09-21T08:06:35-0300 --- DRENAGEM_FIM aprovados=7 bloqueados=2 adiados=1 refatiar=0 dur=660min
+2026-09-21T10:46:39-0300 --- DRENAGEM_INICIO alvo=staging-auto processaveis=2
+2026-09-21T10:46:47-0300 481 INICIO attempt=1 model=sonnet
+2026-09-21T10:50:14-0300 481 GATE typecheck=ok testes=ok enforcement=ok criterios=2/3 build=ok
+2026-09-21T10:50:15-0300 481 REPROVADO motivo=criterio_qualidade attempt=1 diff=521
+2026-09-21T10:50:15-0300 481 RETRY attempt=2 model=opus motivo=criterio_qualidade worktree=reaproveitada
+2026-09-21T10:50:15-0300 481 WORKTREE modo=reaproveitada de=attempt-0 base=2b6e697b
+2026-09-21T10:50:15-0300 481 INICIO attempt=2 model=opus
+2026-09-21T10:51:33-0300 481 PERMISSAO_NEGADA n=2 cmds=grep -m1 "\"version\"" node_modules/vitest/package.json | ls -la node_modules/.vite
+2026-09-21T10:52:25-0300 481 GATE typecheck=ok testes=ok enforcement=ok criterios=2/3 build=ok
+2026-09-21T10:52:25-0300 481 ADIADO motivo=ambiente attempt=2
+2026-09-21T10:52:26-0300 --- DRENAGEM_FIM aprovados=0 bloqueados=0 adiados=1 refatiar=0 dur=6min
+== verificar
+verificar rc=1
+diferente   scripts/orquestrador/test-lib-config.sh
+
+7 diferença(s)

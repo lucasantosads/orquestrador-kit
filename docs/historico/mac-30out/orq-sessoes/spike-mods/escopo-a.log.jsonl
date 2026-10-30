@@ -1,0 +1,2 @@
+{"ts":"2026-10-11T01:17:45.207Z","tool":"Write","caminho":"/private/tmp/spike-mods-repo/permitido.txt","real":"/private/tmp/spike-mods-repo/permitido.txt","rel":"permitido.txt","decisao":"segue","motivo":"casa glob"}
+{"ts":"2026-10-11T01:17:45.392Z","tool":"Write","caminho":"/private/tmp/spike-mods-repo/proibido.txt","real":"/private/tmp/spike-mods-repo/proibido.txt","rel":"proibido.txt","decisao":"nega","motivo":"nao casa glob"}

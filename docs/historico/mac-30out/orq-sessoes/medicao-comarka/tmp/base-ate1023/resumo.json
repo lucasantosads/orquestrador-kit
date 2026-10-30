@@ -1,0 +1,225 @@
+{
+ "C1": {
+  "desde_2026-08-08": {
+   "atual": 3,
+   "maior": 3,
+   "maior_ate": "2026-10-23",
+   "maior_de": "2026-10-21"
+  },
+  "dias_com_intervencao_na_janela": [
+   "2026-10-10",
+   "2026-10-11",
+   "2026-10-12",
+   "2026-10-13",
+   "2026-10-14",
+   "2026-10-15",
+   "2026-10-16",
+   "2026-10-17",
+   "2026-10-18",
+   "2026-10-19",
+   "2026-10-20"
+  ],
+  "janela": {
+   "atual": 3,
+   "maior": 3,
+   "maior_ate": "2026-10-23",
+   "maior_de": "2026-10-21"
+  },
+  "motivos_por_dia": {
+   "2026-10-10": [
+    "allowlist:7787af376",
+    "writeback:1a5d41d9f",
+    "writeback:819c49aaa"
+   ],
+   "2026-10-11": [
+    "allowlist:079d3f465",
+    "allowlist:5525c7db6",
+    "allowlist:cc8d3887b",
+    "config:655c91603",
+    "criterio:f01a98953",
+    "dependencia:a269b0ffc",
+    "gate_streak:local-loop.log:89088",
+    "motor:db3edde4b",
+    "motor:ee7d358a3",
+    "motor:fab89d5c8",
+    "outro:fa2923eec",
+    "writeback:0388c9747"
+   ],
+   "2026-10-12": [
+    "allowlist:05d951e93",
+    "allowlist:4b5dd2eab",
+    "allowlist:638e00305",
+    "allowlist:ab4e95cb4",
+    "allowlist:af768b088",
+    "dependencia:3047e6cb8",
+    "gate_streak:local-loop.log:93808",
+    "motor:31104d009",
+    "pausa_gate_streak",
+    "reabertura:bc492863f",
+    "writeback:37a1bcee0"
+   ],
+   "2026-10-13": [
+    "allowlist:c00ee4b15",
+    "criterio:3718afa1c",
+    "criterio:3f5647804",
+    "reabertura:d23ee91ff"
+   ],
+   "2026-10-14": [
+    "allowlist:b7a3eea2f",
+    "allowlist:cf2fe3a97",
+    "motor:6df04ccc0",
+    "motor:eb010cfec",
+    "pausa_manual"
+   ],
+   "2026-10-15": [
+    "allowlist:832436272",
+    "dependencia:32f871933",
+    "outro:15f8b3e6f"
+   ],
+   "2026-10-16": [
+    "criterio:ce84bb2cd",
+    "motor:a4af7a5b9",
+    "outro:47ff6ef12",
+    "pausa_manual",
+    "pausa_manual",
+    "pausa_manual",
+    "pausa_manual",
+    "pausa_manual",
+    "pausa_manual",
+    "writeback:840d63f9d"
+   ],
+   "2026-10-17": [
+    "allowlist:75db690c0",
+    "criterio:fd12015be",
+    "motor:457856c46",
+    "outro:d790bf4c7",
+    "pausa_manual"
+   ],
+   "2026-10-18": [
+    "allowlist:b5d4e3111",
+    "allowlist:b791d6f32",
+    "criterio:5b1a6df1b",
+    "criterio:6f94e84b7",
+    "criterio:ba731d863",
+    "motor:483f3e302",
+    "motor:6ad8fbd63",
+    "motor:86dec0767",
+    "motor:906259fe0",
+    "motor:9469648eb",
+    "motor:bb5934141",
+    "motor:dc90c8d8f",
+    "pausa_manual",
+    "reabertura:41ed2be16",
+    "reabertura:846fcafc3",
+    "reabertura:884c24298"
+   ],
+   "2026-10-19": [
+    "allowlist:8793a1a97",
+    "reabertura:48a5f59e8"
+   ],
+   "2026-10-20": [
+    "allowlist:8eb8e0c2d",
+    "motor:63415ea95"
+   ]
+  },
+  "sem_dias_so_de_writeback": {
+   "desde_2026-08-08": {
+    "atual": 3,
+    "maior": 4,
+    "maior_ate": "2026-08-30",
+    "maior_de": "2026-08-27"
+   },
+   "janela": {
+    "atual": 3,
+    "maior": 3,
+    "maior_ate": "2026-10-23",
+    "maior_de": "2026-10-21"
+   }
+  }
+ },
+ "C2": {
+  "aprovados_de_primeira": 458,
+  "denominador": 609,
+  "done_na_janela": 611,
+  "done_sem_meta": 2,
+  "nao_por_adiado_ou_pausado_na_1a_linha": 0,
+  "pct": 75.2
+ },
+ "C3": {
+  "desde_2026-08-08": {
+   "atual": 18,
+   "maior": 18,
+   "maior_ate": "2026-10-23",
+   "maior_de": "2026-10-06"
+  },
+  "janela": {
+   "atual": 14,
+   "maior": 14,
+   "maior_ate": "2026-10-23",
+   "maior_de": "2026-10-10"
+  },
+  "licoes_na_janela": 0,
+  "ultima_licao": "2026-10-05 15:32"
+ },
+ "esforco": {
+  "claude_dur_secs_por_done": 260,
+  "claude_dur_secs_total_done": 158513,
+  "custo_usd": "sem dado"
+ },
+ "intervencoes": {
+  "commits_excluidos": {
+   "agente_executor": 813,
+   "resolvedor_Orq-Resolvedor": 12
+  },
+  "intervencoes_por_tipo": {
+   "allowlist": 18,
+   "config": 1,
+   "criterio": 8,
+   "dependencia": 3,
+   "gate_streak": 2,
+   "motor": 16,
+   "outro": 4,
+   "pausa_gate_streak": 1,
+   "pausa_manual": 9,
+   "reabertura": 6,
+   "writeback": 5
+  },
+  "linhas_por_classe": {
+   "alimentar_fila": 44,
+   "curadoria": 38,
+   "fora_da_fila": 128,
+   "intervencao": 65,
+   "intervencao_embutida": 8,
+   "liberacao": 51
+  },
+  "resolvedor_teria_agido": {
+   "nao": 58,
+   "sem dado": 6,
+   "sim R1": 8,
+   "sim R5": 1
+  }
+ },
+ "janela": {
+  "ate": "2026-10-23",
+  "corte": "2026-10-23T23:59:59-03:00",
+  "de": "2026-10-10",
+  "dias": 14
+ },
+ "volume": {
+  "bloqueios": 68,
+  "bloqueios_com_retomada": 66,
+  "bloqueios_por_dia": 4.86,
+  "bloqueios_sem_retomada_ate_o_corte": [
+   "1165",
+   "1248"
+  ],
+  "done": 611,
+  "done_por_dia": 43.64,
+  "horas_loop_parado": 42,
+  "horas_medias_bloqueado_ate_proxima_tentativa": 6.2,
+  "horas_pausa_gate_streak": 2,
+  "horas_pausa_manual": 6,
+  "horas_pausa_operacional": 22,
+  "tentativas_medias_por_done": 1.46
+ }
+}

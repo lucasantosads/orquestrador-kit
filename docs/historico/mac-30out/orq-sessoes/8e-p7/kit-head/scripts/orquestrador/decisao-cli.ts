@@ -1,0 +1,156 @@
+/**
+ * decisao-cli.ts — ponte entre o executor.sh e a lógica pura do decisao.ts.
+ * O bash não decide nada: manda o estado por stdin e lê a decisão em JSON.
+ *
+ * Uso: npx tsx decisao-cli.ts <raiz> <subcomando> [args]   (payload em stdin)
+ *   restricao <slug>          -> {permitido, exitCode, mensagem}; sai com exitCode
+ *   worktree <id>             -> imprime o nome da worktree (com prefixo do config)
+ *   desfecho                  -> stdin = SinalTentativa; imprime Veredito
+ *   retry <tentativa> <modelo>-> stdin = Veredito; imprime PlanoRetry
+ *   meta                      -> stdin = entrada; imprime RegistroMeta
+ *   repeticao <sub> <diff>    -> stdin = linhas da trilha do ticket; exit 0 = repete a anterior (7b-4)
+ *   reaberto                  -> stdin = linhas da trilha do ticket; exit 0 = último desfecho é BLOQUEADO (7b-8)
+ *   disallowed                -> o piso de --disallowedTools do config (T17)
+ *   base-vermelha             -> stdin = {gatesTxt, arquivosDoDiff, allowlist};
+ *                                imprime a lista (vazia = caminho de hoje), ticket 632
+ *   vizinhos                  -> stdin = {gatesTxt, arquivosDoDiff, allowlist, worktree, base};
+ *                                lê a árvore de <base> na worktree e imprime
+ *                                {amplia, testes, pares, motivo, bloco} (etapa 8c)
+ *   base-vermelha-arquivos    -> stdin = saída do vitest (string JSON); os arquivos com FAIL, um por linha (8c)
+ *   criterios-ampliados       -> stdin = {criterios, allowlist, ampliados}; os critérios
+ *                                com o cmd de lista fechada aceitando os ampliados (8c)
+ */
+import { readFileSync } from 'node:fs'
+import {
+  arquivosBaseVermelha,
+  arquivosFalhosDoVitest,
+  avaliaRestricaoExecucao,
+  blocoFailVitest,
+  cmdComAmpliados,
+  decidirVizinhos,
+  decidirDesfecho,
+  decidirRetry,
+  registroMeta,
+  ehRepeticao,
+  reabertoDeBloqueado,
+  nomeWorktree,
+  prefixoDeWorktree,
+  modeloIndefinido,
+  modeloRecusado,
+} from './decisao.js'
+import { lerArvoreAlvo, testesVizinhos } from './gate-ticket.js'
+import { defaultToolsFromGates, pisoDoConfig, toolsDoTicket } from './perfil.js'
+import type { DecisaoConfig, SinalTentativa, Veredito } from './decisao.js'
+
+const [raiz, sub, ...args] = process.argv.slice(2)
+if (!raiz || !sub) {
+  process.stderr.write('uso: decisao-cli.ts <raiz> <subcomando> [args]\n')
+  process.exit(2)
+}
+const config = JSON.parse(readFileSync(`${raiz}/docs/fila/000-config.json`, 'utf8')) as DecisaoConfig
+const stdin = () => JSON.parse(readFileSync(0, 'utf8'))
+const out = (v: unknown) => process.stdout.write(JSON.stringify(v) + '\n')
+
+switch (sub) {
+  case 'restricao': {
+    const r = avaliaRestricaoExecucao(config, args[0] ?? '')
+    out(r)
+    process.exit(r.permitido ? 0 : r.exitCode)
+    break
+  }
+  case 'modelo-indefinido': {
+    // exit 0 = indefinido (PENDENTE_*), 1 = parece um modelo de verdade.
+    process.exit(modeloIndefinido(args[0] ?? '') ? 0 : 1)
+    break
+  }
+  case 'modelo-recusado': {
+    // stdin = saída do claude. exit 0 = o modelo foi RECUSADO pelo CLI.
+    process.exit(modeloRecusado(readFileSync(0, 'utf8')) ? 0 : 1)
+    break
+  }
+  case 'tools': {
+    // Allowlist derivada dos gates E dos critérios do ticket (peça 0c). Vive
+    // aqui porque `npx tsx -e` roda como CJS e não resolve './perfil.js'.
+    // Os `cmd` dos critérios chegam em ARGV como JSON, não por stdin: `tools` é
+    // chamado sem pipe em vários lugares, e ler stdin travaria a chamada.
+    let criterioCmds: string[] = []
+    if (args[0]) {
+      try {
+        criterioCmds = (JSON.parse(args[0]) as string[]).filter((c) => typeof c === 'string')
+      } catch {
+        criterioCmds = []
+      }
+    }
+    const gateCmds = (config as unknown as { gates: { cmd: string }[] }).gates.map((g) => g.cmd)
+    process.stdout.write(toolsDoTicket(gateCmds, criterioCmds, pisoDoConfig(config)))
+    break
+  }
+  case 'disallowed': {
+    // O PISO de `--disallowedTools` (T17), do config. Vazio quando o repo não
+    // declarou `proibicoes_absolutas.tools` — e aí o executor não passa a flag,
+    // que é o comportamento de sempre.
+    process.stdout.write(pisoDoConfig(config).join(','))
+    break
+  }
+  case 'repeticao': {
+    // Peça 7b-4. exit 0 = a reprovação atual repete a anterior (mesmo sub, mesmo
+    // diff); 1 = não repete. As linhas chegam cruas por stdin, já filtradas
+    // pelo id do ticket.
+    const linhas = readFileSync(0, 'utf8').split('\n').filter((l) => l.trim() !== '')
+    process.exit(ehRepeticao(linhas, args[0] ?? '', Number(args[1] ?? NaN)) ? 0 : 1)
+    break
+  }
+  case 'reaberto': {
+    // Peça 7b-8. exit 0 = o último desfecho do ticket na trilha é BLOQUEADO
+    // (e o status atual, conferido por quem chama, é pendente): devolução humana.
+    const linhas = readFileSync(0, 'utf8').split('\n').filter((l) => l.trim() !== '')
+    process.exit(reabertoDeBloqueado(linhas) ? 0 : 1)
+    break
+  }
+  case 'worktree': {
+    process.stdout.write(nomeWorktree(prefixoDeWorktree(config), args[0] ?? '') + '\n')
+    break
+  }
+  case 'desfecho': {
+    out(decidirDesfecho(config, stdin() as SinalTentativa))
+    break
+  }
+  case 'retry': {
+    const plano = decidirRetry(config, stdin() as Veredito, Number(args[0] ?? 0), args[1] ?? '')
+    out(plano)
+    break
+  }
+  case 'meta': {
+    out(registroMeta(stdin()))
+    break
+  }
+  case 'base-vermelha': {
+    out(arquivosBaseVermelha(stdin() as { gatesTxt: string; arquivosDoDiff: string[]; allowlist: string[] }))
+    break
+  }
+  case 'vizinhos': {
+    // A árvore é a do base_ticket (o teste vizinho não está no diff). Árvore
+    // ilegível é erro alto: o executor não amplia sem saber.
+    const e = stdin() as { gatesTxt: string; arquivosDoDiff: string[]; allowlist: string[]; worktree: string; base: string }
+    const arvore = lerArvoreAlvo(e.worktree, e.base, 'docs/fila')
+    if (!arvore) {
+      process.stderr.write(`vizinhos: não li a árvore de ${e.base} em ${e.worktree}\n`)
+      process.exit(1)
+    }
+    const d = decidirVizinhos({ ...e, vizinhos: testesVizinhos(e.allowlist, arvore) })
+    out({ ...d, bloco: d.amplia ? blocoFailVitest(e.gatesTxt, d.pares) : '' })
+    break
+  }
+  case 'base-vermelha-arquivos': {
+    for (const f of arquivosFalhosDoVitest(String(stdin()))) process.stdout.write(f + '\n')
+    break
+  }
+  case 'criterios-ampliados': {
+    const e = stdin() as { criterios: { cmd?: unknown }[]; allowlist: string[]; ampliados: string[] }
+    out(e.criterios.map((c) => (typeof c.cmd === 'string' ? { ...c, cmd: cmdComAmpliados(c.cmd, e.allowlist, e.ampliados) } : c)))
+    break
+  }
+  default:
+    process.stderr.write(`subcomando desconhecido: ${sub}\n`)
+    process.exit(2)
+}

@@ -1,0 +1,309 @@
+diff --git a/scripts/orquestrador/resolvedor/acoes.ts b/scripts/orquestrador/resolvedor/acoes.ts
+index be24525..779bcfd 100644
+--- a/scripts/orquestrador/resolvedor/acoes.ts
++++ b/scripts/orquestrador/resolvedor/acoes.ts
+@@ -23,6 +23,7 @@ import { dirTicket, type GuardaResolvedor } from './caminhos.js'
+ import type { Decisao } from './decidir.js'
+ import { diffLinhas } from './diff.js'
+ import { acoesDe, lerLedger, registrar } from './ledger.js'
++import { modoDaChave, R1_MULTI, type Modos } from './modos.js'
+ import { planejarR1, type Plano } from './r1.js'
+ import { planejarR2 } from './r2.js'
+ import { planejarR5 } from './r5.js'
+@@ -37,7 +38,7 @@ export interface Feito {
+ }
+ 
+ export interface Alvo {
+-  repo: { nome: string; caminho: string }
++  repo: { nome: string; caminho: string; modos?: Modos }
+   id: string
+   diag: Diagnostico
+   decisao: Decisao
+@@ -79,18 +80,25 @@ function oQueMudou(tipo: 'r1_allowlist' | 'r5_reabrir', p: { testes?: { teste: s
+   return `${ts} na allowlist${lista}; guarda${gs.length > 1 ? 's' : ''} de contagem em criterio[${gs.join('], criterio[')}]; reabriu (status pendente, nota vazia)`
+ }
+ 
++/** As travas de ação no ticket (mesmo bloqueio; teto), ou `null` se pode agir. */
++function travaDoTicket(a: Alvo): Feito | null {
++  const feitas = acoesDe(lerLedger(), a.repo.nome, a.id)
++  const quando = a.diag.bloqueio.quando
++  if (feitas.some((e) => e.assinatura === a.diag.assinatura || (quando !== null && e.bloqueado_em === quando))) {
++    return { feito: 'nao_consegui', motivo: 'segunda vez bloqueado no mesmo bloqueio (mesma assinatura ou mesma série) depois de uma ação do resolvedor: vai para humano' }
++  }
++  if (feitas.length >= TETO_ACOES_TICKET) {
++    return { feito: 'aviso', motivo: `teto de ${TETO_ACOES_TICKET} ações do resolvedor no ticket: só diagnóstico e aviso` }
++  }
++  return null
++}
++
+ export function agirR1R5(a: Alvo, tipo: 'r1_allowlist' | 'r5_reabrir'): Feito {
+   const { repo, id, diag } = a
+-  const sombra = a.decisao.acao === 'sombra'
++  let sombra = a.decisao.acao === 'sombra'
+   if (!sombra) {
+-    const feitas = acoesDe(lerLedger(), repo.nome, id)
+-    const quando = diag.bloqueio.quando
+-    if (feitas.some((e) => e.assinatura === diag.assinatura || (quando !== null && e.bloqueado_em === quando))) {
+-      return { feito: 'nao_consegui', motivo: 'segunda vez bloqueado no mesmo bloqueio (mesma assinatura ou mesma série) depois de uma ação do resolvedor: vai para humano' }
+-    }
+-    if (feitas.length >= TETO_ACOES_TICKET) {
+-      return { feito: 'aviso', motivo: `teto de ${TETO_ACOES_TICKET} ações do resolvedor no ticket: só diagnóstico e aviso` }
+-    }
++    const t = travaDoTicket(a)
++    if (t) return t
+   }
+   const rel = arquivoDoTicket(repo.caminho, id)
+   if (!rel) return { feito: 'nao_consegui', motivo: `não achei um arquivo docs/fila/${id}-*.md só` }
+@@ -100,7 +108,20 @@ export function agirR1R5(a: Alvo, tipo: 'r1_allowlist' | 'r5_reabrir'): Feito {
+   const plano: Plano<{ novo: string; testes?: { teste: string }[]; criteriosLista?: number[]; guardas?: number[]; condicao?: string }> =
+     tipo === 'r1_allowlist' ? planejarR1(repo.caminho, diag, antes, a.agora) : planejarR5(repo.caminho, diag, antes)
+   if (!plano.ok) return { feito: 'nao_consegui', motivo: plano.motivo }
+-  const mudou = oQueMudou(tipo, plano.plano)
++  // R1 com 2 ou mais testes: o modo é o do r1_multi (7f-b7; ausente, o do R1)
++  let prefixo = ''
++  if ((plano.plano.testes?.length ?? 0) >= 2 && repo.modos) {
++    const m = modoDaChave(repo.modos, R1_MULTI)
++    if (m !== 'auto') prefixo = `${R1_MULTI} em ${m}: `
++    if (m === 'diagnostico') return { feito: 'aviso', motivo: `${prefixo}${plano.plano.testes!.map((t) => t.teste).join(' e ')} ficariam na allowlist; nada proposto` }
++    if (m === 'sombra') sombra = true
++    else if (sombra) {
++      const t = travaDoTicket(a)
++      if (t) return t
++      sombra = false
++    }
++  }
++  const mudou = `${prefixo}${oQueMudou(tipo, plano.plano)}`
+   const diff = diffLinhas(antes, plano.plano.novo, rel)
+   if (a.dryRun) return { feito: 'faria', motivo: mudou, diff }
+   if (sombra) {
+diff --git a/scripts/orquestrador/resolvedor/desfazer.ts b/scripts/orquestrador/resolvedor/desfazer.ts
+index 9216417..fa791f3 100644
+--- a/scripts/orquestrador/resolvedor/desfazer.ts
++++ b/scripts/orquestrador/resolvedor/desfazer.ts
+@@ -23,6 +23,7 @@ import { existsSync, readFileSync } from 'node:fs'
+ import { join } from 'node:path'
+ import { gitLeitura } from '../triador/git.js'
+ import { GuardaResolvedor } from './caminhos.js'
++import { subclasseDe } from './desfecho.js'
+ import { acoesDe, lerLedger, registrar } from './ledger.js'
+ import { acharRepo } from './modos.js'
+ import { escreverEComitar, retratoDoLoop, trailer } from './repo.js'
+@@ -62,6 +63,6 @@ export function desfazer(o: { repo: string; id: string; agora?: number }): Desfe
+   const g = new GuardaResolvedor([repo.caminho])
+   const base = { ts: iso(agora), repo: repo.nome, id: o.id, classe: a.classe ?? null, regra: a.regra ?? null, assinatura: a.assinatura }
+   registrar(g, { ...base, tipo: 'desfeito', commit_desfeito: sha, commit: e.commit, arquivo: rel })
+-  registrar(g, { ...base, tipo: 'desfecho', acao: a.acao, commit: sha, acao_ts: a.ts, desfecho: 'desfeito', bom: false, tempo_ate_destravar_s: a.tempo_ate_destravar_s ?? null, tempo_ate_desfecho_s: Math.round((agora - Date.parse(a.ts)) / 1000) })
++  registrar(g, { ...base, tipo: 'desfecho', acao: a.acao, commit: sha, acao_ts: a.ts, desfecho: 'desfeito', subclasse: subclasseDe(a), bom: false, tempo_ate_destravar_s: a.tempo_ate_destravar_s ?? null, tempo_ate_desfecho_s: Math.round((agora - Date.parse(a.ts)) / 1000) })
+   return { ok: true, commit: e.commit, desfez: sha }
+ }
+diff --git a/scripts/orquestrador/resolvedor/desfecho.ts b/scripts/orquestrador/resolvedor/desfecho.ts
+index d81fd38..7c76b5b 100644
+--- a/scripts/orquestrador/resolvedor/desfecho.ts
++++ b/scripts/orquestrador/resolvedor/desfecho.ts
+@@ -6,11 +6,19 @@
+  * Ação aplicada (`acao` sem desfecho), olhando o ticket agora:
+  *   done              bom: tempo da ação até o done
+  *   bloqueou_de_novo  ruim (e o segundo bloqueio vai para humano: acoes.ts)
++ *   limite_apos_r1    bloqueou de novo por limite de linhas (`NO_TETO` com
++ *                     `ESTOUROU_<n>`, ou `diff grande`) (7f-b7): nem bom nem
++ *                     ruim (bom: null); notifica uma vez e grava
++ *                     `proposta_limite` (o limite atual e o tamanho que
++ *                     reprovou). Só proposta: o resolvedor nunca altera limite
+  *   humano_mexeu      ruim: o json do ticket, fora dos campos que o motor
+  *                     escreve (status, notas_status, tentativas,
+  *                     adiamentos_ambiente), não é mais o que o resolvedor gravou
+  *   (pendente, em andamento: ainda sem desfecho)
+  *
++ * O desfecho leva `subclasse`: `r1_multi` quando a ação pôs 2 ou mais testes
++ * (7f-b7), senão a classe; o rebaixamento conta por ela (promocao.ts).
++ *
+  * Proposta de R2 (`proposta` sem `comparacao`), contra o conserto humano:
+  *   acerto  o cmd do critério virou o proposto (igual), ou outro que dá a
+  *           mesma saída nos estados da prova (equivalente: o snapshot guardado
+@@ -25,6 +33,8 @@ import { isDeepStrictEqual } from 'node:util'
+ import { blocoJson } from '../triador/comum.js'
+ import type { GuardaResolvedor } from './caminhos.js'
+ import { lerLedger, registrar, type Entrada } from './ledger.js'
++import { R1_MULTI } from './modos.js'
++import { notificar } from './pausa.js'
+ import { rodarEm } from './r2.js'
+ 
+ export const CAMPOS_DO_MOTOR = ['status', 'notas_status', 'tentativas', 'adiamentos_ambiente']
+@@ -42,6 +52,26 @@ function lerJson(p: string): Record<string, unknown> | null {
+   }
+ }
+ 
++/**
++ * A reprova por limite de linhas na nota do bloqueio, com o limite atual do
++ * ticket: `criterio[i] … obteve '…ESTOUROU_<n>'` (o limite é o `-le <L>` do
++ * cmd daquele critério) ou `diff grande (<n> linhas > <L>)` (o diff_cap).
++ */
++export function limiteDaNota(nota: string, j: Record<string, unknown>): { criterio: string; limite_atual: number | null; diff_reprovou: number } | null {
++  const c = /criterio\[(\d+)\][^']*'[^']*', obteve '[^']*ESTOUROU_(\d+)/.exec(nota)
++  if (c) {
++    const cr = (Array.isArray(j.criterios_aceite) ? j.criterios_aceite : [])[Number(c[1])] as { cmd?: unknown; descricao?: unknown } | undefined
++    const l = /-le (\d+)/.exec(String(cr?.cmd ?? '')) ?? /<= ?(\d+)/.exec(String(cr?.descricao ?? ''))
++    return { criterio: `criterio[${c[1]}]`, limite_atual: l ? Number(l[1]) : null, diff_reprovou: Number(c[2]) }
++  }
++  const d = /diff grande \((\d+) linhas > (\d+)\)/.exec(nota)
++  return d ? { criterio: 'diff_cap', limite_atual: Number(d[2]), diff_reprovou: Number(d[1]) } : null
++}
++
++/** A subclasse de uma ação para o contador de desfecho: `r1_multi` com 2 ou mais testes, senão a classe. */
++export const subclasseDe = (a: Entrada): string =>
++  Array.isArray(a.testes) && a.testes.length >= 2 ? R1_MULTI : String(a.classe ?? '').replace('?', '').split('|')[0]!
++
+ export function apurarAcoes(g: GuardaResolvedor, repo: { nome: string; caminho: string }, agora: number, l: Entrada[] = lerLedger()): Entrada[] {
+   const fechadas = new Set(l.filter((e) => e.tipo === 'desfecho' && e.repo === repo.nome).map((e) => e.commit))
+   const novos: Entrada[] = []
+@@ -50,11 +80,16 @@ export function apurarAcoes(g: GuardaResolvedor, repo: { nome: string; caminho:
+     const agoraJ = existsSync(arq) ? lerJson(arq) : null
+     const gravado = typeof a.copia === 'string' ? lerJson(join(a.copia, 'depois.md')) : null
+     let desfecho: string | null = null
++    let limite: ReturnType<typeof limiteDaNota> = null
+     if (!agoraJ) desfecho = 'humano_mexeu'
+     else if (gravado && !isDeepStrictEqual(semMotor(agoraJ), semMotor(gravado))) desfecho = 'humano_mexeu'
+     else if (agoraJ.status === 'done') desfecho = 'done'
+-    else if (agoraJ.status === 'bloqueado') desfecho = 'bloqueou_de_novo'
++    else if (agoraJ.status === 'bloqueado') {
++      limite = limiteDaNota(String(agoraJ.notas_status ?? ''), agoraJ)
++      desfecho = limite ? 'limite_apos_r1' : 'bloqueou_de_novo'
++    }
+     if (!desfecho) continue
++    const subclasse = subclasseDe(a)
+     const e: Entrada = {
+       ts: iso(agora),
+       tipo: 'desfecho',
+@@ -67,13 +102,19 @@ export function apurarAcoes(g: GuardaResolvedor, repo: { nome: string; caminho:
+       commit: a.commit,
+       acao_ts: a.ts,
+       desfecho,
+-      bom: !DESFECHO_RUIM.has(desfecho),
++      subclasse,
++      bom: limite ? null : !DESFECHO_RUIM.has(desfecho),
+       tempo_ate_destravar_s: a.tempo_ate_destravar_s ?? null,
+       tempo_ate_desfecho_s: segs(a.ts, agora),
+       ...(desfecho === 'humano_mexeu' && !agoraJ ? { motivo: 'o arquivo do ticket sumiu' } : {}),
+     }
+     registrar(g, e)
+     novos.push(e)
++    if (limite) {
++      const proposta = `subir o limite de ${limite.criterio} de ${limite.limite_atual ?? '?'} para pelo menos ${limite.diff_reprovou} linhas (só proposta: o resolvedor nunca altera limite)`
++      const notificacao = notificar(`orq: ${repo.nome} ${String(a.id)} reprovou por limite`, `depois do resolvedor (${String(a.acao)}): ${limite.criterio} com limite ${limite.limite_atual ?? '?'}, o diff deu ${limite.diff_reprovou}`)
++      registrar(g, { ts: iso(agora), tipo: 'proposta_limite', repo: repo.nome, id: a.id, commit: a.commit, acao: a.acao, subclasse, ...limite, proposta, notificacao })
++    }
+   }
+   return novos
+ }
+diff --git a/scripts/orquestrador/resolvedor/modos.ts b/scripts/orquestrador/resolvedor/modos.ts
+index 9b8c383..0b9dec6 100644
+--- a/scripts/orquestrador/resolvedor/modos.ts
++++ b/scripts/orquestrador/resolvedor/modos.ts
+@@ -5,7 +5,8 @@
+  * Campo `resolvedor` de cada item do repos.json:
+  *   - ausente                          → "diagnostico" em toda classe (o padrão);
+  *   - uma string ("diagnostico", "sombra" ou "auto") → a mesma em toda classe;
+- *   - um objeto {"padrao": …, "R1": …, "R2": …, …} → por classe, `padrao` no resto.
++ *   - um objeto {"padrao": …, "R1": …, "R2": …, …} → por classe, `padrao` no resto;
++ *     `r1_multi` (7f-b7): a ação de R1 com 2 ou mais testes; ausente, o modo do R1.
+  *
+  *   diagnostico  só tria (o diagnóstico vai para ~/.orq/diagnosticos, como o `orq triar`)
+  *   sombra       tria e grava a PROPOSTA em ~/.orq/resolvedor; nunca toca o repo
+@@ -56,11 +57,17 @@ export function modosDe(campo: unknown): Modos {
+   if (ehModo(campo)) return { padrao: campo }
+   const out: Modos = { padrao: 'diagnostico' }
+   if (campo && typeof campo === 'object' && !Array.isArray(campo)) {
+-    for (const [k, v] of Object.entries(campo)) if (ehModo(v) && (k === 'padrao' || /^R[1-7]$/.test(k))) out[k] = v
++    for (const [k, v] of Object.entries(campo)) if (ehModo(v) && (k === 'padrao' || k === R1_MULTI || /^R[1-7]$/.test(k))) out[k] = v
+   }
+   return out
+ }
+ 
++/** A subclasse do R1 com 2 ou mais testes numa ação (7f-b7): modo e contador de desfecho próprios. */
++export const R1_MULTI = 'r1_multi'
++
++/** O modo de uma chave de modo: uma classe, ou `r1_multi` (ausente: o do R1). */
++export const modoDaChave = (m: Modos, chave: string): Modo => (chave === R1_MULTI ? (m[R1_MULTI] ?? modoDe(m, 'R1')) : modoDe(m, chave))
++
+ /** O modo de uma classe (`R1`, `R5?`, `R1|R2?` → a do primeiro nome). */
+ export function modoDe(m: Modos, classe: string | null): Modo {
+   const c = (classe ?? '').replace('?', '').split('|')[0] ?? ''
+diff --git a/scripts/orquestrador/resolvedor/pausa.ts b/scripts/orquestrador/resolvedor/pausa.ts
+index a435fdc..77c81de 100644
+--- a/scripts/orquestrador/resolvedor/pausa.ts
++++ b/scripts/orquestrador/resolvedor/pausa.ts
+@@ -120,7 +120,7 @@ export interface AvisoPausa {
+ const iso = (t: number) => new Date(t).toISOString().replace(/\.\d{3}Z$/, 'Z')
+ 
+ /** O aviso pelo macOS e pelo iMessage (se configurado). */
+-function notificar(titulo: string, corpo: string): { macos: Envio; imessage: Envio } {
++export function notificar(titulo: string, corpo: string): { macos: Envio; imessage: Envio } {
+   const macos = notificarMac(titulo, corpo)
+   const destinos = destinosImessage()
+   const envios = destinos.map((d) => enviarImessage(d, `${titulo}: ${corpo}`))
+diff --git a/scripts/orquestrador/resolvedor/promocao.ts b/scripts/orquestrador/resolvedor/promocao.ts
+index 3db225a..4b6cd7e 100644
+--- a/scripts/orquestrador/resolvedor/promocao.ts
++++ b/scripts/orquestrador/resolvedor/promocao.ts
+@@ -8,7 +8,9 @@
+  *                promoção fica registrada para quando a aplicação existir;
+  *   rebaixamento qualquer classe em auto volta para sombra com 2 desfechos
+  *                ruins seguidos (bloqueou de novo, humano mexeu, desfeito; para
+- *                R2, comparação com erro).
++ *                R2, comparação com erro). O R1 com 2 ou mais testes conta à
++ *                parte (`r1_multi`, a `subclasse` do desfecho, 7f-b7): só ele
++ *                volta para sombra. `limite_apos_r1` (bom: null) não conta.
+  *
+  * Só conta o que veio DEPOIS da última mudança de modo daquela classe naquele
+  * repo: um rebaixamento não se repete com os mesmos desfechos. Cada mudança vai
+@@ -18,7 +20,7 @@
+ import type { GuardaResolvedor } from './caminhos.js'
+ import { DESFECHO_RUIM } from './desfecho.js'
+ import { lerLedger, registrar, type Entrada } from './ledger.js'
+-import { gravarModo, lerReposResolvedor, modoDe, type RepoResolvedor } from './modos.js'
++import { gravarModo, lerReposResolvedor, modoDaChave, type RepoResolvedor } from './modos.js'
+ 
+ export const PROMOVE_ACERTOS = 9
+ export const PROMOVE_JANELA = 10
+@@ -26,6 +28,8 @@ export const REBAIXA_RUINS = 2
+ 
+ const iso = (t: number) => new Date(t).toISOString().replace(/\.\d{3}Z$/, 'Z')
+ const base = (c: unknown) => String(c ?? '').replace('?', '').split('|')[0]!
++/** A chave de contagem de um fato: a subclasse do desfecho (r1_multi), ou a classe. */
++const chave = (e: Entrada) => (typeof e.subclasse === 'string' ? e.subclasse : base(e.classe))
+ 
+ /** Os fatos (bom/ruim, em ordem) de uma classe num repo desde a última mudança de modo dela. */
+ function fatos(l: Entrada[], repo: string, classe: string): { ts: string; bom: boolean; tipo: string }[] {
+@@ -34,7 +38,9 @@ function fatos(l: Entrada[], repo: string, classe: string): { ts: string; bom: b
+     if ((e.tipo === 'promocao' || e.tipo === 'rebaixamento') && e.repo === repo && e.classe === classe) ini = i + 1
+   })
+   return l.slice(ini).flatMap((e) => {
+-    if (e.repo !== repo || base(e.classe) !== classe) return []
++    if (e.repo !== repo || chave(e) !== classe) return []
++    // limite depois do resolvedor (bom: null): nem bom nem ruim, fora da sequência
++    if (e.tipo === 'desfecho' && e.bom === null) return []
+     if (e.tipo === 'desfecho') return [{ ts: e.ts, bom: !DESFECHO_RUIM.has(String(e.desfecho)), tipo: 'desfecho' }]
+     if (e.tipo === 'comparacao') return [{ ts: e.ts, bom: e.resultado === 'acerto', tipo: 'comparacao' }]
+     return []
+@@ -45,7 +51,7 @@ export function promoverRebaixar(g: GuardaResolvedor, repo: RepoResolvedor, agor
+   if (!lerReposResolvedor().some((r) => r.caminho === repo.caminho)) return []
+   const out: Entrada[] = []
+   const muda = (classe: string, para: 'auto' | 'sombra', tipo: 'promocao' | 'rebaixamento', motivo: string, considerados: { ts: string; bom: boolean }[]) => {
+-    const de = modoDe(repo.modos, classe)
++    const de = modoDaChave(repo.modos, classe)
+     gravarModo(g, repo.caminho, classe, para)
+     repo.modos = { ...repo.modos, [classe]: para }
+     const e: Entrada = { ts: iso(agora), tipo, repo: repo.nome, classe, de, para, motivo, considerados }
+@@ -53,10 +59,10 @@ export function promoverRebaixar(g: GuardaResolvedor, repo: RepoResolvedor, agor
+     l.push(e)
+     out.push(e)
+   }
+-  const classes = new Set(l.filter((e) => e.repo === repo.nome && (e.tipo === 'desfecho' || e.tipo === 'comparacao')).map((e) => base(e.classe)))
++  const classes = new Set(l.filter((e) => e.repo === repo.nome && (e.tipo === 'desfecho' || e.tipo === 'comparacao')).map(chave))
+   for (const c of [...classes].sort()) {
+     const fs = fatos(l, repo.nome, c)
+-    const modo = modoDe(repo.modos, c)
++    const modo = modoDaChave(repo.modos, c)
+     if (modo === 'auto') {
+       const ult = fs.slice(-REBAIXA_RUINS)
+       if (ult.length === REBAIXA_RUINS && ult.every((f) => !f.bom)) muda(c, 'sombra', 'rebaixamento', `${REBAIXA_RUINS} desfechos ruins seguidos`, ult)

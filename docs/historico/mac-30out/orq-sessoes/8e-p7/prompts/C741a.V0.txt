@@ -1,0 +1,527 @@
+Você é o JUIZ de uma esteira automatizada. Julgue SOMENTE pelo material abaixo:
+o diff cru da tentativa, a saída dos gates mecânicos e os critérios do ticket.
+Você NÃO recebe o prompt do executor nem resumo nenhum do agente, de propósito:
+o que o agente diz que fez nunca é evidência. Se algo não está no diff, não aconteceu.
+
+VOCÊ NÃO TEM FERRAMENTAS. Não leia arquivo, não rode comando, não abra o
+repositório: a chamada está sem ferramenta nenhuma e qualquer tentativa só
+gasta turno. Se o material abaixo não basta para aprovar, REPROVE dizendo o
+que faltou — nunca aprove no benefício da dúvida.
+
+Os gates mecânicos JÁ PASSARAM (enforcement, typecheck, testes, critérios, build).
+Você não os reexecuta: o seu trabalho é o que eles não conseguem ver.
+
+O QUE VOCÊ COBRA, item a item:
+
+1. INTEGRAÇÃO, não existência. Componente/função/rota criada mas nunca importada,
+   montada ou chamada passa em "arquivo existe" e falha em produção. Siga a
+   variável ou o símbolo até o ponto de uso real; um resultado calculado e
+   descartado não vale.
+2. O TESTE EXERCITA O COMPORTAMENTO DO OBJETIVO. Teste tautológico
+   (expect(true), expect(x).toBeDefined() sobre algo trivialmente definido,
+   asserção que passaria com o código antigo) NÃO prova nada. Pergunte-se: este
+   teste ficaria VERMELHO se a mudança fosse revertida? Se não, reprove.
+3. CRITÉRIO DE AUSÊNCIA EXIGE CONTROLE POSITIVO. Um teste que só afirma que algo
+   NÃO aparece passa igual quando o componente não renderiza nada. Exija, no
+   MESMO render/execução, ao menos uma asserção POSITIVA de que a coisa certa
+   apareceu. Reprove ausência provada no vazio.
+
+4. ANTI-AFROUXAMENTO (a allowlist deste ticket inclui arquivo de teste).
+   No diff dos arquivos de teste, REPROVE se encontrar qualquer um destes:
+   - asserção removida (expect apagado) sem que o comportamento tenha deixado de existir;
+   - toBe/toEqual trocado por toBeDefined/toBeTruthy/objectContaining mais frouxo;
+   - .skip, .todo, .only, teste comentado ou arquivo de teste deletado;
+   - valor esperado alterado SEM comentário dizendo por que a regra nova o muda.
+   Valor RECALCULADO sob a regra nova, com o porquê em comentário, é o único
+   caminho aceito. Renomear símbolo para satisfazer contagem também é afrouxar.
+
+RESPONDA SÓ COM ESTE JSON, sem cerca de código, sem texto antes ou depois:
+{"aprovado": true|false, "motivo": "<=2 frases, concreto, citando arquivo e linha>",
+ "criterios_falhos": ["descrição exata do critério que você reprova", ...]}
+
+criterios_falhos: use a DESCRIÇÃO do critério, copiada como está na lista acima.
+Vazio quando aprovado. Na dúvida entre aprovar e reprovar, REPROVE e diga o que falta.
+
+TICKET 741a
+Objetivo: ORCAMENTO DE DIFF: teto de 400 linhas (~210 em src/lib/promessas/detectar.ts somando adicoes e remocoes, ~180 no teste NOVO test/promessas-avaliar-pura.test.ts). Se passar do teto, pare e reporte. FONTE: docs/planos/plano-vacuo-promessa-02out.md; destrava o 741 (backtest), que reaproveita a deteccao do 861 sem copiar. REFATORACAO SEM MUDANCA DE COMPORTAMENTO. PASSO 1: leia inteiros src/lib/promessas/detectar.ts (861), test/promessa-par.test.ts e src/lib/jobs/operacao-inicio.ts (unico chamador de detectarPromessas; nao muda). FAZER em src/lib/promessas/detectar.ts, tres camadas: (1) CARREGAR: export async function carregarInsumoPromessas(db: Db, janela: { desdeISO: string; ateISO: string; clienteId?: string }): Promise<InsumoPromessas>. SO SELECT. Le os grupos vinculados (mesmo filtro de hoje em wpp_grupo: deleted_at nulo e status diferente de inativo; com clienteId, so os grupos desse cliente), as mensagens da janela (mesma query, ordem e LIMITE_MENSAGENS de hoje, entre desdeISO e ateISO), a equipe (carregarTelefonesPorColaborador), os contatos efetivos de cada cliente (contatosEfetivosDoCliente), os feriados (carregarFeriados) e jaTem (wpp_message_id que ja estao em perf_promessas, so select). Devolve o tipo exportado InsumoPromessas com esses dados ja carregados. Sem grupo vinculado devolve insumo vazio sem ler mensagens (hoje detectarPromessas retorna antes da query). (2) AVALIAR: export async function avaliarCandidatos(insumo: InsumoPromessas, chamar: typeof chamarProvider, teto: number = TETO_CHAMADAS): Promise<AvaliacaoPromessa[]>. PURA: nao recebe db, nao escreve, o unico efeito e o chamar injetado. Classifica o autor (classificarAutor + montarMapaLid), monta os candidatos (montarCandidatos, regra intacta), chama o modelo ate o teto com o mesmo SYSTEM e o mesmo prompt de hoje e devolve, por candidato, um AvaliacaoPromessa exportado com: cliente_id, group_jid, data e trecho do pedido (ate TRECHO_MAX), id, data e trecho da promessa (mensagem da equipe indicada, quando houver), prazo (resolverPrazo), evidencia, autor_id e decisao 'gravar' | 'descartar' | 'falha' | 'fora_do_teto' com motivo legivel (ex.: resposta fora do formato, nao e promessa, mensagem indicada nao e da equipe, evidencia nao esta no texto, erro na chamada do modelo, teto de chamadas). 'falha' e 'fora_do_teto' existem para o resumo continuar identico: excecao do modelo conta em falhas; candidato alem do teto conta em candidatos e nao em chamadas. Na decisao 'gravar' a avaliacao carrega a linha pronta de perf_promessas, com as mesmas colunas e valores de hoje. (3) GRAVAR: export async function gravarPromessas(db: Db, avaliacoes: AvaliacaoPromessa[]): Promise<{ gravadas: number; falhas: number }>. A UNICA escrita do arquivo: upsert em perf_promessas com onConflict wpp_message_id e ignoreDuplicates true, so das avaliacoes 'gravar', uma por vez e com try/catch como hoje (error ou excecao conta em falhas). detectarPromessas(db, agoraISO, teto = TETO_CHAMADAS): Promise<ResumoPromessas> mantem a assinatura, a janela de JANELA_HORAS (24h ate agoraISO) e o mesmo ResumoPromessas, so compondo carregarInsumoPromessas -> avaliarCandidatos(insumo, chamarProvider, teto) -> gravarPromessas. SYSTEM, SaidaSchema, resolverPrazo, TETO_CHAMADAS e ResumoPromessas ficam como estao. NOVO test/promessas-avaliar-pura.test.ts (mocks de supabase e chamarProvider, relogio fixo, sem banco real), um it( por item: (a) avaliarCandidatos com insumo montado a mao e chamar mockado devolve as decisoes gravar, descartar (com motivo) e fora_do_teto; (b) com um db espiao que registra insert/update/upsert/delete/rpc, carregarInsumoPromessas + avaliarCandidatos fazem ZERO chamada de escrita; (c) detectarPromessas sobre o mesmo insumo devolve o mesmo ResumoPromessas que a versao anterior, com os valores fixos no teste (candidatos, chamadas, gravadas, descartadas, falhas) medidos ANTES da refatoracao e um comentario acima de cada assercao citando 741a e o cenario; (d) carregarInsumoPromessas com clienteId so devolve grupos desse cliente. test/promessa-par.test.ts deve seguir verde SEM edicao: assercao que quebra e mudanca de comportamento, conserte o codigo e nao o teste. So se uma assercao que le o fonte (readFileSync) quebrar porque o literal mudou de lugar, recalcule com comentario citando 741a. FORA DE ESCOPO: src/lib/jobs/operacao-inicio.ts; o script do 741; qualquer mudanca de regra de deteccao, prompt, schema da resposta ou colunas gravadas. REGRAS: zona C0 (clientes_receita, leads_crm, leads_crm_historico, ads_metadata, ads_performance, fn_mql_sql_by_month, prefixos trafego_* e vw_*) e leitura pura: nada de escrita, DDL, grant, RLS ou trigger nelas; zero migration e zero .sql (so o 730 escreve .sql, e nao aplica); dono do cliente SO por carregarQuemCuida/responsaveisDoCliente/cuidaDoCliente (src/lib/clientes/quem-cuida.ts), nunca clientes.gestor_id nem o analista do espelho; equipe no grupo SO por ehDaEquipe (src/lib/whatsapp/equipe.ts), nunca a marca is_equipe gravada; cliente ativo SO por isClienteAtivo (src/lib/clientes/ativo.ts); papel SO por papelDe (src/lib/nav/papel.ts), nunca is_gestor_trafego nem is_head_operacional como papel; NUNCA rode UPDATE em employees.is_gestor_trafego; produtividade nasce de evento registrado, nunca de cronometro, sessao de tempo ou apontamento manual; dado ausente aparece como 'sem base' com o motivo, nunca zero e nunca verde; nenhum jargao de banco em texto de tela (nome de tabela, view, coluna ou operador); nenhum travessao (U+2014) em texto de tela nem em string de copy (guarda travessao-mudo); numeros de tela em Geist Mono (classe font-mono ja usada no repo); PILOTO DO MONITORAMENTO DE GRUPO (decisao do Lucas, 28/09): so o AQUINO ADV esta vinculado; NUNCA escreva em wpp_grupo (nada de insert/update/upsert), nunca crie vinculo grupo -> cliente e nunca preencha cs_wpp_mensagem.cliente_id de grupo por outro caminho que nao o vinculo ja existente em wpp_grupo; autor de mensagem de grupo SO por classificarAutor (src/lib/whatsapp/classificar-autor.ts, ticket 731): desconhecido nunca vira cliente, nao abre nem fecha vacuo, nao conta como pedido e nao pontua; Set e Map so com Array.from (tsc sem downlevelIteration); nenhum .json() literal novo em src (cliente: fetchJson de @/lib/fetch-json; rota: lerCorpoJson de @/lib/fetch-json, nunca req.json()); getSession e server-only, nunca em arquivo 'use client'; supabase, fetch e getSession sempre mockados nos testes (vi.mock), nunca banco real; fixture de uuid RFC-4122 (00000000-0000-4000-8000-000000000000 ou crypto.randomUUID()); testes sem JSX (React.createElement + renderToStaticMarkup ou leitura de fonte com readFileSync; o projeto nao tem jsdom nem @testing-library); teste ancora em texto visivel ou data-testid, nunca em classe de estilo; nunca toEqual numa lista inteira (afirme itens com toContain/some). TESTES EXISTENTES da allowlist: se a mudanca quebrar uma assercao, RECALCULE o valor sob a regra nova com comentario acima citando o ticket e de onde veio o numero; PROIBIDO remover assercao, trocar toBe/toEqual/toMatch por toBeDefined/toBeTruthy, usar .skip/.only/.todo, apagar it( ou o arquivo. GUARDAS GLOBAIS (fora da allowlist, nao edite): test/fetch-json-teto.test.ts, test/consistencia-contagens.test.ts, test/bloco-vazio-linha.test.ts, test/abas-montadas.test.ts, test/cartao-topo-perfil.test.tsx, test/travessao-mudo.test.ts, test/c0-guard.test.ts. Se um teste FORA da allowlist quebrar, PARE e descreva. Motor do orquestrador (scripts/orquestrador/, docs/orquestrador/) intocado.
+
+Allowlist do ticket:
+  - src/lib/promessas/detectar.ts
+  - test/promessa-par.test.ts
+  - test/promessas-avaliar-pura.test.ts
+
+Critérios de aceite:
+  - [guarda · já verificado por comando] tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)
+      cmd: ( [ "$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\.next/')" = 3 ] ) && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] nenhum .sql novo (zero DDL)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff --name-only "$b" HEAD | grep -c '[.]sql$'); [ "$n" = 0 ] && echo SEM_SQL || echo SQL_$n · espera: SEM_SQL
+  - [guarda · já verificado por comando] guardas globais seguem verdes (saida em ${TMPDIR:-/tmp}/741a-guardas.txt)
+      cmd: npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts > "${TMPDIR:-/tmp}/741a-guardas.txt" 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [guarda · já verificado por comando] nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADAS || echo EDITOU_$n · espera: INTOCADAS
+  - [guarda · já verificado por comando] arquivos fora do escopo intocados (chamador de detectarPromessas)
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- 'src/lib/jobs/operacao-inicio.ts' | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADOS || echo TOCOU_$n · espera: INTOCADOS
+  - [guarda · já verificado por comando] so arquivos da allowlist foram tocados
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; r=SO_ALLOWLIST; for f in $(git diff --name-only "$b" HEAD); do printf '%s\n' 'src/lib/promessas/detectar.ts' 'test/promessa-par.test.ts' 'test/promessas-avaliar-pura.test.ts' | grep -Fxq "$f" || r=FORA_$f; done; echo $r · espera: SO_ALLOWLIST
+  - [guarda · já verificado por comando] diff dentro do orcamento (<= 400 linhas somando adicoes e remocoes)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; t=$(git diff --numstat "$b" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ "$t" -le 400 ] && echo NO_TETO || echo ESTOUROU_$t · espera: NO_TETO
+  - [guarda · já verificado por comando] piloto preservado: nenhuma linha nova escreve em wpp_grupo
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- src scripts | grep -E '^[+][^+]' | grep -cE 'wpp_grupo.*[.](insert|update|upsert)[(]|[.](insert|update|upsert)[(].*wpp_grupo'); [ "$n" = 0 ] && echo SEM_ESCRITA_GRUPO || echo ESCREVE_GRUPO_$n · espera: SEM_ESCRITA_GRUPO
+  - [guarda · já verificado por comando] detectarPromessas mantem a assinatura e a janela de 24h
+      cmd: a=$(grep -cF 'export async function detectarPromessas(db: Db, agoraISO: string, teto: number = TETO_CHAMADAS): Promise<ResumoPromessas>' src/lib/promessas/detectar.ts); j=$(grep -c '^const JANELA_HORAS = 24;' src/lib/promessas/detectar.ts); [ "$a" = 1 ] && [ "$j" = 1 ] && echo ASSINATURA_MANTIDA || echo MUDOU_${a}_${j} · espera: ASSINATURA_MANTIDA
+  - [guarda · já verificado por comando] unica escrita do arquivo segue sendo um upsert (nenhum insert/update/delete/rpc)
+      cmd: u=$(grep -c '[.]upsert[(]' src/lib/promessas/detectar.ts); o=$(grep -cE '[.](insert|update|delete|rpc)[(]' src/lib/promessas/detectar.ts); [ "$u" = 1 ] && [ "$o" = 0 ] && echo UMA_ESCRITA || echo ESCRITAS_${u}_${o} · espera: UMA_ESCRITA
+  - [guarda · já verificado por comando] anti-afrouxamento: test/promessa-par.test.ts com 10 it( ou mais, 25 expect( ou mais, sem .skip/.only/.todo (saida em ${TMPDIR:-/tmp}/741a-par.txt)
+      cmd: f=test/promessa-par.test.ts; i=$(grep -cE '^[[:space:]]*it[(]' $f); e=$(grep -c 'expect(' $f); s=$(grep -cE '[.](skip|only|todo)[(]' $f); [ "$i" -ge 10 ] && [ "$e" -ge 25 ] && [ "$s" = 0 ] && npx vitest run $f > "${TMPDIR:-/tmp}/741a-par.txt" 2>&1 && echo INTEGRO || echo AFROUXOU_${i}_${e}_${s} · espera: INTEGRO
+  - [guarda · já verificado por comando] chamadores de detectarPromessas via operacao-inicio seguem verdes (saida em ${TMPDIR:-/tmp}/741a-chamadores.txt)
+      cmd: npx vitest run test/avisos-operacao.test.ts test/avisos-renovacao-nps.test.ts test/aviso-comarka-pro.test.ts test/eventos-resposta-grupo.test.ts test/avisos-vacuo.test.ts > "${TMPDIR:-/tmp}/741a-chamadores.txt" 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [? · já verificado por comando] tres camadas exportadas: carregarInsumoPromessas, avaliarCandidatos e gravarPromessas
+      cmd: n=$(grep -cE '^export async function (carregarInsumoPromessas|avaliarCandidatos|gravarPromessas)[(<]' src/lib/promessas/detectar.ts); [ "$n" = 3 ] && echo TRES_CAMADAS || echo CAMADAS_$n · espera: TRES_CAMADAS
+  - [? · já verificado por comando] avaliarCandidatos nao recebe db
+      cmd: l=$(grep -E '^export async function avaliarCandidatos[(<]' src/lib/promessas/detectar.ts); [ -n "$l" ] || { echo AUSENTE; exit 0; }; printf '%s' "$l" | grep -qE 'Db|SupabaseClient|db:' && echo RECEBE_BANCO || echo PURA_SEM_DB · espera: PURA_SEM_DB
+  - [? · já verificado por comando] detectarPromessas compoe as tres camadas
+      cmd: n=$(awk '/^export async function detectarPromessas/,/^}/' src/lib/promessas/detectar.ts | grep -cE 'carregarInsumoPromessas[(]|avaliarCandidatos[(]|gravarPromessas[(]'); [ "$n" -ge 3 ] && echo COMPOE_AS_TRES || echo FALTAM_$n · espera: COMPOE_AS_TRES
+  - [? · já verificado por comando] teste novo verde (saida em ${TMPDIR:-/tmp}/741a-novo.txt)
+      cmd: test -f test/promessas-avaliar-pura.test.ts && npx vitest run test/promessas-avaliar-pura.test.ts > "${TMPDIR:-/tmp}/741a-novo.txt" 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [? · já verificado por comando] teste novo cobre os quatro itens e cita o ticket
+      cmd: f=test/promessas-avaliar-pura.test.ts; test -f $f || { echo AUSENTE; exit 0; }; i=$(grep -cE '^[[:space:]]*it[(]' $f); k=$(grep -c '741a' $f); a=$(grep -c 'avaliarCandidatos' $f); d=$(grep -c 'detectarPromessas' $f); [ "$i" -ge 4 ] && [ "$k" -ge 1 ] && [ "$a" -ge 1 ] && [ "$d" -ge 1 ] && echo COBERTO || echo FALTA_${i}_${k}_${a}_${d} · espera: COBERTO
+  - [avaliador · JULGUE VOCÊ] avaliador: detectar.ts virou carregar -> avaliarCandidatos (pura, chamar injetado, sem db) -> gravar, e detectarPromessas so compoe as tres com o mesmo resumo. REPROVE se: mudou regra de deteccao, prompt, schema da resposta, colunas ou valores gravados; avaliarCandidatos escreve ou recebe db; o teste novo nao prova zero escrita nem compara o resumo com valores medidos antes; editou test/promessa-par.test.ts para passar.
+
+
+SAÍDA DOS GATES MECÂNICOS:
+ok   build
+       
+       ○  (Static)   prerendered as static content
+       ƒ  (Dynamic)  server-rendered on demand
+ok   tsc
+       src/app/api/perf/qualificacao-regras/[id]/route.ts(55,34): error TS2538: Type 'undefined' cannot be used as an index type.
+       src/app/api/perf/qualificacao-regras/estagios/route.ts(31,21): error TS2802: Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+       src/app/dashboard/clientes/qualificacao/qualificacao-block.tsx(74,29): error TS2802: Type 'MapIterator<ClienteTese>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+ok   vitest
+       Tests  8484 passed (8484)
+       Start at  12:09:56
+       Duration  61.04s (transform 77.45s, setup 0ms, import 227.05s, tests 51.41s, environment 170ms)
+VEREDITO: APROVADO
+
+DIFF CRU DA TENTATIVA (git diff base...HEAD):
+diff --git a/src/lib/promessas/detectar.ts b/src/lib/promessas/detectar.ts
+index 8493015..7721c7e 100644
+--- a/src/lib/promessas/detectar.ts
++++ b/src/lib/promessas/detectar.ts
+@@ -97,64 +97,133 @@ function montarCandidatos(grupo: string, clienteId: string, msgs: Msg[], jaTem:
+   return saida;
+ }
+ 
+-export async function detectarPromessas(db: Db, agoraISO: string, teto: number = TETO_CHAMADAS): Promise<ResumoPromessas> {
+-  const resumo: ResumoPromessas = { candidatos: 0, chamadas: 0, gravadas: 0, descartadas: 0, falhas: 0 };
+-  const { data: gruposData } = await db.from("wpp_grupo").select("group_jid, cliente_id").is("deleted_at", null).neq("status", "inativo");
+-  const clientePorGrupo = new Map<string, string>();
++type Colaborador = Awaited<ReturnType<typeof carregarTelefonesPorColaborador>>[number];
++interface LinhaPromessa {
++  cliente_id: string;
++  group_jid: string;
++  wpp_message_id: string;
++  autor_id: string | null;
++  texto: string;
++  prazo: string;
++  status: "aberta";
++  pedido_wpp_message_id: string;
++  pedido_trecho: string;
++  evidencia: string;
++}
++
++/** Tudo que a avaliação precisa, já lido. Sem Set/Map para poder ser montado à mão. */
++export interface InsumoPromessas {
++  grupos: { group_jid: string; cliente_id: string }[];
++  linhas: LinhaMensagem[];
++  colaboradores: Colaborador[];
++  contatos: Record<string, string[]>;
++  feriados: string[];
++  jaTem: string[];
++}
++
++export interface AvaliacaoPromessa {
++  cliente_id: string;
++  group_jid: string;
++  pedido_id: string;
++  pedido_em: string;
++  pedido_trecho: string;
++  promessa_id: string | null;
++  promessa_em: string | null;
++  promessa_trecho: string | null;
++  prazo: string | null;
++  evidencia: string | null;
++  autor_id: string | null;
++  decisao: "gravar" | "descartar" | "falha" | "fora_do_teto";
++  motivo: string;
++  linha: LinhaPromessa | null;
++}
++
++/** Camada 1: só SELECT. Sem grupo vinculado devolve insumo vazio sem ler mensagens. */
++export async function carregarInsumoPromessas(db: Db, janela: { desdeISO: string; ateISO: string; clienteId?: string }): Promise<InsumoPromessas> {
++  const vazio: InsumoPromessas = { grupos: [], linhas: [], colaboradores: [], contatos: {}, feriados: [], jaTem: [] };
++  let consulta = db.from("wpp_grupo").select("group_jid, cliente_id").is("deleted_at", null).neq("status", "inativo");
++  if (janela.clienteId) consulta = consulta.eq("cliente_id", janela.clienteId);
++  const { data: gruposData } = await consulta;
++  const grupos: InsumoPromessas["grupos"] = [];
+   for (const g of (gruposData ?? []) as { group_jid: string | null; cliente_id: string | null }[]) {
+-    if (g.group_jid && g.cliente_id) clientePorGrupo.set(g.group_jid, g.cliente_id);
++    if (g.group_jid && g.cliente_id && (!janela.clienteId || g.cliente_id === janela.clienteId)) grupos.push({ group_jid: g.group_jid, cliente_id: g.cliente_id });
+   }
+-  const jids = Array.from(clientePorGrupo.keys());
+-  if (jids.length === 0) return resumo;
++  if (grupos.length === 0) return vazio;
+ 
+-  const desde = new Date(Date.parse(agoraISO) - JANELA_HORAS * MS_HORA).toISOString();
+   const { data: msgData } = await db
+     .from("cs_wpp_mensagem")
+     .select("wpp_message_id, remote_jid, enviada_em, texto, " + COLUNAS_AUTOR)
+-    .in("remote_jid", jids)
+-    .gte("enviada_em", desde)
+-    .lte("enviada_em", agoraISO)
++    .in("remote_jid", grupos.map((g) => g.group_jid))
++    .gte("enviada_em", janela.desdeISO)
++    .lte("enviada_em", janela.ateISO)
+     .order("enviada_em", { ascending: true })
+     .limit(LIMITE_MENSAGENS);
+   const linhas = (msgData ?? []) as unknown as LinhaMensagem[];
+ 
+   const colaboradores = await carregarTelefonesPorColaborador(db);
+-  const telefonesEquipe = colaboradores.map((c) => c.telefone);
+   const feriados = await carregarFeriados(db);
+-  const mapa = montarMapaLid(linhas);
+-  const contatos = new Map<string, string[]>();
+-  for (const id of Array.from(new Set(Array.from(clientePorGrupo.values())))) {
+-    contatos.set(id, await contatosEfetivosDoCliente(db as unknown as SupabaseClient, id));
++  const contatos: Record<string, string[]> = {};
++  for (const id of Array.from(new Set(grupos.map((g) => g.cliente_id)))) {
++    contatos[id] = await contatosEfetivosDoCliente(db as unknown as SupabaseClient, id);
+   }
+-
+   const { data: existentes } = await db.from("perf_promessas").select("wpp_message_id").in("wpp_message_id", linhas.map((l) => l.wpp_message_id));
+-  const jaTem = new Set<string>();
+-  for (const e of (existentes ?? []) as { wpp_message_id: string }[]) jaTem.add(e.wpp_message_id);
++  const jaTem = ((existentes ?? []) as { wpp_message_id: string }[]).map((e) => e.wpp_message_id);
++  return { grupos, linhas, colaboradores, contatos, feriados, jaTem };
++}
++
++/** Camada 2, pura: o único efeito é o `chamar` injetado. Candidato além do teto vira fora_do_teto. */
++export async function avaliarCandidatos(insumo: InsumoPromessas, chamar: typeof chamarProvider, teto: number = TETO_CHAMADAS): Promise<AvaliacaoPromessa[]> {
++  const { colaboradores, feriados } = insumo;
++  const clientePorGrupo = new Map<string, string>();
++  for (const g of insumo.grupos) clientePorGrupo.set(g.group_jid, g.cliente_id);
++  const jaTem = new Set<string>(insumo.jaTem);
++  const telefonesEquipe = colaboradores.map((c) => c.telefone);
++  const mapa = montarMapaLid(insumo.linhas);
+ 
+   const porGrupo = new Map<string, Msg[]>();
+   const vistas = new Set<string>();
+-  for (const l of linhas) {
++  for (const l of insumo.linhas) {
+     const clienteId = clientePorGrupo.get(l.remote_jid);
+     const texto = (l.texto ?? "").trim();
+     if (!clienteId || !texto || vistas.has(l.wpp_message_id)) continue;
+     vistas.add(l.wpp_message_id);
+-    const classe = classificarAutor(l, { telefonesEquipe, contatosCliente: contatos.get(clienteId) ?? [] }, mapa);
++    const classe = classificarAutor(l, { telefonesEquipe, contatosCliente: insumo.contatos[clienteId] ?? [] }, mapa);
+     const lista = porGrupo.get(l.remote_jid) ?? [];
+     lista.push({ id: l.wpp_message_id, em: l.enviada_em, texto, classe, linha: l });
+     porGrupo.set(l.remote_jid, lista);
+   }
+ 
+   const candidatos: Candidato[] = [];
+-  for (const jid of jids) {
++  for (const jid of Array.from(clientePorGrupo.keys())) {
+     candidatos.push(...montarCandidatos(jid, clientePorGrupo.get(jid) as string, porGrupo.get(jid) ?? [], jaTem, feriados));
+   }
+-  resumo.candidatos = candidatos.length;
+ 
++  const saida: AvaliacaoPromessa[] = [];
++  let chamadas = 0;
+   for (const c of candidatos) {
+-    if (resumo.chamadas >= teto) break;
+-    resumo.chamadas++;
++    const base: AvaliacaoPromessa = {
++      cliente_id: c.cliente_id,
++      group_jid: c.group_jid,
++      pedido_id: c.pedido.id,
++      pedido_em: c.pedido.em,
++      pedido_trecho: c.pedido.texto.slice(0, TRECHO_MAX),
++      promessa_id: null,
++      promessa_em: null,
++      promessa_trecho: null,
++      prazo: null,
++      evidencia: null,
++      autor_id: null,
++      decisao: "descartar",
++      motivo: "",
++      linha: null,
++    };
++    if (chamadas >= teto) {
++      saida.push({ ...base, decisao: "fora_do_teto", motivo: "teto de chamadas ao modelo atingido" });
++      continue;
++    }
++    chamadas++;
+     try {
+-      const r = await chamarProvider({
++      const r = await chamar({
+         funcao: "promessas",
+         system: SYSTEM,
+         prompt: `Pedido do cliente: ${c.pedido.texto}\n\nRespostas da equipe:\n` + c.equipe.map((m) => `[${m.id}] ${m.texto}`).join("\n"),
+@@ -162,32 +231,83 @@ export async function detectarPromessas(db: Db, agoraISO: string, teto: number =
+       });
+       const ps = SaidaSchema.safeParse(JSON.parse(r.texto.replace(/^```(?:json)?\s*|\s*```$/g, "")));
+       const alvo = ps.success ? c.equipe.find((m) => m.id === ps.data.wpp_message_id) : undefined;
+-      if (!ps.success || !ps.data.eh_promessa || !alvo || alvo.classe !== "equipe" || !norm(alvo.texto).includes(norm(ps.data.evidencia))) {
+-        resumo.descartadas++;
++      const motivo = !ps.success
++        ? "resposta fora do formato"
++        : !ps.data.eh_promessa
++          ? "não é promessa"
++          : !alvo
++            ? "mensagem indicada não está nas respostas da equipe"
++            : alvo.classe !== "equipe"
++              ? "mensagem indicada não é da equipe"
++              : !norm(alvo.texto).includes(norm(ps.data.evidencia))
++                ? "evidência não está no texto da mensagem"
++                : "";
++      if (!ps.success || !alvo || motivo) {
++        saida.push({ ...base, decisao: "descartar", motivo, ...(alvo ? { promessa_id: alvo.id, promessa_em: alvo.em, promessa_trecho: alvo.texto.slice(0, TRECHO_MAX) } : {}) });
+         continue;
+       }
+       const tel = alvo.linha.chave?.fromMe === true ? undefined : pessoaDaLinha(alvo.linha, mapa)?.telefone;
+       const autor = tel ? colaboradores.find((x) => phonesMatch(tel, x.telefone)) : undefined;
+-      const { error } = await db.from("perf_promessas").upsert(
+-        {
++      const prazo = resolverPrazo(ps.data.prazo_iso, alvo.em, feriados);
++      const autorId = autor?.employee_id || null;
++      saida.push({
++        ...base,
++        promessa_id: alvo.id,
++        promessa_em: alvo.em,
++        promessa_trecho: alvo.texto.slice(0, TRECHO_MAX),
++        prazo,
++        evidencia: ps.data.evidencia,
++        autor_id: autorId,
++        decisao: "gravar",
++        motivo: "promessa confirmada",
++        linha: {
+           cliente_id: c.cliente_id,
+           group_jid: c.group_jid,
+           wpp_message_id: alvo.id,
+-          autor_id: autor?.employee_id || null,
++          autor_id: autorId,
+           texto: ps.data.texto_promessa,
+-          prazo: resolverPrazo(ps.data.prazo_iso, alvo.em, feriados),
++          prazo,
+           status: "aberta",
+           pedido_wpp_message_id: c.pedido.id,
+           pedido_trecho: c.pedido.texto.slice(0, TRECHO_MAX),
+           evidencia: ps.data.evidencia,
+         },
+-        { onConflict: "wpp_message_id", ignoreDuplicates: true },
+-      );
+-      if (error) resumo.falhas++;
+-      else resumo.gravadas++;
++      });
++    } catch {
++      saida.push({ ...base, decisao: "falha", motivo: "erro na chamada ao modelo ou resposta ilegível" });
++    }
++  }
++  return saida;
++}
++
++/** Camada 3: a única escrita do arquivo. Um upsert por avaliação 'gravar'. */
++export async function gravarPromessas(db: Db, avaliacoes: AvaliacaoPromessa[]): Promise<{ gravadas: number; falhas: number }> {
++  let gravadas = 0;
++  let falhas = 0;
++  for (const a of avaliacoes) {
++    if (a.decisao !== "gravar" || !a.linha) continue;
++    try {
++      const { error } = await db.from("perf_promessas").upsert(a.linha, { onConflict: "wpp_message_id", ignoreDuplicates: true });
++      if (error) falhas++;
++      else gravadas++;
+     } catch {
+-      resumo.falhas++;
++      falhas++;
+     }
+   }
+-  return resumo;
++  return { gravadas, falhas };
++}
++
++export async function detectarPromessas(db: Db, agoraISO: string, teto: number = TETO_CHAMADAS): Promise<ResumoPromessas> {
++  const desdeISO = new Date(Date.parse(agoraISO) - JANELA_HORAS * MS_HORA).toISOString();
++  const insumo = await carregarInsumoPromessas(db, { desdeISO, ateISO: agoraISO });
++  const avaliacoes = await avaliarCandidatos(insumo, chamarProvider, teto);
++  const gravacao = await gravarPromessas(db, avaliacoes);
++  const conta = (d: AvaliacaoPromessa["decisao"]) => avaliacoes.filter((a) => a.decisao === d).length;
++  return {
++    candidatos: avaliacoes.length,
++    chamadas: avaliacoes.length - conta("fora_do_teto"),
++    gravadas: gravacao.gravadas,
++    descartadas: conta("descartar"),
++    falhas: conta("falha") + gravacao.falhas,
++  };
+ }
+diff --git a/test/promessas-avaliar-pura.test.ts b/test/promessas-avaliar-pura.test.ts
+new file mode 100644
+index 0000000..77b3098
+--- /dev/null
++++ b/test/promessas-avaliar-pura.test.ts
+@@ -0,0 +1,155 @@
++/**
++ * Ticket 741a: detectar.ts em três camadas (carregar, avaliar, gravar).
++ * Supabase e chamarProvider mockados, relógio fixo, sem banco real.
++ */
++import { describe, it, expect, vi, beforeEach } from "vitest";
++
++vi.mock("@supabase/supabase-js", () => ({ createClient: vi.fn(() => ({ from: vi.fn() })) }));
++const chamar = vi.fn();
++vi.mock("@/lib/ia/provider", () => ({ chamarProvider: (...a: unknown[]) => chamar(...a) }));
++
++import { avaliarCandidatos, carregarInsumoPromessas, detectarPromessas, type InsumoPromessas } from "@/lib/promessas/detectar";
++
++const GRUPO = "120363000000000001@g.us";
++const GRUPO_B = "120363000000000002@g.us";
++const CLIENTE = "00000000-0000-4000-8000-000000000001";
++const CLIENTE_B = "00000000-0000-4000-8000-000000000003";
++const COLAB = "00000000-0000-4000-8000-000000000002";
++const TEL_EQUIPE = "5511999990001";
++const TEL_CLIENTE = "5511888880002";
++
++// Terça-feira 06/10/2026, 17:00 em São Paulo.
++const AGORA = "2026-10-06T20:00:00.000Z";
++const DESDE = "2026-10-05T20:00:00.000Z";
++
++type Linha = Record<string, unknown>;
++
++function msg(id: string, autor: string, enviada_em: string, texto: string, jid = GRUPO): Linha {
++  return { wpp_message_id: id, remote_jid: jid, enviada_em, autor_jid: `${autor}@s.whatsapp.net`, texto, chave: { fromMe: false } };
++}
++
++function bancoFalso(mensagens: Linha[], grupos: Linha[] = [{ group_jid: GRUPO, cliente_id: CLIENTE }]) {
++  const upserts: Linha[] = [];
++  const escritas: string[] = [];
++  const tabelas: Record<string, Linha[]> = {
++    wpp_grupo: grupos,
++    cs_wpp_mensagem: mensagens,
++    employees: [{ id: COLAB, telefone: TEL_EQUIPE }],
++    ops_cliente_contatos: [{ cliente_id: CLIENTE, telefone: TEL_CLIENTE }],
++    clientes: [{ id: CLIENTE, telefone: null }],
++    feriados: [],
++    perf_promessas: [],
++  };
++  const db = {
++    from: (tabela: string) => {
++      const cadeia: Record<string, unknown> = {};
++      for (const m of ["select", "is", "neq", "in", "gte", "lte", "order", "limit", "eq"]) cadeia[m] = () => cadeia;
++      cadeia.maybeSingle = () => Promise.resolve({ data: (tabelas[tabela] ?? [])[0] ?? null, error: null });
++      cadeia.then = (ok: (v: unknown) => unknown) => ok({ data: tabelas[tabela] ?? [], error: null });
++      for (const m of ["insert", "update", "delete", "rpc"]) cadeia[m] = () => (escritas.push(`${m}:${tabela}`), Promise.resolve({ error: null }));
++      cadeia.upsert = (linha: Linha) => {
++        escritas.push(`upsert:${tabela}`);
++        upserts.push(linha);
++        return Promise.resolve({ error: null });
++      };
++      return cadeia;
++    },
++    rpc: () => (escritas.push("rpc"), Promise.resolve({ data: null, error: null })),
++  };
++  return { db, upserts, escritas };
++}
++
++function resposta(o: Record<string, unknown>) {
++  return { texto: JSON.stringify(o), uso: { tokens_in: 1, tokens_out: 1, custo_total: 0 }, modelo: { modelo: "padrao" }, credencial_origem: "env" };
++}
++
++const PEDIDO = msg("c1", TEL_CLIENTE, "2026-10-06T13:00:00.000Z", "pode ver isso?");
++const RESPOSTA = msg("e1", TEL_EQUIPE, "2026-10-06T13:30:00.000Z", "vou ver e te mando amanhã");
++const PROMESSA = {
++  eh_promessa: true,
++  wpp_message_id: "e1",
++  texto_promessa: "Enviar o retorno ao cliente",
++  prazo_iso: "2026-10-07T17:00:00.000Z",
++  evidencia: "te mando amanhã",
++};
++
++function insumoDeMao(mensagens: Linha[]): InsumoPromessas {
++  return {
++    grupos: [{ group_jid: GRUPO, cliente_id: CLIENTE }],
++    linhas: mensagens as unknown as InsumoPromessas["linhas"],
++    colaboradores: [{ employee_id: COLAB, telefone: TEL_EQUIPE }] as unknown as InsumoPromessas["colaboradores"],
++    contatos: { [CLIENTE]: [TEL_CLIENTE] },
++    feriados: [],
++    jaTem: [],
++  };
++}
++
++function paresDe(n: number): Linha[] {
++  const mensagens: Linha[] = [];
++  for (let i = 0; i < n; i++) {
++    mensagens.push(msg(`c${i}`, TEL_CLIENTE, `2026-10-06T1${i}:00:00.000Z`, `pedido ${i}`));
++    mensagens.push(msg(`e${i}`, TEL_EQUIPE, `2026-10-06T1${i}:05:00.000Z`, `vou ver ${i}`));
++  }
++  return mensagens;
++}
++
++beforeEach(() => chamar.mockReset());
++
++describe("741a: avaliarCandidatos e as três camadas", () => {
++  it("avaliarCandidatos com insumo montado a mão devolve gravar, descartar com motivo e fora_do_teto", async () => {
++    chamar
++      .mockResolvedValueOnce(resposta({ ...PROMESSA, wpp_message_id: "e0", evidencia: "vou ver 0" }))
++      .mockResolvedValueOnce(resposta({ ...PROMESSA, eh_promessa: false }));
++    const av = await avaliarCandidatos(insumoDeMao(paresDe(3)), chamar, 2);
++    expect(av).toHaveLength(3);
++    expect(av[0].decisao).toBe("gravar");
++    expect(av[1].decisao).toBe("descartar");
++    expect(av[2].decisao).toBe("fora_do_teto");
++    expect(av[0].linha).toMatchObject({ cliente_id: CLIENTE, wpp_message_id: "e0", autor_id: COLAB, status: "aberta", pedido_wpp_message_id: "c0" });
++    expect(av[1].motivo.length).toBeGreaterThan(0);
++    expect(av[2].motivo.length).toBeGreaterThan(0);
++    expect(chamar).toHaveBeenCalledTimes(2);
++  });
++
++  it("carregarInsumoPromessas + avaliarCandidatos fazem zero chamada de escrita", async () => {
++    chamar.mockResolvedValue(resposta(PROMESSA));
++    const { db, escritas } = bancoFalso([PEDIDO, RESPOSTA]);
++    const insumo = await carregarInsumoPromessas(db, { desdeISO: DESDE, ateISO: AGORA });
++    const av = await avaliarCandidatos(insumo, chamar);
++    expect(av.some((a) => a.decisao === "gravar")).toBe(true);
++    expect(escritas).toHaveLength(0);
++  });
++
++  it("detectarPromessas devolve o mesmo resumo medido antes da refatoração", async () => {
++    chamar.mockResolvedValue(resposta({ ...PROMESSA, eh_promessa: false }));
++    const teto = await detectarPromessas(bancoFalso(paresDe(5)).db, AGORA, 3);
++    // 741a, teto: 5 pares, teto 3, modelo diz que não é promessa: 5 candidatos, 3 chamadas, 3 descartadas.
++    expect(teto).toEqual({ candidatos: 5, chamadas: 3, gravadas: 0, descartadas: 3, falhas: 0 });
++
++    chamar.mockResolvedValue(resposta(PROMESSA));
++    const ok = await detectarPromessas(bancoFalso([PEDIDO, RESPOSTA]).db, AGORA);
++    // 741a, promessa válida: 1 candidato, 1 chamada, 1 gravada.
++    expect(ok).toEqual({ candidatos: 1, chamadas: 1, gravadas: 1, descartadas: 0, falhas: 0 });
++
++    chamar.mockResolvedValue({ ...resposta({}), texto: "isto não é JSON" });
++    const falha = await detectarPromessas(bancoFalso([PEDIDO, RESPOSTA]).db, AGORA);
++    // 741a, resposta ilegível (JSON.parse lança dentro do try, como a exceção do modelo): conta a chamada e 1 falha, nada gravado.
++    expect(falha).toEqual({ candidatos: 1, chamadas: 1, gravadas: 0, descartadas: 0, falhas: 1 });
++
++    const vazio = await detectarPromessas(bancoFalso([PEDIDO, RESPOSTA], []).db, AGORA);
++    // 741a, sem grupo vinculado: resumo zerado.
++    expect(vazio).toEqual({ candidatos: 0, chamadas: 0, gravadas: 0, descartadas: 0, falhas: 0 });
++  });
++
++  it("carregarInsumoPromessas com clienteId só devolve grupos desse cliente", async () => {
++    const grupos = [{ group_jid: GRUPO, cliente_id: CLIENTE }, { group_jid: GRUPO_B, cliente_id: CLIENTE_B }];
++    const { db } = bancoFalso([PEDIDO, RESPOSTA, msg("x1", TEL_CLIENTE, "2026-10-06T13:00:00.000Z", "outro", GRUPO_B)], grupos);
++    const todos = await carregarInsumoPromessas(db, { desdeISO: DESDE, ateISO: AGORA });
++    expect(todos.grupos).toHaveLength(2);
++    // O banco falso ignora .eq(); o filtro por cliente tem de acontecer no carregar, não só na query.
++    const so = await carregarInsumoPromessas(db, { desdeISO: DESDE, ateISO: AGORA, clienteId: CLIENTE });
++    expect(so.grupos).toHaveLength(1);
++    expect(so.grupos[0].cliente_id).toBe(CLIENTE);
++    expect(so.grupos.some((g) => g.cliente_id === CLIENTE_B)).toBe(false);
++  });
++});

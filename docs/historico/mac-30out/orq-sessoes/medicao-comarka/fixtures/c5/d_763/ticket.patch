@@ -1,0 +1,265 @@
+diff --git a/src/lib/perf/ghl-backfill.ts b/src/lib/perf/ghl-backfill.ts
+index 0a459fa..7f0d10b 100644
+--- a/src/lib/perf/ghl-backfill.ts
++++ b/src/lib/perf/ghl-backfill.ts
+@@ -9,6 +9,13 @@ import { enqueue } from "@/lib/jobs/core/enqueue";
+ import { JobPermanentError, type Job, type JobsDb } from "@/lib/jobs/core/types";
+ import { getEncryptionKey } from "@/lib/perf/encryption-key";
+ import { renovarTokenGhl } from "@/lib/perf/ghl-oauth";
++import {
++  OportunidadeSemConexaoError,
++  OportunidadeSemEtapaError,
++  gravarOportunidade,
++  normalizarOportunidadeGhl,
++  requalificarContato,
++} from "@/lib/perf/crm-oportunidades";
+ import { ingerirLeadGhl, mapGhlAppContactToLead } from "@/lib/perf/leads-ghl";
+ 
+ export const PREFIXO_ERRO_BACKFILL = "Backfill";
+@@ -18,6 +25,7 @@ const PAGINAS_POR_VOLTA = 5;
+ const ORCAMENTO_JOB_MS = 200_000;
+ 
+ const CONTATOS_POR_PAGINA = 100;
++const OPORTUNIDADES_POR_PAGINA = 100;
+ const MARGEM_RENOVACAO_MS = 5 * 60 * 1000;
+ const GHL_API_VERSION = "2021-07-28";
+ 
+@@ -28,6 +36,19 @@ const supabase = createClient(
+ 
+ export type CursorBackfill = (string | number)[];
+ 
++/** Cursor da fase de oportunidades: pipeline em curso e a ancora da proxima pagina (meta do GHL). */
++export type CursorOportunidades = { pipeline_idx: number; startAfter: string | number | null; startAfterId: string | null };
++
++export function lerCursorOportunidades(v: unknown): CursorOportunidades {
++  if (!v || typeof v !== "object" || Array.isArray(v)) return { pipeline_idx: 0, startAfter: null, startAfterId: null };
++  const c = v as Record<string, unknown>;
++  return {
++    pipeline_idx: typeof c.pipeline_idx === "number" && c.pipeline_idx >= 0 ? c.pipeline_idx : 0,
++    startAfter: typeof c.startAfter === "string" || typeof c.startAfter === "number" ? c.startAfter : null,
++    startAfterId: typeof c.startAfterId === "string" ? c.startAfterId : null,
++  };
++}
++
+ export type ParcialBackfill = { processados: number; falhas: number; cursor: CursorBackfill | null };
+ 
+ export class BackfillErro extends Error {
+@@ -199,7 +220,7 @@ export async function enfileirarBackfillGhl(
+     clienteId: string;
+     locationId: string;
+     fase?: string;
+-    cursor?: CursorBackfill | null;
++    cursor?: CursorBackfill | CursorOportunidades | null;
+     passo?: number;
+     acumulado?: AcumuladoBackfill;
+   },
+@@ -282,7 +303,7 @@ async function concluirBackfill(db: JobsDb, locationId: string, falhas: number):
+   const erroAtual = atual && typeof atual.ultimo_erro === "string" ? atual.ultimo_erro : "";
+   const campos: Record<string, unknown> = { backfill_concluido_em: agora };
+   if (falhas > 0) {
+-    campos.ultimo_erro = `Backfill concluído com ${falhas} contatos não gravados`;
++    campos.ultimo_erro = `Backfill concluído com ${falhas} itens não gravados`;
+     campos.ultimo_erro_em = agora;
+   } else if (erroAtual.startsWith(PREFIXO_ERRO_BACKFILL)) {
+     campos.ultimo_erro = null;
+@@ -292,15 +313,169 @@ async function concluirBackfill(db: JobsDb, locationId: string, falhas: number):
+   if (error) throw new Error(`Falha ao concluir o backfill: ${error.message}`);
+ }
+ 
++type PayloadBackfill = {
++  cliente_id: string;
++  location_id: string;
++  fase?: string;
++  cursor?: unknown;
++  passo?: number;
++  processados?: number;
++  falhas?: number;
++};
++
++function motivoDe(err: unknown): string {
++  return err instanceof BackfillErro ? err.mensagem : err instanceof Error ? err.message : "erro interno";
++}
++
++async function lerPipelinesAtivos(locationId: string): Promise<string[]> {
++  const { data, error } = await supabase
++    .from("perf_crm_pipelines")
++    .select("ghl_pipeline_id")
++    .eq("location_id", locationId)
++    .eq("ativo", true)
++    .order("posicao", { ascending: true });
++  if (error) throw new BackfillErro(500, `Falha ao ler os funis do CRM: ${error.message}`);
++  if (!Array.isArray(data)) throw new BackfillErro(500, "Falha ao ler os funis do CRM: resposta inválida");
++  return (data as { ghl_pipeline_id: string }[]).map((r) => r.ghl_pipeline_id);
++}
++
++/** Uma pagina de GET /opportunities/search (nomes de query da API v2). Erro sobe; nunca vira pagina vazia. */
++async function buscarPaginaOportunidades(args: {
++  base: string;
++  bearer: string;
++  locationId: string;
++  pipelineId: string;
++  cursor: CursorOportunidades;
++}): Promise<{ itens: unknown[]; proximo: { startAfter: string | number; startAfterId: string } | null }> {
++  const { base, bearer, locationId, pipelineId, cursor } = args;
++  const url = new URL(`${base}/opportunities/search`);
++  url.searchParams.set("location_id", locationId);
++  url.searchParams.set("pipeline_id", pipelineId);
++  url.searchParams.set("limit", String(OPORTUNIDADES_POR_PAGINA));
++  if (cursor.startAfter !== null && cursor.startAfterId !== null) {
++    url.searchParams.set("startAfter", String(cursor.startAfter));
++    url.searchParams.set("startAfterId", cursor.startAfterId);
++  }
++  const resp = await fetch(url.toString(), {
++    headers: { Authorization: `Bearer ${bearer}`, Version: GHL_API_VERSION, accept: "application/json" },
++  });
++  if (!resp.ok) {
++    console.error("[ghl-backfill] busca de oportunidades falhou", resp.status);
++    throw new BackfillErro(resp.status === 401 || resp.status === 403 ? resp.status : 502, "Falha ao buscar oportunidades no CRM");
++  }
++  let dados: { opportunities?: unknown; meta?: { startAfter?: unknown; startAfterId?: unknown; nextPageUrl?: unknown } };
++  try {
++    dados = JSON.parse(await resp.text());
++  } catch {
++    console.error("[ghl-backfill] resposta de oportunidades ilegivel", resp.status);
++    throw new BackfillErro(502, "Resposta inválida do CRM ao buscar oportunidades");
++  }
++  if (!Array.isArray(dados.opportunities)) throw new BackfillErro(502, "Resposta inválida do CRM ao buscar oportunidades");
++  const itens = dados.opportunities as unknown[];
++  const meta = dados.meta;
++  if (itens.length < OPORTUNIDADES_POR_PAGINA || !meta?.nextPageUrl) return { itens, proximo: null };
++  const { startAfter, startAfterId } = meta;
++  if ((typeof startAfter !== "string" && typeof startAfter !== "number") || typeof startAfterId !== "string") {
++    throw new BackfillErro(502, "Resposta inválida do CRM ao paginar oportunidades");
++  }
++  return { itens, proximo: { startAfter, startAfterId } };
++}
++
++/**
++ * Fase 'oportunidades': cada pipeline ativo da location, pagina a pagina, gravando pela lib do 760.
++ * A lib grava no historico o valor de origem recebido e nao decide nada sobre ele: o backfill
++ * passa sempre 'backfill'.
++ */
++async function processarFaseOportunidades(p: PayloadBackfill, db: JobsDb): Promise<Record<string, unknown>> {
++  const passo = typeof p.passo === "number" ? p.passo : 0;
++  let cursor = lerCursorOportunidades(p.cursor);
++  let processados = typeof p.processados === "number" ? p.processados : 0;
++  let falhas = typeof p.falhas === "number" ? p.falhas : 0;
++  const inicio = Date.now();
++  const prefixo = `${PREFIXO_ERRO_BACKFILL} de oportunidades parou: `;
++
++  let pipelines: string[];
++  let bearer: string;
++  const base = (process.env.GHL_API_BASE_URL || "").replace(/\/+$/, "");
++  try {
++    if (!base) throw new BackfillErro(500, "Integração com o CRM não configurada");
++    pipelines = await lerPipelinesAtivos(p.location_id);
++    bearer = await credencialDaConta(p.location_id);
++  } catch (err) {
++    const motivo = motivoDe(err);
++    await gravarUltimoErro(db, p.location_id, `${prefixo}${motivo}`);
++    if (err instanceof BackfillErro && (err.status === 404 || err.status === 409)) throw new JobPermanentError(motivo);
++    throw err;
++  }
++
++  while (cursor.pipeline_idx < pipelines.length) {
++    try {
++      const { itens, proximo } = await buscarPaginaOportunidades({
++        base,
++        bearer,
++        locationId: p.location_id,
++        pipelineId: pipelines[cursor.pipeline_idx],
++        cursor,
++      });
++      for (const bruto of itens) {
++        const opp = normalizarOportunidadeGhl(bruto);
++        if (!opp) {
++          falhas++;
++          continue;
++        }
++        try {
++          const gravada = await gravarOportunidade(p.location_id, opp, "backfill");
++          processados++;
++          if (gravada.ghl_contact_id) {
++            try {
++              await requalificarContato(p.cliente_id, gravada.ghl_contact_id);
++            } catch (err) {
++              falhas++;
++              console.error("[ghl-backfill] requalificar contato falhou", opp.id, motivoDe(err));
++            }
++          }
++        } catch (err) {
++          if (err instanceof OportunidadeSemEtapaError || err instanceof OportunidadeSemConexaoError) {
++            falhas++;
++            console.warn("[ghl-backfill] oportunidade nao gravada", opp.id, err.name);
++          } else throw err;
++        }
++      }
++      cursor = proximo
++        ? { pipeline_idx: cursor.pipeline_idx, startAfter: proximo.startAfter, startAfterId: proximo.startAfterId }
++        : { pipeline_idx: cursor.pipeline_idx + 1, startAfter: null, startAfterId: null };
++    } catch (err) {
++      const motivo = motivoDe(err);
++      await gravarUltimoErro(db, p.location_id, `${prefixo}${motivo}`);
++      if (err instanceof BackfillErro && (err.status === 401 || err.status === 403)) throw new JobPermanentError(motivo);
++      throw err;
++    }
++
++    if (cursor.pipeline_idx < pipelines.length && Date.now() - inicio >= ORCAMENTO_JOB_MS) {
++      try {
++        await enfileirarBackfillGhl(db, {
++          clienteId: p.cliente_id,
++          locationId: p.location_id,
++          fase: "oportunidades",
++          cursor,
++          passo: passo + 1,
++          acumulado: { processados, falhas },
++        });
++      } catch (err) {
++        await gravarUltimoErro(db, p.location_id, `${prefixo}${motivoDe(err)}`);
++        throw err;
++      }
++      return { continua: true, processados, falhas };
++    }
++  }
++
++  await concluirBackfill(db, p.location_id, falhas);
++  return { processados, falhas };
++}
++
+ export async function processarJobBackfillGhl(job: Job, db: JobsDb): Promise<Record<string, unknown>> {
+-  const p = job.payload as {
+-    cliente_id: string;
+-    location_id: string;
+-    cursor?: unknown;
+-    passo?: number;
+-    processados?: number;
+-    falhas?: number;
+-  };
++  const p = job.payload as PayloadBackfill;
++  if (p.fase === "oportunidades") return processarFaseOportunidades(p, db);
+   const passo = typeof p.passo === "number" ? p.passo : 0;
+   let cursor = lerCursor(p.cursor);
+   let processados = typeof p.processados === "number" ? p.processados : 0;
+@@ -322,8 +497,20 @@ export async function processarJobBackfillGhl(job: Job, db: JobsDb): Promise<Rec
+     cursor = volta.cursor;
+ 
+     if (volta.terminou) {
+-      await concluirBackfill(db, p.location_id, falhas);
+-      return { processados, falhas };
++      // 763: contatos nao concluem mais o backfill; a fase de oportunidades conclui.
++      try {
++        await enfileirarBackfillGhl(db, {
++          clienteId: p.cliente_id,
++          locationId: p.location_id,
++          fase: "oportunidades",
++          passo: 0,
++          acumulado: { processados, falhas },
++        });
++      } catch (err) {
++        await gravarUltimoErro(db, p.location_id, `${PREFIXO_ERRO_BACKFILL} de contatos parou: ${motivoDe(err)}`);
++        throw err;
++      }
++      return { fase: "contatos", proxima: "oportunidades", processados, falhas };
+     }
+     if (Date.now() - inicio >= ORCAMENTO_JOB_MS) {
+       try {

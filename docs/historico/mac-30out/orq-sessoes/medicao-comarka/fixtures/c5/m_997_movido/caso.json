@@ -1,0 +1,31 @@
+{
+ "ticket": {
+  "id": "997",
+  "loop": "plataforma",
+  "done_em": "2026-10-12 20:17",
+  "prim": "sim",
+  "sha_aprovado": "af11b9fa3d9793e8b32f0ef0410cfed4eba0b64c",
+  "merge": "6b7f8aeacb64961929fc2a29a2a67aa2f9a34ba3"
+ },
+ "commit": {
+  "sha": "2c76b10f76c68bd1c93a8e1c59caeda8b0371482",
+  "dt": "2026-10-18T23:07:43-03:00",
+  "assunto": "fix: achados do code-review do hotfix da previa do portal",
+  "arquivos": [
+   "src/app/dashboard/clientes/[id]/portal-previa/corpo-previa.tsx",
+   "src/app/dashboard/clientes/[id]/portal-previa/page.tsx",
+   "src/app/r/escritorio/[token]/page.tsx",
+   "src/app/r/escritorio/_components/aba-briefing.tsx",
+   "src/app/r/escritorio/_components/aba-segura.tsx",
+   "src/app/r/escritorio/_components/portal-shell.tsx",
+   "test/portal-previa-rota.test.ts",
+   "test/portal-previa-tela.test.tsx",
+   "test/portal-previa-troca-de-aba.test.tsx"
+  ]
+ },
+ "esperado": {
+  "tipo": "fix_na_linha",
+  "forca": "forte",
+  "linhas": 4
+ }
+}

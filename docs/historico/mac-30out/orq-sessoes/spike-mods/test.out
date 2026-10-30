@@ -1,0 +1,22 @@
+
+tests/guarda-escopo.test.ts:
+(pass) dentro da raiz e casa o glob: segue e registra [18.19ms]
+(pass) dentro da raiz e casa glob ** em pasta nova: segue [9.10ms]
+(pass) dentro da raiz e nao casa: nega com a mensagem [7.63ms]
+(pass) Edit e NotebookEdit tambem sao guardados [9.11ms]
+(pass) .git: nega mesmo com glob que casaria [7.34ms]
+(pass) /tmp fora da raiz: segue [6.97ms]
+(pass) .. que volta para dentro e nao casa: nega [7.11ms]
+(pass) .. que escapa da raiz para fora de tudo: nega [6.84ms]
+(pass) .. num arquivo que ainda nao existe nao vira atalho: nega [6.59ms]
+(pass) symlink dentro da raiz apontando para fora: nega [6.40ms]
+(pass) fora de tudo: nega [6.57ms]
+(pass) sem ORQ_ESCOPO_FILE: segue e registra [6.87ms]
+(pass) escopo ilegivel: nega (fecha, nao abre) [6.74ms]
+(pass) ferramenta fora da lista (Read) nao passa pelo guarda [5.89ms]
+(pass) o log acumula uma linha JSON por decisao [7.54ms]
+
+ 15 pass
+ 0 fail
+Ran 15 tests across 1 file. [0.23s]
+rc=0

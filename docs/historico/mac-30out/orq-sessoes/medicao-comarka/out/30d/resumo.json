@@ -1,0 +1,449 @@
+{
+ "C1": {
+  "desde_2026-08-08": {
+   "atual": 0,
+   "maior": 2,
+   "maior_ate": "2026-08-11",
+   "maior_de": "2026-08-10"
+  },
+  "dias_com_intervencao_na_janela": [
+   "2026-09-11",
+   "2026-09-12",
+   "2026-09-13",
+   "2026-09-14",
+   "2026-09-15",
+   "2026-09-16",
+   "2026-09-17",
+   "2026-09-18",
+   "2026-09-19",
+   "2026-09-20",
+   "2026-09-21",
+   "2026-09-22",
+   "2026-09-23",
+   "2026-09-24",
+   "2026-09-25",
+   "2026-09-26",
+   "2026-09-29",
+   "2026-09-30",
+   "2026-10-01",
+   "2026-10-02",
+   "2026-10-03",
+   "2026-10-04",
+   "2026-10-05",
+   "2026-10-06",
+   "2026-10-07",
+   "2026-10-08",
+   "2026-10-09",
+   "2026-10-10"
+  ],
+  "janela": {
+   "atual": 0,
+   "maior": 2,
+   "maior_ate": "2026-09-28",
+   "maior_de": "2026-09-27"
+  },
+  "motivos_por_dia": {
+   "2026-09-11": [
+    "pausa_manual",
+    "writeback:ba610ac18"
+   ],
+   "2026-09-12": [
+    "allowlist:5864c942c",
+    "allowlist:6a54a0129",
+    "allowlist:dff3629f5",
+    "motor:0ed1f68f1",
+    "motor:be8b0a70e",
+    "motor:fde270e49",
+    "outro:0f007b9a3",
+    "outro:527a5dd4e",
+    "outro:82dca3c70",
+    "outro:91d973767",
+    "outro:fbe4cb839",
+    "pausa_manual",
+    "writeback:52fa43eda",
+    "writeback:6ec032957",
+    "writeback:ea07d5357"
+   ],
+   "2026-09-13": [
+    "allowlist:03d73c774",
+    "motor:c31cfc840",
+    "outro:310370260",
+    "outro:4de4fa071",
+    "outro:5a30565d0",
+    "pausa_manual",
+    "writeback:366cc4f82",
+    "writeback:7d952e001",
+    "writeback:81cd0eedf",
+    "writeback:b1bdc616c",
+    "writeback:d88e85d24"
+   ],
+   "2026-09-14": [
+    "allowlist:a61946f10",
+    "criterio:22f7caefa",
+    "outro:7e72f9e76",
+    "outro:89871a501"
+   ],
+   "2026-09-15": [
+    "criterio:2c3befb7d",
+    "criterio:bc3e3e2d8",
+    "writeback:69754d55f",
+    "writeback:d438496eb"
+   ],
+   "2026-09-16": [
+    "allowlist:286b6fe78",
+    "gate_streak:local-loop.log:27879",
+    "motor:3a3e526fe",
+    "motor:45c0adcb4",
+    "motor:683668c8f",
+    "outro:a133de8fe",
+    "pausa_gate_streak",
+    "writeback:3c686999a",
+    "writeback:3f3977840",
+    "writeback:43976bc63",
+    "writeback:6b48b97d7"
+   ],
+   "2026-09-17": [
+    "allowlist:0a9444337",
+    "criterio:e58a00d87",
+    "gate_streak:local-loop.log:29147",
+    "gate_streak:local-loop.log:29531",
+    "motor:f5a1ebf59",
+    "outro:661edf97d",
+    "outro:e27f710df",
+    "pausa_gate_streak",
+    "pausa_gate_streak",
+    "reabertura:5be6748d8",
+    "reabertura:d45d28374",
+    "writeback:10632cef6",
+    "writeback:c7f21f1e8",
+    "writeback:f5a2606c9"
+   ],
+   "2026-09-18": [
+    "allowlist:1be711730",
+    "criterio:0b0330529",
+    "criterio:411982721",
+    "outro:f23d65a7d",
+    "pausa_gate_streak",
+    "writeback:1b755931b"
+   ],
+   "2026-09-19": [
+    "allowlist:41697c8b7",
+    "dependencia:ded72e169",
+    "motor:c4273db02",
+    "outro:74d51f5b0",
+    "pausa_manual",
+    "pausa_manual",
+    "reabertura:9c7e8525e",
+    "writeback:3bc9ce319",
+    "writeback:413e2fc6d"
+   ],
+   "2026-09-20": [
+    "allowlist:07edb3ee2",
+    "allowlist:31ab7ad3d",
+    "allowlist:76f19a422",
+    "allowlist:e08c1f259",
+    "criterio:3a53eb527",
+    "motor:819707f8d",
+    "outro:a35193b1d",
+    "pausa_manual",
+    "pausa_manual"
+   ],
+   "2026-09-21": [
+    "allowlist:31dfe8e84",
+    "allowlist:5af948f82",
+    "allowlist:b05481750",
+    "criterio:0ece76412",
+    "motor:50c6b02fd",
+    "motor:e0973b0e8",
+    "outro:43a5db6dd",
+    "pausa_manual",
+    "pausa_manual",
+    "pausa_manual",
+    "pausa_manual",
+    "pausa_manual",
+    "writeback:1c95230e1",
+    "writeback:7382ac3de",
+    "writeback:bb10c991f",
+    "writeback:d3c155730",
+    "writeback:df30921f2",
+    "writeback:e39090e6f"
+   ],
+   "2026-09-22": [
+    "allowlist:15d1e5a1f",
+    "allowlist:1e6dc48c4",
+    "allowlist:60662ec01",
+    "allowlist:adc446270",
+    "criterio:1334d5d84",
+    "criterio:46686743e",
+    "dependencia:ec421bcbe",
+    "outro:4e2bd1638",
+    "outro:fb455104e",
+    "pausa_manual",
+    "pausa_manual",
+    "pausa_manual",
+    "pausa_manual",
+    "reabertura:d7441c200",
+    "reabertura:fb0ef60f2",
+    "writeback:17f030a7c",
+    "writeback:30cef8631",
+    "writeback:3a40c693a",
+    "writeback:5d52d1e92",
+    "writeback:695cf2f16",
+    "writeback:7661fe844",
+    "writeback:c4411d035"
+   ],
+   "2026-09-23": [
+    "allowlist:362688729",
+    "allowlist:54a2ad4f6",
+    "allowlist:9290c0e3c",
+    "allowlist:a27bc5594",
+    "motor:0c5e85e18",
+    "pausa_manual",
+    "pausa_manual",
+    "writeback:32af65634",
+    "writeback:7a390224c",
+    "writeback:7a4883aed",
+    "writeback:93cb68c40",
+    "writeback:bf8bd9228",
+    "writeback:cbb218bee",
+    "writeback:d7fe4b736"
+   ],
+   "2026-09-24": [
+    "allowlist:150394230",
+    "allowlist:7f10beb0d",
+    "criterio:237c30de1",
+    "criterio:47d6f1793",
+    "dependencia:b3c5ec64a",
+    "dependencia:f6f2746cf",
+    "motor:a5f7784d8",
+    "reabertura:dc7f647bb",
+    "writeback:57de11569",
+    "writeback:5c48fd123",
+    "writeback:e50f112f6"
+   ],
+   "2026-09-25": [
+    "allowlist:ba984b0ca",
+    "allowlist:fae6e8d1e",
+    "criterio:80010ba3a",
+    "criterio:d01396af4",
+    "criterio:d35dd4141",
+    "dependencia:73a1a46cd",
+    "dependencia:92bee2ca7"
+   ],
+   "2026-09-26": [
+    "allowlist:5d9f7cccd",
+    "allowlist:64c6b2240",
+    "dependencia:233e63ba0",
+    "motor:64eb67d33",
+    "outro:a09e47ad9",
+    "pausa_manual",
+    "pausa_manual",
+    "pausa_manual",
+    "pausa_manual",
+    "writeback:d6af04565"
+   ],
+   "2026-09-29": [
+    "writeback:5283a4959",
+    "writeback:dff6dc175"
+   ],
+   "2026-09-30": [
+    "allowlist:44fa47c3f",
+    "criterio:89b66cae0",
+    "writeback:d3edfd64c"
+   ],
+   "2026-10-01": [
+    "allowlist:0bf46f859",
+    "allowlist:5d9f93bf5",
+    "allowlist:7fd9e5ffa",
+    "allowlist:d568f0e13",
+    "motor:5f2785db6",
+    "outro:8da96a22f",
+    "writeback:1203439de",
+    "writeback:fc3bbf765"
+   ],
+   "2026-10-02": [
+    "allowlist:41df16b30",
+    "allowlist:b53ac8238",
+    "criterio:02942f7ab",
+    "criterio:1b9dfbbb4",
+    "criterio:b8842d919",
+    "criterio:d2884fa1b",
+    "dependencia:718206da0",
+    "dependencia:f94bf1688",
+    "motor:63079124a",
+    "motor:bed7c1490",
+    "outro:c7b8af1d5",
+    "outro:db9dc1dfd",
+    "outro:f36aca497",
+    "pausa_manual",
+    "writeback:53ec7bbf9"
+   ],
+   "2026-10-03": [
+    "pausa_manual",
+    "writeback:31d602df2"
+   ],
+   "2026-10-04": [
+    "gate_streak:local-loop.log:72160",
+    "pausa_gate_streak"
+   ],
+   "2026-10-05": [
+    "allowlist:09e85d253",
+    "criterio:23267e260",
+    "criterio:2f1eeb75d",
+    "criterio:af5e6749b",
+    "dependencia:87522d9cf",
+    "dependencia:ef7dea44f",
+    "gate_streak:local-loop.log:72438",
+    "gate_streak:local-loop.log:72722",
+    "pausa_gate_streak",
+    "pausa_gate_streak",
+    "pausa_gate_streak",
+    "pausa_manual"
+   ],
+   "2026-10-06": [
+    "allowlist:9d7ef4d35",
+    "writeback:cfe97430e"
+   ],
+   "2026-10-07": [
+    "allowlist:2d79beee4",
+    "config:d33c111fd",
+    "dependencia:76d4fad06",
+    "outro:573f69e6d",
+    "outro:aa5423c4f",
+    "reabertura:ee9efbee9"
+   ],
+   "2026-10-08": [
+    "allowlist:90b5727d7",
+    "allowlist:ae22bc364",
+    "allowlist:c3cde4a75",
+    "criterio:21437fe3f",
+    "criterio:c5d74cdbd",
+    "criterio:d7a8d5437",
+    "criterio:f2c3cef0d",
+    "dependencia:917d35bca",
+    "gate_streak:local-loop.log:82653",
+    "gate_streak:local-loop.log:82794",
+    "pausa_gate_streak",
+    "reabertura:b7858391f"
+   ],
+   "2026-10-09": [
+    "allowlist:4dc5d717c",
+    "allowlist:676ca51e8",
+    "writeback:56d5c5f85"
+   ],
+   "2026-10-10": [
+    "allowlist:7787af376",
+    "writeback:1a5d41d9f",
+    "writeback:819c49aaa"
+   ]
+  },
+  "sem_dias_so_de_writeback": {
+   "desde_2026-08-08": {
+    "atual": 0,
+    "maior": 4,
+    "maior_ate": "2026-08-30",
+    "maior_de": "2026-08-27"
+   },
+   "janela": {
+    "atual": 0,
+    "maior": 3,
+    "maior_ate": "2026-09-29",
+    "maior_de": "2026-09-27"
+   }
+  }
+ },
+ "C2": {
+  "aprovados_de_primeira": 416,
+  "denominador": 617,
+  "done_na_janela": 620,
+  "done_sem_meta": 3,
+  "nao_por_adiado_ou_pausado_na_1a_linha": 3,
+  "pct": 67.4
+ },
+ "C3": {
+  "desde_2026-08-08": {
+   "atual": 5,
+   "maior": 10,
+   "maior_ate": "2026-08-24",
+   "maior_de": "2026-08-15"
+  },
+  "janela": {
+   "atual": 5,
+   "maior": 8,
+   "maior_ate": "2026-10-04",
+   "maior_de": "2026-09-27"
+  },
+  "licoes_na_janela": 14,
+  "ultima_licao": "2026-10-05 15:32"
+ },
+ "esforco": {
+  "claude_dur_secs_por_done": 425,
+  "claude_dur_secs_total_done": 263187,
+  "custo_usd": "sem dado"
+ },
+ "intervencoes": {
+  "commits_excluidos": {
+   "agente_executor": 813,
+   "resolvedor_Orq-Resolvedor": 0
+  },
+  "intervencoes_por_tipo": {
+   "allowlist": 46,
+   "config": 1,
+   "criterio": 27,
+   "dependencia": 13,
+   "gate_streak": 8,
+   "motor": 18,
+   "outro": 26,
+   "pausa_gate_streak": 7,
+   "pausa_manual": 23,
+   "reabertura": 8,
+   "writeback": 56
+  },
+  "linhas_por_classe": {
+   "alimentar_fila": 175,
+   "curadoria": 119,
+   "fora_da_fila": 386,
+   "intervencao": 222,
+   "intervencao_embutida": 11,
+   "liberacao": 36
+  },
+  "resolvedor_teria_agido": {
+   "nao": 146,
+   "sem dado": 58,
+   "sim R1": 15,
+   "sim R5": 1,
+   "so proposta R2": 13
+  }
+ },
+ "janela": {
+  "ate": "2026-10-10",
+  "corte": "2026-10-10T23:59:59-03:00",
+  "de": "2026-09-11",
+  "dias": 30
+ },
+ "volume": {
+  "bloqueios": 101,
+  "bloqueios_com_retomada": 91,
+  "bloqueios_por_dia": 3.37,
+  "bloqueios_sem_retomada_ate_o_corte": [
+   "313",
+   "314",
+   "347",
+   "348",
+   "368",
+   "394a",
+   "407",
+   "410",
+   "488",
+   "840"
+  ],
+  "done": 620,
+  "done_por_dia": 20.67,
+  "horas_loop_parado": 138,
+  "horas_medias_bloqueado_ate_proxima_tentativa": 12.2,
+  "horas_pausa_gate_streak": 50,
+  "horas_pausa_manual": 71,
+  "horas_pausa_operacional": 59,
+  "tentativas_medias_por_done": 1.67
+ }
+}

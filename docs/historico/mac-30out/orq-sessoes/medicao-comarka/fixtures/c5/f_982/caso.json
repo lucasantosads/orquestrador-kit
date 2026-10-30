@@ -1,0 +1,25 @@
+{
+ "ticket": {
+  "id": "982",
+  "loop": "plataforma",
+  "done_em": "2026-10-11 12:36",
+  "prim": "sim",
+  "sha_aprovado": "58e384d4f8d6b5473330c6efaf8c811120dac370",
+  "merge": "cb63efff664bb3f51bb1d41f1d3901d4b4d19e78"
+ },
+ "commit": {
+  "sha": "07b6ae52fb9a6d0e9c2cdfb3fb0ce9ebe658106d",
+  "dt": "2026-10-15T20:24:21-03:00",
+  "assunto": "fix(perf): tese da campanha pode ser trocada depois de classificada",
+  "arquivos": [
+   "src/app/api/perf/campanha-tese/route.ts",
+   "src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx",
+   "test/trocar-tese-campanha.test.tsx",
+   "test/vinculo-tese-nicho.test.ts"
+  ]
+ },
+ "esperado": {
+  "tipo": "fix_no_arquivo",
+  "forca": "fraco"
+ }
+}

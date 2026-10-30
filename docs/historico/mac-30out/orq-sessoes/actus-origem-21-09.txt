@@ -1,0 +1,69 @@
+== staging-auto (reflog)
+5c31cd2 staging-auto@{2026-09-21 13:04:20 -0300}: merge frente/431: Merge made by the 'ort' strategy.
+a4b5aeb staging-auto@{2026-09-21 12:02:01 -0300}: merge frente/620: Merge made by the 'ort' strategy.
+2b6e697 staging-auto@{2026-09-20 23:00:13 -0300}: merge frente/500: Merge made by the 'ort' strategy.
+cea05d2 staging-auto@{2026-09-20 21:37:38 -0300}: merge frente/498: Merge made by the 'ort' strategy.
+587c4f1 staging-auto@{2026-09-20 21:35:19 -0300}: merge frente/492: Merge made by the 'ort' strategy.
+fa213ed staging-auto@{2026-09-20 21:32:59 -0300}: merge frente/491c: Merge made by the 'ort' strategy.
+8d83e0b staging-auto@{2026-09-20 21:27:14 -0300}: merge frente/491b: Merge made by the 'ort' strategy.
+dfa9905 staging-auto@{2026-09-20 21:23:30 -0300}: merge frente/491a: Merge made by the 'ort' strategy.
+== quem levou o origin/main a f9f14ad
+f9f14ad 2026-09-17 11:08:19 -0300 lucasantosads 461 desbloqueado: build passava no gate e reprovava no criterio; criterios duplicados de gate removidos de 5 tickets
+2e13284 2026-09-17 11:07:06 -0300 lucasantosads 461: criterio Suite verde le rc do vitest
+e84c6c2 2026-09-17 10:56:22 -0300 lucasantosads fila: 491a bloqueado
+4236963 2026-09-17 10:48:55 -0300 lucasantosads 491a,491b,491c: risco como classe fechada, prosa movida para o corpo
+d15c46e 2026-09-17 10:39:22 -0300 lucasantosads fila: 490 done (mergeado em staging-auto)
+== commits no motor desde 11/09
+c404986 2026-09-21 12:45:31 -0300 lucasantosads orq: gate de ticket vira pré-voo do drive_ticket, antes da worktree
+a15daca 2026-09-21 12:21:59 -0300 lucasantosads gate-ticket: reprova saída textual do vitest; avisa caminho fora da allowlist
+f3aaa89 2026-09-21 12:03:18 -0300 lucasantosads orq: tentativas persistidas no ticket (regressão do 612 no kit)
+aab3f4e 2026-09-21 11:58:18 -0300 lucasantosads gate-ticket: reprova '| grep -q' em critério; 431 e 472 reescritos
+748b31d 2026-09-20 18:03:42 -0300 lucasantosads harness: resultado verde vence sinal de execucao; sai a deteccao de impedimento por texto
+f8c6e77 2026-09-20 17:16:02 -0300 lucasantosads harness: diffLines dos caso_decisao deixa de ser 42 cravado
+bf658ec 2026-09-20 17:13:09 -0300 lucasantosads harness: diff_cap deixa de ser número cravado no teste
+e6fad83 2026-09-20 17:10:41 -0300 lucasantosads harness: ponteiros .mjs de decisao.ts e enforcement-core.ts viram histórico
+f1e9796 2026-09-20 16:35:16 -0300 lucasantosads harness: reancora os ponteiros de linha que esta sessão deslocou
+43fccdd 2026-09-20 16:32:55 -0300 lucasantosads harness: 'falha de ambiente da worktree' entra na política do MOTOR
+7781241 2026-09-20 16:29:22 -0300 lucasantosads harness: atualiza a contagem de causas nos comentários (7/6 -> 8)
+08afb3e 2026-09-20 16:27:09 -0300 lucasantosads harness: causa de infra 'ambiente' — impedimento declarado e permissão negada adiam
+5791209 2026-09-12 22:39:48 -0300 lucasantosads harness: RunAtLoad true no template (agente ficava mudo apos cada bootstrap)
+0bc0bf2 2026-09-11 13:15:54 -0300 lucasantosads motor: kit 2.1.0-dev (substitui o harness .mjs antigo)
+== motor sujo agora
+== diferenças contra o kit
+diferente   scripts/orquestrador/com.orquestrador.plist.template
+diferente   scripts/orquestrador/config-chaves.ts
+diferente   scripts/orquestrador/config-tabela.ts
+diferente   scripts/orquestrador/decisao.ts
+diferente   scripts/orquestrador/enforcement-core.ts
+diferente   scripts/orquestrador/executor.sh
+diferente   scripts/orquestrador/gate-ticket.ts
+diferente   scripts/orquestrador/lib.sh
+diferente   scripts/orquestrador/local-loop.sh
+só no kit   scripts/orquestrador/test-ambiente.sh
+só no kit   scripts/orquestrador/test-drenagem-sem-progresso.sh
+diferente   scripts/orquestrador/test-drenagem.sh
+só no kit   scripts/orquestrador/test-fixture-drenagem.sh
+só no repo  scripts/orquestrador/test-gate-prevoo.sh
+diferente   scripts/orquestrador/test-lib-config.sh
+só no kit   scripts/orquestrador/test-ocioso.sh
+só no kit   scripts/orquestrador/test-rc-executor.sh
+diferente   scripts/orquestrador/test-retry-worktree.sh
+só no kit   scripts/orquestrador/test-sem-progresso-limite.sh
+só no repo  scripts/orquestrador/test-tentativas-persistidas.sh
+diferente   docs/orquestrador/skill/templates/config.json
+== commits locais que não são da fila
+c404986 2026-09-21 12:45:31 -0300 orq: gate de ticket vira pré-voo do drive_ticket, antes da worktree
+a15daca 2026-09-21 12:21:59 -0300 gate-ticket: reprova saída textual do vitest; avisa caminho fora da allowlist
+f3aaa89 2026-09-21 12:03:18 -0300 orq: tentativas persistidas no ticket (regressão do 612 no kit)
+aab3f4e 2026-09-21 11:58:18 -0300 gate-ticket: reprova '| grep -q' em critério; 431 e 472 reescritos
+748b31d 2026-09-20 18:03:42 -0300 harness: resultado verde vence sinal de execucao; sai a deteccao de impedimento por texto
+f8c6e77 2026-09-20 17:16:02 -0300 harness: diffLines dos caso_decisao deixa de ser 42 cravado
+bf658ec 2026-09-20 17:13:09 -0300 harness: diff_cap deixa de ser número cravado no teste
+e6fad83 2026-09-20 17:10:41 -0300 harness: ponteiros .mjs de decisao.ts e enforcement-core.ts viram histórico
+7d0a141 2026-09-20 17:06:23 -0300 harness: ponteiros .mjs do 000-config.json viram referência HISTÓRICA
+f1e9796 2026-09-20 16:35:16 -0300 harness: reancora os ponteiros de linha que esta sessão deslocou
+43fccdd 2026-09-20 16:32:55 -0300 harness: 'falha de ambiente da worktree' entra na política do MOTOR
+7781241 2026-09-20 16:29:22 -0300 harness: atualiza a contagem de causas nos comentários (7/6 -> 8)
+08afb3e 2026-09-20 16:27:09 -0300 harness: causa de infra 'ambiente' — impedimento declarado e permissão negada adiam
+== total local
+72

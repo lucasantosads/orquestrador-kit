@@ -1,0 +1,167 @@
+
+ RUN  v2.1.9 /Users/lucasantos/Projetos/_worktrees/kit-etapa7f7
+
+ ❯ test/orquestrador-resolvedor-pausa-dono.test.ts (5 tests | 5 failed) 1094ms
+   × 7f-b7 P3: pausa com dono silenciosa > as 17 pausas reais de 17 e 18/10: só as 2 sem dono notificam (eram 17) 1069ms
+     → expected [ …(17) ] to deeply equal [ Array(2) ]
+   × 7f-b7 P3: pausa com dono silenciosa > pausa com dono abaixo do limite não notifica; passou de 30 min, notifica uma vez; ao sumir, pausa_fim 8ms
+     → expected [ [ '-e', 'on run argv', '-e', …(5) ] ] to deeply equal []
+   × 7f-b7 P3: pausa com dono silenciosa > FALHOU notifica na hora, mesmo com dono publicar.sh, e o aviso leva o passo 4ms
+     → expected [ Array(1) ] to deeply equal [ ObjectContaining{…} ]
+   × 7f-b7 P3: pausa com dono silenciosa > pausa sem dono notifica como antes, e ao sumir fecha com dono nulo 5ms
+     → expected [] to deeply equal [ ObjectContaining{…} ]
+   × 7f-b7 P3: pausa com dono silenciosa > pausa_donos e pausa_dono_max_min vêm do item do repo 7ms
+     → expected [ [ '-e', 'on run argv', …(6) ], …(1) ] to have a length of 1 but got 2
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/orquestrador-resolvedor-pausa-dono.test.ts > 7f-b7 P3: pausa com dono silenciosa > as 17 pausas reais de 17 e 18/10: só as 2 sem dono notificam (eram 17)
+AssertionError: expected [ …(17) ] to deeply equal [ Array(2) ]
+
+- Expected
++ Received
+
+  Array [
+-   StringMatching /^ritual-staging em andamento/,
+-   StringMatching /^vigia: claude CLI com login expirado/,
++   "dono: publicar.sh | motivo: publicar tokens-1610-promo em andamento",
++   "dono: publicar.sh | motivo: publicar fix-1710-mascara em andamento",
++   "dono: promocao-apolo | motivo: promocao-apolo em andamento",
++   "dono: publicar.sh | motivo: publicar reabre-5159 em andamento",
++   "dono: publicar.sh | motivo: publicar lote4-comercial em andamento",
++   "ritual-staging em andamento (2026-10-17 14:22)",
++   "vigia: claude CLI com login expirado desde ~19h (preflight rc=1, Login expired). Pausado para o disjuntor nao bloquear 1270/5202 e os tickets novos. Retomar depois do /login: scripts/orquestrador/orq-pause.sh --off",
++   "dono: promocao-apolo | motivo: promocao-apolo em andamento",
++   "dono: promocao-apolo | motivo: promocao-apolo em andamento",
++   "dono: promocao-apolo | motivo: promocao-apolo em andamento",
++   "dono: publicar.sh | motivo: publicar tokens-promo-e0d7189 em andamento",
++   "dono: publicar.sh | motivo: publicar tokens-promo-e0d7189 em andamento",
++   "dono: publicar.sh | motivo: publicar ledger-canonico-1710 em andamento",
++   "dono: publicar.sh | motivo: publicar harness/claude-code-out26 em andamento",
++   "dono: publicar.sh | motivo: publicar harness/claude-code-out26 em andamento",
++   "dono: publicar.sh | motivo: publicar harness/claude-code-out26 em andamento",
++   "dono: publicar.sh | motivo: publicar fila/fato-janela-1810 em andamento",
+  ]
+
+ ❯ test/orquestrador-resolvedor-pausa-dono.test.ts:89:89
+     87|     }
+     88|     const cs = chamadas()
+     89|     expect(cs.map((c) => c.find((a) => DE_17_18.some((p) => a.startsWi…
+       |                                                                                         ^
+     90|       expect.stringMatching(/^ritual-staging em andamento/),
+     91|       expect.stringMatching(/^vigia: claude CLI com login expirado/),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  test/orquestrador-resolvedor-pausa-dono.test.ts > 7f-b7 P3: pausa com dono silenciosa > pausa com dono abaixo do limite não notifica; passou de 30 min, notifica uma vez; ao sumir, pausa_fim
+AssertionError: expected [ [ '-e', 'on run argv', '-e', …(5) ] ] to deeply equal []
+
+- Expected
++ Received
+
+- Array []
++ Array [
++   Array [
++     "-e",
++     "on run argv",
++     "-e",
++     "display notification (item 2 of argv) with title (item 1 of argv)",
++     "-e",
++     "end run",
++     "orq: comarka-operacional pausado",
++     "dono: publicar.sh | motivo: publicar fix-1710-mascara em andamento",
++   ],
++ ]
+
+ ❯ test/orquestrador-resolvedor-pausa-dono.test.ts:110:24
+    108|     for (let m = 0; m < 30; m += 5) passa(t0 + m * MIN)
+    109|     passa(t0 + 29 * MIN)
+    110|     expect(chamadas()).toEqual([])
+       |                        ^
+    111|     passa(t0 + 30 * MIN)
+    112|     passa(t0 + 35 * MIN)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  test/orquestrador-resolvedor-pausa-dono.test.ts > 7f-b7 P3: pausa com dono silenciosa > FALHOU notifica na hora, mesmo com dono publicar.sh, e o aviso leva o passo
+AssertionError: expected [ Array(1) ] to deeply equal [ ObjectContaining{…} ]
+
+- Expected
++ Received
+
+  Array [
+-   ObjectContaining {
+-     "dono": "publicar.sh",
+-     "falhou_passo": "6/7 push",
++   Object {
++     "arquivo": "docs/fila/.orq-pause",
++     "motivo": "dono: publicar.sh | motivo: publicar FALHOU (2026-10-15 13:11) no passo 6/7 push",
+      "notificacao": Object {
+        "imessage": "nao_configurado",
+        "macos": "enviada",
+      },
++     "repo": "comarka-operacional",
++     "sha": "de85c93ce07386db5a41e10c7586914f7c6d7bcbf3fecfba862ddeb853001497",
++     "tipo": "pausa",
++     "ts": "2026-10-15T16:11:57Z",
+    },
+  ]
+
+ ❯ test/orquestrador-resolvedor-pausa-dono.test.ts:130:29
+    128|     expect(cs).toHaveLength(1)
+    129|     expect(cs[0]!.some((a) => a.includes('passo 6/7 push'))).toBe(true)
+    130|     expect(ledger('pausa')).toEqual([expect.objectContaining({ dono: '…
+       |                             ^
+    131|   })
+    132| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  test/orquestrador-resolvedor-pausa-dono.test.ts > 7f-b7 P3: pausa com dono silenciosa > pausa sem dono notifica como antes, e ao sumir fecha com dono nulo
+AssertionError: expected [] to deeply equal [ ObjectContaining{…} ]
+
+- Expected
++ Received
+
+- Array [
+-   ObjectContaining {
+-     "dono": null,
+-     "duracao_s": 600,
+-   },
+- ]
++ Array []
+
+ ❯ test/orquestrador-resolvedor-pausa-dono.test.ts:140:33
+    138|     rmSync(sentinela())
+    139|     passa(Date.parse(p.ts) + 10 * MIN)
+    140|     expect(ledger('pausa_fim')).toEqual([expect.objectContaining({ don…
+       |                                 ^
+    141|   })
+    142| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  test/orquestrador-resolvedor-pausa-dono.test.ts > 7f-b7 P3: pausa com dono silenciosa > pausa_donos e pausa_dono_max_min vêm do item do repo
+AssertionError: expected [ [ '-e', 'on run argv', …(6) ], …(1) ] to have a length of 1 but got 2
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ test/orquestrador-resolvedor-pausa-dono.test.ts:154:24
+    152|     passa(t)
+    153|     passa(t + 5 * MIN)
+    154|     expect(chamadas()).toHaveLength(1)
+       |                        ^
+    155|     passa(t + 10 * MIN)
+    156|     expect(chamadas()).toHaveLength(2)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+ Test Files  1 failed (1)
+      Tests  5 failed (5)
+   Start at  13:26:19
+   Duration  1.37s (transform 104ms, setup 0ms, collect 129ms, tests 1.09s, environment 0ms, prepare 35ms)
+

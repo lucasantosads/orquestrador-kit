@@ -1,0 +1,3761 @@
+[
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-12 13:25",
+  "commit": "dff3629f5",
+  "id": "343",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "362",
+   "340",
+   "352",
+   "342a",
+   "342b",
+   "363",
+   "humano:decisao-D11",
+   "humano:decisao-D13",
+   "humano:decisao-D35"
+  ],
+  "deps_depois": [
+   "362",
+   "340",
+   "352",
+   "342a",
+   "342b",
+   "363",
+   "humano:decisao-D11",
+   "humano:decisao-D13",
+   "humano:decisao-D35"
+  ],
+  "al_add": [
+   "test/menu-alertas-status.test.ts",
+   "test/onboarding-menu.test.ts"
+  ],
+  "ultima_antes": "bloqueado",
+  "n_antes": 5,
+  "n_reprov": 3,
+  "dirs": 8,
+  "resolv": "sem dado",
+  "mud": [
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-12 13:43",
+  "commit": "6a54a0129",
+  "id": "325a",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "037",
+   "324",
+   "327",
+   "328"
+  ],
+  "deps_depois": [
+   "037",
+   "324",
+   "327",
+   "328"
+  ],
+  "al_add": [
+   "test/saude-denominador-churn.test.tsx"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 5,
+  "n_reprov": 5,
+  "dirs": 8,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-12 20:41",
+  "commit": "5864c942c",
+  "id": "313b",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "313a",
+   "325a",
+   "370",
+   "338",
+   "339",
+   "humano:lote-identidade-370",
+   "humano:decisao-D3",
+   "humano:decisao-D7"
+  ],
+  "deps_depois": [
+   "313a",
+   "325a",
+   "370",
+   "338",
+   "339",
+   "humano:lote-identidade-370",
+   "humano:decisao-D3",
+   "humano:decisao-D7"
+  ],
+  "al_add": [
+   "src/app/visao-geral/resumo/_lib.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 5,
+  "resolv": "sem dado",
+  "mud": [
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-13 20:47",
+  "commit": "03d73c774",
+  "id": "331",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "325c",
+   "326",
+   "333",
+   "330",
+   "312",
+   "humano:decisao-D12"
+  ],
+  "deps_depois": [
+   "325c",
+   "326",
+   "333",
+   "330",
+   "312",
+   "humano:decisao-D12"
+  ],
+  "al_add": [
+   "src/app/dashboard/clientes/alertas/**",
+   "test/config-integracoes-ia.test.tsx",
+   "test/nav-config-absorvidas.test.ts"
+  ],
+  "ultima_antes": "bloqueado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 5,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-14 12:23",
+  "commit": "a61946f10",
+  "id": "368",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "340",
+   "343b",
+   "humano:decisao-D28"
+  ],
+  "deps_depois": [
+   "340",
+   "343b",
+   "humano:decisao-D28"
+  ],
+  "al_add": [
+   "src/app/api/inbox-operacional/route.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 4,
+  "resolv": "sem dado",
+  "mud": [
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-14 12:32",
+  "commit": "22f7caefa",
+  "id": "368",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "340",
+   "343b",
+   "humano:decisao-D28"
+  ],
+  "deps_depois": [
+   "340",
+   "343b",
+   "humano:decisao-D28"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 4,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-15 14:09",
+  "commit": "2c3befb7d",
+  "id": "346c",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "346a",
+   "346b",
+   "359",
+   "345",
+   "humano:contas-meta-vinculadas"
+  ],
+  "deps_depois": [
+   "346a-lib-periodo-compartilhada",
+   "346b",
+   "359",
+   "345",
+   "humano:contas-meta-vinculadas"
+  ],
+  "al_add": [],
+  "ultima_antes": "done",
+  "n_antes": 3,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "nao",
+  "mud": [
+   "criterios_aceite",
+   "dependencias",
+   "objetivo"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-15 19:56",
+  "commit": "bc3e3e2d8",
+  "id": "316b",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "316"
+  ],
+  "deps_depois": [
+   "316"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios",
+   "criterios_aceite"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-16 19:08",
+  "commit": "286b6fe78",
+  "id": "391a",
+  "status_antes": "pendente",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [
+   "src/app/dashboard/clientes/saude/saidas-em-andamento.tsx"
+  ],
+  "ultima_antes": "bloqueado",
+  "n_antes": 7,
+  "n_reprov": 5,
+  "dirs": 11,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-17 12:31",
+  "commit": "e58a00d87",
+  "id": "401",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "400",
+   "humano:ddl-400"
+  ],
+  "deps_depois": [
+   "400",
+   "humano:ddl-400"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-17 12:31",
+  "commit": "e58a00d87",
+  "id": "402",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "401"
+  ],
+  "deps_depois": [
+   "401"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 6,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-17 12:31",
+  "commit": "e58a00d87",
+  "id": "403",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "401"
+  ],
+  "deps_depois": [
+   "401"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-17 12:31",
+  "commit": "e58a00d87",
+  "id": "404",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "401"
+  ],
+  "deps_depois": [
+   "401"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-17 12:31",
+  "commit": "e58a00d87",
+  "id": "405",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "401"
+  ],
+  "deps_depois": [
+   "401"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-17 12:31",
+  "commit": "e58a00d87",
+  "id": "406",
+  "status_antes": "pendente",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 10,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-17 12:31",
+  "commit": "e58a00d87",
+  "id": "408",
+  "status_antes": "pendente",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 8,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-17 12:41",
+  "commit": "0a9444337",
+  "id": "391e",
+  "status_antes": "em_execucao",
+  "deps_antes": [
+   "391d"
+  ],
+  "deps_depois": [
+   "391d"
+  ],
+  "al_add": [
+   "test/carteira-views-acao.test.ts",
+   "test/config-universo-ativo.test.tsx",
+   "test/consistencia-contagens.test.ts",
+   "test/hoje-resumo-calculo.test.ts",
+   "test/hoje-resumo-rota.test.ts",
+   "test/mrr-snapshot-job.test.ts",
+   "test/retencao-coorte.test.ts",
+   "test/temperatura-comercial-cron.test.ts",
+   "test/universo-cron.test.ts",
+   "test/visao-geral-p0.test.tsx"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 8,
+  "resolv": "sem dado",
+  "mud": [
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-18 12:25",
+  "commit": "1be711730",
+  "id": "393a",
+  "status_antes": "pendente",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [
+   "src/components/finance/asaas-section.tsx"
+  ],
+  "ultima_antes": "adiado",
+  "n_antes": 6,
+  "n_reprov": 5,
+  "dirs": 9,
+  "resolv": "sem dado",
+  "mud": [
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-18 12:48",
+  "commit": "0b0330529",
+  "id": "406",
+  "status_antes": "pendente",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 8,
+  "n_reprov": 8,
+  "dirs": 10,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-18 17:46",
+  "commit": "411982721",
+  "id": "408",
+  "status_antes": "pendente",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [],
+  "ultima_antes": "done",
+  "n_antes": 7,
+  "n_reprov": 6,
+  "dirs": 8,
+  "resolv": "nao",
+  "mud": [
+   "criterios_aceite"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-19 16:34",
+  "commit": "41697c8b7",
+  "id": "306b",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "306",
+   "296",
+   "258",
+   "311a1",
+   "311a2",
+   "311b",
+   "337",
+   "065b",
+   "323",
+   "humano:ghl-locations-mapeadas",
+   "humano:decisao-D5"
+  ],
+  "deps_depois": [
+   "306",
+   "296",
+   "258",
+   "311a1",
+   "311a2",
+   "311b",
+   "337",
+   "065b",
+   "323",
+   "306b0",
+   "475c",
+   "humano:ghl-locations-mapeadas",
+   "humano:decisao-D5",
+   "humano:ddl-306b0"
+  ],
+  "al_add": [
+   "src/lib/perf/leads-ghl.ts",
+   "test/ingest-ghl.test.ts"
+  ],
+  "ultima_antes": "bloqueado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 6,
+  "resolv": "nao",
+  "mud": [
+   "criterios_aceite",
+   "dependencias",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-19 16:34",
+  "commit": "41697c8b7",
+  "id": "317",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "315a6",
+   "315a9",
+   "314d",
+   "312",
+   "324",
+   "327",
+   "328",
+   "325a",
+   "342a",
+   "342b",
+   "343b",
+   "343c"
+  ],
+  "deps_depois": [
+   "315a6",
+   "315a9",
+   "314d",
+   "312",
+   "324",
+   "327",
+   "328",
+   "325a",
+   "342a",
+   "342b",
+   "343b",
+   "343c"
+  ],
+  "al_add": [
+   "src/lib/nav/papel.ts",
+   "test/config-qualificacao-defaults.test.tsx",
+   "test/estados-padrao.test.ts",
+   "test/nav-saude-absorvidas.test.ts",
+   "test/rotas-orfas.test.ts",
+   "test/saude-abas.test.ts",
+   "test/superficies-montadas.test.ts"
+  ],
+  "ultima_antes": "done",
+  "n_antes": 4,
+  "n_reprov": 3,
+  "dirs": 5,
+  "resolv": "nao",
+  "mud": [
+   "cria_novo",
+   "criterios_aceite",
+   "lane",
+   "objetivo",
+   "pathspec_allowlist",
+   "perfil",
+   "recon_esperado"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-09-19 17:43",
+  "commit": "ded72e169",
+  "id": "306b",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "306",
+   "296",
+   "258",
+   "311a1",
+   "311a2",
+   "311b",
+   "337",
+   "065b",
+   "323",
+   "306b0",
+   "475c",
+   "humano:ghl-locations-mapeadas",
+   "humano:decisao-D5",
+   "humano:ddl-306b0"
+  ],
+  "deps_depois": [
+   "306",
+   "296",
+   "258",
+   "311a1",
+   "311a2",
+   "311b",
+   "337",
+   "065b",
+   "323",
+   "306b0",
+   "475c",
+   "humano:ghl-locations-mapeadas",
+   "humano:decisao-D5",
+   "humano:ddl-306b0",
+   "500"
+  ],
+  "al_add": [],
+  "ultima_antes": "bloqueado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 6,
+  "resolv": "sem dado",
+  "mud": [
+   "dependencias"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-20 14:55",
+  "commit": "e08c1f259",
+  "id": "480",
+  "status_antes": "pendente",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [
+   "test/ficha-nav-colapsavel.test.ts"
+  ],
+  "ultima_antes": "bloqueado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-20 14:56",
+  "commit": "07edb3ee2",
+  "id": "480",
+  "status_antes": "pendente",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [
+   "test/aba-na-url.test.ts"
+  ],
+  "ultima_antes": "bloqueado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-20 15:10",
+  "commit": "31ab7ad3d",
+  "id": "391e",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "391d"
+  ],
+  "deps_depois": [
+   "391d"
+  ],
+  "al_add": [
+   "test/identidade-resolver.test.ts",
+   "test/nps-taxa-variacao.test.tsx",
+   "test/onboarding-match.test.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 4,
+  "n_reprov": 4,
+  "dirs": 8,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-20 17:15",
+  "commit": "76f19a422",
+  "id": "483",
+  "status_antes": "pendente",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [
+   "test/audit-log-rotas.test.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 5,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-20 17:33",
+  "commit": "3a53eb527",
+  "id": "391e",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "391d"
+  ],
+  "deps_depois": [
+   "391d"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 6,
+  "n_reprov": 6,
+  "dirs": 8,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-21 11:11",
+  "commit": "0ece76412",
+  "id": "407a",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "407a0",
+   "humano:backfill-churn-log",
+   "humano:ddl-407a",
+   "humano:ddl-407a0",
+   "humano:excecao-c0-churn-reativar"
+  ],
+  "deps_depois": [
+   "407a0",
+   "humano:backfill-churn-log",
+   "humano:ddl-407a",
+   "humano:ddl-407a0",
+   "humano:excecao-c0-churn-reativar"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 9,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-21 11:11",
+  "commit": "0ece76412",
+  "id": "407a0",
+  "status_antes": "bloqueado",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-21 11:11",
+  "commit": "0ece76412",
+  "id": "407b",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "407a",
+   "440"
+  ],
+  "deps_depois": [
+   "407a",
+   "440"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-21 11:11",
+  "commit": "0ece76412",
+  "id": "486",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "humano:ddl-visao-relacao",
+   "483"
+  ],
+  "deps_depois": [
+   "humano:ddl-visao-relacao",
+   "483"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 4,
+  "n_reprov": 3,
+  "dirs": 7,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-21 11:11",
+  "commit": "0ece76412",
+  "id": "493",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "394a2",
+   "487",
+   "490",
+   "491",
+   "492"
+  ],
+  "deps_depois": [
+   "394a2",
+   "487",
+   "490",
+   "491",
+   "492"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 4,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-21 11:11",
+  "commit": "0ece76412",
+  "id": "494",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "481",
+   "482",
+   "491",
+   "493"
+  ],
+  "deps_depois": [
+   "481",
+   "482",
+   "491",
+   "493"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-21 11:11",
+  "commit": "0ece76412",
+  "id": "495",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "486",
+   "491",
+   "493",
+   "494"
+  ],
+  "deps_depois": [
+   "486",
+   "491",
+   "493",
+   "494"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ]
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-21 11:23",
+  "commit": "5af948f82",
+  "id": "490",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "480",
+   "488d",
+   "489"
+  ],
+  "deps_depois": [
+   "480",
+   "488d",
+   "489"
+  ],
+  "al_add": [
+   "src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx",
+   "test/bloco-vazio-linha.test.ts",
+   "test/cadastro-colapsavel.test.ts",
+   "test/cartao-topo-renovacao.test.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 6,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-21 15:50",
+  "commit": "b05481750",
+  "id": "499",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "491",
+   "493",
+   "494",
+   "495",
+   "496",
+   "497",
+   "498",
+   "504"
+  ],
+  "deps_depois": [
+   "491",
+   "493",
+   "494",
+   "495",
+   "496",
+   "497",
+   "498",
+   "504"
+  ],
+  "al_add": [
+   "test/bloco-vazio-linha.test.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 8,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-21 15:50",
+  "commit": "b05481750",
+  "id": "500",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "480",
+   "488d",
+   "490",
+   "491",
+   "492",
+   "493",
+   "494",
+   "495",
+   "496",
+   "497",
+   "498",
+   "499"
+  ],
+  "deps_depois": [
+   "480",
+   "488d",
+   "490",
+   "491",
+   "492",
+   "493",
+   "494",
+   "495",
+   "496",
+   "497",
+   "498",
+   "499"
+  ],
+  "al_add": [
+   "test/bloco-vazio-linha.test.ts"
+  ],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 3,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ]
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-21 17:32",
+  "commit": "31dfe8e84",
+  "id": "499",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "491",
+   "493",
+   "494",
+   "495",
+   "496",
+   "497",
+   "498",
+   "504"
+  ],
+  "deps_depois": [
+   "491",
+   "493",
+   "494",
+   "495",
+   "496",
+   "497",
+   "498",
+   "504"
+  ],
+  "al_add": [
+   "src/app/api/perf/cockpit/[id]/route.ts",
+   "src/app/api/tarefas-kanban/route.ts",
+   "test/tarefas-kanban-vinculo-analise.test.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 5,
+  "n_reprov": 5,
+  "dirs": 8,
+  "resolv": "sem dado",
+  "mud": [
+   "cria_novo",
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-22 11:32",
+  "commit": "46686743e",
+  "id": "514",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "513",
+   "humano:decisao-visao-sem-cockpit-antigo"
+  ],
+  "deps_depois": [
+   "513",
+   "humano:decisao-visao-sem-cockpit-antigo"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-22 11:32",
+  "commit": "46686743e",
+  "id": "517",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "514"
+  ],
+  "deps_depois": [
+   "514"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite"
+  ]
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-22 12:21",
+  "commit": "adc446270",
+  "id": "523",
+  "status_antes": "em_execucao",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sem dado",
+  "mud": [
+   "cria_novo",
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "prioridade",
+   "recon_esperado"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-22 12:21",
+  "commit": "adc446270",
+  "id": "523b",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "523"
+  ],
+  "deps_depois": [],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 5,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "dependencias",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-22 14:44",
+  "commit": "1334d5d84",
+  "id": "523b",
+  "status_antes": "bloqueado",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 5,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-22 14:44",
+  "commit": "1334d5d84",
+  "id": "523c",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "523b"
+  ],
+  "deps_depois": [
+   "523b"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 3,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ]
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-22 19:18",
+  "commit": "1e6dc48c4",
+  "id": "543",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "humano:ddl-otimizacoes",
+   "humano:decisao-otimizacoes-autor-meta"
+  ],
+  "deps_depois": [
+   "humano:ddl-otimizacoes",
+   "humano:decisao-otimizacoes-autor-meta"
+  ],
+  "al_add": [
+   "test/crons-meta-consolidacao.test.ts"
+  ],
+  "ultima_antes": "bloqueado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-22 20:24",
+  "commit": "60662ec01",
+  "id": "528",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "514",
+   "517",
+   "521"
+  ],
+  "deps_depois": [
+   "514",
+   "517",
+   "521"
+  ],
+  "al_add": [
+   "test/visao-sem-cockpit-antigo.test.ts"
+  ],
+  "ultima_antes": "bloqueado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-22 20:24",
+  "commit": "15d1e5a1f",
+  "id": "475c",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "475",
+   "306",
+   "475c0",
+   "humano:ddl-475c0",
+   "479"
+  ],
+  "deps_depois": [
+   "475",
+   "306",
+   "475c0",
+   "humano:ddl-475c0",
+   "479"
+  ],
+  "al_add": [
+   "docs/integracoes/ghl-app-webhook.md"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 5,
+  "resolv": "sem dado",
+  "mud": [
+   "cria_novo",
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-09-22 23:57",
+  "commit": "ec421bcbe",
+  "id": "522",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "512",
+   "513",
+   "514",
+   "515",
+   "516",
+   "517",
+   "518",
+   "519",
+   "520",
+   "520b",
+   "521"
+  ],
+  "deps_depois": [
+   "512",
+   "513",
+   "514",
+   "515",
+   "516",
+   "517",
+   "518",
+   "519",
+   "520",
+   "520b",
+   "521",
+   "522c"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 8,
+  "n_reprov": 8,
+  "dirs": 11,
+  "resolv": "sem dado",
+  "mud": [
+   "dependencias",
+   "objetivo"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-23 12:38",
+  "commit": "362688729",
+  "id": "530",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "522",
+   "520b",
+   "521",
+   "528",
+   "humano:mockups-ficha-na-staging"
+  ],
+  "deps_depois": [
+   "522",
+   "520b",
+   "521",
+   "528",
+   "humano:mockups-ficha-na-staging"
+  ],
+  "al_add": [
+   "test/painel-estado-explicito.test.tsx"
+  ],
+  "ultima_antes": "bloqueado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-23 12:40",
+  "commit": "9290c0e3c",
+  "id": "596b",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "522"
+  ],
+  "deps_depois": [
+   "522"
+  ],
+  "al_add": [
+   "test/visao-aceite-mockup.test.tsx"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 5,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-23 13:27",
+  "commit": "a27bc5594",
+  "id": "531",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "530",
+   "humano:decisao-conta-estrutura",
+   "humano:mockups-ficha-na-staging"
+  ],
+  "deps_depois": [
+   "530",
+   "humano:decisao-conta-estrutura",
+   "humano:mockups-ficha-na-staging"
+  ],
+  "al_add": [
+   "test/campanhas-sem-duplicatas.test.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 5,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-23 21:10",
+  "commit": "54a2ad4f6",
+  "id": "533",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "532",
+   "humano:ddl-relatorio",
+   "humano:decisao-relatorio-modelo-mockup",
+   "humano:decisao-relatorio-blocos-opcionais"
+  ],
+  "deps_depois": [
+   "532",
+   "humano:ddl-relatorio",
+   "humano:decisao-relatorio-modelo-mockup",
+   "humano:decisao-relatorio-blocos-opcionais"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 2,
+  "dirs": 5,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-24 11:04",
+  "commit": "7f10beb0d",
+  "id": "538",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "523c",
+   "535",
+   "humano:ddl-metricas"
+  ],
+  "deps_depois": [
+   "523c",
+   "535",
+   "humano:ddl-metricas"
+  ],
+  "al_add": [
+   "src/app/api/publico/relatorio-cliente/[token]/route.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 5,
+  "resolv": "sem dado",
+  "mud": [
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-24 16:31",
+  "commit": "150394230",
+  "id": "550",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "531",
+   "548",
+   "546",
+   "545",
+   "520b",
+   "humano:decisao-relacao-config-para-conta",
+   "humano:decisao-conta-estrutura",
+   "545b",
+   "humano:mockups-ficha-na-staging",
+   "616",
+   "616c"
+  ],
+  "deps_depois": [
+   "531",
+   "548",
+   "546",
+   "545",
+   "520b",
+   "humano:decisao-relacao-config-para-conta",
+   "humano:decisao-conta-estrutura",
+   "545b",
+   "humano:mockups-ficha-na-staging",
+   "616",
+   "616c"
+  ],
+  "al_add": [
+   "test/registro-unico-relacao.test.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 5,
+  "resolv": "sem dado",
+  "mud": [
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-09-24 17:13",
+  "commit": "f6f2746cf",
+  "id": "551",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "596",
+   "549",
+   "550",
+   "552",
+   "humano:mockups-ficha-na-staging"
+  ],
+  "deps_depois": [
+   "596",
+   "549",
+   "550",
+   "552",
+   "humano:mockups-ficha-na-staging",
+   "551a"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sem dado",
+  "mud": [
+   "dependencias"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-09-24 17:13",
+  "commit": "f6f2746cf",
+  "id": "567b",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "551",
+   "567",
+   "546",
+   "550",
+   "humano:credencial-evolution",
+   "humano:wpp-grupos-mapeados",
+   "566b",
+   "humano:mockups-ficha-na-staging"
+  ],
+  "deps_depois": [
+   "551",
+   "567",
+   "546",
+   "550",
+   "humano:credencial-evolution",
+   "humano:wpp-grupos-mapeados",
+   "566b",
+   "humano:mockups-ficha-na-staging",
+   "616d"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 3,
+  "resolv": "sem dado",
+  "mud": [
+   "dependencias"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-24 21:59",
+  "commit": "47d6f1793",
+  "id": "557",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "556",
+   "humano:ddl-qualificacao",
+   "475d",
+   "humano:mockups-ficha-na-staging"
+  ],
+  "deps_depois": [
+   "556",
+   "humano:ddl-qualificacao",
+   "475d",
+   "humano:mockups-ficha-na-staging"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 6,
+  "resolv": "sem dado",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-09-24 23:38",
+  "commit": "b3c5ec64a",
+  "id": "559",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "558",
+   "humano:mockups-ficha-na-staging"
+  ],
+  "deps_depois": [
+   "558",
+   "625",
+   "humano:mockups-ficha-na-staging"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 8,
+  "resolv": "sem dado",
+  "mud": [
+   "dependencias"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-25 10:09",
+  "commit": "fae6e8d1e",
+  "id": "625",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "558"
+  ],
+  "deps_depois": [
+   "558"
+  ],
+  "al_add": [
+   "test/setup-progresso-ficha.test.ts"
+  ],
+  "ultima_antes": "bloqueado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sem dado",
+  "mud": [
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-09-25 10:51",
+  "commit": "92bee2ca7",
+  "id": "559",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "558",
+   "625",
+   "humano:mockups-ficha-na-staging"
+  ],
+  "deps_depois": [
+   "558",
+   "625",
+   "626",
+   "humano:mockups-ficha-na-staging"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 4,
+  "n_reprov": 4,
+  "dirs": 8,
+  "resolv": "nao",
+  "mud": [
+   "dependencias",
+   "objetivo"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-09-25 11:12",
+  "commit": "73a1a46cd",
+  "id": "559",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "558",
+   "625",
+   "626",
+   "humano:mockups-ficha-na-staging"
+  ],
+  "deps_depois": [
+   "558",
+   "625",
+   "626",
+   "humano:mockups-ficha-na-staging",
+   "559a"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 6,
+  "n_reprov": 6,
+  "dirs": 8,
+  "resolv": "nao",
+  "mud": [
+   "dependencias",
+   "objetivo"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-25 11:45",
+  "commit": "d01396af4",
+  "id": "627",
+  "status_antes": "em_execucao",
+  "deps_antes": [
+   "559a"
+  ],
+  "deps_depois": [
+   "559a"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-25 11:45",
+  "commit": "d01396af4",
+  "id": "627a",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "627b"
+  ],
+  "deps_depois": [
+   "627b"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-25 11:45",
+  "commit": "d01396af4",
+  "id": "627b",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "627"
+  ],
+  "deps_depois": [
+   "627"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 5,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-25 11:45",
+  "commit": "d01396af4",
+  "id": "627c",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "627a"
+  ],
+  "deps_depois": [
+   "627a"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 3,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-25 11:45",
+  "commit": "d01396af4",
+  "id": "627d",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "627c"
+  ],
+  "deps_depois": [
+   "627c"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-25 11:45",
+  "commit": "d01396af4",
+  "id": "627e",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "627d"
+  ],
+  "deps_depois": [
+   "627d"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 4,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-25 11:45",
+  "commit": "d01396af4",
+  "id": "627f",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "627e"
+  ],
+  "deps_depois": [
+   "627e"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 3,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-25 17:05",
+  "commit": "d35dd4141",
+  "id": "627a",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "627b"
+  ],
+  "deps_depois": [
+   "627b"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-25 17:05",
+  "commit": "d35dd4141",
+  "id": "627b",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "627"
+  ],
+  "deps_depois": [
+   "627"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 5,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-25 17:05",
+  "commit": "d35dd4141",
+  "id": "627c",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "627a"
+  ],
+  "deps_depois": [
+   "627a"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 3,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-25 17:05",
+  "commit": "d35dd4141",
+  "id": "627d",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "627c"
+  ],
+  "deps_depois": [
+   "627c"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-25 17:05",
+  "commit": "d35dd4141",
+  "id": "627e",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "627d"
+  ],
+  "deps_depois": [
+   "627d"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 4,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-25 19:17",
+  "commit": "80010ba3a",
+  "id": "549c",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "549",
+   "386",
+   "humano:ligar-cron-ia",
+   "619",
+   "621"
+  ],
+  "deps_depois": [
+   "549",
+   "386",
+   "humano:ligar-cron-ia",
+   "619",
+   "621"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 5,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-25 19:59",
+  "commit": "ba984b0ca",
+  "id": "627j",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "627h"
+  ],
+  "deps_depois": [
+   "627h"
+  ],
+  "al_add": [
+   "test/painel-campanhas-mockup.test.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 6,
+  "resolv": "sim R1",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-09-26 11:34",
+  "commit": "233e63ba0",
+  "id": "527",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "525"
+  ],
+  "deps_depois": [],
+  "al_add": [],
+  "ultima_antes": "done",
+  "n_antes": 1,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "sim R1",
+  "mud": [
+   "dependencias",
+   "objetivo"
+  ]
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-26 11:53",
+  "commit": "64c6b2240",
+  "id": "635",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "633"
+  ],
+  "deps_depois": [
+   "633"
+  ],
+  "al_add": [
+   "test/cartao-topo-setup-e-closer.test.ts"
+  ],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 3,
+  "resolv": "nao",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ]
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-26 15:29",
+  "commit": "5d9f7cccd",
+  "id": "654",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "653"
+  ],
+  "deps_depois": [
+   "653"
+  ],
+  "al_add": [
+   "test/conta-entregas-vazio-unico.test.ts"
+  ],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "sim R1",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ]
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-09-30 19:03",
+  "commit": "44fa47c3f",
+  "id": "689",
+  "status_antes": "pendente",
+  "deps_antes": [],
+  "deps_depois": [
+   "721",
+   "humano:fix-cron-paths-na-main"
+  ],
+  "al_add": [
+   "test/cron-paths-vercel.test.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sim R1",
+  "mud": [
+   "cria_novo",
+   "criterios_aceite",
+   "dependencias",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-30 19:26",
+  "commit": "89b66cae0",
+  "id": "407a",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "407a0",
+   "humano:ddl-407a",
+   "humano:ddl-407a0",
+   "humano:excecao-c0-churn-reativar"
+  ],
+  "deps_depois": [
+   "407a0",
+   "humano:ddl-407a",
+   "humano:ddl-407a0",
+   "humano:excecao-c0-churn-reativar"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 9,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-09-30 19:26",
+  "commit": "89b66cae0",
+  "id": "691",
+  "status_antes": "bloqueado",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 5,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-01 15:39",
+  "commit": "7fd9e5ffa",
+  "id": "346d",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "346c",
+   "humano:contas-meta-vinculadas"
+  ],
+  "deps_depois": [
+   "346c",
+   "humano:contas-meta-vinculadas"
+  ],
+  "al_add": [
+   "test/lote-b3-2-periodo.test.ts"
+  ],
+  "ultima_antes": "done",
+  "n_antes": 3,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sim R1",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-01 20:16",
+  "commit": "5d9f93bf5",
+  "id": "407a",
+  "status_antes": "em_execucao",
+  "deps_antes": [
+   "407a0",
+   "humano:ddl-407a",
+   "humano:ddl-407a0",
+   "humano:excecao-c0-churn-reativar"
+  ],
+  "deps_depois": [
+   "407a0",
+   "humano:ddl-407a",
+   "humano:ddl-407a0",
+   "humano:excecao-c0-churn-reativar"
+  ],
+  "al_add": [
+   "supabase/migrations/20261001000000_fn_reativar_churn.sql"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 9,
+  "resolv": "so proposta R2",
+  "mud": [
+   "cria_novo",
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-01 22:58",
+  "commit": "0bf46f859",
+  "id": "407a",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "407a0",
+   "humano:ddl-407a",
+   "humano:ddl-407a0",
+   "humano:excecao-c0-churn-reativar"
+  ],
+  "deps_depois": [
+   "407a0",
+   "humano:ddl-407a",
+   "humano:ddl-407a0",
+   "humano:excecao-c0-churn-reativar"
+  ],
+  "al_add": [
+   "supabase/migrations/20261002000000_fn_reativar_churn.sql"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 5,
+  "n_reprov": 5,
+  "dirs": 9,
+  "resolv": "sim R1",
+  "mud": [
+   "cria_novo",
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-01 23:38",
+  "commit": "d568f0e13",
+  "id": "722",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "689",
+   "humano:fix-cron-paths-na-main"
+  ],
+  "deps_depois": [
+   "689",
+   "humano:fix-cron-paths-na-main"
+  ],
+  "al_add": [
+   "src/lib/ia/leitura-relacao.ts",
+   "test/leitura-relacao-motor.test.ts",
+   "test/leitura-relacao-so-grupo.test.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 5,
+  "resolv": "sim R1",
+  "mud": [
+   "cria_novo",
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-10-02 00:40",
+  "commit": "718206da0",
+  "id": "320",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "065b",
+   "258",
+   "296",
+   "306b",
+   "308",
+   "310",
+   "311a1",
+   "311a2",
+   "311b",
+   "315b1a",
+   "323",
+   "335a",
+   "335b",
+   "337",
+   "367",
+   "humano:nps-ciclo-1",
+   "500",
+   "515",
+   "519",
+   "520b",
+   "521",
+   "556",
+   "599",
+   "711b",
+   "723c",
+   "723d"
+  ],
+  "deps_depois": [
+   "065b",
+   "258",
+   "296",
+   "306b",
+   "308",
+   "310",
+   "311a1",
+   "311a2",
+   "311b",
+   "315b1a",
+   "323",
+   "335a",
+   "335b",
+   "337",
+   "367",
+   "humano:nps-ciclo-1",
+   "500",
+   "515",
+   "519",
+   "520b",
+   "521",
+   "556",
+   "599",
+   "711b",
+   "723"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 0,
+  "resolv": "sim R1",
+  "mud": [
+   "dependencias"
+  ]
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-10-02 00:40",
+  "commit": "718206da0",
+  "id": "367",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "258",
+   "296",
+   "306b",
+   "311a1",
+   "311a2",
+   "311b",
+   "315b1a",
+   "323",
+   "337",
+   "humano:briefing-modelo-escrito",
+   "humano:decisao-D22",
+   "humano:decisao-D32",
+   "500",
+   "515",
+   "519",
+   "520b",
+   "521",
+   "556",
+   "599",
+   "711b",
+   "723c",
+   "723d"
+  ],
+  "deps_depois": [
+   "258",
+   "296",
+   "306b",
+   "311a1",
+   "311a2",
+   "311b",
+   "315b1a",
+   "323",
+   "337",
+   "humano:briefing-modelo-escrito",
+   "humano:decisao-D22",
+   "humano:decisao-D32",
+   "500",
+   "515",
+   "519",
+   "520b",
+   "521",
+   "556",
+   "599",
+   "711b",
+   "723"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 3,
+  "resolv": "sim R1",
+  "mud": [
+   "dependencias"
+  ]
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-10-02 00:40",
+  "commit": "718206da0",
+  "id": "715",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "714",
+   "692",
+   "686",
+   "689",
+   "722"
+  ],
+  "deps_depois": [
+   "714",
+   "692",
+   "686",
+   "689",
+   "722",
+   "726"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sim R1",
+  "mud": [
+   "dependencias"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-10-02 16:14",
+  "commit": "d2884fa1b",
+  "id": "699",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "694",
+   "695",
+   "702"
+  ],
+  "deps_depois": [
+   "694",
+   "735",
+   "702"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "nao",
+  "mud": [
+   "criterios_aceite",
+   "dependencias",
+   "objetivo"
+  ]
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-10-02 16:31",
+  "commit": "f94bf1688",
+  "id": "705",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "694",
+   "695",
+   "691",
+   "humano:ddl-portal-inicio"
+  ],
+  "deps_depois": [
+   "694",
+   "691",
+   "humano:ddl-portal-inicio"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "nao",
+  "mud": [
+   "dependencias"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-10-02 17:16",
+  "commit": "b8842d919",
+  "id": "737",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "735",
+   "736"
+  ],
+  "deps_depois": [
+   "735",
+   "736"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 6,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite",
+   "tentativas"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-10-02 17:24",
+  "commit": "02942f7ab",
+  "id": "737",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "735",
+   "736"
+  ],
+  "deps_depois": [
+   "735",
+   "736"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 6,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-10-02 17:46",
+  "commit": "1b9dfbbb4",
+  "id": "737",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "735",
+   "736"
+  ],
+  "deps_depois": [
+   "735",
+   "736"
+  ],
+  "al_add": [],
+  "ultima_antes": "done",
+  "n_antes": 5,
+  "n_reprov": 4,
+  "dirs": 6,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-10-05 11:09",
+  "commit": "87522d9cf",
+  "id": "801",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "800",
+   "humano:decisao-chave-oficial-cliente-id"
+  ],
+  "deps_depois": [
+   "800",
+   "humano:decisao-chave-oficial-cliente-id",
+   "humano:f1-rotas-go"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sim R5",
+  "mud": [
+   "dependencias"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-10-05 11:09",
+  "commit": "87522d9cf",
+  "id": "802",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "800",
+   "humano:decisao-chave-oficial-cliente-id"
+  ],
+  "deps_depois": [
+   "800",
+   "humano:decisao-chave-oficial-cliente-id",
+   "humano:f1-rotas-go"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sim R5",
+  "mud": [
+   "dependencias"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-10-05 11:09",
+  "commit": "87522d9cf",
+  "id": "803",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "800",
+   "humano:decisao-chave-oficial-cliente-id"
+  ],
+  "deps_depois": [
+   "800",
+   "humano:decisao-chave-oficial-cliente-id",
+   "humano:f1-rotas-go"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "sim R5",
+  "mud": [
+   "dependencias"
+  ]
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-10-05 11:09",
+  "commit": "87522d9cf",
+  "id": "804",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "800",
+   "humano:decisao-chave-oficial-cliente-id"
+  ],
+  "deps_depois": [
+   "800",
+   "humano:decisao-chave-oficial-cliente-id",
+   "humano:f1-rotas-go"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "sim R5",
+  "mud": [
+   "dependencias"
+  ]
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-10-05 11:09",
+  "commit": "87522d9cf",
+  "id": "805",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "800",
+   "humano:decisao-chave-oficial-cliente-id",
+   "804"
+  ],
+  "deps_depois": [
+   "800",
+   "humano:decisao-chave-oficial-cliente-id",
+   "804",
+   "humano:f1-rotas-go"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "sim R5",
+  "mud": [
+   "dependencias"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-10-05 14:43",
+  "commit": "23267e260",
+  "id": "739",
+  "status_antes": "bloqueado",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [],
+  "ultima_antes": "bloqueado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 5,
+  "resolv": "nao",
+  "mud": [
+   "bloco",
+   "criterios_aceite",
+   "objetivo"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-10-05 14:53",
+  "commit": "2f1eeb75d",
+  "id": "739",
+  "status_antes": "pendente",
+  "deps_antes": [],
+  "deps_depois": [
+   "humano:ddl-penalizacoes-fk"
+  ],
+  "al_add": [],
+  "ultima_antes": "bloqueado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 5,
+  "resolv": "nao",
+  "mud": [
+   "bloco",
+   "criterios_aceite",
+   "dependencias",
+   "objetivo",
+   "testes_conferidos"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-10-05 15:35",
+  "commit": "ef7dea44f",
+  "id": "855",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "854",
+   "humano:decisao-telas-gemeas",
+   "humano:remocao-team-id-acima-do-cap",
+   "852"
+  ],
+  "deps_depois": [
+   "854",
+   "humano:decisao-telas-gemeas",
+   "humano:remocao-team-id-acima-do-cap",
+   "852",
+   "862"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 0,
+  "resolv": "nao",
+  "mud": [
+   "dependencias"
+  ]
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-05 16:04",
+  "commit": "09e85d253",
+  "id": "762",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "761"
+  ],
+  "deps_depois": [
+   "761"
+  ],
+  "al_add": [
+   "src/middleware.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 5,
+  "resolv": "sim R1",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado",
+   "testes_conferidos"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-10-05 16:08",
+  "commit": "af5e6749b",
+  "id": "851",
+  "status_antes": "pendente",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-06 14:19",
+  "commit": "9d7ef4d35",
+  "id": "856",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "humano:decisao-telas-gemeas"
+  ],
+  "deps_depois": [
+   "humano:decisao-telas-gemeas"
+  ],
+  "al_add": [
+   "test/rotas-orfas.test.ts"
+  ],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "sim R1",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ]
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-06 14:19",
+  "commit": "9d7ef4d35",
+  "id": "857",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "856",
+   "humano:decisao-telas-gemeas"
+  ],
+  "deps_depois": [
+   "856",
+   "humano:decisao-telas-gemeas",
+   "humano:c0-guard-pasta-super-admin-857"
+  ],
+  "al_add": [
+   "test/c0-guard.test.ts"
+  ],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "sim R1",
+  "mud": [
+   "criterios_aceite",
+   "dependencias",
+   "objetivo",
+   "pathspec_allowlist",
+   "testes_conferidos"
+  ]
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-10-07 12:21",
+  "commit": "76d4fad06",
+  "id": "865",
+  "status_antes": "pendente",
+  "deps_antes": [],
+  "deps_depois": [
+   "867",
+   "humano:tldv-operacional-recebendo"
+  ],
+  "al_add": [],
+  "ultima_antes": null,
+  "n_antes": 0,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "nao",
+  "mud": [
+   "dependencias",
+   "objetivo",
+   "testes_conferidos"
+  ]
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-07 19:10",
+  "commit": "2d79beee4",
+  "id": "711a",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "693",
+   "694",
+   "705"
+  ],
+  "deps_depois": [
+   "693",
+   "694",
+   "705"
+  ],
+  "al_add": [
+   "test/sem-insumo.test.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 5,
+  "resolv": "sim R1",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-08 05:20",
+  "commit": "ae22bc364",
+  "id": "711b3",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "711b2",
+   "725",
+   "737",
+   "750"
+  ],
+  "deps_depois": [
+   "711b2",
+   "725",
+   "737",
+   "750"
+  ],
+  "al_add": [
+   "test/saude-motivo-sem-base.test.ts",
+   "test/sem-insumo.test.ts"
+  ],
+  "ultima_antes": "done",
+  "n_antes": 5,
+  "n_reprov": 4,
+  "dirs": 6,
+  "resolv": "sim R1",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "testes_conferidos"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "dependencia",
+  "data": "2026-10-08 10:40",
+  "commit": "917d35bca",
+  "id": "826",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "801",
+   "802",
+   "803",
+   "804",
+   "805",
+   "806",
+   "807",
+   "808",
+   "809",
+   "810",
+   "811",
+   "812",
+   "813",
+   "814",
+   "815",
+   "816",
+   "817",
+   "818",
+   "819",
+   "820",
+   "821",
+   "822",
+   "823",
+   "824",
+   "825",
+   "800",
+   "humano:decisao-chave-oficial-cliente-id",
+   "711b4"
+  ],
+  "deps_depois": [
+   "801",
+   "802",
+   "803",
+   "804",
+   "805",
+   "806",
+   "807",
+   "808",
+   "809",
+   "810",
+   "811",
+   "812",
+   "813",
+   "814",
+   "815",
+   "816",
+   "817",
+   "818",
+   "819",
+   "820",
+   "821",
+   "822",
+   "823",
+   "824",
+   "825",
+   "800",
+   "humano:decisao-chave-oficial-cliente-id",
+   "711b4",
+   "866"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 7,
+  "resolv": "nao",
+  "mud": [
+   "dependencias"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-10-08 10:49",
+  "commit": "d7a8d5437",
+  "id": "707",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "696",
+   "697",
+   "698",
+   "700",
+   "humano:mockups-portal-gestor-na-staging"
+  ],
+  "deps_depois": [
+   "696",
+   "697",
+   "698",
+   "700",
+   "humano:mockups-portal-gestor-na-staging"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 11,
+  "resolv": "nao",
+  "mud": [
+   "criterios_aceite",
+   "objetivo"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-10-08 10:55",
+  "commit": "21437fe3f",
+  "id": "900",
+  "status_antes": "bloqueado",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-08 12:00",
+  "commit": "c3cde4a75",
+  "id": "889",
+  "status_antes": "done",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [
+   "supabase/migrations/20261008140515_relacao_tipo_crise.sql"
+  ],
+  "ultima_antes": "done",
+  "n_antes": 2,
+  "n_reprov": 1,
+  "dirs": 3,
+  "resolv": "nao",
+  "mud": [
+   "cria_novo",
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-08 12:00",
+  "commit": "c3cde4a75",
+  "id": "892",
+  "status_antes": "done",
+  "deps_antes": [
+   "humano:aprovar-desenho-contato-unico"
+  ],
+  "deps_depois": [
+   "humano:aprovar-desenho-contato-unico"
+  ],
+  "al_add": [
+   "supabase/migrations/20261008140521_ops_cliente_contatos_origem.sql"
+  ],
+  "ultima_antes": "done",
+  "n_antes": 1,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "nao",
+  "mud": [
+   "cria_novo",
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado"
+  ]
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-08 12:00",
+  "commit": "c3cde4a75",
+  "id": "897",
+  "status_antes": "done",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [
+   "supabase/migrations/20261008140518_alerta_regra_pacing_verba.sql"
+  ],
+  "ultima_antes": "done",
+  "n_antes": 1,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "nao",
+  "mud": [
+   "cria_novo",
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado"
+  ]
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-08 12:00",
+  "commit": "c3cde4a75",
+  "id": "903",
+  "status_antes": "done",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [
+   "supabase/migrations/20261008140513_search_path_funcoes_revinculo.sql"
+  ],
+  "ultima_antes": "done",
+  "n_antes": 1,
+  "n_reprov": 0,
+  "dirs": 2,
+  "resolv": "nao",
+  "mud": [
+   "cria_novo",
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado"
+  ]
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-10-08 13:45",
+  "commit": "f2c3cef0d",
+  "id": "707",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "696",
+   "697",
+   "698",
+   "700",
+   "humano:mockups-portal-gestor-na-staging"
+  ],
+  "deps_depois": [
+   "696",
+   "697",
+   "698",
+   "700",
+   "707a",
+   "707b",
+   "humano:mockups-portal-gestor-na-staging"
+  ],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 7,
+  "n_reprov": 7,
+  "dirs": 11,
+  "resolv": "nao",
+  "mud": [
+   "criterios_aceite",
+   "dependencias",
+   "objetivo"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "criterio",
+  "data": "2026-10-08 17:49",
+  "commit": "c5d74cdbd",
+  "id": "898",
+  "status_antes": "bloqueado",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [],
+  "ultima_antes": "reprovado",
+  "n_antes": 5,
+  "n_reprov": 5,
+  "dirs": 7,
+  "resolv": "so proposta R2",
+  "mud": [
+   "criterios_aceite"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-08 18:56",
+  "commit": "90b5727d7",
+  "id": "826",
+  "status_antes": "bloqueado",
+  "deps_antes": [
+   "801",
+   "802",
+   "803",
+   "804",
+   "805",
+   "806",
+   "807",
+   "808",
+   "809",
+   "810",
+   "811",
+   "812",
+   "813",
+   "814",
+   "815",
+   "816",
+   "817",
+   "818",
+   "819",
+   "820",
+   "821",
+   "822",
+   "823",
+   "824",
+   "825",
+   "800",
+   "humano:decisao-chave-oficial-cliente-id",
+   "711b4",
+   "866"
+  ],
+  "deps_depois": [
+   "801",
+   "802",
+   "803",
+   "804",
+   "805",
+   "806",
+   "807",
+   "808",
+   "809",
+   "810",
+   "811",
+   "812",
+   "813",
+   "814",
+   "815",
+   "816",
+   "817",
+   "818",
+   "819",
+   "820",
+   "821",
+   "822",
+   "823",
+   "824",
+   "825",
+   "800",
+   "humano:decisao-chave-oficial-cliente-id",
+   "711b4"
+  ],
+  "al_add": [
+   "src/app/dashboard/clientes/[id]/tabs/ficha-context.tsx",
+   "src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx",
+   "test/cartao-topo-teses.test.tsx",
+   "test/visao-aceite-estrutura.test.tsx"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 3,
+  "n_reprov": 3,
+  "dirs": 7,
+  "resolv": "nao",
+  "mud": [
+   "criterios_aceite",
+   "dependencias",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado",
+   "testes_conferidos"
+  ],
+  "art": true,
+  "meio": false
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-09 11:50",
+  "commit": "676ca51e8",
+  "id": "898",
+  "status_antes": "done",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [
+   "supabase/migrations/20261008211455_perf_cliente_verba.sql"
+  ],
+  "ultima_antes": "done",
+  "n_antes": 6,
+  "n_reprov": 5,
+  "dirs": 7,
+  "resolv": "so proposta R2",
+  "mud": [
+   "cria_novo",
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "recon_esperado"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-09 18:06",
+  "commit": "4dc5d717c",
+  "id": "950",
+  "status_antes": "pendente",
+  "deps_antes": [],
+  "deps_depois": [],
+  "al_add": [
+   "test/etapa2-funil-motor.test.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 4,
+  "resolv": "sim R1",
+  "mud": [
+   "criterios_aceite",
+   "objetivo",
+   "pathspec_allowlist",
+   "testes_conferidos"
+  ],
+  "art": true,
+  "meio": true
+ },
+ {
+  "tipo": "allowlist",
+  "data": "2026-10-10 21:19",
+  "commit": "7787af376",
+  "id": "840",
+  "status_antes": "pendente",
+  "deps_antes": [
+   "800",
+   "826",
+   "801",
+   "802",
+   "803",
+   "804",
+   "805",
+   "806",
+   "807",
+   "808",
+   "809",
+   "810",
+   "811",
+   "812",
+   "813",
+   "814",
+   "815",
+   "816",
+   "817",
+   "818",
+   "819",
+   "820",
+   "821",
+   "822",
+   "823",
+   "824",
+   "825",
+   "humano:decisao-chave-oficial-cliente-id",
+   "839",
+   "752"
+  ],
+  "deps_depois": [
+   "800",
+   "826",
+   "801",
+   "802",
+   "803",
+   "804",
+   "805",
+   "806",
+   "807",
+   "808",
+   "809",
+   "810",
+   "811",
+   "812",
+   "813",
+   "814",
+   "815",
+   "816",
+   "817",
+   "818",
+   "819",
+   "820",
+   "821",
+   "822",
+   "823",
+   "824",
+   "825",
+   "humano:decisao-chave-oficial-cliente-id",
+   "839",
+   "752"
+  ],
+  "al_add": [
+   "test/nps-reacao-resposta.test.ts"
+  ],
+  "ultima_antes": "reprovado",
+  "n_antes": 2,
+  "n_reprov": 2,
+  "dirs": 3,
+  "resolv": "sim R1",
+  "mud": [
+   "criterios_aceite",
+   "pathspec_allowlist"
+  ],
+  "art": true,
+  "meio": true
+ }
+]

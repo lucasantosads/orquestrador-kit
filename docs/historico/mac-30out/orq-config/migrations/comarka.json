@@ -1,0 +1,2521 @@
+{
+  "$versao": 1,
+  "banco": "comarka",
+  "criado_em": "2026-10-18T19:30:32.635Z",
+  "corte": "20261018030500",
+  "herdados_desde": "20261004000000",
+  "aplicadas": [
+    {
+      "version": "20260502005114",
+      "name": "etapa05_t4_add_cliente_id_fk",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502005922",
+      "name": "etapa05_t4_view_matching_status",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502032544",
+      "name": "rename_old_compensation_config",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502032554",
+      "name": "create_compensation_config",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502032700",
+      "name": "create_vw_custo_aquisicao_mensal",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502032750",
+      "name": "recreate_vw_custo_aquisicao_mensal_v2",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502032900",
+      "name": "create_refresh_aquisicao_views",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502033410",
+      "name": "recreate_vw_custo_aquisicao_mensal_v3",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502033759",
+      "name": "fix_vw_custo_aquisicao_null_mes_fechamento",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502040911",
+      "name": "etapa5_tfix_comissoes_mensais",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502045052",
+      "name": "etapa5_fechamento_snapshot_comissoes",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502144244",
+      "name": "etapa6_t1_cenarios_compartilhados",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502200400",
+      "name": "create_vw_reunioes_consolidada",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502200411",
+      "name": "add_reunioes_consolidada_to_refresh",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502211953",
+      "name": "etapa2_fix_atribuicao_contrato_join",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502212124",
+      "name": "etapa2_fix_recreate_funil_mensal_v2",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502222852",
+      "name": "create_trafego_thresholds_alertas",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502230029",
+      "name": "add_audit_columns_metas_sdr",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502230030",
+      "name": "add_closer_id_to_recebimentos_mensais",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260502230443",
+      "name": "add_historico_flag_recebimentos_mensais",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260503175303",
+      "name": "add_recebe_comissao_to_employees",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260503183525",
+      "name": "create_ghl_unmapped_users",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260503184341",
+      "name": "ticket_015_add_gestor_to_tipo_check",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260503184344",
+      "name": "ticket_015_enhance_ghl_unmapped_users",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260503184410",
+      "name": "ticket_015_upsert_ghl_unmapped_user_rpc",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260503190257",
+      "name": "fix_margem_cliente_fk_to_clientes_receita",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260503190910",
+      "name": "p33_create_pipeline_closer_map_fallback_log",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260503201359",
+      "name": "create_backfill_relatorios",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260503215054",
+      "name": "p53_add_sdr_historico_columns",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260503223141",
+      "name": "p58_drop_10_tabelas_orfas",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260503223148",
+      "name": "p60_drop_tarefa_singular_duplicates",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260503233909",
+      "name": "p78_atribuicao_manual_campanha",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260503233926",
+      "name": "p78_trigger_auto_fill_campaign",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260503234117",
+      "name": "p71_fix_vw_receita_payback_v2",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260504001210",
+      "name": "add_mencao_tarefa_notification_type",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260504004322",
+      "name": "p85_ativar_trafego_operacional",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260504124425",
+      "name": "p96_comissoes_snapshots",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260504132903",
+      "name": "p99_cleanup_notion_mirror_triggers",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260504214210",
+      "name": "create_auditoria_correcao_abril_2026",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260504232237",
+      "name": "t8_t10_t11_t12_nichos_discovery_classificacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260505001651",
+      "name": "meta_leadads_schema_delta",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260505002509",
+      "name": "classificacao_functions_v2",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260505002610",
+      "name": "view_leads_orfaos",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260505211645",
+      "name": "add_data_primeiro_pagamento_to_contratos",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260505221340",
+      "name": "add_split_payment_fields_to_contratos",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260505234133",
+      "name": "create_trigger_enrich_leads_from_ads_metadata",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260506144957",
+      "name": "gateway_contas_vinculadas",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260507162821",
+      "name": "t6_fix_cac_renovacoes_view",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260507164112",
+      "name": "create_config_funil_etapas",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260507164728",
+      "name": "create_config_funil_campanha",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260507165803",
+      "name": "t9_mql_sql_views",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260507210858",
+      "name": "fix_matheus_frider_mes_referencia",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260507210958",
+      "name": "fix_preserve_mes_referencia_allow_comprou",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260507213938",
+      "name": "create_clientes_pausa_log",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260507214414",
+      "name": "create_clientes_mrr_log",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260507223539",
+      "name": "add_fidelidade_e_dia_pagamento_contratos",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260508174549",
+      "name": "add_status_recebimentos_mensais",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260508203648",
+      "name": "enable_realtime_leads_crm_contratos",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260509194216",
+      "name": "create_data_audit_log",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260511011827",
+      "name": "create_meta_lead_matching_log",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260511115639",
+      "name": "create_meta_form_leads",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260511124549",
+      "name": "fix_matview_atribuicao_fallback_campaign_v2",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260514154050",
+      "name": "fn_mql_sql_by_month",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260514160243",
+      "name": "fix_config_funil_etapas_rls_anon",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260514160426",
+      "name": "fix_fn_mql_sql_security_definer",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260514210515",
+      "name": "fix_preserve_mes_referencia_trigger",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260514211944",
+      "name": "fix_preserve_mes_ref_allow_comprou",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260515141640",
+      "name": "fix_mql_views_historico",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260515144034",
+      "name": "add_valor_entrada_to_atribuicao_matview",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260515151943",
+      "name": "fix_reuniao_remove_etapa_fallback",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260515202319",
+      "name": "config_engine_categorias_tiers_regras_multiplicadores",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260515202549",
+      "name": "liga_missoes_streaks",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260515202640",
+      "name": "liga_comarka_completa",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260515203627",
+      "name": "liga_eventos_apostas_v2",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260515203716",
+      "name": "liga_apostas_align_schema",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260515204509",
+      "name": "add_setor_alias_to_employees",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260518213714",
+      "name": "add_canal_normalizado_column_function_trigger",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260519191035",
+      "name": "asaas_aprovacao_entradas",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260520153253",
+      "name": "fix_rls_leads_crm_historico_resumos_diarios",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260524162955",
+      "name": "onboarding_sla_etapa",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260525153148",
+      "name": "add_grace_period_fields_contratos",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260525153208",
+      "name": "trg_lead_saiu_de_comprou",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260525160809",
+      "name": "cs_client_profile",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260525160812",
+      "name": "cs_client_observations",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260525160827",
+      "name": "cs_client_meta_connections",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260525160831",
+      "name": "cs_client_meta_snapshots",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260525160835",
+      "name": "cs_client_meta_alerts",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260525160838",
+      "name": "cs_client_whatsapp_summaries",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260525175517",
+      "name": "meta_connections_insights",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260525181530",
+      "name": "meta_insights_campaign_level",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260525181534",
+      "name": "onboarding_prazo_total",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260525181940",
+      "name": "fix_trg_lead_saiu_de_comprou_remove_updated_at",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260525190159",
+      "name": "fix_meta_insights_unique_constraint",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260526161523",
+      "name": "meta_agency_connection",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260526162328",
+      "name": "fix_reunioes_cliente_transcricao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260526162845",
+      "name": "transcricao_criativo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260526163355",
+      "name": "fix_reunioes_cliente_upsert_constraint",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260526165128",
+      "name": "transcricao_fila_status",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260526191903",
+      "name": "fix_webhook_activity_log_rls",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260526230714",
+      "name": "lp_leads_mql_classificacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260526233103",
+      "name": "mql_config_dinamico",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260526234132",
+      "name": "fix_classificar_mql_match_exato",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260526234155",
+      "name": "fix_classificar_mql_normalize_both",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260531194517",
+      "name": "fix_search_path_79_functions_revoke_18_sensitive",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260531194619",
+      "name": "employees_lock_anon_access",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260531195320",
+      "name": "fix_security_definer_views_grants_matviews",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260531201058",
+      "name": "lock_18_tables_service_role_only",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260531202208",
+      "name": "public_views_and_lock_11_tables",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260531202757",
+      "name": "flip_new_views_to_security_invoker",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260531202953",
+      "name": "revert_public_views_to_security_definer",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260531203806",
+      "name": "lock_crm_tables_anon",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260531211910",
+      "name": "perf_fase1a_modelo_dados",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260531224110",
+      "name": "pipeline_unificado",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260531224748",
+      "name": "leads_crm_public_add_pipeline_regime",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260601010522",
+      "name": "perf_meta_connections_cliente_id_nullable",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260602175403",
+      "name": "perf_leads_qualificacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260602195759",
+      "name": "fix_unique_regras_null",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260602205927",
+      "name": "perf_ghl_locations",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260603000210",
+      "name": "create_vw_reunioes_consolidada_shadow",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260603003354",
+      "name": "add_gcal_ausente_column",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260603004450",
+      "name": "allow_null_status_lancamentos_eventos",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260603145014",
+      "name": "add_precisa_revisao_flag",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260603223913",
+      "name": "add_meta_entrada_to_metas_closers",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260604010814",
+      "name": "add_cartao_parcelado_columns",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260604013857",
+      "name": "add_origem_to_recebimentos_mensais",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260605224013",
+      "name": "add_tipo_pagamento_default_clientes_receita",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260606144634",
+      "name": "fix_trigger_lead_saiu_de_comprou_cancelado_invalido",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260607195627",
+      "name": "sdr_backfill_infra",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260607204018",
+      "name": "sdr_backfill_pendentes_prio1",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260607205411",
+      "name": "20260607_perf_tese_resolucao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260607210929",
+      "name": "sdr_captura_continua",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260607224709",
+      "name": "fn_aplicar_opp_atribuicao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260609145435",
+      "name": "perf_alertas_engine",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260609174128",
+      "name": "create_perf_insights_ad_daily",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260609183825",
+      "name": "perf_ia_tables",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260609204638",
+      "name": "perf_analises_add_dossie",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260610171539",
+      "name": "ops_custo_colaborador",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260610230644",
+      "name": "add_condicao_entrada_parcelado",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260610234242",
+      "name": "add_antecipacao_parcelas_cartao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260612141715",
+      "name": "portal_cliente_cotas_fundacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260612174244",
+      "name": "perf_meta_discovery",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260612181936",
+      "name": "perf_grants_hardening",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260612184704",
+      "name": "perf_cliente_metas",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260612185522",
+      "name": "setup_bridge_e_view",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260612200944",
+      "name": "perf_conta_metas_cpl_por_conta",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260612204951",
+      "name": "perf_conta_metas_verba_teto",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260612211635",
+      "name": "vw_cliente_setup_p7_informativo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260613000227",
+      "name": "perf_ad_accounts_em_uso",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260613000253",
+      "name": "vw_cliente_setup_em_uso",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260613002311",
+      "name": "nps_coleta",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260613002329",
+      "name": "perf_qualificacao_regras_escopo_cliente",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260613005053",
+      "name": "nps_coleta_rollback_client_nps",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260613005106",
+      "name": "perf_nps_respostas",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260613163303",
+      "name": "ops_feedback_interno",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260614165608",
+      "name": "vw_cliente_setup_sem_mrr",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260616145301",
+      "name": "perf_receita_metas_modelo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260616150649",
+      "name": "perf_insights_ad_daily_expandir",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260616184720",
+      "name": "fix_vw_atribuicao_lead_mes_lateral_contrato_join",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260616184936",
+      "name": "harden_refresh_trafego_views_with_isolation_and_log",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260616202947",
+      "name": "enable_pg_cron_schedule_refresh_views",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260616203030",
+      "name": "add_check_matview_lag_guard",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260617173357",
+      "name": "create_contrato_produtos",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260617173415",
+      "name": "create_vw_contrato_produtos_aprovados",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260617180031",
+      "name": "20260617_perf_campanha_tipo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260617204558",
+      "name": "backfill_tipo_funil_from_canal_origem",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260617211009",
+      "name": "create_delta_cutover_tipo_funil_log",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260618163548",
+      "name": "add_system_user_to_perf_meta_connections_origem_check",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260618175906",
+      "name": "unique_active_system_user_connection",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260618185026",
+      "name": "create_vw_pessoa_canonica",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260618185046",
+      "name": "create_vw_pessoa_canonica_public",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260620154815",
+      "name": "detalhe_origem",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260620160304",
+      "name": "tkt_dossie_t1_revinculo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260620160307",
+      "name": "tkt_dossie_t2_dossie_colunas",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260620160558",
+      "name": "tkt_dossie_t1_revinculo_fix_internos",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260620170353",
+      "name": "tkt_dossie_b_ponte_lead",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260620170458",
+      "name": "tkt_dossie_ac_backfill_e_sync",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260622222854",
+      "name": "entrega_b_vw_admin",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260622223147",
+      "name": "entrega_b_vw_admin_lock_snapshot_fn",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260622225658",
+      "name": "fix_churn_summary_num_saidas",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260623001009",
+      "name": "vw_comprou_sem_contrato",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260623175835",
+      "name": "vw_contratos_ativo_sem_financeiro",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260623182738",
+      "name": "rbac_v2_ops_permissao_fundacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260623185355",
+      "name": "alerta_gap_ingestao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260623193215",
+      "name": "ia_prompts_piloto_dossie",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260623194048",
+      "name": "tkt017_perf_relatorio_configuravel",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260623195618",
+      "name": "dossie_modelo_config",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260625184242",
+      "name": "tkt_org_hierarquia_ops_cargo_fundacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260625185712",
+      "name": "tkt_org_permissao_cargo_custom",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260626173733",
+      "name": "ops_tarefas_recorrentes_fundacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260629165730",
+      "name": "perf_health_snapshot_fundacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260629170518",
+      "name": "perf_reuniao_fundacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260629171900",
+      "name": "ops_briefing_fundacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260629173934",
+      "name": "ops_onboarding_motor_fundacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260629181052",
+      "name": "ops_briefing_resposta_rekey_cliente_uuid",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260629202239",
+      "name": "tasks_port_onda1_labels_default_hours",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260630231714",
+      "name": "add_ghl_etapa_atual_divergencia",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260701214803",
+      "name": "fase2_metodo_advpro_e_vinculo_etapa",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260701230952",
+      "name": "ops_cliente_contatos_fundacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260701231246",
+      "name": "ops_legal_fundacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260701234608",
+      "name": "fix_comunicados_destinatario_trilha_tipo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260702163518",
+      "name": "add_meta_mrr_metas_mensais",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260703041250",
+      "name": "storage_buckets_colaboradores",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260703041855",
+      "name": "calculadora_resultados_cliente",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260703045304",
+      "name": "academia_edu_fundacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260704221649",
+      "name": "create_fn_mql_sql_by_periodo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260704230458",
+      "name": "create_vw_atribuicao_lead_mes_v2",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260704231436",
+      "name": "recreate_vw_atribuicao_lead_mes_v2_hybrid",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260704234931",
+      "name": "create_reconciliacao_etapa_guard",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260706154849",
+      "name": "rag_fundacao_pgvector",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260707155126",
+      "name": "create_atribuicao_tier_log",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260707155241",
+      "name": "create_trg_tier_auto_from_ad_id",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260707172706",
+      "name": "create_audit_baseline_metrics_v2",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260713001838",
+      "name": "create_app_config_ia",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260713002045",
+      "name": "seed_app_config_ia",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260713185745",
+      "name": "create_normaliza_canal_v2_shadow",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260713185802",
+      "name": "create_fn_cobertura_atribuicao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260713185818",
+      "name": "create_audit_canal_snapshot_20260713",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260713190333",
+      "name": "ingestao_monitor_fontes_fn_gaps",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260713190419",
+      "name": "set_search_path_normaliza_canal_v2",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260713214044",
+      "name": "cadastra_vw_reunioes_consolidada_no_cron_refresh",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260713214245",
+      "name": "fn_no_show_por_periodo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260713221841",
+      "name": "check_ingestao_gap_delega_fn_ingestao_gaps",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260713222050",
+      "name": "fn_derivacao_gaps",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260714222824",
+      "name": "seed_guard_fn_mql_sql",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260714225152",
+      "name": "fallback_historico_valido_fn_mql_sql",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260715153143",
+      "name": "venda_avulsa_marcacao_autocreate",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260715193806",
+      "name": "p1_fechar_policies_ads_alertas",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260715203001",
+      "name": "aggencio_fundacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260715203428",
+      "name": "catalogo_produtos_fase1",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260715205404",
+      "name": "ops_acoes_recomendadas_fundacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260715210620",
+      "name": "reunioes_evento_externo_id",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260715210640",
+      "name": "entregaveis_biblioteca",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260716155710",
+      "name": "meta_api_error_log",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260716193827",
+      "name": "feriados_dias_uteis",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260717131534",
+      "name": "fn_matching_runs_stale",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260717135816",
+      "name": "meta_form_leads_match_method",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260720214210",
+      "name": "fn_no_show_taxa_por_periodo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260724200820",
+      "name": "add_ad_account_id_ads_tables",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260724224132",
+      "name": "set_default_ad_account_id_ads_metadata",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260802231402",
+      "name": "clientes_receita_forma_pagamento_trafego",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260818020222",
+      "name": "client_interaction_records",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260818020230",
+      "name": "cliente_perfil_obs",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260818020246",
+      "name": "arq_documentos",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260818020254",
+      "name": "contratual_entregas",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260818020303",
+      "name": "contratual_comunicacoes",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260818020312",
+      "name": "employees_senha_scrypt",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260818020320",
+      "name": "os_audit_log",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260818020330",
+      "name": "rls_backfill_client_tables",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260818020338",
+      "name": "nps_coleta_rls",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260819185105",
+      "name": "mql_sql_v2_seed_guard_semantico",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260819233819",
+      "name": "vw_onboarding_atraso_ancora_por_cliente",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260819234237",
+      "name": "ops_metas_negocio",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260819235900",
+      "name": "20260819235900_lp_leads_staging_dedup_e_campos_formulario",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260824153010",
+      "name": "ads_video_fields_e_creative_ids",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260824170033",
+      "name": "ads_performance_shadow_leads_canonico",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260824170051",
+      "name": "vw_shadow_leads_sync",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260824170125",
+      "name": "backup_ads_performance_ad_account_null_20260824",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260824170246",
+      "name": "sync_reuniao_para_lead_trigger",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260825180622",
+      "name": "clientes_teses_fk_catalogo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260825180817",
+      "name": "wpp_grupo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260825180826",
+      "name": "responsavel_padrao_papel",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260825212625",
+      "name": "aposentar_taxonomia_morta",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260826145403",
+      "name": "cs_wpp_mensagem",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260826145745",
+      "name": "temperatura_comercial_mirror",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260826154518",
+      "name": "drop_default_colunas_video_ads_performance",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260826161836",
+      "name": "ia_leitura_comercial",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260901151849",
+      "name": "fn_preserve_mes_referencia_v2",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260901155749",
+      "name": "evento_lead_campanha_e_utm_term",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260901155949",
+      "name": "match_nicho_guard_tabela_ausente",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260901191955",
+      "name": "ops_cliente_perfil",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260902011230",
+      "name": "ops_perfil_opcoes",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260903175118",
+      "name": "revoke_anon_auth_views_publicas_fase1",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260906000000",
+      "name": "20260906000000_309a_onboarding_cliente_id",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260906145331",
+      "name": "os_audit_log",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260906145459",
+      "name": "372_etapa_churn_default",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260907000000",
+      "name": "20260907000000_373_cliente_id_nps_reunioes",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260908173230",
+      "name": "20260908173230_374_obrigacao_evidencia",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260908185333",
+      "name": "revoke_anon_auth_dml_views_publicas",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260908185729",
+      "name": "revoke_anon_auth_dml_tabelas_mortas_onda0",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260908185951",
+      "name": "revoke_anon_auth_dml_config_funil_etapas_acoes_log_onda1",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260908225327",
+      "name": "monitor_tldv_pull",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260908230922",
+      "name": "ghl_user_map_calendario",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260909194934",
+      "name": "agenda_sync_runs",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260909195938",
+      "name": "ddl_agenda_idempotente",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260909205207",
+      "name": "agenda_sync_runs_reconciliacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260916182558",
+      "name": "perf_crm_cliente_espelho_ghl",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260917135226",
+      "name": "400_ops_jobs_contrato_fila",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260918144548",
+      "name": "fn_auto_fill_data_comprou_v2_mes_da_venda",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260919201128",
+      "name": "d5_status_historico_clientes",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260919202326",
+      "name": "d6_drop_triggers_activity_log",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260919202555",
+      "name": "d1_funil_check_direct_ligacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260919202641",
+      "name": "d2_alerta_regra_metrica_limite",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260919202743",
+      "name": "d3_interacoes_relacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260919202826",
+      "name": "d4_usuario_preferencias_ui",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260922140621",
+      "name": "churn_log_cliente_receita_id",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260922140627",
+      "name": "perf_leads_ghl_contact_id",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260922140634",
+      "name": "perf_fechamentos_origem_ghl",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260922140643",
+      "name": "335b_nps_disparo_fila",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260928003535",
+      "name": "20260927210000_contrato_escopo_entregaveis",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260928025909",
+      "name": "20260927235837_itens_onboarding",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260928183406",
+      "name": "relatorio_semanal_rascunho",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260928234721",
+      "name": "employees_dados_cadastrais",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260928234928",
+      "name": "ops_automacoes_por_cliente",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260929150549",
+      "name": "perf_insights_resultado_oficial",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260929161533",
+      "name": "20260929120000_chave_unica_cliente_id",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260929164420",
+      "name": "20260929140000_churn_log_status_anterior",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260929164641",
+      "name": "20260929130000_churn_fecha_escrita_anon",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260929164934",
+      "name": "perf_sync_logs_status_em_andamento",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260929172810",
+      "name": "20260929150000_fecha_escrita_anon_l1_dinheiro_config",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260929175506",
+      "name": "churn_aprovacoes_cliente_id",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260929192425",
+      "name": "20260929_reunioes_sdr_soft_delete",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260929193040",
+      "name": "perf_meta_ad_map_nomes",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260929193356",
+      "name": "churn_aprovacoes_gatilho_cliente_id",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260929194218",
+      "name": "churn_log_cliente_id_lote_aprovado",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260929203805",
+      "name": "20260929_fecha_escrita_publica_3_tabelas",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260929205128",
+      "name": "tarefas_fecha_escrita_anon",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260929213433",
+      "name": "perf_colunas_visualizacoes",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260929215059",
+      "name": "20260929233000_ia_leitura_comercial_aceita_sem_base",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260930162941",
+      "name": "exposicao_anon_onda_1a",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260930190915",
+      "name": "exposicao_anon_onda_1b",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260930191409",
+      "name": "exposicao_anon_default_privileges",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260930215647",
+      "name": "secdef_atribuicao_revoke",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20260930222522",
+      "name": "secdef_higiene_revoke",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261001220801",
+      "name": "portal_inicio",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261002153428",
+      "name": "fn_reativar_churn",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261002171226",
+      "name": "vacuo_promessa",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261002174902",
+      "name": "feriados_2027",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261003182558",
+      "name": "20261003150000_fecha_escrita_public_8_tabelas_os",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261005135437",
+      "name": "leitura_relacao_gatilho_cron_diario",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261005174547",
+      "name": "20261005150000_penalizacoes_fk_gestor",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006164241",
+      "name": "20261006_plano_metas_fase_b",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006164408",
+      "name": "20261006_plano_metas_fase_b_grants",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006165039",
+      "name": "20261006_plano_metas_flags",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006165719",
+      "name": "20261006_plano_metas_salvar",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006170823",
+      "name": "20261006_regras_lead",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006172221",
+      "name": "20261006_regras_lead_ajustes_a_b",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006175952",
+      "name": "20261006_webinar_funil",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006181328",
+      "name": "20261006_webinar_atribuicao_v2",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006191029",
+      "name": "20261006_plano_metas_ote",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006221705",
+      "name": "20261006_webinar_inscritos_utm",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006222301",
+      "name": "20261006_webinar_vinculo_manual",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006225352",
+      "name": "20261006_webinar_fontes_01_meta_insights_extra",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006225426",
+      "name": "20261007_webinar_aulas_manual",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006225438",
+      "name": "20261006_webinar_fontes_02_webinar_disparos",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006225445",
+      "name": "20261007_webinar_benchmarks",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261006225515",
+      "name": "20261006_webinar_fontes_03_webinar_manychat",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261007002527",
+      "name": "20261006_revoke_anon_audit_baseline_metrics",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261007011247",
+      "name": "20261007_webinar_origem_completa",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261007011317",
+      "name": "20261007_webinar_atribuicao_v3",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261007135023",
+      "name": "perf_leads_tags",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261007141401",
+      "name": "20261007_webinar_grupo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261007141433",
+      "name": "20261007_webinar_meet",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261007141435",
+      "name": "20261007_webinar_tarifa_disparo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261007180010",
+      "name": "20261007_webinar_aulas_manual_inscritos",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261007182619",
+      "name": "folha_pagamento_employee_id",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261008031443",
+      "name": "clientes_receita_status_log",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261008132631",
+      "name": "perf_leads_datas_rm_rr_venda",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261008140513",
+      "name": "search_path_funcoes_revinculo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261008140515",
+      "name": "relacao_tipo_crise",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261008140518",
+      "name": "alerta_regra_pacing_verba",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261008140521",
+      "name": "ops_cliente_contatos_origem",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261008211455",
+      "name": "perf_cliente_verba",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261011011237",
+      "name": "wpp_resumo_origem_ia",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261011011240",
+      "name": "revoga_anon_tabelas_sem_uso",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261011032844",
+      "name": "portal_escritorio",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261011033743",
+      "name": "perf_leads_origem",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261011033749",
+      "name": "alerta_regra_coleta_conta_falhando",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261011140147",
+      "name": "perf_ranking_foto_mensal",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261011140149",
+      "name": "criativos_fundacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261012142126",
+      "name": "marcos_prazo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261012231832",
+      "name": "ops_feedback_prints",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261013032425",
+      "name": "revoke_anon_notificacoes",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261013140613",
+      "name": "perf_lead_eventos_tipo_ctwa",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261013141904",
+      "name": "indices_fk_e_rls_initplan",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261013141916",
+      "name": "arquivar_tabelas_backup",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261013142019",
+      "name": "auditoria_autor_por_header",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261013142151",
+      "name": "ops_cliente_negocio",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261013142159",
+      "name": "fn_registrar_churn_receita",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261013142317",
+      "name": "rls_fecha_grants_os_sem_policy",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261013142327",
+      "name": "extensoes_schema_e_search_path",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261013142416",
+      "name": "auditoria_dupla_desligada",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261014171111",
+      "name": "perf_hook_tipos",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261014171113",
+      "name": "consultorias_prazo_90_dias",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261014202117",
+      "name": "perf_crm_sync_continuo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261014222521",
+      "name": "inteligencia_schema_role",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261014224841",
+      "name": "alerta_regra_conta_parada",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261014230607",
+      "name": "inteligencia_dimensoes",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261015192711",
+      "name": "create_webinar_grupo_eventos",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261015192912",
+      "name": "create_webinar_grupo_export_eventos",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261015200955",
+      "name": "inteligencia_ledger",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261015201031",
+      "name": "inteligencia_autonomia_kill_orcamento",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261015201952",
+      "name": "inteligencia_agente_versao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261015202027",
+      "name": "inteligencia_ledger_ticket",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261015202500",
+      "name": "inteligencia_pergunta_tipada",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261015202634",
+      "name": "inteligencia_raw_ghl_conversas",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261015202728",
+      "name": "inteligencia_comercial_config_fato",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261015202823",
+      "name": "inteligencia_comercial_fn_recalcular",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261015202937",
+      "name": "inteligencia_comercial_fn_leitura",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261015203001",
+      "name": "alerta_regra_captura_conversa",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261015212010",
+      "name": "trava_exclusoes_meses_fechados_leads",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261016050600",
+      "name": "inteligencia_comercial_revisao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261016050700",
+      "name": "inteligencia_comercial_followup",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261016151500",
+      "name": "inteligencia_qualidade_quarentena_sla",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261016151800",
+      "name": "inteligencia_fn_ciclo_dados_diario",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261016151900",
+      "name": "inteligencia_fn_criterios_tipo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261016153300",
+      "name": "inteligencia_fn_qualidade_dado_tratar",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261016170000",
+      "name": "perf_reuniao_registro_manual",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261016234146",
+      "name": "inteligencia_comercial_julgamento",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261016234352",
+      "name": "inteligencia_comercial_fn_conversa",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017003314",
+      "name": "inteligencia_comercial_fn_padroes",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017003403",
+      "name": "inteligencia_comercial_dataset",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017003437",
+      "name": "inteligencia_comercial_hipotese",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017003511",
+      "name": "inteligencia_comercial_fn_hipoteses",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017003526",
+      "name": "inteligencia_comercial_fn_onde_morre",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017003528",
+      "name": "inteligencia_comercial_modelo_honorario",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017003546",
+      "name": "inteligencia_comercial_fn_feedback",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017012033",
+      "name": "inteligencia_mascarar_telefone_antes_cep",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143036",
+      "name": "inteligencia_raw_meta_insights_dia",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143048",
+      "name": "inteligencia_raw_meta_entidades",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143052",
+      "name": "inteligencia_raw_evolution_mensagens",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143104",
+      "name": "inteligencia_raw_ghl_crm",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143108",
+      "name": "inteligencia_raw_os_snapshot",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143110",
+      "name": "inteligencia_dim_nicho",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143120",
+      "name": "inteligencia_dim_tese",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143123",
+      "name": "inteligencia_dim_funil_tipo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143126",
+      "name": "inteligencia_metrica_versao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143134",
+      "name": "inteligencia_fn_cliente_ativo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143140",
+      "name": "inteligencia_fato_midia_dia",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143143",
+      "name": "inteligencia_fato_crm_dia",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143150",
+      "name": "inteligencia_fn_pct_mql",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143200",
+      "name": "inteligencia_fato_grupo_dia",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143204",
+      "name": "inteligencia_fato_cliente_dia",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143210",
+      "name": "inteligencia_fn_cpl",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143215",
+      "name": "inteligencia_fn_cpmql",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143219",
+      "name": "inteligencia_fn_cac",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143233",
+      "name": "inteligencia_fn_minutos_uteis_comarka",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143240",
+      "name": "inteligencia_fn_temperatura",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143246",
+      "name": "inteligencia_fn_hook_body_rate",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143256",
+      "name": "inteligencia_fn_breakeven",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143310",
+      "name": "inteligencia_fn_vacuo_aberto",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143324",
+      "name": "inteligencia_fn_ingerir_raw_meta_insights",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143336",
+      "name": "inteligencia_fn_ingerir_raw_meta_entidades",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143341",
+      "name": "inteligencia_fn_ingerir_raw_evolution",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143350",
+      "name": "inteligencia_fn_ingerir_raw_ghl_crm",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143406",
+      "name": "inteligencia_fn_ingerir_raw_os_snapshot",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143428",
+      "name": "inteligencia_fn_fato_grupo_dia_calcular",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143510",
+      "name": "inteligencia_fn_fato_crm_dia_calcular",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143526",
+      "name": "inteligencia_fn_fato_cliente_dia_calcular",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143547",
+      "name": "inteligencia_fn_contratos_rodar",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143601",
+      "name": "inteligencia_fn_reconciliar_dia",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143616",
+      "name": "inteligencia_fn_medir_previsoes",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143637",
+      "name": "inteligencia_fn_relatorio_sombra",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143646",
+      "name": "inteligencia_falhas_taxonomia",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143658",
+      "name": "inteligencia_fn_playbook_recalcular",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143718",
+      "name": "inteligencia_evento_negocio",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143751",
+      "name": "inteligencia_fn_eventos_detectar",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143843",
+      "name": "inteligencia_benchmark",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143906",
+      "name": "inteligencia_padrao_assinatura",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143919",
+      "name": "inteligencia_playbook_lift",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143928",
+      "name": "inteligencia_padrao_coocorrencia",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017143945",
+      "name": "inteligencia_auditoria_semanal",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017144006",
+      "name": "inteligencia_score_risco",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017160100",
+      "name": "inteligencia_fn_fato_crm_dia_calcular_v2",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017160200",
+      "name": "inteligencia_fn_eventos_detectar_v2",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017160300",
+      "name": "inteligencia_fn_coerencia_tese_cliente",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017160400",
+      "name": "inteligencia_fn_mutirao_sugestoes",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017160500",
+      "name": "inteligencia_fn_calibrar_limiares",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017160600",
+      "name": "inteligencia_suite_dourada",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017160700",
+      "name": "inteligencia_rascunho_amarelo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017160800",
+      "name": "inteligencia_fn_incidente_detectar",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017160900",
+      "name": "inteligencia_comercial_fn_padroes_tese",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017161000",
+      "name": "inteligencia_comercial_perguntas_tese",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017161100",
+      "name": "inteligencia_comercial_fn_limiar_pergunta",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017161200",
+      "name": "inteligencia_conhecimento_comercial",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017170517",
+      "name": "inteligencia_fn_fato_midia_dia_calcular",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017170613",
+      "name": "inteligencia_evento_contexto",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017230200",
+      "name": "inteligencia_comercial_fn_padroes_limiar",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017230300",
+      "name": "inteligencia_comercial_nota_ghl",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261017230400",
+      "name": "inteligencia_fn_relatorio_cliente",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018000100",
+      "name": "inteligencia_agentes_atendimento",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018000200",
+      "name": "inteligencia_fn_trechos_agente",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018000300",
+      "name": "inteligencia_fn_agentes_resumo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018001000",
+      "name": "inteligencia_capacidade_registro",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018001100",
+      "name": "inteligencia_fn_relatorio_mensal_apolo",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018002000",
+      "name": "inteligencia_kernel_comercial_ativacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018002100",
+      "name": "portal_link_saida_cliente",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018002200",
+      "name": "inteligencia_briefing_escritorio",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018002300",
+      "name": "inteligencia_score_lead",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018002400",
+      "name": "inteligencia_conhecimento_curadoria",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018003000",
+      "name": "nps_teses_chave_cliente_id",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018003300",
+      "name": "views_publicas_security_invoker",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018003400",
+      "name": "clientes_marca_mds",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018004000",
+      "name": "ops_sombra_comparacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018010000",
+      "name": "inteligencia_fn_fato_midia_dia_janela",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018010100",
+      "name": "inteligencia_fn_relatorio_cliente_captacao",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018030100",
+      "name": "ia_claude_modelos_5",
+      "created_by": "alfalucas137@gmail.com"
+    },
+    {
+      "version": "20261018030500",
+      "name": "rag_chunks_vector_1024",
+      "created_by": "alfalucas137@gmail.com"
+    }
+  ],
+  "pendentes_herdados": [
+    {
+      "repo": "comarka-operacional",
+      "arquivo": "supabase/migrations/20261007190900_churn_fecha_leitura_anon.sql",
+      "versao": "20261007190900",
+      "nome": "churn_fecha_leitura_anon"
+    },
+    {
+      "repo": "comarka-operacional",
+      "arquivo": "supabase/migrations/20261017230100_inteligencia_fn_calibrar_limiares_v2.sql",
+      "versao": "20261017230100",
+      "nome": "inteligencia_fn_calibrar_limiares_v2"
+    },
+    {
+      "repo": "comarka-operacional",
+      "arquivo": "supabase/migrations/20261018003100_nps_fila_e_resposta_por_contato.sql",
+      "versao": "20261018003100",
+      "nome": "nps_fila_e_resposta_por_contato"
+    },
+    {
+      "repo": "comarka-operacional",
+      "arquivo": "supabase/migrations/20261018003200_employees_public_sem_anon.sql",
+      "versao": "20261018003200",
+      "nome": "employees_public_sem_anon"
+    }
+  ],
+  "antigos_sem_ledger": 71
+}

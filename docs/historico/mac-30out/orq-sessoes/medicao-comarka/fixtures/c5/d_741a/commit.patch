@@ -1,0 +1,58 @@
+diff --git a/src/lib/promessas/detectar.ts b/src/lib/promessas/detectar.ts
+index 7721c7e..8267df8 100644
+--- a/src/lib/promessas/detectar.ts
++++ b/src/lib/promessas/detectar.ts
+@@ -13,13 +13,13 @@ import { carregarFeriados } from "@/lib/tempo/feriados";
+ import { minutosUteisEntre, MINUTOS_DIA_UTIL, proximoInicioUtil } from "@/lib/tempo/minutos-uteis";
+ import { COLUNAS_AUTOR, montarMapaLid, pessoaDaLinha, type LinhaAutor } from "@/lib/whatsapp/autor";
+ import { classificarAutor, type ClasseAutor } from "@/lib/whatsapp/classificar-autor";
+-import { contatosEfetivosDoCliente } from "@/lib/whatsapp/cliente-por-telefone";
++import { contatosEfetivosDosClientes } from "@/lib/whatsapp/cliente-por-telefone";
++import { lerMensagensPaginadas } from "@/lib/whatsapp/mensagens-paginadas";
+ import { carregarTelefonesPorColaborador } from "@/lib/whatsapp/equipe";
+ import { phonesMatch } from "@/lib/whatsapp/phone";
+ 
+ export const TETO_CHAMADAS = 40;
+ const JANELA_HORAS = 24;
+-const LIMITE_MENSAGENS = 5000;
+ const MAX_EQUIPE = 6;
+ const TRECHO_MAX = 160;
+ const MS_HORA = 3_600_000;
+@@ -150,22 +150,24 @@ export async function carregarInsumoPromessas(db: Db, janela: { desdeISO: string
+   }
+   if (grupos.length === 0) return vazio;
+ 
+-  const { data: msgData } = await db
+-    .from("cs_wpp_mensagem")
+-    .select("wpp_message_id, remote_jid, enviada_em, texto, " + COLUNAS_AUTOR)
+-    .in("remote_jid", grupos.map((g) => g.group_jid))
+-    .gte("enviada_em", janela.desdeISO)
+-    .lte("enviada_em", janela.ateISO)
+-    .order("enviada_em", { ascending: true })
+-    .limit(LIMITE_MENSAGENS);
+-  const linhas = (msgData ?? []) as unknown as LinhaMensagem[];
++  // Paginada até o fim da janela (antes: .limit(5000), que o servidor cortava em 1000 e perdia as recentes).
++  const linhas = await lerMensagensPaginadas<LinhaMensagem>("promessas", (from, to) =>
++    db
++      .from("cs_wpp_mensagem")
++      .select("wpp_message_id, remote_jid, enviada_em, texto, " + COLUNAS_AUTOR)
++      .in("remote_jid", grupos.map((g) => g.group_jid))
++      .gte("enviada_em", janela.desdeISO)
++      .lte("enviada_em", janela.ateISO)
++      .order("enviada_em", { ascending: true })
++      .order("wpp_message_id", { ascending: true })
++      .range(from, to),
++  );
+ 
+   const colaboradores = await carregarTelefonesPorColaborador(db);
+   const feriados = await carregarFeriados(db);
+-  const contatos: Record<string, string[]> = {};
+-  for (const id of Array.from(new Set(grupos.map((g) => g.cliente_id)))) {
+-    contatos[id] = await contatosEfetivosDoCliente(db as unknown as SupabaseClient, id);
+-  }
++  // Uma leitura em lote para todos os clientes (antes: 2 consultas em série por cliente). Falha lança.
++  const contatosPorCliente = await contatosEfetivosDosClientes(db as unknown as SupabaseClient, grupos.map((g) => g.cliente_id));
++  const contatos: Record<string, string[]> = Object.fromEntries(Array.from(contatosPorCliente.entries()));
+   const { data: existentes } = await db.from("perf_promessas").select("wpp_message_id").in("wpp_message_id", linhas.map((l) => l.wpp_message_id));
+   const jaTem = ((existentes ?? []) as { wpp_message_id: string }[]).map((e) => e.wpp_message_id);
+   return { grupos, linhas, colaboradores, contatos, feriados, jaTem };

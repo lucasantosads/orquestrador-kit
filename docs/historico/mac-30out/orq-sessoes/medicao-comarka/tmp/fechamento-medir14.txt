@@ -1,0 +1,1 @@
+ok /Users/lucasantos/orq-sessoes/medicao-comarka/out/14d: tickets=613 intervencoes=334 loop=14 playbook=50

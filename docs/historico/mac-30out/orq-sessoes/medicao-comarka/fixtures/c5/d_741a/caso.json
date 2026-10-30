@@ -1,0 +1,31 @@
+{
+ "ticket": {
+  "id": "741a",
+  "loop": "plataforma",
+  "done_em": "2026-10-08 12:12",
+  "prim": "nao",
+  "sha_aprovado": "e006c6b19b674850e7af6df439be8f9c2e051c61",
+  "merge": "553df03b98182b929f3038535f002b3a04d1f245"
+ },
+ "commit": {
+  "sha": "80a212fdb0b08ca29b1815f79b9bf85dcc3c9fa0",
+  "dt": "2026-10-08T13:34:21-03:00",
+  "assunto": "fix(pos-release-0810): paginação das mensagens e contatos em lote (vácuo, eventos, promessas)",
+  "arquivos": [
+   "src/lib/eventos/resposta-grupo.ts",
+   "src/lib/inicio/vacuo.ts",
+   "src/lib/promessas/detectar.ts",
+   "src/lib/whatsapp/mensagens-paginadas.ts",
+   "test/backtest-promessas.test.ts",
+   "test/eventos-resposta-grupo.test.ts",
+   "test/mensagens-paginadas-lote.test.ts",
+   "test/promessa-par.test.ts",
+   "test/promessas-avaliar-pura.test.ts",
+   "test/vacuo-grupo.test.ts"
+  ]
+ },
+ "esperado": {
+  "tipo": "fix_na_linha",
+  "forca": "forte"
+ }
+}

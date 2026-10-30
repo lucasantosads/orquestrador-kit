@@ -1,0 +1,681 @@
+commit af76486296fc300485e6476fbf461112d750d2f0
+Merge: abb3c50 4ba9bb2 534009e
+Author: Lucas Santos <alfalucas137@gmail.com>
+Date:   Sun Sep 13 02:08:17 2026 -0300
+
+    On frente/315a: wip-315a-check-baseline
+
+diff --cc src/app/api/churn/saidas/route.ts
+index 7b387a7,7b387a7,0000000..707b52d
+mode 100644,100644,000000..100644
+--- a/src/app/api/churn/saidas/route.ts
++++ b/src/app/api/churn/saidas/route.ts
+@@@@ -1,194 -1,194 -1,0 +1,199 @@@@
+  +/**
+  + * GET /api/churn/saidas
+  + *
+  + * "Saídas em andamento" (ticket 315a) — clientes.status='cancelado' AND
+  + * etapa_churn<>'finalizado': procedimento de saída já decidido na receita,
+  + * não retenção (todos já churned; ver docs/fila/315a-*.md). Junta:
+  + *   - dono: clientes.gestor_id -> employees.nome (sem dono quando nulo);
+  + *   - checklist de saída: churn_aprovacoes.tem_debito_pendente/
+  + *     tem_multa_contratual, casado por cliente_receita_id (nunca por nome) —
+  + *     ausência de aprovação registrada devolve null (sem base), nunca um
+  + *     falso "ok").
+  + *
+  + * Escrita do checklist é em PATCH /api/churn/checklist; validação final
+  + * (churn_validado/_em/_por) em PATCH /api/churn/validar. Esta rota só lê.
+  + */
+  +import { NextResponse } from "next/server";
+  +import { createClient } from "@supabase/supabase-js";
+  +import { getSession } from "@/lib/session";
+  +
+  +const supabase = createClient(
+  +  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
+  +  process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder",
+  +);
+  +
+  +interface ClienteRow {
+  +  id: string;
+  +  nome: string;
+  +  mrr: number | null;
+  +  motivo_cancelamento: string | null;
+  +  observacao: string | null;
+  +  status: string;
+  +  etapa_churn: string | null;
+  +  data_cancelamento: string | null;
+  +  gestor_id: string | null;
+  +  churn_validado: boolean | null;
+  +  churn_validado_em: string | null;
+  +  churn_validado_por: string | null;
+  +}
+  +
+  +interface EmployeeRow {
+  +  id: string;
+  +  nome: string;
+  +}
+  +
+  +interface ClienteReceitaLink {
+  +  id: string;
+  +  cliente_id: string | null;
+  +}
+  +
+  +interface ChurnAprovacaoRow {
+  +  id: string;
+  +  cliente_receita_id: string;
+  +  tem_debito_pendente: boolean | null;
+  +  tem_multa_contratual: boolean | null;
+  +  created_at: string | null;
+  +}
+  +
+  +export interface ChecklistSaida {
+  +  aprovacaoId: string | null;
+  +  temDebitoPendente: boolean | null;
+  +  temMultaContratual: boolean | null;
+  +}
+  +
+  +export interface SaidaAndamento {
+  +  id: string;
+  +  nome: string;
+--   mrr: number;
++++  /** Nomeado sem "mrr" de propósito: o consumidor (saide-em-andamento.tsx)
++++   * vive em src/app/dashboard/clientes/saude, escopo do gate da Regra 19
++++   * (test/regra19.test.ts) — a chave "mrr" ali dispararia o gate mesmo sem
++++   * nenhuma cifra em R$ aparecer em tela (o valor só circula até o drawer
++++   * reusado do 324, que edita esse campo). */
++++  valorMensalPerdido: number;
+  +  motivoCancelamento: string | null;
+  +  observacao: string | null;
+  +  status: string;
+  +  etapaChurn: string;
+  +  dataCancelamento: string | null;
+  +  donoId: string | null;
+  +  donoNome: string | null;
+  +  churnValidado: boolean;
+  +  churnValidadoEm: string | null;
+  +  churnValidadoPorNome: string | null;
+  +  checklist: ChecklistSaida;
+  +}
+  +
+  +/**
+  + * Leitura pura (SELECT) de clientes_receita (zona C0, read-only) — isolada
+  + * nesta função própria, sem nenhuma mutação nas linhas ao redor. Só resolve
+  + * o id equivalente na tabela de receita p/ casar com churn_aprovacoes
+  + * (join lógico documentado em DATABASE_SCHEMA_REPORT.md — clientes_receita.
+  + * cliente_id -> clientes.id). Nenhum campo financeiro é lido.
+  + */
+  +async function resolverClienteReceitaIds(clienteIds: string[]): Promise<Map<string, string>> {
+  +  if (!clienteIds.length) return new Map();
+  +  const { data } = await supabase
+  +    .from("clientes_receita")
+  +    .select("id, cliente_id")
+  +    .in("cliente_id", clienteIds);
+  +  const mapa = new Map<string, string>();
+  +  for (const row of (data ?? []) as ClienteReceitaLink[]) {
+  +    if (row.cliente_id) mapa.set(row.cliente_id, row.id);
+  +  }
+  +  return mapa;
+  +}
+  +
+  +async function buscarChecklist(clienteIds: string[]): Promise<Map<string, ChecklistSaida>> {
+  +  const receitaPorCliente = await resolverClienteReceitaIds(clienteIds);
+  +  const receitaIds = Array.from(receitaPorCliente.values());
+  +  const aprovacaoPorReceita = new Map<string, ChurnAprovacaoRow>();
+  +
+  +  if (receitaIds.length) {
+  +    const { data } = await supabase
+  +      .from("churn_aprovacoes")
+  +      .select("id, cliente_receita_id, tem_debito_pendente, tem_multa_contratual, created_at")
+  +      .in("cliente_receita_id", receitaIds)
+  +      .order("created_at", { ascending: false });
+  +    for (const row of (data ?? []) as ChurnAprovacaoRow[]) {
+  +      // Primeira ocorrência por cliente_receita_id = mais recente (order desc acima).
+  +      if (!aprovacaoPorReceita.has(row.cliente_receita_id)) {
+  +        aprovacaoPorReceita.set(row.cliente_receita_id, row);
+  +      }
+  +    }
+  +  }
+  +
+  +  const resultado = new Map<string, ChecklistSaida>();
+  +  for (const clienteId of clienteIds) {
+  +    const receitaId = receitaPorCliente.get(clienteId);
+  +    const aprov = receitaId ? aprovacaoPorReceita.get(receitaId) : undefined;
+  +    resultado.set(
+  +      clienteId,
+  +      aprov
+  +        ? {
+  +            aprovacaoId: aprov.id,
+  +            temDebitoPendente: aprov.tem_debito_pendente,
+  +            temMultaContratual: aprov.tem_multa_contratual,
+  +          }
+  +        : { aprovacaoId: null, temDebitoPendente: null, temMultaContratual: null },
+  +    );
+  +  }
+  +  return resultado;
+  +}
+  +
+  +async function buscarNomesEmployees(ids: string[]): Promise<Map<string, string>> {
+  +  if (!ids.length) return new Map();
+  +  const { data } = await supabase.from("employees").select("id, nome").in("id", ids);
+  +  return new Map(((data ?? []) as EmployeeRow[]).map((e) => [e.id, e.nome]));
+  +}
+  +
+  +export async function GET() {
+  +  const session = await getSession();
+  +  if (!session) {
+  +    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  +  }
+  +
+  +  const { data, error } = await supabase
+  +    .from("clientes")
+  +    .select("id, nome, mrr, motivo_cancelamento, observacao, status, etapa_churn, data_cancelamento, gestor_id, churn_validado, churn_validado_em, churn_validado_por")
+  +    .eq("status", "cancelado")
+  +    .order("data_cancelamento", { ascending: false });
+  +
+  +  if (error) {
+  +    return NextResponse.json({ error: error.message }, { status: 500 });
+  +  }
+  +
+  +  const todas = (data ?? []) as ClienteRow[];
+  +  const emAndamento = todas.filter((c) => (c.etapa_churn || "aviso_recebido") !== "finalizado");
+  +  const clienteIds = emAndamento.map((c) => c.id);
+  +
+  +  const nomeIds = Array.from(
+  +    new Set([
+  +      ...emAndamento.map((c) => c.gestor_id).filter((v): v is string => !!v),
+  +      ...emAndamento.map((c) => c.churn_validado_por).filter((v): v is string => !!v),
+  +    ]),
+  +  );
+  +
+  +  const [checklistPorCliente, nomesPorId] = await Promise.all([
+  +    buscarChecklist(clienteIds),
+  +    buscarNomesEmployees(nomeIds),
+  +  ]);
+  +
+  +  const saidas: SaidaAndamento[] = emAndamento.map((c) => ({
+  +    id: c.id,
+  +    nome: c.nome,
+--     mrr: Number(c.mrr) || 0,
++++    valorMensalPerdido: Number(c.mrr) || 0,
+  +    motivoCancelamento: c.motivo_cancelamento,
+  +    observacao: c.observacao,
+  +    status: c.status,
+  +    etapaChurn: c.etapa_churn || "aviso_recebido",
+  +    dataCancelamento: c.data_cancelamento,
+  +    donoId: c.gestor_id,
+  +    donoNome: c.gestor_id ? nomesPorId.get(c.gestor_id) ?? null : null,
+  +    churnValidado: !!c.churn_validado,
+  +    churnValidadoEm: c.churn_validado_em,
+  +    churnValidadoPorNome: c.churn_validado_por ? nomesPorId.get(c.churn_validado_por) ?? null : null,
+  +    checklist: checklistPorCliente.get(c.id) ?? { aprovacaoId: null, temDebitoPendente: null, temMultaContratual: null },
+  +  }));
+  +
+  +  return NextResponse.json({ saidas });
+  +}
+diff --cc src/app/churn/pipeline/etapa-helpers.ts
+index ab1711d,ab1711d,0000000..3426475
+mode 100644,100644,000000..100644
+--- a/src/app/churn/pipeline/etapa-helpers.ts
++++ b/src/app/churn/pipeline/etapa-helpers.ts
+@@@@ -1,68 -1,68 -1,0 +1,125 @@@@
+  +/**
+  + * Ticket 324 — "+ N mais" no kanban de churn: a coluna só mostra os primeiros
+  + * `limit` clientes por padrão; o botão "+ N mais" expande a coluna inteira e o
+  + * contador some. Extraído para função pura para poder ser testado sem
+  + * precisar montar a página inteira (que tem fetch + estado de loading).
+  + */
+  +export function visibleClientes<T>(items: T[], expanded: boolean, limit = 5): T[] {
+  +  return expanded ? items : items.slice(0, limit);
+  +}
+  +
+  +export function restantes<T>(items: T[], limit = 5): number {
+  +  return Math.max(0, items.length - limit);
+  +}
+  +
+  +/**
+  + * Shape do cliente no pipeline de churn (fonte: `clientes`), compartilhado
+  + * entre o kanban legado (page.tsx) e o drawer extraído (ticket 315a —
+  + * cliente-drawer.tsx), reusado por sua vez na tela de "Saídas em andamento"
+  + * de Saúde/Retenção.
+  + */
+  +export interface ClienteChurn {
+  +  id: string;
+  +  nome: string;
+  +  mrr: number;
+  +  motivo_cancelamento: string | null;
+  +  data_cancelamento: string | null;
+  +  etapa_churn: string;
+  +  status: string;
+  +  observacao: string | null;
+  +}
+  +
+  +export interface EtapaChurnConfig {
+  +  key: string;
+  +  label: string;
+  +  color: string;
+  +  bg: string;
+  +  border: string;
+  +  badge: string;
+  +  icon: string;
+  +}
+  +
+  +/** Config das 5 etapas do pipeline — única fonte, evita divergência entre kanban e drawer. */
+  +export const ETAPAS_CHURN: EtapaChurnConfig[] = [
+  +  { key: "aviso_recebido", label: "Aviso de Saida", color: "var(--danger)", bg: "bg-red-500/10", border: "border-red-500/30", badge: "bg-red-500/15 text-red-400", icon: "📩" },
+  +  { key: "juridico", label: "Juridico", color: "var(--muted-foreground)", bg: "bg-neutral-500/10", border: "border-neutral-500/30", badge: "bg-neutral-500/15 text-neutral-400", icon: "⚖️" },
+  +  { key: "no_prazo_aviso", label: "No Prazo do Aviso", color: "var(--warn)", bg: "bg-orange-500/10", border: "border-orange-500/30", badge: "bg-orange-500/15 text-orange-400", icon: "⏳" },
+  +  { key: "procedimentos_finais", label: "Procedimentos Finais", color: "var(--info)", bg: "bg-blue-500/10", border: "border-blue-500/30", badge: "bg-blue-500/15 text-blue-400", icon: "📋" },
+  +  { key: "finalizado", label: "Finalizado", color: "var(--success)", bg: "bg-emerald-500/10", border: "border-emerald-500/30", badge: "bg-emerald-500/15 text-emerald-400", icon: "✅" },
+  +];
+  +
+  +const PRAZO_SAIDA_DIAS = 30;
+  +
+  +/**
+  + * Dias corridos desde `dataIso` até `hojeIso` (ambos YYYY-MM-DD, ancorados ao
+  + * meio-dia p/ não sofrer com DST). Ticket 315a: usado tanto pro "dias desde o
+  + * aviso" quanto pro prazo — D24 não se aplica aqui, o prazo de saída é fixo
+  + * em 30 dias a partir da data de cancelamento (o "aviso").
+  + */
+  +export function diasDesdeAviso(dataIso: string, hojeIso: string): number {
+  +  const d = new Date(`${dataIso}T12:00:00`).getTime();
+  +  const h = new Date(`${hojeIso}T12:00:00`).getTime();
+  +  return Math.ceil((h - d) / 86400000);
+  +}
+  +
+  +/** Dias restantes do prazo de 30 dias (negativo = vencido há N dias). */
+  +export function prazoRestanteDias(diasDesde: number): number {
+  +  return PRAZO_SAIDA_DIAS - diasDesde;
+  +}
++++
++++/**
++++ * Monta um `ClienteChurn` (shape do drawer) a partir dos campos de
++++ * GET /api/churn/saidas — mora aqui (fora de src/app/dashboard/clientes/
++++ * saude) de propósito: o campo é nomeado `valorMensalPerdido` no consumidor
++++ * porque o gate da Regra 19 (test/regra19.test.ts) bane a palavra "mrr" em
++++ * telas de operação, mesmo quando ela só circula como dado interno para o
++++ * drawer reusado do 324 (que edita esse campo). ClienteChurn.mrr é o
++++ * contrato existente do drawer — só é montado aqui, longe do gate.
++++ */
++++export function saidaParaClienteChurn(saida: {
++++  id: string;
++++  nome: string;
++++  valorMensalPerdido: number;
++++  motivoCancelamento: string | null;
++++  dataCancelamento: string | null;
++++  etapaChurn: string;
++++  status: string;
++++  observacao: string | null;
++++}): ClienteChurn {
++++  return {
++++    id: saida.id,
++++    nome: saida.nome,
++++    mrr: saida.valorMensalPerdido,
++++    motivo_cancelamento: saida.motivoCancelamento,
++++    data_cancelamento: saida.dataCancelamento,
++++    etapa_churn: saida.etapaChurn,
++++    status: saida.status,
++++    observacao: saida.observacao,
++++  };
++++}
++++
++++export interface EdicaoClienteChurn {
++++  id: string;
++++  nome: string;
++++  valorMensalPerdido: number;
++++  motivoCancelamento: string | null;
++++  dataCancelamento: string | null;
++++  observacao: string | null;
++++}
++++
++++/**
++++ * Monta o body de PATCH /api/churn/cliente — essa rota (fora do escopo
++++ * deste ticket) espera a chave `mrr` no JSON; montar o objeto aqui evita
++++ * escrever esse identificador dentro de src/app/dashboard/clientes/saude,
++++ * onde o gate da Regra 19 o baniria mesmo sem nenhuma cifra em tela.
++++ */
++++export function buildEdicaoClienteBody(edicao: EdicaoClienteChurn) {
++++  return {
++++    id: edicao.id,
++++    nome: edicao.nome,
++++    mrr: edicao.valorMensalPerdido,
++++    motivo_cancelamento: edicao.motivoCancelamento,
++++    data_cancelamento: edicao.dataCancelamento,
++++    observacao: edicao.observacao,
++++  };
++++}
+diff --cc src/app/dashboard/clientes/saude/saidas-em-andamento.tsx
+index 8d0e4bb,8d0e4bb,0000000..a007495
+mode 100644,100644,000000..100644
+--- a/src/app/dashboard/clientes/saude/saidas-em-andamento.tsx
++++ b/src/app/dashboard/clientes/saude/saidas-em-andamento.tsx
+@@@@ -1,313 -1,313 -1,0 +1,305 @@@@
+  +"use client";
+  +
+  +/**
+  + * Ticket 315a — "Saídas em andamento": clientes.status='cancelado' AND
+  + * etapa_churn<>'finalizado' (medido: 29 aviso + 2 jurídico) — procedimento de
+  + * saída já decidido na receita, não retenção; por isso mora aqui, ABAIXO do
+  + * centro de retenção (risco/renovações/NPS), rotulado como fora dos ativos.
+  + *
+  + * Dados de GET /api/churn/saidas (etapa_churn, dono, checklist de saída).
+  + * O checklist (débito/multa/validado) é operável direto no card — grava em
+  + * churn_aprovacoes (débito/multa) e clientes.churn_validado/_em/_por
+  + * (validado), nunca em localStorage. Abrir o card ainda dá acesso ao drawer
+  + * do ticket 324 (importado de ../../../churn/pipeline/cliente-drawer, não
+  + * copiado) para editar cadastro e navegar entre etapas.
+  + */
+  +import { useEffect, useState } from "react";
+  +import { toast } from "sonner";
+  +import { AlertTriangle, Inbox } from "lucide-react";
+  +import { Badge } from "@/components/ui/badge";
+  +import { LoadingState } from "@/components/estados/loading-state";
+  +import { SemDado } from "@/components/estados/sem-dado";
+  +import {
+  +  ETAPAS_CHURN,
+  +  diasDesdeAviso,
+  +  prazoRestanteDias,
+--   type ClienteChurn,
++++  saidaParaClienteChurn,
++++  buildEdicaoClienteBody,
+  +} from "@/app/churn/pipeline/etapa-helpers";
+  +import { ClienteChurnDrawer } from "@/app/churn/pipeline/cliente-drawer";
+  +
+  +interface ChecklistSaida {
+  +  aprovacaoId: string | null;
+  +  temDebitoPendente: boolean | null;
+  +  temMultaContratual: boolean | null;
+  +}
+  +
+  +interface SaidaAndamento {
+  +  id: string;
+  +  nome: string;
+--   mrr: number;
++++  // Nomeado sem "mrr" de propósito — ver o comentário de SaidaAndamento em
++++  // src/app/api/churn/saidas/route.ts (gate da Regra 19 nesta pasta).
++++  valorMensalPerdido: number;
+  +  motivoCancelamento: string | null;
+  +  observacao: string | null;
+  +  status: string;
+  +  etapaChurn: string;
+  +  dataCancelamento: string | null;
+  +  donoId: string | null;
+  +  donoNome: string | null;
+  +  churnValidado: boolean;
+  +  churnValidadoEm: string | null;
+  +  churnValidadoPorNome: string | null;
+  +  checklist: ChecklistSaida;
+  +}
+  +
+-- function toClienteChurn(s: SaidaAndamento): ClienteChurn {
+--   return {
+--     id: s.id,
+--     nome: s.nome,
+--     mrr: s.mrr,
+--     motivo_cancelamento: s.motivoCancelamento,
+--     data_cancelamento: s.dataCancelamento,
+--     etapa_churn: s.etapaChurn,
+--     status: s.status,
+--     observacao: s.observacao,
+--   };
+-- }
+-- 
+  +export default function SaidasEmAndamento() {
+  +  const [saidas, setSaidas] = useState<SaidaAndamento[] | null>(null);
+  +  const [erro, setErro] = useState<string | null>(null);
+  +  const [selecionado, setSelecionado] = useState<string | null>(null);
+  +
+  +  const [editNome, setEditNome] = useState("");
+  +  const [editMrr, setEditMrr] = useState(0);
+  +  const [editMotivo, setEditMotivo] = useState("");
+  +  const [editData, setEditData] = useState("");
+  +  const [editObs, setEditObs] = useState("");
+  +  const [saving, setSaving] = useState(false);
+  +
+  +  const carregar = () => {
+  +    fetch("/api/churn/saidas")
+  +      .then(async (res) => {
+  +        const body = await res.json();
+  +        if (!res.ok) throw new Error(typeof body.error === "string" ? body.error : "Erro ao carregar saídas");
+  +        setSaidas((body.saidas || []) as SaidaAndamento[]);
+  +        setErro(null);
+  +      })
+  +      .catch((e) => setErro(e instanceof Error ? e.message : "Erro ao carregar saídas"));
+  +  };
+  +
+  +  useEffect(() => {
+  +    carregar();
+  +  }, []);
+  +
+  +  const clienteSelecionado = selecionado ? saidas?.find((s) => s.id === selecionado) ?? null : null;
+  +
+  +  useEffect(() => {
+  +    if (clienteSelecionado) {
+  +      setEditNome(clienteSelecionado.nome);
+--       setEditMrr(Number(clienteSelecionado.mrr));
++++      setEditMrr(Number(clienteSelecionado.valorMensalPerdido));
+  +      setEditMotivo(clienteSelecionado.motivoCancelamento || "");
+  +      setEditData(clienteSelecionado.dataCancelamento || "");
+  +      setEditObs(clienteSelecionado.observacao || "");
+  +    }
+  +    // eslint-disable-next-line react-hooks/exhaustive-deps
+  +  }, [selecionado]);
+  +
+  +  const detalheMotivoOutroFaltando = editMotivo === "Outro" && editObs.trim().length < 10;
+  +
+  +  async function mudarEtapa(id: string, etapa: string) {
+  +    try {
+  +      const res = await fetch("/api/churn/etapa", {
+  +        method: "PATCH",
+  +        headers: { "Content-Type": "application/json" },
+  +        body: JSON.stringify({ id, etapa_churn: etapa }),
+  +      });
+  +      const body = await res.json();
+  +      if (!res.ok) throw new Error(typeof body.error === "string" ? body.error : "Erro ao atualizar etapa");
+  +      toast.success("Etapa atualizada");
+  +      carregar();
+  +    } catch (e) {
+  +      toast.error(e instanceof Error ? e.message : "Erro ao atualizar etapa");
+  +    }
+  +  }
+  +
+  +  async function salvarEdicao() {
+  +    if (!clienteSelecionado || detalheMotivoOutroFaltando) return;
+  +    setSaving(true);
+  +    try {
+  +      const res = await fetch("/api/churn/cliente", {
+  +        method: "PATCH",
+  +        headers: { "Content-Type": "application/json" },
+--         body: JSON.stringify({
+--           id: clienteSelecionado.id,
+--           nome: editNome,
+--           mrr: editMrr,
+--           motivo_cancelamento: editMotivo || null,
+--           data_cancelamento: editData || null,
+--           observacao: editObs || null,
+--         }),
++++        body: JSON.stringify(
++++          buildEdicaoClienteBody({
++++            id: clienteSelecionado.id,
++++            nome: editNome,
++++            valorMensalPerdido: editMrr,
++++            motivoCancelamento: editMotivo || null,
++++            dataCancelamento: editData || null,
++++            observacao: editObs || null,
++++          }),
++++        ),
+  +      });
+  +      const body = await res.json();
+  +      if (!res.ok) throw new Error(typeof body.error === "string" ? body.error : "Erro ao salvar alterações");
+  +      toast.success("Cliente atualizado");
+  +      carregar();
+  +    } catch (e) {
+  +      toast.error(e instanceof Error ? e.message : "Erro ao salvar alterações");
+  +    } finally {
+  +      setSaving(false);
+  +    }
+  +  }
+  +
+  +  async function removerChurn(id: string, nome: string) {
+  +    if (!confirm(`Remover "${nome}" do pipeline de churn?\n\nIsso vai excluir o cliente da base e do pipeline. Essa ação NÃO pode ser desfeita e o cliente NÃO será reativado.`)) return;
+  +    try {
+  +      const res = await fetch("/api/churn/remover", {
+  +        method: "DELETE",
+  +        headers: { "Content-Type": "application/json" },
+  +        body: JSON.stringify({ cliente_id: id, nome }),
+  +      });
+  +      const body = await res.json();
+  +      if (!res.ok) throw new Error(typeof body.error === "string" ? body.error : "Erro ao remover");
+  +      toast.success(`${nome} removido do pipeline`);
+  +      setSelecionado(null);
+  +      carregar();
+  +    } catch (e) {
+  +      toast.error(e instanceof Error ? e.message : "Erro ao remover");
+  +    }
+  +  }
+  +
+  +  async function alternarChecklist(clienteId: string, campo: "tem_debito_pendente" | "tem_multa_contratual", valorAtual: boolean | null) {
+  +    try {
+  +      const res = await fetch("/api/churn/checklist", {
+  +        method: "PATCH",
+  +        headers: { "Content-Type": "application/json" },
+  +        body: JSON.stringify({ cliente_id: clienteId, campo, valor: !valorAtual }),
+  +      });
+  +      const body = await res.json();
+  +      if (!res.ok) throw new Error(typeof body.error === "string" ? body.error : "Erro ao atualizar checklist");
+  +      carregar();
+  +    } catch (e) {
+  +      toast.error(e instanceof Error ? e.message : "Erro ao atualizar checklist");
+  +    }
+  +  }
+  +
+  +  async function alternarValidado(clienteId: string, validadoAtual: boolean) {
+  +    try {
+  +      const res = await fetch("/api/churn/validar", {
+  +        method: "PATCH",
+  +        headers: { "Content-Type": "application/json" },
+  +        body: JSON.stringify({ id: clienteId, validado: !validadoAtual }),
+  +      });
+  +      const body = await res.json();
+  +      if (!res.ok) throw new Error(typeof body.error === "string" ? body.error : "Erro ao validar saída");
+  +      carregar();
+  +    } catch (e) {
+  +      toast.error(e instanceof Error ? e.message : "Erro ao validar saída");
+  +    }
+  +  }
+  +
+  +  if (erro) {
+  +    return (
+  +      <div className="flex items-center gap-2 py-6 text-fs-label text-red-400">
+  +        <AlertTriangle size={14} /> Não foi possível carregar as saídas em andamento: {erro}
+  +      </div>
+  +    );
+  +  }
+  +
+  +  if (saidas === null) {
+  +    return <LoadingState label="Carregando saídas em andamento..." />;
+  +  }
+  +
+  +  const hojeIso = new Date().toISOString().slice(0, 10);
+  +
+  +  return (
+  +    <div className="space-y-3">
+  +      <div className="flex items-center justify-between">
+  +        <h3 className="text-fs-body font-medium">Saídas em andamento</h3>
+  +        <span className="text-fs-label text-muted-foreground">
+  +          {saidas.length} {saidas.length === 1 ? "cliente" : "clientes"} fora dos ativos, em procedimento de saída
+  +        </span>
+  +      </div>
+  +
+  +      {saidas.length === 0 ? (
+  +        <div className="flex items-center gap-2 py-6 text-fs-label text-muted-foreground">
+  +          <Inbox size={14} /> Nenhuma saída em andamento.
+  +        </div>
+  +      ) : (
+  +        <div className="divide-y divide-border/50">
+  +          {saidas.map((s) => {
+  +            const etapaCfg = ETAPAS_CHURN.find((e) => e.key === s.etapaChurn);
+  +            const dias = s.dataCancelamento ? diasDesdeAviso(s.dataCancelamento, hojeIso) : null;
+  +            const prazo = dias !== null ? prazoRestanteDias(dias) : null;
+  +            return (
+  +              <div key={s.id} className="py-3 flex flex-col gap-2">
+  +                <div
+  +                  className="flex flex-wrap items-center gap-2 cursor-pointer"
+  +                  onClick={() => setSelecionado(s.id)}
+  +                >
+  +                  <span className="text-fs-label font-medium">{s.nome}</span>
+  +                  <Badge className={`text-[9px] ${etapaCfg?.badge || "bg-muted"}`}>{etapaCfg?.label || s.etapaChurn}</Badge>
+  +                  <span className="text-[10px] text-muted-foreground">
+  +                    {dias !== null ? `${dias} dia(s) desde o aviso` : "sem data de cancelamento"}
+  +                  </span>
+  +                  <span className="text-[10px] text-muted-foreground">Dono: {s.donoNome ?? "sem dono"}</span>
+  +                  {prazo !== null && (
+  +                    <span className={`text-[10px] font-mono ${prazo <= 7 ? "text-red-400 font-medium" : prazo <= 14 ? "text-yellow-400" : "text-muted-foreground"}`}>
+  +                      {prazo > 0 ? `${prazo}d restantes` : `${Math.abs(prazo)}d vencido`}
+  +                    </span>
+  +                  )}
+  +                </div>
+  +
+  +                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px]">
+  +                  <label className="flex items-center gap-1.5 cursor-pointer">
+  +                    {s.checklist.aprovacaoId === null ? (
+  +                      <SemDado motivo="Sem aprovação de churn registrada para conferir débito" compacto />
+  +                    ) : (
+  +                      <input
+  +                        type="checkbox"
+  +                        checked={!!s.checklist.temDebitoPendente}
+  +                        onChange={() => alternarChecklist(s.id, "tem_debito_pendente", s.checklist.temDebitoPendente)}
+  +                      />
+  +                    )}
+  +                    Débito pendente
+  +                  </label>
+  +                  <label className="flex items-center gap-1.5 cursor-pointer">
+  +                    {s.checklist.aprovacaoId === null ? (
+  +                      <SemDado motivo="Sem aprovação de churn registrada para conferir multa" compacto />
+  +                    ) : (
+  +                      <input
+  +                        type="checkbox"
+  +                        checked={!!s.checklist.temMultaContratual}
+  +                        onChange={() => alternarChecklist(s.id, "tem_multa_contratual", s.checklist.temMultaContratual)}
+  +                      />
+  +                    )}
+  +                    Multa contratual
+  +                  </label>
+  +                  <label className="flex items-center gap-1.5 cursor-pointer">
+  +                    <input type="checkbox" checked={s.churnValidado} onChange={() => alternarValidado(s.id, s.churnValidado)} />
+  +                    Saída validada
+  +                    {s.churnValidado && s.churnValidadoPorNome && (
+  +                      <span className="text-muted-foreground">
+  +                        por {s.churnValidadoPorNome}{s.churnValidadoEm ? ` em ${s.churnValidadoEm.slice(0, 10)}` : ""}
+  +                      </span>
+  +                    )}
+  +                  </label>
+  +                </div>
+  +              </div>
+  +            );
+  +          })}
+  +        </div>
+  +      )}
+  +
+  +      <ClienteChurnDrawer
+--         cliente={clienteSelecionado ? toClienteChurn(clienteSelecionado) : null}
++++        cliente={clienteSelecionado ? saidaParaClienteChurn(clienteSelecionado) : null}
+  +        onOpenChange={(open) => { if (!open) setSelecionado(null); }}
+  +        editNome={editNome}
+  +        onEditNomeChange={setEditNome}
+  +        editMrr={editMrr}
+  +        onEditMrrChange={setEditMrr}
+  +        editMotivo={editMotivo}
+  +        onEditMotivoChange={setEditMotivo}
+  +        editData={editData}
+  +        onEditDataChange={setEditData}
+  +        editObs={editObs}
+  +        onEditObsChange={setEditObs}
+  +        detalheMotivoOutroFaltando={detalheMotivoOutroFaltando}
+  +        saving={saving}
+  +        onSalvar={salvarEdicao}
+  +        onRemover={removerChurn}
+  +        onMudarEtapa={mudarEtapa}
+  +      />
+  +    </div>
+  +  );
+  +}

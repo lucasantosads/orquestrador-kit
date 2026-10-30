@@ -1,0 +1,19 @@
+{
+ "ticket": {
+  "id": "1043",
+  "loop": "plataforma",
+  "done_em": "2026-10-13 05:19",
+  "prim": "sim",
+  "sha_aprovado": "24fdbbd468b4a95023cbcb573be4d148dbfda4e2",
+  "merge": "9c9f49bea93787981779161eecd1949ec44da85c"
+ },
+ "novo": {
+  "id": "1044",
+  "sha": "a2b4efe8c886776d8e2bfca70bbf430ba139582a",
+  "dt": "2026-10-13T05:26:39-03:00"
+ },
+ "esperado": {
+  "tipo": "",
+  "forca": ""
+ }
+}

@@ -1,0 +1,48 @@
+  ok    painel --estado sai 0
+
+== 1. os 6 indicadores ==
+  ok    tempo por ticket: média, mediana, pior (s)
+  ok    aprovação na 1ª: 2 de 3, 67%
+  ok    tentativas por aprovação: 5 inícios / 3 aprovações
+  ok    fila estimada: 2 prontos × 980 s de execução por aprovação
+  ok    ociosidade hoje: 12h menos 49 min em execução, 2h delas pausado
+  ok    última promoção: sem dado, com o motivo
+  ok    última promoção diz por que não tem dado
+  ok    custo do dia (custo.json), só hoje
+
+== 2. sem aprovação no dia, os indicadores dizem 'sem dado' em vez de zero ==
+  ok    tempo_ticket: sem dado (nenhuma aprovação hoje)
+  ok    primeira: sem dado (nenhuma aprovação hoje)
+  ok    tentativas_por_aprovacao: sem dado (nenhuma aprovação hoje)
+  ok    fila_estimada: sem dado (nenhuma aprovação hoje, sem ritmo)
+
+== 3. bloqueados: categoria, motivo, allowlist, parado há, tentativas ==
+  ok    820: enforcement
+  ok    820: parado há 30 min
+  ok    820: tentativas do BLOQUEADO (sem campo no ticket)
+  ok    820: onde mexe
+
+== 4. prontos: o que muda em uma frase, onde mexe, quantos destravam ==
+  ok    prontos na ordem do loop
+  ok    810: a primeira frase do objetivo
+  ok    810: onde mexe
+  ok    810 destrava 1 (o 812), 811 nenhum
+
+== 5. hora a hora: aprovado, reprova, parado ==
+  ok    9h: 1 aprovado, 1 reprova, 28 min em execução, 32 parado
+  ok    10h: 2 aprovados, 16 min em execução
+  ok    3h: parado a hora inteira
+  ok    horas até agora (0 a 12)
+
+== 6. arquivos mais disputados entre os pendentes ==
+  ok    top 3
+
+== 7. a página tem a vista de detalhe ==
+  ok    página contém 'function detalhe'
+  ok    página contém 'Hoje, hora a hora'
+  ok    página contém 'Arquivos mais disputados'
+  ok    página contém 'Prontos'
+  ok    página contém 'sem dado'
+
+TODOS OS CHECKS PASSARAM
+rc=0

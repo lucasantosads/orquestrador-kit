@@ -1,0 +1,185 @@
+diff --git a/src/lib/perf/ghl-backfill.ts b/src/lib/perf/ghl-backfill.ts
+index 2b7f97a..676bab1 100644
+--- a/src/lib/perf/ghl-backfill.ts
++++ b/src/lib/perf/ghl-backfill.ts
+@@ -40,6 +40,8 @@ const FOLGA_VIGIA_MS = 10_000;
+ 
+ const CONTATOS_POR_PAGINA = 100;
+ const OPORTUNIDADES_POR_PAGINA = 100;
++/** Oportunidades gravadas em paralelo dentro da página (cada uma faz ~15 idas ao banco). */
++export const CONCORRENCIA_OPORTUNIDADES = 6;
+ const MARGEM_RENOVACAO_MS = 5 * 60 * 1000;
+ const GHL_API_VERSION = "2021-07-28";
+ 
+@@ -339,7 +341,7 @@ async function concluirBackfill(db: JobsDb, locationId: string, falhas: number):
+ 
+   const agora = new Date().toISOString();
+   const erroAtual = atual && typeof atual.ultimo_erro === "string" ? atual.ultimo_erro : "";
+-  const campos: Record<string, unknown> = { backfill_concluido_em: agora };
++  const campos: Record<string, unknown> = { backfill_concluido_em: agora, sync_cursor: null };
+   if (falhas > 0) {
+     campos.ultimo_erro = `Backfill concluído com ${falhas} itens não gravados`;
+     campos.ultimo_erro_em = agora;
+@@ -462,6 +464,12 @@ async function retomarFase(
+       ? (ultimo.resultado.retomar as Record<string, unknown>)
+       : (ultimo.payload ?? {});
+   const seguidas = falhasSeguidas(jobs);
++  // Rede para falha que o handler não registrou (função morta pelo tempo da Vercel e recolhida pelo
++  // reaper, corte do worker): o motivo do job vai para ultimo_erro antes da retomada.
++  if (seguidas > 0) {
++    const motivo = ultimo.erro_msg?.trim() || `o job terminou como ${ultimo.status} sem motivo registrado`;
++    await gravarUltimoErro(db, c.location_id, `${PREFIXO_ERRO_BACKFILL} de ${fase} parou: ${motivo} (retomando do último ponto salvo)`);
++  }
+   await enfileirarBackfillGhl(db, {
+     clienteId: c.cliente_id,
+     locationId: c.location_id,
+@@ -533,6 +541,30 @@ export async function agendarBackfillsPendentes(db: JobsDb): Promise<{ agendados
+   return { agendados, ja_agendados: jaAgendados, falhas };
+ }
+ 
++/**
++ * Espelha o último checkpoint em perf_crm_conexoes.sync_cursor (JSON da fase que salvou por último),
++ * para quem olha a conexão ver onde o backfill está sem ler ops_jobs. A retomada continua lendo o
++ * payload do job (cada fase tem o seu); falha aqui só loga, como o checkpoint.
++ */
++async function gravarSyncCursor(db: JobsDb, payload: Record<string, unknown>): Promise<void> {
++  const locationId = typeof payload.location_id === "string" ? payload.location_id : null;
++  if (!locationId) return;
++  const espelho = {
++    fase: payload.fase,
++    passo: payload.passo,
++    cursor: payload.cursor ?? null,
++    processados: payload.processados,
++    falhas: payload.falhas,
++    ...(typeof payload.total === "number" ? { total: payload.total } : {}),
++    em: new Date().toISOString(),
++  };
++  const { error } = await db
++    .from("perf_crm_conexoes")
++    .update({ sync_cursor: JSON.stringify(espelho) })
++    .eq("location_id", locationId);
++  if (error) console.error("[ghl-backfill] sync_cursor nao gravado:", error.message);
++}
++
+ /**
+  * Salva o checkpoint no próprio job (payload com o cursor e os acumulados, e o progresso). Só
+  * grava se o job ainda é desta execução (executando, mesma tentativa): se o worker já o cortou,
+@@ -557,7 +589,66 @@ async function checkpoint(
+     console.error("[ghl-backfill] checkpoint falhou:", error.message);
+     return true;
+   }
+-  return Array.isArray(data) && data.length > 0;
++  const valido = Array.isArray(data) && data.length > 0;
++  if (valido) await gravarSyncCursor(db, payload);
++  return valido;
++}
++
++function idDoItem(bruto: unknown): string | null {
++  const id = bruto && typeof bruto === "object" ? (bruto as { id?: unknown }).id : undefined;
++  return typeof id === "string" ? id : null;
++}
++
++/**
++ * Grava um lote de oportunidades em paralelo e requalifica cada contato do lote uma vez.
++ * Erro fora dos dois previstos (sem etapa, sem conexão) sobe depois do lote assentar: a página é
++ * refeita do último checkpoint, sem perda (gravação idempotente).
++ */
++async function gravarLoteOportunidades(
++  p: PayloadBackfill,
++  lote: unknown[],
++): Promise<{ processados: number; falhas: number; vistos: string[] }> {
++  let processados = 0;
++  let falhas = 0;
++  const vistos: string[] = [];
++  const contatos = new Set<string>();
++  let inesperado: unknown = null;
++
++  const resultados = await Promise.allSettled(
++    lote.map(async (bruto) => {
++      const opp = normalizarOportunidadeGhl(bruto);
++      if (!opp) return { opp: null, gravada: null };
++      return { opp, gravada: await gravarOportunidade(p.location_id, opp, "backfill") };
++    }),
++  );
++  resultados.forEach((res, i) => {
++    const id = idDoItem(lote[i]);
++    if (res.status === "fulfilled") {
++      if (!res.value.opp) falhas++;
++      else {
++        processados++;
++        if (res.value.gravada?.ghl_contact_id) contatos.add(res.value.gravada.ghl_contact_id);
++      }
++      if (id) vistos.push(id);
++      return;
++    }
++    const err = res.reason;
++    if (err instanceof OportunidadeSemEtapaError || err instanceof OportunidadeSemConexaoError) {
++      falhas++;
++      console.warn("[ghl-backfill] oportunidade nao gravada", id ?? "?", err.name);
++      if (id) vistos.push(id);
++    } else if (inesperado === null) inesperado = err;
++  });
++  if (inesperado !== null) throw inesperado;
++
++  const requal = await Promise.allSettled(Array.from(contatos).map((c) => requalificarContato(p.cliente_id, c)));
++  requal.forEach((res) => {
++    if (res.status === "rejected") {
++      falhas++;
++      console.error("[ghl-backfill] requalificar contato falhou", motivoDe(res.reason));
++    }
++  });
++  return { processados, falhas, vistos };
+ }
+ 
+ /** Fase terminada: conclui o backfill se a outra fase já terminou (a última a terminar conclui). */
+@@ -615,36 +706,21 @@ async function processarFaseOportunidades(job: Job, p: PayloadBackfill, db: Jobs
+       });
+       const vistos = new Set(cursor.vistos ?? []);
+       let venceu = false;
+-      for (let i = 0; i < itens.length; i++) {
+-        const bruto = itens[i];
+-        const idBruto = bruto && typeof bruto === "object" ? (bruto as { id?: unknown }).id : undefined;
+-        const id = typeof idBruto === "string" ? idBruto : null;
+-        if (id && vistos.has(id)) continue;
+-        const opp = normalizarOportunidadeGhl(bruto);
+-        if (!opp) {
+-          falhas++;
+-        } else {
+-          try {
+-            const gravada = await gravarOportunidade(p.location_id, opp, "backfill");
+-            processados++;
+-            if (gravada.ghl_contact_id) {
+-              try {
+-                await requalificarContato(p.cliente_id, gravada.ghl_contact_id);
+-              } catch (err) {
+-                falhas++;
+-                console.error("[ghl-backfill] requalificar contato falhou", opp.id, motivoDe(err));
+-              }
+-            }
+-          } catch (err) {
+-            if (err instanceof OportunidadeSemEtapaError || err instanceof OportunidadeSemConexaoError) {
+-              falhas++;
+-              console.warn("[ghl-backfill] oportunidade nao gravada", opp.id, err.name);
+-            } else throw err;
+-          }
+-        }
+-        if (id) vistos.add(id);
++      const pendentes = itens.filter((bruto) => {
++        const id = idDoItem(bruto);
++        return !(id && vistos.has(id));
++      });
++      // Lotes concorrentes: cada oportunidade custa ~15 idas ao banco, em série 2.100 levavam horas.
++      // A gravação é idempotente pelo id; a requalificação roda uma vez por contato do lote, depois
++      // das gravações, para dois itens do mesmo contato não correrem juntos.
++      for (let ini = 0; ini < pendentes.length; ini += CONCORRENCIA_OPORTUNIDADES) {
++        const lote = pendentes.slice(ini, ini + CONCORRENCIA_OPORTUNIDADES);
++        const r = await gravarLoteOportunidades(p, lote);
++        processados += r.processados;
++        falhas += r.falhas;
++        for (const id of r.vistos) vistos.add(id);
+         // Prazo vencido no meio da pagina: a proxima execucao busca a mesma pagina e pula os vistos.
+-        if (i < itens.length - 1 && Date.now() >= prazo) {
++        if (ini + CONCORRENCIA_OPORTUNIDADES < pendentes.length && Date.now() >= prazo) {
+           venceu = true;
+           break;
+         }

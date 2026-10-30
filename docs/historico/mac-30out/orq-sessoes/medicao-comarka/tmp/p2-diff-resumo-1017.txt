@@ -1,0 +1,158 @@
+188a189,332
+>  },
+>  "C5": {
+>   "apolo": {
+>    "com_forte": 0,
+>    "pct": null,
+>    "universo": 0
+>   },
+>   "aprovados_de_primeira_com_forte": [
+>    "386",
+>    "509",
+>    "533b",
+>    "533c",
+>    "534",
+>    "534b",
+>    "535",
+>    "539",
+>    "549",
+>    "567",
+>    "570",
+>    "596c",
+>    "619",
+>    "620",
+>    "634",
+>    "641",
+>    "643",
+>    "666b",
+>    "734"
+>   ],
+>   "com_14_dias": 315,
+>   "coorte_ate": "2026-10-03",
+>   "coorte_de": "2026-09-20",
+>   "dias_acompanhados_min": 14,
+>   "fortes_por_tipo": {
+>    "fix_na_linha": 31,
+>    "revert": 0,
+>    "saiu_de_done": 0,
+>    "ticket_conserto": 0
+>   },
+>   "fracos_por_tipo": {
+>    "fix_no_arquivo": 56,
+>    "linha_sem_fix": 103
+>   },
+>   "plataforma": {
+>    "com_forte": 31,
+>    "pct": 9.8,
+>    "universo": 315
+>   },
+>   "quentes_excluidos_do_fraco": [
+>    "docs/migrations-aplicadas.md",
+>    "docs/orquestrador/PLAYBOOK.md",
+>    "docs/roadmap/BACKLOG-MAPEADO.md",
+>    "scripts/test-validar-fila.py",
+>    "scripts/validar-fila.py",
+>    "src/app/dashboard/clientes/[id]/_components/bloco-relacao.tsx",
+>    "src/app/dashboard/clientes/[id]/_components/kpis-visao.tsx",
+>    "src/app/dashboard/clientes/[id]/_components/metricas-diarias.tsx",
+>    "src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx",
+>    "src/app/dashboard/clientes/[id]/page.tsx",
+>    "src/app/dashboard/clientes/[id]/tabs/config-tab.tsx",
+>    "src/app/dashboard/clientes/[id]/tabs/ficha-types.ts",
+>    "src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx",
+>    "src/app/dashboard/clientes/page.tsx",
+>    "src/middleware.ts",
+>    "test/espelho-fase-churn.test.ts",
+>    "test/relacao-aceite.test.tsx",
+>    "test/visao-aceite-estrutura.test.tsx",
+>    "test/visao-aceite-mockup.test.tsx",
+>    "vercel.json"
+>   ],
+>   "tickets_com_fraco_sem_forte": 102,
+>   "total": {
+>    "com_forte": 31,
+>    "pct": 9.8,
+>    "universo": 315
+>   }
+>  },
+>  "C5_parcial": {
+>   "apolo": {
+>    "com_forte": 0,
+>    "pct": 0.0,
+>    "universo": 136
+>   },
+>   "aprovados_de_primeira_com_forte": [
+>    "318b",
+>    "699",
+>    "705",
+>    "740",
+>    "763",
+>    "861",
+>    "898c",
+>    "908",
+>    "938",
+>    "952b",
+>    "954",
+>    "974",
+>    "982"
+>   ],
+>   "com_14_dias": 0,
+>   "coorte_ate": "2026-10-17",
+>   "coorte_de": "2026-10-04",
+>   "dias_acompanhados_min": 0,
+>   "fortes_por_tipo": {
+>    "fix_na_linha": 25,
+>    "revert": 0,
+>    "saiu_de_done": 0,
+>    "ticket_conserto": 0
+>   },
+>   "fracos_por_tipo": {
+>    "fix_no_arquivo": 27,
+>    "linha_sem_fix": 15
+>   },
+>   "plataforma": {
+>    "com_forte": 25,
+>    "pct": 5.9,
+>    "universo": 422
+>   },
+>   "quentes_excluidos_do_fraco": [
+>    "docs/migrations-aplicadas.md",
+>    "docs/orquestrador/PLAYBOOK.md",
+>    "docs/roadmap/BACKLOG-MAPEADO.md",
+>    "scripts/test-validar-fila.py",
+>    "scripts/validar-fila.py",
+>    "src/app/dashboard/clientes/[id]/_components/bloco-relacao.tsx",
+>    "src/app/dashboard/clientes/[id]/_components/kpis-visao.tsx",
+>    "src/app/dashboard/clientes/[id]/_components/metricas-diarias.tsx",
+>    "src/app/dashboard/clientes/[id]/_components/tabela-campanhas.tsx",
+>    "src/app/dashboard/clientes/[id]/page.tsx",
+>    "src/app/dashboard/clientes/[id]/tabs/config-tab.tsx",
+>    "src/app/dashboard/clientes/[id]/tabs/ficha-types.ts",
+>    "src/app/dashboard/clientes/[id]/tabs/geral-tab.tsx",
+>    "src/app/dashboard/clientes/page.tsx",
+>    "src/middleware.ts",
+>    "test/espelho-fase-churn.test.ts",
+>    "test/relacao-aceite.test.tsx",
+>    "test/visao-aceite-estrutura.test.tsx",
+>    "test/visao-aceite-mockup.test.tsx",
+>    "vercel.json"
+>   ],
+>   "tickets_com_fraco_sem_forte": 31,
+>   "total": {
+>    "com_forte": 25,
+>    "pct": 4.5,
+>    "universo": 558
+>   }
+234a379,390
+>  "ritual": {
+>   "C5": {
+>    "commits": 0,
+>    "pares": 0,
+>    "tickets": 0
+>   },
+>   "C5_parcial": {
+>    "commits": 8,
+>    "pares": 44,
+>    "tickets": 44
+>   }
+>  },

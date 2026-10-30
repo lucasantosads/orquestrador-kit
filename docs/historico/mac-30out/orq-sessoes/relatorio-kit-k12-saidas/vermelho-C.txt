@@ -1,0 +1,75 @@
+  servidor em http://127.0.0.1:55761
+== 1. pausar: cria o PAUSAR do contrato e grava PAUSA na trilha ==
+  FALHA HTTP 200: esperado '200', veio '501'
+  FALHA PAUSAR não criado
+  FALHA conteúdo: 
+  FALHA trilha sem PAUSA: ''
+  FALHA resposta sem a explicação: <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+        "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+        <title>Error response</title>
+    </head>
+    <body>
+        <h1>Error response</h1>
+        <p>Error code: 501</p>
+        <p>Message: Unsupported method ('POST').</p>
+        <p>Error code explanation: HTTPStatus.NOT_IMPLEMENTED - Server does not support this operation.</p>
+    </body>
+</html>
+  ok    .orq-pause nunca é escrito
+  ok    nada mais mudou no repo
+
+== 2. pausar de novo: recusa, sem segunda linha ==
+grep: /var/folders/_7/dqmkt89n7lg_9sf9qkzm7fxr0000gn/T/tmp.WHCqHS4ebY/repos/rho/docs/fila/runs/events.log: No such file or directory
+  FALHA HTTP 409: esperado '409', veio '501'
+grep: /var/folders/_7/dqmkt89n7lg_9sf9qkzm7fxr0000gn/T/tmp.WHCqHS4ebY/repos/rho/docs/fila/runs/events.log: No such file or directory
+  ok    sem PAUSA duplicada
+
+== 3. o estado diz o que cada botão pode e por quê ==
+  FALHA rho: pausar desabilitado: esperado 'false', veio 'null'
+  FALHA rho: retomar habilitado: esperado 'true', veio 'null'
+  FALHA rho: disparo desabilitado (ticket em curso): esperado 'false', veio 'null'
+  FALHA sem motivo do disparo
+jq: error (at <stdin>:0): null (null) has no keys
+  FALHA sem ação 'pausar agora': esperado 'kickstart pausar retomar', veio ''
+
+== 4. retomar: apaga o PAUSAR e grava RETOMADA com a duração ==
+  FALHA HTTP 200: esperado '200', veio '501'
+  ok    PAUSAR apagado
+tail: /var/folders/_7/dqmkt89n7lg_9sf9qkzm7fxr0000gn/T/tmp.WHCqHS4ebY/repos/rho/docs/fila/runs/events.log: No such file or directory
+  FALHA trilha sem RETOMADA: ''
+  ok    nada mais mudou no repo
+  FALHA retomar sem pausa: 409: esperado '409', veio '501'
+
+== 5. legado .orq-pause: lido, nunca escrito nem apagado ==
+  ok    sigma aparece pausado
+  FALHA sigma: retomar desabilitado: esperado 'false', veio 'null'
+  FALHA motivo sem o legado
+  FALHA POST retomar no legado: 409: esperado '409', veio '501'
+  ok    .orq-pause intacto
+  ok    sigma continua sem PAUSAR
+
+== 6. disparo: só com STATUS ocioso, e sem -k ==
+  FALHA com ticket em curso: 409: esperado '409', veio '501'
+  ok    launchctl kickstart não chamado
+  FALHA ocioso: 200: esperado '200', veio '501'
+grep: /var/folders/_7/dqmkt89n7lg_9sf9qkzm7fxr0000gn/T/tmp.WHCqHS4ebY/launchctl.log: No such file or directory
+  FALHA kickstart gui/<uid>/<label do config>, sem -k: esperado 'kickstart gui/501/org.fixture.rho', veio ''
+
+== 7. o resto é recusado ==
+  FALHA ação fora da allowlist: 403: esperado '403', veio '501'
+  FALHA repo desconhecido: 400: esperado '400', veio '501'
+  ok    Host estranho: 403
+
+== 8. a página: Pausar e Retomar, e o que a pausa faz ==
+  FALHA página sem 'Pausar'
+  FALHA página sem 'Retomar'
+  FALHA página sem 'ENTRE tickets'
+  FALHA página sem 'nada é interrompido'
+  ok    sem 'Pausar agora'
+
+26 CHECK(S) FALHARAM
+scripts/orquestrador/test-painel-pausa.sh: line 134: 69758 Terminated: 15          python3 "$AQUI/orq-painel.py" --porta 0 > "$d/srv.log" 2>&1
+rc=1

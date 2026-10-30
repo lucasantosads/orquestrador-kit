@@ -1,0 +1,63 @@
+== 0. pendentes_razoes: a régua do OCIOSO, com o processável dito 'pronto' ==
+  FALHA 531 sem 'pronto': 
+  FALHA razão do 601 ausente
+  ok    ocioso_razoes segue com rc 1 quando há processável
+
+== 1. o estado sai do painel, lido só do contrato ==
+  FALHA painel --estado sai 0: esperado '0', veio '2'
+  stderr: /Library/Developer/CommandLineTools/usr/bin/python3: can't open file '/Users/lucasantos/Projetos/_worktrees/kit-k12/scripts/orquestrador/orq-painel.py': [Errno 2] No such file or directory
+  FALHA 3 repos, na ordem do repos.json: esperado 'alfa beta gama', veio ''
+
+== 2. Precisa de você: tokens ordenados por quantos pendentes destravam ==
+  FALHA 1º item: humano:cred-evo: esperado 'humano:cred-evo', veio ''
+  FALHA cred-evo destrava 3 (600, e 601 e 602 atrás dele): esperado '3', veio ''
+  FALHA tickets destravados por cred-evo: esperado '600 601 602', veio ''
+  FALHA 2º item: humano:grupo-wa destrava 1: esperado 'humano:grupo-wa 1', veio ''
+  FALHA o item diz de qual repo é: esperado 'alfa', veio ''
+
+== 3. estado em linguagem direta, com tempo ==
+  FALHA alfa: tipo: esperado 'rodando', veio ''
+  FALHA alfa: frase: esperado 'rodando 530 há 6 min', veio ''
+  FALHA alfa: detalhe sem tentativa/último: 
+  FALHA beta: tipo: esperado 'pausado', veio ''
+  FALHA beta: frase: esperado 'pausado por você há 21h', veio ''
+  FALHA beta: sem o motivo
+  FALHA gama: tipo: esperado 'travado', veio ''
+  FALHA gama: frase: esperado 'sem ticket para pegar há 19 min', veio ''
+  FALHA gama: sem a razão: 
+  FALHA cada estado tem rótulo em texto, não só cor: esperado 'rodando pausado travado', veio ''
+
+== 4. o dia: aprovados contra reprovas (ontem não conta) ==
+  FALHA alfa: 2 aprovados, 2 reprovas: esperado '2 2', veio ''
+  FALHA alfa: contagem da fila: esperado '4 8 3', veio ''
+
+== 5. próximos: os 3 primeiros da fila, com título ==
+  FALHA ids na ordem do loop: esperado '531 532 533', veio ''
+  FALHA com título: esperado 't-531', veio ''
+  FALHA e mais 1: esperado '1', veio ''
+
+== 6. bloqueados: categoria de motivo e sub, nunca da prosa ==
+  FALHA 700 (repeticao sub=gate_testes) é teste: esperado 'teste', veio ''
+  FALHA 701 (criterio_qualidade, último sub=juiz) é juiz, apesar de 'fora_do_pathspec' na nota: esperado 'juiz', veio ''
+  FALHA 702 (bloqueado sem BLOQUEADO na trilha) é decisão sua: esperado 'decisão sua', veio ''
+  FALHA 243 (adiamentos) é ambiente: esperado 'ambiente', veio ''
+  FALHA primeira linha do motivo: esperado 'repetição: 2ª reprovação igual à anterior', veio ''
+  FALHA o resto fica para o clique: esperado 'segunda linha do motivo', veio ''
+  FALHA 4 bloqueados nos 3 repos, cada um com o repo: esperado 'alfa alfa alfa gama', veio ''
+
+== 7. nenhum ramo por nome de repo ==
+  ok    o mesmo repo com outro nome dá o mesmo estado
+  ok    orq-painel.py não cita nome de repo
+  FALHA orq-painel.py ausente ou lê formato livre
+
+== 8. repos.json ausente: a tela diz o que falta, não quebra ==
+  FALHA sem repos_erro: 
+
+== 9. a página: atualiza a cada 15 s e tem as seções ==
+  FALHA página sem 'Precisa de você'
+  FALHA página sem 'Bloqueados'
+  FALHA página sem '/api/estado'
+  FALHA página sem '15000'
+
+37 CHECK(S) FALHARAM
+rc=1

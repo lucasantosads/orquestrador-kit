@@ -1,0 +1,15 @@
+casos: 37 | bloqueados: 35
+pegaria (bloqueado + R1 firme D6/D6b): 15
+  igual ao humano (mesmo teste, só ele): 11 480 543 528 530 596b 531 625 627j 689 950 840
+  humano pôs o mesmo teste e mais: 3 331 391e 391e
+  diferente: 1 762 (R1 test/cron-paths-vercel.test.ts; humano ['src/middleware.ts'])
+não pegaria: 22
+  7 nenhuma regra (juiz ou sem estágio decisivo): 325a 313b 368 490 475c 538 826
+  3 R1 palpite (D8: vermelho numa tentativa só, ou enforcement sem vermelho acoplado): 391a 306b 480
+  3 R1|R2? D11 (critério reprovou com vermelho fora): 550 407a 711a
+  2 R1 palpite (D6: vermelho numa tentativa só, ou enforcement sem vermelho acoplado): 343 483
+  2 não estava bloqueado na hora da edição: 393a 722
+  2 R5 D5: 499 499
+  1 R3? D3: 523
+  1 R6 D2: 533
+  1 R2? D12: 407a

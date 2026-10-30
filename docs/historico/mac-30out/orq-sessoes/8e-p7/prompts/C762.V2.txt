@@ -1,0 +1,729 @@
+Você é o JUIZ de uma esteira automatizada. Julgue SOMENTE pelo material abaixo:
+o diff cru da tentativa, a saída dos gates mecânicos e os critérios do ticket.
+Você NÃO recebe o prompt do executor nem resumo nenhum do agente, de propósito:
+o que o agente diz que fez nunca é evidência. Se algo não está no diff, não aconteceu.
+
+VOCÊ NÃO TEM FERRAMENTAS. Não leia arquivo, não rode comando, não abra o
+repositório: a chamada está sem ferramenta nenhuma e qualquer tentativa só
+gasta turno. Se o material abaixo não basta para aprovar, REPROVE dizendo o
+que faltou — nunca aprove no benefício da dúvida.
+
+Os gates mecânicos JÁ PASSARAM (enforcement, typecheck, testes, critérios, build).
+Você não os reexecuta: o seu trabalho é o que eles não conseguem ver.
+
+O QUE VOCÊ COBRA, item a item:
+
+1. INTEGRAÇÃO, não existência. Componente/função/rota criada mas nunca importada,
+   montada ou chamada passa em "arquivo existe" e falha em produção. Siga a
+   variável ou o símbolo até o ponto de uso real; um resultado calculado e
+   descartado não vale.
+2. O TESTE EXERCITA O COMPORTAMENTO DO OBJETIVO. Teste tautológico
+   (expect(true), expect(x).toBeDefined() sobre algo trivialmente definido,
+   asserção que passaria com o código antigo) NÃO prova nada. Pergunte-se: este
+   teste ficaria VERMELHO se a mudança fosse revertida? Se não, reprove.
+3. CRITÉRIO DE AUSÊNCIA EXIGE CONTROLE POSITIVO. Um teste que só afirma que algo
+   NÃO aparece passa igual quando o componente não renderiza nada. Exija, no
+   MESMO render/execução, ao menos uma asserção POSITIVA de que a coisa certa
+   apareceu. Reprove ausência provada no vazio.
+
+4. ANTI-AFROUXAMENTO (a allowlist deste ticket inclui arquivo de teste).
+   No diff dos arquivos de teste, REPROVE se encontrar qualquer um destes:
+   - asserção removida (expect apagado) sem que o comportamento tenha deixado de existir;
+   - toBe/toEqual trocado por toBeDefined/toBeTruthy/objectContaining mais frouxo;
+   - .skip, .todo, .only, teste comentado ou arquivo de teste deletado;
+   - valor esperado alterado SEM comentário dizendo por que a regra nova o muda.
+   Valor RECALCULADO sob a regra nova, com o porquê em comentário, é o único
+   caminho aceito. Renomear símbolo para satisfazer contagem também é afrouxar.
+
+REVIEW.md DO REPO (regras de revisão deste repositório; valem junto com os itens acima):
+# REVIEW — o que o juiz cobra neste repositório (comarka-operacional)
+
+Lido pelo juiz do estado da BASE da tentativa; o loop nunca edita este arquivo.
+Cada seção é uma falha que já passou por aqui. Reprove o diff que tiver a cara dela,
+dizendo arquivo e linha. Na dúvida, reprove e diga o que falta.
+
+## 1. Config apontando para produção
+Cara no diff: teste ou script que lê `.env.local` ou monta cliente do Supabase com a URL ou a
+service role reais; rota GET que grava; escrita sem trava de ambiente.
+Reprove se: o diff conecta no projeto real a partir de teste ou script, ou grava dentro de GET.
+Fonte: dashboard-comercial 0f24c418 (teste v128 lia `.env.local` e rodou contra produção; foram
+18 vezes, 08e6bb67) e 6213cdc8 (GET de /api/financeiro/entradas rodando no Mac contra produção
+gravou ltv_meses +1 em 12 clientes). Aqui: PLAYBOOK, "Secrets só humano". Sem incidente próprio.
+
+## 2. Teste que não testa a regra
+Cara no diff: o servidor do Supabase devolve no máximo 1000 linhas por chamada, e o código pede
+`.limit(N)` com N maior que 1000 (ou nenhum limite) sem paginar com `.range`; o teste usa dublê
+que devolve tudo e ignora `.limit`/`.range` (`for (const m of [... "limit" ...]) cadeia[m] =
+() => cadeia`), então nunca vê o corte. Também: teste só de ausência; teste que passaria com o
+código antigo.
+Reprove se: a regra do objetivo depende de teto, página, fuso ou tipo de id e o teste usa dublê
+que não reproduz esse limite; ou se há `.limit` acima de 1000 lendo tabela que cresce.
+Fonte: 80a212fdb e 29afed53d (vácuo, eventos, promessas e fechar liam `.limit(5000)`; o servidor
+cortou em 1000 e as mensagens mais recentes sumiram; 715, 734, 740, 741a e 861 foram aprovados
+com mock que ignorava limit); kit juiz.ts:7-11 (ticket 204, ausência provada no vazio).
+
+## 3. Doc ou comentário que mente
+Cara no diff: comentário, PLAYBOOK ou doc com número, fonte ou comportamento que o diff não
+prova; campo marcado como legado lido como fonte da verdade.
+Reprove se: o diff afirma fato (contagem, "nenhuma tela grava", "a fonte é X") sem a prova no
+próprio diff ou no material; ou lê campo que o repo trata como legado.
+Fonte: dashboard-comercial 08e6bb67 (PLAYBOOK e vitest.config diziam 3 execuções contra produção;
+eram 18). Aqui: 5912a0dfd (924c lia `whatsapp_group_url`, legado: 25 clientes "Sem link do
+grupo") e f16164c25 (a ficha lia `clientes_extra.meta_account_id`, que nenhuma tela grava).
+
+## 4. Escrita em tabela de outro dono
+Cara no diff: `.from("<tabela>").insert/update/upsert/delete`, RPC ou migration que escreve em
+tabela de `c0_intocavel` (docs/fila/000-config.json: `clientes_receita`, `leads_crm`, ...) ou
+em `clientes_crm_config` (o dashboard comercial lê e grava).
+Reprove se: o diff ADICIONA escrita (não comentário, não linha removida) em tabela de outro dono.
+Fonte: PLAYBOOK, "Lição (04/09)" (ticket 184: o OS escrevia em `clientes_receita`); 262b71c30 e
+f16164c25 (consertos que deixam `clientes_crm_config` intocada porque o dono é o dashboard).
+
+## 5. Consulta em série por item
+Cara no diff: `await` de consulta ao banco ou à API dentro de `for`/`map` por cliente, gestor,
+contato ou oportunidade; leituras independentes uma depois da outra em vez de `.in(...)` em lote
+ou `Promise.all`.
+Reprove se: o número de consultas cresce com o número de itens e o objetivo não exige isso.
+Fonte: a2cd69ec8 (Início lento: 2 consultas em série por cliente; equipe com uma carga por
+gestor; 34 → 108 consultas de 3 para 40 clientes), da1f4f1ce (backfill a ~2 s por item, 15-20
+idas sequenciais ao banco por oportunidade) e 80a212fdb (contatos lidos cliente a cliente).
+
+## 6. Data comparada sem o dia de São Paulo
+Cara no diff: data comparada como texto ou com `new Date(...)` sem o fuso de São Paulo
+(`d >= from && d < ate` sobre ISO em UTC, `getMonth()` de DATE lida como meia-noite UTC).
+Reprove se: o corte de dia, semana ou mês depende do horário da máquina ou do UTC.
+Fonte: 10c88edb9 (revisão pós-release de 12/10, "funil no dia de SP"; ticket 953 comparava
+`d >= periodo.from && d < aposTo`) e dashboard-comercial 6213cdc8 (`getMonth()` em BRT devolveu
+o mês anterior).
+
+RESPONDA SÓ COM ESTE JSON, sem cerca de código, sem texto antes ou depois:
+{"aprovado": true|false, "motivo": "<=2 frases, concreto, citando arquivo e linha>",
+ "criterios_falhos": ["descrição exata do critério que você reprova", ...]}
+
+criterios_falhos: use a DESCRIÇÃO do critério, copiada como está na lista acima.
+Vazio quando aprovado. Na dúvida entre aprovar e reprovar, REPROVE e diga o que falta.
+
+TICKET 762
+Objetivo: ORCAMENTO DE DIFF: teto de 600 linhas (~190 em src/lib/perf/ghl-backfill.ts, ~4 em src/lib/jobs/handlers/index.ts, ~3 em src/lib/perf/crm-conexao.ts, ~45 na rota NOVA src/app/api/cron/ghl-backfill/route.ts, ~4 em vercel.json, ~2 em src/middleware.ts, ~340 no teste NOVO test/ghl-backfill-job.test.ts). Se passar do teto, pare e reporte. FONTE: decisoes do Lucas de 03/10 (regra de MQL do cliente no Setup > CRM passa a usar etapas reais do GHL; tags nos tickets 746 a 748; etapas canonicas seguem so para relatorio agregado). Piloto AQUINO ADV (location BAs5Fw46Xz3uvTtq6Gmz, cliente 7837ac12-c6db-47e8-b4e8-6e043633eb6d): conectado, 7 pipelines em perf_crm_pipelines, 50 etapas em perf_crm_etapas, todas com etapa_canonica nula, location_nome nula, backfill iniciado e nao concluido, 0 linhas em perf_crm_oportunidades e 0 em perf_leads (o backfill de contatos nunca rodou: nada chama a rota nem enfileira job; a ingestao nasce nos tickets 760 a 763). CAUSA DOS 0 LEADS (recon de 03/10): (a) o backfill nunca rodou. Nada em src chama POST /api/perf/ghl/backfill/[clienteId] e nada enfileira job para ele (src/lib/jobs/handlers/index.ts so registra resumo_grupo_semanal; ops_jobs nunca teve tipo de backfill; logs de producao: 0 requisicoes a rota depois do callback das 18:22:39). backfill_iniciado_em e so o carimbo do upsert em conectarContaCliente, e sincronizarConexao vira 'ativa' depois de puxar SO pipelines e etapas. A rota, mesmo chamada, nao escreve em perf_crm_conexoes: por isso nenhum ultimo_erro. (b) Tempo real: 0 POST em /api/webhooks/ghl/app em producao desde a conexao; o codigo nao explica isso (configuracao do app no Marketplace, fora do repo). PASSO 1: leia src/lib/perf/ghl-backfill.ts (761), src/lib/jobs/core/enqueue.ts (idempotencia por tipo + chave em status vivo), src/lib/jobs/core/finalize.ts (transitorio consome tentativa com backoff; JobPermanentError falha direto; JobConfigError adia), src/app/api/jobs/worker/route.ts (cron a cada 5 min, maxDuration 300, ate 5 jobs, corte por tipo), src/lib/jobs/handlers/index.ts, src/lib/jobs/core/cron-registro.ts e src/app/api/cron/ghl-agencia-refresh/route.ts (padrao de cron: CRON_SECRET ou PERF_CRON_SECRET, registrarExecucaoCron), src/lib/perf/crm-conexao.ts (conectarContaCliente), src/middleware.ts (CRON_PATHS) e test/cron-paths-vercel.test.ts (CRON_PENDENTES_REVISAO e o it 'todo cron fora da lista de pendências passa direto para o handler'). ops_jobs.tipo NAO tem CHECK (conferido no banco em 03/10): tipo novo nao precisa de DDL. POR QUE CRON E NAO ENFILEIRAR NO CALLBACK: o callback do OAuth e coberto por test/ghl-oauth.test.ts, que outra frente (831) reescreve; enfileirar ali obrigaria a editar esse teste e prender esta frente atras dela. O cron tambem cobre a conta que JA esta conectada (AQUINO) sem acao manual. FAZER: (1) src/lib/perf/ghl-backfill.ts: export const TIPO_JOB_BACKFILL = 'ghl_backfill'. export async function enfileirarBackfillGhl(db, { clienteId, locationId, fase = 'contatos', cursor = null, passo = 0, acumulado }) chama enqueue com chave_idempotencia `ghl_backfill:${locationId}:${fase}:${passo}`, cliente_id e payload { cliente_id, location_id, fase, cursor, passo, processados, falhas }. export async function agendarBackfillsPendentes(db): para cada perf_crm_conexoes com status 'ativa', backfill_iniciado_em preenchido e backfill_concluido_em nulo, enfileira o passo 0 SO se nao existe em ops_jobs nenhum job TIPO_JOB_BACKFILL do mesmo cliente_id criado depois de backfill_iniciado_em (qualquer status): o agendador dispara UMA vez por conexao; reconectar (novo backfill_iniciado_em) dispara de novo; repetir um backfill que falhou e acao humana ('Sincronizar agora', 744). Falha ao enfileirar uma conexao grava ultimo_erro = `Backfill não pôde ser agendado: <motivo>` + ultimo_erro_em nela e segue para a proxima; erro de leitura das conexoes ou dos jobs lanca. Devolve { agendados, ja_agendados, falhas }. export async function processarJobBackfillGhl(job, db): fase 'contatos' chama backfillContatos em voltas de 5 paginas enquanto houver tempo (orcamento interno de 200 s, medido com Date.now; o corte do tipo e 240 s). (a) Pagina com erro (BackfillErro ou excecao): grava em perf_crm_conexoes (location_id) ultimo_erro = `Backfill de contatos parou: <mensagem>` (comeca com PREFIXO_ERRO_BACKFILL) e ultimo_erro_em = agora, e RELANCA (o motor de jobs refaz com backoff a partir do cursor do payload; BackfillErro 404/409 vira JobPermanentError, porque repetir nao resolve). Gravar o erro falhando = console.error e relanca o erro original: falha nunca fica muda. (b) Orcamento acabou e nao terminou: enfileira o proximo elo (passo + 1, cursor novo, acumulados) e conclui este job com { continua: true }. (c) Terminou: backfill_concluido_em = agora e, se ultimo_erro comeca com 'Backfill', ultimo_erro e ultimo_erro_em = null; acumulado de falhas > 0 grava ultimo_erro = `Backfill concluído com N contatos não gravados` + ultimo_erro_em (estado 'concluido', motivo visivel). Resultado { processados, falhas }. Status da conexao NAO muda em nenhum caso (continua 'ativa'). (2) src/lib/jobs/handlers/index.ts: registrar(TIPO_JOB_BACKFILL, processarJobBackfillGhl, { corteMs: 240_000 }). (3) src/lib/perf/crm-conexao.ts: o upsert de perf_crm_conexoes em conectarContaCliente passa a mandar backfill_concluido_em: null junto de backfill_iniciado_em (reconectar recomeca o backfill). Nada mais muda nesse arquivo. (4) NOVA rota src/app/api/cron/ghl-backfill/route.ts GET e POST (maxDuration 30): mesma autenticacao do ghl-agencia-refresh; registrarExecucaoCron('ghl-backfill', 'cron', () => agendarBackfillsPendentes(db)); erro = 500 { error: motivo }. (5) vercel.json: novo cron { "path": "/api/cron/ghl-backfill", "schedule": "*/15 * * * *" }; nada mais muda. (5b) src/middleware.ts: '/api/cron/ghl-backfill' entra UMA vez no CRON_PATHS, logo depois de '/api/cron/ghl-agencia-refresh', com comentario de uma linha citando o 762 (molde do 722 com leitura-relacao): '// 762: agenda o backfill do GHL; a rota valida o próprio segredo.'. Nenhuma outra rota muda e nada mais muda no arquivo. Motivo: test/cron-paths-vercel.test.ts exige que todo path do vercel.json fora de CRON_PENDENTES_REVISAO passe pelo middleware com Bearer CRON_SECRET; sem a linha, o cron toma 401 antes do handler (reprovou a tentativa 2: expected [ '/api/cron/ghl-backfill' ] to deeply equal []). test/cron-paths-vercel.test.ts NAO muda: a rota nao entra em CRON_PENDENTES_REVISAO. (6) NOVO test/ghl-backfill-job.test.ts (supabase, fetch e backfillContatos mockados, Date.now controlado): enfileirar usa a chave com location, fase e passo; agendador enfileira a conexao sem job depois do inicio, pula a que ja tem (inclusive 'falhou'), pula a concluida e grava ultimo_erro quando o enqueue falha; job que termina grava backfill_concluido_em e limpa erro antigo de backfill, mas nao limpa ultimo_erro de pipeline (sem o prefixo); pagina com erro grava ultimo_erro com o prefixo e ultimo_erro_em e relanca; 404/409 viram JobPermanentError; orcamento estourado enfileira passo + 1 com o cursor e acumulados; falhas > 0 no fim gravam a mensagem de contatos nao gravados; status da conexao nunca muda; registro tem corte de 240 s; rota do cron 401 sem segredo e 200 com o placar. FORA DE ESCOPO: fase de oportunidades (763), rota manual de backfill (761; segue igual), callback do OAuth e test/ghl-oauth.test.ts (831), tela, crm-status. REGRAS: zona C0 (clientes_receita, leads_crm, leads_crm_historico, ads_metadata, ads_performance, fn_mql_sql_by_month, prefixos trafego_* e vw_*) e leitura pura: nada de escrita, DDL, grant, RLS ou trigger nelas; ghl_etapa_mapa e as demais ghl_* do comercial sao leitura pura e a regra nova NAO depende delas nem de perf_crm_etapas.etapa_canonica (que continua existindo so para relatorio agregado; nao altere nem apague); zero migration e zero .sql (so o 746 escreve .sql, e nao aplica); nada e escrito de volta no GHL (so GET); token do GHL so por obterTokenLocation (src/lib/perf/ghl-agencia.ts), nunca lido direto de integration_tokens e nunca logado; falha de leitura (banco ou GHL) nunca vira zero, lista vazia ou null silencioso: nada de `?? []`, `|| []`, `|| 0` ou catch que devolve vazio numa leitura, o erro sobe com o motivo; dado ausente aparece como 's/ dado' ou 'sem base' com o motivo, nunca zero e nunca verde; nenhum jargao de banco em texto de tela (nome de tabela, view, coluna, tipo_regra ou uuid); nenhum travessao (U+2014) em texto de tela nem em string de copy (guarda travessao-mudo); numeros de tela em Geist Mono (classe font-mono ja usada no repo); Set e Map so com Array.from (tsc sem downlevelIteration); nenhum .json() literal novo em src (cliente: fetchJson de @/lib/fetch-json, ou res.text() + JSON.parse quando precisar do corpo de erro, como pedirCrm em tabs/config-tab.tsx; rota: lerCorpoJson de @/lib/fetch-json, nunca req.json()); getSession e server-only, nunca em arquivo 'use client'; supabase, fetch, getSession e resolveCockpitId sempre mockados nos testes (vi.mock), nunca banco real nem GHL real; fixture de uuid RFC-4122 (00000000-0000-4000-8000-000000000000 ou crypto.randomUUID()); testes sem JSX (React.createElement + renderToStaticMarkup ou leitura de fonte com readFileSync; o projeto nao tem jsdom nem @testing-library); teste ancora em texto visivel ou data-testid, nunca em classe de estilo; nunca toEqual numa lista inteira (afirme itens com toContain/some). TESTES EXISTENTES da allowlist: se a mudanca quebrar uma assercao, RECALCULE o valor sob a regra nova com comentario acima citando o ticket e de onde veio o numero; PROIBIDO remover assercao, trocar toBe/toEqual/toMatch por toBeDefined/toBeTruthy, usar .skip/.only/.todo, apagar it( ou o arquivo. GUARDAS GLOBAIS (fora da allowlist, nao edite): test/fetch-json-teto.test.ts, test/consistencia-contagens.test.ts, test/bloco-vazio-linha.test.ts, test/abas-montadas.test.ts, test/cartao-topo-perfil.test.tsx, test/travessao-mudo.test.ts, test/c0-guard.test.ts. Se um teste FORA da allowlist quebrar, PARE e descreva. Motor do orquestrador (scripts/orquestrador/, docs/orquestrador/) intocado.
+
+Allowlist do ticket:
+  - src/lib/perf/ghl-backfill.ts
+  - src/lib/jobs/handlers/index.ts
+  - src/lib/perf/crm-conexao.ts
+  - src/app/api/cron/ghl-backfill/route.ts
+  - vercel.json
+  - src/middleware.ts
+  - test/ghl-backfill-job.test.ts
+
+Critérios de aceite:
+  - [guarda · já verificado por comando] tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)
+      cmd: ( [ "$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\.next/')" = 3 ] ) && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] nenhum .sql novo (zero DDL)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff --name-only "$b" HEAD | grep -c '[.]sql$'); [ "$n" = 0 ] && echo SEM_SQL || echo SQL_$n · espera: SEM_SQL
+  - [guarda · já verificado por comando] guardas globais seguem verdes
+      cmd: npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [guarda · já verificado por comando] nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADAS || echo EDITOU_$n · espera: INTOCADAS
+  - [guarda · já verificado por comando] nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- 'src/lib/perf/ghl-backfill.ts' 'src/lib/jobs/handlers/index.ts' 'src/lib/perf/crm-conexao.ts' 'src/app/api/cron/ghl-backfill/route.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ "$n" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n · espera: ZERO_JSON_NOVO
+  - [guarda · já verificado por comando] nenhuma leitura nova vira vazio em silencio (?? [] ou || [] em linha nova de src do ticket)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- 'src/lib/perf/ghl-backfill.ts' 'src/lib/jobs/handlers/index.ts' 'src/lib/perf/crm-conexao.ts' 'src/app/api/cron/ghl-backfill/route.ts' | grep -E '^[+][^+]' | grep -cE '[?][?] *\[\]|[|][|] *\[\]'); [ "$n" = 0 ] && echo SEM_VAZIO_SILENCIOSO || echo VAZIO_SILENCIOSO_$n · espera: SEM_VAZIO_SILENCIOSO
+  - [guarda · já verificado por comando] arquivos fora do escopo intocados
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- 'src/app/api/perf/ghl/backfill/[clienteId]/route.ts' 'test/ghl-backfill.test.ts' 'test/ghl-oauth.test.ts' 'src/app/api/auth/ghl/callback/route.ts' 'src/lib/perf/crm-status.ts' | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADOS || echo TOCOU_$n · espera: INTOCADOS
+  - [guarda · já verificado por comando] so arquivos da allowlist foram tocados
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; r=SO_ALLOWLIST; for f in $(git diff --name-only "$b" HEAD); do ok=0; for p in 'src/lib/perf/ghl-backfill.ts' 'src/lib/jobs/handlers/index.ts' 'src/lib/perf/crm-conexao.ts' 'src/app/api/cron/ghl-backfill/route.ts' 'vercel.json' 'src/middleware.ts' 'test/ghl-backfill-job.test.ts'; do if [ "$f" = "$p" ]; then ok=1; fi; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r · espera: SO_ALLOWLIST
+  - [guarda · já verificado por comando] diff dentro do orcamento (<= 600 linhas somando adicoes e remocoes)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; t=$(git diff --numstat "$b" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ "$t" -le 600 ] && echo NO_TETO || echo ESTOUROU_$t · espera: NO_TETO
+  - [guarda · já verificado por comando] nenhuma escrita nova em tabela C0 ou ghl_* do comercial
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- src | grep -E '^[+][^+]' | grep -E '[.](insert|update|upsert|delete)[(]' | grep -cE 'clientes_receita|leads_crm|ads_metadata|ads_performance|trafego_|vw_|ghl_etapa_mapa|ghl_user_map|ghl_funnel'); [ "$n" = 0 ] && echo SEM_ESCRITA_C0 || echo ESCREVE_C0_$n · espera: SEM_ESCRITA_C0
+  - [guarda · já verificado por comando] status da conexao nao e mudado pelo backfill
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- 'src/lib/perf/ghl-backfill.ts' | grep -E '^[+][^+]' | grep -cE "status: *'(erro|backfill|ativa)'|status: *\"(erro|backfill|ativa)\""); [ "$n" = 0 ] && echo STATUS_INTACTO || echo MUDA_STATUS_$n · espera: STATUS_INTACTO
+  - [guarda · já verificado por comando] vercel.json so ganhou o cron novo
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; s=$(git diff --numstat "$b" HEAD -- 'vercel.json' | awk '{print $1"_"$2}'); case "$s" in [3-5]_[0-1]|'') echo SO_CRON_NOVO;; *) echo VERCEL_MUDOU_$s;; esac · espera: SO_CRON_NOVO
+  - [? · já verificado por comando] middleware so ganhou a rota do cron no CRON_PATHS (linha + comentario do 762)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; s=$(git diff --numstat "$b" HEAD -- 'src/middleware.ts' | awk '{print $1"_"$2}'); a=$(sed -n '/const CRON_PATHS/,/]);/p' 'src/middleware.ts' | grep -c '"/api/cron/ghl-backfill"'); case "$s" in [1-2]_0) [ "$a" = 1 ] && echo CRON_LIBERADO || echo CRON_PATHS_$a;; *) echo MIDDLEWARE_MUDOU_$s;; esac · espera: CRON_LIBERADO
+  - [guarda · já verificado por comando] cron-paths-vercel intocado e ghl-backfill fora das pendencias
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- test/cron-paths-vercel.test.ts | wc -l | tr -d ' '); l=$(sed -n '/const CRON_PENDENTES_REVISAO/,/];/p' test/cron-paths-vercel.test.ts | grep -c 'ghl-backfill'); [ "$n" = 0 ] && [ "$l" = 0 ] && echo SEM_PENDENCIA || echo PENDENCIA_N${n}_L${l} · espera: SEM_PENDENCIA
+  - [guarda · já verificado por comando] testes do GHL, jobs, crons, middleware e rota de backfill seguem verdes
+      cmd: npx vitest run test/ghl-agencia-2a.test.ts test/ghl-conectar-ficha.test.ts test/middleware-webhooks.test.ts test/ingest-ghl.test.ts test/fechamentos.test.ts test/qualificacao-motor.test.ts test/jobs-motor-geral.test.ts test/setup-assistente-crm-concluir.test.ts test/ghl-app-webhook.test.ts test/ghl-backfill.test.ts test/ghl-oauth.test.ts test/ghl-backfill-lib.test.ts test/jobs-worker.test.ts test/cron-paths-vercel.test.ts test/crons-meta-consolidacao.test.ts test/n8n-fase1.test.ts test/n8n-fase2.test.ts test/alertas-motor-metrica-limite.test.ts test/eventos-resposta-grupo.test.ts test/onboarding-criador-lote-c.test.ts test/relatorio-mensal-cron.test.ts test/fechamento-publico.test.ts test/leitura-relacao-cron-sem-base.test.ts test/middleware-bypass-ponto.test.ts test/relatorio-compartilhavel.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [? · já verificado por comando] teste novo verde (test/ghl-backfill-job.test.ts)
+      cmd: test -f test/ghl-backfill-job.test.ts && npx vitest run test/ghl-backfill-job.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [? · já verificado por comando] job registrado, cron agendando e conexao recebendo conclusao e erro
+      cmd: a=$(grep -c 'TIPO_JOB_BACKFILL' 'src/lib/jobs/handlers/index.ts'); b=$(grep -c '/api/cron/ghl-backfill' 'vercel.json'); c=$(grep -c 'backfill_concluido_em' 'src/lib/perf/ghl-backfill.ts' 2>/dev/null); d=$(grep -c 'ultimo_erro_em' 'src/lib/perf/ghl-backfill.ts' 2>/dev/null); e=$(grep -c 'agendarBackfillsPendentes' 'src/app/api/cron/ghl-backfill/route.ts' 2>/dev/null); [ "$a" -ge 1 ] && [ "$b" = 1 ] && [ "${c:-0}" -ge 1 ] && [ "${d:-0}" -ge 1 ] && [ "${e:-0}" -ge 1 ] && echo JOB_OK || echo JOB_${a}_${b}_${c:-0}_${d:-0}_${e:-0} · espera: JOB_OK
+  - [? · já verificado por comando] reconectar zera a conclusao do backfill
+      cmd: grep -c 'backfill_concluido_em: null' 'src/lib/perf/crm-conexao.ts' · espera: 1
+  - [avaliador · JULGUE VOCÊ] avaliador: conexao com backfill nao concluido recebe o job pelo cron (uma vez por conexao); o job pagina ate o fim em elos encadeados, grava backfill_concluido_em ao terminar e ultimo_erro/ultimo_erro_em em toda falha, inclusive de agendamento. REPROVE se: alguma falha so vai para console; status da conexao muda; limpa ultimo_erro que nao e do backfill; erro definitivo (404/409) fica repetindo; o agendador reenfileira em loop uma conexao cujo job falhou; mexe no callback do OAuth ou no teste dele.
+
+
+MENSAGENS DE COMMIT (escritas pelo agente: declaração, não evidência):
+O que o agente AFIRMA ter feito. Serve para saber o que conferir no diff e nos
+gates; uma afirmação aqui que o diff ou os gates não provam NÃO foi feita.
+
+commit 3179addbafdd4636a74242feb510d3bd296123ce
+
+feat(762): backfill de contatos do GHL como job encadeado e cron que agenda uma vez por conexão
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+SAÍDA DOS GATES MECÂNICOS:
+ok   build
+       
+       ○  (Static)   prerendered as static content
+       ƒ  (Dynamic)  server-rendered on demand
+ok   tsc
+       src/app/api/perf/qualificacao-regras/[id]/route.ts(55,34): error TS2538: Type 'undefined' cannot be used as an index type.
+       src/app/api/perf/qualificacao-regras/estagios/route.ts(31,21): error TS2802: Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+       src/app/dashboard/clientes/qualificacao/qualificacao-block.tsx(74,29): error TS2802: Type 'MapIterator<ClienteTese>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+ok   vitest
+       Tests  7680 passed (7680)
+       Start at  18:29:05
+       Duration  16.64s (transform 11.43s, setup 0ms, import 50.51s, tests 17.95s, environment 48ms)
+VEREDITO: APROVADO
+
+DIFF CRU DA TENTATIVA (git diff base...HEAD):
+diff --git a/src/app/api/cron/ghl-backfill/route.ts b/src/app/api/cron/ghl-backfill/route.ts
+new file mode 100644
+index 0000000..6447e71
+--- /dev/null
++++ b/src/app/api/cron/ghl-backfill/route.ts
+@@ -0,0 +1,41 @@
++/**
++ * GET & POST /api/cron/ghl-backfill
++ * Cron (GET): a cada 15 min. Enfileira o backfill de contatos das conexões ativas cujo
++ * backfill não concluiu (uma vez por conexão); o worker de jobs drena. Protegido por
++ * CRON_SECRET (Vercel Cron) e PERF_CRON_SECRET (disparo manual).
++ */
++import { NextRequest, NextResponse } from "next/server";
++import { createClient } from "@supabase/supabase-js";
++import { registrarExecucaoCron } from "@/lib/jobs/core/cron-registro";
++import { agendarBackfillsPendentes } from "@/lib/perf/ghl-backfill";
++
++export const dynamic = "force-dynamic";
++export const maxDuration = 30;
++
++async function handler(req: NextRequest) {
++  const authHeader = req.headers.get("authorization") || "";
++  const cronSecret = process.env.CRON_SECRET;
++  const perfSecret = process.env.PERF_CRON_SECRET;
++  const ok =
++    (cronSecret && authHeader === `Bearer ${cronSecret}`) ||
++    (perfSecret && authHeader === `Bearer ${perfSecret}`);
++  if (!ok) {
++    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
++  }
++
++  const db = createClient(
++    process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
++    process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder",
++  );
++  try {
++    const result = await registrarExecucaoCron("ghl-backfill", "cron", () => agendarBackfillsPendentes(db));
++    return NextResponse.json(result);
++  } catch (err) {
++    const motivo = err instanceof Error ? err.message : "erro";
++    console.error("[ghl-backfill] cron falhou:", motivo);
++    return NextResponse.json({ error: motivo }, { status: 500 });
++  }
++}
++
++export const GET = handler;
++export const POST = handler;
+diff --git a/src/lib/jobs/handlers/index.ts b/src/lib/jobs/handlers/index.ts
+index 2c390cc..617c327 100644
+--- a/src/lib/jobs/handlers/index.ts
++++ b/src/lib/jobs/handlers/index.ts
+@@ -3,6 +3,8 @@
+  * este módulo; tipo novo entra aqui com o corte de tempo que precisar.
+  */
+ import { registrar } from "@/lib/jobs/core/registry";
++import { TIPO_JOB_BACKFILL, processarJobBackfillGhl } from "@/lib/perf/ghl-backfill";
+ import { processarJobResumoSemanal } from "@/lib/whatsapp/resumo-semanal";
+ 
+ registrar("resumo_grupo_semanal", (job, db) => processarJobResumoSemanal(job, db), { corteMs: 90_000 });
++registrar(TIPO_JOB_BACKFILL, processarJobBackfillGhl, { corteMs: 240_000 });
+diff --git a/src/lib/perf/crm-conexao.ts b/src/lib/perf/crm-conexao.ts
+index b501807..814a54b 100644
+--- a/src/lib/perf/crm-conexao.ts
++++ b/src/lib/perf/crm-conexao.ts
+@@ -135,6 +135,7 @@ export async function conectarContaCliente(p: {
+       location_nome: p.locationNome,
+       status: "backfill",
+       backfill_iniciado_em: new Date().toISOString(),
++      backfill_concluido_em: null,
+       ultimo_erro: null,
+       ultimo_erro_em: null,
+     },
+diff --git a/src/lib/perf/ghl-backfill.ts b/src/lib/perf/ghl-backfill.ts
+index 95938d9..0a459fa 100644
+--- a/src/lib/perf/ghl-backfill.ts
++++ b/src/lib/perf/ghl-backfill.ts
+@@ -5,11 +5,17 @@
+  * Credencial por location (provider='ghl' + location_id): a de outra location nunca serve.
+  */
+ import { createClient } from "@supabase/supabase-js";
++import { enqueue } from "@/lib/jobs/core/enqueue";
++import { JobPermanentError, type Job, type JobsDb } from "@/lib/jobs/core/types";
+ import { getEncryptionKey } from "@/lib/perf/encryption-key";
+ import { renovarTokenGhl } from "@/lib/perf/ghl-oauth";
+ import { ingerirLeadGhl, mapGhlAppContactToLead } from "@/lib/perf/leads-ghl";
+ 
+ export const PREFIXO_ERRO_BACKFILL = "Backfill";
++export const TIPO_JOB_BACKFILL = "ghl_backfill";
++
++const PAGINAS_POR_VOLTA = 5;
++const ORCAMENTO_JOB_MS = 200_000;
+ 
+ const CONTATOS_POR_PAGINA = 100;
+ const MARGEM_RENOVACAO_MS = 5 * 60 * 1000;
+@@ -184,3 +190,156 @@ export async function backfillContatos(args: {
+ 
+   return { processados, falhas, cursor, terminou };
+ }
++
++export type AcumuladoBackfill = { processados: number; falhas: number };
++
++export async function enfileirarBackfillGhl(
++  db: JobsDb,
++  args: {
++    clienteId: string;
++    locationId: string;
++    fase?: string;
++    cursor?: CursorBackfill | null;
++    passo?: number;
++    acumulado?: AcumuladoBackfill;
++  },
++) {
++  const { clienteId, locationId, fase = "contatos", cursor = null, passo = 0, acumulado } = args;
++  return enqueue(db, {
++    tipo: TIPO_JOB_BACKFILL,
++    chave_idempotencia: `${TIPO_JOB_BACKFILL}:${locationId}:${fase}:${passo}`,
++    cliente_id: clienteId,
++    payload: {
++      cliente_id: clienteId,
++      location_id: locationId,
++      fase,
++      cursor,
++      passo,
++      processados: acumulado ? acumulado.processados : 0,
++      falhas: acumulado ? acumulado.falhas : 0,
++    },
++  });
++}
++
++async function gravarUltimoErro(db: JobsDb, locationId: string, mensagem: string): Promise<void> {
++  const { error } = await db
++    .from("perf_crm_conexoes")
++    .update({ ultimo_erro: mensagem, ultimo_erro_em: new Date().toISOString() })
++    .eq("location_id", locationId);
++  if (error) console.error("[ghl-backfill] gravar ultimo_erro falhou:", error.message);
++}
++
++/** Dispara o backfill UMA vez por conexao: job do mesmo cliente criado depois do inicio, em qualquer status, impede. */
++export async function agendarBackfillsPendentes(db: JobsDb): Promise<{ agendados: number; ja_agendados: number; falhas: number }> {
++  const { data: conexoes, error } = await db
++    .from("perf_crm_conexoes")
++    .select("location_id, cliente_id, backfill_iniciado_em")
++    .eq("status", "ativa")
++    .not("backfill_iniciado_em", "is", null)
++    .is("backfill_concluido_em", null);
++  if (error) throw new Error(`Falha ao ler as conexões do CRM: ${error.message}`);
++  if (!Array.isArray(conexoes)) throw new Error("Falha ao ler as conexões do CRM: resposta inválida");
++
++  let agendados = 0;
++  let jaAgendados = 0;
++  let falhas = 0;
++  for (const c of conexoes as { location_id: string; cliente_id: string; backfill_iniciado_em: string }[]) {
++    const { data: jobs, error: jobsErr } = await db
++      .from("ops_jobs")
++      .select("id")
++      .eq("tipo", TIPO_JOB_BACKFILL)
++      .eq("cliente_id", c.cliente_id)
++      .gt("criado_em", c.backfill_iniciado_em)
++      .limit(1);
++    if (jobsErr) throw new Error(`Falha ao ler os jobs de backfill: ${jobsErr.message}`);
++    if (!Array.isArray(jobs)) throw new Error("Falha ao ler os jobs de backfill: resposta inválida");
++    if (jobs.length > 0) {
++      jaAgendados++;
++      continue;
++    }
++    try {
++      await enfileirarBackfillGhl(db, { clienteId: c.cliente_id, locationId: c.location_id });
++      agendados++;
++    } catch (err) {
++      falhas++;
++      const motivo = err instanceof Error ? err.message : "erro interno";
++      console.error("[ghl-backfill] agendar falhou:", motivo);
++      await gravarUltimoErro(db, c.location_id, `Backfill não pôde ser agendado: ${motivo}`);
++    }
++  }
++  return { agendados, ja_agendados: jaAgendados, falhas };
++}
++
++async function concluirBackfill(db: JobsDb, locationId: string, falhas: number): Promise<void> {
++  const { data: atual, error: lerErr } = await db
++    .from("perf_crm_conexoes")
++    .select("ultimo_erro")
++    .eq("location_id", locationId)
++    .maybeSingle();
++  if (lerErr) throw new Error(`Falha ao ler a conexão do CRM: ${lerErr.message}`);
++
++  const agora = new Date().toISOString();
++  const erroAtual = atual && typeof atual.ultimo_erro === "string" ? atual.ultimo_erro : "";
++  const campos: Record<string, unknown> = { backfill_concluido_em: agora };
++  if (falhas > 0) {
++    campos.ultimo_erro = `Backfill concluído com ${falhas} contatos não gravados`;
++    campos.ultimo_erro_em = agora;
++  } else if (erroAtual.startsWith(PREFIXO_ERRO_BACKFILL)) {
++    campos.ultimo_erro = null;
++    campos.ultimo_erro_em = null;
++  }
++  const { error } = await db.from("perf_crm_conexoes").update(campos).eq("location_id", locationId);
++  if (error) throw new Error(`Falha ao concluir o backfill: ${error.message}`);
++}
++
++export async function processarJobBackfillGhl(job: Job, db: JobsDb): Promise<Record<string, unknown>> {
++  const p = job.payload as {
++    cliente_id: string;
++    location_id: string;
++    cursor?: unknown;
++    passo?: number;
++    processados?: number;
++    falhas?: number;
++  };
++  const passo = typeof p.passo === "number" ? p.passo : 0;
++  let cursor = lerCursor(p.cursor);
++  let processados = typeof p.processados === "number" ? p.processados : 0;
++  let falhas = typeof p.falhas === "number" ? p.falhas : 0;
++  const inicio = Date.now();
++
++  for (;;) {
++    let volta: Awaited<ReturnType<typeof backfillContatos>>;
++    try {
++      volta = await backfillContatos({ clienteId: p.cliente_id, cursor, maxPaginas: PAGINAS_POR_VOLTA });
++    } catch (err) {
++      const motivo = err instanceof BackfillErro ? err.mensagem : err instanceof Error ? err.message : "erro interno";
++      await gravarUltimoErro(db, p.location_id, `${PREFIXO_ERRO_BACKFILL} de contatos parou: ${motivo}`);
++      if (err instanceof BackfillErro && (err.status === 404 || err.status === 409)) throw new JobPermanentError(motivo);
++      throw err;
++    }
++    processados += volta.processados;
++    falhas += volta.falhas;
++    cursor = volta.cursor;
++
++    if (volta.terminou) {
++      await concluirBackfill(db, p.location_id, falhas);
++      return { processados, falhas };
++    }
++    if (Date.now() - inicio >= ORCAMENTO_JOB_MS) {
++      try {
++        await enfileirarBackfillGhl(db, {
++          clienteId: p.cliente_id,
++          locationId: p.location_id,
++          cursor,
++          passo: passo + 1,
++          acumulado: { processados, falhas },
++        });
++      } catch (err) {
++        const motivo = err instanceof Error ? err.message : "erro interno";
++        await gravarUltimoErro(db, p.location_id, `${PREFIXO_ERRO_BACKFILL} de contatos parou: ${motivo}`);
++        throw err;
++      }
++      return { continua: true, processados, falhas };
++    }
++  }
++}
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 0f4db1a..3950736 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -28,6 +28,8 @@ const CRON_PATHS = new Set([
+   "/api/ops/tarefas-recorrentes/gerar",
+   "/api/reunioes/revincular",
+   "/api/cron/ghl-agencia-refresh",
++  // 762: agenda o backfill do GHL; a rota valida o próprio segredo.
++  "/api/cron/ghl-backfill",
+   // 722: só liga porque a rota não grava mais leitura vazia (pula cliente sem base).
+   "/api/cron/leitura-relacao",
+   "/api/cron/aprovacao-tacita",
+diff --git a/test/ghl-backfill-job.test.ts b/test/ghl-backfill-job.test.ts
+new file mode 100644
+index 0000000..2bfcec3
+--- /dev/null
++++ b/test/ghl-backfill-job.test.ts
+@@ -0,0 +1,261 @@
++/**
++ * 762: backfill de contatos do GHL como job encadeado + cron que agenda uma vez por conexão.
++ * Supabase, fetch, enqueue e a ingestão de lead são mockados; Date.now é controlado.
++ */
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++import { NextRequest } from "next/server";
++
++type Op = { table: string; acao: string; valores?: Record<string, unknown>; filtros: [string, unknown][] };
++type Resp = { data: unknown; error: { message: string } | null };
++
++const h = vi.hoisted(() => ({
++  ops: [] as Op[],
++  resolver: (_op: Op): Resp => ({ data: null, error: null }),
++  enqueue: vi.fn(),
++}));
++
++function builder(table: string) {
++  const op: Op = { table, acao: "select", filtros: [] };
++  const b: Record<string, unknown> = {};
++  const registrar = (nome: string) => (...a: unknown[]) => {
++    if (nome === "update" || nome === "insert") {
++      op.acao = nome;
++      op.valores = a[0] as Record<string, unknown>;
++    } else op.filtros.push([nome, a]);
++    return b;
++  };
++  for (const m of ["select", "eq", "not", "is", "gt", "in", "limit", "update", "insert"]) b[m] = registrar(m);
++  const fim = () => {
++    h.ops.push(op);
++    return Promise.resolve(h.resolver(op));
++  };
++  b.maybeSingle = fim;
++  b.single = fim;
++  b.then = (ok: (v: Resp) => unknown, ko: (e: unknown) => unknown) => fim().then(ok, ko);
++  return b;
++}
++
++const fakeDb = {
++  from: (t: string) => builder(t),
++  rpc: () => Promise.resolve({ data: "token-claro", error: null }),
++};
++
++vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ from: (t: string) => builder(t), rpc: () => Promise.resolve({ data: "token-claro", error: null }) }) }));
++vi.mock("@/lib/jobs/core/enqueue", () => ({ enqueue: (...a: unknown[]) => h.enqueue(...a) }));
++vi.mock("@/lib/perf/encryption-key", () => ({ getEncryptionKey: () => "chave" }));
++vi.mock("@/lib/perf/ghl-oauth", () => ({ renovarTokenGhl: vi.fn() }));
++vi.mock("@/lib/perf/leads-ghl", () => ({
++  ingerirLeadGhl: vi.fn(async () => ({ status: 200 })),
++  mapGhlAppContactToLead: vi.fn(),
++}));
++vi.mock("@/lib/jobs/core/cron-registro", () => ({
++  registrarExecucaoCron: (_t: string, _c: string, fn: () => Promise<unknown>) => fn(),
++}));
++
++import {
++  TIPO_JOB_BACKFILL,
++  agendarBackfillsPendentes,
++  enfileirarBackfillGhl,
++  processarJobBackfillGhl,
++} from "@/lib/perf/ghl-backfill";
++import { JobPermanentError, type Job, type JobsDb } from "@/lib/jobs/core/types";
++import { obterCorteMs } from "@/lib/jobs/core/registry";
++import "@/lib/jobs/handlers";
++import { GET } from "@/app/api/cron/ghl-backfill/route";
++
++const db = fakeDb as unknown as JobsDb;
++const CLIENTE = "00000000-0000-4000-8000-000000000000";
++const LOC = "BAs5Fw46Xz3uvTtq6Gmz";
++
++function job(payload: Record<string, unknown> = {}): Job {
++  return {
++    id: "00000000-0000-4000-8000-000000000001",
++    tipo: TIPO_JOB_BACKFILL,
++    payload: { cliente_id: CLIENTE, location_id: LOC, fase: "contatos", cursor: null, passo: 0, processados: 0, falhas: 0, ...payload },
++  } as unknown as Job;
++}
++
++/** Página do GHL com n contatos; cheia (100) tem searchAfter e não termina. */
++function pagina(n: number) {
++  const contacts = Array.from({ length: n }, (_, i) => ({ id: `c${i}`, searchAfter: [i, `c${i}`] }));
++  return { ok: true, status: 200, text: async () => JSON.stringify({ contacts }) };
++}
++
++function conexoes(): Op[] {
++  return h.ops.filter((o) => o.table === "perf_crm_conexoes" && o.acao === "update");
++}
++
++let erroConexao: string | null;
++let locBanco: Resp;
++
++beforeEach(() => {
++  h.ops = [];
++  h.enqueue.mockReset();
++  h.enqueue.mockResolvedValue({ job: {}, criado: true });
++  erroConexao = null;
++  locBanco = { data: { location_id: LOC }, error: null };
++  process.env.GHL_API_BASE_URL = "https://ghl.test";
++  h.resolver = (op) => {
++    if (op.table === "perf_ghl_locations") return locBanco;
++    if (op.table === "integration_tokens") return { data: { access_token: "x", refresh_token: null, token_expires_at: null }, error: null };
++    if (op.table === "perf_crm_conexoes" && op.acao === "select") {
++      return op.filtros.some(([n, a]) => n === "select" && String((a as string[])[0]).includes("backfill_iniciado_em"))
++        ? { data: [{ location_id: LOC, cliente_id: CLIENTE, backfill_iniciado_em: "2026-10-03T18:22:39Z" }], error: null }
++        : { data: { ultimo_erro: erroConexao }, error: null };
++    }
++    if (op.table === "ops_jobs") return { data: [], error: null };
++    return { data: null, error: null };
++  };
++});
++
++afterEach(() => {
++  vi.unstubAllGlobals();
++  vi.restoreAllMocks();
++});
++
++describe("enfileirarBackfillGhl", () => {
++  it("usa chave com location, fase e passo e leva o cursor e os acumulados no payload", async () => {
++    await enfileirarBackfillGhl(db, { clienteId: CLIENTE, locationId: LOC, passo: 2, cursor: [5, "a"], acumulado: { processados: 7, falhas: 1 } });
++    const arg = h.enqueue.mock.calls[0][1];
++    expect(arg.tipo).toBe("ghl_backfill");
++    expect(arg.chave_idempotencia).toBe(`ghl_backfill:${LOC}:contatos:2`);
++    expect(arg.cliente_id).toBe(CLIENTE);
++    expect(arg.payload).toMatchObject({ cliente_id: CLIENTE, location_id: LOC, fase: "contatos", cursor: [5, "a"], passo: 2, processados: 7, falhas: 1 });
++  });
++});
++
++describe("agendarBackfillsPendentes", () => {
++  it("enfileira o passo 0 da conexão sem job depois do início", async () => {
++    const r = await agendarBackfillsPendentes(db);
++    expect(r).toMatchObject({ agendados: 1, ja_agendados: 0, falhas: 0 });
++    expect(h.enqueue.mock.calls[0][1].chave_idempotencia).toBe(`ghl_backfill:${LOC}:contatos:0`);
++  });
++
++  it("pula a conexão que já tem job do cliente depois do início, em qualquer status (inclusive falhou)", async () => {
++    const base = h.resolver;
++    h.resolver = (op) => (op.table === "ops_jobs" ? { data: [{ id: "j1" }], error: null } : base(op));
++    const r = await agendarBackfillsPendentes(db);
++    expect(r).toMatchObject({ agendados: 0, ja_agendados: 1, falhas: 0 });
++    expect(h.enqueue).not.toHaveBeenCalled();
++    const consulta = h.ops.find((o) => o.table === "ops_jobs");
++    expect(consulta?.filtros.some(([n]) => n === "gt")).toBe(true);
++    expect(consulta?.filtros.some(([n]) => n === "in")).toBe(false);
++  });
++
++  it("só olha conexão ativa, iniciada e não concluída (a concluída não volta)", async () => {
++    await agendarBackfillsPendentes(db);
++    const leitura = h.ops.find((o) => o.table === "perf_crm_conexoes");
++    expect(JSON.stringify(leitura?.filtros)).toContain("ativa");
++    expect(leitura?.filtros.some(([n, a]) => n === "is" && (a as unknown[])[0] === "backfill_concluido_em")).toBe(true);
++  });
++
++  it("grava ultimo_erro na conexão quando o enqueue falha e segue", async () => {
++    h.enqueue.mockRejectedValue(new Error("banco fora"));
++    vi.spyOn(console, "error").mockImplementation(() => {});
++    const r = await agendarBackfillsPendentes(db);
++    expect(r).toMatchObject({ agendados: 0, falhas: 1 });
++    const upd = conexoes()[0];
++    expect(upd.valores?.ultimo_erro).toBe("Backfill não pôde ser agendado: banco fora");
++    expect(typeof upd.valores?.ultimo_erro_em).toBe("string");
++  });
++
++  it("erro de leitura das conexões lança", async () => {
++    h.resolver = () => ({ data: null, error: { message: "sem acesso" } });
++    await expect(agendarBackfillsPendentes(db)).rejects.toThrow(/sem acesso/);
++  });
++});
++
++describe("processarJobBackfillGhl", () => {
++  it("ao terminar grava backfill_concluido_em e limpa erro antigo de backfill", async () => {
++    erroConexao = "Backfill de contatos parou: Falha ao buscar contatos no CRM";
++    vi.stubGlobal("fetch", vi.fn(async () => pagina(3)));
++    const r = await processarJobBackfillGhl(job(), db);
++    expect(r).toMatchObject({ processados: 3, falhas: 0 });
++    const upd = conexoes()[0].valores as Record<string, unknown>;
++    expect(typeof upd.backfill_concluido_em).toBe("string");
++    expect(upd.ultimo_erro).toBeNull();
++    expect(upd.ultimo_erro_em).toBeNull();
++    expect(upd).not.toHaveProperty("status");
++  });
++
++  it("não limpa ultimo_erro que não é do backfill (sem o prefixo)", async () => {
++    erroConexao = "Falha ao sincronizar pipelines";
++    vi.stubGlobal("fetch", vi.fn(async () => pagina(2)));
++    await processarJobBackfillGhl(job(), db);
++    const upd = conexoes()[0].valores as Record<string, unknown>;
++    expect(typeof upd.backfill_concluido_em).toBe("string");
++    expect(upd).not.toHaveProperty("ultimo_erro");
++  });
++
++  it("falhas acumuladas no fim gravam a mensagem de contatos não gravados", async () => {
++    vi.stubGlobal("fetch", vi.fn(async () => pagina(2)));
++    const r = await processarJobBackfillGhl(job({ falhas: 2 }), db);
++    expect(r).toMatchObject({ falhas: 2 });
++    const upd = conexoes()[0].valores as Record<string, unknown>;
++    expect(upd.ultimo_erro).toBe("Backfill concluído com 2 contatos não gravados");
++    expect(typeof upd.ultimo_erro_em).toBe("string");
++    expect(typeof upd.backfill_concluido_em).toBe("string");
++  });
++
++  it("página com erro grava ultimo_erro com o prefixo e relança o erro original", async () => {
++    vi.spyOn(console, "error").mockImplementation(() => {});
++    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 500, text: async () => "" })));
++    await expect(processarJobBackfillGhl(job(), db)).rejects.toThrow(/Falha ao buscar contatos no CRM/);
++    const upd = conexoes()[0].valores as Record<string, unknown>;
++    expect(String(upd.ultimo_erro).startsWith("Backfill de contatos parou: ")).toBe(true);
++    expect(typeof upd.ultimo_erro_em).toBe("string");
++  });
++
++  it("404 e 409 viram JobPermanentError e ainda gravam o erro", async () => {
++    vi.spyOn(console, "error").mockImplementation(() => {});
++    locBanco = { data: null, error: null };
++    await expect(processarJobBackfillGhl(job(), db)).rejects.toBeInstanceOf(JobPermanentError);
++    expect(String((conexoes()[0].valores as Record<string, unknown>).ultimo_erro)).toContain("Cliente sem conta do CRM conectada");
++  });
++
++  it("gravar o erro falhando não esconde a falha original", async () => {
++    vi.spyOn(console, "error").mockImplementation(() => {});
++    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 500, text: async () => "" })));
++    const base = h.resolver;
++    h.resolver = (op) => (op.acao === "update" ? { data: null, error: { message: "escrita negada" } } : base(op));
++    await expect(processarJobBackfillGhl(job(), db)).rejects.toThrow(/Falha ao buscar contatos no CRM/);
++    expect(console.error).toHaveBeenCalled();
++  });
++
++  it("orçamento estourado enfileira passo + 1 com o cursor e os acumulados e conclui com continua", async () => {
++    vi.stubGlobal("fetch", vi.fn(async () => pagina(100)));
++    let t = 1_000_000;
++    vi.spyOn(Date, "now").mockImplementation(() => {
++      t += 150_000;
++      return t;
++    });
++    const r = await processarJobBackfillGhl(job({ passo: 3, processados: 10 }), db);
++    expect(r).toMatchObject({ continua: true });
++    const arg = h.enqueue.mock.calls[0][1];
++    expect(arg.chave_idempotencia).toBe(`ghl_backfill:${LOC}:contatos:4`);
++    expect(arg.payload.cursor).toEqual([99, "c99"]);
++    expect(arg.payload.processados).toBeGreaterThan(10);
++    expect(conexoes().length).toBe(0);
++  });
++
++  it("o status da conexão nunca é escrito pelo job", async () => {
++    vi.stubGlobal("fetch", vi.fn(async () => pagina(1)));
++    await processarJobBackfillGhl(job(), db);
++    for (const o of conexoes()) expect(o.valores).not.toHaveProperty("status");
++  });
++});
++
++describe("registro e cron", () => {
++  it("o tipo está registrado com corte de 240 s", () => {
++    expect(obterCorteMs(TIPO_JOB_BACKFILL)).toBe(240_000);
++  });
++
++  it("a rota responde 401 sem segredo e 200 com o placar", async () => {
++    process.env.CRON_SECRET = "segredo";
++    const sem = await GET(new NextRequest("http://localhost/api/cron/ghl-backfill"));
++    expect(sem.status).toBe(401);
++    const com = await GET(new NextRequest("http://localhost/api/cron/ghl-backfill", { headers: { authorization: "Bearer segredo" } }));
++    expect(com.status).toBe(200);
++    expect(await com.json()).toMatchObject({ agendados: 1, ja_agendados: 0, falhas: 0 });
++  });
++});
+diff --git a/vercel.json b/vercel.json
+index d30fce2..47e3c55 100644
+--- a/vercel.json
++++ b/vercel.json
+@@ -92,6 +92,10 @@
+       "path": "/api/cron/ghl-agencia-refresh",
+       "schedule": "0 */12 * * *"
+     },
++    {
++      "path": "/api/cron/ghl-backfill",
++      "schedule": "*/15 * * * *"
++    },
+     {
+       "path": "/api/cron/aprovacao-tacita",
+       "schedule": "0 11 * * *"

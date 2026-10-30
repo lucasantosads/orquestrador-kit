@@ -1,0 +1,363 @@
+{
+ "casos": [
+  {
+   "linha": "2026-10-11 12:27 5525c7db6",
+   "id": "1006",
+   "classe": "R1",
+   "regra": "D6b",
+   "feito": "aplicado",
+   "motivo": "test/quem-cuida.test.ts na allowlist; test/quem-cuida.test.ts na lista de criterio[2]; guarda de contagem em criterio[5]; reabriu (status pendente, nota vazia)",
+   "humano": [
+    "test/quem-cuida.test.ts"
+   ],
+   "resolvedor": [
+    "test/quem-cuida.test.ts"
+   ],
+   "veredito": "identica",
+   "humano_alem": [
+    "criterio novo CONTAGEM_MANTIDA",
+    "criterio VERDE",
+    "texto do ticket fora do json"
+   ]
+  },
+  {
+   "linha": "2026-10-12 11:08 4b5dd2eab",
+   "id": "318c",
+   "classe": null,
+   "regra": null,
+   "feito": "diagnostico",
+   "motivo": "modo diagnostico para sem classe",
+   "humano": [
+    "src/app/dashboard/performance/nichos-teses/nichos-teses-aba.tsx"
+   ],
+   "resolvedor": [],
+   "veredito": "sem_acao",
+   "humano_alem": [
+    "objetivo",
+    "criterio ZERO_JSON_NOVO",
+    "criterio SEM_ESCRITA",
+    "criterio VERDE",
+    "texto do ticket fora do json"
+   ]
+  },
+  {
+   "linha": "2026-10-12 11:28 af768b088",
+   "id": "966",
+   "classe": "R5?",
+   "regra": "D7",
+   "feito": "aviso",
+   "motivo": "R5? é palpite: o resolvedor só age em diagnóstico firme",
+   "humano": [
+    "test/ficha-nav-colapsavel.test.ts"
+   ],
+   "resolvedor": [],
+   "veredito": "sem_acao",
+   "humano_alem": [
+    "objetivo",
+    "testes_conferidos",
+    "recon_esperado",
+    "criterio VERDE",
+    "criterio VERDE",
+    "criterio novo RECALCULADO_966",
+    "texto do ticket fora do json"
+   ]
+  },
+  {
+   "linha": "2026-10-12 11:29 05d951e93",
+   "id": "830",
+   "classe": "R2?",
+   "regra": "D12",
+   "feito": "nao_consegui",
+   "motivo": "forma do defeito fora do que esta etapa conserta (saída: SOBRA_1)",
+   "humano": [
+    "scripts/dados/370-identidade.ts",
+    "scripts/dados/685-dono-dry-run.ts",
+    "test/dono-dry-run.test.ts"
+   ],
+   "resolvedor": [],
+   "veredito": "sem_acao",
+   "humano_alem": [
+    "objetivo",
+    "recon_esperado",
+    "criterio VERDE",
+    "criterio novo FORA_DE_SRC_LIMPO",
+    "criterio novo DONO_INTACTO",
+    "criterio VERDE",
+    "texto do ticket fora do json"
+   ]
+  },
+  {
+   "linha": "2026-10-12 13:09 ab4e95cb4",
+   "id": "854",
+   "classe": "R5?",
+   "regra": "D7",
+   "feito": "aviso",
+   "motivo": "R5? é palpite: o resolvedor só age em diagnóstico firme",
+   "humano": [
+    "test/rotas-orfas.test.ts"
+   ],
+   "resolvedor": [],
+   "veredito": "sem_acao",
+   "humano_alem": [
+    "objetivo",
+    "recon_esperado",
+    "testes_conferidos",
+    "criterio VERDE",
+    "criterio novo TEAM_ID_NA_ALLOWLIST",
+    "criterio novo ORFAS_INTACTO",
+    "criterio VERDE",
+    "texto do ticket fora do json"
+   ]
+  },
+  {
+   "linha": "2026-10-12 20:19 638e00305",
+   "id": "855",
+   "classe": "R5?",
+   "regra": "D7",
+   "feito": "aviso",
+   "motivo": "R5? é palpite: o resolvedor só age em diagnóstico firme",
+   "humano": [
+    "test/adocao-predicado.test.ts"
+   ],
+   "resolvedor": [],
+   "veredito": "sem_acao",
+   "humano_alem": [
+    "objetivo",
+    "testes_conferidos",
+    "criterio NAO_AFROUXOU",
+    "criterio NAO_AFROUXOU",
+    "criterio VERDE",
+    "texto do ticket fora do json"
+   ]
+  },
+  {
+   "linha": "2026-10-13 00:33 c00ee4b15",
+   "id": "924a",
+   "classe": "R1",
+   "regra": "D6",
+   "feito": "nao_consegui",
+   "motivo": "mais de um vermelho fora da allowlist, tudo ou nada: test/conta-entregas-vazio-unico.test.ts não cumpre D6 nem D6b sozinho; nenhuma ação",
+   "humano": [
+    "test/conta-entregas-vazio-unico.test.ts",
+    "test/visao-aceite-mockup.test.tsx"
+   ],
+   "resolvedor": [],
+   "veredito": "sem_acao",
+   "humano_alem": [
+    "objetivo",
+    "excecao_tamanho",
+    "testes_conferidos",
+    "criterio NO_TETO",
+    "criterio AFROUXAMENTO_OK",
+    "criterio VERDE",
+    "texto do ticket fora do json"
+   ]
+  },
+  {
+   "linha": "2026-10-14 11:21 b7a3eea2f",
+   "id": "1053",
+   "classe": "R2?",
+   "regra": "D12",
+   "feito": "nao_consegui",
+   "motivo": "forma do defeito fora do que esta etapa conserta (saída: FORA_test/papel-nas-escritas.test.ts)",
+   "humano": [
+    "test/papel-nas-escritas.test.ts"
+   ],
+   "resolvedor": [],
+   "veredito": "sem_acao",
+   "humano_alem": [
+    "objetivo",
+    "criterio NO_TETO",
+    "criterio novo RECALCULADO_PAPEL_1053",
+    "criterio VERDE",
+    "texto do ticket fora do json"
+   ]
+  },
+  {
+   "linha": "2026-10-14 11:21 b7a3eea2f",
+   "id": "1053b",
+   "classe": "R1|R2?",
+   "regra": "D11",
+   "feito": "aviso",
+   "motivo": "R1|R2? é palpite: o resolvedor só age em diagnóstico firme",
+   "humano": [
+    "src/lib/clientes/espelho-legado.ts"
+   ],
+   "resolvedor": [],
+   "veredito": "sem_acao",
+   "humano_alem": [
+    "objetivo",
+    "testes_conferidos",
+    "criterio NO_TETO",
+    "criterio novo SEM_SERVER_ONLY",
+    "criterio VERDE",
+    "texto do ticket fora do json"
+   ]
+  },
+  {
+   "linha": "2026-10-14 11:21 b7a3eea2f",
+   "id": "1054",
+   "classe": "R1",
+   "regra": "D6",
+   "feito": "aplicado",
+   "motivo": "test/resolver-cliente-rota-diagnostico.test.ts e test/resolver-cliente-rota-resumo.test.ts na allowlist; test/resolver-cliente-rota-diagnostico.test.ts e test/resolver-cliente-rota-resumo.test.ts na lista de criterio[2]; guardas de contagem em criterio[5], criterio[6]; reabriu (status pendente, nota vazia)",
+   "humano": [
+    "test/resolver-cliente-rota-diagnostico.test.ts",
+    "test/resolver-cliente-rota-resumo.test.ts"
+   ],
+   "resolvedor": [
+    "test/resolver-cliente-rota-diagnostico.test.ts",
+    "test/resolver-cliente-rota-resumo.test.ts"
+   ],
+   "veredito": "identica",
+   "humano_alem": [
+    "objetivo",
+    "testes_conferidos",
+    "criterio NO_TETO",
+    "criterio LEITORES_NA_CASA_NOVA",
+    "criterio novo RECALCULADO_ROTAS_1054",
+    "criterio VERDE",
+    "texto do ticket fora do json"
+   ]
+  },
+  {
+   "linha": "2026-10-14 11:21 b7a3eea2f",
+   "id": "1055b",
+   "classe": "R1",
+   "regra": "D6",
+   "feito": "aplicado",
+   "motivo": "test/acoes-recomendadas-chave.test.ts e test/relatorio-sem-cliente-id.test.ts na allowlist; test/acoes-recomendadas-chave.test.ts e test/relatorio-sem-cliente-id.test.ts na lista de criterio[2]; guardas de contagem em criterio[5], criterio[6]; reabriu (status pendente, nota vazia)",
+   "humano": [
+    "test/acoes-recomendadas-chave.test.ts",
+    "test/relatorio-sem-cliente-id.test.ts"
+   ],
+   "resolvedor": [
+    "test/acoes-recomendadas-chave.test.ts",
+    "test/relatorio-sem-cliente-id.test.ts"
+   ],
+   "veredito": "identica",
+   "humano_alem": [
+    "objetivo",
+    "testes_conferidos",
+    "criterio NO_TETO",
+    "criterio novo RECALCULADO_1055B_ANTIGOS",
+    "criterio VERDE",
+    "texto do ticket fora do json"
+   ]
+  },
+  {
+   "linha": "2026-10-14 19:22 cf2fe3a97",
+   "id": "1059",
+   "classe": "R1|R2?",
+   "regra": "D11",
+   "feito": "aviso",
+   "motivo": "R1|R2? é palpite: o resolvedor só age em diagnóstico firme",
+   "humano": [
+    "test/leitores-carteira-casa-nova.test.ts",
+    "test/leitores-ficha-casa-nova.test.ts"
+   ],
+   "resolvedor": [],
+   "veredito": "sem_acao",
+   "humano_alem": [
+    "objetivo",
+    "testes_conferidos",
+    "criterio NO_TETO",
+    "criterio VERDE",
+    "criterio RECALCULADO_1059",
+    "criterio VERDE",
+    "texto do ticket fora do json"
+   ]
+  },
+  {
+   "linha": "2026-10-15 11:58 832436272",
+   "id": "1058",
+   "classe": "R1",
+   "regra": "D6",
+   "feito": "aplicado",
+   "motivo": "test/negocio-temperatura.test.ts e test/quem-cuida.test.ts na allowlist; test/negocio-temperatura.test.ts e test/quem-cuida.test.ts na lista de criterio[2]; guardas de contagem em criterio[5], criterio[6]; reabriu (status pendente, nota vazia)",
+   "humano": [
+    "test/negocio-temperatura.test.ts",
+    "test/quem-cuida.test.ts"
+   ],
+   "resolvedor": [
+    "test/negocio-temperatura.test.ts",
+    "test/quem-cuida.test.ts"
+   ],
+   "veredito": "identica",
+   "humano_alem": [
+    "objetivo",
+    "testes_conferidos",
+    "criterio NO_TETO",
+    "criterio VERDE",
+    "criterio NAO_AFROUXOU_1058",
+    "criterio VERDE",
+    "texto do ticket fora do json"
+   ]
+  },
+  {
+   "linha": "2026-10-17 05:34 75db690c0",
+   "id": "1195",
+   "classe": "R1?",
+   "regra": "D8",
+   "feito": "aviso",
+   "motivo": "R1? é palpite: o resolvedor só age em diagnóstico firme",
+   "humano": [
+    "test/reuniao-manual-registro.test.ts"
+   ],
+   "resolvedor": [],
+   "veredito": "sem_acao",
+   "humano_alem": [
+    "objetivo",
+    "criterio VERDE",
+    "texto do ticket fora do json"
+   ]
+  }
+ ],
+ "sem_caso": [
+  {
+   "linha": "2026-10-11 00:42 079d3f465",
+   "id": "952a",
+   "motivo": "sem bloqueio antes do commit (ticket done: release)"
+  },
+  {
+   "linha": "2026-10-11 00:42 079d3f465",
+   "id": "972",
+   "motivo": "sem bloqueio antes do commit (ticket done: release)"
+  },
+  {
+   "linha": "2026-10-11 11:02 cc8d3887b",
+   "id": "932",
+   "motivo": "sem bloqueio antes do commit (ticket done: release)"
+  },
+  {
+   "linha": "2026-10-12 11:08 4b5dd2eab",
+   "id": "933",
+   "motivo": "allowlist não mudou neste ticket"
+  },
+  {
+   "linha": "2026-10-12 11:08 4b5dd2eab",
+   "id": "934b",
+   "motivo": "allowlist não mudou neste ticket"
+  },
+  {
+   "linha": "2026-10-12 11:08 4b5dd2eab",
+   "id": "935",
+   "motivo": "allowlist não mudou neste ticket"
+  },
+  {
+   "linha": "2026-10-14 11:21 b7a3eea2f",
+   "id": "1056b",
+   "motivo": "sem bloqueio antes do commit e sem allowlist nova"
+  },
+  {
+   "linha": "2026-10-14 11:21 b7a3eea2f",
+   "id": "1101",
+   "motivo": "sem bloqueio antes do commit e sem allowlist nova"
+  },
+  {
+   "linha": "2026-10-14 11:21 b7a3eea2f",
+   "id": "924c",
+   "motivo": "allowlist não mudou neste ticket"
+  }
+ ]
+}

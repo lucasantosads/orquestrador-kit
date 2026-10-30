@@ -1,0 +1,739 @@
+Você é o JUIZ de uma esteira automatizada. Julgue SOMENTE pelo material abaixo:
+o diff cru da tentativa, a saída dos gates mecânicos e os critérios do ticket.
+Você NÃO recebe o prompt do executor nem resumo nenhum do agente, de propósito:
+o que o agente diz que fez nunca é evidência. Se algo não está no diff, não aconteceu.
+
+VOCÊ NÃO TEM FERRAMENTAS. Não leia arquivo, não rode comando, não abra o
+repositório: a chamada está sem ferramenta nenhuma e qualquer tentativa só
+gasta turno. Se o material abaixo não basta para aprovar, REPROVE dizendo o
+que faltou — nunca aprove no benefício da dúvida.
+
+Os gates mecânicos JÁ PASSARAM (enforcement, typecheck, testes, critérios, build).
+Você não os reexecuta: o seu trabalho é o que eles não conseguem ver.
+
+O QUE VOCÊ COBRA, item a item:
+
+1. INTEGRAÇÃO, não existência. Componente/função/rota criada mas nunca importada,
+   montada ou chamada passa em "arquivo existe" e falha em produção. Siga a
+   variável ou o símbolo até o ponto de uso real; um resultado calculado e
+   descartado não vale.
+2. O TESTE EXERCITA O COMPORTAMENTO DO OBJETIVO. Teste tautológico
+   (expect(true), expect(x).toBeDefined() sobre algo trivialmente definido,
+   asserção que passaria com o código antigo) NÃO prova nada. Pergunte-se: este
+   teste ficaria VERMELHO se a mudança fosse revertida? Se não, reprove.
+3. CRITÉRIO DE AUSÊNCIA EXIGE CONTROLE POSITIVO. Um teste que só afirma que algo
+   NÃO aparece passa igual quando o componente não renderiza nada. Exija, no
+   MESMO render/execução, ao menos uma asserção POSITIVA de que a coisa certa
+   apareceu. Reprove ausência provada no vazio.
+
+4. ANTI-AFROUXAMENTO (a allowlist deste ticket inclui arquivo de teste).
+   No diff dos arquivos de teste, REPROVE se encontrar qualquer um destes:
+   - asserção removida (expect apagado) sem que o comportamento tenha deixado de existir;
+   - toBe/toEqual trocado por toBeDefined/toBeTruthy/objectContaining mais frouxo;
+   - .skip, .todo, .only, teste comentado ou arquivo de teste deletado;
+   - valor esperado alterado SEM comentário dizendo por que a regra nova o muda.
+   Valor RECALCULADO sob a regra nova, com o porquê em comentário, é o único
+   caminho aceito. Renomear símbolo para satisfazer contagem também é afrouxar.
+
+REVIEW.md DO REPO (regras de revisão deste repositório; valem junto com os itens acima):
+# REVIEW — o que o juiz cobra neste repositório (comarka-operacional)
+
+Lido pelo juiz do estado da BASE da tentativa; o loop nunca edita este arquivo.
+Cada seção é uma falha que já passou por aqui. Reprove o diff que tiver a cara dela,
+dizendo arquivo e linha. Na dúvida, reprove e diga o que falta.
+
+## 1. Config apontando para produção
+Cara no diff: teste ou script que lê `.env.local` ou monta cliente do Supabase com a URL ou a
+service role reais; rota GET que grava; escrita sem trava de ambiente.
+Reprove se: o diff conecta no projeto real a partir de teste ou script, ou grava dentro de GET.
+Fonte: dashboard-comercial 0f24c418 (teste v128 lia `.env.local` e rodou contra produção; foram
+18 vezes, 08e6bb67) e 6213cdc8 (GET de /api/financeiro/entradas rodando no Mac contra produção
+gravou ltv_meses +1 em 12 clientes). Aqui: PLAYBOOK, "Secrets só humano". Sem incidente próprio.
+
+## 2. Teste que não testa a regra
+Cara no diff: o servidor do Supabase devolve no máximo 1000 linhas por chamada, e o código pede
+`.limit(N)` com N maior que 1000 (ou nenhum limite) sem paginar com `.range`; o teste usa dublê
+que devolve tudo e ignora `.limit`/`.range` (`for (const m of [... "limit" ...]) cadeia[m] =
+() => cadeia`), então nunca vê o corte. Também: teste só de ausência; teste que passaria com o
+código antigo.
+Reprove se: a regra do objetivo depende de teto, página, fuso ou tipo de id e o teste usa dublê
+que não reproduz esse limite; ou se há `.limit` acima de 1000 lendo tabela que cresce.
+Fonte: 80a212fdb e 29afed53d (vácuo, eventos, promessas e fechar liam `.limit(5000)`; o servidor
+cortou em 1000 e as mensagens mais recentes sumiram; 715, 734, 740, 741a e 861 foram aprovados
+com mock que ignorava limit); kit juiz.ts:7-11 (ticket 204, ausência provada no vazio).
+
+## 3. Doc ou comentário que mente
+Cara no diff: comentário, PLAYBOOK ou doc com número, fonte ou comportamento que o diff não
+prova; campo marcado como legado lido como fonte da verdade.
+Reprove se: o diff afirma fato (contagem, "nenhuma tela grava", "a fonte é X") sem a prova no
+próprio diff ou no material; ou lê campo que o repo trata como legado.
+Fonte: dashboard-comercial 08e6bb67 (PLAYBOOK e vitest.config diziam 3 execuções contra produção;
+eram 18). Aqui: 5912a0dfd (924c lia `whatsapp_group_url`, legado: 25 clientes "Sem link do
+grupo") e f16164c25 (a ficha lia `clientes_extra.meta_account_id`, que nenhuma tela grava).
+
+## 4. Escrita em tabela de outro dono
+Cara no diff: `.from("<tabela>").insert/update/upsert/delete`, RPC ou migration que escreve em
+tabela de `c0_intocavel` (docs/fila/000-config.json: `clientes_receita`, `leads_crm`, ...) ou
+em `clientes_crm_config` (o dashboard comercial lê e grava).
+Reprove se: o diff ADICIONA escrita (não comentário, não linha removida) em tabela de outro dono.
+Fonte: PLAYBOOK, "Lição (04/09)" (ticket 184: o OS escrevia em `clientes_receita`); 262b71c30 e
+f16164c25 (consertos que deixam `clientes_crm_config` intocada porque o dono é o dashboard).
+
+## 5. Consulta em série por item
+Cara no diff: `await` de consulta ao banco ou à API dentro de `for`/`map` por cliente, gestor,
+contato ou oportunidade; leituras independentes uma depois da outra em vez de `.in(...)` em lote
+ou `Promise.all`.
+Reprove se: o número de consultas cresce com o número de itens e o objetivo não exige isso.
+Fonte: a2cd69ec8 (Início lento: 2 consultas em série por cliente; equipe com uma carga por
+gestor; 34 → 108 consultas de 3 para 40 clientes), da1f4f1ce (backfill a ~2 s por item, 15-20
+idas sequenciais ao banco por oportunidade) e 80a212fdb (contatos lidos cliente a cliente).
+
+## 6. Data comparada sem o dia de São Paulo
+Cara no diff: data comparada como texto ou com `new Date(...)` sem o fuso de São Paulo
+(`d >= from && d < ate` sobre ISO em UTC, `getMonth()` de DATE lida como meia-noite UTC).
+Reprove se: o corte de dia, semana ou mês depende do horário da máquina ou do UTC.
+Fonte: 10c88edb9 (revisão pós-release de 12/10, "funil no dia de SP"; ticket 953 comparava
+`d >= periodo.from && d < aposTo`) e dashboard-comercial 6213cdc8 (`getMonth()` em BRT devolveu
+o mês anterior).
+
+RESPONDA SÓ COM ESTE JSON, sem cerca de código, sem texto antes ou depois:
+{"aprovado": true|false, "motivo": "<=2 frases, concreto, citando arquivo e linha>",
+ "criterios_falhos": ["descrição exata do critério que você reprova", ...]}
+
+criterios_falhos: use a DESCRIÇÃO do critério, copiada como está na lista acima.
+Vazio quando aprovado. Na dúvida entre aprovar e reprovar, REPROVE e diga o que falta.
+
+TICKET 761
+Objetivo: ORCAMENTO DE DIFF: teto de 520 linhas (~190 em src/lib/perf/ghl-backfill.ts NOVO, ~170 removidas e ~25 adicionadas em src/app/api/perf/ghl/backfill/[clienteId]/route.ts, ~130 no teste NOVO test/ghl-backfill-lib.test.ts). Se passar do teto, pare e reporte. FONTE: decisoes do Lucas de 03/10 (regra de MQL do cliente no Setup > CRM passa a usar etapas reais do GHL; tags nos tickets 746 a 748; etapas canonicas seguem so para relatorio agregado). Piloto AQUINO ADV (location BAs5Fw46Xz3uvTtq6Gmz, cliente 7837ac12-c6db-47e8-b4e8-6e043633eb6d): conectado, 7 pipelines em perf_crm_pipelines, 50 etapas em perf_crm_etapas, todas com etapa_canonica nula, location_nome nula, backfill iniciado e nao concluido, 0 linhas em perf_crm_oportunidades e 0 em perf_leads (o backfill de contatos nunca rodou: nada chama a rota nem enfileira job; a ingestao nasce nos tickets 760 a 763). CAUSA DOS 0 LEADS (recon de 03/10): (a) o backfill nunca rodou. Nada em src chama POST /api/perf/ghl/backfill/[clienteId] e nada enfileira job para ele (src/lib/jobs/handlers/index.ts so registra resumo_grupo_semanal; ops_jobs nunca teve tipo de backfill; logs de producao: 0 requisicoes a rota depois do callback das 18:22:39). backfill_iniciado_em e so o carimbo do upsert em conectarContaCliente, e sincronizarConexao vira 'ativa' depois de puxar SO pipelines e etapas. A rota, mesmo chamada, nao escreve em perf_crm_conexoes: por isso nenhum ultimo_erro. (b) Tempo real: 0 POST em /api/webhooks/ghl/app em producao desde a conexao; o codigo nao explica isso (configuracao do app no Marketplace, fora do repo). Este ticket so MOVE o backfill de contatos da rota para uma lib reusavel pelo job (762), sem mudar comportamento. PASSO 1: leia src/app/api/perf/ghl/backfill/[clienteId]/route.ts inteiro e test/ghl-backfill.test.ts (contrato que tem de seguir verde SEM edicao: paginas, cursor, teto de 5 paginas por chamada, renovacao de token, 409/404/500/502, created_at preservado, merge). FAZER: (1) NOVO src/lib/perf/ghl-backfill.ts: export async function credencialDaConta(locationId, fetchImpl) (leitura de integration_tokens por provider 'ghl' + location_id, decifrar, renovar perto de vencer com renovarTokenGhl; mesmos erros e mesmos logs de hoje, como erros tipados BackfillErro { status http, mensagem } em vez de NextResponse) e export async function backfillContatos({ clienteId, cursor, maxPaginas, fetchImpl }): Promise<{ processados, falhas, cursor, terminou }> com o laco de hoje (perf_ghl_locations ativa do cliente, POST ${GHL_API_BASE_URL}/contacts/search com pageLimit 100 e searchAfter, ingerirLeadGhl com mapGhlAppContactToLead e created_at = dateAdded, falha de um contato conta e segue, falha da busca LANCA BackfillErro 502 levando processados, falhas e o cursor para retomar). export const PREFIXO_ERRO_BACKFILL = 'Backfill' (convencao que o 762 e o 744 usam). So os metodos do cliente supabase que a rota ja usa (select, eq, order, limit, insert, update, maybeSingle, single, rpc): o mock de test/ghl-backfill.test.ts nao tem outros. (2) src/app/api/perf/ghl/backfill/[clienteId]/route.ts: vira casca: sessao, corpo opcional com cursor, chama backfillContatos com maxPaginas 5 e traduz BackfillErro para o mesmo status e corpo de hoje. Contrato HTTP identico. (3) NOVO test/ghl-backfill-lib.test.ts: backfillContatos sem rota (supabase e fetch mockados): para em maxPaginas devolvendo o cursor; termina com terminou true e cursor null; falha da busca lanca BackfillErro com o cursor da pagina que falhou; contato que falha conta em falhas e o laco segue; credencialDaConta renova perto de vencer e nao renova longe. FORA DE ESCOPO: job, conexao, perf_crm_conexoes (762), oportunidades (763), webhook (760). REGRAS: zona C0 (clientes_receita, leads_crm, leads_crm_historico, ads_metadata, ads_performance, fn_mql_sql_by_month, prefixos trafego_* e vw_*) e leitura pura: nada de escrita, DDL, grant, RLS ou trigger nelas; ghl_etapa_mapa e as demais ghl_* do comercial sao leitura pura e a regra nova NAO depende delas nem de perf_crm_etapas.etapa_canonica (que continua existindo so para relatorio agregado; nao altere nem apague); zero migration e zero .sql (so o 746 escreve .sql, e nao aplica); nada e escrito de volta no GHL (so GET); token do GHL so por obterTokenLocation (src/lib/perf/ghl-agencia.ts), nunca lido direto de integration_tokens e nunca logado; falha de leitura (banco ou GHL) nunca vira zero, lista vazia ou null silencioso: nada de `?? []`, `|| []`, `|| 0` ou catch que devolve vazio numa leitura, o erro sobe com o motivo; dado ausente aparece como 's/ dado' ou 'sem base' com o motivo, nunca zero e nunca verde; nenhum jargao de banco em texto de tela (nome de tabela, view, coluna, tipo_regra ou uuid); nenhum travessao (U+2014) em texto de tela nem em string de copy (guarda travessao-mudo); numeros de tela em Geist Mono (classe font-mono ja usada no repo); Set e Map so com Array.from (tsc sem downlevelIteration); nenhum .json() literal novo em src (cliente: fetchJson de @/lib/fetch-json, ou res.text() + JSON.parse quando precisar do corpo de erro, como pedirCrm em tabs/config-tab.tsx; rota: lerCorpoJson de @/lib/fetch-json, nunca req.json()); getSession e server-only, nunca em arquivo 'use client'; supabase, fetch, getSession e resolveCockpitId sempre mockados nos testes (vi.mock), nunca banco real nem GHL real; fixture de uuid RFC-4122 (00000000-0000-4000-8000-000000000000 ou crypto.randomUUID()); testes sem JSX (React.createElement + renderToStaticMarkup ou leitura de fonte com readFileSync; o projeto nao tem jsdom nem @testing-library); teste ancora em texto visivel ou data-testid, nunca em classe de estilo; nunca toEqual numa lista inteira (afirme itens com toContain/some). TESTES EXISTENTES da allowlist: se a mudanca quebrar uma assercao, RECALCULE o valor sob a regra nova com comentario acima citando o ticket e de onde veio o numero; PROIBIDO remover assercao, trocar toBe/toEqual/toMatch por toBeDefined/toBeTruthy, usar .skip/.only/.todo, apagar it( ou o arquivo. GUARDAS GLOBAIS (fora da allowlist, nao edite): test/fetch-json-teto.test.ts, test/consistencia-contagens.test.ts, test/bloco-vazio-linha.test.ts, test/abas-montadas.test.ts, test/cartao-topo-perfil.test.tsx, test/travessao-mudo.test.ts, test/c0-guard.test.ts. Se um teste FORA da allowlist quebrar, PARE e descreva. Motor do orquestrador (scripts/orquestrador/, docs/orquestrador/) intocado.
+
+Allowlist do ticket:
+  - src/lib/perf/ghl-backfill.ts
+  - src/app/api/perf/ghl/backfill/[clienteId]/route.ts
+  - test/ghl-backfill-lib.test.ts
+
+Critérios de aceite:
+  - [guarda · já verificado por comando] tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)
+      cmd: ( [ "$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\.next/')" = 3 ] ) && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] nenhum .sql novo (zero DDL)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff --name-only "$b" HEAD | grep -c '[.]sql$'); [ "$n" = 0 ] && echo SEM_SQL || echo SQL_$n · espera: SEM_SQL
+  - [guarda · já verificado por comando] guardas globais seguem verdes
+      cmd: npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [guarda · já verificado por comando] nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADAS || echo EDITOU_$n · espera: INTOCADAS
+  - [guarda · já verificado por comando] nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- 'src/lib/perf/ghl-backfill.ts' 'src/app/api/perf/ghl/backfill/[clienteId]/route.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ "$n" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n · espera: ZERO_JSON_NOVO
+  - [guarda · já verificado por comando] nenhuma leitura nova vira vazio em silencio (?? [] ou || [] em linha nova de src do ticket)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- 'src/lib/perf/ghl-backfill.ts' 'src/app/api/perf/ghl/backfill/[clienteId]/route.ts' | grep -E '^[+][^+]' | grep -cE '[?][?] *\[\]|[|][|] *\[\]'); [ "$n" = 0 ] && echo SEM_VAZIO_SILENCIOSO || echo VAZIO_SILENCIOSO_$n · espera: SEM_VAZIO_SILENCIOSO
+  - [guarda · já verificado por comando] arquivos fora do escopo intocados
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- 'test/ghl-backfill.test.ts' 'src/lib/perf/leads-ghl.ts' 'src/lib/perf/crm-conexao.ts' | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADOS || echo TOCOU_$n · espera: INTOCADOS
+  - [guarda · já verificado por comando] so arquivos da allowlist foram tocados
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; r=SO_ALLOWLIST; for f in $(git diff --name-only "$b" HEAD); do ok=0; for p in 'src/lib/perf/ghl-backfill.ts' 'src/app/api/perf/ghl/backfill/[clienteId]/route.ts' 'test/ghl-backfill-lib.test.ts'; do if [ "$f" = "$p" ]; then ok=1; fi; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r · espera: SO_ALLOWLIST
+  - [guarda · já verificado por comando] diff dentro do orcamento (<= 520 linhas somando adicoes e remocoes)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; t=$(git diff --numstat "$b" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ "$t" -le 520 ] && echo NO_TETO || echo ESTOUROU_$t · espera: NO_TETO
+  - [guarda · já verificado por comando] nenhuma escrita nova em tabela C0 ou ghl_* do comercial
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- src | grep -E '^[+][^+]' | grep -E '[.](insert|update|upsert|delete)[(]' | grep -cE 'clientes_receita|leads_crm|ads_metadata|ads_performance|trafego_|vw_|ghl_etapa_mapa|ghl_user_map|ghl_funnel'); [ "$n" = 0 ] && echo SEM_ESCRITA_C0 || echo ESCREVE_C0_$n · espera: SEM_ESCRITA_C0
+  - [guarda · já verificado por comando] contrato da rota segue verde sem edicao (test/ghl-backfill.test.ts)
+      cmd: npx vitest run test/ghl-backfill.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [guarda · já verificado por comando] testes do GHL seguem verdes
+      cmd: npx vitest run test/ghl-agencia-2a.test.ts test/ghl-conectar-ficha.test.ts test/middleware-webhooks.test.ts test/ingest-ghl.test.ts test/fechamentos.test.ts test/qualificacao-motor.test.ts test/jobs-motor-geral.test.ts test/setup-assistente-crm-concluir.test.ts test/ghl-app-webhook.test.ts test/ghl-oauth.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [? · já verificado por comando] teste novo verde (test/ghl-backfill-lib.test.ts)
+      cmd: test -f test/ghl-backfill-lib.test.ts && npx vitest run test/ghl-backfill-lib.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [? · já verificado por comando] rota delega a lib e nao busca contatos sozinha
+      cmd: f='src/app/api/perf/ghl/backfill/[clienteId]/route.ts'; a=$(grep -c 'backfillContatos' "$f"); b=$(grep -c 'contacts/search' "$f"); c=$(grep -c 'contacts/search' 'src/lib/perf/ghl-backfill.ts' 2>/dev/null); [ "$a" -ge 1 ] && [ "$b" = 0 ] && [ "${c:-0}" -ge 1 ] && echo DELEGA || echo ROTA_${a}_${b}_${c:-0} · espera: DELEGA
+  - [avaliador · JULGUE VOCÊ] avaliador: o backfill de contatos mudou de casa sem mudar comportamento; a rota responde igual; a lib lanca erro tipado em vez de devolver vazio. REPROVE se: o teste da rota foi editado; a lib engole falha da busca; muda pageLimit, teto de paginas, renovacao ou o mapper; escreve em perf_crm_conexoes (e do 762).
+
+
+MENSAGENS DE COMMIT (escritas pelo agente: declaração, não evidência):
+O que o agente AFIRMA ter feito. Serve para saber o que conferir no diff e nos
+gates; uma afirmação aqui que o diff ou os gates não provam NÃO foi feita.
+
+commit b548169e878653abd9040d4ea29d4f7e2da7fa55
+
+refactor(perf): backfill de contatos do GHL vira lib reusavel pelo job (ticket 761)
+
+A rota vira casca (sessao, cursor, traducao de BackfillErro) e o laco vai para
+src/lib/perf/ghl-backfill.ts, que lanca erro tipado em vez de NextResponse.
+Contrato HTTP identico; test/ghl-backfill.test.ts segue verde sem edicao.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+SAÍDA DOS GATES MECÂNICOS:
+ok   build
+       
+       ○  (Static)   prerendered as static content
+       ƒ  (Dynamic)  server-rendered on demand
+ok   tsc
+       src/app/api/perf/qualificacao-regras/[id]/route.ts(55,34): error TS2538: Type 'undefined' cannot be used as an index type.
+       src/app/api/perf/qualificacao-regras/estagios/route.ts(31,21): error TS2802: Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+       src/app/dashboard/clientes/qualificacao/qualificacao-block.tsx(74,29): error TS2802: Type 'MapIterator<ClienteTese>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+ok   vitest
+       Tests  7655 passed (7655)
+       Start at  14:38:21
+       Duration  38.43s (transform 49.14s, setup 0ms, import 139.06s, tests 37.89s, environment 137ms)
+VEREDITO: APROVADO
+
+DIFF CRU DA TENTATIVA (git diff base...HEAD):
+diff --git a/src/app/api/perf/ghl/backfill/[clienteId]/route.ts b/src/app/api/perf/ghl/backfill/[clienteId]/route.ts
+index f0dd777..7567aa7 100644
+--- a/src/app/api/perf/ghl/backfill/[clienteId]/route.ts
++++ b/src/app/api/perf/ghl/backfill/[clienteId]/route.ts
+@@ -1,28 +1,11 @@
+ /**
+- * POST /api/perf/ghl/backfill/[clienteId]
+- * Backfill dos contatos que já existiam na location do GHL antes da instalação do app
+- * (o receptor do 475c só vê o que acontece depois). Paginada e re-entrante: processa no
+- * máximo MAX_PAGINAS_POR_CHAMADA páginas e devolve { processados, falhas, cursor, terminou };
+- * o chamador repete com o cursor até terminou=true.
+- *
+- * Cada contato entra pelo helper de leads-ghl com o mapper do app e o dateAdded original
+- * como created_at. Idempotente pela chave (cliente_id, ghl_contact_id): rodar de novo vira
+- * merge, não duplica. Toda recusa (401, 404, 409) acontece antes de qualquer escrita.
+- *
+- * Credencial por location: a busca é por provider='ghl' E location_id. A migration
+- * 20260919000000 (475c0) troca a unicidade de integration_tokens de UNIQUE(provider) para
+- * (provider, coalesce(location_id, '')); o callback do 475 passou a gravar location_id
+- * (475d), sem o que toda linha cairia no grupo '' e a segunda instalação colidiria.
+- * Aplicar a migration é humano: o 409 abaixo vale com ou sem ela — sem linha para ESTA
+- * location, não há credencial, e a de outra location nunca é usada.
++ * POST /api/perf/ghl/backfill/[clienteId]: casca HTTP. O laço vive em src/lib/perf/ghl-backfill.ts
++ * (o job reusa); aqui ficam sessão, cursor opcional e a tradução do BackfillErro.
+  */
+ import { NextRequest, NextResponse } from "next/server";
+-import { createClient } from "@supabase/supabase-js";
+ import { getSession } from "@/lib/session";
+-import { getEncryptionKey } from "@/lib/perf/encryption-key";
+ import { lerCorpoJson } from "@/lib/fetch-json";
+-import { renovarTokenGhl } from "@/lib/perf/ghl-oauth";
+-import { ingerirLeadGhl, mapGhlAppContactToLead } from "@/lib/perf/leads-ghl";
++import { BackfillErro, backfillContatos, lerCursor } from "@/lib/perf/ghl-backfill";
+ 
+ export const runtime = "nodejs";
+ export const dynamic = "force-dynamic";
+@@ -32,37 +15,6 @@ export const maxDuration = 60;
+ // função). Com 5 páginas de 100 contatos, cada chamada fica em ~500 contatos e o chamador
+ // segue pelo cursor.
+ const MAX_PAGINAS_POR_CHAMADA = 5;
+-const CONTATOS_POR_PAGINA = 100;
+-// Renova antes de vencer: um token que expira no meio da página derruba a chamada.
+-const MARGEM_RENOVACAO_MS = 5 * 60 * 1000;
+-const GHL_API_VERSION = "2021-07-28";
+-
+-const supabase = createClient(
+-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
+-  process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder",
+-);
+-
+-type Cursor = (string | number)[];
+-
+-function lerCursor(v: unknown): Cursor | null {
+-  if (!Array.isArray(v) || v.length === 0) return null;
+-  return v.every((x) => typeof x === "string" || typeof x === "number") ? (v as Cursor) : null;
+-}
+-
+-/** dateAdded do GHL em ISO; ausente ou inválido => null e o insert usa o default da tabela. */
+-function dataOriginal(v: unknown): string | null {
+-  if (typeof v !== "string" || !v.trim()) return null;
+-  const d = new Date(v);
+-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+-}
+-
+-async function decifrar(cifrado: string, chave: string): Promise<string | null> {
+-  const { data, error } = await supabase.rpc("decrypt_meta_token", {
+-    encrypted_token: cifrado,
+-    encryption_key: chave,
+-  });
+-  return error || !data ? null : (data as string);
+-}
+ 
+ export async function POST(
+   req: NextRequest,
+@@ -81,155 +33,21 @@ export async function POST(
+   } catch {
+     corpo = {};
+   }
+-  return executarBackfill(clienteId, lerCursor(corpo.cursor));
+-}
+-
+-async function executarBackfill(
+-  clienteId: string,
+-  cursorInicial: Cursor | null,
+-  fetchImpl: typeof fetch = (...a) => fetch(...a),
+-) {
+-  const { data: loc, error: locErr } = await supabase
+-    .from("perf_ghl_locations")
+-    .select("location_id")
+-    .eq("cliente_id", clienteId)
+-    .eq("ativo", true)
+-    .limit(1)
+-    .maybeSingle();
+-  if (locErr) {
+-    console.error("[ghl-backfill] leitura da location falhou:", locErr.message);
+-    return NextResponse.json({ error: "Falha ao ler a conta do CRM" }, { status: 500 });
+-  }
+-  if (!loc?.location_id) {
+-    return NextResponse.json({ error: "Cliente sem conta do CRM conectada" }, { status: 404 });
+-  }
+-  const locationId = loc.location_id as string;
+-
+-  // Uma credencial por location (provider='ghl' + location_id). Sem ela, 409 sem escrita
+-  // e sem inventar vínculo com a credencial de outra location: o cliente precisa instalar
+-  // o app na própria conta.
+-  const { data: cred, error: credErr } = await supabase
+-    .from("integration_tokens")
+-    .select("access_token, refresh_token, token_expires_at")
+-    .eq("provider", "ghl")
+-    .eq("location_id", locationId)
+-    .limit(1)
+-    .maybeSingle();
+-  if (credErr) {
+-    console.error("[ghl-backfill] leitura da credencial falhou:", credErr.message);
+-    return NextResponse.json({ error: "Falha ao ler a credencial do CRM" }, { status: 500 });
+-  }
+-  if (!cred?.access_token) {
+-    return NextResponse.json(
+-      { error: "A conta do CRM deste cliente ainda não foi autorizada. Instale o app para importar os contatos." },
+-      { status: 409 },
+-    );
+-  }
+-
+-  const chave = getEncryptionKey();
+-  if (!chave) {
+-    console.error("[ghl-backfill] cifra nao configurada");
+-    return NextResponse.json({ error: "Cifra não configurada" }, { status: 500 });
+-  }
+ 
+-  let bearer: string | null;
+-  const expiraEm = cred.token_expires_at ? new Date(cred.token_expires_at as string).getTime() : null;
+   try {
+-    if (expiraEm !== null && expiraEm - Date.now() < MARGEM_RENOVACAO_MS) {
+-      const refreshPlano = cred.refresh_token ? await decifrar(cred.refresh_token as string, chave) : null;
+-      if (!refreshPlano) throw new Error("credencial de renovação ilegível");
+-      bearer = (await renovarTokenGhl(locationId, refreshPlano, fetchImpl)).accessToken;
+-    } else {
+-      bearer = await decifrar(cred.access_token as string, chave);
+-    }
+-  } catch (err) {
+-    const status = (err as { status?: number })?.status;
+-    console.error("[ghl-backfill] renovacao da credencial falhou", status ?? "sem status");
+-    return NextResponse.json({ error: "Falha ao renovar a autorização do CRM" }, { status: 502 });
+-  }
+-  if (!bearer) {
+-    console.error("[ghl-backfill] decifrar credencial falhou");
+-    return NextResponse.json({ error: "Falha ao ler a credencial do CRM" }, { status: 500 });
+-  }
+-
+-  const base = (process.env.GHL_API_BASE_URL || "").replace(/\/+$/, "");
+-  if (!base) {
+-    console.error("[ghl-backfill] Variável de ambiente ausente: GHL_API_BASE_URL");
+-    return NextResponse.json({ error: "Integração com o CRM não configurada" }, { status: 500 });
+-  }
+-
+-  let cursor = cursorInicial;
+-  let processados = 0;
+-  let falhas = 0;
+-  let terminou = false;
+-
+-  for (let pagina = 0; pagina < MAX_PAGINAS_POR_CHAMADA && !terminou; pagina++) {
+-    const resp = await fetchImpl(`${base}/contacts/search`, {
+-      method: "POST",
+-      headers: {
+-        Authorization: `Bearer ${bearer}`,
+-        Version: GHL_API_VERSION,
+-        "content-type": "application/json",
+-        accept: "application/json",
+-      },
+-      body: JSON.stringify({
+-        locationId,
+-        pageLimit: CONTATOS_POR_PAGINA,
+-        ...(cursor ? { searchAfter: cursor } : {}),
+-      }),
++    const resultado = await backfillContatos({
++      clienteId,
++      cursor: lerCursor(corpo.cursor),
++      maxPaginas: MAX_PAGINAS_POR_CHAMADA,
+     });
+-    if (!resp.ok) {
+-      // Falha de leitura é FALHA, não lista vazia: devolve o cursor para retomar daqui.
+-      console.error("[ghl-backfill] busca de contatos falhou", resp.status);
+-      return NextResponse.json(
+-        { error: "Falha ao buscar contatos no CRM", processados, falhas, cursor, terminou: false },
+-        { status: 502 },
+-      );
+-    }
+-
+-    let dados: { contacts?: unknown };
+-    try {
+-      dados = JSON.parse(await resp.text()) as { contacts?: unknown };
+-    } catch {
+-      console.error("[ghl-backfill] resposta de contatos ilegivel", resp.status);
++    return NextResponse.json(resultado, { status: 200 });
++  } catch (err) {
++    if (err instanceof BackfillErro) {
+       return NextResponse.json(
+-        { error: "Resposta inválida do CRM ao buscar contatos", processados, falhas, cursor, terminou: false },
+-        { status: 502 },
++        { error: err.mensagem, ...(err.parcial ? { ...err.parcial, terminou: false } : {}) },
++        { status: err.status },
+       );
+     }
+-    const contatos = Array.isArray(dados.contacts) ? (dados.contacts as Record<string, unknown>[]) : [];
+-
+-    for (const contato of contatos) {
+-      // Falha de um contato não derruba a página: conta, registra e segue.
+-      try {
+-        const { status } = await ingerirLeadGhl(
+-          { ...contato, locationId },
+-          { mapper: mapGhlAppContactToLead, created_at: dataOriginal(contato.dateAdded) },
+-        );
+-        if (status === 200 || status === 201) processados++;
+-        else {
+-          falhas++;
+-          console.warn("[ghl-backfill] contato nao gravado", String(contato.id ?? "?"), status);
+-        }
+-      } catch (err) {
+-        falhas++;
+-        console.error(
+-          "[ghl-backfill] contato falhou",
+-          String(contato.id ?? "?"),
+-          err instanceof Error ? err.message : "erro interno",
+-        );
+-      }
+-    }
+-
+-    const ultimo = contatos[contatos.length - 1];
+-    const proximo = ultimo ? lerCursor(ultimo.searchAfter) : null;
+-    if (contatos.length < CONTATOS_POR_PAGINA || !proximo) {
+-      terminou = true;
+-      cursor = null;
+-    } else {
+-      cursor = proximo;
+-    }
++    throw err;
+   }
+-
+-  return NextResponse.json({ processados, falhas, cursor, terminou }, { status: 200 });
+ }
+diff --git a/src/lib/perf/ghl-backfill.ts b/src/lib/perf/ghl-backfill.ts
+new file mode 100644
+index 0000000..95938d9
+--- /dev/null
++++ b/src/lib/perf/ghl-backfill.ts
+@@ -0,0 +1,186 @@
++/**
++ * Backfill dos contatos do GHL de um cliente (a rota e o job reusam este laço). Paginado e
++ * re-entrante. Falha nunca vira vazio: todo erro sobe como BackfillErro (status HTTP e
++ * mensagem); falha da busca leva processados, falhas e o cursor para retomar.
++ * Credencial por location (provider='ghl' + location_id): a de outra location nunca serve.
++ */
++import { createClient } from "@supabase/supabase-js";
++import { getEncryptionKey } from "@/lib/perf/encryption-key";
++import { renovarTokenGhl } from "@/lib/perf/ghl-oauth";
++import { ingerirLeadGhl, mapGhlAppContactToLead } from "@/lib/perf/leads-ghl";
++
++export const PREFIXO_ERRO_BACKFILL = "Backfill";
++
++const CONTATOS_POR_PAGINA = 100;
++const MARGEM_RENOVACAO_MS = 5 * 60 * 1000;
++const GHL_API_VERSION = "2021-07-28";
++
++const supabase = createClient(
++  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
++  process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder",
++);
++
++export type CursorBackfill = (string | number)[];
++
++export type ParcialBackfill = { processados: number; falhas: number; cursor: CursorBackfill | null };
++
++export class BackfillErro extends Error {
++  status: number;
++  mensagem: string;
++  parcial?: ParcialBackfill;
++  constructor(status: number, mensagem: string, parcial?: ParcialBackfill) {
++    super(mensagem);
++    this.name = "BackfillErro";
++    this.status = status;
++    this.mensagem = mensagem;
++    this.parcial = parcial;
++  }
++}
++
++export function lerCursor(v: unknown): CursorBackfill | null {
++  if (!Array.isArray(v) || v.length === 0) return null;
++  return v.every((x) => typeof x === "string" || typeof x === "number") ? (v as CursorBackfill) : null;
++}
++
++function dataOriginal(v: unknown): string | null {
++  if (typeof v !== "string" || !v.trim()) return null;
++  const d = new Date(v);
++  return Number.isNaN(d.getTime()) ? null : d.toISOString();
++}
++
++async function decifrar(cifrado: string, chave: string): Promise<string | null> {
++  const { data, error } = await supabase.rpc("decrypt_meta_token", { encrypted_token: cifrado, encryption_key: chave });
++  return error || !data ? null : (data as string);
++}
++
++export async function credencialDaConta(
++  locationId: string,
++  fetchImpl: typeof fetch = (...a) => fetch(...a),
++): Promise<string> {
++  const { data: cred, error: credErr } = await supabase
++    .from("integration_tokens")
++    .select("access_token, refresh_token, token_expires_at")
++    .eq("provider", "ghl")
++    .eq("location_id", locationId)
++    .limit(1)
++    .maybeSingle();
++  if (credErr) {
++    console.error("[ghl-backfill] leitura da credencial falhou:", credErr.message);
++    throw new BackfillErro(500, "Falha ao ler a credencial do CRM");
++  }
++  if (!cred?.access_token) {
++    throw new BackfillErro(409, "A conta do CRM deste cliente ainda não foi autorizada. Instale o app para importar os contatos.");
++  }
++
++  const chave = getEncryptionKey();
++  if (!chave) {
++    console.error("[ghl-backfill] cifra nao configurada");
++    throw new BackfillErro(500, "Cifra não configurada");
++  }
++
++  let bearer: string | null;
++  const expiraEm = cred.token_expires_at ? new Date(cred.token_expires_at as string).getTime() : null;
++  try {
++    if (expiraEm !== null && expiraEm - Date.now() < MARGEM_RENOVACAO_MS) {
++      const refreshPlano = cred.refresh_token ? await decifrar(cred.refresh_token as string, chave) : null;
++      if (!refreshPlano) throw new Error("credencial de renovação ilegível");
++      bearer = (await renovarTokenGhl(locationId, refreshPlano, fetchImpl)).accessToken;
++    } else {
++      bearer = await decifrar(cred.access_token as string, chave);
++    }
++  } catch (err) {
++    const status = (err as { status?: number })?.status;
++    console.error("[ghl-backfill] renovacao da credencial falhou", status ?? "sem status");
++    throw new BackfillErro(502, "Falha ao renovar a autorização do CRM");
++  }
++  if (!bearer) {
++    console.error("[ghl-backfill] decifrar credencial falhou");
++    throw new BackfillErro(500, "Falha ao ler a credencial do CRM");
++  }
++  return bearer;
++}
++
++export async function backfillContatos(args: {
++  clienteId: string;
++  cursor: CursorBackfill | null;
++  maxPaginas: number;
++  fetchImpl?: typeof fetch;
++}): Promise<{ processados: number; falhas: number; cursor: CursorBackfill | null; terminou: boolean }> {
++  const { clienteId, maxPaginas, fetchImpl = (...a: Parameters<typeof fetch>) => fetch(...a) } = args;
++
++  const { data: loc, error: locErr } = await supabase
++    .from("perf_ghl_locations")
++    .select("location_id")
++    .eq("cliente_id", clienteId)
++    .eq("ativo", true)
++    .limit(1)
++    .maybeSingle();
++  if (locErr) {
++    console.error("[ghl-backfill] leitura da location falhou:", locErr.message);
++    throw new BackfillErro(500, "Falha ao ler a conta do CRM");
++  }
++  if (!loc?.location_id) throw new BackfillErro(404, "Cliente sem conta do CRM conectada");
++  const locationId = loc.location_id as string;
++
++  const bearer = await credencialDaConta(locationId, fetchImpl);
++
++  const base = (process.env.GHL_API_BASE_URL || "").replace(/\/+$/, "");
++  if (!base) {
++    console.error("[ghl-backfill] Variável de ambiente ausente: GHL_API_BASE_URL");
++    throw new BackfillErro(500, "Integração com o CRM não configurada");
++  }
++
++  let cursor = args.cursor;
++  let processados = 0;
++  let falhas = 0;
++  let terminou = false;
++
++  for (let pagina = 0; pagina < maxPaginas && !terminou; pagina++) {
++    const resp = await fetchImpl(`${base}/contacts/search`, {
++      method: "POST",
++      headers: { Authorization: `Bearer ${bearer}`, Version: GHL_API_VERSION, "content-type": "application/json", accept: "application/json" },
++      body: JSON.stringify({ locationId, pageLimit: CONTATOS_POR_PAGINA, ...(cursor ? { searchAfter: cursor } : {}) }),
++    });
++    if (!resp.ok) {
++      console.error("[ghl-backfill] busca de contatos falhou", resp.status);
++      throw new BackfillErro(502, "Falha ao buscar contatos no CRM", { processados, falhas, cursor });
++    }
++
++    let dados: { contacts?: unknown };
++    try {
++      dados = JSON.parse(await resp.text()) as { contacts?: unknown };
++    } catch {
++      console.error("[ghl-backfill] resposta de contatos ilegivel", resp.status);
++      throw new BackfillErro(502, "Resposta inválida do CRM ao buscar contatos", { processados, falhas, cursor });
++    }
++    const contatos = Array.isArray(dados.contacts) ? (dados.contacts as Record<string, unknown>[]) : [];
++
++    for (const contato of contatos) {
++      try {
++        const { status } = await ingerirLeadGhl(
++          { ...contato, locationId },
++          { mapper: mapGhlAppContactToLead, created_at: dataOriginal(contato.dateAdded) },
++        );
++        if (status === 200 || status === 201) processados++;
++        else {
++          falhas++;
++          console.warn("[ghl-backfill] contato nao gravado", String(contato.id ?? "?"), status);
++        }
++      } catch (err) {
++        falhas++;
++        console.error("[ghl-backfill] contato falhou", String(contato.id ?? "?"), err instanceof Error ? err.message : "erro interno");
++      }
++    }
++
++    const ultimo = contatos[contatos.length - 1];
++    const proximo = ultimo ? lerCursor(ultimo.searchAfter) : null;
++    if (contatos.length < CONTATOS_POR_PAGINA || !proximo) {
++      terminou = true;
++      cursor = null;
++    } else {
++      cursor = proximo;
++    }
++  }
++
++  return { processados, falhas, cursor, terminou };
++}
+diff --git a/test/ghl-backfill-lib.test.ts b/test/ghl-backfill-lib.test.ts
+new file mode 100644
+index 0000000..c99b039
+--- /dev/null
++++ b/test/ghl-backfill-lib.test.ts
+@@ -0,0 +1,126 @@
++// Ticket 761: backfillContatos e credencialDaConta sem rota; tudo mockado.
++import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
++
++process.env.GHL_API_BASE_URL = "https://ghl.test";
++
++const h = vi.hoisted(() => ({ tabelas: {} as Record<string, Record<string, unknown> | null> }));
++
++vi.mock("@supabase/supabase-js", () => ({
++  createClient: () => ({
++    rpc: (_fn: string, args: Record<string, unknown>) =>
++      Promise.resolve({ data: `plano:${String(args.encrypted_token)}`, error: null }),
++    from: (tabela: string) => {
++      const b: Record<string, unknown> = { select: () => b, eq: () => b, limit: () => b };
++      b.maybeSingle = () => Promise.resolve({ data: h.tabelas[tabela] ?? null, error: null });
++      return b;
++    },
++  }),
++}));
++
++vi.mock("@/lib/perf/encryption-key", () => ({ getEncryptionKey: () => "chave-de-teste" }));
++vi.mock("@/lib/perf/ghl-oauth", () => ({ renovarTokenGhl: vi.fn(async () => ({ accessToken: "token-novo" })) }));
++vi.mock("@/lib/perf/leads-ghl", () => ({
++  ingerirLeadGhl: vi.fn(async () => ({ status: 201 })),
++  mapGhlAppContactToLead: vi.fn(),
++}));
++
++import { BackfillErro, backfillContatos, credencialDaConta } from "@/lib/perf/ghl-backfill";
++import { renovarTokenGhl } from "@/lib/perf/ghl-oauth";
++import { ingerirLeadGhl } from "@/lib/perf/leads-ghl";
++
++const CLIENTE = "00000000-0000-4000-8000-000000000001";
++const LOC = "loc_1";
++
++function contatos(n: number, desde = 0) {
++  return Array.from({ length: n }, (_, i) => ({ id: `ctt_${desde + i}`, searchAfter: [desde + i, `ctt_${desde + i}`] }));
++}
++
++// fetch falso: uma página por chamada; `falhaNaChamada` (1-based) responde 500.
++function fetchPaginas(paginas: ReturnType<typeof contatos>[], falhaNaChamada?: number) {
++  let n = 0;
++  return vi.fn(async () => {
++    n++;
++    if (n === falhaNaChamada) return new Response("{}", { status: 500 });
++    return new Response(JSON.stringify({ contacts: paginas[n - 1] ?? [] }), { status: 200 });
++  });
++}
++
++beforeEach(() => {
++  h.tabelas = {
++    perf_ghl_locations: { location_id: LOC },
++    integration_tokens: { access_token: "AT", refresh_token: "RT", token_expires_at: new Date(Date.now() + 3600_000).toISOString() },
++  };
++  vi.mocked(ingerirLeadGhl).mockClear();
++  vi.mocked(ingerirLeadGhl).mockResolvedValue({ status: 201 } as never);
++  vi.mocked(renovarTokenGhl).mockClear();
++  for (const m of ["log", "error", "warn"] as const) vi.spyOn(console, m).mockImplementation(() => {});
++});
++
++afterEach(() => vi.restoreAllMocks());
++
++describe("backfillContatos", () => {
++  it("para em maxPaginas devolvendo o cursor da última página", async () => {
++    const paginas = [contatos(100), contatos(100, 100), contatos(100, 200)];
++    const f = fetchPaginas(paginas);
++    const r = await backfillContatos({ clienteId: CLIENTE, cursor: null, maxPaginas: 2, fetchImpl: f as never });
++    expect(f).toHaveBeenCalledTimes(2);
++    expect(r.terminou).toBe(false);
++    expect(r.processados).toBe(200);
++    expect(r.cursor).toEqual(paginas[1][99].searchAfter);
++    expect(JSON.parse(String((f.mock.calls[1] as unknown as [string, RequestInit])[1].body))).toMatchObject({ locationId: LOC, pageLimit: 100, searchAfter: paginas[0][99].searchAfter });
++  });
++
++  it("termina com terminou true e cursor null na página parcial", async () => {
++    const f = fetchPaginas([contatos(100), contatos(7, 100)]);
++    const r = await backfillContatos({ clienteId: CLIENTE, cursor: null, maxPaginas: 5, fetchImpl: f as never });
++    expect(r).toMatchObject({ processados: 107, falhas: 0, cursor: null, terminou: true });
++    expect(f).toHaveBeenCalledTimes(2);
++  });
++
++  it("falha da busca lança BackfillErro 502 com o cursor da página que falhou", async () => {
++    const paginas = [contatos(100), contatos(100, 100)];
++    const f = fetchPaginas(paginas, 2);
++    const erro = await backfillContatos({ clienteId: CLIENTE, cursor: null, maxPaginas: 5, fetchImpl: f as never }).then(
++      () => null,
++      (e: unknown) => e,
++    );
++    expect(erro).toBeInstanceOf(BackfillErro);
++    const e = erro as BackfillErro;
++    expect(e.status).toBe(502);
++    expect(e.mensagem).toContain("buscar contatos");
++    expect(e.parcial).toMatchObject({ processados: 100, falhas: 0 });
++    expect(e.parcial?.cursor).toEqual(paginas[0][99].searchAfter);
++  });
++
++  it("contato que falha conta em falhas e o laço segue", async () => {
++    vi.mocked(ingerirLeadGhl).mockImplementation((async (c: Record<string, unknown>) => {
++      if (c.id === "ctt_1") throw new Error("boom");
++      if (c.id === "ctt_2") return { status: 422 };
++      return { status: 201 };
++    }) as never);
++    const f = fetchPaginas([contatos(4)]);
++    const r = await backfillContatos({ clienteId: CLIENTE, cursor: null, maxPaginas: 5, fetchImpl: f as never });
++    expect(r).toMatchObject({ processados: 2, falhas: 2, terminou: true });
++    expect(ingerirLeadGhl).toHaveBeenCalledTimes(4);
++  });
++});
++
++describe("credencialDaConta", () => {
++  it("renova quando o token está perto de vencer", async () => {
++    h.tabelas.integration_tokens = {
++      access_token: "AT",
++      refresh_token: "RT",
++      token_expires_at: new Date(Date.now() + 60_000).toISOString(),
++    };
++    const bearer = await credencialDaConta(LOC, vi.fn() as never);
++    expect(renovarTokenGhl).toHaveBeenCalledTimes(1);
++    expect(vi.mocked(renovarTokenGhl).mock.calls[0][1]).toBe("plano:RT");
++    expect(bearer).toBe("token-novo");
++  });
++
++  it("não renova quando o vencimento está longe", async () => {
++    const bearer = await credencialDaConta(LOC, vi.fn() as never);
++    expect(renovarTokenGhl).not.toHaveBeenCalled();
++    expect(bearer).toBe("plano:AT");
++  });
++});

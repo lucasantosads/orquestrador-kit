@@ -1,0 +1,25 @@
+   × peça 2: o leitor do kit lê cada tentativa uma vez > o 243 com dois INICIO attempt=1: attempt-0..3, uma vez cada, na ordem 3ms
+   × peça 2: o leitor do kit lê cada tentativa uma vez > a última tentativa é a do bloqueio (o juiz da attempt-3), e a 1ª a do enforcement 0ms
+   × peça 2: o leitor do kit lê cada tentativa uma vez > nenhum arquivo entra duas vezes nos lidos (a assinatura e a cópia da evidência) 0ms
+ FAIL  test/orquestrador-triador-leitor-kit-tentativas.test.ts > peça 2: o leitor do kit lê cada tentativa uma vez > o 243 com dois INICIO attempt=1: attempt-0..3, uma vez cada, na ordem
+AssertionError: expected [ [ 1, …(1) ], [ 2, …(1) ], …(2) ] to deeply equal [ [ 1, …(1) ], [ 2, …(1) ], …(2) ]
+- Expected
++ Received
+-     "docs/fila/runs/243/attempt-1",
++     "docs/fila/runs/243/attempt-0",
+-     "docs/fila/runs/243/attempt-2",
++     "docs/fila/runs/243/attempt-1",
+-     "docs/fila/runs/243/attempt-3",
++     "docs/fila/runs/243/attempt-2",
+ FAIL  test/orquestrador-triador-leitor-kit-tentativas.test.ts > peça 2: o leitor do kit lê cada tentativa uma vez > a última tentativa é a do bloqueio (o juiz da attempt-3), e a 1ª a do enforcement
+AssertionError: expected [ 'enforcement', 'enforcement', …(2) ] to deeply equal [ 'enforcement', 'juiz', 'juiz', …(1) ]
+- Expected
++ Received
+-   "juiz",
++   "enforcement",
+ FAIL  test/orquestrador-triador-leitor-kit-tentativas.test.ts > peça 2: o leitor do kit lê cada tentativa uma vez > nenhum arquivo entra duas vezes nos lidos (a assinatura e a cópia da evidência)
+AssertionError: expected 20 to be 16 // Object.is equality
+- Expected
++ Received
+- 16
++ 20

@@ -1,0 +1,48 @@
+  ok    painel --estado sai 0
+
+== 1. os 6 indicadores ==
+  FALHA tempo por ticket: média, mediana, pior (s): esperado '880 600 1680', veio 'null null null'
+  FALHA aprovação na 1ª: 2 de 3, 67%: esperado '2 3 67', veio 'null null null'
+  FALHA tentativas por aprovação: 5 inícios / 3 aprovações: esperado '5 3 1.7', veio 'null null null'
+  FALHA fila estimada: 2 prontos × 980 s de execução por aprovação: esperado '2 980 1960', veio 'null null null'
+  FALHA ociosidade hoje: 12h menos 49 min em execução, 2h delas pausado: esperado '40260 7200', veio 'null null'
+  ok    última promoção: sem dado, com o motivo
+  FALHA sem a razão do sem dado
+  FALHA custo do dia (custo.json), só hoje: esperado '0.75', veio 'null'
+
+== 2. sem aprovação no dia, os indicadores dizem 'sem dado' em vez de zero ==
+  FALHA tempo_ticket sem 'sem_dado' com o dia vazio
+  FALHA primeira sem 'sem_dado' com o dia vazio
+  FALHA tentativas_por_aprovacao sem 'sem_dado' com o dia vazio
+  FALHA fila_estimada sem 'sem_dado' com o dia vazio
+
+== 3. bloqueados: categoria, motivo, allowlist, parado há, tentativas ==
+  ok    820: enforcement
+  ok    820: parado há 30 min
+  ok    820: tentativas do BLOQUEADO (sem campo no ticket)
+  ok    820: onde mexe
+
+== 4. prontos: o que muda em uma frase, onde mexe, quantos destravam ==
+  FALHA prontos na ordem do loop: esperado '810 811', veio ''
+  FALHA 810: a primeira frase do objetivo: esperado 'Painel ganha metas por tipo.', veio 'null'
+  FALHA 810: onde mexe: esperado 'src/geral.tsx,src/a.ts', veio ''
+  FALHA 810 destrava 1 (o 812), 811 nenhum: esperado '1 0', veio ''
+
+== 5. hora a hora: aprovado, reprova, parado ==
+  FALHA 9h: 1 aprovado, 1 reprova, 28 min em execução, 32 parado: esperado '1 1 28 32', veio 'null null null null'
+  FALHA 10h: 2 aprovados, 16 min em execução: esperado '2 0 16 44', veio 'null null null null'
+  FALHA 3h: parado a hora inteira: esperado '0 0 0 60', veio 'null null null null'
+  FALHA horas até agora (0 a 12): esperado '13', veio '0'
+
+== 6. arquivos mais disputados entre os pendentes ==
+  FALHA top 3: esperado 'src/geral.tsx:3 src/page.tsx:2 src/a.ts:1', veio ''
+
+== 7. a página tem a vista de detalhe ==
+  FALHA página sem 'function detalhe'
+  FALHA página sem 'Hoje, hora a hora'
+  FALHA página sem 'Arquivos mais disputados'
+  FALHA página sem 'Prontos'
+  ok    página contém 'sem dado'
+
+24 CHECK(S) FALHARAM
+rc=1

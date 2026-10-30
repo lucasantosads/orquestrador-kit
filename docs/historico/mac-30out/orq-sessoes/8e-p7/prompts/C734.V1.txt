@@ -1,0 +1,604 @@
+Você é o JUIZ de uma esteira automatizada. Julgue SOMENTE pelo material abaixo:
+o diff cru da tentativa, a saída dos gates mecânicos e os critérios do ticket.
+Você NÃO recebe o prompt do executor nem resumo nenhum do agente, de propósito:
+o que o agente diz que fez nunca é evidência. Se algo não está no diff, não aconteceu.
+
+VOCÊ NÃO TEM FERRAMENTAS. Não leia arquivo, não rode comando, não abra o
+repositório: a chamada está sem ferramenta nenhuma e qualquer tentativa só
+gasta turno. Se o material abaixo não basta para aprovar, REPROVE dizendo o
+que faltou — nunca aprove no benefício da dúvida.
+
+Os gates mecânicos JÁ PASSARAM (enforcement, typecheck, testes, critérios, build).
+Você não os reexecuta: o seu trabalho é o que eles não conseguem ver.
+
+O QUE VOCÊ COBRA, item a item:
+
+1. INTEGRAÇÃO, não existência. Componente/função/rota criada mas nunca importada,
+   montada ou chamada passa em "arquivo existe" e falha em produção. Siga a
+   variável ou o símbolo até o ponto de uso real; um resultado calculado e
+   descartado não vale.
+2. O TESTE EXERCITA O COMPORTAMENTO DO OBJETIVO. Teste tautológico
+   (expect(true), expect(x).toBeDefined() sobre algo trivialmente definido,
+   asserção que passaria com o código antigo) NÃO prova nada. Pergunte-se: este
+   teste ficaria VERMELHO se a mudança fosse revertida? Se não, reprove.
+3. CRITÉRIO DE AUSÊNCIA EXIGE CONTROLE POSITIVO. Um teste que só afirma que algo
+   NÃO aparece passa igual quando o componente não renderiza nada. Exija, no
+   MESMO render/execução, ao menos uma asserção POSITIVA de que a coisa certa
+   apareceu. Reprove ausência provada no vazio.
+
+4. ANTI-AFROUXAMENTO (a allowlist deste ticket inclui arquivo de teste).
+   No diff dos arquivos de teste, REPROVE se encontrar qualquer um destes:
+   - asserção removida (expect apagado) sem que o comportamento tenha deixado de existir;
+   - toBe/toEqual trocado por toBeDefined/toBeTruthy/objectContaining mais frouxo;
+   - .skip, .todo, .only, teste comentado ou arquivo de teste deletado;
+   - valor esperado alterado SEM comentário dizendo por que a regra nova o muda.
+   Valor RECALCULADO sob a regra nova, com o porquê em comentário, é o único
+   caminho aceito. Renomear símbolo para satisfazer contagem também é afrouxar.
+
+RESPONDA SÓ COM ESTE JSON, sem cerca de código, sem texto antes ou depois:
+{"aprovado": true|false, "motivo": "<=2 frases, concreto, citando arquivo e linha>",
+ "criterios_falhos": ["descrição exata do critério que você reprova", ...]}
+
+criterios_falhos: use a DESCRIÇÃO do critério, copiada como está na lista acima.
+Vazio quando aprovado. Na dúvida entre aprovar e reprovar, REPROVE e diga o que falta.
+
+TICKET 734
+Objetivo: ORCAMENTO DE DIFF: teto de 460 linhas (~30 em src/lib/tempo/feriados.ts NOVO, ~170 em src/lib/inicio/vacuo.ts NOVO, ~25 em src/lib/eventos/resposta-grupo.ts, ~220 no teste NOVO test/vacuo-grupo.test.ts, ~15 em test/eventos-resposta-grupo.test.ts). Se passar do teto, pare e reporte. FONTE: docs/planos/plano-vacuo-promessa-02out.md (plano aprovado em 02/10; as decisoes de 02/10 escritas la valem sobre o plano). Piloto so AQUINO ADV. PASSO 1: leia inteiros src/lib/tempo/minutos-uteis.ts (692: minutosUteisEntre, proximoInicioUtil), src/lib/eventos/resposta-grupo.ts (715), src/lib/whatsapp/classificar-autor.ts e src/lib/whatsapp/equipe.ts (731), src/lib/whatsapp/cliente-por-telefone.ts (728: contatosEfetivosDoCliente), src/lib/whatsapp/autor.ts e test/eventos-resposta-grupo.test.ts. Colunas lidas de cs_wpp_mensagem: wpp_message_id, remote_jid, enviada_em, tipo_conteudo (texto, audio, imagem, video, documento, figurinha, outro), texto e COLUNAS_AUTOR. FAZER: (1) NOVO src/lib/tempo/feriados.ts: export async function carregarFeriados(db): Promise<string[]> le feriados (data, todas as linhas) e devolve 'AAAA-MM-DD'; erro de leitura LANCA (quem chama decide; vacuo sem feriado e conta errada, nao silencio). (2) NOVO src/lib/inicio/vacuo.ts: (a) funcao PURA calcularVacuo(mensagens (ordem crescente, ja com classe 'equipe'|'cliente'|'desconhecido'), tratadoAte: string | null, feriados, agoraISO): devolve null ou { desde (enviada_em da primeira mensagem do cliente sem resposta), mensagem_id (wpp_message_id dela), minutos_uteis (minutosUteisEntre(proximoInicioUtil(desde, feriados), agora, feriados)), trecho (texto da ULTIMA mensagem do cliente pendente, 160 caracteres; sem texto = '[audio]', '[imagem]' etc.), autor_nome } quando minutos_uteis >= LIMITE_VACUO_MIN (export const = 60). Regras: mensagem de cliente abre se nao houver pendente; mensagem da equipe com tipo_conteudo diferente de audio e figurinha zera; audio e figurinha da equipe nao zeram; desconhecido e ignorado; mensagem do cliente com enviada_em <= tratadoAte conta como tratada. (b) loader carregarVacuos(db, agoraISO, opcoes?: { clienteIds?: string[] }): grupos vigentes de wpp_grupo (deleted_at nulo, status diferente de 'inativo', com cliente_id; SO SELECT), mensagens dos ultimos 7 dias desses grupos (teto 5000, ordem crescente), carregarTelefonesEquipe, contatosEfetivosDoCliente por cliente, montarMapaLid, classificarAutor, carregarFeriados e o maior tratado_em de perf_vacuo_tratado por (group_jid) cujo mensagem_enviada_em e o desde pendente ou anterior; devolve { vacuos: (Vacuo & { group_jid, cliente_id })[], desconhecidos24h: Record<group_jid, number> } (autores distintos classificados desconhecido nas ultimas 24h, para a linha 'vacuo pode estar incompleto'). (3) src/lib/eventos/resposta-grupo.ts: so mensagem de classe 'cliente' (classificarAutor com os contatos efetivos do cliente do grupo) abre par; desconhecido nao abre nem fecha; o colaborador da resposta passa a ser achado em carregarTelefonesPorColaborador (numero extra conta); os feriados vem de carregarFeriados em vez de []. Chave e tipo do evento NAO mudam. (4) NOVO test/vacuo-grupo.test.ts (relogio fixo, feriados injetados, db mockado no loader): mensagem do cliente sem resposta passa de 60 min uteis e gera vacuo; texto da equipe depois zera; audio ou figurinha da equipe nao zera; desconhecido nao abre nem fecha; mensagens seguidas do cliente contam a partir da primeira; 11h30 ate 14h30 = 60 min (gera); 'ok' do cliente abre vacuo; Tratado esconde e nova mensagem do cliente depois do Tratado reabre; feriado no meio nao conta; o loader nao chama insert/update/upsert/delete (espiao do from). Em test/eventos-resposta-grupo.test.ts acrescente o caso: mensagem de desconhecido seguida de resposta da equipe NAO gera evento; recalcule com comentario o que mudar. FORA DE ESCOPO: API e tela (735 a 737), avisos (738), promessa, src/lib/wpp/interacao.ts, src/lib/inicio/carregar-carteira.ts (694). REGRAS: zona C0 (clientes_receita, leads_crm, leads_crm_historico, ads_metadata, ads_performance, fn_mql_sql_by_month, prefixos trafego_* e vw_*) e leitura pura: nada de escrita, DDL, grant, RLS ou trigger nelas; zero migration e zero .sql (so o 730 escreve .sql, e nao aplica); dono do cliente SO por carregarQuemCuida/responsaveisDoCliente/cuidaDoCliente (src/lib/clientes/quem-cuida.ts), nunca clientes.gestor_id nem o analista do espelho; equipe no grupo SO por ehDaEquipe (src/lib/whatsapp/equipe.ts), nunca a marca is_equipe gravada; cliente ativo SO por isClienteAtivo (src/lib/clientes/ativo.ts); papel SO por papelDe (src/lib/nav/papel.ts), nunca is_gestor_trafego nem is_head_operacional como papel; NUNCA rode UPDATE em employees.is_gestor_trafego; produtividade nasce de evento registrado, nunca de cronometro, sessao de tempo ou apontamento manual; dado ausente aparece como 'sem base' com o motivo, nunca zero e nunca verde; nenhum jargao de banco em texto de tela (nome de tabela, view, coluna ou operador); nenhum travessao (U+2014) em texto de tela nem em string de copy (guarda travessao-mudo); numeros de tela em Geist Mono (classe font-mono ja usada no repo); PILOTO DO MONITORAMENTO DE GRUPO (decisao do Lucas, 28/09): so o AQUINO ADV esta vinculado; NUNCA escreva em wpp_grupo (nada de insert/update/upsert), nunca crie vinculo grupo -> cliente e nunca preencha cs_wpp_mensagem.cliente_id de grupo por outro caminho que nao o vinculo ja existente em wpp_grupo; autor de mensagem de grupo SO por classificarAutor (src/lib/whatsapp/classificar-autor.ts, ticket 731): desconhecido nunca vira cliente, nao abre nem fecha vacuo, nao conta como pedido e nao pontua; Set e Map so com Array.from (tsc sem downlevelIteration); nenhum .json() literal novo em src (cliente: fetchJson de @/lib/fetch-json; rota: lerCorpoJson de @/lib/fetch-json, nunca req.json()); getSession e server-only, nunca em arquivo 'use client'; supabase, fetch e getSession sempre mockados nos testes (vi.mock), nunca banco real; fixture de uuid RFC-4122 (00000000-0000-4000-8000-000000000000 ou crypto.randomUUID()); testes sem JSX (React.createElement + renderToStaticMarkup ou leitura de fonte com readFileSync; o projeto nao tem jsdom nem @testing-library); teste ancora em texto visivel ou data-testid, nunca em classe de estilo; nunca toEqual numa lista inteira (afirme itens com toContain/some). TESTES EXISTENTES da allowlist: se a mudanca quebrar uma assercao, RECALCULE o valor sob a regra nova com comentario acima citando o ticket e de onde veio o numero; PROIBIDO remover assercao, trocar toBe/toEqual/toMatch por toBeDefined/toBeTruthy, usar .skip/.only/.todo, apagar it( ou o arquivo. GUARDAS GLOBAIS (fora da allowlist, nao edite): test/fetch-json-teto.test.ts, test/consistencia-contagens.test.ts, test/bloco-vazio-linha.test.ts, test/abas-montadas.test.ts, test/cartao-topo-perfil.test.tsx, test/travessao-mudo.test.ts, test/c0-guard.test.ts. Se um teste FORA da allowlist quebrar, PARE e descreva. Motor do orquestrador (scripts/orquestrador/, docs/orquestrador/) intocado.
+
+Allowlist do ticket:
+  - src/lib/tempo/feriados.ts
+  - src/lib/inicio/vacuo.ts
+  - src/lib/eventos/resposta-grupo.ts
+  - test/vacuo-grupo.test.ts
+  - test/eventos-resposta-grupo.test.ts
+
+Critérios de aceite:
+  - [guarda · já verificado por comando] tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)
+      cmd: ( [ "$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\.next/')" = 3 ] ) && echo OK || echo FAIL · espera: OK
+  - [guarda · já verificado por comando] nenhum .sql novo (zero DDL)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff --name-only "$b" HEAD | grep -c '[.]sql$'); [ "$n" = 0 ] && echo SEM_SQL || echo SQL_$n · espera: SEM_SQL
+  - [guarda · já verificado por comando] testes existentes da allowlist verdes (mock completado ou valor recalculado, nunca afrouxado)
+      cmd: fs=""; for f in 'test/eventos-resposta-grupo.test.ts'; do [ -f "$f" ] && fs="$fs $f"; done; [ -z "$fs" ] && echo VERDE || { npx vitest run $fs >/dev/null 2>&1 && echo VERDE || echo VERMELHO; } · espera: VERDE
+  - [guarda · já verificado por comando] anti-afrouxamento: nenhum teste existente da allowlist perdeu it(/expect(, ganhou .skip/.only/.todo ou toBeDefined() novo, nem foi apagado (contra o merge-base com staging-auto)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; r=NAO_AFROUXOU; for f in 'test/eventos-resposta-grupo.test.ts'; do [ -f "$f" ] || { git cat-file -e "$b:$f" 2>/dev/null && r=APAGOU_$f; continue; }; for p in 'expect(' 'it('; do a=$(git show "$b:$f" 2>/dev/null | grep -cF "$p"); n=$(grep -cF "$p" "$f"); [ "${n:-0}" -ge "${a:-0}" ] || r=CAIU_$f; done; s0=$(git show "$b:$f" 2>/dev/null | grep -cE '\.(skip|only|todo)\('); s1=$(grep -cE '\.(skip|only|todo)\(' "$f"); [ "${s1:-0}" -le "${s0:-0}" ] || r=SKIP_NOVO_$f; d0=$(git show "$b:$f" 2>/dev/null | grep -c 'toBeDefined()'); d1=$(grep -c 'toBeDefined()' "$f"); [ "${d1:-0}" -le "${d0:-0}" ] || r=TOBEDEFINED_NOVO_$f; done; echo $r · espera: NAO_AFROUXOU
+  - [guarda · já verificado por comando] guardas globais seguem verdes
+      cmd: npx vitest run test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [guarda · já verificado por comando] nenhuma guarda global foi editada (diff contra o merge-base com staging-auto)
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- test/fetch-json-teto.test.ts test/consistencia-contagens.test.ts test/bloco-vazio-linha.test.ts test/abas-montadas.test.ts test/cartao-topo-perfil.test.tsx test/travessao-mudo.test.ts test/c0-guard.test.ts | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADAS || echo EDITOU_$n · espera: INTOCADAS
+  - [guarda · já verificado por comando] nenhuma linha nova com .json() nos arquivos de src do ticket (teto do 295)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- 'src/lib/tempo/feriados.ts' 'src/lib/inicio/vacuo.ts' 'src/lib/eventos/resposta-grupo.ts' | grep -cE '^[+][^+].*[.]json[(][)]'); [ "$n" = 0 ] && echo ZERO_JSON_NOVO || echo JSON_NOVO_$n · espera: ZERO_JSON_NOVO
+  - [guarda · já verificado por comando] arquivos fora do escopo intocados
+      cmd: n=$(git diff --name-only "$(git merge-base HEAD origin/staging-auto)" -- 'src/lib/wpp/interacao.ts' 'src/lib/whatsapp/equipe.ts' 'src/lib/tempo/minutos-uteis.ts' | wc -l | tr -d ' '); [ "$n" = 0 ] && echo INTOCADOS || echo TOCOU_$n · espera: INTOCADOS
+  - [guarda · já verificado por comando] so arquivos da allowlist foram tocados
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; r=SO_ALLOWLIST; for f in $(git diff --name-only "$b" HEAD); do ok=0; for p in 'src/lib/tempo/feriados.ts' 'src/lib/inicio/vacuo.ts' 'src/lib/eventos/resposta-grupo.ts' 'test/vacuo-grupo.test.ts' 'test/eventos-resposta-grupo.test.ts'; do case "$f" in $p) ok=1;; esac; done; [ $ok = 1 ] || r=FORA_$f; done; echo $r · espera: SO_ALLOWLIST
+  - [guarda · já verificado por comando] diff dentro do orcamento (<= 460 linhas somando adicoes e remocoes)
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; t=$(git diff --numstat "$b" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ "$t" -le 460 ] && echo NO_TETO || echo ESTOUROU_$t · espera: NO_TETO
+  - [guarda · já verificado por comando] piloto preservado: nenhuma linha nova escreve em wpp_grupo
+      cmd: b="$(git merge-base HEAD origin/staging-auto)"; n=$(git diff "$b" HEAD -- src scripts | grep -E '^[+][^+]' | grep -cE 'wpp_grupo.*[.](insert|update|upsert)[(]|[.](insert|update|upsert)[(].*wpp_grupo'); [ "$n" = 0 ] && echo SEM_ESCRITA_GRUPO || echo ESCREVE_GRUPO_$n · espera: SEM_ESCRITA_GRUPO
+  - [? · já verificado por comando] teste novo verde (test/vacuo-grupo.test.ts)
+      cmd: test -f test/vacuo-grupo.test.ts && npx vitest run test/vacuo-grupo.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO · espera: VERDE
+  - [? · já verificado por comando] vacuo usa o classificador, minutos uteis e feriados do banco
+      cmd: f=src/lib/inicio/vacuo.ts; [ -f $f ] || { echo AUSENTE; exit 0; }; a=$(grep -c 'classificarAutor' $f); b=$(grep -c 'minutosUteisEntre' $f); c=$(grep -c 'carregarFeriados' $f); w=$(grep -cE '[.](insert|update|upsert|delete)[(]' $f); [ "$a" -ge 1 ] && [ "$b" -ge 1 ] && [ "$c" -ge 1 ] && [ "$w" = 0 ] && echo REGRA_UNICA || echo VACUO_${a}_${b}_${c}_${w} · espera: REGRA_UNICA
+  - [? · já verificado por comando] o 715 deixou de ignorar feriados e de parear desconhecido
+      cmd: f=src/lib/eventos/resposta-grupo.ts; a=$(grep -c 'carregarFeriados' $f); b=$(grep -c 'classificarAutor' $f); c=$(grep -c 'proximoInicioUtil(inicio, \[\])' $f); [ "$a" -ge 1 ] && [ "$b" -ge 1 ] && [ "$c" = 0 ] && echo SO_CLIENTE || echo RG_${a}_${b}_${c} · espera: SO_CLIENTE
+  - [? · já verificado por comando] limite de 60 minutos uteis exportado
+      cmd: ( grep -q 'export const LIMITE_VACUO_MIN = 60' src/lib/inicio/vacuo.ts ) >/dev/null 2>&1 && echo OK || echo FAIL · espera: OK
+  - [avaliador · JULGUE VOCÊ] avaliador: o vacuo nasce da primeira mensagem de cliente sem resposta apos 60 min uteis com feriados do banco, fecha por texto da equipe (nao por audio ou figurinha) ou por Tratado, ignora desconhecido e reabre com mensagem nova; o 715 pareia so cliente e conta feriados. REPROVE se: desconhecido abre ou fecha vacuo; regra de equipe ou de telefone fora do classificador; minutos contados fora de minutosUteisEntre; feriado ignorado; escreve em qualquer tabela; chave do evento do 715 muda; assercao existente afrouxada.
+
+
+DEFINIÇÕES CHAMADAS PELOS TESTES NOVOS (estado na base, NÃO fazem parte do diff):
+Funções e fixtures que os testes ADICIONADOS chamam e que estão definidas fora do diff.
+Julgue pelo corpo, nunca pelo nome.
+
+--- test/eventos-resposta-grupo.test.ts:24 (msg; estado na base, NÃO faz parte do diff) ---
+function msg(autor: string | null, enviada_em: string, fromMe = false): Linha {
+  return { remote_jid: GRUPO, enviada_em, autor_jid: autor, chave: { fromMe } };
+}
+--- fim de msg ---
+
+MENSAGENS DE COMMIT (escritas pelo agente: declaração, não evidência):
+O que o agente AFIRMA ter feito. Serve para saber o que conferir no diff e nos
+gates; uma afirmação aqui que o diff ou os gates não provam NÃO foi feita.
+
+commit a8ea88e1a00559d2a123e99e5f5bfce39de2a041
+
+734: vacuo no grupo (60 min uteis, feriados do banco) e 715 pareia so cliente
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+SAÍDA DOS GATES MECÂNICOS:
+ok   build
+       
+       ○  (Static)   prerendered as static content
+       ƒ  (Dynamic)  server-rendered on demand
+ok   tsc
+       src/app/api/perf/qualificacao-regras/[id]/route.ts(55,34): error TS2538: Type 'undefined' cannot be used as an index type.
+       src/app/api/perf/qualificacao-regras/estagios/route.ts(31,21): error TS2802: Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+       src/app/dashboard/clientes/qualificacao/qualificacao-block.tsx(74,29): error TS2802: Type 'MapIterator<ClienteTese>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+ok   vitest
+       Tests  7551 passed (7551)
+       Start at  15:27:11
+       Duration  40.84s (transform 53.87s, setup 0ms, import 151.19s, tests 39.55s, environment 87ms)
+VEREDITO: APROVADO
+
+DIFF CRU DA TENTATIVA (git diff base...HEAD):
+diff --git a/src/lib/eventos/resposta-grupo.ts b/src/lib/eventos/resposta-grupo.ts
+index 8c3df4f..1ee552f 100644
+--- a/src/lib/eventos/resposta-grupo.ts
++++ b/src/lib/eventos/resposta-grupo.ts
+@@ -1,7 +1,8 @@
+ /**
+  * Tempo de resposta da equipe no grupo do WhatsApp (ticket 715), derivado na
+- * leitura: cada mensagem de fora da equipe (ehDaEquipe falso) vira um par com a
+- * PRIMEIRA mensagem da equipe depois dela no mesmo grupo. Mensagens seguidas do
++ * leitura: cada mensagem de CLIENTE (classificarAutor, 731) vira um par com a
++ * PRIMEIRA mensagem da equipe depois dela no mesmo grupo. Desconhecido não abre
++ * nem fecha par (734). Mensagens seguidas do
+  * cliente antes da resposta contam a partir da primeira. O valor do evento é em
+  * minutos úteis; a chave é estável, então reprocessar a janela não duplica.
+  * Autor da resposta sem telefone cadastrado gera evento sem colaborador.
+@@ -10,8 +11,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
+ import type { Db } from "@/lib/clientes/relacao";
+ import { registrarEvento } from "@/lib/eventos/registrar";
+ import { minutosUteisEntre, proximoInicioUtil } from "@/lib/tempo/minutos-uteis";
++import { carregarFeriados } from "@/lib/tempo/feriados";
+ import { COLUNAS_AUTOR, montarMapaLid, pessoaDaLinha, type LinhaAutor } from "@/lib/whatsapp/autor";
+-import { carregarTelefonesEquipe, ehDaEquipe } from "@/lib/whatsapp/equipe";
++import { classificarAutor } from "@/lib/whatsapp/classificar-autor";
++import { contatosEfetivosDoCliente } from "@/lib/whatsapp/cliente-por-telefone";
++import { carregarTelefonesPorColaborador } from "@/lib/whatsapp/equipe";
+ import { phonesMatch } from "@/lib/whatsapp/phone";
+ 
+ export const JANELA_HORAS = 48;
+@@ -50,17 +54,26 @@ export async function derivarRespostas(db: Db, desdeISO: string, agoraISO: strin
+     .limit(LIMITE_MENSAGENS);
+   const linhas = (msgData ?? []) as Mensagem[];
+ 
+-  const telefones = await carregarTelefonesEquipe(db);
+-  const { data: colabs } = await db.from("employees").select("id, telefone").eq("ativo", true);
+-  const colaboradores = ((colabs ?? []) as { id: string; telefone?: string | null }[]).filter(
+-    (c) => typeof c.telefone === "string" && c.telefone.trim() !== "",
+-  );
++  // número extra da equipe conta (731): o colaborador sai da lista com os extras
++  const colaboradores = await carregarTelefonesPorColaborador(db);
++  const telefones = colaboradores.map((c) => c.telefone);
++  const feriados = await carregarFeriados(db);
++  const contatosPorCliente = new Map<string, string[]>();
++  for (const id of Array.from(new Set(Array.from(clientePorGrupo.values())))) {
++    contatosPorCliente.set(id, await contatosEfetivosDoCliente(db as unknown as SupabaseClient, id));
++  }
+   const mapa = montarMapaLid(linhas);
+ 
+   const pendentePorGrupo = new Map<string, string>();
+   for (const m of linhas) {
+     if (!clientePorGrupo.has(m.remote_jid)) continue;
+-    if (!ehDaEquipe(m, telefones, mapa)) {
++    const classe = classificarAutor(
++      m,
++      { telefonesEquipe: telefones, contatosCliente: contatosPorCliente.get(clientePorGrupo.get(m.remote_jid) as string) ?? [] },
++      mapa,
++    );
++    if (classe === "desconhecido") continue;
++    if (classe === "cliente") {
+       if (!pendentePorGrupo.has(m.remote_jid)) pendentePorGrupo.set(m.remote_jid, m.enviada_em);
+       continue;
+     }
+@@ -69,13 +82,13 @@ export async function derivarRespostas(db: Db, desdeISO: string, agoraISO: strin
+     pendentePorGrupo.delete(m.remote_jid);
+ 
+     const tel = pessoaDaLinha(m, mapa)?.telefone ?? null;
+-    const colab = tel ? colaboradores.find((c) => phonesMatch(tel, c.telefone as string)) : undefined;
++    const colab = tel ? colaboradores.find((c) => phonesMatch(tel, c.telefone)) : undefined;
+     resumo.pares++;
+     const r = await registrarEvento(db as unknown as Pick<SupabaseClient, "from">, {
+-      colaboradorId: colab?.id ?? null,
++      colaboradorId: colab?.employee_id || null,
+       clienteId: clientePorGrupo.get(m.remote_jid) ?? null,
+       tipo: "resposta_grupo",
+-      valor: minutosUteisEntre(proximoInicioUtil(inicio, []), m.enviada_em, []),
++      valor: minutosUteisEntre(proximoInicioUtil(inicio, feriados), m.enviada_em, feriados),
+       origem: "grupo",
+       chave: `resposta:${m.remote_jid}:${inicio}`,
+       ocorridoEm: m.enviada_em,
+diff --git a/src/lib/inicio/vacuo.ts b/src/lib/inicio/vacuo.ts
+new file mode 100644
+index 0000000..221becf
+--- /dev/null
++++ b/src/lib/inicio/vacuo.ts
+@@ -0,0 +1,181 @@
++/**
++ * Ticket 734: vácuo no grupo do WhatsApp. Cliente sem resposta de texto da
++ * equipe há 60 minutos úteis. Autor só por classificarAutor (731); desconhecido
++ * nunca abre nem fecha. Só leitura: nenhuma escrita em tabela.
++ */
++import type { SupabaseClient } from "@supabase/supabase-js";
++import type { Db } from "@/lib/clientes/relacao";
++import { carregarFeriados } from "@/lib/tempo/feriados";
++import { minutosUteisEntre, proximoInicioUtil } from "@/lib/tempo/minutos-uteis";
++import { COLUNAS_AUTOR, montarMapaLid, pessoaDaLinha, type LinhaAutor } from "@/lib/whatsapp/autor";
++import { classificarAutor, type ClasseAutor } from "@/lib/whatsapp/classificar-autor";
++import { contatosEfetivosDoCliente } from "@/lib/whatsapp/cliente-por-telefone";
++import { carregarTelefonesEquipe } from "@/lib/whatsapp/equipe";
++
++export const LIMITE_VACUO_MIN = 60;
++const JANELA_DIAS = 7;
++const LIMITE_MENSAGENS = 5000;
++const TRECHO_MAX = 160;
++const MS_DIA = 86400000;
++
++export interface MensagemVacuo {
++  wpp_message_id: string;
++  enviada_em: string;
++  tipo_conteudo: string;
++  texto: string | null;
++  autor_nome: string | null;
++  classe: ClasseAutor;
++}
++
++export interface Vacuo {
++  desde: string;
++  mensagem_id: string;
++  minutos_uteis: number;
++  trecho: string;
++  autor_nome: string | null;
++}
++
++function trechoDe(m: MensagemVacuo): string {
++  const t = (m.texto ?? "").trim();
++  if (t) return t.slice(0, TRECHO_MAX);
++  return "[" + (m.tipo_conteudo === "texto" ? "mensagem" : m.tipo_conteudo) + "]";
++}
++
++export function calcularVacuo(
++  mensagens: MensagemVacuo[],
++  tratadoAte: string | null,
++  feriados: readonly string[],
++  agoraISO: string,
++): Vacuo | null {
++  const corte = tratadoAte ? new Date(tratadoAte).getTime() : null;
++  let primeira: MensagemVacuo | null = null;
++  let ultima: MensagemVacuo | null = null;
++  for (const m of mensagens) {
++    if (m.classe === "desconhecido") continue;
++    if (m.classe === "cliente") {
++      if (corte !== null && new Date(m.enviada_em).getTime() <= corte) continue;
++      if (!primeira) primeira = m;
++      ultima = m;
++      continue;
++    }
++    // equipe: áudio e figurinha não contam como resposta
++    if (m.tipo_conteudo !== "audio" && m.tipo_conteudo !== "figurinha") {
++      primeira = null;
++      ultima = null;
++    }
++  }
++  if (!primeira || !ultima) return null;
++  const minutos = minutosUteisEntre(proximoInicioUtil(primeira.enviada_em, feriados), agoraISO, feriados);
++  if (minutos < LIMITE_VACUO_MIN) return null;
++  return {
++    desde: primeira.enviada_em,
++    mensagem_id: primeira.wpp_message_id,
++    minutos_uteis: minutos,
++    trecho: trechoDe(ultima),
++    autor_nome: ultima.autor_nome,
++  };
++}
++
++type LinhaMensagem = LinhaAutor & {
++  wpp_message_id: string;
++  remote_jid: string;
++  enviada_em: string;
++  tipo_conteudo: string;
++  texto: string | null;
++};
++
++export interface ResultadoVacuos {
++  vacuos: (Vacuo & { group_jid: string; cliente_id: string })[];
++  desconhecidos24h: Record<string, number>;
++}
++
++export async function carregarVacuos(
++  db: Db,
++  agoraISO: string,
++  opcoes?: { clienteIds?: string[] },
++): Promise<ResultadoVacuos> {
++  const resultado: ResultadoVacuos = { vacuos: [], desconhecidos24h: {} };
++  const { data: gruposData } = await db
++    .from("wpp_grupo")
++    .select("group_jid, cliente_id")
++    .is("deleted_at", null)
++    .neq("status", "inativo");
++  const clientePorGrupo = new Map<string, string>();
++  for (const g of (gruposData ?? []) as { group_jid: string | null; cliente_id: string | null }[]) {
++    if (!g.group_jid || !g.cliente_id) continue;
++    if (opcoes?.clienteIds && opcoes.clienteIds.indexOf(g.cliente_id) === -1) continue;
++    clientePorGrupo.set(g.group_jid, g.cliente_id);
++  }
++  const jids = Array.from(clientePorGrupo.keys());
++  if (jids.length === 0) return resultado;
++
++  const agoraMs = new Date(agoraISO).getTime();
++  const desdeISO = new Date(agoraMs - JANELA_DIAS * MS_DIA).toISOString();
++  const { data: msgData } = await db
++    .from("cs_wpp_mensagem")
++    .select("wpp_message_id, remote_jid, enviada_em, tipo_conteudo, texto, " + COLUNAS_AUTOR)
++    .in("remote_jid", jids)
++    .gte("enviada_em", desdeISO)
++    .lte("enviada_em", agoraISO)
++    .order("enviada_em", { ascending: true })
++    .limit(LIMITE_MENSAGENS);
++  const linhas = (msgData ?? []) as unknown as LinhaMensagem[];
++
++  const telefonesEquipe = await carregarTelefonesEquipe(db);
++  const mapa = montarMapaLid(linhas);
++  const feriados = await carregarFeriados(db);
++
++  const contatosPorCliente = new Map<string, string[]>();
++  const clientes = Array.from(new Set(Array.from(clientePorGrupo.values())));
++  for (const id of clientes) {
++    contatosPorCliente.set(id, await contatosEfetivosDoCliente(db as unknown as SupabaseClient, id));
++  }
++
++  // Tratado: a mensagem do cliente mais recente que a equipe já marcou como tratada.
++  const { data: tratData } = await db
++    .from("perf_vacuo_tratado")
++    .select("group_jid, mensagem_enviada_em")
++    .in("group_jid", jids);
++  const tratadoPorGrupo = new Map<string, string>();
++  for (const t of (tratData ?? []) as { group_jid: string; mensagem_enviada_em: string }[]) {
++    const atual = tratadoPorGrupo.get(t.group_jid);
++    if (!atual || t.mensagem_enviada_em > atual) tratadoPorGrupo.set(t.group_jid, t.mensagem_enviada_em);
++  }
++
++  const porGrupo = new Map<string, MensagemVacuo[]>();
++  const desconhecidos = new Map<string, Set<string>>();
++  for (const l of linhas) {
++    const clienteId = clientePorGrupo.get(l.remote_jid);
++    if (!clienteId) continue;
++    const classe = classificarAutor(
++      l,
++      { telefonesEquipe, contatosCliente: contatosPorCliente.get(clienteId) ?? [] },
++      mapa,
++    );
++    const lista = porGrupo.get(l.remote_jid) ?? [];
++    lista.push({
++      wpp_message_id: l.wpp_message_id,
++      enviada_em: l.enviada_em,
++      tipo_conteudo: l.tipo_conteudo,
++      texto: l.texto,
++      autor_nome: l.autor_nome ?? null,
++      classe,
++    });
++    porGrupo.set(l.remote_jid, lista);
++    if (classe === "desconhecido" && new Date(l.enviada_em).getTime() >= agoraMs - MS_DIA) {
++      const quem = pessoaDaLinha(l, mapa)?.chave ?? l.autor_jid ?? "sem-autor";
++      const set = desconhecidos.get(l.remote_jid) ?? new Set<string>();
++      set.add(quem);
++      desconhecidos.set(l.remote_jid, set);
++    }
++  }
++
++  for (const jid of jids) {
++    const v = calcularVacuo(porGrupo.get(jid) ?? [], tratadoPorGrupo.get(jid) ?? null, feriados, agoraISO);
++    if (v) resultado.vacuos.push({ ...v, group_jid: jid, cliente_id: clientePorGrupo.get(jid) as string });
++  }
++  desconhecidos.forEach((set, jid) => {
++    resultado.desconhecidos24h[jid] = set.size;
++  });
++  return resultado;
++}
+diff --git a/src/lib/tempo/feriados.ts b/src/lib/tempo/feriados.ts
+new file mode 100644
+index 0000000..54501e3
+--- /dev/null
++++ b/src/lib/tempo/feriados.ts
+@@ -0,0 +1,15 @@
++/**
++ * Feriados da tabela feriados como 'AAAA-MM-DD'. Só leitura. Erro de leitura
++ * lança: quem chama decide, porque conta de tempo útil sem feriado sai errada.
++ */
++import type { Db } from "@/lib/clientes/relacao";
++
++export async function carregarFeriados(db: Db): Promise<string[]> {
++  const { data, error } = await db.from("feriados").select("data");
++  if (error) throw new Error("feriados indisponíveis: " + (error.message ?? "erro de leitura"));
++  const lista: string[] = [];
++  for (const r of (data ?? []) as { data?: string | null }[]) {
++    if (typeof r.data === "string" && r.data) lista.push(r.data.slice(0, 10));
++  }
++  return lista;
++}
+diff --git a/test/eventos-resposta-grupo.test.ts b/test/eventos-resposta-grupo.test.ts
+index 817b625..6b5785c 100644
+--- a/test/eventos-resposta-grupo.test.ts
++++ b/test/eventos-resposta-grupo.test.ts
+@@ -32,11 +32,16 @@ function bancoFalso(mensagens: Linha[]) {
+     wpp_grupo: [{ group_jid: GRUPO, cliente_id: CLIENTE }],
+     cs_wpp_mensagem: mensagens,
+     employees: [{ id: COLAB, telefone: TEL_EQUIPE }],
++    // 734: o par só abre com autor de classe cliente, então o telefone do cliente é contato do cliente do grupo.
++    ops_cliente_contatos: [{ cliente_id: CLIENTE, telefone: TEL_CLIENTE }],
++    clientes: [{ id: CLIENTE, telefone: null }],
++    feriados: [],
+   };
+   const db = {
+     from: (tabela: string) => {
+       const cadeia: Record<string, unknown> = {};
+       for (const m of ["select", "is", "neq", "in", "gte", "lte", "order", "limit", "eq"]) cadeia[m] = () => cadeia;
++      cadeia.maybeSingle = () => Promise.resolve({ data: (tabelas[tabela] ?? [])[0] ?? null, error: null });
+       cadeia.then = (ok: (v: unknown) => unknown) => ok({ data: tabelas[tabela] ?? [], error: null });
+       cadeia.upsert = (linha: Linha) => {
+         upserts.push(linha);
+@@ -82,6 +87,16 @@ describe("derivarRespostas", () => {
+     expect(upserts[0]).toMatchObject({ colaborador_id: null, valor: 20 });
+   });
+ 
++  it("mensagem de desconhecido seguida de resposta da equipe não gera evento (734)", async () => {
++    const { db, upserts } = bancoFalso([
++      msg("5511777770003@s.whatsapp.net", "2026-10-05T13:00:00.000Z"),
++      msg(`${TEL_EQUIPE}@s.whatsapp.net`, "2026-10-05T13:30:00.000Z"),
++    ]);
++    const r = await derivarRespostas(db, DESDE, AGORA);
++    expect(upserts).toHaveLength(0);
++    expect(r.pares).toBe(0);
++  });
++
+   it("reprocessar a mesma janela chama upsert com as mesmas chaves", async () => {
+     const { db, upserts } = bancoFalso([
+       msg(`${TEL_CLIENTE}@s.whatsapp.net`, "2026-10-05T13:00:00.000Z"),
+diff --git a/test/vacuo-grupo.test.ts b/test/vacuo-grupo.test.ts
+new file mode 100644
+index 0000000..5cd2527
+--- /dev/null
++++ b/test/vacuo-grupo.test.ts
+@@ -0,0 +1,150 @@
++/**
++ * Ticket 734: vácuo no grupo. Relógio fixo, feriados injetados, banco mockado.
++ */
++import { describe, it, expect, vi } from "vitest";
++
++vi.mock("@supabase/supabase-js", () => ({ createClient: vi.fn(() => ({ from: vi.fn() })) }));
++
++import { calcularVacuo, carregarVacuos, LIMITE_VACUO_MIN, type MensagemVacuo } from "@/lib/inicio/vacuo";
++
++const GRUPO = "120363000000000001@g.us";
++const CLIENTE = "00000000-0000-4000-8000-000000000001";
++const TEL_EQUIPE = "5511999990001";
++const TEL_CLIENTE = "5511888880002";
++
++// Segunda-feira 05/10/2026. São Paulo é UTC-3: 11h30 local = 14:30Z.
++let seq = 0;
++function m(classe: MensagemVacuo["classe"], enviada_em: string, extra: Partial<MensagemVacuo> = {}): MensagemVacuo {
++  seq++;
++  return { wpp_message_id: "m" + seq, enviada_em, tipo_conteudo: "texto", texto: "oi " + seq, autor_nome: "Fulano", classe, ...extra };
++}
++
++const AGORA = "2026-10-05T17:31:00.000Z"; // 14h31 local
++
++describe("calcularVacuo", () => {
++  it("cliente sem resposta passa de 60 minutos úteis e gera vácuo", () => {
++    const v = calcularVacuo([m("cliente", "2026-10-05T12:00:00.000Z")], null, [], AGORA);
++    expect(v).not.toBeNull();
++    expect(v?.minutos_uteis).toBeGreaterThanOrEqual(LIMITE_VACUO_MIN);
++  });
++
++  it("11h30 até 14h30 são exatamente 60 minutos e gera (11h30 a 12h = 30, 14h a 14h30 = 30)", () => {
++    const v = calcularVacuo([m("cliente", "2026-10-05T14:30:00.000Z")], null, [], "2026-10-05T17:30:00.000Z");
++    expect(v?.minutos_uteis).toBe(60);
++  });
++
++  it("59 minutos úteis não gera", () => {
++    expect(calcularVacuo([m("cliente", "2026-10-05T14:30:00.000Z")], null, [], "2026-10-05T17:29:00.000Z")).toBeNull();
++  });
++
++  it("texto da equipe depois zera", () => {
++    const msgs = [m("cliente", "2026-10-05T12:00:00.000Z"), m("equipe", "2026-10-05T12:10:00.000Z")];
++    expect(calcularVacuo(msgs, null, [], AGORA)).toBeNull();
++  });
++
++  it("áudio ou figurinha da equipe não zera", () => {
++    const base = m("cliente", "2026-10-05T12:00:00.000Z");
++    expect(calcularVacuo([base, m("equipe", "2026-10-05T12:10:00.000Z", { tipo_conteudo: "audio" })], null, [], AGORA)).not.toBeNull();
++    expect(calcularVacuo([base, m("equipe", "2026-10-05T12:10:00.000Z", { tipo_conteudo: "figurinha" })], null, [], AGORA)).not.toBeNull();
++  });
++
++  it("desconhecido não abre e não fecha", () => {
++    expect(calcularVacuo([m("desconhecido", "2026-10-05T12:00:00.000Z")], null, [], AGORA)).toBeNull();
++    const msgs = [m("cliente", "2026-10-05T12:00:00.000Z"), m("desconhecido", "2026-10-05T12:10:00.000Z")];
++    expect(calcularVacuo(msgs, null, [], AGORA)).not.toBeNull();
++  });
++
++  it("mensagens seguidas do cliente contam a partir da primeira, com o trecho da última", () => {
++    const a = m("cliente", "2026-10-05T12:00:00.000Z", { texto: "primeira" });
++    const b = m("cliente", "2026-10-05T13:00:00.000Z", { texto: "segunda" });
++    const v = calcularVacuo([a, b], null, [], AGORA);
++    expect(v?.desde).toBe("2026-10-05T12:00:00.000Z");
++    expect(v?.mensagem_id).toBe(a.wpp_message_id);
++    expect(v?.trecho).toBe("segunda");
++  });
++
++  it("'ok' do cliente abre vácuo e mensagem sem texto vira [audio]", () => {
++    expect(calcularVacuo([m("cliente", "2026-10-05T12:00:00.000Z", { texto: "ok" })], null, [], AGORA)?.trecho).toBe("ok");
++    expect(
++      calcularVacuo([m("cliente", "2026-10-05T12:00:00.000Z", { texto: null, tipo_conteudo: "audio" })], null, [], AGORA)?.trecho,
++    ).toBe("[audio]");
++  });
++
++  it("Tratado esconde e mensagem nova do cliente depois do Tratado reabre", () => {
++    const antiga = m("cliente", "2026-10-05T12:00:00.000Z");
++    expect(calcularVacuo([antiga], "2026-10-05T12:00:00.000Z", [], AGORA)).toBeNull();
++    const nova = m("cliente", "2026-10-05T12:30:00.000Z");
++    const v = calcularVacuo([antiga, nova], "2026-10-05T12:00:00.000Z", [], AGORA);
++    expect(v?.mensagem_id).toBe(nova.wpp_message_id);
++  });
++
++  it("feriado no meio não conta", () => {
++    // Sexta 02/10 às 17h local; segunda 05/10 é feriado de teste, então a conta pula o dia.
++    const msgs = [m("cliente", "2026-10-02T20:00:00.000Z")];
++    const sem = calcularVacuo(msgs, null, [], "2026-10-05T12:30:00.000Z");
++    const com = calcularVacuo(msgs, null, ["2026-10-05"], "2026-10-05T12:30:00.000Z");
++    // sem feriado: 60 min de sexta (17h a 18h) + 30 min de segunda = 90; com feriado: só 60 e a segunda não conta.
++    expect(sem?.minutos_uteis).toBe(90);
++    expect(com?.minutos_uteis).toBe(60);
++  });
++});
++
++describe("carregarVacuos", () => {
++  function bancoFalso(mensagens: Record<string, unknown>[], tratados: Record<string, unknown>[] = []) {
++    const escritas: string[] = [];
++    const tabelas: Record<string, Record<string, unknown>[]> = {
++      wpp_grupo: [{ group_jid: GRUPO, cliente_id: CLIENTE }],
++      cs_wpp_mensagem: mensagens,
++      employees: [{ id: "00000000-0000-4000-8000-000000000002", telefone: TEL_EQUIPE }],
++      ops_cliente_contatos: [{ cliente_id: CLIENTE, telefone: TEL_CLIENTE }],
++      clientes: [{ id: CLIENTE, telefone: null }],
++      feriados: [],
++      perf_vacuo_tratado: tratados,
++    };
++    const from = vi.fn((tabela: string) => {
++      const cadeia: Record<string, unknown> = {};
++      for (const nome of ["select", "is", "neq", "in", "gte", "lte", "order", "limit", "eq"]) cadeia[nome] = () => cadeia;
++      for (const nome of ["insert", "update", "upsert", "delete"]) {
++        cadeia[nome] = () => {
++          escritas.push(nome);
++          return cadeia;
++        };
++      }
++      cadeia.maybeSingle = () => Promise.resolve({ data: (tabelas[tabela] ?? [])[0] ?? null, error: null });
++      cadeia.then = (ok: (v: unknown) => unknown) => ok({ data: tabelas[tabela] ?? [], error: null });
++      return cadeia;
++    });
++    return { db: { from }, escritas };
++  }
++
++  const linha = (autor: string, enviada_em: string, id: string) => ({
++    wpp_message_id: id,
++    remote_jid: GRUPO,
++    enviada_em,
++    tipo_conteudo: "texto",
++    texto: "pedido " + id,
++    autor_jid: autor,
++    autor_nome: "Alguém",
++    chave: { fromMe: false },
++  });
++
++  it("gera vácuo do cliente do grupo, conta desconhecido em 24h e não escreve em tabela", async () => {
++    const { db, escritas } = bancoFalso([
++      linha(TEL_CLIENTE + "@s.whatsapp.net", "2026-10-05T12:00:00.000Z", "a"),
++      linha("5511777770003@s.whatsapp.net", "2026-10-05T12:05:00.000Z", "b"),
++    ]);
++    const r = await carregarVacuos(db as never, AGORA);
++    expect(r.vacuos.some((v) => v.group_jid === GRUPO && v.cliente_id === CLIENTE && v.mensagem_id === "a")).toBe(true);
++    expect(r.desconhecidos24h[GRUPO]).toBe(1);
++    expect(escritas).toHaveLength(0);
++  });
++
++  it("Tratado da mensagem esconde o vácuo", async () => {
++    const { db } = bancoFalso(
++      [linha(TEL_CLIENTE + "@s.whatsapp.net", "2026-10-05T12:00:00.000Z", "a")],
++      [{ group_jid: GRUPO, mensagem_enviada_em: "2026-10-05T12:00:00.000Z" }],
++    );
++    const r = await carregarVacuos(db as never, AGORA);
++    expect(r.vacuos).toHaveLength(0);
++  });
++});
