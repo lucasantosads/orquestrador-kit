@@ -184,7 +184,7 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `APROVADO` | `executor.sh:1048` | `merge=aguardando` `dur=` `attempt=` |
 | `REPROVADO` | `executor.sh:drive_ticket` | `motivo=` `sub=` `attempt=` `diff=` (`sub=` desde a 7b-4) |
 | `ADIADO` | `executor.sh:drive_ticket`, `executor.sh:preflight_ou_adia` | `motivo=` `attempt=` `rc=` `dur=` `cooldown=sim\|nao` · recusa de preflight: `motivo=preflight` `causa=<uma linha>` (a causa vai até o fim da linha) |
-| `BLOQUEADO` | `executor.sh:drive_ticket`, `local-loop.sh:drenar` | `motivo=` [`attempt=`] · repetição: `motivo=repeticao` `sub=` `diff=` `attempt=` · da drenagem: `motivo=merge_falhou`, `motivo=sem_progresso` `n=` `limite=`, ou `motivo=adiamentos` `n=` `limite=` · porte do Actus (§11): `motivo=gate_ticket` `violacoes=`, `motivo=retry_sem_mudanca` `attempt=` `sha256=`, `motivo=base_vermelha` `arquivos=` `attempt=`, `motivo=teto-adiamento-ambiente` `adiamentos=` `attempt=` |
+| `BLOQUEADO` | `executor.sh:drive_ticket`, `local-loop.sh:drenar` | `motivo=` [`attempt=`] · repetição: `motivo=repeticao` `sub=` `diff=` `attempt=` · da drenagem: `motivo=merge_falhou`, `motivo=sem_progresso` `n=` `limite=`, ou `motivo=adiamentos` `n=` `limite=` · porte do Actus (§11): `motivo=gate_ticket` `violacoes=`, `motivo=retry_sem_mudanca` `attempt=` `sha256=`, `motivo=base_vermelha` `arquivos=` `attempt=`, `motivo=teto-adiamento-ambiente` `adiamentos=` `attempt=` · etapa L13 (§26): `motivo=IMPEDIMENTO_DECLARADO` `attempt=`, `motivo=DEPENDENCIA_FORA_DA_ALVO` `arquivos=` |
 | `RETRY` | `executor.sh:drive_ticket` | `attempt=` `model=` `motivo=` `sub=` `worktree=` |
 | `REFATIAR` | `executor.sh:896` | `motivo=` `arquivos=` |
 | `MERGE` | `local-loop.sh:173` | `alvo=` `sha=` |
@@ -916,7 +916,9 @@ teste do Actus passou a valer sobre ela (decisões do Lucas, 24/09/2026).
   permissão negada ao agente não pesa em desfecho. Sem cooldown.
 - `retry_sem_mudanca` (623): da 2ª tentativa em diante, com o agente saído rc
   0, `diff.patch` com o mesmo sha256 da tentativa anterior bloqueia sem juiz.
-  Diff idêntico depois de falha de infra é adiamento, não bloqueio.
+  Diff idêntico depois de falha de infra é adiamento, não bloqueio. Desde a
+  etapa L13 (§26.1) a assinatura inclui as mensagens dos commits
+  (`mensagens.txt`): diff igual com mensagem nova segue o pipeline inteiro.
 - `base_vermelha` (632): gate(s) reprovado(s) todos de papel `testes`,
   enforcement ok, critérios verdes, e TODO arquivo das linhas ` FAIL  <arquivo>`
   fora do diff e da allowlist = bloqueado sem juiz, sem retry, sem consumir
@@ -1121,6 +1123,7 @@ sem modelo; palpite (`?`) ou sem regra vai ao modelo, se houver orçamento.
 | D10 | vitest, vermelho dentro | R2? | `:286` |
 | D11 | critério e vermelho fora em tentativa anterior | R1\|R2? | `:292` |
 | D12 | critério | R2? | `:292` |
+| D13 | o motor bloqueou com `motivo=IMPEDIMENTO_DECLARADO` (etapa L13, §26.2); vem antes de D1 | R3 | `extrair.ts:207` |
 
 Allowlist pelo `matchesAllowlist` do enforcement (`enforcement-core.ts:178`); local do
 vermelho pelo `primeiroLocal` (`diagnostico.ts:109`). A prova de um vermelho é a linha
@@ -2257,6 +2260,8 @@ o vocabulário de eventos não muda), com o motivo `juiz.review_md '<path>' ause
 
 ### 23.5 Avisos `C15` e `C16` do gate de ticket (P6; §12)
 
+Desde a etapa L13 o `C15` é **erro** e há o aviso `C15o` (objetivo); ver §26.5.
+
 Severidade `aviso`, só em ticket pendente (`gate-ticket.ts:validarTicket`).
 
 | Regra | O que olha | Medido |
@@ -2338,6 +2343,60 @@ motivo=preflight` somava em `.adiamentos` e o ticket bloqueava no 4º disparo se
   `tickets=906`).
 - Testes: `test-ambiente-adiado.sh` casos 4 a 7 (1 elegível com o texto do 1523, bloco json em fila de
   1 e de 2, limite remoto) e `test-preflight.sh` seção 6.
+
+## 26. Etapa L13: retry que lê a mensagem, IMPEDIMENTO declarado, dependência fora da alvo, C15 erro (30/10/2026)
+
+Fonte: relatório de bloqueios do dashboard-comercial, 30/10 (037, 039, 043, 044 de 29/10). Defeitos:
+`docs/defeitos/2026-10-30-*.md`. Relatório: `~/orq-sessoes/relatorio-kit-l13.md`.
+
+### 26.1 Assinatura do `retry_sem_mudanca` (P1, M-02)
+
+- `grava_mensagens` grava `runs/<id>/attempt-<n>/mensagens.txt`: `git log --format=%B base..HEAD`,
+  sem as linhas do trailer do config (`executor.trailer_commit`) e de `Co-Authored-By`, sem linha
+  vazia no fim.
+- Diff igual e `mensagens.txt` igual: `retry_sem_mudanca`, como antes. Diff igual e mensagem nova:
+  enforcement, gates, critérios e juiz rodam de novo (nada é reaproveitado). Anterior sem
+  `mensagens.txt` (motor anterior à L13): vale só o diff.
+
+### 26.2 `IMPEDIMENTO_DECLARADO` (P2, M-17)
+
+- Com o agente saído rc 0, diff vazio ou igual ao da anterior, e TODO commit desta tentativa
+  (`rev-list HEAD ^base ^<HEAD antes do agente>`, o que pega amend) com corpo, sem assunto, sem
+  trailers e sem linha vazia, feito só de linhas `IMPEDIMENTO:`: `veredito.json` com
+  `causa: IMPEDIMENTO_DECLARADO`, `contaComoRetry: false`; ticket `bloqueado` com a nota do agente;
+  trilha `BLOQUEADO motivo=IMPEDIMENTO_DECLARADO attempt=`. Sem juiz, sem consumir tentativa. Vem
+  antes do bloco do `retry_sem_mudanca`.
+- Commit com IMPEDIMENTO no meio de outro texto (o 037) não casa: segue §26.1.
+- Triador: D13 → R3, com a nota do agente no remédio. Não entra em `.adiamentos` nem em streak de gate.
+
+### 26.3 `DEPENDENCIA_FORA_DA_ALVO` (P3)
+
+- `gate-ticket.ts:dependenciasForaDaAlvo`: caminho (qualquer extensão) citado no objetivo ou num `cmd`
+  de critério, fora da allowlist e de `cria_novo` (`matchesAllowlist`), que existe no disco do
+  checkout e não existe na `branch_alvo`. CLI: `gate-ticket --dependencias-alvo <ticket>`, um caminho
+  por linha, rc 0; rc 2 sem git ou sem a branch alvo.
+- `drive_ticket`, depois do gate de ticket e antes da worktree e do contador, em QUALQUER
+  `modo_pre_voo`: com saída, `bloqueado`, nota com os arquivos, `existe em <checkout>@<sha>` e
+  `ausente em <alvo>@<sha>`, trilha `BLOQUEADO motivo=DEPENDENCIA_FORA_DA_ALVO arquivos=<csv>`. Sem
+  tentativa. CLI que não roda = executor morre (`exit 1`), como o gate de ticket.
+- Triador: D0 (bloqueado sem tentativa), com a nota.
+
+### 26.4 Gates por `node_modules/.bin` no `--allowedTools` (P1b)
+
+`perfil.ts:comandosDeGates` passa a reconhecer, por segmento, `node_modules/.bin/<bin> [args]` (sem
+`VAR=valor` no início nem redirecionamento no fim), nas formas `Bash(<cmd>)` e `Bash(<cmd>:*)`. O
+piso (`proibicoes_absolutas.tools`) segue por cima.
+
+### 26.5 Severidade: C15 erro, C15o aviso (P4, M-62)
+
+| regra | severidade | o que | medida (30/10) |
+|---|---|---|---|
+| `C15` | **erro** | §23.5, sem mudança na forma | Comarka 0 em 1519; dashboard 2 (002, 003), os dois causais: 0 FP |
+| `C15o` | aviso | o objetivo casa `RE_CORPO_COMMIT` (um achado, em `objetivo`) | dashboard 25 (17 done, 8 pendentes; 8 done aprovados de primeira); Comarka 3 done |
+| `C16` | aviso | §23.5, sem mudança | Comarka 28 (27 done); dashboard 5 done (3 sem reprova por isso) |
+
+Erro vale para todo `pendente` (o kit não tem "só ticket novo"). Com `modo_pre_voo: aviso` (o
+dashboard), erro não bloqueia o loop, só o `orq validar`.
 
 ## 10. Divergências conhecidas
 

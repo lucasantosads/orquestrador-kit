@@ -1135,9 +1135,21 @@
   *Teste:* `test-ambiente-adiado.sh` casos 1 e 4 a 7, `test-ambiente.sh` caso 4, `test-preflight.sh`
   seção 6.
 
+- **L13 · retry que lê a mensagem, IMPEDIMENTO declarado, dependência fora da alvo, gates por
+  node_modules/.bin e C15 erro (30/10/2026).** Fonte: relatório de bloqueios do dashboard, 30/10
+  (037, 039, 043, 044). Diff igual com mensagem nova chama o juiz (`e2ab076`, M-02 parcial); o
+  `--allowedTools` passa a ter os gates que chamam `node_modules/.bin` (`50f5700`); diff parado com
+  só `IMPEDIMENTO:` bloqueia como `IMPEDIMENTO_DECLARADO`, triador R3/D13 (`d279bbb`, M-17 parcial);
+  o pré-voo barra dependência de leitura fora da branch alvo sem gastar tentativa (`c9a8665`); C15
+  erro e aviso C15o (`5c90760`, M-62 parcial). Três defeitos em `docs/defeitos/2026-10-30-*.md`.
+  *Evidência:* `~/orq-sessoes/relatorio-kit-l13.md`; CONTRATO §26.
+  *Teste:* `orquestrador-retry-mensagem.test.ts`, `orquestrador-impedimento.test.ts`,
+  `orquestrador-dependencia-alvo.test.ts`, `orquestrador-tools-derivadas.test.ts` (L13 P1b),
+  `orquestrador-gate-8e.test.ts`; fixtures reais em `test/fixtures/l13/`.
+
 ## PENDENTES
 
-- **Fila de melhorias do motor:** `docs/MELHORIAS.md` (M-01 a M-61, status e marco de cada uma).
+- **Fila de melhorias do motor:** `docs/MELHORIAS.md` (M-01 a M-62, status e marco de cada uma).
 
 - **L12 · o preflight pular o ticket corrompido em vez de recusar o run.** Hoje um bloco json
   inválido em qualquer arquivo da fila recusa o run inteiro (`executor.sh:68`) e, desde a L12, vira

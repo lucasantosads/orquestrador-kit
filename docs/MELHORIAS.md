@@ -33,7 +33,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 | M-14 | Confiança declarada pelo modelo nunca vira limiar | parcial | A | C5 | relato | M-40 | v048, L4-07 |
 | M-15 | Ticket com 4 blocos de handoff | ideia | A | C1, C2 | opinião | | base #9, v095, L2-01 |
 | M-16 | Estado do ticket só-anexar ou versionado | parcial | A | C1 | opinião | | v095, v061, L2-02 |
-| M-17 | Contradição de spec exposta, nunca resolvida em silêncio | ideia | A | C1, C5 | opinião | M-03 | v093, L2-03 |
+| M-17 | Contradição de spec exposta, nunca resolvida em silêncio | parcial | A | C1, C5 | opinião | M-03 | v093, L2-03 |
 | M-18 | Nível de revisão 0/1/2 com marcha baixa para código crítico | parcial | A | C5 | opinião | | base #18, v084, L2-10 |
 | M-19 | Anti-trapaça no diff | parcial | A | C5 | não registrada | | base #4 |
 | M-20 | Varredura de segredos e checklist auth/RLS/env | parcial | A | C5 | não registrada | | base #5 |
@@ -48,10 +48,11 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 | M-55 | Versão do CLI no preflight e espera do limite pelo CLI | parcial | A | C1 | relato | | L6-19 |
 | M-56 | Eval permanente do juiz | planejado | A | C5, C2 | não registrada | | base (planejado e reforços) |
 | M-57 | Viés de confiança: material do juiz com e sem alegações | ideia | A | C5 | não registrada | M-56 | base #20 |
-| M-58 | Benchmark público não é meta | ideia | A | C5 | não registrada | | base #26 |
+| M-58 | Benchmark público não é meta | descartado | A | C5 | não registrada | | base #26 |
 | M-59 | Juiz com enquadramento adversarial como variante A/B | ideia | A | C5 | não registrada | M-56 | base #27 |
 | M-60 | Platô do harness: mudança que não mexe C2 nem C5 é encerrada | ideia | A | C2, C5, custo | não registrada | M-53 | base #28 |
 | M-61 | Experimento: ablação de scaffolding | ideia | A | custo, C2 | não registrada | M-56 | base (experimentos) |
+| M-62 | C15 e C16 do gate de ticket como erro para ticket novo | parcial | A | C2, C1 | medida | | relatório de bloqueios do dashboard, 30/10 |
 | M-10 | Validação da fila uma vez por lote, sem --no-verify | ideia | B | C1 | relato | | L6-15 |
 | M-54 | N filas por repo, cada uma com base, pausa e resolvedor | ideia | B | C1 | relato | | L6-06 |
 | M-27 | Experimento best-of-N com funil e perda do seletor | ideia | C | C5, C2, custo | medida | M-29, M-56 | base (experimentos), v052, v044, v048, v053, v054, v050, L3-02, L3-09, L4-01, L4-02, L5-03 |
@@ -94,7 +95,8 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - fontes: base #1, v044, L3-07
 
 ### M-02 Retry informado que só insiste com fato externo novo
-- status: parcial: o retry já recebe o recorte do gate que reprovou (scripts/orquestrador/diagnostico.ts:191-209), o motivo literal do juiz (scripts/orquestrador/executor.sh:1473-1498), bloqueia diff idêntico (scripts/orquestrador/executor.sh:1208-1231) e reprovação repetida (scripts/orquestrador/executor.sh:1779-1783); falta a etiqueta externo/interno por tentativa, o diff quase igual, o braço de controle em sombra e a curva por etiqueta
+- status: parcial (etapa L13): a assinatura do bloqueio de diff idêntico passou a incluir as mensagens dos commits da frente (`mensagens.txt`, scripts/orquestrador/executor.sh:1059 e :1286-1295, `e2ab076`): diff igual com mensagem nova chama o juiz de novo, sem reaproveitar gates. Falta o que já faltava: a etiqueta externo/interno por tentativa, o diff quase igual, o braço de controle em sombra e a curva por etiqueta.
+- status anterior (MELHORIAS-0): parcial: o retry já recebe o recorte do gate que reprovou (scripts/orquestrador/diagnostico.ts:191-209), o motivo literal do juiz (scripts/orquestrador/executor.sh:1473-1498), bloqueia diff idêntico (scripts/orquestrador/executor.sh:1208-1231) e reprovação repetida (scripts/orquestrador/executor.sh:1779-1783); falta a etiqueta externo/interno por tentativa, o diff quase igual, o braço de controle em sombra e a curva por etiqueta
 - o que é: o retry leva saída do gate, objeções, diff anterior e post-mortem. Pela literatura citada, o loop só paga quando chega fato externo novo (compilador, teste, schema); sem isso o modelo não se corrige e às vezes piora, e o ganho estabiliza depois do primeiro refinamento.
 - como entra no kit: o pacote do retry da base, mais etiqueta do tipo de feedback em cada tentativa e um braço de controle em sombra (reamostragem sem contexto) para provar que o contexto extra paga.
 - detalhes executáveis:
@@ -103,7 +105,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
   - na curva M-41, medir conversão por etiqueta; se reprova só do juiz não converter na 2ª tentativa, o teto para esse caso cai para 1 retry e o resto vai para bloqueio.
   - em sombra, numa amostra de reprovas, comparar a 2ª tentativa informada contra reamostragem em sessão nova sem objeções nem diff anterior; se a informada não ganhar, o retry informado não está pagando o contexto extra.
   - cada rodada de refinamento custa 2n+1 chamadas em série (v100).
-- conflitos: tensão (não marcada pelo lote) entre "3 rodadas" da base e o corte para 1 retry de L1-01 nos casos de reprova só do juiz. Não decidido. Decide no PASSO 0 da etapa que pegar o item.
+- conflitos: tensão (não marcada pelo lote) entre "3 rodadas" da base e o corte para 1 retry de L1-01 nos casos de reprova só do juiz. Não decidido. Decide no PASSO 0 da etapa que pegar o item. A etapa L13 pegou o item em parte e não precisou decidir (30/10, decisão do Lucas): segue aberto.
 - fontes: base #2, v100, v051, L1-01, L5-01
 
 ### M-03 Alegação sem lastro e referência prometida e não lida
@@ -249,7 +251,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - fontes: v095, v061, L2-02
 
 ### M-17 Contradição de spec exposta, nunca resolvida em silêncio
-- status: ideia
+- status: parcial (etapa L13): primeira forma do spec_conflitante. Diff vazio ou igual ao anterior, com o corpo dos commits da tentativa só de linhas `IMPEDIMENTO:`, bloqueia com causa `IMPEDIMENTO_DECLARADO`, a nota do agente no motivo, sem juiz e sem consumir tentativa; o triador classifica R3 (D13) (scripts/orquestrador/executor.sh:1175 e :1249, triador/extrair.ts:207, `d279bbb`). Falta: o campo `conflitos[]` estruturado (ticket diz X, código diz Y, com arquivo:linha), o status `spec_conflitante` próprio, IMPEDIMENTO declarado junto com diff que muda, e o juiz reprovar diff que resolveu contradição sem declarar (M-03).
 - o que é: quando o ticket diz X e o código ou a base diz Y, o executor deve declarar o conflito em vez de escolher um lado. 51% dos resgates são de spec.
 - como entra no kit: campo conflitos[] no relatório do executor e status novo.
 - detalhes executáveis:
@@ -629,7 +631,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 
 ### M-58 Benchmark público não é meta
 - marco: A (mudou na etapa MELHORIAS-0)
-- status: ideia
+- status: descartado (30/10, decisão do Lucas): princípio, não ação. A vaga na fila foi para o M-62.
 - o que é: régua só com corpus próprio.
 - como entra no kit: regra de governança das métricas.
 - detalhes executáveis:
@@ -662,11 +664,21 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - detalhes executáveis:
   - rodar pela API em lote (M-38).
 - fontes: base (experimentos)
+
+### M-62 C15 e C16 do gate de ticket como erro para ticket novo
+- marco: A (entrou em 30/10, decisão do Lucas, no lugar do M-58 descartado)
+- status: parcial (etapa L13): o C15 (corpo do commit pedido na descrição do critério) virou erro, com 0 FP medido (Comarka 0 em 1519; dashboard 002 e 003, os dois causais); a forma do pedido no objetivo entrou como o aviso C15o (25 no dashboard, 8 done aprovados de primeira; 3 no Comarka); o C16 segue aviso (scripts/orquestrador/gate-ticket.ts:134-136, :1806-1810, `5c90760`). Falta: a forma que pega o objetivo não tem zero falso positivo; o dashboard roda com modo_pre_voo aviso (erro lá não para o loop, só o `orq validar`). O kit não tem "erro só para ticket novo": erro vale para todo pendente.
+- o que é: critério ou objetivo que pede prova no corpo do commit (controle negativo, vermelho visto) depende de uma declaração do agente, que o juiz lê só como declaração. Em 29/10 o 037, o 039 e o 044 do dashboard pararam por isso, e o C15 e o C16 (avisos desde a 8e) não dispararam em nenhum.
+- como entra no kit: severidade da tabela `REGRAS`, pela regra de calibração (erro só com zero FP nos done).
+- detalhes executáveis:
+  - medida em `~/orq-sessoes/relatorio-kit-l13.md` (corpus de 30/10).
+  - o pedido honesto continua sem saída mecânica até o 8f (vermelho antes MECÂNICO).
+- fontes: relatório de bloqueios do dashboard, 30/10
 ## Conflitos em aberto
 - M-04: L3-01 marcado como SUBSTITUI o item 25 da base (consenso simples contra consenso com filtro e peso medidos). Decide no PASSO 0 da etapa que pegar o item.
 - M-52: L1-02 pressiona o descarte de "juiz de outra família de modelo" com critério de reabertura. Decide no PASSO 0 da etapa que pegar o item.
 - M-27 (tensão da consolidação): L4-01 proíbe seletor por convergência, mas a fonte de L4-02 usa o tamanho do grupo. Decide no PASSO 0 da etapa que pegar o item.
-- M-02 (tensão da consolidação): 3 rodadas da base contra corte para 1 retry de L1-01. Decide no PASSO 0 da etapa que pegar o item.
+- M-02 (tensão da consolidação): 3 rodadas da base contra corte para 1 retry de L1-01. Decide no PASSO 0 da etapa que pegar o item. A L13 pegou o M-02 em parte e não precisou decidir (30/10): segue aberto.
 - M-18 (tensão da consolidação): pseudocódigo humano em zona crítica contra o marco D sem humano. Decide no PASSO 0 da etapa que pegar o item.
 - M-07 (tensão da consolidação): L6-16 no marco A, L2-11 no marco D. Decide no PASSO 0 da etapa que pegar o item.
 
@@ -787,6 +799,16 @@ Extração automática dos 107 vídeos em 24/10/2026 (index.json e insights). Re
 - L6-03, parte do motor: a pausa não guarda o pid do dono e não se reconhece órfã. `docs/defeitos/2026-10-28-pausa-orfa-sem-pid.md`. Fontes: HANDOFF-15out-loop-apolo.md, HANDOFF-17out-tarde-migrations-lote38.md.
 - L6-05, parte do motor: a branch alvo local diverge da origin sem ninguém ver. `docs/defeitos/2026-10-28-staging-local-diverge-da-origin.md`. Fonte: HANDOFF-16out-noite-migrations-tokens.md.
 - L6-11 (camadas 15 e 16 do validador do Comarka) já estava registrado: camada 15 portada no 8c, camada 16 aberta em `docs/migracao-comarka.md`, linha do `457856c`, pedaço (5).
+
+## Defeitos registrados na etapa L13 (30/10/2026)
+- `docs/defeitos/2026-10-30-retry-sem-mudanca-ignora-mensagem.md` (037, 039, 043 do dashboard): consertado em `e2ab076` e `d279bbb`.
+- `docs/defeitos/2026-10-30-apoio-so-na-main-fora-da-alvo.md` (044 do dashboard): consertado em `c9a8665`.
+- `docs/defeitos/2026-10-30-prompt-manda-rodar-gate-sem-permissao.md` (037, 039, 043 do dashboard): consertado em `50f5700`.
+
+## Ideias de etapa (entram na fila só pela leitura semanal)
+Registradas pela etapa que as viu. Não são itens da fila: a regra "item novo só depois de fechar ou descartar outro" vale para elas na leitura semanal.
+- R5 com requeue automático para `DEPENDENCIA_FORA_DA_ALVO`: o triador classificaria R5 com `requeue sim_apos:alvo_tem:<arquivo>`, e o resolvedor reabriria quando `git cat-file -e <alvo>:<arquivo>` passar (verificável sem suíte, como o D1 e o D4 em `resolvedor/r5.ts`). Hoje é D0, decisão humana (decisão do Lucas, 30/10). Fonte: etapa L13.
+- O juiz reprovar a declaração honesta de falta de vermelho empurra o agente a alegar sem prova: no 037 e no 039 a tentativa 1 dizia "não vi falhando" (verdade, a permissão não deixava) e foi reprovada; a 2 alegou controles "vistos falhando" que o harness não conferiu. Liga com o 8f (vermelho antes MECÂNICO) e com o M-57 (viés do juiz com e sem as alegações do executor). Fonte: etapa L13.
 
 ## Fora do motor (ficam no Comarka)
 - L6-01: o `autocommit_status_fila` do loop do Comarka faz push sem `pull --rebase` e, em 15/10 às 13:28, colidiu com o `publicar.sh`. O motor do kit não pusha (D11); o push do autocommit já está fora do motor em `docs/migracao-comarka.md`. Fonte: HANDOFF-15out-f1-lote1-apolo.md.
