@@ -61,6 +61,15 @@ export function comandosDeGates(gateCmds: readonly string[]): string[] {
       const bin = m[1]
       if (bin) push(`npx ${bin}`)
     }
+    // Etapa L13 (P1b): binário local chamado direto, como nos três gates do
+    // dashboard-comercial (`node_modules/.bin/tsc --noEmit`, `… vitest run`,
+    // `VAR=x … next build`). Sem isso o prompt mandava rodar o gate e a
+    // permissão negava. Por segmento (`&&`, `||`, `;`, `|`), sem as atribuições
+    // `VAR=valor` do início e sem o redirecionamento do fim.
+    for (const seg of cmd.split(/&&|\|\||;|\|/)) {
+      const m = /^\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*(node_modules\/\.bin\/[^<>]*?)\s*(?:\d?[<>].*)?$/.exec(seg)
+      if (m?.[1]) push(m[1].replace(/\s+/g, ' '))
+    }
   }
   return achados
 }

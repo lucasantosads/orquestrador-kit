@@ -1,0 +1,511 @@
+{
+  "$schema_versao": 2,
+  "descricao": "Config do Orquestrador Autônomo v2 para dashboard-comercial (Comarka Ads). Derivado de doutrina/templates/config.json do kit a001fde (rascunho da sessão ADOCAO-DASHBOARD CONFIG, 22/10/2026) com as respostas L1-L11 do Lucas aplicadas na sessão ADOCAO-DASHBOARD INSTALAÇÃO. Todo valor que mudou em relação ao template tem a razão no _dc_* vizinho.",
+  "branch_alvo": "staging-auto",
+  "branch_principal": "main",
+  "_branch_protegida": "O motor lê ESTE nome (local-loop.sh:28, executor.sh:130) — `branch_principal` é o alias de leitura humana. É a branch que o loop NUNCA empurra; deixá-la ausente faz o `jq -r` devolver a string \"null\", e a proibição passa a valer para uma branch chamada \"null\".",
+  "branch_protegida": "main",
+  "worktrees_prefixo": "dc-orq-",
+  "_worktrees_prefixo": "lib.sh:498, decisao.ts:363. Prefixo diferente por repo é o que impede dois repos de colidirem na mesma worktree; um default igual para todos anularia a única coisa que a chave faz.",
+  "max_retries": 2,
+  "cooldown_minutes": 60,
+  "_cooldown": "Adiamento por limite (rate limit/quota/timeout/orçamento) grava runs/.cooldown-until. NÃO conta como retry; status volta a pendente.",
+  "sem_progresso_limite": 3,
+  "_sem_progresso_limite": "Peça 7a-3 (local-loop.sh:160). Disparos seguidos em que o ticket segue pendente sem cooldown e sem a branch alvo andar, contados em runs/<id>/.sem-progresso. No limite o ticket vai para bloqueado, commitado, com a última causa em notas_status, e a trilha ganha BLOQUEADO motivo=sem_progresso. Adiamento não conta; sair de pendente ou a branch alvo avançar zera. Ausente ou inválida = 3.",
+  "adiamentos_limite": 4,
+  "_adiamentos_limite": "Peça 7b-3 (local-loop.sh:adiamentos_limite). Adiamentos SEM cooldown seguidos (timeout, 5xx, sessão, gate que não rodou, recusa de preflight), contados em runs/<id>/.adiamentos. No limite o ticket vai para bloqueado, commitado, com notas_status 'adiado N vezes: <causa real>' (a medida do último ADIADO: motivo, rc e duração, ou a causa do preflight), e a trilha ganha BLOQUEADO motivo=adiamentos. Adiado com cooldown (rate_limit, quota) não conta nem zera; sair de pendente ou a branch alvo avançar zera. Ausente ou inválida = 4.",
+  "migrations_dir": "supabase/migrations",
+  "worktrees_dir": "../_worktrees",
+  "worktree": {
+    "linkar_env": false
+  },
+  "_worktree": "Etapa 8d. `linkar_env`: true (ou ausente) liga o .env.local do checkout principal (raiz e apps/web) na worktree do ticket, e gates, critérios, agente e juiz rodam com ele à vista. Use false quando esse arquivo tiver credencial que o loop não pode ter (ex.: banco de produção): nada de .env* entra, e o evento WORKTREE env=nao-linkado vai para o events.log. Só booleano: qualquer outro valor aborta o preflight. O preflight de identidade continua lendo o .env.local do principal, sem exportar nada.",
+  "runs_dir": "docs/fila/runs",
+  "liberacoes_file": "docs/fila/liberacoes.json",
+  "decisoes_file": "docs/fila/decisoes-pendentes.md",
+  "pausar_file": "docs/fila/PAUSAR",
+  "mapa_json": "docs/roadmap/mapa.json",
+  "mapa_md": "docs/roadmap/MAPA.md",
+  "repo_map": "docs/orquestrador/REPO-MAP.md",
+  "playbook": "docs/orquestrador/PLAYBOOK.md",
+  "_modo": "agendado = uma drenagem por disparo. continuo = drenagens em sequência no MESMO processo com sleep de intervalo_min, relendo config e kill switches a cada ciclo. dry_run = executor roda gates mas não mergeia; planejador só gera candidatos.",
+  "modo": "agendado",
+  "intervalo_min": 30,
+  "_push_suprimido": "INFORMATIVO, não é interruptor (peça D11). Nenhum script do motor lê esta chave: ela não está em config-chaves.ts e o valor não muda comportamento nenhum — o CI a tem em false e mesmo assim não pusha. Quem impede o push é (1) proibicoes_absolutas.tools com Bash(git push:*), que sai na flag --disallowedTools E é tirado da allowlist derivada do ticket, e (2) branch_protegida, que o local-loop recusa mergear e da qual o executor só CRIA branch. O snapshot diz 'push suprimido' sempre (lib.sh:staging_linha), por construção e não por config. Escreva-a como registro da decisão; não a trate como o que segura o push.",
+  "push_suprimido": false,
+  "loops": {
+    "_descricao": "Kill switches por loop. Nascem desligados exceto executor. Ligar na ordem: executor → sentinela → planejador (dry_run) → planejador (auto).",
+    "executor": {
+      "ativo": true
+    },
+    "sentinela": {
+      "ativo": false
+    },
+    "planejador": {
+      "ativo": false,
+      "modo": "dry_run"
+    }
+  },
+  "_modelos": "Escada: script decide o que dá; classificador barato; executor/planejador médio; juiz forte. Modelo forte em papel que não seja juiz_alto, juiz_ticket ou retry_final é bug de config (pré-voo cat. 8). Nomes v1 (executor_model, avaliador_model, retry_final_model) mantidos como alias e devem bater com modelos.*. Use o identificador aceito pela versão instalada do Claude Code (alias curto ou id completo do modelo).",
+  "modelos": {
+    "classificador": "claude-haiku-5-5",
+    "executor": "claude-sonnet-5-5",
+    "planejador": "claude-sonnet-5-5",
+    "juiz_baixo": "claude-sonnet-5-5",
+    "juiz_alto": "claude-opus-5-5",
+    "juiz_ticket": "claude-opus-5-5",
+    "retry_final": "claude-opus-5-5"
+  },
+  "executor_model": "claude-sonnet-5-5",
+  "avaliador_model": "claude-opus-5-5",
+  "retry_final_model": "claude-opus-5-5",
+  "_economia": "diff_cap_linhas: acima reprova mecanicamente (refatiar) sem juiz. diff_cap_ticket: cap DECLARADO no gate de ticket (menor que o mecânico de propósito: o estimado sempre erra para baixo). claude_timeout_secs: estouro = adiado.",
+  "diff_cap_linhas": 900,
+  "diff_cap_ticket": 600,
+  "claude_timeout_secs": 1500,
+  "claude_max_turns": 40,
+  "preflight_env_keys": [],
+  "executor": {
+    "auto_verificacao_max": 2,
+    "modo_arquiteto_para_alto": false,
+    "saida_compactada": true,
+    "narracao_proibida": true,
+    "trailer_commit": "Orq-Ticket",
+    "_trailer_commit": "Todo merge commit do loop na staging carrega o trailer 'Orq-Ticket: <id>'. Quarentena da sentinela e relatório leem o git, não o log."
+  },
+  "contexto": {
+    "_descricao": "Context pack montado por script. Truncamento por prioridade: ticket > arquivos da allowlist > assinaturas via repo map > ADR > PLAYBOOK #executor.",
+    "cap_tokens_executor": 15000,
+    "cap_tokens_planejador": 12000,
+    "cap_tokens_repo_map": 4000,
+    "cap_linhas_arquivo": 400,
+    "playbook_max_linhas": 30
+  },
+  "juiz": {
+    "_descricao": "Nível por classe de risco. baixo: gates verdes E diff ≤ diff_max_baixo E nenhum path em paths_alto_risco. Qualquer outro caso: alto.",
+    "diff_max_baixo": 300,
+    "max_tokens_veredicto": 300,
+    "paths_alto_risco": [
+      "supabase/**",
+      "src/middleware.ts",
+      "src/lib/auth/**",
+      "src/lib/auth.ts",
+      "src/lib/auth-guard.ts",
+      "src/app/api/auth/**",
+      "src/app/login/**",
+      "src/lib/supabase.ts",
+      "src/lib/supabase-admin.ts",
+      "src/lib/comissao-canonica.ts",
+      "src/lib/comissao/**",
+      "src/lib/calculos.ts",
+      "src/lib/kpis.ts",
+      "src/lib/atribuicao.ts",
+      "src/lib/ad-attribution.ts",
+      "src/app/api/webhooks/**",
+      "src/lib/financeiro/**",
+      "src/app/api/financeiro-v2/**",
+      "src/app/financeiro-v2/**",
+      "src/components/financeiro-v2/**"
+    ],
+    "palavras_alto_risco": [
+      "auth",
+      "login",
+      "senha",
+      "token",
+      "pagamento",
+      "billing",
+      "migration",
+      "schema",
+      "rls",
+      "permiss"
+    ],
+    "_dc_paths_alto_risco": "Proposta a partir do disco (ls src/lib, find src/app). Não validado glob a glob com git ls-files; conferir antes do primeiro run.",
+    "_dc_paths_alto_risco_2810": "28/10/2026: Financeiro v2 entra no juiz alto. Ticket de dinheiro com diff pequeno não pode ir para o juiz barato."
+  },
+  "gate_ticket": {
+    "_descricao": "7 passos para todo candidato de máquina. Tickets humanos: passos 1 a 6 no pré-voo cat. 8; juiz opcional.",
+    "juiz_para_humano": false,
+    "max_paths_allowlist": 8,
+    "timeout_cmd_secs": 120,
+    "modo_pre_voo": "aviso",
+    "_modo_pre_voo": "Pré-voo do gate de ticket no drive_ticket (porte do Actus, c404986 e 624): 'aviso' registra as violações no log e na trilha (GATE_TICKET_AVISO) e deixa o ticket seguir; 'bloqueia' marca o ticket bloqueado antes da worktree, sem consumir tentativa. Ausente = 'aviso'. Gate que não roda é falha alta nos dois.",
+    "severidade": {},
+    "_severidade": "Severidade por regra do gate de ticket (etapa 7d-1b): objeto regra -> erro|aviso|off por cima da tabela REGRAS do gate-ticket.ts. Vazio = a tabela, que aplica a calibração de 25/09 (ERRO só com zero falso positivo nos done dos três repos). 'bloqueia' no modo_pre_voo bloqueia SÓ por regra erro. Ex.: {\"6q\": \"erro\", \"6a:rm \": \"off\"}. Regra ou valor desconhecido é falha alta.",
+    "cmd_prefixos_permitidos": [
+      "node_modules/.bin/vitest run",
+      "node_modules/.bin/tsc",
+      "node scripts/",
+      "test -f",
+      "test -s",
+      "grep -",
+      "jq "
+    ],
+    "descartados_ttl_dias": 7,
+    "lotes_descartados_para_bloquear_frente": 2,
+    "filtros_permitidos": [
+      "grep",
+      "wc",
+      "head",
+      "tail",
+      "jq",
+      "cut",
+      "sort",
+      "uniq",
+      "tr"
+    ],
+    "proibido_no_cmd": [
+      "$(",
+      "`",
+      "sh -c",
+      "bash",
+      "eval",
+      "sudo",
+      "rm ",
+      "curl http",
+      "curl https",
+      "wget",
+      "> ",
+      ">>"
+    ],
+    "_proibido_no_cmd": "Checar por token de palavra e por regex, não por substring ('rm ' não pode casar 'form '). curl: qualquer host que não seja localhost/127.0.0.1 é proibido, em qualquer segmento. Único redirecionamento permitido: 2>&1. Path de paths_harness em qualquer segmento = invalido.",
+    "servidor_local_cmd": "",
+    "_dc_cmd_prefixos_permitidos": "Template sem npx/npm run (decisão: binário local) e sem os dois curl (servidor_local_cmd vazio). Se o Lucas quiser critérios com npm run, é decisão dele."
+  },
+  "planejador": {
+    "limiar_fila": 3,
+    "lote": 3,
+    "max_frentes_por_drenagem": 1,
+    "reserva_orcamento_pct": 20
+  },
+  "sentinela": {
+    "_descricao": "Todas as fontes read-only. Começar com suite_completa e smoke; runtime_errors e advisors só com credencial read-only no ambiente do agendador.",
+    "fontes": [
+      "suite_completa",
+      "smoke"
+    ],
+    "smoke_cmd": "",
+    "ocorrencias_min": 3,
+    "janela_min": 1440,
+    "quarentena_horas": 24,
+    "max_candidatos_drenagem": 3,
+    "max_candidatos_dia": 6,
+    "rodar_sem_merge": false,
+    "log_grep_padroes": [],
+    "_dc_smoke_cmd": "Vazio: sentinela nasce desligada (loops.sentinela.ativo false) e o smoke de produção passa pelo middleware (curl engana, CLAUDE.md Deploy)."
+  },
+  "orcamento": {
+    "_descricao": "Gate, não relatório. Nasce alto por 2 semanas de medição, depois fixa com 30% de folga sobre a mediana. Estourou = adiado + notificação.",
+    "usd_dia": 1000,
+    "tokens_dia": 1000000000,
+    "usd_ticket": 50,
+    "custo_file": "docs/fila/runs/custo.json",
+    "campos_usage": {
+      "custo_usd": "total_cost_usd",
+      "tokens_in": "usage.input_tokens",
+      "tokens_out": "usage.output_tokens",
+      "tokens_cache": "usage.cache_read_input_tokens"
+    },
+    "_dc_orcamento": "L4: usd_dia 10 e usd_ticket 1.5 decididos. tokens_dia 1000000 é VALOR RECOMENDADO (inteiro, formato do template; 10/50 do teto de 5M do template, na mesma proporção do usd_dia), confirmar com o Lucas. lib.sh soma só tokens_in + tokens_out, sem cache.",
+    "_dc_campos_usage": "Nomes do config do CI (conteudos-infinitos e1541e2), confirmados lá por sondagem de claude -p nesta máquina. NÃO resondados nesta sessão (claude -p proibido): reconfirmar no pré-voo cat. 8.",
+    "_dc_orcamento_2810": "28/10/2026, Lucas: o loop roda pela assinatura do Claude, não por chave de API. O total_cost_usd do claude -p é estimativa, não cobrança; a trava de orçamento deixa de limitar o ritmo (valores altos de propósito). O limite real passa a ser a cota do plano: estouro dela já é adiado com cooldown (politica_adiamento)."
+  },
+  "relatorio": {
+    "dia_semana": "sex",
+    "fallback_arquivo": true,
+    "_dc_canal": "Chave canal removida, como no CI: o canal é canal_notificacao no topo. Duas chaves de canal seriam duas fontes."
+  },
+  "_identidade": "Antes de qualquer gasto: origin DEVE conter repo_origin_deve_conter; identificador do banco/ambiente do .env DEVE bater com ambiente_id. Divergência = aborta o run inteiro.",
+  "repo_origin_deve_conter": "lucasantosads/dashboard-comercial",
+  "ambiente_id": "",
+  "paths_harness": [
+    "scripts/orquestrador/**",
+    "scripts/orq",
+    "scripts/roadmap/**",
+    "docs/orquestrador/**",
+    "docs/fila/000-config.json",
+    "docs/fila/_TEMPLATE.md",
+    ".claude/**"
+  ],
+  "_zona_proibida": "Etapa 8d: só chaves que o enforcement lê (config-chaves.ts). no_write_paths e no_write_credenciais.padroes são globs de caminho; no_write_tables é \"TODAS\" ou a lista de tabelas congeladas por nome; prefixos_sem_ddl (o antigo no_write_prefixes) proíbe CREATE/ALTER/DROP de objeto com o prefixo. O motor NÃO tem regra de leitura (o antigo readonly_ok) nem de ownership (o antigo excecoes_os_owned): tabela fora de no_write_tables pode ser escrita, e ninguém fica protegido por uma lista que o motor não lê.",
+  "zona_proibida": {
+    "descricao": "Tudo que o loop NUNCA escreve nem gera DDL. Revisado por humano (revisado_humano: true) antes do primeiro run.",
+    "revisado_humano": true,
+    "no_write_paths": [
+      ".env*",
+      "**/.env*",
+      ".vercel/**",
+      ".github/workflows/**",
+      "docs/backups/**",
+      "docs/deploy/**",
+      "docs/CANONICO.md",
+      "docs/orquestrador/REVIEW.md",
+      "CLAUDE.md",
+      "src/lib/comissao-canonica.ts",
+      "src/app/trafego/visao-geral/**",
+      "src/app/trafego/relatorios/**",
+      "src/app/trafego/relatorio-auto/**",
+      "src/app/dre/**",
+      "src/lib/metricas/**",
+      "src/lib/contratos/build-contrato-payload.ts",
+      "supabase/migrations/**"
+    ],
+    "no_write_credenciais": {
+      "padroes": [
+        "**/*.pem",
+        "**/*.key",
+        "**/id_rsa*",
+        "**/credentials*",
+        "**/secrets*"
+      ]
+    },
+    "no_write_tables": [
+      "clientes_receita",
+      "leads_crm",
+      "leads_crm_historico",
+      "ads_metadata",
+      "ads_performance",
+      "vw_atribuicao_proporcional",
+      "fn_mql_sql_by_month",
+      "trafego_account_managers",
+      "trafego_ad_accounts",
+      "trafego_anomalias",
+      "trafego_client_account_history",
+      "trafego_clients",
+      "trafego_criativo_metricas",
+      "trafego_criativos",
+      "trafego_performance_temporal",
+      "trafego_regras_historico",
+      "trafego_regras_otimizacao",
+      "trafego_thresholds_alertas",
+      "meta_connections",
+      "meta_ad_accounts",
+      "meta_insights_cache",
+      "meta_lead_forms",
+      "meta_sync_logs",
+      "meta_agency_connection",
+      "client_meta_accounts",
+      "ia_prompts",
+      "perf_ad_accounts",
+      "perf_analises",
+      "perf_cliente_cor_override",
+      "perf_cliente_metas",
+      "perf_cliente_verba",
+      "perf_colunas_template",
+      "perf_colunas_visualizacao",
+      "perf_conta_metas",
+      "perf_criativos",
+      "perf_crm_conexoes",
+      "perf_crm_etapas",
+      "perf_crm_oportunidade_historico",
+      "perf_crm_oportunidades",
+      "perf_crm_pipelines",
+      "perf_crm_reconciliacoes",
+      "perf_crm_reprocesso",
+      "perf_equipe_telefones",
+      "perf_eventos_produtividade",
+      "perf_fechamento_tokens",
+      "perf_fechamentos",
+      "perf_fechamentos_informados",
+      "perf_formas_pagamento",
+      "perf_ghl_locations",
+      "perf_health_snapshot",
+      "perf_hook_tipos",
+      "perf_ia_analises",
+      "perf_ia_credenciais",
+      "perf_ia_modelos",
+      "perf_ia_uso",
+      "perf_insights_daily",
+      "perf_lead_eventos",
+      "perf_leads",
+      "perf_leituras_relacao",
+      "perf_meta_ad_map",
+      "perf_meta_campanhas",
+      "perf_meta_connections",
+      "perf_meta_discovery",
+      "perf_meta_receita",
+      "perf_nichos",
+      "perf_nps_disparo_fila",
+      "perf_nps_respostas",
+      "perf_nps_tokens",
+      "perf_otimizacoes",
+      "perf_portal_tokens",
+      "perf_portal_venda_confirmacoes",
+      "perf_promessas",
+      "perf_qualificacao_regras",
+      "perf_ranking_foto_mensal",
+      "perf_relacao_sugestoes",
+      "perf_relatorios_gerados",
+      "perf_reuniao",
+      "perf_sync_logs",
+      "perf_tese_premissas",
+      "perf_teses",
+      "perf_vacuo_tratado",
+      "contratos",
+      "pagamentos_mensais",
+      "recebimentos_mensais",
+      "despesas",
+      "_audit_baseline_metrics"
+    ],
+    "prefixos_sem_ddl": [
+      "trafego_",
+      "perf_",
+      "leads_crm",
+      "fn_mql_",
+      "vw_"
+    ],
+    "_dc_no_write_paths": "L9: páginas protegidas de docs/CANONICO.md:113-115 (/trafego/visao-geral, /trafego/relatorios, /trafego/relatorio-auto, /dre), src/lib/comissao-canonica.ts, CLAUDE.md e docs/CANONICO.md. src/app/api/financeiro/dre/** saiu: a lista do CANONICO nomeia a página /dre, não a API. docs/backups/** é proibido pelo CLAUDE.md (:83-89).",
+    "_dc_no_write_tables": "Nome literal (enforcement-core.ts:460-462 escapa *, :534-539 casa ^nome$). Mapa de dono do CLAUDE.md do clone (Zona protegida). Tabela, motivo e fonte de cada linha no relatorio-dc-config.md. perf_* saiu das migrations do Comarka (c16e2b8), não do banco: conferir com information_schema na etapa do --novo.",
+    "_dc_prefixos_sem_ddl": "Regra E (enforcement-core.ts:594-608) exige ao menos 1 caractere depois do prefixo (\\w+): leads_crm pega leads_crm_historico mas não CREATE de leads_crm puro; ALTER/DROP TABLE de nome congelado já cai na regra C. L8: vw_ fica, o loop não cria view nova. leads_crm_rt3 fica fora de no_write_tables: é nome de canal realtime (src/hooks/use-crm-data.ts:321, supabase.channel), não tabela.",
+    "_dc_ampliacao_2410": "24/10/2026, Lucas: entram contratos, pagamentos_mensais, recebimentos_mensais, despesas e _audit_baseline_metrics (tabelas conferidas em information_schema: as 5 existem em public; _audit_baseline_metrics_v2 é OUTRA tabela e não foi pedida) e os paths src/lib/metricas/**, src/lib/contratos/build-contrato-payload.ts e supabase/migrations/**. Com supabase/migrations/** proibido, o loop não escreve migration nenhuma."
+  },
+  "_gates_papel": "Chave OPCIONAL por gate (peça K6b): \"papel\": \"typecheck\" | \"testes\" | \"build\" | \"lint\". É ela que decide o que a linha GATE da trilha diz sobre cada gate. Quando ausente, o papel é INFERIDO do nome (executor.sh, papel_do_gate: *typecheck*/*tsc*/*types* → typecheck; *lint* → lint; *build*/*compil* → build; *test*/*spec* → testes). Declare-a quando o nome do gate não disser o papel — um gate chamado `verificacao` sai como nao-configurado sem ela. Papel que não existe em gate nenhum do config aparece na trilha como `nao-configurado`, nunca `nao-rodou`.",
+  "launchd": {
+    "label": "com.dashboard-comercial.orquestrador",
+    "start_interval": 1800
+  },
+  "_launchd": "Peça K6c. `label` é o Label do job do launchd e NÃO tem default: scripts/orquestrador/instalar-launchd.sh RECUSA sem ele, em vez de inventar um. Label inventado não dá erro visível — carrega um SEGUNDO job ao lado do antigo, os dois disparando no mesmo checkout. Um label por repo: para o launchd, dois repos com o mesmo label são o MESMO job. `start_interval` é o StartInterval em segundos; 1800 é o valor medido em 06/set/2026 (mediana 294s, p90 2509s por ticket), e a medição inteira está no comentário do com.orquestrador.plist.template — refaça-a antes de trocar o número.",
+  "_execucao_dos_gates": {
+    "_descricao": "gates.ts:176-177. `ordem_obrigatoria` tem de listar os MESMOS nomes de `gates[]`, na mesma ordem: rodar fora de ordem invalida o resultado mesmo que todos os comandos saiam verdes. Gate de `tipo: preparacao` (limpeza de artefato) vem primeiro — um artefato de build velho JÁ dessincronizou tsc e build numa sessão real, e sem humano olhando isso vira APROVAÇÃO FALSA.",
+    "ordem_obrigatoria": [
+      "typecheck",
+      "testes",
+      "build"
+    ],
+    "interrupcao": "NAO_VALE_PARCIALMENTE",
+    "_interrupcao": "Gate interrompido no meio (timeout, kill, máquina dormindo) NÃO conta como parcialmente aprovado: nenhum resultado anterior é reaproveitado e a sequência reexecuta inteira. Um gate só vale quando a ordem completa rodou de ponta a ponta na mesma execução."
+  },
+  "politica_adiamento": {
+    "regra": "Falha de INFRAESTRUTURA adia. Nunca reprova.",
+    "_porque": "Reprovar por queda de conexão consome retry e, no limite, bloqueia um ticket que nunca foi julgado pelo mérito. O executor não errou — o ambiente caiu. Só o AVALIADOR reprova, e só por conteúdo do diff.",
+    "causas_que_adiam": [
+      "erro de conexão",
+      "sessão expirada",
+      "rate limit",
+      "quota estourada",
+      "timeout de claude_timeout_secs",
+      "gate interrompido no meio",
+      "veredito do juiz ilegível",
+      "falha de ambiente da worktree"
+    ],
+    "efeito": {
+      "status": "pendente",
+      "conta_como_retry": false,
+      "cooldown": "grava runs/.cooldown-until = agora + cooldown_minutes"
+    }
+  },
+  "politica_retry": {
+    "_descricao": "decisao.ts:277, e decisao.ts REJEITA a config que mandar o contrário. A causa da reprovação decide o que muda no retry: tamanho, fronteira e qualidade são problemas diferentes e não compartilham remédio.",
+    "por_causa": {
+      "diff_cap": {
+        "modelo": "MANTER",
+        "acao": "estreitar o escopo no prompt de retry (fatiar o ticket, reduzir pathspec_allowlist)",
+        "_porque": "Estourar diff_cap é falha de TAMANHO, não de capacidade. Um modelo mais forte escreve o mesmo excesso — só mais caro."
+      },
+      "enforcement": {
+        "modelo": "MANTER",
+        "acao": "estreitar o escopo no prompt de retry (respeitar a pathspec_allowlist, sair da zona proibida)",
+        "_porque": "Violação de FRONTEIRA não é falha de qualidade. Um modelo mais forte cruza a mesma fronteira."
+      },
+      "criterio_qualidade": {
+        "modelo": "ESCALAR",
+        "acao": "subir para retry_final_model e repetir com o mesmo escopo",
+        "_porque": "Reprovação do avaliador é falha de CAPACIDADE; aí escalar é o remédio certo."
+      },
+      "arquivo_solto": {
+        "modelo": "MANTER",
+        "acao": "remover o arquivo solto da worktree"
+      }
+    },
+    "proibicao": "NUNCA escalar modelo por falha de tamanho (diff_cap) nem por violação de fronteira (enforcement)."
+  },
+  "gates": [
+    {
+      "nome": "typecheck",
+      "papel": "typecheck",
+      "preparo": [
+        "rm -rf .next",
+        "rm -f next-env.d.ts tsconfig.tsbuildinfo"
+      ],
+      "cmd": "node_modules/.bin/tsc --noEmit",
+      "tipo": "baseline_erros",
+      "contagem_regex": "^(?!\\.next/).*error TS\\d+",
+      "descricao": "Erro a erro (24/10/2026, decisão do Lucas): para cada par arquivo+código TS da saída, a contagem atual tem de ser menor ou igual à da baseline. Par novo ou par que cresceu reprova, nomeado no gates.txt. Baseline: 245 erros em 76 pares, medidos em e441b25 sobre git archive (árvore limpa, sem .next nem next-env.d.ts). Linhas de .next/ ficam fora pelo contagem_regex.",
+      "_dc_baseline": "docs/orquestrador/baseline-tsc.json está em paths_harness (docs/orquestrador/**): o loop não reescreve a régua que o julga. Lida da main do checkout do loop (gates.ts: carregarBaselinesErros), nunca da worktree. Regerar só por commit humano: gates.ts --gerar-baseline-erros <saida do tsc> --filtro <contagem_regex> --commit <sha>.",
+      "baseline_arquivo": "docs/orquestrador/baseline-tsc.json"
+    },
+    {
+      "nome": "testes",
+      "papel": "testes",
+      "cmd": "node_modules/.bin/vitest run",
+      "tipo": "exit_code",
+      "descricao": "Suíte padrão verde, sem credencial (setup-sem-credencial.ts recusa *.supabase.co). Medido no clone: 97 arquivos, 1257 testes. Nunca test:integration.",
+      "_dc_testes": "O vitest.config.ts não restringe include: os 19 testes de harness que o --novo copia para test/ entram nesta suíte. Remedir depois do --novo."
+    },
+    {
+      "nome": "build",
+      "papel": "build",
+      "preparo": [
+        "rm -rf .next"
+      ],
+      "cmd": "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:9 NEXT_PUBLIC_SUPABASE_ANON_KEY=build-sem-env SUPABASE_SERVICE_ROLE_KEY=build-sem-env node_modules/.bin/next build",
+      "tipo": "exit_code",
+      "descricao": "next build sem erro, sem .env. As 3 variáveis Supabase do comando são FICTÍCIAS (localhost porta 9, inalcançável; chave literal build-sem-env): sem elas o next build morre na coleta de dados de página.",
+      "_dc_build": "Achado no ensaio (22/10): sem .env, next build sai 1 com `supabaseUrl is required` ao coletar /api/admin/auditoria-comissao (createClient no import do módulo). Consertar no app (cliente preguiçoso) é mudança de código, fora do escopo; o gate recebe valores fictícios, não secretos, só das 3 chaves que src/ lê (NEXT_PUBLIC_SUPABASE_URL 368x, SUPABASE_SERVICE_ROLE_KEY 362x, NEXT_PUBLIC_SUPABASE_ANON_KEY 2x). Prova: o gate reprova compilação; não prova runtime. Confirmar com o Lucas."
+    }
+  ],
+  "lint": {
+    "cmd": "",
+    "descricao": "Só regras já em erro. Warnings não são falha nem permissão.",
+    "_dc_lint": "Vazio: há .eslintrc.json e next lint no package.json, mas o lint não foi medido nesta sessão. Preencher só depois de medido, com regras já em erro."
+  },
+  "testes_quarentena": [],
+  "proibicoes_absolutas": {
+    "regras": [
+      "nunca push na branch principal",
+      "nunca aplicar DDL (só escrever arquivo de migration)",
+      "nunca escrever na zona proibida",
+      "nunca tocar credenciais/segredos",
+      "nunca gastar dinheiro",
+      "nunca escrever em paths_harness pela fila",
+      "git add sempre por pathspec explícito",
+      "nunca ler .env* nem usar service role de produção em teste",
+      "nunca rodar npm run test:integration",
+      "nunca DELETE físico; soft delete sempre",
+      "nunca ler .env* fora da worktree (nem por caminho absoluto)"
+    ],
+    "tools": [
+      "Bash(git push:*)",
+      "Bash(git reset:*)",
+      "Bash(psql:*)",
+      "Bash(supabase:*)",
+      "Bash(npx supabase:*)",
+      "Bash(curl:*)",
+      "Bash(rm:*)",
+      "WebFetch",
+      "WebSearch",
+      "Bash(pnpm install:*)",
+      "Bash(npm install:*)",
+      "Bash(npm ci:*)",
+      "Read(~/**/.env*)",
+      "Read(//Users/lucasantos/**/.env*)"
+    ]
+  },
+  "_proibicoes_absolutas_tools": "T17 · o PISO de --disallowedTools. `regras` e a prosa de sempre; `tools` e a lista que o motor passa em --disallowedTools (executor.sh:tools_proibidas) e que tambem sai da allowlist derivada do ticket (perfil.ts:filtrarPeloPiso) — o ticket pede, o config nega, o config ganha. `pnpm install`/`npm install`/`npm ci` estao aqui porque o node_modules da worktree e LINKADO para o store do checkout principal: um install la purga o store do repo de verdade, nao o da worktree descartavel.",
+  "_dc_worktrees_prefixo": "CLAUDE.md do clone, seção Ambientes: dc-orq-<id> e dc-orq-staging-auto são reservados ao loop. lib.sh:872 monta a staging como <worktrees_dir>/<prefixo><branch_alvo> = ../_worktrees/dc-orq-staging-auto.",
+  "_dc_worktree": "Decisão fechada: linkar_env false. O clone do loop não tem .env; nenhuma credencial de produção entra na worktree.",
+  "_dc_preflight_env_keys": "Vazio porque o clone não tem .env (executor.sh:126-131 morre com env faltando). Ver ambiente_id.",
+  "canal_notificacao": "arquivo",
+  "_dc_canal_notificacao": "Decisão fechada. lib.sh:1358; qualquer valor != notificacao_nativa cai no arquivo.",
+  "_dc_ambiente_id": "L3: vazio. Desliga a checagem de banco (executor.sh:117). O clone do loop não tem .env; com o ref preenchido (ogfnojbbvumujzfklkhh), executor.sh:118-120 compararia com SUPABASE_URL do .env.local do principal e o preflight morreria em todo run.",
+  "_dc_launchd": "Proposto. Não colide com os 6 labels de launchctl list (22/10 16:59): com.comarka.orquestrador, com.comarka.orquestrador-apolo, com.comarka.orq-server, com.orq.resolvedor, com.actus.orquestrador, com.conteudos.orquestrador.",
+  "_dc_modelos": "L6: IDs completos, como o Comarka (c16e2b8: executor_model claude-sonnet-5-5, avaliador_model/retry_final_model claude-opus-5-5). O Comarka não tem classificador: claude-haiku-5-5 segue o mesmo padrão de ID.",
+  "_dc_economia": "L7: diff_cap_linhas 900 e claude_timeout_secs 1500 são os do Comarka (c16e2b8). O Comarka não tem claude_max_turns (e o executor dele não passa --max-turns): fica 40, o do template e o fallback do executor do kit (executor.sh:1101). Confirmar com o Lucas.",
+  "restricao_execucao": {
+    "ativa": false,
+    "tickets_permitidos": [],
+    "recusa_exit_code": 78,
+    "recusa_mensagem": "RECUSADO: há modelo por papel em PENDENTE_* e a restrição de execução está ativa. Preencha executor_model/avaliador_model/retry_final_model — não escolha um modelo padrão, não siga em frente.",
+    "_dc_restricao_execucao": "Achado no ensaio (sessão INSTALAÇÃO, 22/10): o template do kit a001fde não tem esta chave e o orq config não a cobra, mas decisao.ts:72-75 (avaliaRestricaoExecucao) lê r.ativa sem guarda e executor.sh chama `decisao restricao` a cada ticket. Sem o objeto, TypeError e RECUSADO em todo drive_ticket (provado na cópia: 8 testes de harness vermelhos). Valores do config do CI (test/fixtures/checkout do kit): ativa false, allowlist vazia, exit 78. Desligada porque nenhum papel está em PENDENTE_*. Defeito do kit, listado no relatório."
+  },
+  "_dc_k2": "K2 (24/10/2026): Read(~/**/.env*) e a forma absoluta Read(//Users/lucasantos/**/.env*) no piso de --disallowedTools. As worktrees do loop ficam em ~/Projetos/_worktrees, ao lado de checkouts humanos com .env.local de produção; linkar_env false tira o link, não o caminho. O motor carrega a regra intacta (teste K2 do kit); quem barra a leitura é o CLI do Claude Code. Bash(cat …) não é coberto por regra de Read: a última trava é a guarda de produção do vitest (setup-sem-credencial.ts)."
+}

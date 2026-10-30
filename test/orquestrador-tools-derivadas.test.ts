@@ -12,7 +12,9 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   BASE_TOOLS,
+  filtrarPeloPiso,
   padroesDeCmd,
+  pisoDoConfig,
   prefixoDeCmd,
   prefixoSimples,
   toolsDoTicket,
@@ -87,6 +89,32 @@ describe('comando perigoso nunca vira permissão, venha de onde vier', () => {
   it('o que é legítimo continua passando', () => {
     expect(padroesDeCmd('npm run typecheck:web').length).toBe(2);
     expect(padroesDeCmd('git diff --name-only HEAD').length).toBeGreaterThan(0);
+  });
+});
+
+// Etapa L13, P1b: o prompt manda rodar os gates (executor.sh, "Os gates deste
+// repo, nesta ordem"), e o extrator só reconhecia npm run, npm test e npx. Os
+// três gates do dashboard-comercial chamam node_modules/.bin direto: o agente do
+// 037, 039 e 043 (29/10) escreveu "IMPEDIMENTO: typecheck e build não rodaram
+// (comandos fora da lista)". Config REAL do dashboard em fixture.
+describe('L13 P1b: gates por node_modules/.bin entram no --allowedTools', () => {
+  const DC = JSON.parse(readFileSync(join(REPO_ROOT, 'test', 'fixtures', 'l13', 'config-dashboard.json'), 'utf8')) as {
+    gates: { cmd: string }[];
+  };
+  const piso = pisoDoConfig(DC);
+  const tools = toolsDoTicket(DC.gates.map((g) => g.cmd), [], piso).split(',');
+
+  it('tem tsc --noEmit, vitest run e next build (com a forma :*)', () => {
+    for (const c of ['node_modules/.bin/tsc --noEmit', 'node_modules/.bin/vitest run', 'node_modules/.bin/next build']) {
+      expect(tools).toContain(`Bash(${c})`);
+      expect(tools).toContain(`Bash(${c}:*)`);
+    }
+  });
+
+  it('o piso do config segue negando rm, git push e npm install', () => {
+    for (const p of ['Bash(rm:*)', 'Bash(git push:*)', 'Bash(npm install:*)']) expect(piso).toContain(p);
+    expect(filtrarPeloPiso(['Bash(rm -rf x)', 'Bash(git push origin main)', 'Bash(npm install x)'], piso)).toEqual([]);
+    expect(tools.some((t) => /^Bash\((rm|git push|npm install)\b/.test(t))).toBe(false);
   });
 });
 
