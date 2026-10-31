@@ -12,7 +12,8 @@
  * dentro de `mkdtemp`.
  */
 import { describe, it, expect } from 'vitest';
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { copyFileSync, cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ehV2, jaLiberado, migrar, comPrefixo, RE_TOKEN } from '../scripts/orquestrador/liberacoes-core.js';
@@ -366,6 +367,31 @@ describe('orq liberar: pelo `scripts/orq`, num repo de fixture', () => {
     expect(r.err).toMatch(/não está em v2/);
     expect(r.err).toMatch(/--migrar/);
     expect(readFileSync(arq, 'utf8')).toBe(antes);
+  });
+});
+
+// ─── orq liberar · num repo sem "type": "module" (L13b) ────────────────────
+// O kit e o fixture têm `"type": "module"`, então o `tsx` sempre rodou o
+// liberar-cli como ESM e o `await import` solto dentro do if de CLI passava. No
+// dashboard-comercial (package.json sem `type`) o `tsx` roda como CJS e o CLI
+// morria antes da primeira linha: "Top-level await is currently not supported
+// with the cjs output format" (consertado lá em a015c150).
+describe('orq liberar: num repo instalado sem "type": "module"', () => {
+  it('o CLI roda como CJS pelo tsx, libera e sai 0', () => {
+    const raiz = mkdtempSync(join(tmpdir(), 'orq-cjs-'));
+    writeFileSync(join(raiz, 'package.json'), JSON.stringify({ name: 'repo-cjs', private: true }));
+    cpSync(join(REPO_ROOT, 'scripts', 'orquestrador'), join(raiz, 'scripts', 'orquestrador'), { recursive: true });
+    const arq = join(raiz, 'liberacoes.json');
+    writeFileSync(arq, JSON.stringify({ $schema_versao: 2, tokens: [] }));
+    const r = spawnSync(
+      join(REPO_ROOT, 'node_modules', '.bin', 'tsx'),
+      [join(raiz, 'scripts', 'orquestrador', 'liberar-cli.ts'), arq, 'humano:migration-0025'],
+      { encoding: 'utf8', cwd: raiz },
+    );
+    expect(r.stderr).not.toMatch(/Top-level await/);
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toMatch(/LIBERADO\s+humano:migration-0025/);
+    expect(ler(arq)).toMatchObject({ tokens: [{ token: 'humano:migration-0025' }] });
   });
 });
 

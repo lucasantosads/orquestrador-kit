@@ -16,7 +16,7 @@
  * reescrita do arquivo inteiro, sem diff e sem `.bak`. Arquivo fora da v2 é
  * RECUSA, com o comando da migração na mensagem.
  */
-import { existsSync, realpathSync } from 'node:fs'
+import { existsSync, realpathSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { descreverForma, ehV2, jaLiberado, RE_TOKEN } from './liberacoes-core.js'
@@ -123,7 +123,6 @@ if (chamadoComoCli()) {
     process.stderr.write(`RECUSADO: ${r.motivo}\n`)
     process.exit(1)
   }
-  const { writeFileSync } = await import('node:fs')
   writeFileSync(abs, r.conteudo)
   process.stdout.write(`LIBERADO  ${r.registro.token}\n`)
   process.stdout.write(`          liberado_em ${r.registro.liberado_em} · por ${r.registro.por}\n`)
