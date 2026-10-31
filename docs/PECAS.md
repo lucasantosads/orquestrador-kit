@@ -1152,6 +1152,10 @@
   `LC_ALL`. Defeito `docs/defeitos/2026-10-30-juiz-morre-com-git-pt-br.md` (varredura do grep lá).
   *Teste:* `orquestrador-contexto-juiz-fixtures.test.ts`, `orquestrador-juiz-citacoes.test.ts`,
   `orquestrador-triador-extrair.test.ts` (L13 P6).
+- **L13b · liberar-cli sem top-level await (31/10/2026), `3d8d114`.** Porte do `a015c150` do dashboard:
+  `writeFileSync` no import estático, e `orq liberar` roda em repo sem `"type": "module"` (CJS pelo
+  `tsx`). Defeito `docs/defeitos/2026-10-31-liberar-cli-top-level-await.md`; `migrations/cli.ts:176`
+  fica pendente lá. *Teste:* `orquestrador-liberar-migrar.test.ts` (L13b).
 
 ## PENDENTES
 
