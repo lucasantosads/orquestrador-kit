@@ -173,4 +173,6 @@ export async function main(argv: string[], meios: Partial<Meios> & { erro?: (t: 
   }
 }
 
-if (/migrations\/cli\.(ts|js)$/.test(process.argv[1] ?? '')) process.exit(await main(process.argv.slice(2)))
+// Sem top-level await (etapa L14, P4): num repo sem `"type": "module"` o `tsx`
+// roda este arquivo como CJS, e o esbuild recusa o `await` solto no topo.
+if (/migrations\/cli\.(ts|js)$/.test(process.argv[1] ?? '')) void main(process.argv.slice(2)).then((rc) => process.exit(rc))

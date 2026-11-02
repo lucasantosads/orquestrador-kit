@@ -393,6 +393,22 @@ describe('orq liberar: num repo instalado sem "type": "module"', () => {
     expect(r.stdout).toMatch(/LIBERADO\s+humano:migration-0025/);
     expect(ler(arq)).toMatchObject({ tokens: [{ token: 'humano:migration-0025' }] });
   });
+
+  // Etapa L14 (P4): o pendente da L13b. `migrations/cli.ts:176` fazia
+  // `process.exit(await main(...))` no topo e morria do mesmo jeito.
+  it('orq migrations também roda como CJS: sem verbo sai 2 com o uso, sem top-level await', () => {
+    const raiz = mkdtempSync(join(tmpdir(), 'orq-cjs-'));
+    writeFileSync(join(raiz, 'package.json'), JSON.stringify({ name: 'repo-cjs', private: true }));
+    cpSync(join(REPO_ROOT, 'scripts', 'orquestrador'), join(raiz, 'scripts', 'orquestrador'), { recursive: true });
+    const r = spawnSync(
+      join(REPO_ROOT, 'node_modules', '.bin', 'tsx'),
+      [join(raiz, 'scripts', 'orquestrador', 'migrations', 'cli.ts')],
+      { encoding: 'utf8', cwd: raiz },
+    );
+    expect(r.stderr).not.toMatch(/Top-level await/);
+    expect(r.status, r.stderr).toBe(2);
+    expect(r.stderr).toMatch(/\[orq migrations\] falta o verbo/);
+  });
 });
 
 // ─── a saída obedece ao schema, lido do disco ───────────────────────────────
