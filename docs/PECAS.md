@@ -1384,9 +1384,11 @@
   nas bases (56 de 5480 guardas rodaram no corpus da L14).
   *Teste:* o corpus da L14 rodado de novo com node_modules ligado no Comarka.
 - **Teto de tempo da passada do pré-voo.** O teto é por comando (45 s); um ticket com vários
-  critérios de `npx tsc` ou build paga até 45 s em cada um antes da tentativa. Medir na
-  produção (`prevoo.txt`) antes de decidir um teto por passada.
-  *Evidência:* relatório da L14, riscos.
+  critérios de `npx tsc` ou build paga até 45 s em cada um antes da tentativa. A medida existe
+  desde a L14b (`d237f8e`): cada passada fecha com `fim=<UTC> duracao_s=<s> saida=ok|bloqueio|morte`
+  no `prevoo.txt` (CONTRATO §27.1). O teto por passada segue sem decisão; o kit só mede.
+  *Evidência:* relatório da L14, riscos; primeira passada real, 070 do dashboard (02/11): 15
+  recon e 8 critérios, cerca de 2 s (início 14:51:42, `INICIO` 14:51:44, ainda sem `fim=`).
 - **`CONFLITO:` na doutrina.** A L14 ensina a linha só no prompt (`executor.sh:build_prompt`,
   item 5 da ENTREGA). `doutrina/EXECUTOR.md` e `doutrina/templates/EXECUTOR.md` são idênticos e só
   o segundo estava no escopo da etapa; mudar um só criaria divergência. Os dois ganham a linha

@@ -80,7 +80,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 | M-49 | validar-fila confere aderência à semente do roadmap | ideia | D | C2 | relato | M-46 | L6-08 |
 | M-50 | Alvo alcançável e lib nova com consumidor | ideia | D | C2 | relato | M-46 | L6-17 |
 | M-51 | Experimento: canário no primeiro lote | ideia | D | C2 | não registrada | | base (experimentos) |
-| M-63 | Escritor de ticket do dashboard gera recon e separa guarda de alvo negativo | ideia | D | C2 | medida | | etapa L14 |
+| M-63 | Escritor de ticket do dashboard gera recon e separa guarda de alvo negativo | parcial (etapa L14b): o template do kit ensina recon; falta a skill ticket-fila-dashboard gerar recon e separar guarda de alvo negativo | D | C2 | medida | | etapa L14 |
 
 ## Itens
 
@@ -678,7 +678,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 
 ### M-63 Escritor de ticket do dashboard gera recon e separa guarda de alvo negativo
 - marco: D (entrou em 01/11, pedido do Lucas no fechamento da etapa L14)
-- status: ideia
+- status: parcial (etapa L14b): o template do kit ensina recon; falta a skill ticket-fila-dashboard gerar recon e separar guarda de alvo negativo (`doutrina/templates/TICKET.md`, `21cf14b`)
 - o que é: tickets do dashboard não usam recon (0 de 67); a skill de escrita do dashboard deve gerar recon e separar guarda de alvo negativo. Sem recon, o C1 da L14 não tem o que executar no dashboard; e 32 critérios `guarda` de 15 done do dashboard já falham na base porque são alvo negativo (`grep -c X` com espera 0, e o ticket remove o X), o que deixa o C5 em aviso.
 - como entra no kit: na skill de escrita do dashboard (`ticket-fila-dashboard`), fora do motor; o motor já executa o recon e avisa o C5 (CONTRATO §27).
 - detalhes executáveis:
