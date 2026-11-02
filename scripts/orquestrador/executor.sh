@@ -677,8 +677,60 @@ prevoo_exec() {
     log "  recon: DIVERGIU — $PREVOO_BLOQUEIO"
     break
   done
-  rm -f "$tmp"
   [ "$n" -gt 0 ] && [ -z "$PREVOO_BLOQUEIO" ] && log "  recon: ok ($n comando(s))"
+  [ -z "$PREVOO_BLOQUEIO" ] && prevoo_criterios "$file" "$wt" "$id" "$txt" "$tmp"
+  rm -f "$tmp"
+  return 0
+}
+
+# prevoo_criterios <arquivo_ticket> <worktree> <id> <prevoo.txt> <tmp> — C5 e C6
+# (etapa L14, P2), só AVISO: nenhum deu zero FP (dashboard C5 32 em 15 tickets
+# com a exceção, C6 10 em 8; Comarka C6 8 em 8). Nunca bloqueia e nunca vai ao
+# prompt do agente.
+#   C5 · guarda que já falha na base. Exceção: a guarda cita um caminho da
+#        allowlist ou de cria_novo que não existe na base (é alvo disfarçado).
+#   C6 · alvo (tipo `alvo` ou ausente) que já passa na base.
+# Avaliador não roda. Timeout no teto: nada se conclui, só o prevoo.txt.
+prevoo_criterios() {
+  local file="$1" wt="$2" id="$3" txt="$4" tmp="$5" i tipo cmd esp out rc caminho cria
+  local crits; crits="$(ticket_json "$file" | jq -c '[(.criterios_aceite // [])[] | {tipo: (.tipo // "alvo"), cmd: (.cmd // ""), espera: (.espera // "" | tostring)}]')"
+  local criados; criados="$(ticket_json "$file" | jq -r '((.pathspec_allowlist // []) + (.cria_novo // []))[] | strings' | sort -u)"
+  local n; n="$(printf '%s' "$crits" | jq 'length')"
+  for ((i=0; i<n; i++)); do
+    tipo="$(printf '%s' "$crits" | jq -r ".[$i].tipo")"
+    cmd="$(printf '%s' "$crits" | jq -r ".[$i].cmd")"
+    esp="$(printf '%s' "$crits" | jq -r ".[$i].espera")"
+    [ "$tipo" = avaliador ] || [ "$esp" = avaliador ] || [ -z "$cmd" ] && continue
+    if [ "$tipo" = guarda ]; then
+      cria=""
+      while IFS= read -r caminho; do
+        [ -n "$caminho" ] || continue
+        case "$caminho" in *'*'*) continue ;; esac
+        case "$cmd" in *"$caminho"*) [ -e "$wt/$caminho" ] || { cria="$caminho"; break; } ;; esac
+      done <<< "$criados"
+      if [ -n "$cria" ]; then
+        printf '### criterio=%s -> exceção: cita %s, que o ticket cria (ausente na base); guarda não avaliada\n\n' "$i" "$cria" >> "$txt"
+        continue
+      fi
+    fi
+    rc=0; prevoo_roda "$wt" "$cmd" "$tmp" || rc=$?
+    out="$(strip_ansi < "$tmp" || true)"
+    if [ "$rc" = 124 ]; then
+      printf '### criterio=%s (%s) -> TIMEOUT (%ss), nada se conclui\ncmd: %s\n\n' "$i" "$tipo" "${ORQ_PREVOO_TETO_SECS:-45}" "$cmd" >> "$txt"
+      continue
+    fi
+    local passa=0; criterio_match "$out" "$esp" && passa=1
+    printf '### criterio=%s (%s) -> %s na base\ncmd: %s\nespera: %s\nsaida: %s\n\n' "$i" "$tipo" \
+      "$([ "$passa" = 1 ] && echo passa || echo falha)" "$cmd" "$esp" "$out" >> "$txt"
+    local curta; curta="$(printf '%s' "$out" | tr '\n' ' ' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | cut -c1-120)"
+    if [ "$tipo" = guarda ] && [ "$passa" = 0 ]; then
+      printf 'C5 criterio=%s: guarda já falha na base (esperava %s, obteve %s)\n\n' "$i" "'$esp'" "'$curta'" >> "$txt"
+      prevoo_aviso "$id" C5 "criterio=$i" "guarda já falha na base: esperava '$esp' obteve '$curta' — o ticket nasce reprovado por dívida da alvo, ou a guarda é um alvo negativo"
+    elif [ "$tipo" != guarda ] && [ "$passa" = 1 ]; then
+      printf 'C6 criterio=%s: alvo já passa na base (espera %s)\n\n' "$i" "'$esp'" >> "$txt"
+      prevoo_aviso "$id" C6 "criterio=$i" "alvo já passa na base (espera '$esp'): não discrimina o trabalho do ticket"
+    fi
+  done
   return 0
 }
 
