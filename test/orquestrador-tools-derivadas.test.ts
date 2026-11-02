@@ -253,8 +253,12 @@ describe('morte inesperada do executor deixa rastro (peça 0c, item 3)', () => {
     // O décimo segundo é o retry sem mudança (porte, 623). O décimo terceiro é a
     // base vermelha (porte, 632). O décimo quarto é o IMPEDIMENTO declarado
     // (etapa L13, P2). O décimo quinto é a dependência fora da alvo (L13, P3).
+    // O décimo sexto é o recon divergente (L14, P1) e o décimo sétimo, o
+    // CONFLITO declarado (L14, P3).
     const n = (exec.match(/DESFECHO_NOMEADO=1/g) ?? []).length;
-    expect(n).toBe(15);
+    expect(n).toBe(17);
+    expect(exec).toMatch(/event "\$id" BLOQUEADO "motivo=SPEC_DESATUALIZADA"[\s\S]{0,300}DESFECHO_NOMEADO=1/);
+    expect(exec).toMatch(/event "\$id" BLOQUEADO "motivo=SPEC_CONFLITANTE"[\s\S]{0,300}DESFECHO_NOMEADO=1/);
     expect(exec).toMatch(/event "\$id" BLOQUEADO "motivo=DEPENDENCIA_FORA_DA_ALVO"[\s\S]{0,300}DESFECHO_NOMEADO=1/);
     expect(exec).toMatch(/event "\$id" BLOQUEADO "motivo=IMPEDIMENTO_DECLARADO"[\s\S]{0,300}DESFECHO_NOMEADO=1/);
     expect(exec).toMatch(/event "\$id" BLOQUEADO "motivo=base_vermelha"[\s\S]{0,300}DESFECHO_NOMEADO=1/);

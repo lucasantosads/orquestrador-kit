@@ -1154,8 +1154,24 @@
   `orquestrador-triador-extrair.test.ts` (L13 P6).
 - **L13b · liberar-cli sem top-level await (31/10/2026), `3d8d114`.** Porte do `a015c150` do dashboard:
   `writeFileSync` no import estático, e `orq liberar` roda em repo sem `"type": "module"` (CJS pelo
-  `tsx`). Defeito `docs/defeitos/2026-10-31-liberar-cli-top-level-await.md`; `migrations/cli.ts:176`
-  fica pendente lá. *Teste:* `orquestrador-liberar-migrar.test.ts` (L13b).
+  `tsx`). Defeito `docs/defeitos/2026-10-31-liberar-cli-top-level-await.md`; o `migrations/cli.ts:176`,
+  que ficou pendente lá, foi consertado na L14-P4 (`a229f34`). *Teste:* `orquestrador-liberar-migrar.test.ts` (L13b).
+- **L14 · ticket que nasce certo: o gate executa recon, guarda e alvo (7d-2) e conflito de spec
+  estruturado (M-17) (01/11/2026).** O executor roda, na worktree nova da `branch_alvo` e antes do
+  `INICIO` e do contador, só na primeira tentativa da drenagem: o recon (`recon` ou `recon_esperado`)
+  divergente, rc 126/127 ou `usage:` bloqueia com causa `SPEC_DESATUALIZADA` (decisão D1, no lugar
+  do "obsoleto" da 7d-2), sem modelo e sem tentativa, em qualquer `modo_pre_voo` (`3c4992c`); guarda
+  que já falha (C5, com a exceção de arquivo que o ticket cria) e alvo que já passa (C6) são aviso
+  `PREVOO_AVISO`, porque nenhum deu zero FP (`d103e3d`). Linha `CONFLITO:` no corpo do commit vira
+  `conflitos.json` e bloqueia com `SPEC_CONFLITANTE`, com qualquer diff, sem enforcement, sem juiz
+  e sem consumir tentativa (`7244761`). Triador D14 e D15, R3 firme. Carona: `migrations/cli.ts`
+  sem top-level await (`a229f34`). CONTRATO §27.
+  *Evidência:* `~/orq-sessoes/relatorio-kit-l14.md` (corpus: C1 0 FP em 1712 comandos nas bases de
+  839 done do Comarka; C5 32 FP em 15 tickets do dashboard com a exceção; C6 10/8 no dashboard e
+  8/8 no Comarka).
+  *Teste:* `orquestrador-prevoo-recon.test.ts` (853 do Comarka), `orquestrador-prevoo-aviso.test.ts`
+  (002 e 019 do dashboard, 926 do Comarka), `orquestrador-conflito.test.ts` (043 do dashboard),
+  `orquestrador-liberar-migrar.test.ts` (L14 P4); fixtures em `test/fixtures/l14/`.
 
 ## PENDENTES
 
@@ -1362,12 +1378,20 @@
   formas de shell da medição).
   *Evidência:* CONTRATO §14.4 e §14.6.
 
-- **7d-2 · o gate executa: C1, C5, C6.** Recon executado (C1, a única regra com causa e
-  zero FP nos três repos na calibração), guarda que já falha (C5, com a exceção de arquivo
-  que o ticket cria) e alvo que já passa (C6), contra a branch alvo em worktree
-  descartável; recon divergente = `obsoleto` sem tentativa, como no Comarka.
-  *Evidência:* calibração §5 (C1 0/0/0 FP, causal 288 e 264; C5 44/22/0 FP sem a exceção).
-  *Teste:* o corpus da 7d-1b com os `cmd` executados contra a base de cada caso.
+- **C5 e C6 como erro.** Feitos como aviso na L14 (FEITAS). Só viram bloqueio com zero FP nos
+  done: hoje C5 dá 32 em 15 tickets do dashboard (alvo negativo rotulado `guarda`, que é ajuste
+  da skill de escrita do dashboard, M-63) e o C5 do Comarka não é medível sem rodar vitest e tsc
+  nas bases (56 de 5480 guardas rodaram no corpus da L14).
+  *Teste:* o corpus da L14 rodado de novo com node_modules ligado no Comarka.
+- **Teto de tempo da passada do pré-voo.** O teto é por comando (45 s); um ticket com vários
+  critérios de `npx tsc` ou build paga até 45 s em cada um antes da tentativa. Medir na
+  produção (`prevoo.txt`) antes de decidir um teto por passada.
+  *Evidência:* relatório da L14, riscos.
+- **`CONFLITO:` na doutrina.** A L14 ensina a linha só no prompt (`executor.sh:build_prompt`,
+  item 5 da ENTREGA). `doutrina/EXECUTOR.md` e `doutrina/templates/EXECUTOR.md` são idênticos e só
+  o segundo estava no escopo da etapa; mudar um só criaria divergência. Os dois ganham a linha
+  juntos, ao lado do `IMPEDIMENTO:`.
+  *Teste:* `diff doutrina/EXECUTOR.md doutrina/templates/EXECUTOR.md` vazio e os dois com `CONFLITO:`.
 
 - **Doutrina do `risco` (SKILL.md, DOUTRINA-v2).** A SKILL diz que o gate cobra a CHAVE
   `risco`; desde a 7d-1b o gate não cobra (`risco` e `bloco` opcionais). Fora do escopo de

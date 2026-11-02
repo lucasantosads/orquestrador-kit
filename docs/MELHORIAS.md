@@ -80,6 +80,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 | M-49 | validar-fila confere aderência à semente do roadmap | ideia | D | C2 | relato | M-46 | L6-08 |
 | M-50 | Alvo alcançável e lib nova com consumidor | ideia | D | C2 | relato | M-46 | L6-17 |
 | M-51 | Experimento: canário no primeiro lote | ideia | D | C2 | não registrada | | base (experimentos) |
+| M-63 | Escritor de ticket do dashboard gera recon e separa guarda de alvo negativo | ideia | D | C2 | medida | | etapa L14 |
 
 ## Itens
 
@@ -251,7 +252,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - fontes: v095, v061, L2-02
 
 ### M-17 Contradição de spec exposta, nunca resolvida em silêncio
-- status: parcial (etapa L13): primeira forma do spec_conflitante. Diff vazio ou igual ao anterior, com o corpo dos commits da tentativa só de linhas `IMPEDIMENTO:`, bloqueia com causa `IMPEDIMENTO_DECLARADO`, a nota do agente no motivo, sem juiz e sem consumir tentativa; o triador classifica R3 (D13) (scripts/orquestrador/executor.sh:1175 e :1249, triador/extrair.ts:207, `d279bbb`). Falta: o campo `conflitos[]` estruturado (ticket diz X, código diz Y, com arquivo:linha), o status `spec_conflitante` próprio, IMPEDIMENTO declarado junto com diff que muda, e o juiz reprovar diff que resolveu contradição sem declarar (M-03).
+- status: parcial (etapa L14): `CONFLITO: <o ticket diz> | <o código ou a base diz> | <arquivo:linha>` no corpo do commit vira `runs/<id>/attempt-N/conflitos.json` e, com qualquer diff, bloqueia com causa `SPEC_CONFLITANTE` antes do enforcement e do juiz, sem merge e sem consumir tentativa; triador R3 firme (D15) (scripts/orquestrador/executor.sh:conflitos_declarados e o bloco 5a0 do run_attempt, triador/extrair.ts D15, `7244761`, CONTRATO §27.2). Decisão do Lucas (01/11): `bloqueado` com causa, sem status literal `spec_conflitante`. Da L13 segue o `IMPEDIMENTO_DECLARADO` (diff parado). Falta: o juiz reprovar diff que resolveu contradição de spec sem declarar (cruza com M-03); a linha `CONFLITO:` na doutrina (`EXECUTOR.md`, hoje só no prompt).
 - o que é: quando o ticket diz X e o código ou a base diz Y, o executor deve declarar o conflito em vez de escolher um lado. 51% dos resgates são de spec.
 - como entra no kit: campo conflitos[] no relatório do executor e status novo.
 - detalhes executáveis:
@@ -674,6 +675,18 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
   - medida em `~/orq-sessoes/relatorio-kit-l13.md` (corpus de 30/10).
   - o pedido honesto continua sem saída mecânica até o 8f (vermelho antes MECÂNICO).
 - fontes: relatório de bloqueios do dashboard, 30/10
+
+### M-63 Escritor de ticket do dashboard gera recon e separa guarda de alvo negativo
+- marco: D (entrou em 01/11, pedido do Lucas no fechamento da etapa L14)
+- status: ideia
+- o que é: tickets do dashboard não usam recon (0 de 67); a skill de escrita do dashboard deve gerar recon e separar guarda de alvo negativo. Sem recon, o C1 da L14 não tem o que executar no dashboard; e 32 critérios `guarda` de 15 done do dashboard já falham na base porque são alvo negativo (`grep -c X` com espera 0, e o ticket remove o X), o que deixa o C5 em aviso.
+- como entra no kit: na skill de escrita do dashboard (`ticket-fila-dashboard`), fora do motor; o motor já executa o recon e avisa o C5 (CONTRATO §27).
+- detalhes executáveis:
+  - todo ticket novo do dashboard sai com `recon` que afirma o estado da staging-auto que o objetivo pressupõe.
+  - critério que só passa depois do trabalho é `alvo`, nunca `guarda`; a lista dos 32 disparos por ticket está no relatório da L14.
+  - medida de sucesso: C5 sem disparo nos done do dashboard escritos depois da mudança.
+- fontes: etapa L14 (`~/orq-sessoes/relatorio-kit-l14.md` §4)
+
 ## Conflitos em aberto
 - M-04: L3-01 marcado como SUBSTITUI o item 25 da base (consenso simples contra consenso com filtro e peso medidos). Decide no PASSO 0 da etapa que pegar o item.
 - M-52: L1-02 pressiona o descarte de "juiz de outra família de modelo" com critério de reabertura. Decide no PASSO 0 da etapa que pegar o item.

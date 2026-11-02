@@ -1278,3 +1278,23 @@ nome do plano do PASSO 0 (P1 a P6), para não colidir com 8e-1..8e-6.
 Asserções existentes que mudaram: nenhuma. O inventário de severidades
 (`orquestrador-gate-severidade.test.ts`) ganhou C15 e C16; os 19 testes vendorizados trocaram
 `describe` por `describeHarness`. CONTRATO não foi atualizado (falta a seção de `juiz.review_md`).
+
+### Etapa L14 · ticket que nasce certo (7d-2) e conflito de spec estruturado (M-17) (01/11/2026)
+
+- **L14-P4** `a229f34`: `migrations/cli.ts` sem top-level await (o pendente da L13b). Vermelho:
+  `Top-level await is currently not supported with the "cjs" output format` num tmp sem `type`.
+- **L14-P1** `3c4992c`: `prevoo_exec` roda o recon (`recon` ou `recon_esperado`) na worktree nova
+  da alvo, na primeira tentativa da drenagem, antes do `INICIO`. Divergiu, rc 126/127 ou `usage:` =
+  `bloqueado` causa `SPEC_DESATUALIZADA`, sem modelo e sem tentativa, em qualquer `modo_pre_voo`;
+  teto de 45 s por comando, timeout é aviso. Schema declara `recon`. Triador D14. Vermelho: o 853
+  real do Comarka ia ao agente e acabava por repetição.
+- **L14-P2** `d103e3d`: C5 (guarda que já falha, com a exceção de arquivo que o ticket cria) e C6
+  (alvo que já passa) como aviso `PREVOO_AVISO`, uma vez por versão, fora do prompt. Vermelho:
+  nenhum aviso no 002 e no 926.
+- **L14-P3** `7244761`: `CONFLITO:` no corpo do commit → `conflitos.json`; com qualquer diff,
+  `bloqueado` causa `SPEC_CONFLITANTE` sem enforcement, sem juiz, sem merge e sem consumir
+  tentativa; item 5 da ENTREGA no prompt; triador D15. Vermelho: o 043 ia ao juiz.
+- **L14-P5**: CONTRATO §27, PECAS, MELHORIAS (M-17 parcial, M-63 novo), defeito da L13b fechado.
+
+Asserções existentes que mudaram: `orquestrador-tools-derivadas.test.ts` conta 17 desfechos
+nomeados (eram 15) e cobra os dois novos (`SPEC_DESATUALIZADA`, `SPEC_CONFLITANTE`).

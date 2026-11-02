@@ -1,6 +1,6 @@
 # Defeito: `orq liberar` morre em repo sem `"type": "module"`
 
-Origem: dashboard-comercial, consertado lá em `a015c150` ("fix(orq): liberar-cli sem top-level await", 28/10/2026). A fila do actus-saas também registrou o sintoma ("Gravado com jq: orq liberar ainda falha (top-level await no liberar-cli.ts)", `test/fixtures/triador-sem-tentativa/actus-1110/docs/fila/liberacoes.json:8`). Estado: **consertado na etapa L13b, P1** (`3d8d114`). O próximo `--atualizar` não devolve mais o bug ao dashboard.
+Origem: dashboard-comercial, consertado lá em `a015c150` ("fix(orq): liberar-cli sem top-level await", 28/10/2026). A fila do actus-saas também registrou o sintoma ("Gravado com jq: orq liberar ainda falha (top-level await no liberar-cli.ts)", `test/fixtures/triador-sem-tentativa/actus-1110/docs/fila/liberacoes.json:8`). Estado: **consertado na etapa L13b, P1** (`3d8d114`); o pendente do `migrations/cli.ts` **consertado na etapa L14, P4** (`a229f34`). O próximo `--atualizar` não devolve mais o bug ao dashboard.
 
 ## O que aconteceu
 
@@ -21,11 +21,11 @@ ERROR: Top-level await is currently not supported with the "cjs" output format
 | onde | afetado? | destino |
 |---|---|---|
 | `scripts/orquestrador/liberar-cli.ts:126` | sim | consertado: `writeFileSync` no import estático (porte do `a015c150`, mesmos blobs `6c84d25..2989728`) |
-| `scripts/orquestrador/migrations/cli.ts:176` (`process.exit(await main(...))`) | sim, mesmo erro | **pendente**: fora do escopo da L13b; morre do mesmo jeito num repo sem `"type": "module"` |
+| `scripts/orquestrador/migrations/cli.ts:176` (`process.exit(await main(...))`) | sim, mesmo erro | consertado na L14-P4 (`a229f34`): `void main(...).then((rc) => process.exit(rc))` |
 
 Nenhum outro arquivo falha a transformação em CJS.
 
 ## Critério executável
 
 - `test/orquestrador-liberar-migrar.test.ts`, "orq liberar: num repo instalado sem \"type\": \"module\"": copia `scripts/orquestrador` para um tmp com `package.json` sem `type`, roda o `liberar-cli.ts` pelo `tsx` e espera rc 0, `LIBERADO humano:migration-0025` e o token no arquivo. Vermelho antes: `ERROR: Top-level await is currently not supported with the "cjs" output format` (stderr do `tsx`).
-- Pendente do `migrations/cli.ts`: o mesmo teste, apontado para `migrations/cli.ts`, deve sair sem `Top-level await` no stderr.
+- `migrations/cli.ts` (L14-P4): "orq migrations também roda como CJS", no mesmo describe, roda o `migrations/cli.ts` sem verbo pelo `tsx` num tmp sem `type` e espera rc 2, `[orq migrations] falta o verbo` e nenhum `Top-level await` no stderr. Vermelho antes: `migrations/cli.ts:176:74: ERROR: Top-level await is currently not supported with the "cjs" output format`. Nova varredura do esbuild `--format=cjs` nos 64 `.ts` de `scripts/` (L14, PASSO 0): só este arquivo falhava.

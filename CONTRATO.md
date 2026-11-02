@@ -184,7 +184,7 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `APROVADO` | `executor.sh:1048` | `merge=aguardando` `dur=` `attempt=` |
 | `REPROVADO` | `executor.sh:drive_ticket` | `motivo=` `sub=` `attempt=` `diff=` (`sub=` desde a 7b-4) |
 | `ADIADO` | `executor.sh:drive_ticket`, `executor.sh:preflight_ou_adia` | `motivo=` `attempt=` `rc=` `dur=` `cooldown=sim\|nao` · recusa de preflight: `motivo=preflight` `causa=<uma linha>` (a causa vai até o fim da linha) |
-| `BLOQUEADO` | `executor.sh:drive_ticket`, `local-loop.sh:drenar` | `motivo=` [`attempt=`] · repetição: `motivo=repeticao` `sub=` `diff=` `attempt=` · da drenagem: `motivo=merge_falhou`, `motivo=sem_progresso` `n=` `limite=`, ou `motivo=adiamentos` `n=` `limite=` · porte do Actus (§11): `motivo=gate_ticket` `violacoes=`, `motivo=retry_sem_mudanca` `attempt=` `sha256=`, `motivo=base_vermelha` `arquivos=` `attempt=`, `motivo=teto-adiamento-ambiente` `adiamentos=` `attempt=` · etapa L13 (§26): `motivo=IMPEDIMENTO_DECLARADO` `attempt=`, `motivo=DEPENDENCIA_FORA_DA_ALVO` `arquivos=` |
+| `BLOQUEADO` | `executor.sh:drive_ticket`, `local-loop.sh:drenar` | `motivo=` [`attempt=`] · repetição: `motivo=repeticao` `sub=` `diff=` `attempt=` · da drenagem: `motivo=merge_falhou`, `motivo=sem_progresso` `n=` `limite=`, ou `motivo=adiamentos` `n=` `limite=` · porte do Actus (§11): `motivo=gate_ticket` `violacoes=`, `motivo=retry_sem_mudanca` `attempt=` `sha256=`, `motivo=base_vermelha` `arquivos=` `attempt=`, `motivo=teto-adiamento-ambiente` `adiamentos=` `attempt=` · etapa L13 (§26): `motivo=IMPEDIMENTO_DECLARADO` `attempt=`, `motivo=DEPENDENCIA_FORA_DA_ALVO` `arquivos=` · etapa L14 (§27): `motivo=SPEC_DESATUALIZADA` `recon=<i>`, `motivo=SPEC_CONFLITANTE` `conflitos=<N>` `attempt=` |
 | `RETRY` | `executor.sh:drive_ticket` | `attempt=` `model=` `motivo=` `sub=` `worktree=` |
 | `REFATIAR` | `executor.sh:896` | `motivo=` `arquivos=` |
 | `MERGE` | `local-loop.sh:173` | `alvo=` `sha=` |
@@ -195,6 +195,7 @@ Estes, e só estes, são emitidos hoje (`grep -rn '^\s*event ' scripts/`):
 | `DECISAO_PENDENTE` | `lib.sh:744` | `origem=` |
 | `ANOTACAO` | `lib.sh:274` | `nota=` |
 | `GATE_TICKET_AVISO` | `executor.sh:drive_ticket` (porte do Actus, §11) | `violacoes=<N>` `hash=<12 hex>` — o pré-voo achou violação e `gate_ticket.modo_pre_voo` é `aviso`: o ticket SEGUE. Uma vez por ticket e por versão (`hash` do bloco JSON sem `status`, `notas_status`, `tentativas`, `adiamentos_ambiente`, `adiado_ate`; etapa 7d-1b, §12) |
+| `PREVOO_AVISO` | `executor.sh:prevoo_aviso` (etapa L14, §27) | `regra=C1` `recon=<i>` `timeout=<N>s` (recon passou do teto) · `regra=C5\|C6` `criterio=<i>` (guarda que já falha, alvo que já passa na base) · `hash=<12 hex>` — o ticket SEGUE. Uma vez por (regra, índice) e por versão do ticket (`lib.sh:ticket_versao`) |
 | `PREVOO_NOGO` | `local-loop.sh:prevoo_ou_sai` | `item=cat.0\|cat.1\|cat.6` |
 | `OCIOSO` | `local-loop.sh:drenar` (peça 7a-4) | `pendentes=` e um `<id>=<razão>` por pendente; ver abaixo |
 | `AMBIENTE` | `local-loop.sh:drenar` (peça 7a-8; L12) | `tickets=<id>,<id>` `causa=<normalizada>` (a causa vai até o fim da linha) · recusa de preflight (L12): `tickets=<id>`, um id só; ver abaixo |
@@ -2397,6 +2398,58 @@ piso (`proibicoes_absolutas.tools`) segue por cima.
 
 Erro vale para todo `pendente` (o kit não tem "só ticket novo"). Com `modo_pre_voo: aviso` (o
 dashboard), erro não bloqueia o loop, só o `orq validar`.
+
+## 27. Etapa L14: ticket que nasce certo (7d-2) e conflito de spec estruturado (M-17) (01/11/2026)
+
+Relatório: `~/orq-sessoes/relatorio-kit-l14.md` (PASSO 0, corpus e calibração). Decisões do Lucas
+de 01/11 (Q1 a Q8 do relatório).
+
+### 27.1 Pré-voo executado (`executor.sh:prevoo_exec`, P1 e P2)
+
+- Onde: no laço do `drive_ticket`, logo depois do `setup_worktree` (a worktree nasce de
+  `branch_alvo`), antes do `INICIO` e do contador, **só na primeira tentativa da drenagem**
+  (`attempt == attempt0`); nunca com a worktree reaproveitada. Evidência acrescentada em
+  `runs/<id>/prevoo.txt`, uma seção por passada.
+- Execução: bash novo (`env -u SHELLOPTS -u BASHOPTS`, `NO_COLOR=1 FORCE_COLOR=0`,
+  `BASE_REF=<branch_alvo>`), como o `run_criterios`, e comparação pelo `criterio_match`. Teto de
+  **45 s por comando** (o do `validar-fila.py` do Comarka), pelo mesmo watchdog do `claude_run`;
+  `ORQ_PREVOO_TETO_SECS` só no teste. O teto vale só aqui: o `run_criterios` segue sem teto.
+- **C1 · recon** (`recon`, ou o nome v1 `recon_esperado`; com os dois, vale `recon`): o primeiro
+  que diverge, sai com rc 126/127 ou começa por `usage:` encerra a passada. `bloqueado` com causa
+  **`SPEC_DESATUALIZADA`** (decisão D1, 18/10: não `obsoleto`), nota com índice, `cmd`, `espera`,
+  rc e saída (200 caracteres), trilha `BLOQUEADO motivo=SPEC_DESATUALIZADA recon=<i>`, sem modelo,
+  sem `INICIO`, sem tentativa e sem `attempt-N`. Vale em **qualquer** `modo_pre_voo`. Timeout:
+  `PREVOO_AVISO regra=C1`, e o ticket segue. Em `--dry`, só o log.
+- **C5 · guarda que já falha** e **C6 · alvo que já passa** (tipo `alvo` ou ausente), só quando o
+  recon passou: **aviso**, nunca bloqueio, nunca no prompt do agente (log, `prevoo.txt` e
+  `PREVOO_AVISO`). Exceção do C5: a guarda cita um caminho da allowlist ou de `cria_novo` (sem
+  glob) que não existe na base: não é avaliada. Avaliador não roda; timeout não conclui nada.
+- Calibração (relatório §4, bases reais = 1º pai do merge da frente): C1 0 FP em 1712 comandos de
+  recon nas bases de 839 done do Comarka (0 de ambiente em 2349 execuções na produção); C5 no
+  dashboard 98 FP sem a exceção e 32 em 15 tickets com ela (alvo negativo rotulado `guarda`); C6
+  dashboard 10 em 8 tickets e Comarka 8 em 8. Por isso só o C1 bloqueia.
+- Triador: **D14** → R3 firme, antes do D0, com o recon da nota no remédio.
+
+### 27.2 `SPEC_CONFLITANTE` (P3, M-17)
+
+- O agente declara cada conflito numa linha do corpo do commit (item 5 da ENTREGA do prompt):
+  `CONFLITO: <o ticket diz> | <o código ou a base diz> | <arquivo:linha>`.
+- `conflitos_declarados` lê os commits desta tentativa (os mesmos do §26.2) e grava
+  `runs/<id>/attempt-N/conflitos.json`, sempre: `[{ticket, codigo, ref}]`, `[]` sem conflito. Com
+  mais de três partes, o meio é o `codigo`; com menos, o que falta fica vazio.
+- Com ≥ 1 conflito e **qualquer** diff, depois de gravar `diff.patch` e `mensagens.txt` e antes do
+  §26.2: `veredito.json` com `causa: SPEC_CONFLITANTE`, `contaComoRetry: false` e os conflitos;
+  ticket `bloqueado` (sem status literal novo) com os conflitos e as linhas `IMPEDIMENTO:` dos
+  mesmos commits na nota; trilha `BLOQUEADO motivo=SPEC_CONFLITANTE conflitos=<N> attempt=<n>`.
+  Sem enforcement, sem gates, sem critérios, sem juiz, sem merge; tentativa devolvida.
+- `IMPEDIMENTO:` sozinho segue o §26.2. Os dois juntos: vale `SPEC_CONFLITANTE`.
+- Triador: **D15** → R3 firme, com os conflitos no remédio.
+
+### 27.3 Contadores
+
+`SPEC_DESATUALIZADA` e `SPEC_CONFLITANTE` são bloqueio: tiram o ticket de `pendente` e zeram
+`.sem-progresso` e `.adiamentos`. O loop do kit não tem gate_streak; o `resolvedor/gate-streak.ts`
+lê só o sentinela do loop legado do Comarka. R3 no resolvedor é diagnóstico e aviso.
 
 ## 10. Divergências conhecidas
 
