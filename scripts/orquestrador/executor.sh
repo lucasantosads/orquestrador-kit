@@ -486,6 +486,10 @@ ENTREGA:
 4. TRAILER, no ÚLTIMO commit do ticket: uma linha sozinha no fim da mensagem,
    exatamente '$(cfg '.executor.trailer_commit'): ${id}'. É por ele que o loop
    acha depois o que este ticket mudou (git log --grep), não pelo log do harness.
+5. CONFLITO DE SPEC: se o ticket afirma algo que o código ou a base desmente,
+   NÃO escolha um lado. Escreva no corpo do commit uma linha por conflito,
+   exatamente 'CONFLITO: <o ticket diz> | <o código ou a base diz> | <arquivo:linha>',
+   e commite o que tem. O loop para o ticket ali para o dono decidir a spec.
 ${motivo:+
 REPROVAÇÃO ANTERIOR (corrija exatamente isto):
 ${motivo}}${ampliada:+
@@ -1320,8 +1324,27 @@ impedimento_declarado() {
   done
   printf '%s' "$linhas"
 }
+# CONFLITO DECLARADO (etapa L14, P3, M-17): quantos conflitos o agente declarou
+# nesta tentativa e o texto que vai à nota. > 0 = o drive_ticket bloqueia com a
+# causa SPEC_CONFLITANTE, sem enforcement, sem juiz, sem merge e sem consumir.
+CONFLITOS_N=0; CONFLITOS_MOTIVO=""
+# conflitos_declarados <worktree> <base> <head_antes_do_agente> -> JSON
+# `[{ticket, codigo, ref}]` das linhas `CONFLITO: <o ticket diz> | <o código ou a
+# base diz> | <arquivo:linha>` no corpo dos commits DESTA tentativa (os mesmos do
+# impedimento_declarado). Com mais de três partes, o meio é o `codigo`; com
+# menos, o que faltar fica vazio.
+conflitos_declarados() {
+  local wt="$1" base="$2" antes="$3" c
+  for c in $(git -C "$wt" rev-list --reverse HEAD "^$base" ${antes:+"^$antes"} 2>/dev/null); do
+    git -C "$wt" log -1 --format=%b "$c" | grep '^CONFLITO:' || true
+  done | jq -R -s -c 'split("\n") | map(select(length > 0) | sub("^CONFLITO:[[:space:]]*"; "")
+    | split("|") | map(gsub("^\\s+|\\s+$"; ""))
+    | if length >= 3 then {ticket: .[0], codigo: (.[1:-1] | join(" | ")), ref: .[-1]}
+      else {ticket: (.[0] // ""), codigo: (.[1] // ""), ref: ""} end)'
+}
 run_attempt() {
   local file="$1" wt="$2" rundir="$3" modelo="$4" motivo_anterior="$5" attempt="${6:-0}" base_fixo="${7:-}" rundir_anterior="${8:-}"
+  CONFLITOS_N=0; CONFLITOS_MOTIVO=""
   local prompt saida rc=0 t0 base sinal veredito tools
   mkdir -p "$rundir"
   prompt="$rundir/prompt.txt"; saida="$rundir/claude.txt"
@@ -1382,6 +1405,25 @@ run_attempt() {
   # que só existe quando o desfecho é bom não serve para diagnosticar o ruim.
   grava_diff_patch "$wt" "$base" "$rundir"
   grava_mensagens "$wt" "$base" "$rundir"
+
+  # 5a0 · CONFLITO declarado (etapa L14, P3, M-17): com QUALQUER diff, uma linha
+  # `CONFLITO:` encerra a tentativa aqui, antes do enforcement e do juiz (decisão
+  # do Lucas, 01/11). O diff.patch já está guardado acima; nada é mergeado. As
+  # linhas IMPEDIMENTO: dos mesmos commits vão junto no motivo.
+  conflitos_declarados "$wt" "$base" "$head_antes" > "$rundir/conflitos.json" || echo '[]' > "$rundir/conflitos.json"
+  CONFLITOS_N="$(jq 'length' "$rundir/conflitos.json" 2>/dev/null || echo 0)"
+  if [ "${CONFLITOS_N:-0}" -gt 0 ]; then
+    local imp_conf c_imp
+    imp_conf="$(for c_imp in $(git -C "$wt" rev-list HEAD "^$base" ${head_antes:+"^$head_antes"} 2>/dev/null); do
+      git -C "$wt" log -1 --format=%b "$c_imp" | grep '^IMPEDIMENTO:' || true; done | paste -sd'|' - | sed 's/|/ | /g')"
+    CONFLITOS_MOTIVO="$(jq -r 'map("o ticket diz: \(.ticket) · o código diz: \(.codigo)\(if .ref == "" then "" else " · \(.ref)" end)") | join(" | ")' "$rundir/conflitos.json")${imp_conf:+ · $imp_conf}"
+    RESULT="bloqueado"; ENF_OK=1
+    MOTIVO="SPEC_CONFLITANTE: $CONFLITOS_MOTIVO"
+    jq -n --arg m "$MOTIVO" --slurpfile c "$rundir/conflitos.json" \
+      '{desfecho:"bloqueado", causa:"SPEC_CONFLITANTE", motivo:$m, contaComoRetry:false, conflitos:$c[0]}' > "$rundir/veredito.json"
+    log "  CONFLITO declarado pelo agente ($CONFLITOS_N) — sem enforcement, sem juiz, sem merge: $CONFLITOS_MOTIVO"
+    return 0
+  fi
 
   # 5a · IMPEDIMENTO declarado (etapa L13, P2, M-17): diff vazio ou igual ao da
   # anterior, e o agente só declarou impedimento. É defeito de spec, não falta de
@@ -1974,6 +2016,18 @@ drive_ticket() {
       event "$id" BLOQUEADO "motivo=IMPEDIMENTO_DECLARADO" "attempt=$((attempt + 1))"
       status_set "estado=ocioso" "ultimo=$id BLOQUEADO $(date '+%H:%M:%S') (${DUR}s)" "motivo=bloqueado: IMPEDIMENTO_DECLARADO"
       DESFECHO_NOMEADO=1; log "BLOQUEADO: IMPEDIMENTO_DECLARADO"; cleanup_worktree "$id" "$wt"; return 0
+    fi
+
+    # Etapa L14 (P3, M-17): CONFLITO declarado bloqueia direto com a causa
+    # SPEC_CONFLITANTE. RESULT é 'bloqueado': a tentativa já foi devolvida acima.
+    if [ "${CONFLITOS_N:-0}" -gt 0 ]; then
+      local rel_r; rel_r="runs/$id/$(basename "$rundir")"
+      ticket_set_status "$file" "bloqueado"
+      ticket_set_nota "$file" "bloqueado: SPEC_CONFLITANTE — na tentativa $((attempt + 1)) o agente declarou $CONFLITOS_N conflito(s) entre o ticket e o código; sem enforcement, sem juiz, sem merge, tentativa devolvida. Conflitos: $CONFLITOS_MOTIVO. Evidência: $rel_r/conflitos.json e o diff em $rel_r/diff.patch. Decida a spec antes de reabrir."
+      ticket_commit "$file" "fila: $id bloqueado (SPEC_CONFLITANTE)"
+      event "$id" BLOQUEADO "motivo=SPEC_CONFLITANTE" "conflitos=$CONFLITOS_N" "attempt=$((attempt + 1))"
+      status_set "estado=ocioso" "ultimo=$id BLOQUEADO $(date '+%H:%M:%S') (${DUR}s)" "motivo=bloqueado: SPEC_CONFLITANTE"
+      DESFECHO_NOMEADO=1; log "BLOQUEADO: SPEC_CONFLITANTE ($CONFLITOS_N conflito(s))"; cleanup_worktree "$id" "$wt"; return 0
     fi
 
     # Ticket 623: retry sem mudança bloqueia direto, sem juiz e sem nova

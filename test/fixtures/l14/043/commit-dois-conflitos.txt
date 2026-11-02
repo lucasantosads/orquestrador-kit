@@ -1,0 +1,6 @@
+043: prévia do rateio no diálogo da MDS bloqueada por falta de dado por cliente
+
+CONFLITO: o ticket pede a prévia do rateio por cliente no cartão da MDS | resumo.mds traz só { clientes, valorMensal } | src/lib/financeiro/v2/entradas.ts:35
+CONFLITO: as props do cartão fixadas pelo ticket são só { mes, resumoMds, aoMudar } | a lista por cliente só sai pela rota da MDS, que devolve só o bloco gravado (ticket 042, fora) | src/app/api/financeiro-v2/entradas/mds/route.ts:1
+
+Orq-Ticket: 043

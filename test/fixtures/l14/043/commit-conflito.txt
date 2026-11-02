@@ -1,0 +1,6 @@
+043: cartão da MDS em Entradas (registrar pagamento em bloco, rateio e estorno)
+
+IMPEDIMENTO: typecheck e build não rodados (comandos fora da lista autorizada); só os testes do v2 rodaram, verdes.
+CONFLITO: o ticket pede a prévia do rateio por cliente no cartão da MDS | resumo.mds traz só { clientes, valorMensal }, sem a lista por cliente (ticket 031, fora da allowlist) | src/lib/financeiro/v2/entradas.ts:35
+
+Orq-Ticket: 043
