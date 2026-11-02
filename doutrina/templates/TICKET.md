@@ -26,6 +26,13 @@ já feito: todo nome de tabela/rota/arquivo citado no JSON foi verificado no rep
     "test/exemplo.test.ts"
   ],
   "cria_novo": ["test/exemplo.test.ts"],
+  "recon": [
+    {
+      "descricao": "o módulo que o objetivo estende existe na branch alvo",
+      "cmd": "test -f src/exemplo/index.ts && echo existe",
+      "espera": "existe"
+    }
+  ],
   "dependencias": [],
   "diff_estimado": 200,
   "risco": "",
@@ -70,6 +77,7 @@ já feito: todo nome de tabela/rota/arquivo citado no JSON foi verificado no rep
 | `objetivo` | Corpo do prompt do executor. Frase imperativa. |
 | `pathspec_allowlist` | Globs. O enforcement FALHA se o diff tocar qualquer arquivo fora. Máximo `gate_ticket.max_paths_allowlist`. Migrations só como arquivo no diretório de migrations. |
 | `cria_novo` | Paths da allowlist que ainda não existem (o recon aceita). Qualquer outro path da allowlist precisa existir no disco. |
+| `recon` | Opcional (ausente = nada roda). O estado da branch alvo que o objetivo pressupõe, um fato por item: lista de `{cmd, espera}` (`descricao` opcional), nunca objeto solto. `espera` segue a regra dos critérios: só dígitos = igualdade exata; senão igualdade ou regex ERE em qualquer linha. O executor roda cada item na worktree nova da `branch_alvo`, antes da primeira tentativa, com teto de 45 s por comando. Saída divergente, rc 126/127, saída `usage:` ou campo fora do formato = `bloqueado` com causa `SPEC_DESATUALIZADA`, sem tentativa e sem modelo; timeout é só aviso. `recon_esperado` é o nome antigo e vale igual. |
 | `dependencias` | `id` de outro ticket (resolve quando `done`) ou `humano:<token>` (resolve pelo arquivo de liberações). Obrigatória entre tickets com allowlist sobreposta. |
 | `diff_estimado` | Linhas. Declarado por quem escreve. Acima de `diff_cap_ticket` o gate descarta. |
 | `risco` | `baixo` \| `alto`. Preenchido pelo gate (passo 6). Humano pode forçar `alto`, nunca `baixo`. |
