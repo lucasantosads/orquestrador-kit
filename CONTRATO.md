@@ -2409,7 +2409,11 @@ de 01/11 (Q1 a Q8 do relatório).
 - Onde: no laço do `drive_ticket`, logo depois do `setup_worktree` (a worktree nasce de
   `branch_alvo`), antes do `INICIO` e do contador, **só na primeira tentativa da drenagem**
   (`attempt == attempt0`); nunca com a worktree reaproveitada. Evidência acrescentada em
-  `runs/<id>/prevoo.txt`, uma seção por passada.
+  `runs/<id>/prevoo.txt`, uma seção por passada. Cada seção fecha com a linha
+  `fim=<ISO 8601 UTC> duracao_s=<inteiro> saida=ok|bloqueio|morte` (L14b P2): `ok` e `bloqueio`
+  no fim da passada; `morte` pelo `registrar_morte` (trap EXIT do `set -e` e trap de TERM/INT).
+  Seção sem `fim=` = o executor morreu por KILL, que nenhum trap pega. O kit só mede; não há
+  teto por passada.
 - Execução: bash novo (`env -u SHELLOPTS -u BASHOPTS`, `NO_COLOR=1 FORCE_COLOR=0`,
   `BASE_REF=<branch_alvo>`), como o `run_criterios`, e comparação pelo `criterio_match`. Teto de
   **45 s por comando** (o do `validar-fila.py` do Comarka), pelo mesmo watchdog do `claude_run`;
@@ -2418,7 +2422,9 @@ de 01/11 (Q1 a Q8 do relatório).
   que diverge, sai com rc 126/127 ou começa por `usage:` encerra a passada. `bloqueado` com causa
   **`SPEC_DESATUALIZADA`** (decisão D1, 18/10: não `obsoleto`), nota com índice, `cmd`, `espera`,
   rc e saída (200 caracteres), trilha `BLOQUEADO motivo=SPEC_DESATUALIZADA recon=<i>`, sem modelo,
-  sem `INICIO`, sem tentativa e sem `attempt-N`. Vale em **qualquer** `modo_pre_voo`. Timeout:
+  sem `INICIO`, sem tentativa e sem `attempt-N`. Vale em **qualquer** `modo_pre_voo`. Recon fora
+  do formato (não é array de objetos com `cmd` string) bloqueia igual, antes do laço:
+  `### recon -> MALFORMADO (<tipo>)` e trilha `recon=malformado` (L14b P0; antes matava o executor). Timeout:
   `PREVOO_AVISO regra=C1`, e o ticket segue. Em `--dry`, só o log.
 - **C5 · guarda que já falha** e **C6 · alvo que já passa** (tipo `alvo` ou ausente), só quando o
   recon passou: **aviso**, nunca bloqueio, nunca no prompt do agente (log, `prevoo.txt` e

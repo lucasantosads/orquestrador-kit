@@ -1,0 +1,116 @@
+=== pré-voo executado 2026-11-02T14:51:42-0300 · base staging-auto@7d344de8
+### recon[0] -> ok
+cmd: grep -c -F 'supabase.from("contratos_public")' "src/app/closers/page.tsx"
+espera: 3
+saida: 3
+
+### recon[1] -> ok
+cmd: grep -c -F 'supabase.from("metas_closers_public")' "src/app/closers/page.tsx"
+espera: 2
+saida: 2
+
+### recon[2] -> ok
+cmd: grep -c -F 'supabase.from("lancamentos_diarios_public")' "src/app/closers/page.tsx"
+espera: 2
+saida: 2
+
+### recon[3] -> ok
+cmd: grep -c -F 'supabase.from("closers_public")' "src/app/closers/page.tsx"
+espera: 1
+saida: 1
+
+### recon[4] -> ok
+cmd: grep -c -F '.from("lancamentos_diarios_public")' "src/components/closers/closer-calendar.tsx"
+espera: 1
+saida: 1
+
+### recon[5] -> ok
+cmd: grep -c -F 'closers: Closer[];' "src/components/closers/closer-calendar.tsx"
+espera: 1
+saida: 1
+
+### recon[6] -> ok
+cmd: grep -c -F 'export async function acessoPorChave' "src/lib/financeiro/v2/acesso.ts"
+espera: 1
+saida: 1
+
+### recon[7] -> ok
+cmd: grep -c -F 'export async function ler<T>' "src/lib/escrita/cliente.ts"
+espera: 1
+saida: 1
+
+### recon[8] -> ok
+cmd: grep -c -F 'export function getMonthEndDate' "src/lib/format.ts"
+espera: 1
+saida: 1
+
+### recon[9] -> ok
+cmd: grep -c -F 'export function getPreviousMonth' "src/lib/format.ts"
+espera: 1
+saida: 1
+
+### recon[10] -> ok
+cmd: grep -c -F 'export function falhaDeLeitura' "src/lib/escrita/rota.ts"
+espera: 1
+saida: 1
+
+### recon[11] -> ok
+cmd: grep -c -F 'export async function sessaoAtual' "src/lib/escrita/rota.ts"
+espera: 1
+saida: 1
+
+### recon[12] -> ok
+cmd: test -f src/__tests__/portal-closer-metas.test.ts && echo SIM
+espera: SIM
+saida: SIM
+
+### recon[13] -> ok
+cmd: test -f src/app/api/time/meu-portal/metas-closer/route.ts && echo SIM
+espera: SIM
+saida: SIM
+
+### recon[14] -> ok
+cmd: test -f src/app/api/closers/painel/route.ts && echo EXISTE || echo LIVRE
+espera: LIVRE
+saida: LIVRE
+
+### criterio=0 (alvo) -> falha na base
+cmd: node_modules/.bin/vitest run src/__tests__/closers-painel.test.ts >/dev/null 2>&1 && echo OK
+espera: OK
+saida: 
+
+### criterio=1 (alvo) -> falha na base
+cmd: grep -c -F 'from "@/lib/supabase";' "src/app/closers/page.tsx"
+espera: 0
+saida: 1
+
+### criterio=2 (alvo) -> falha na base
+cmd: grep -c -F 'from "@/lib/supabase";' "src/components/closers/closer-calendar.tsx"
+espera: 0
+saida: 1
+
+### criterio=3 (alvo) -> falha na base
+cmd: grep -c -F -e '-31`' "src/components/closers/closer-calendar.tsx"
+espera: 0
+saida: 1
+
+### criterio=4 (alvo) -> falha na base
+cmd: grep -q -F '/api/closers/painel' "src/app/closers/page.tsx" && echo SIM
+espera: SIM
+saida: 
+
+### criterio=5 (alvo) -> falha na base
+cmd: grep -q -F '/api/closers/calendario' "src/components/closers/closer-calendar.tsx" && echo SIM
+espera: SIM
+saida: 
+
+### criterio=6 (guarda) -> passa na base
+cmd: grep -c -F 'href={`/dashboard/closers/${c.id}`}' "src/app/closers/page.tsx"
+espera: 1
+saida: 1
+
+### criterio=7 (guarda) -> passa na base
+cmd: grep -c -F 'fetchAgendaStatus(' "src/app/closers/page.tsx"
+espera: 1
+saida: 1
+

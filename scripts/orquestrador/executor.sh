@@ -610,8 +610,17 @@ run_criterios() {
 #        nas bases de 839 done do Comarka. Timeout = aviso, o ticket segue.
 # Teto por comando: 45 s (o do validar-fila do Comarka), `ORQ_PREVOO_TETO_SECS`
 # no teste. O teto vale só aqui; o run_criterios segue sem teto.
-# Evidência em runs/<id>/prevoo.txt (acrescenta, uma seção por passada).
-PREVOO_BLOQUEIO=""; PREVOO_RECON_IDX=""; PREVOO_AVISOS=""
+# Evidência em runs/<id>/prevoo.txt (acrescenta, uma seção por passada). Cada
+# passada fecha com `fim=<UTC> duracao_s=<s> saida=ok|bloqueio|morte` (L14b P2);
+# a morte vem do registrar_morte (trap EXIT e de sinal). Sem `fim=` = KILL.
+PREVOO_BLOQUEIO=""; PREVOO_RECON_IDX=""; PREVOO_AVISOS=""; PREVOO_TXT=""; PREVOO_T0=0
+
+# prevoo_fim <ok|bloqueio|morte> — fecha a passada aberta, uma vez só.
+prevoo_fim() {
+  [ -n "$PREVOO_TXT" ] || return 0
+  printf 'fim=%s duracao_s=%s saida=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$(( $(date +%s) - PREVOO_T0 ))" "$1" >> "$PREVOO_TXT"
+  PREVOO_TXT=""
+}
 
 # prevoo_roda <worktree> <cmd> <saida> -> rc do cmd; 124 = cortado no teto.
 # Mesmo ambiente do run_criterios (bash novo, sem as opções do executor).
@@ -654,6 +663,7 @@ prevoo_exec() {
   PREVOO_BLOQUEIO=""; PREVOO_RECON_IDX=""; PREVOO_AVISOS=""
   txt="$RUNS_BASE/$id/prevoo.txt"
   mkdir -p "$RUNS_BASE/$id"
+  PREVOO_T0="$(date +%s)"; PREVOO_TXT="$txt"
   printf '=== pré-voo executado %s · base %s@%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" \
     "$CFG_BRANCH_ALVO" "$(git -C "$wt" rev-parse --short=8 HEAD 2>/dev/null)" >> "$txt"
   # L14b P0: recon fora do formato fazia o jq do laço sair rc 5 e o `set -e`
@@ -665,7 +675,7 @@ prevoo_exec() {
     printf '### recon -> MALFORMADO (%s)\n\n' "$forma" >> "$txt"
     PREVOO_RECON_IDX="malformado"
     PREVOO_BLOQUEIO="recon malformado ($forma): o motor lê uma lista de {cmd, espera} com cmd string"
-    log "  recon: MALFORMADO — $PREVOO_BLOQUEIO"; return 0
+    log "  recon: MALFORMADO — $PREVOO_BLOQUEIO"; prevoo_fim bloqueio; return 0
   fi
   n="$(ticket_json "$file" | jq '(.recon // .recon_esperado // []) | length')"
   tmp="$(mktemp)"
@@ -695,6 +705,7 @@ prevoo_exec() {
   [ "$n" -gt 0 ] && [ -z "$PREVOO_BLOQUEIO" ] && log "  recon: ok ($n comando(s))"
   [ -z "$PREVOO_BLOQUEIO" ] && prevoo_criterios "$file" "$wt" "$id" "$txt" "$tmp"
   rm -f "$tmp"
+  prevoo_fim "$([ -n "$PREVOO_BLOQUEIO" ] && echo bloqueio || echo ok)"
   return 0
 }
 
@@ -2205,6 +2216,7 @@ TICKET_EM_CURSO=''
 # Quem morre desliga a própria luz.
 registrar_morte() {
   local rc="$1" sinal="${2:-}"
+  prevoo_fim morte 2>/dev/null || true
   log "MORTE ${sinal:+POR SINAL $sinal }INESPERADA: executor saiu com rc=$rc (ticket ${TICKET_EM_CURSO:-—}, fase ${FASE_EM_CURSO:-?})"
   event "${TICKET_EM_CURSO:-—}" EXECUTOR_MORREU "rc=$rc" "fase=${FASE_EM_CURSO:-?}" ${sinal:+"sinal=$sinal"} 2>/dev/null || true
   status_set "estado=ocioso" "fase=—" "ticket=—" \
