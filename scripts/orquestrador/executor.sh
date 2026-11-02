@@ -656,6 +656,17 @@ prevoo_exec() {
   mkdir -p "$RUNS_BASE/$id"
   printf '=== pré-voo executado %s · base %s@%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" \
     "$CFG_BRANCH_ALVO" "$(git -C "$wt" rev-parse --short=8 HEAD 2>/dev/null)" >> "$txt"
+  # L14b P0: recon fora do formato fazia o jq do laço sair rc 5 e o `set -e`
+  # matar o executor (EXECUTOR_MORREU, a drenagem seguinte morria de novo).
+  local forma; forma="$(ticket_json "$file" | jq -r '(.recon // .recon_esperado // []) | if type != "array" then type
+    else [.[] | select(type != "object" or (.cmd | type) != "string") | if type == "object" then "objeto sem cmd string" else type end]
+      | unique | if length == 0 then "" else "array de " + join(", ") end end')"
+  if [ -n "$forma" ]; then
+    printf '### recon -> MALFORMADO (%s)\n\n' "$forma" >> "$txt"
+    PREVOO_RECON_IDX="malformado"
+    PREVOO_BLOQUEIO="recon malformado ($forma): o motor lê uma lista de {cmd, espera} com cmd string"
+    log "  recon: MALFORMADO — $PREVOO_BLOQUEIO"; return 0
+  fi
   n="$(ticket_json "$file" | jq '(.recon // .recon_esperado // []) | length')"
   tmp="$(mktemp)"
   for ((i=0; i<n; i++)); do
@@ -1968,7 +1979,9 @@ drive_ticket() {
         elif [ -n "$PREVOO_BLOQUEIO" ]; then
           rmdir "$rundir" 2>/dev/null || true
           ticket_set_status "$file" "bloqueado"
-          ticket_set_nota "$file" "bloqueado: SPEC_DESATUALIZADA (pré-voo, sem tentativa, sem modelo) — $PREVOO_BLOQUEIO. O ticket afirma um estado da $(cfg '.branch_alvo') que não vale mais: atualize o recon e o objetivo antes de reabrir. Evidência: runs/$id/prevoo.txt."
+          local remedio="O ticket afirma um estado da $(cfg '.branch_alvo') que não vale mais: atualize o recon e o objetivo antes de reabrir."
+          [ "$PREVOO_RECON_IDX" = malformado ] && remedio="Corrija o campo recon no ticket antes de reabrir."
+          ticket_set_nota "$file" "bloqueado: SPEC_DESATUALIZADA (pré-voo, sem tentativa, sem modelo) — $PREVOO_BLOQUEIO. $remedio Evidência: runs/$id/prevoo.txt."
           ticket_commit "$file" "fila: $id bloqueado (SPEC_DESATUALIZADA)"
           event "$id" BLOQUEADO "motivo=SPEC_DESATUALIZADA" "recon=$PREVOO_RECON_IDX"
           status_set "estado=ocioso" "ultimo=$id BLOQUEADO $(date '+%H:%M:%S') (recon divergente)" "motivo=bloqueado: SPEC_DESATUALIZADA"
