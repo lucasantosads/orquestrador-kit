@@ -1,0 +1,89 @@
+{
+  "id": "926",
+  "slug": "faixa-acao-marco-vencido",
+  "lane": "produto",
+  "perfil": "frontend",
+  "objetivo": "ORCAMENTO DE DIFF: teto de 220 linhas (~40 em pontos-acao.ts, ~40 em faixa-pedem-acao.tsx, ~5 em contrato-marcos.tsx, ~120 em teste). Se passar do teto, pare e reporte. SPEC: docs/specs/2026-10-09-aba-conta-marcos.md, default 'Marco vencido sem registro entra na faixa \"pedem ação\" da aba Conta'. DEPENDE do 924f (faixa e tipo 'marco_vencido' ja existem, sem fonte) e do 921 (GET /api/clientes/[id]/contrato/marcos-prazo). FAZER: (1) src/lib/clientes/pontos-acao.ts: pontosPedemAcao passa a receber linha de marcos (nos do 921 ou 'indisponivel') e gera UM ponto por no com estado === 'vencido' (o estado vem pronto do 921; a lib NAO compara datas): texto 'Marco vencido sem registro: {rotulo} ({produto_nome}) · venceu em DD/MM' (data = no.prazo.data), acao {rotulo: 'Registrar', href: '#marco-{template_etapa_id}'}. Marco sem prazo, sem data de referencia, feito ou feito_atrasado nao gera ponto. Fonte indisponivel nao gera ponto. (2) src/app/dashboard/clientes/[id]/_components/faixa-pedem-acao.tsx: FaixaPedemAcao busca tambem o GET do 921 (em paralelo com as outras fontes) e passa para a lib. (3) src/app/dashboard/clientes/[id]/_components/contrato-marcos.tsx: cada no da linha do tempo ganha id=\"marco-{template_etapa_id}\" (ancora da acao). Nada mais muda no componente. (4) test/faixa-pedem-acao.test.tsx: ACRESCENTE casos (sem mexer nos do 924f): no vencido gera ponto com texto e href; sem_registro com prazo null nao gera; feito_atrasado nao gera; 2 vencidos => N soma 2 com os outros pontos; fonte de marcos indisponivel nao gera ponto e nao some com os outros. Comentario 'Ticket 926' acima dos casos novos. Regras do repo: sem .json() novo em src; sem travessao (U+2014) em texto; nenhum nome de tabela ou coluna em texto que o usuario le. FORA DE ESCOPO: avisos no Inicio (926b); calcular vencido no front; abrir o modal direto pela faixa (a acao rola ate o no, que tem o botao Registrar).",
+  "cria_novo": [],
+  "pathspec_allowlist": [
+    "src/lib/clientes/pontos-acao.ts",
+    "src/app/dashboard/clientes/[id]/_components/faixa-pedem-acao.tsx",
+    "src/app/dashboard/clientes/[id]/_components/contrato-marcos.tsx",
+    "test/faixa-pedem-acao.test.tsx"
+  ],
+  "dependencias": [
+    "924f",
+    "921"
+  ],
+  "prioridade": 60,
+  "recon_esperado": [
+    {
+      "descricao": "src/components/estados/bloco-vazio-linha.tsx existe",
+      "cmd": "test -e 'src/components/estados/bloco-vazio-linha.tsx' && echo EXISTE || echo AUSENTE",
+      "espera": "EXISTE"
+    }
+  ],
+  "criterios_aceite": [
+    {
+      "descricao": "tsc nao regride alem do baseline de 3 (src/ e test/, sem ruido de .next)",
+      "cmd": "( [ \"$(npx tsc --noEmit 2>&1 | grep 'error TS' | grep -vc '^\\.next/')\" = 3 ] ) && echo OK || echo FAIL",
+      "espera": "OK",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "nenhum .sql novo (zero DDL)",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; n=$(git diff --name-only \"$b\" HEAD | grep -c '[.]sql$'); [ \"$n\" = 0 ] && echo SEM_SQL || echo SQL_$n",
+      "espera": "SEM_SQL",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "so arquivos da allowlist foram tocados",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; r=SO_ALLOWLIST; for f in $(git diff --name-only \"$b\" HEAD); do printf '%s\\n' 'src/lib/clientes/pontos-acao.ts' 'src/app/dashboard/clientes/[id]/_components/faixa-pedem-acao.tsx' 'src/app/dashboard/clientes/[id]/_components/contrato-marcos.tsx' 'test/faixa-pedem-acao.test.tsx' | grep -Fxq \"$f\" || r=FORA_$f; done; echo $r",
+      "espera": "SO_ALLOWLIST",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "diff dentro do orcamento (<= 220 linhas somando adicoes e remocoes)",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; t=$(git diff --numstat \"$b\" HEAD | awk '{s+=$1+$2} END {print s+0}'); [ \"$t\" -le 220 ] && echo NO_TETO || echo ESTOUROU_$t",
+      "espera": "NO_TETO",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "guardas globais seguem verdes",
+      "cmd": "npx vitest run test/c0-guard.test.ts test/fetch-json-teto.test.ts test/travessao-mudo.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+      "espera": "VERDE",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "a faixa le o GET do 921 e a lib gera ponto so de estado vencido",
+      "cmd": "f=$(grep -c 'marcos-prazo' 'src/app/dashboard/clientes/[id]/_components/faixa-pedem-acao.tsx'); v=$(grep -cE \"estado *=== *.vencido.\" src/lib/clientes/pontos-acao.ts); a=$(grep -cE 'id=.{0,3}marco-' 'src/app/dashboard/clientes/[id]/_components/contrato-marcos.tsx'); [ \"$f\" -ge 1 ] && [ \"$v\" -ge 1 ] && [ \"$a\" -ge 1 ] && echo MARCO_NA_FAIXA || echo ST_${f}_${v}_${a}",
+      "espera": "MARCO_NA_FAIXA",
+      "tipo": "alvo"
+    },
+    {
+      "descricao": "a lib nao calcula vencido por data (sem hoje/new Date na lib)",
+      "cmd": "n=$(grep -cE 'hojeBahia|new Date[(][)]|Date[.]now' src/lib/clientes/pontos-acao.ts); [ \"$n\" = 0 ] && echo SEM_CALCULO || echo ST_$n",
+      "espera": "SEM_CALCULO"
+    },
+    {
+      "descricao": "anti-afrouxamento nos testes recalculados (test/faixa-pedem-acao.test.tsx): expect( nao diminui, sem .skip/.only, cita 926",
+      "cmd": "b=\"$(git merge-base HEAD staging-auto)\"; r=AFROUXAMENTO_OK; for f in 'test/faixa-pedem-acao.test.tsx'; do if git diff --quiet \"$b\" HEAD -- \"$f\"; then continue; fi; a=$(git show \"$b:$f\" | grep -c 'expect('); h=$(grep -c 'expect(' \"$f\"); s=$(git diff \"$b\" HEAD -- \"$f\" | grep -cE '^[+].*[.](skip|only)[(]'); c=$(grep -c '926' \"$f\"); if [ \"$h\" -lt \"$a\" ] || [ \"$s\" != 0 ] || [ \"$c\" = 0 ]; then r=AFROUXOU_$f; fi; done; echo $r",
+      "espera": "AFROUXAMENTO_OK",
+      "tipo": "guarda"
+    },
+    {
+      "descricao": "testes verdes (test/faixa-pedem-acao.test.tsx, test/contrato-marcos-bloco.test.tsx, test/conta-ordem-final.test.ts)",
+      "cmd": "npx vitest run test/faixa-pedem-acao.test.tsx test/contrato-marcos-bloco.test.tsx test/conta-ordem-final.test.ts >/dev/null 2>&1 && echo VERDE || echo VERMELHO",
+      "espera": "VERDE"
+    },
+    {
+      "descricao": "avaliador: marco vencido sem registro aparece na faixa 'pedem acao' com acao que leva ao no da linha do tempo; vencido vem pronto do 921. REPROVE se: estado 'vencido' calculado sem data de referencia ou no front; marco sem prazo vira ponto; fonte indisponivel vira ponto ou zera a faixa; caso do 924f removido ou afrouxado.",
+      "cmd": "true",
+      "espera": "avaliador",
+      "tipo": "avaliador"
+    }
+  ],
+  "testes_conferidos": [],
+  "status": "done",
+  "notas_status": "aprovado (tentativa 3): Estado 'vencido' lido pronto do 921, sem comparar datas; nó sem prazo/data, feito e feito_atrasado não geram ponto; fonte indisponível não gera ponto e não zera a faixa; âncora #marco-{id} ligada ao nó; casos do 924f intactos; testes novos cobrem o pedido."
+}

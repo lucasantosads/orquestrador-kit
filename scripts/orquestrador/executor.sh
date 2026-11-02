@@ -597,6 +597,91 @@ run_criterios() {
   log "  critérios avaliados: $n"
 }
 
+# --- PRÉ-VOO EXECUTADO (etapa L14, 7d-2) --------------------------------------
+# Roda na worktree recém-criada da branch alvo, ANTES do INICIO e do contador,
+# só na primeira tentativa da drenagem (nunca na worktree reaproveitada).
+#   C1 · recon (`recon` ou o nome v1 `recon_esperado`, {cmd, espera}): divergiu,
+#        rc 126/127 ou saída `usage:` = PREVOO_BLOQUEIO, causa SPEC_DESATUALIZADA
+#        (decisão D1, 18/10: não `obsoleto`). Calibração L14: 0 FP em 1712 comandos
+#        nas bases de 839 done do Comarka. Timeout = aviso, o ticket segue.
+# Teto por comando: 45 s (o do validar-fila do Comarka), `ORQ_PREVOO_TETO_SECS`
+# no teste. O teto vale só aqui; o run_criterios segue sem teto.
+# Evidência em runs/<id>/prevoo.txt (acrescenta, uma seção por passada).
+PREVOO_BLOQUEIO=""; PREVOO_RECON_IDX=""; PREVOO_AVISOS=""
+
+# prevoo_roda <worktree> <cmd> <saida> -> rc do cmd; 124 = cortado no teto.
+# Mesmo ambiente do run_criterios (bash novo, sem as opções do executor).
+prevoo_roda() {
+  local wt="$1" cmd="$2" outf="$3" rc=0
+  ( set -m; cd "$wt" && exec env -u SHELLOPTS -u BASHOPTS BASE_REF="$CFG_BRANCH_ALVO" NO_COLOR=1 FORCE_COLOR=0 \
+      "$BASH" --noprofile --norc -c "$cmd" ) > "$outf" 2>&1 &
+  local pid=$!
+  ( sleep "${ORQ_PREVOO_TETO_SECS:-45}"
+    kill -TERM -"$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null
+    sleep 2
+    kill -KILL -"$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null
+  ) >/dev/null 2>&1 &
+  local wpid=$!
+  wait "$pid" 2>/dev/null || rc=$?
+  kill "$wpid" 2>/dev/null || true
+  wait "$wpid" 2>/dev/null || true
+  if [ "$rc" = 143 ] || [ "$rc" = 137 ]; then rc=124; fi
+  return "$rc"
+}
+
+# prevoo_aviso <id> <regra> <campo=valor> <texto> — log, PREVOO_AVISOS e o
+# evento PREVOO_AVISO uma vez por versão do ticket (como o GATE_TICKET_AVISO).
+prevoo_aviso() {
+  local id="$1" regra="$2" onde="$3" texto="$4" versao extra=""
+  versao="$(ticket_versao "$(ticket_file_by_id "$id")")"
+  log "  AVISO do pré-voo ($regra, $onde): $texto"
+  PREVOO_AVISOS="${PREVOO_AVISOS:+$PREVOO_AVISOS
+}$regra $onde: $texto"
+  [ "$regra" = C1 ] && extra="timeout=${ORQ_PREVOO_TETO_SECS:-45}s"
+  if grep -F " $id PREVOO_AVISO regra=$regra $onde " "$EVENTS_FILE" 2>/dev/null | grep -qE " hash=$versao( |\$)"; then
+    return 0
+  fi
+  event "$id" PREVOO_AVISO "regra=$regra" "$onde" ${extra:+"$extra"} "hash=$versao"
+}
+
+# prevoo_exec <arquivo_ticket> <worktree> <id>
+prevoo_exec() {
+  local file="$1" wt="$2" id="$3" txt n i cmd esp out rc tmp
+  PREVOO_BLOQUEIO=""; PREVOO_RECON_IDX=""; PREVOO_AVISOS=""
+  txt="$RUNS_BASE/$id/prevoo.txt"
+  mkdir -p "$RUNS_BASE/$id"
+  printf '=== pré-voo executado %s · base %s@%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" \
+    "$CFG_BRANCH_ALVO" "$(git -C "$wt" rev-parse --short=8 HEAD 2>/dev/null)" >> "$txt"
+  n="$(ticket_json "$file" | jq '(.recon // .recon_esperado // []) | length')"
+  tmp="$(mktemp)"
+  for ((i=0; i<n; i++)); do
+    cmd="$(ticket_json "$file" | jq -r "(.recon // .recon_esperado)[$i].cmd // \"\"")"
+    esp="$(ticket_json "$file" | jq -r "(.recon // .recon_esperado)[$i].espera // \"\" | tostring")"
+    rc=0; prevoo_roda "$wt" "$cmd" "$tmp" || rc=$?
+    out="$(strip_ansi < "$tmp" || true)"
+    if [ "$rc" = 124 ]; then
+      printf '### recon[%s] -> TIMEOUT (%ss)\ncmd: %s\nespera: %s\n\n' "$i" "${ORQ_PREVOO_TETO_SECS:-45}" "$cmd" "$esp" >> "$txt"
+      prevoo_aviso "$id" C1 "recon=$i" "recon[$i] passou do teto de ${ORQ_PREVOO_TETO_SECS:-45} s; não conta como divergência: $cmd"
+      continue
+    fi
+    local nao_roda=0
+    case "$rc" in 126|127) nao_roda=1 ;; esac
+    case "$(printf '%s' "$out" | sed -e 's/^[[:space:]]*//' | head -c 6)" in usage:) nao_roda=1 ;; esac
+    if [ "$nao_roda" = 0 ] && criterio_match "$out" "$esp"; then
+      printf '### recon[%s] -> ok\ncmd: %s\nespera: %s\nsaida: %s\n\n' "$i" "$cmd" "$esp" "$out" >> "$txt"
+      continue
+    fi
+    printf '### recon[%s] -> DIVERGIU (rc=%s)\ncmd: %s\nespera: %s\nsaida: %s\n\n' "$i" "$rc" "$cmd" "$esp" "$out" >> "$txt"
+    PREVOO_RECON_IDX="$i"
+    PREVOO_BLOQUEIO="recon[$i] divergiu na $CFG_BRANCH_ALVO (rc=$rc): cmd='$cmd' esperava '$esp' obteve '$(printf '%s' "$out" | tr '\n' ' ' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | cut -c1-200)'"
+    log "  recon: DIVERGIU — $PREVOO_BLOQUEIO"
+    break
+  done
+  rm -f "$tmp"
+  [ "$n" -gt 0 ] && [ -z "$PREVOO_BLOQUEIO" ] && log "  recon: ok ($n comando(s))"
+  return 0
+}
+
 # --- 7b · UM EVENTO POR PASSAGEM DE GATES (contrato §2) ---------------------
 # gate_marca <gates.txt> <nome> -> ok | falha | nao-rodou
 # O motor de gates (gates.ts --run-cli) imprime "ok   <nome> ...ms" ou
@@ -1779,6 +1864,23 @@ drive_ticket() {
     else
       setup_worktree "$id" "$wt"
       base_ticket="$(git -C "$wt" rev-parse HEAD)"
+      # 5d · PRÉ-VOO EXECUTADO (etapa L14, 7d-2): só na primeira tentativa da
+      # drenagem, com a worktree nova da alvo, antes do INICIO e do contador. O
+      # C1 bloqueia em QUALQUER modo_pre_voo (decisão do Lucas, 01/11).
+      if [ "$attempt" = "$attempt0" ]; then
+        prevoo_exec "$file" "$wt" "$id"
+        if [ -n "$PREVOO_BLOQUEIO" ] && [ "$DRY" = 1 ]; then
+          log "  dry-run: SPEC_DESATUALIZADA só no log, status intocado"
+        elif [ -n "$PREVOO_BLOQUEIO" ]; then
+          rmdir "$rundir" 2>/dev/null || true
+          ticket_set_status "$file" "bloqueado"
+          ticket_set_nota "$file" "bloqueado: SPEC_DESATUALIZADA (pré-voo, sem tentativa, sem modelo) — $PREVOO_BLOQUEIO. O ticket afirma um estado da $(cfg '.branch_alvo') que não vale mais: atualize o recon e o objetivo antes de reabrir. Evidência: runs/$id/prevoo.txt."
+          ticket_commit "$file" "fila: $id bloqueado (SPEC_DESATUALIZADA)"
+          event "$id" BLOQUEADO "motivo=SPEC_DESATUALIZADA" "recon=$PREVOO_RECON_IDX"
+          status_set "estado=ocioso" "ultimo=$id BLOQUEADO $(date '+%H:%M:%S') (recon divergente)" "motivo=bloqueado: SPEC_DESATUALIZADA"
+          DESFECHO_NOMEADO=1; log "BLOQUEADO: SPEC_DESATUALIZADA — sem tentativa: $PREVOO_BLOQUEIO"; cleanup_worktree "$id" "$wt"; return 0
+        fi
+      fi
     fi
     event "$id" INICIO "attempt=$((attempt + 1))" "model=$modelo"
     status_ticket_inicio "$id" "$slug" "$attempt" "$CFG_MAX_RETRIES"

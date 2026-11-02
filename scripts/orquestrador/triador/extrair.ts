@@ -1,5 +1,5 @@
 /**
- * extrair.ts — a extração determinística e as regras D1-D12 (spec 7f-a §3) e D13 (etapa L13).
+ * extrair.ts — a extração determinística e as regras D1-D12 (spec 7f-a §3), D13 (etapa L13) e D14 (etapa L14).
  *
  * Recebe a `Evidencia` (de qualquer leitor) e devolve a classe, se é FIRME
  * (vai ao painel sem modelo) ou PALPITE (vai ao modelo com as provas), a regra
@@ -20,7 +20,7 @@ import { matchesAllowlist } from '../enforcement-core.js'
 import { noDiff } from './leitor-legado-comarka.js'
 import type { Evidencia, Ref, Tentativa, Vizinho } from './tipos.js'
 
-export type Regra = 'D0' | 'D1' | 'D2' | 'D3' | 'D4' | 'D5' | 'D6' | 'D6b' | 'D6v' | 'D7' | 'D8' | 'D9' | 'D10' | 'D11' | 'D12' | 'D13'
+export type Regra = 'D0' | 'D1' | 'D2' | 'D3' | 'D4' | 'D5' | 'D6' | 'D6b' | 'D6v' | 'D7' | 'D8' | 'D9' | 'D10' | 'D11' | 'D12' | 'D13' | 'D14'
 
 export interface Extracao {
   /** `R1`..`R7` quando firme; palpite leva `?` (`R5?`, `R1|R2?`); `null` = nenhuma regra casou */
@@ -197,6 +197,15 @@ export function extrair(ev: Evidencia): Extracao {
   // (triar.ts não chama nem reserva teto). A dependência ainda não done, ou o
   // portão `humano:` sem liberação, vai para o remédio.
   if (!ult) {
+    // D14 · SPEC_DESATUALIZADA (etapa L14, P1): o recon divergiu na branch alvo
+    // antes da tentativa. Classe spec (R3), firme: a nota traz o comando e a saída.
+    const spec = ev.motor.find((r) => /BLOQUEADO.*motivo=SPEC_DESATUALIZADA/.test(r.trecho))
+    if (spec) {
+      const nota = ev.ticket?.notas_status ?? ''
+      const recon = /(recon\[\d+\] divergiu.*?)\. O ticket afirma/.exec(nota)?.[1] ?? nota
+      const refNota = ev.ticket && nota ? [{ arquivo: ev.ticket.arquivo, linha: null, trecho: nota.slice(0, 160) }] : []
+      return sai('R3', 'D14', [spec, ...refNota], `atualizar a spec (recon e objetivo) contra a alvo: ${recon.slice(0, 240)}`)
+    }
     const espera = (ev.dependencias ?? []).filter((d) => d.estado !== 'done' && d.estado !== 'liberado')
     const nota = ev.ticket && ev.ticket.notas_status ? [{ arquivo: ev.ticket.arquivo, linha: null, trecho: ev.ticket.notas_status.slice(0, 160) }] : []
     const r = sai(null, 'D0', nota, `bloqueado sem tentativa${espera.length ? `; espera ${espera.map((d) => `${d.dep} (${d.estado})`).join(', ')}` : ''}: decisão humana`)

@@ -1,0 +1,92 @@
+// Ticket 924f (spec 09/10): pontos que pedem ação na aba Conta. Puro: recebe o que cada fonte
+// devolveu e decide. Fonte que falhou chega como "indisponivel": não gera ponto e não afirma
+// que está tudo bem (quem desenha só lista a fonte como não verificada).
+
+export type Indisponivel = "indisponivel";
+export type Insumo<T> = T | Indisponivel;
+
+export type TipoPonto = "acesso_bm_vencido" | "relatorio_previa" | "pipeline_crm" | "contrato_sem_datas" | "marco_vencido";
+
+export interface PontoAcao {
+  tipo: TipoPonto;
+  texto: string;
+  acao: { rotulo: string; href: string };
+}
+
+export interface InsumosPontos {
+  /** Chave da ficha na URL, base dos links de ação. */
+  clienteId: string;
+  /** Coleta de mídia (saudeColeta). */
+  coleta: Insumo<{ estado: string; motivo: string | null } | null>;
+  /** Data (ISO) da prévia do relatório semanal pronta e não enviada, ou null. */
+  previaSemanal: Insumo<string | null>;
+  /** Data (ISO) da prévia do relatório mensal aguardando envio, ou null. */
+  previaMensal: Insumo<string | null>;
+  /** Estado do CRM no status único ("conectado" etc.). */
+  crmEstado: Insumo<string | null>;
+  /** Pipeline escolhido na configuração do CRM ("" ou null = não escolhido). */
+  crmPipelineId: Insumo<string | null>;
+  /** Datas do contrato. null = contrato sem registro, que também é contrato sem datas. */
+  contrato: Insumo<{ inicio: string | null; fidelidade_fim: string | null } | null>;
+}
+
+export const NOMES_FONTES: Record<keyof Omit<InsumosPontos, "clienteId">, string> = {
+  coleta: "acesso da conta de anúncios",
+  previaSemanal: "relatório semanal",
+  previaMensal: "relatório mensal",
+  crmEstado: "CRM",
+  crmPipelineId: "pipeline do CRM",
+  contrato: "datas do contrato",
+};
+
+const ehIndisponivel = (v: unknown): v is Indisponivel => v === "indisponivel";
+const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+const temData = (v: string | null | undefined) => /^\d{4}-\d{2}-\d{2}/.test(v ?? "");
+
+export function fontesIndisponiveis(i: InsumosPontos): string[] {
+  const chaves = Object.keys(NOMES_FONTES) as (keyof typeof NOMES_FONTES)[];
+  const nomes = chaves.filter((k) => ehIndisponivel(i[k])).map((k) => NOMES_FONTES[k]);
+  return Array.from(new Set(nomes));
+}
+
+export function pontosPedemAcao(i: InsumosPontos): PontoAcao[] {
+  const base = `/dashboard/clientes/${i.clienteId}`;
+  const pontos: PontoAcao[] = [];
+
+  const c = i.coleta;
+  if (!ehIndisponivel(c) && c && c.estado === "falha" && /vencid/i.test(c.motivo ?? "")) {
+    pontos.push({
+      tipo: "acesso_bm_vencido",
+      texto: "O acesso à conta de anúncios venceu e a coleta parou",
+      acao: { rotulo: "Renovar acesso", href: `${base}?sub=meta-ads` },
+    });
+  }
+
+  for (const [previa, rotulo] of [[i.previaSemanal, "semanal"], [i.previaMensal, "mensal"]] as const) {
+    if (ehIndisponivel(previa) || !previa) continue;
+    pontos.push({
+      tipo: "relatorio_previa",
+      texto: `Relatório ${rotulo} com prévia de ${ddmm(previa)} pronta e não enviada`,
+      acao: { rotulo: "Revisar e enviar", href: `${base}?sub=entregaveis` },
+    });
+  }
+
+  if (!ehIndisponivel(i.crmEstado) && !ehIndisponivel(i.crmPipelineId) && i.crmEstado === "conectado" && !i.crmPipelineId) {
+    pontos.push({
+      tipo: "pipeline_crm",
+      texto: "O CRM está conectado, mas nenhum pipeline foi escolhido",
+      acao: { rotulo: "Escolher pipeline", href: `${base}?sub=crm` },
+    });
+  }
+
+  const k = i.contrato;
+  if (!ehIndisponivel(k) && !temData(k?.inicio) && !temData(k?.fidelidade_fim)) {
+    pontos.push({
+      tipo: "contrato_sem_datas",
+      texto: "O contrato está sem data de início e sem fim de fidelidade",
+      acao: { rotulo: "Informar datas", href: `${base}?sub=financeiro` },
+    });
+  }
+
+  return pontos;
+}

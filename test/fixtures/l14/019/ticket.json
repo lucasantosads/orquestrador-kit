@@ -1,0 +1,77 @@
+{
+  "id": "019",
+  "bloco": "B1",
+  "frente": "B1-F3",
+  "slug": "fin-v2-entradas-escrita-rotas",
+  "origem": "humano",
+  "objetivo": "(1) Crie src/lib/financeiro/v2/entradas-escrita.ts (sem import de rota nem de banco): validarGeracao(corpo: unknown) -> { ok: true, dados: { mes: string; cliente_ids: string[] | null } } | { ok: false, erro } com mes YYYY-MM válido e cliente_ids opcional (ausente ou null = null; se vier, array de 1 a 200 uuids sem repetição); validarBaixa(corpo) com valor (número finito, maior que 0, até 1000000, no máximo 2 casas), data (YYYY-MM-DD válida) e asaas_pagamento_id opcional (uuid; ausente, null ou \"\" = null); validarMotivo(corpo) com motivo obrigatório (trim, 1 a 300). Exporte erroDaFuncao(e: { code?: string; message?: string }) -> { status, erro }: 22023 -> 400, P0002 -> 404, 23505 -> 409, com a mensagem da função sem o prefixo \"fin: \"; qualquer outro -> 500 com \"Falha ao gravar. Tente de novo.\" (nunca a mensagem crua). Escreva aqui, não importe de saidas-escrita.ts. (2) Crie quatro rotas POST, cada uma com a primeira linha const acesso = await exigirAcesso(\"<rota>\", \"POST\", [\"entradas\"]); if (!acesso.ok) return acesso.resposta; (import de @/lib/acesso/guarda-rota; <rota> é o caminho com [id] literal), db = clienteServidor() de @/lib/financeiro/v2/servidor (null = 500), autor sempre da sessão (p_autor_id: acesso.sessao.employeeId, p_autor_nome: acesso.sessao.nome), Cache-Control no-store em toda resposta, erro de função via erroDaFuncao -> { ok: false, erro }: (a) src/app/api/financeiro-v2/entradas/cobrancas/route.ts valida com validarGeracao e chama db.rpc(\"fin_gerar_cobranca\", { p_mes: `${mes}-01`, p_cliente_ids, ... }) -> 200 { ok: true, resultado: data }; (b) .../cobrancas/[id]/baixa/route.ts valida com validarBaixa e chama fin_vincular_recebimento { p_pagamento_id: id, p_valor, p_data, p_asaas_pagamento_id, ... } -> 200 { ok: true, cobranca: data }; (c) .../[id]/estorno/route.ts valida com validarMotivo e chama fin_estornar_recebimento { p_pagamento_id, p_motivo, ... }; (d) .../[id]/anular/route.ts idem com fin_anular_cobranca. Nas rotas com [id], id vem de params (Promise, Next 15) e tem de ser uuid (400). Nenhuma rota usa .from(): a gravação é só pelas funções, já aplicadas no banco. (3) Crie src/lib/financeiro/v2/__tests__/entradas-escrita.test.ts (vitest, sem rede; mock de @/lib/acesso/guarda-rota liberando com sessao { employeeId: \"e1\", nome: \"Fin\" } ou negando; mock de @/lib/financeiro/v2/servidor com o banco falso de src/__tests__/helpers/banco-falso e rpcs que registram as chamadas): (a) mês inválido, cliente_ids vazio ou com não-uuid, valor 0, valor com 3 casas, data inválida, asaas id não-uuid e motivo em branco dão 400 sem chamar rpc; (b) cada rota chama a função certa com os parâmetros e o autor da sessão; (c) 23505 vira 409, P0002 vira 404, código desconhecido vira 500 sem a mensagem crua; (d) guarda negada devolve a resposta da guarda e não chama rpc; (e) id que não é uuid dá 400. Os casos (b) e (d) têm de falhar antes das rotas existirem: diga no corpo do commit. FORA DE ESCOPO: telas, leitura, saidas-escrita.ts, recebimentos_mensais, rotas antigas de /api/financeiro e /api/asaas.",
+  "pathspec_allowlist": [
+    "src/lib/financeiro/v2/entradas-escrita.ts",
+    "src/app/api/financeiro-v2/entradas/cobrancas/route.ts",
+    "src/app/api/financeiro-v2/entradas/cobrancas/[id]/baixa/route.ts",
+    "src/app/api/financeiro-v2/entradas/cobrancas/[id]/estorno/route.ts",
+    "src/app/api/financeiro-v2/entradas/cobrancas/[id]/anular/route.ts",
+    "src/lib/financeiro/v2/__tests__/entradas-escrita.test.ts"
+  ],
+  "cria_novo": [
+    "src/lib/financeiro/v2/entradas-escrita.ts",
+    "src/app/api/financeiro-v2/entradas/cobrancas/route.ts",
+    "src/app/api/financeiro-v2/entradas/cobrancas/[id]/baixa/route.ts",
+    "src/app/api/financeiro-v2/entradas/cobrancas/[id]/estorno/route.ts",
+    "src/app/api/financeiro-v2/entradas/cobrancas/[id]/anular/route.ts",
+    "src/lib/financeiro/v2/__tests__/entradas-escrita.test.ts"
+  ],
+  "dependencias": [
+    "018",
+    "humano:fin-rpc-entradas"
+  ],
+  "diff_estimado": 450,
+  "risco": "",
+  "criterios_aceite": [
+    {
+      "tipo": "alvo",
+      "descricao": "teste das rotas de escrita de entradas verde",
+      "cmd": "node_modules/.bin/vitest run src/lib/financeiro/v2/__tests__/entradas-escrita.test.ts >/dev/null 2>&1 && echo OK",
+      "espera": "OK"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "rota de gerar cobranças não acessa tabela",
+      "cmd": "grep -c -F \".from(\" \"src/app/api/financeiro-v2/entradas/cobrancas/route.ts\"",
+      "espera": "0"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "rota de baixa não acessa tabela",
+      "cmd": "grep -c -F \".from(\" \"src/app/api/financeiro-v2/entradas/cobrancas/[id]/baixa/route.ts\"",
+      "espera": "0"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "rota de estorno não acessa tabela",
+      "cmd": "grep -c -F \".from(\" \"src/app/api/financeiro-v2/entradas/cobrancas/[id]/estorno/route.ts\"",
+      "espera": "0"
+    },
+    {
+      "tipo": "guarda",
+      "descricao": "rota de anular não acessa tabela",
+      "cmd": "grep -c -F \".from(\" \"src/app/api/financeiro-v2/entradas/cobrancas/[id]/anular/route.ts\"",
+      "espera": "0"
+    },
+    {
+      "tipo": "avaliador",
+      "descricao": "avaliador: exigirAcesso com [entradas] é a primeira linha das quatro rotas, com rota e método corretos; autor vem da sessão, nunca do corpo; nenhum .from() nem SQL nas rotas; mensagem crua de erro desconhecido não vaza; nada grava recebimentos_mensais; o teste exercita os handlers reais; sem skip.",
+      "cmd": "true",
+      "espera": "avaliador"
+    }
+  ],
+  "status": "done",
+  "notas_status": "mergeado em staging-auto pela drenagem",
+  "hash_candidato": "",
+  "sinal_hash": "",
+  "gate_ok": "",
+  "pid": null,
+  "iniciado_em": "",
+  "adiado_ate": "",
+  "tentativas": 0
+}

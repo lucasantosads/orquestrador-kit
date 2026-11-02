@@ -1,0 +1,291 @@
+import { getSupabaseAdmin } from "@/lib/comarka-pro";
+import { getRegraNum } from "@/lib/comarka-pro-config";
+
+// ---------- Tipos de carta ----------
+
+export interface TipoCarta {
+  tipo: string;
+  nome: string;
+  icone: string;
+  descricao: string;
+  efeito: string;
+  valor?: number;
+}
+
+export const TIPOS_CARTA: Record<string, TipoCarta> = {
+  escudo: {
+    tipo: "escudo",
+    nome: "Escudo",
+    icone: "🛡️",
+    descricao: "Anula uma penalização leve recebida",
+    efeito: "cancelar_penalizacao_leve",
+  },
+  dobrar: {
+    tipo: "dobrar",
+    nome: "Dobrar",
+    icone: "🚀",
+    descricao: "Dobra os pontos do próximo evento positivo",
+    efeito: "multiplicar_proximo_positivo_2x",
+  },
+  desafio: {
+    tipo: "desafio",
+    nome: "Desafio",
+    icone: "🎯",
+    descricao: "Desafia outro gestor numa métrica específica",
+    efeito: "criar_derby_individual",
+  },
+  transferencia: {
+    tipo: "transferencia",
+    nome: "Transferência",
+    icone: "🔄",
+    descricao: "Passa 5 pts para um colega de equipe",
+    efeito: "transferir_pontos",
+    valor: 5,
+  },
+  congelar: {
+    tipo: "congelar",
+    nome: "Congelar",
+    icone: "❄️",
+    descricao: "Pausa sua pontuação por 3 dias",
+    efeito: "pausar_pontuacao_3dias",
+  },
+};
+
+export interface CartaDB {
+  id: string;
+  gestor_id: string;
+  temporada_id: string | null;
+  tipo: string;
+  status: "disponivel" | "usada" | "expirada";
+  usada_em: string | null;
+  efeito_aplicado_em: string | null;
+  mes_referencia: number;
+  ano_referencia: number;
+}
+
+// ---------- Distribuir cartas mensais ----------
+
+export async function distribuirCartasMensais(
+  gestorId: string,
+  mes: number,
+  ano: number,
+): Promise<CartaDB[]> {
+  const supa = getSupabaseAdmin();
+
+  // Verifica se já recebeu cartas esse mês
+  const { count } = await supa
+    .from("liga_cartas")
+    .select("id", { count: "exact", head: true })
+    .eq("gestor_id", gestorId)
+    .eq("mes_referencia", mes)
+    .eq("ano_referencia", ano);
+
+  if ((count ?? 0) > 0) return [];
+
+  // Quantidade de cartas por mês (config_regras)
+  const cartasPorMes = (await getRegraNum("cartas_por_mes")) || 3;
+
+  // Busca temporada ativa
+  const { data: temporada } = await supa
+    .from("liga_temporadas")
+    .select("id")
+    .eq("status", "ativa")
+    .limit(1)
+    .maybeSingle();
+
+  // Distribui cartas aleatórias (pode ter repetidas)
+  const tiposKeys = Object.keys(TIPOS_CARTA);
+  const cartas = [];
+  for (let i = 0; i < cartasPorMes; i++) {
+    const tipo = tiposKeys[Math.floor(Math.random() * tiposKeys.length)];
+    cartas.push({
+      gestor_id: gestorId,
+      temporada_id: temporada?.id ?? null,
+      tipo,
+      status: "disponivel",
+      mes_referencia: mes,
+      ano_referencia: ano,
+    });
+  }
+
+  const { data, error } = await supa
+    .from("liga_cartas")
+    .insert(cartas)
+    .select();
+
+  if (error) {
+    console.error("[liga-cartas] erro ao distribuir:", error);
+    return [];
+  }
+  return (data ?? []) as CartaDB[];
+}
+
+// ---------- Usar carta ----------
+
+export async function usarCarta(
+  cartaId: string,
+  gestorId: string,
+  alvoId?: string,
+): Promise<{ ok: boolean; mensagem: string; resultado?: any }> {
+  const supa = getSupabaseAdmin();
+
+  // Validar carta disponível e pertence ao gestor
+  const { data: carta, error: errCarta } = await supa
+    .from("liga_cartas")
+    .select("*")
+    .eq("id", cartaId)
+    .eq("gestor_id", gestorId)
+    .eq("status", "disponivel")
+    .maybeSingle();
+
+  if (errCarta || !carta) {
+    return { ok: false, mensagem: "Carta não encontrada ou já utilizada" };
+  }
+
+  const tipoCarta = TIPOS_CARTA[carta.tipo];
+  if (!tipoCarta) {
+    return { ok: false, mensagem: "Tipo de carta inválido" };
+  }
+
+  let resultado: any = null;
+
+  // Executar efeito conforme tipo
+  switch (tipoCarta.efeito) {
+    case "cancelar_penalizacao_leve": {
+      // Busca penalização leve mais recente pendente
+      const { data: pen } = await supa
+        .from("penalizacoes")
+        .select("id")
+        .eq("gestor_id", gestorId)
+        .eq("gravidade", "leve")
+        .eq("status", "pendente")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (pen) {
+        await supa
+          .from("penalizacoes")
+          .update({ status: "anulada_por_carta" })
+          .eq("id", pen.id);
+        resultado = { penalizacao_anulada: pen.id };
+      } else {
+        return { ok: false, mensagem: "Nenhuma penalização leve pendente para anular" };
+      }
+      break;
+    }
+
+    case "multiplicar_proximo_positivo_2x": {
+      // Marca no streak que o próximo evento positivo será 2x
+      await supa
+        .from("liga_streaks")
+        .upsert(
+          { gestor_id: gestorId, multiplicador: 2.0, updated_at: new Date().toISOString() },
+          { onConflict: "gestor_id" },
+        );
+      resultado = { multiplicador: 2 };
+      break;
+    }
+
+    case "criar_derby_individual": {
+      if (!alvoId) return { ok: false, mensagem: "Alvo obrigatório para carta Desafio" };
+      const { criarDerby } = await import("@/lib/liga-derby");
+      const now = new Date();
+      const mesDerby = now.getUTCMonth() + 1;
+      const anoDerby = now.getUTCFullYear();
+      // Busca temporada ativa
+      const { data: temp } = await supa
+        .from("liga_temporadas")
+        .select("id")
+        .eq("status", "ativa")
+        .limit(1)
+        .maybeSingle();
+      const derby = await criarDerby(
+        temp?.id ?? null,
+        mesDerby,
+        anoDerby,
+        "pontos_totais", // métrica padrão para desafio via carta
+        gestorId,
+        alvoId,
+      );
+      if (!derby) return { ok: false, mensagem: "Erro ao criar derby do desafio" };
+      resultado = { derby_criado: true, derby_id: derby.id, alvo_id: alvoId };
+      break;
+    }
+
+    case "transferir_pontos": {
+      if (!alvoId) return { ok: false, mensagem: "Alvo obrigatório para Transferência" };
+      const valor = tipoCarta.valor ?? 5;
+      // Buscar setor do alvo
+      const { data: empAlvo } = await supa
+        .from("employees")
+        .select("setor")
+        .eq("id", alvoId)
+        .maybeSingle();
+      const setorAlvo = empAlvo?.setor || "operacional";
+      const now = new Date();
+      await supa.from("liga_pontos_equipe").insert({
+        setor: setorAlvo,
+        mes: now.getUTCMonth() + 1,
+        ano: now.getUTCFullYear(),
+        pontos: valor,
+        evento: "carta_transferencia",
+        descricao: `Transferência de ${valor} pts de ${gestorId} para ${alvoId}`,
+        registrado_por: gestorId,
+      });
+      resultado = { pontos_transferidos: valor, para: alvoId };
+      break;
+    }
+
+    case "pausar_pontuacao_3dias": {
+      const agora = new Date();
+      const fimPausa = new Date(agora.getTime() + 3 * 24 * 60 * 60 * 1000);
+      await supa
+        .from("liga_streaks")
+        .upsert(
+          {
+            gestor_id: gestorId,
+            ultimo_evento_positivo: fimPausa.toISOString().slice(0, 10),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "gestor_id" },
+        );
+      resultado = { pausado_ate: fimPausa.toISOString().slice(0, 10) };
+      break;
+    }
+  }
+
+  // Marcar carta como usada
+  await supa
+    .from("liga_cartas")
+    .update({
+      status: "usada",
+      usada_em: new Date().toISOString(),
+      efeito_aplicado_em: alvoId ?? null,
+    })
+    .eq("id", cartaId);
+
+  return { ok: true, mensagem: `Carta ${tipoCarta.nome} usada com sucesso`, resultado };
+}
+
+// ---------- Cartas do mês ----------
+
+export async function getCartasMes(gestorId: string, mes?: number, ano?: number): Promise<CartaDB[]> {
+  const supa = getSupabaseAdmin();
+  const now = new Date();
+  const m = mes ?? now.getUTCMonth() + 1;
+  const a = ano ?? now.getUTCFullYear();
+
+  const { data, error } = await supa
+    .from("liga_cartas")
+    .select("*")
+    .eq("gestor_id", gestorId)
+    .eq("mes_referencia", m)
+    .eq("ano_referencia", a)
+    .order("tipo");
+
+  if (error) {
+    console.error("[liga-cartas] erro ao buscar cartas:", error);
+    return [];
+  }
+  return (data ?? []) as CartaDB[];
+}

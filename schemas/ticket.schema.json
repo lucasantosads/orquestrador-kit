@@ -33,6 +33,20 @@
       "items": { "type": "string" },
       "description": "Paths da allowlist que ainda NÃO existem. Qualquer outro path da allowlist precisa existir no disco."
     },
+    "recon": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["cmd", "espera"],
+        "additionalProperties": true,
+        "properties": {
+          "cmd": { "type": "string", "minLength": 1 },
+          "espera": { "type": "string" },
+          "descricao": { "type": "string" }
+        }
+      },
+      "description": "Etapa L14 (C1): o estado da branch alvo que o ticket afirma, um {cmd, espera} por fato. O executor roda cada um na worktree nova, antes da tentativa (executor.sh:prevoo_exec); divergiu, rc 126/127 ou saída 'usage:' = bloqueado com causa SPEC_DESATUALIZADA, sem modelo e sem tentativa. O nome v1 `recon_esperado` (Comarka) vale igual; com os dois, vale `recon`."
+    },
     "dependencias": {
       "type": "array",
       "items": {
