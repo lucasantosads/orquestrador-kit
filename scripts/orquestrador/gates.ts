@@ -12,7 +12,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
-import { gateDeSelecao, lerNameStatus, registroSombra, validarSelecao } from './selecao-testes.js'
+import { cmdComArquivos, escolherSelecao, gateDeSelecao, lerNameStatus, registroSombra, validarSelecao } from './selecao-testes.js'
 
 export interface Placar {
   pacotes: number
@@ -526,13 +526,38 @@ if (process.argv.includes('--run-cli')) {
     process.stderr.write(`gates.ts: --retomar-depois: gate '${depoisDe}' não está na ordem\n`)
     process.exit(2)
   }
+  // Etapa M69: o diff da tentativa e o `cmd_listar` com a base, para a sombra
+  // (P3, depois da passada) e para os afetados (P5, antes dela).
+  const sel = depoisDe === undefined ? gateDeSelecao(config) : null
+  const base = opt('--base')
+  const diffDaBase = (b: string) => {
+    const ns = spawnSync('git', ['-C', raiz, 'diff', '--name-status', `${b}...HEAD`], { encoding: 'utf8' })
+    return ns.status === 0 ? lerNameStatus(ns.stdout) : []
+  }
+  const listar = (b: string) => () => {
+    const r = execBash(raiz)(sel!.spec.cmd_listar!.replaceAll('{base}', b))
+    return { rc: r.exitCode, saida: r.saida }
+  }
+  // P5: em afetados o gate de testes roda o PRÓPRIO cmd com a lista no fim (o
+  // `--changed` com arquivos é interseção no vitest, e os testes_sempre não
+  // rodariam). Fallback da escolha = o cmd de sempre. A linha `selecao:` vai
+  // depois do VEREDITO, fora do padrão ok/FALHA que o gate_marca lê.
+  let linhaSelecao = ''
+  if (sel?.spec.modo === 'afetados') {
+    const esc = base ? escolherSelecao(diffDaBase(base), sel.spec, listar(base)) : { modo_efetivo: 'inteira', motivo: 'sem a base da tentativa', arquivos: [] }
+    const g = config.gates.find((x) => x.nome === sel.nome)!
+    if (esc.modo_efetivo === 'afetados') g.cmd = cmdComArquivos(g.cmd, esc.arquivos)
+    linhaSelecao = esc.modo_efetivo === 'afetados'
+      ? `selecao: afetados (${esc.motivo}; suíte inteira: ${sel.spec.rede_suite_inteira})\n`
+      : `selecao: inteira (${esc.motivo})\n`
+  }
   const v = rodarGates(config, execBash(raiz), depoisDe)
   for (const g of v.gates) {
     const marca = g.ok ? 'ok  ' : 'FALHA'
     const extra = g.placar ? ` [${g.placar.pacotes} pacotes, ${g.placar.passando}p/${g.placar.falhando}f]` : ''
     process.stdout.write(`${marca} ${g.nome.padEnd(20)} ${String(g.ms).padStart(6)}ms${extra}${g.motivo ? ' — ' + g.motivo : ''}\n`)
   }
-  process.stdout.write(`VEREDITO: ${v.ok ? 'APROVADO' : 'REPROVADO'}${v.reexecutar ? ' (reexecutar do início)' : ''}\n`)
+  process.stdout.write(`VEREDITO: ${v.ok ? 'APROVADO' : 'REPROVADO'}${v.reexecutar ? ' (reexecutar do início)' : ''}\n${linhaSelecao}`)
   // O recorte do gate que reprovou entra no MESMO arquivo, depois do veredito:
   // é dali que o diagnóstico do retry tira arquivo, linha e esperado vs obtido.
   // As linhas do recorte nunca começam com "ok "/"FALHA " ancorados em nome de
@@ -546,20 +571,13 @@ if (process.argv.includes('--run-cli')) {
   // Etapa M69 (P3): sombra. A inteira já decidiu acima; aqui só se calcula o
   // conjunto afetado e se grava o que teria acontecido. Nada vai ao stdout:
   // o gates.txt sai igual ao de hoje.
-  const sel = gateDeSelecao(config)
-  const base = opt('--base')
   const selJson = opt('--selecao-json')
-  if (sel && sel.spec.modo === 'sombra' && base && selJson && depoisDe === undefined) {
-    const ns = spawnSync('git', ['-C', raiz, 'diff', '--name-status', `${base}...HEAD`], { encoding: 'utf8' })
-    const exec = execBash(raiz)
+  if (sel?.spec.modo === 'sombra' && base && selJson) {
     const reg = registroSombra({
       base,
-      diff: ns.status === 0 ? lerNameStatus(ns.stdout) : [],
+      diff: diffDaBase(base),
       spec: sel.spec,
-      listar: () => {
-        const r = exec(sel.spec.cmd_listar!.replaceAll('{base}', base))
-        return { rc: r.exitCode, saida: r.saida }
-      },
+      listar: listar(base),
       gate: sel.nome,
       resultado: v.gates.find((g) => g.nome === sel.nome),
     })

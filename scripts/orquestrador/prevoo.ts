@@ -26,6 +26,7 @@ import { spawnSync } from 'node:child_process'
 import { dirname, join, posix, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { caminhoConfig } from './fila-caminho.js'
+import { validarSelecao } from './selecao-testes.js'
 
 /**
  * Os arquivos da spec vendorizada que precisam existir COM CONTEÚDO em
@@ -66,6 +67,7 @@ export interface PreVooConfig {
   filas_irmas?: string[]
   runs_dir?: string
   pausar_file?: string | null
+  gates?: { nome: string; cmd: string; papel?: string | null; selecao_testes?: unknown }[]
 }
 
 export interface PreVooDeps {
@@ -295,6 +297,19 @@ export function checarFilasIrmas(config: PreVooConfig, deps: Pick<PreVooDeps, 'f
   return { ok: true, token: 'cat.9', item: `filas irmãs (${filas.length} filas)` }
 }
 
+/**
+ * cat.10 · `gates[].selecao_testes` válida (etapa M69). Só com a chave em algum
+ * gate: sem ela, o pré-voo sai como antes. É a mesma régua do preflight do
+ * executor e do gates.ts, dita antes de qualquer gasto.
+ */
+export function checarSelecao(config: PreVooConfig): Item | null {
+  if (!config.gates?.some((g) => g.selecao_testes !== undefined)) return null
+  const erros = validarSelecao(config)
+  return erros.length
+    ? { ok: false, token: 'cat.10', item: 'pré-voo cat.10 (selecao_testes)', motivo: erros.join('; ') }
+    : { ok: true, token: 'cat.10', item: 'selecao_testes' }
+}
+
 /** cat.8 · `juiz.review_md` existe na branch alvo e cabe nos tetos. Só roda com a chave. */
 export function checarReviewMd(config: PreVooConfig, deps: Pick<PreVooDeps, 'lerDaBranchAlvo'>): Item {
   const path = config.juiz?.review_md ?? ''
@@ -343,6 +358,7 @@ export function preVooRelampago(entrada: { config: PreVooConfig; deps: PreVooDep
     ...(config.juiz?.review_md
       ? [['cat.8 (review_md)', () => checarReviewMd(config, deps)] as [string, () => Item]]
       : []),
+    ...(checarSelecao(config) ? [['cat.10 (selecao_testes)', () => checarSelecao(config)!] as [string, () => Item]] : []),
     ['cat.3 (sondagem de modelo)', () => checarUltimaSondagem(deps)],
   ]
   const itens: Item[] = []

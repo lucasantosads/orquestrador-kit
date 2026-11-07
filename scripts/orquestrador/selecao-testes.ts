@@ -89,6 +89,9 @@ export function validarSelecao(config: { gates?: GateComSelecao[] }): string[] {
         if (typeof s[k] !== 'string' || !(s[k] as string).includes('{base}')) e(`${k} é obrigatório no modo ${s.modo as string} e tem de conter {base}`)
       }
     }
+    if (s.modo === 'afetados' && /[;&|()<>`$\n]/.test(g.cmd)) {
+      e('modo "afetados" exige que o cmd do gate seja um comando simples (sem ;, &&, |, subshell, $ ou redirecionamento): a lista de arquivos vai no fim dele')
+    }
     if (s.modo === 'afetados' && !(typeof s.rede_suite_inteira === 'string' && s.rede_suite_inteira.trim())) {
       e('modo "afetados" exige rede_suite_inteira (onde a suíte inteira roda; ex.: "M-21 fila de merge" ou "job noturno X"); sem ela o gate aprova sem nunca rodar a suíte inteira')
     }
@@ -100,6 +103,12 @@ export function validarSelecao(config: { gates?: GateComSelecao[] }): string[] {
 export function gateDeSelecao(config: { gates?: GateComSelecao[] }): { nome: string; spec: SelecaoTestes } | null {
   const g = (config.gates ?? []).find((x) => x.selecao_testes !== undefined)
   return g ? { nome: g.nome, spec: g.selecao_testes as SelecaoTestes } : null
+}
+
+/** O cmd do gate com os arquivos no fim, citados para o `bash -c` do gate. */
+export function cmdComArquivos(cmd: string, arquivos: string[]): string {
+  const cita = (a: string) => (/^[\w./@%+=:,-]+$/.test(a) ? a : `'${a.replaceAll("'", `'\\''`)}'`)
+  return [cmd, ...arquivos.map(cita)].join(' ')
 }
 
 /** Uma linha de `git diff --name-status`: A/M/D/T e o destino do R/C, com a origem. */
