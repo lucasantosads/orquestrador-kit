@@ -406,7 +406,7 @@ cleanup_worktree() {
 tools_do_ticket() {
   local file="$1" cmds
   cmds="$(ticket_json "$file" | jq -c '[.criterios_aceite[]?.cmd // empty]')"
-  decisao tools "$cmds"
+  decisao tools "$cmds" "${SELECAO_BASE:-}"
 }
 
 # tools_proibidas -> o PISO de `--disallowedTools` (T17), vindo do config.
@@ -418,9 +418,24 @@ tools_do_ticket() {
 # comportamento de sempre.
 tools_proibidas() { decisao disallowed; }
 
+# linha_selecao_prompt -> a linha do item 2 de ENTREGA em sombra e afetados
+# (etapa M69, P4), ou nada. Usa SELECAO_BASE, a base da tentativa (run_attempt).
+# O agente roda os afetados; a suíte inteira (sombra) ou os afetados (afetados)
+# rodam no gate do motor depois dele. Sem a chave ou em inteira: vazia, e o
+# prompt sai o de hoje.
+linha_selecao_prompt() {
+  [ -n "${SELECAO_BASE:-}" ] || return 0
+  jq -r --arg b "$SELECAO_BASE" --arg q "'" '.gates[]? | .selecao_testes as $s
+    | select($s.modo? == "sombra" or $s.modo? == "afetados")
+    | "   Gate \(.nome): rode só os testes afetados pelo seu diff, com \($q)\($s.cmd_afetados | gsub("\\{base\\}"; $b))\($q)"
+      + (if ($s.testes_sempre // []) | length > 0 then " e \($q)\(.cmd) \($s.testes_sempre | join(" "))\($q)" else "" end)
+      + ". NÃO rode a suíte inteira: o motor roda \(if $s.modo == "sombra" then "a suíte inteira" else "os afetados" end) depois de você."' \
+    "$CONFIG" 2>/dev/null || true
+}
+
 build_prompt() {
   # ampliada/bloco_viz: por argumento ou, sem ele, a ampliação do drive em curso (8c)
-  local file="$1" motivo="$2" tools="${3:-}" ampliada="${4-${VIZ_AMPLIADA:-}}" bloco_viz="${5-${VIZ_BLOCO:-}}" id objetivo allow criterios spec="" lista t
+  local file="$1" motivo="$2" tools="${3:-}" ampliada="${4-${VIZ_AMPLIADA:-}}" bloco_viz="${5-${VIZ_BLOCO:-}}" id objetivo allow criterios spec="" lista t linha_sel
   id="$(ticket_field "$file" '.id')"
   objetivo="$(ticket_field "$file" '.objetivo')"
   allow="$(ticket_field "$file" '.pathspec_allowlist | join("\n  - ")')"
@@ -444,6 +459,7 @@ build_prompt() {
   # consegue montar um prompt sem a lista, nem com uma lista de outra fonte.
   [ -n "$tools" ] || tools="$(tools_do_ticket "$file")"
   lista="$(printf '%s' "$tools" | tr ',' '\n' | sed 's/^/  - /')"
+  linha_sel="$(linha_selecao_prompt)"
 
   cat <<EOF
 Você é um engenheiro executando um ticket da fila deste repo de forma autônoma.
@@ -490,7 +506,8 @@ EVIDÊNCIA É O QUE O TRABALHO FEZ, NUNCA O QUE O CRITÉRIO QUER LER
 
 ENTREGA:
 1. Implemente o objetivo respeitando a allowlist.
-2. Os gates deste repo, nesta ordem: $(cfg '._execucao_dos_gates.ordem_obrigatoria | join(" -> ")').
+2. Os gates deste repo, nesta ordem: $(cfg '._execucao_dos_gates.ordem_obrigatoria | join(" -> ")').${linha_sel:+
+$linha_sel}
 3. COMMIT POR CHECKPOINT (obrigatório): $(cfg '.commit_checkpoint.quando').
    $(cfg '.commit_checkpoint._regra')
    Arquivo escrito e não commitado conta como NADA FEITO: o trabalho é medido por
@@ -1402,10 +1419,13 @@ run_attempt() {
   # COMANDOS" do prompt e o `--allowedTools` da chamada. Duas derivações seriam
   # duas listas, e o dia em que divergissem seria o dia em que o agente gastaria
   # turno contra a própria permissão de novo.
+  # Etapa M69 (P4): a base sai ANTES do prompt (o valor é o mesmo: nada mudou na
+  # worktree entre as duas linhas), porque o comando de afetados a leva pronta.
+  base="${base_fixo:-$(git -C "$wt" rev-parse HEAD)}"
+  SELECAO_BASE="$base"
   tools="$(tools_do_ticket "$file")"
   local piso; piso="$(tools_proibidas)"
   build_prompt "$file" "$motivo_anterior" "$tools" > "$prompt"
-  base="${base_fixo:-$(git -C "$wt" rev-parse HEAD)}"
   local head_antes; head_antes="$(git -C "$wt" rev-parse HEAD 2>/dev/null || true)"
 
   t0="$(date +%s)"

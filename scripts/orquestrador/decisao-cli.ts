@@ -46,7 +46,7 @@ import { defaultToolsFromGates, pisoDoConfig, toolsDoTicket } from './perfil.js'
 import type { DecisaoConfig, SinalTentativa, Veredito } from './decisao.js'
 import { relative } from 'node:path'
 import { caminhoConfig, filaDir } from './fila-caminho.js'
-import { validarSelecao } from './selecao-testes.js'
+import { gateDeSelecao, validarSelecao } from './selecao-testes.js'
 
 const [raiz, sub, ...args] = process.argv.slice(2)
 if (!raiz || !sub) {
@@ -89,6 +89,10 @@ switch (sub) {
       }
     }
     const gateCmds = (config as unknown as { gates: { cmd: string }[] }).gates.map((g) => g.cmd)
+    // Etapa M69 (P4): o comando de afetados com a base (args[1]) entra como um
+    // gate a mais, em sombra e afetados: o prompt manda rodá-lo.
+    const sel = gateDeSelecao(config as unknown as Parameters<typeof gateDeSelecao>[0])
+    if (args[1] && sel?.spec.cmd_afetados && sel.spec.modo !== 'inteira') gateCmds.push(sel.spec.cmd_afetados.replaceAll('{base}', args[1]))
     process.stdout.write(toolsDoTicket(gateCmds, criterioCmds, pisoDoConfig(config)))
     break
   }
