@@ -7,6 +7,7 @@
 - Os conflitos ficam abertos até o Lucas decidir; cada um se decide no PASSO 0 da etapa que pegar o item.
 - Vídeo novo entra pela leitura semanal.
 - Exceção de 07/11/2026 (decisão Q2 do Lucas, plano c-0052): M-64 a M-67 (C-0052 M1, M5, M6 por área e C-0052 M10) entraram sem a leitura semanal e sem fechar outro item. A regra segue valendo para o resto.
+- Exceção de 07/11/2026 18:16 (decisão do Lucas, mesma via do Q2): M-69 (seleção de testes afetados no gate de testes) entrou sem a leitura semanal e sem fechar outro item. A regra segue valendo para o resto.
 
 Status possíveis: ideia | triado | planejado | em-etapa | parcial | feito | descartado | substituído. "feito (antes de 28/10, arquivo:linha)" e "parcial: o que falta" vêm da conferência no código da etapa MELHORIAS-0.
 
@@ -60,6 +61,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 | M-65 | Diff que toca a fila reprova no enforcement | parcial | B | C5, C1 | relato | | C-0052 M5, plano c-0052 07/11 |
 | M-66 | REVIEW.md do juiz por área | triado | B | C5 | relato | | C-0052 M6, plano c-0052 07/11 |
 | M-67 | Batimento do loop a cada ciclo | triado | B | C1 | relato | M-54 | C-0052 M10, plano c-0052 07/11 |
+| M-69 | Gate de testes roda só os afetados, com modo sombra e a suíte inteira como rede | feito (etapa M69) | B | custo | medida | M-21 (rede da suíte inteira) | medição do Comarka 07/11 18:15, exceção 07/11 18:16 |
 | M-27 | Experimento best-of-N com funil e perda do seletor | ideia | C | C5, C2, custo | medida | M-29, M-56 | base (experimentos), v052, v044, v048, v053, v054, v050, L3-02, L3-09, L4-01, L4-02, L5-03 |
 | M-28 | Transcrição stream-json com extrator e taxonomia de falhas | ideia | C | C2, C3, custo | medida | | base #12, v061, v046, v048, L2-07, L3-05, L4-05 |
 | M-29 | Custo por ticket e por etapa, cache e contexto enxuto do juiz | parcial | C | custo, C2 | medida | M-56 | base (planejado), v089, v048, L1-09, L4-06 |
@@ -741,6 +743,18 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - depende de: ticket 1594 do Comarka; M-54.
 - fontes: C-0052 M10, plano c-0052 07/11
 
+### M-69 Gate de testes roda só os afetados, com modo sombra e a suíte inteira como rede
+- marco: B (entrou em 07/11 18:16 por exceção, mesma via do Q2)
+- status: feito (etapa M69)
+- o que é: o gate de testes e o prompt do executor rodam só os testes afetados pelo diff, com a chave `gates[].selecao_testes` em `inteira | sombra | afetados`. Ausente = inteira, byte a byte. Medida de origem: Comarka, 184 gates de vitest em 14 dias, 450 min, média de 147 s por gate (07/11 18:15), mais o vitest inteiro que o executor roda dentro do `claude -p`.
+- como entrou: `selecao-testes.ts` (validação, escolha pura, registro da sombra), `gates.ts --run-cli` (`--base`, `--selecao-json`, linha `selecao:`), executor (preflight, linha SELECAO, linha do prompt, base no `--allowedTools`), pré-voo cat.10, `orq selecao`. CONTRATO §29.
+- detalhes executáveis:
+  - sombra: a inteira decide; `selecao.json` e SELECAO dizem o conjunto, os escapes e os minutos estimados.
+  - afetados: o gate roda o próprio cmd com a lista (conjunto + `testes_sempre`); cai para a inteira com diff que casa `suite_inteira_se`, apaga ou renomeia, conjunto vazio ou cálculo com erro.
+  - virada (CONTRATO §29): ≥ 7 dias em sombra, 0 escape, ≥ 5 inteiras vermelhas; decisão humana de config, só com a rede existindo de fato.
+- depende de: M-21 para a rede da suíte inteira existir no motor (nesta etapa ela é só texto).
+- fontes: medição do Comarka 07/11 18:15; exceção 07/11 18:16; etapa M69 (`~/orq-sessoes/relatorio-kit-m69.md`).
+
 ## Conflitos em aberto
 - M-04: L3-01 marcado como SUBSTITUI o item 25 da base (consenso simples contra consenso com filtro e peso medidos). Decide no PASSO 0 da etapa que pegar o item.
 - M-52: L1-02 pressiona o descarte de "juiz de outra família de modelo" com critério de reabertura. Decide no PASSO 0 da etapa que pegar o item.
@@ -881,11 +895,15 @@ Registradas pela etapa que as viu. Não são itens da fila: a regra "item novo s
 - Ciclo de dependência entre filas: o gate procura ciclo só dentro da fila (`gate-ticket.ts`, grafo da regra 7); 1254 depende de 5197 e um 5197 que dependesse de 1254 travaria as duas filas em silêncio. Fonte: etapa c0052-B1a.
 - `orq config` com `ORQ_CONFIG` não valida o caminho (o verbo roda antes do `lib.sh`, `scripts/orq:92`): um caminho fora do checkout é lido em vez de recusado. Fonte: etapa c0052-B1a.
 - `test-adiamentos-limite.sh` caso A exige `dur=0s` ou `1s` e mediu `2s` sob a carga da suíte inteira (07/11); sozinho passou 3 de 3. A régua de tempo do teste é apertada para máquina carregada. Fonte: etapa c0052-B1a.
+- Sombra custa uma listagem por tentativa: no Comarka (cópia de `d234e07`, carga 35 a 40) o `vitest list --changed` levou 27 a 38 s, contra 147 s de média do gate inteiro. Rodar a listagem em paralelo com a inteira, ou reaproveitar o grafo de módulos, tiraria esse custo. Fonte: etapa M69.
+- `VIZINHO_CMD_BASE` (`executor.sh`, 8c) e `roda_vitest_isolado` (L11) rodam `npx --no-install vitest run` fixo, não o cmd do gate de testes do config: no dashboard (`node_modules/.bin/vitest run`) é outro comando. Fonte: etapa M69.
+- Seleção por grafo de import não vê teste que lê o código por fs, glob ou processo: no Comarka, 99 arquivos de teste fazem isso sobre `src/` ou `scripts/` na mesma linha, e 783 usam essas APIs de algum jeito. `testes_sempre` cobre os conhecidos; um levantamento automático (grep no pré-voo) manteria a lista viva. Fonte: etapa M69.
 - `config-chaves.ts:39` cita `lib.sh:53` para `max_retries`; a leitura está em `lib.sh:118` desde a B1a (era `:93` no fb81911). As referências `onde` da tabela de chaves envelhecem a cada etapa que mexe no `lib.sh`. Fonte: etapa c0052-B1a.
 
 ## Fora do motor (ficam no Comarka)
 - L6-01: o `autocommit_status_fila` do loop do Comarka faz push sem `pull --rebase` e, em 15/10 às 13:28, colidiu com o `publicar.sh`. O motor do kit não pusha (D11); o push do autocommit já está fora do motor em `docs/migracao-comarka.md`. Fonte: HANDOFF-15out-f1-lote1-apolo.md.
 - L6-04: o `publicar.sh` do Comarka faz cherry-pick só do sha passado e perde os commits de baixo quando a origin/main andou; devia recusar ou rebasear com mais de um commit à frente. Script do repo, sem par no kit. Fonte: HANDOFF-17out-madrugada.md.
+- `vitest list --changed` e `vitest run --changed` saem rc 1 no Comarka `d234e07` ("Collect Error": `src/components/estados/empty-state.tsx` com `"jsx": "preserve"` no tsconfig, na análise do grafo). Medido numa cópia: com `oxc: { jsx: { runtime: 'automatic' } }` no `vitest.config.ts` a listagem sai rc 0 (8 afetados no diff do 1008). Sem isso, a sombra do Comarka cai sempre para a inteira com `cmd_listar falhou (rc 1)`. Mudança de config do Comarka, por ticket de lá. Fonte: etapa M69.
 - Orquestração de agentes (LangChain, LangGraph e afins) não entra no kit: o kit é fábrica de código determinística (fila, gates, juiz), não runtime de agentes. A orquestração de agentes da Comarka fica no Comarka OS, com o Apolo como supervisor. Decisão do Lucas, 06/11/2026.
 
 ## Lições candidatas (decisão do Lucas, não estão no PLAYBOOK)

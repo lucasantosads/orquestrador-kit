@@ -1184,6 +1184,14 @@
   *Evidência:* `~/orq-sessoes/relatorio-kit-c0052-b.md` (vermelho de cada peça, corpus do C17).
   *Teste:* `orquestrador-filas-c0052.test.ts`, `test-filas-irmas.sh`; fixtures reais do Comarka
   93ecfa4 em `test/fixtures/c0052/`.
+- **M69 · o gate de testes roda só os afetados (M-69, 07/11/2026).** Chave `selecao_testes`
+  validada, ausente = hoje byte a byte (`c683df8`); escolha pura com fallback e `testes_sempre`
+  (`a7967a3`); sombra com `selecao.json` e SELECAO (`b828d49`); prompt e `--allowedTools` com o
+  comando de afetados (`0e49fa5`); afetados no gate e cat.10 (`c6e01d6`); `orq selecao` (`b567940`).
+  CONTRATO §29. *Evidência:* `~/orq-sessoes/relatorio-kit-m69.md` (vermelho de cada peça, medição
+  no Comarka). *Teste:* `orquestrador-selecao-{ouro,config,escolha,sombra,prompt,afetados,relatorio}.test.ts`;
+  fixtures em `test/fixtures/m69/` (configs reais, ouro do motor `ee8c4a7`, diffs reais do Comarka).
+  Pendência da KF: o ouro com o config da fila do próprio kit.
 
 ## PENDENTES
 

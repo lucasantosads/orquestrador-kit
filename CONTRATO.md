@@ -2488,6 +2488,43 @@ Relatório: `~/orq-sessoes/relatorio-kit-c0052-b.md`. Decisões do Lucas de 07/1
 - **Fora do B1a** (B1b): painel, resolvedor, triador, `instalar.sh` e migrações seguem lendo
   `docs/fila`.
 
+## 29. Etapa M69: o gate de testes roda só os afetados (M-69) (07/11/2026)
+
+Relatório: `~/orq-sessoes/relatorio-kit-m69.md`. Decisões do Lucas de 07/11 (Q-M69-2 a Q-M69-9).
+
+- **Chave.** `gates[].selecao_testes`, opcional, só no gate de papel testes (declarado ou pelo
+  nome), em um gate só: `{modo, cmd_afetados, cmd_listar, suite_inteira_se, testes_sempre,
+  rede_suite_inteira}`. **Ausente ou `modo: "inteira"` = o motor de antes, byte a byte** (prompt,
+  `--allowedTools`, `gates.txt`, `gate-falha.txt`, trilha), provado contra os configs reais do
+  Comarka (migrado), do CI e do dashboard. Valor inválido é falha alta: o preflight adia
+  (`ADIADO motivo=preflight`), o `gates.ts --run-cli` sai rc 2 e o pré-voo dá NO-GO **cat.10**.
+- **`{base}`** é o sha de onde a worktree do ticket nasceu. `cmd_listar` (ex.: `npx vitest list
+  --filesOnly --changed {base}`) lista sem rodar; `cmd_afetados` (ex.: `npx vitest run --changed
+  {base}`) é o que o agente roda.
+- **Escolha** (`selecao-testes.ts:escolherSelecao`). Cai para a inteira quando o diff vem vazio,
+  apaga ou renomeia arquivo, casa `suite_inteira_se` (ausente = `SUITE_INTEIRA_PADRAO`), o
+  `cmd_listar` falha ou o conjunto vem vazio (o vitest sai rc 0 com "No test files found").
+  `testes_sempre` soma ao conjunto e não salva conjunto vazio.
+- **sombra.** A suíte inteira roda e decide. Depois dela, o motor grava `selecao.json` na
+  tentativa (diff, escolha, falhas da inteira, escape, segundos da inteira e estimados dos
+  afetados) e a linha `SELECAO` na trilha. Escape = arquivo de teste que falhou na inteira e não
+  estava no conjunto; inteira vermelha sem FAIL legível = escape indeterminado.
+- **afetados.** O gate de testes roda o **próprio `cmd`** com a lista no fim (conjunto +
+  `testes_sempre`), porque `vitest run --changed <base> <arquivo>` é interseção. Por isso o modo
+  exige `cmd` simples (sem `;`, `&&`, `|`, subshell, `$` ou redirecionamento) e
+  `rede_suite_inteira` preenchida. Nome do gate, linha `ok`/`FALHA`, recorte e `gate-falha.txt`
+  não mudam. Depois do `VEREDITO:`, uma linha `selecao: afetados (...; suíte inteira: <rede>)` ou
+  `selecao: inteira (<motivo>)` para o juiz. A L11, a 8c, a base vermelha e o triador leem o
+  mesmo formato.
+- **Prompt.** Em sombra e afetados, o item 2 de ENTREGA ganha uma linha com o `cmd_afetados` já
+  com a base (e os `testes_sempre` com o cmd do gate), e o comando entra no `--allowedTools`
+  da mesma chamada.
+- **Regra da virada.** `afetados` só liga com: pelo menos **7 dias em sombra**, **zero escape**
+  (e zero indeterminado) e pelo menos **5 inteiras vermelhas** na janela (`orq selecao [--dias
+  N]`), **e** a rede da suíte inteira existindo de fato, conferida pelo humano (nesta etapa a
+  rede é só o texto de `rede_suite_inteira`; o lugar dela no motor é o M-21). Virada e volta
+  são decisão humana de config.
+
 ## 10. Divergências conhecidas
 
 O que este contrato **não** descreve como gostaria, e a peça que fecha cada uma.

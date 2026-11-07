@@ -1298,3 +1298,24 @@ Asserções existentes que mudaram: nenhuma. O inventário de severidades
 
 Asserções existentes que mudaram: `orquestrador-tools-derivadas.test.ts` conta 17 desfechos
 nomeados (eram 15) e cobra os dois novos (`SPEC_DESATUALIZADA`, `SPEC_CONFLITANTE`).
+
+### Etapa M69 · o gate de testes roda só os afetados (M-69) (07/11/2026)
+
+- **M69-P1** `c683df8`: `gates[].selecao_testes` lida e validada (`selecao-testes.ts`); inválida
+  adia no preflight e sai rc 2 no `gates.ts`. Ouro do motor `ee8c4a7` com os configs reais do
+  Comarka (migrado), CI e dashboard: ausente e `inteira` batem byte a byte. Vermelho: 4 falhas.
+- **M69-P2** `a7967a3`: `escolherSelecao` com fallback para a inteira (diff vazio, D/R,
+  `suite_inteira_se`, erro do cálculo, conjunto vazio) e `testes_sempre`. Casos de diffs reais
+  do Comarka. Vermelho: 17 falhas.
+- **M69-P3** `b828d49`: sombra grava `selecao.json` e SELECAO; a inteira decide (ouro igual). O
+  1523 do Comarka dá escape. Vermelho: 5 falhas.
+- **M69-P4** `0e49fa5`: linha do prompt com o `cmd_afetados` e a base; comando no
+  `--allowedTools`. Vermelho: 7 falhas.
+- **M69-P5** `c6e01d6`: afetados roda o cmd do gate com a lista; linha `selecao:` depois do
+  VEREDITO; cmd composto e falta de rede recusados; pré-voo cat.10. Vermelho: 10 falhas.
+- **M69-P6** `b567940`: `orq selecao` e a regra da virada. Vermelho: módulo inexistente.
+- **M69-P7**: CONTRATO §29, PECAS, MELHORIAS (M-69 feito, exceção de 07/11 18:16, três ideias e
+  um item fora do motor).
+
+Asserções existentes que mudaram: `orquestrador-toolchain-tsx.test.ts` conta 16 chamadas a
+`"${ORQ_TSX[@]}"` (eram 15; a nova é o `orq selecao`).
