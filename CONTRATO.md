@@ -2525,6 +2525,33 @@ Relatório: `~/orq-sessoes/relatorio-kit-m69.md`. Decisões do Lucas de 07/11 (Q
   rede é só o texto de `rede_suite_inteira`; o lugar dela no motor é o M-21). Virada e volta
   são decisão humana de config.
 
+## 30. Etapa KF: o kit roda a própria fila (M-68) (07/11/2026)
+
+Relatório: `~/orq-sessoes/relatorio-kit-fila-propria.md`. Decisões do Lucas de 07/11 (K1, P-1 a P-9).
+
+- **Onde.** `docs/fila-kit/`, escolhida por `ORQ_CONFIG=docs/fila-kit/000-config.json` (§28). O kit
+  continua sem `docs/fila`: `test/fixtures/orq-harness.ts:configDeReferencia` e as guardas dos
+  `test-*.sh` usam o config do repo quando ele existe. Painel, resolvedor e triador não veem a fila do
+  kit até o B1b.
+- **Régua.** `zona_proibida.no_write_paths` do config do kit: `gates.ts`, `juiz.ts`,
+  `enforcement-core.ts`, `enforcement.sh`, `decisao.ts`, `decisao-cli.ts`, `gate-ticket.ts`,
+  `schemas/**`, o config e as liberações da fila, `scripts/kit/test-shell.sh`,
+  `scripts/kit/test-instalar.sh`, `vitest.config.ts`, `tsconfig.json`, `package.json`,
+  `package-lock.json`, `CLAUDE.md`. Mudança nesses arquivos é sessão manual. O loop roda o motor do
+  checkout principal (`lib.sh:23-24`, `enforcement.sh:69`): o ticket não troca a régua que o julga.
+- **Afrouxamento.** `enforcement.afrouxamento` (opcional): ausente ou `ampliados` = a 8c (§21), só nos
+  vizinhos ampliados; `todo_teste` = em todo arquivo de teste (`RE_ARQ_TESTE`, agora em
+  `enforcement-core.ts`) existente tocado pelo diff, modificado ou apagado. Teste criado fica de fora.
+  O motivo da decisão é `afrouxamento em teste: <detalhe>`, sem retry, como na 8c.
+- **Gates.** Os 4 do kit (`tsc`, `vitest` com `TZ=UTC`, `test-shell.sh`, `test-instalar.sh`), binário
+  local, cada um com `env -u ORQ_CONFIG` na frente: o `gates.ts` repassa o ambiente do loop
+  (defeito `docs/defeitos/2026-11-07-orq-config-vaza-para-os-gates.md`). `claude_timeout_secs` 2586
+  (soma medida das suítes com 50%).
+- **Status na main.** O `autocommit_status_fila` commita na `main` do checkout principal do kit, e o
+  preflight do executor exige esse checkout limpo. Merge de etapa e promoção da `staging-kit` passam a
+  pausar a fila do kit e esperar `ocioso`; a `staging-kit` recebe a `main` a cada etapa manual, antes
+  de retomar.
+
 ## 10. Divergências conhecidas
 
 O que este contrato **não** descreve como gostaria, e a peça que fecha cada uma.

@@ -8,6 +8,7 @@
 - Vídeo novo entra pela leitura semanal.
 - Exceção de 07/11/2026 (decisão Q2 do Lucas, plano c-0052): M-64 a M-67 (C-0052 M1, M5, M6 por área e C-0052 M10) entraram sem a leitura semanal e sem fechar outro item. A regra segue valendo para o resto.
 - Exceção de 07/11/2026 18:16 (decisão do Lucas, mesma via do Q2): M-69 (seleção de testes afetados no gate de testes) entrou sem a leitura semanal e sem fechar outro item. A regra segue valendo para o resto.
+- Exceção de 07/11/2026 (decisão K1 do Lucas, etapa KF): M-68 (o kit roda a própria fila) entrou sem a leitura semanal e sem fechar outro item, no mesmo molde da Q2. A regra segue valendo para o resto.
 
 Status possíveis: ideia | triado | planejado | em-etapa | parcial | feito | descartado | substituído. "feito (antes de 28/10, arquivo:linha)" e "parcial: o que falta" vêm da conferência no código da etapa MELHORIAS-0.
 
@@ -37,7 +38,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 | M-16 | Estado do ticket só-anexar ou versionado | parcial | A | C1 | opinião | | v095, v061, L2-02 |
 | M-17 | Contradição de spec exposta, nunca resolvida em silêncio | parcial | A | C1, C5 | opinião | M-03 | v093, L2-03 |
 | M-18 | Nível de revisão 0/1/2 com marcha baixa para código crítico | parcial | A | C5 | opinião | | base #18, v084, L2-10, C-0052 M2 |
-| M-19 | Anti-trapaça no diff | parcial | A | C5 | não registrada | | base #4, C-0052 M4 |
+| M-19 | Anti-trapaça no diff | parcial (etapa KF): o anti-afrouxamento vale em todo teste existente tocado com `enforcement.afrouxamento: todo_teste`; falta `as any`, ts-ignore, try/catch novo e teste em shell | A | C5 | não registrada | | base #4, C-0052 M4 |
 | M-20 | Varredura de segredos e checklist auth/RLS/env | parcial | A | C5 | não registrada | | base #5 |
 | M-21 | Fila de merge com rebase e gates de novo | ideia | A | C1 | não registrada | | base #6 |
 | M-22 | criterios_privados no ticket | ideia | A | C5 | não registrada | | base #10, C-0052 M8 |
@@ -61,6 +62,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 | M-65 | Diff que toca a fila reprova no enforcement | parcial | B | C5, C1 | relato | | C-0052 M5, plano c-0052 07/11 |
 | M-66 | REVIEW.md do juiz por área | triado | B | C5 | relato | | C-0052 M6, plano c-0052 07/11 |
 | M-67 | Batimento do loop a cada ciclo | triado | B | C1 | relato | M-54 | C-0052 M10, plano c-0052 07/11 |
+| M-68 | O kit roda a própria fila | parcial (etapa KF): falta liberar a cat.0 do pré-voo no kit, criar a staging-kit, instalar o job e o primeiro ciclo | B | C1 | relato | M-54 | decisão K1 do Lucas 07/11, etapa KF |
 | M-69 | Gate de testes roda só os afetados, com modo sombra e a suíte inteira como rede | feito (etapa M69) | B | custo | medida | M-21 (rede da suíte inteira) | medição do Comarka 07/11 18:15, exceção 07/11 18:16 |
 | M-27 | Experimento best-of-N com funil e perda do seletor | ideia | C | C5, C2, custo | medida | M-29, M-56 | base (experimentos), v052, v044, v048, v053, v054, v050, L3-02, L3-09, L4-01, L4-02, L5-03 |
 | M-28 | Transcrição stream-json com extrator e taxonomia de falhas | ideia | C | C2, C3, custo | medida | | base #12, v061, v046, v048, L2-07, L3-05, L4-05 |
@@ -278,7 +280,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - fontes: base #18, v084, L2-10, C-0052 M2 (ticket vermelho não roda sem token humano; ticket 1592 do Comarka)
 
 ### M-19 Anti-trapaça no diff
-- status: parcial: o anti-afrouxamento já existe nos testes vizinhos ampliados (scripts/orquestrador/enforcement-core.ts:658-709, 8c); falta valer para o diff inteiro e cobrir `as any`, ts-ignore, try/catch novo e teste existente alterado
+- status: parcial (etapa KF): o anti-afrouxamento da 8c (enforcement-core.ts, `violacoesDeAfrouxamento`) vale nos vizinhos ampliados e, com `enforcement.afrouxamento: todo_teste` no config, em todo arquivo de teste existente tocado pelo diff (o criado fica de fora); a fila do kit liga a chave. Falta cobrir `as any`, ts-ignore, try/catch novo e os testes em shell (`test-*.sh`)
 - o que é: detectar no diff o que afrouxa a verificação em vez de resolver o problema.
 - como entra no kit: gate mecânico sobre o diff, antes do juiz.
 - detalhes executáveis:
@@ -743,6 +745,18 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - depende de: ticket 1594 do Comarka; M-54.
 - fontes: C-0052 M10, plano c-0052 07/11
 
+### M-68 O kit roda a própria fila
+- marco: B (entrou em 07/11 pela exceção K1)
+- status: parcial (etapa KF): falta liberar a cat.0 do pré-voo no kit (o kit não tem `docs/orquestrador/skill/`, `prevoo.ts:checarSpecVendorizada`), criar a `staging-kit`, instalar o job e o primeiro ciclo (o canário 001)
+- o que é: as etapas do kit viram tickets que o loop do próprio kit executa em worktree, com as 4 suítes como gate e o juiz. O merge da `staging-kit` na `main` segue humano.
+- como entra no kit: fila em `docs/fila-kit/`, escolhida por `ORQ_CONFIG=docs/fila-kit/000-config.json` (M-54). O kit continua sem `docs/fila` (o harness de teste e as guardas dos `test-*.sh` dependem disso).
+- detalhes executáveis:
+  - régua em `zona_proibida.no_write_paths` do config do kit: gates, juiz, enforcement, decisão (inteira, com a CLI), gate de ticket, `schemas/**`, o config e as liberações da fila, os comandos dos gates de shell, `vitest.config.ts`, `tsconfig.json`, `package*.json`, `CLAUDE.md`. Mudança na régua é sessão manual (camada 3).
+  - afrouxamento de teste reprova em todo teste existente tocado (`enforcement.afrouxamento: todo_teste`, M-19).
+  - os 4 gates começam com `env -u ORQ_CONFIG` (defeito `docs/defeitos/2026-11-07-orq-config-vaza-para-os-gates.md`).
+  - o loop do kit divide a cota da assinatura com os outros loops, sem prioridade (risco 2 aceito).
+  - corrente de merge nova (pausar a fila do kit, esperar ocioso, `--no-ff` na main, staging-kit recebe a main antes de retomar): `~/orq-sessoes/relatorio-kit-fila-propria.md`, KF-4.
+- fontes: decisão K1 do Lucas (07/11), `~/orq-sessoes/SESSAO-KIT-fila-propria.md`
 ### M-69 Gate de testes roda só os afetados, com modo sombra e a suíte inteira como rede
 - marco: B (entrou em 07/11 18:16 por exceção, mesma via do Q2)
 - status: feito (etapa M69)

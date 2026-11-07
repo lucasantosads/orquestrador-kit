@@ -1192,6 +1192,16 @@
   no Comarka). *Teste:* `orquestrador-selecao-{ouro,config,escolha,sombra,prompt,afetados,relatorio}.test.ts`;
   fixtures em `test/fixtures/m69/` (configs reais, ouro do motor `ee8c4a7`, diffs reais do Comarka).
   Pendência da KF: o ouro com o config da fila do próprio kit.
+- **KF · o kit roda a própria fila (M-68, M-19 parcial, 07/11/2026).** Anti-afrouxamento em todo
+  teste existente tocado com `enforcement.afrouxamento: todo_teste` (`ded3972`); fila do kit em
+  `docs/fila-kit/`, escolhida por `ORQ_CONFIG`, com a régua em `zona_proibida`, gates com
+  `env -u ORQ_CONFIG` e `node_modules` sem barra no `.gitignore` (`9f6f21b`); canário 001 pendente
+  (`5bb0052`). CONTRATO §30. Falta: a cat.0 do pré-voo no kit (sem `docs/orquestrador/skill/`), a
+  `staging-kit`, o job e o primeiro ciclo.
+  *Evidência:* `~/orq-sessoes/relatorio-kit-fila-propria.md` (vermelho de cada peça, duração das
+  suítes, corrente de merge).
+  *Teste:* `orquestrador-afrouxamento-kf.test.ts` (fixtures reais `617d6ba` e `21cf14b` do kit em
+  `test/fixtures/afrouxamento-kf/`), `orquestrador-fila-kit.test.ts`.
 
 ## PENDENTES
 
