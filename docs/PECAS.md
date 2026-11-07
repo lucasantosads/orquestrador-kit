@@ -1172,6 +1172,18 @@
   *Teste:* `orquestrador-prevoo-recon.test.ts` (853 do Comarka), `orquestrador-prevoo-aviso.test.ts`
   (002 e 019 do dashboard, 926 do Comarka), `orquestrador-conflito.test.ts` (043 do dashboard),
   `orquestrador-liberar-migrar.test.ts` (L14 P4); fixtures em `test/fixtures/l14/`.
+- **c0052-B0 · migração do Comarka e C-0052 no MELHORIAS (07/11/2026).** `docs/migracao-comarka.md`
+  ganha o estado de 07/11 (comarka 93ecfa4, kit fb81911), conferido por `git grep`, e as decisões Q1
+  a Q5 (`24d094c`); MELHORIAS registra M-64 a M-67 pela exceção Q2, M-54 em etapa e M-26 renomeado
+  (`c13957b`). *Evidência:* `~/orq-sessoes/relatorio-kit-c0052-b.md`.
+- **c0052-B1a · N filas por repo, primeira metade (M-54, 07/11/2026).** `ORQ_CONFIG` escolhe a fila
+  e a pasta é o diretório do config (`62cb006`); executor, gates, juiz, pré-voo, decisao-cli e gate
+  de ticket leem a fila escolhida (`cc68862`); pausa e lock por fila, `orq pausar --todas`, cat.9
+  (`7d9ff6a`); dependência entre filas só leitura e C17 (`3c6ba5e`); `instalar-launchd.sh --config`
+  (`eb7cba9`). CONTRATO §28. Falta o B1b: painel, resolvedor, triador e instalador.
+  *Evidência:* `~/orq-sessoes/relatorio-kit-c0052-b.md` (vermelho de cada peça, corpus do C17).
+  *Teste:* `orquestrador-filas-c0052.test.ts`, `test-filas-irmas.sh`; fixtures reais do Comarka
+  93ecfa4 em `test/fixtures/c0052/`.
 
 ## PENDENTES
 

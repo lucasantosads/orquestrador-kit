@@ -55,7 +55,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 | M-61 | Experimento: ablação de scaffolding | ideia | A | custo, C2 | não registrada | M-56 | base (experimentos) |
 | M-62 | C15 e C16 do gate de ticket como erro para ticket novo | parcial | A | C2, C1 | medida | | relatório de bloqueios do dashboard, 30/10 |
 | M-10 | Validação da fila uma vez por lote, sem --no-verify | ideia | B | C1 | relato | | L6-15 |
-| M-54 | N filas por repo, cada uma com base, pausa e resolvedor | em-etapa (c0052-B1a) | B | C1 | relato | | L6-06, C-0052 (plano c-0052 07/11) |
+| M-54 | N filas por repo, cada uma com base, pausa e resolvedor | parcial (etapa c0052-B1a): falta B1b (painel, resolvedor, triador, instalador) | B | C1 | relato | | L6-06, C-0052 (plano c-0052 07/11) |
 | M-64 | Config por caminho como base do kernel por arquivo | triado | B | C1 | relato | M-54 | C-0052 M1, plano c-0052 07/11 |
 | M-65 | Diff que toca a fila reprova no enforcement | parcial | B | C5, C1 | relato | | C-0052 M5, plano c-0052 07/11 |
 | M-66 | REVIEW.md do juiz por área | triado | B | C5 | relato | | C-0052 M6, plano c-0052 07/11 |
@@ -599,7 +599,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - fontes: base #22, v088, L1-03
 
 ### M-54 N filas por repo, cada uma com base, pausa e resolvedor
-- status: em-etapa (c0052-B1a)
+- status: parcial (etapa c0052-B1a): falta B1b (painel, resolvedor, triador, instalador). Feito: `ORQ_CONFIG`, loop, executor, gates, juiz, pré-voo (cat.9), gate de ticket (regra 7 com irmãs, C17), pausa e lock por fila, `orq pausar --todas`, `instalar-launchd.sh --config` (CONTRATO §28)
 - o que é: o Comarka roda plataforma e apolo com filas, staging e worktree próprias. A pausa global de uma sessão segurou os dois loops; o painel não pausa o segundo; o resolvedor só enxerga docs/fila; o validar-fila valida contra a base errada e critério que compara com a base nasce "reprovado por dívida pré-existente".
 - como entra no kit: conceito de N filas por repo no kit. Cada fila tem o seu `000-config.json`; a variável `ORQ_CONFIG` escolhe qual (caminho dentro do checkout principal), e a pasta da fila é o diretório do config. Sem `ORQ_CONFIG`, os caminhos de hoje.
 - detalhes executáveis:
@@ -877,6 +877,11 @@ Registradas pela etapa que as viu. Não são itens da fila: a regra "item novo s
 - R5 com requeue automático para `DEPENDENCIA_FORA_DA_ALVO`: o triador classificaria R5 com `requeue sim_apos:alvo_tem:<arquivo>`, e o resolvedor reabriria quando `git cat-file -e <alvo>:<arquivo>` passar (verificável sem suíte, como o D1 e o D4 em `resolvedor/r5.ts`). Hoje é D0, decisão humana (decisão do Lucas, 30/10). Fonte: etapa L13.
 - O juiz reprovar a declaração honesta de falta de vermelho empurra o agente a alegar sem prova: no 037 e no 039 a tentativa 1 dizia "não vi falhando" (verdade, a permissão não deixava) e foi reprovada; a 2 alegou controles "vistos falhando" que o harness não conferiu. Liga com o 8f (vermelho antes MECÂNICO) e com o M-57 (viés do juiz com e sem as alegações do executor). Fonte: etapa L13.
 - Antes de tentar de novo um ticket que falhou, buscar em `docs/defeitos/` e no `docs/PLAYBOOK.md` defeito parecido já resolvido e mandar o achado no pacote do retry. Candidata, sem etapa: só entra se a medição mostrar a mesma classe de falha se repetindo (taxonomia do M-28, curva do M-41). Liga com o M-02 (retry só paga com fato novo) e com a L6-10 (classe vista 2 vezes). Hoje o PLAYBOOK não entra no prompt do executor. Fonte: decisão do Lucas, 06/11/2026.
+- Carregador único do config em TS: ~25 arquivos fazem `JSON.parse(readFileSync(...000-config.json))` por conta própria. A B1a trocou só o caminho (`fila-caminho.ts`); um carregador com tipos tiraria a duplicação e é a base natural do kernel do M-64. Fonte: etapa c0052-B1a.
+- Ciclo de dependência entre filas: o gate procura ciclo só dentro da fila (`gate-ticket.ts`, grafo da regra 7); 1254 depende de 5197 e um 5197 que dependesse de 1254 travaria as duas filas em silêncio. Fonte: etapa c0052-B1a.
+- `orq config` com `ORQ_CONFIG` não valida o caminho (o verbo roda antes do `lib.sh`, `scripts/orq:92`): um caminho fora do checkout é lido em vez de recusado. Fonte: etapa c0052-B1a.
+- `test-adiamentos-limite.sh` caso A exige `dur=0s` ou `1s` e mediu `2s` sob a carga da suíte inteira (07/11); sozinho passou 3 de 3. A régua de tempo do teste é apertada para máquina carregada. Fonte: etapa c0052-B1a.
+- `config-chaves.ts:39` cita `lib.sh:53` para `max_retries`; a leitura está em `lib.sh:118` desde a B1a (era `:93` no fb81911). As referências `onde` da tabela de chaves envelhecem a cada etapa que mexe no `lib.sh`. Fonte: etapa c0052-B1a.
 
 ## Fora do motor (ficam no Comarka)
 - L6-01: o `autocommit_status_fila` do loop do Comarka faz push sem `pull --rebase` e, em 15/10 às 13:28, colidiu com o `publicar.sh`. O motor do kit não pusha (D11); o push do autocommit já está fora do motor em `docs/migracao-comarka.md`. Fonte: HANDOFF-15out-f1-lote1-apolo.md.

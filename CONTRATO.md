@@ -2457,6 +2457,37 @@ de 01/11 (Q1 a Q8 do relatório).
 `.sem-progresso` e `.adiamentos`. O loop do kit não tem gate_streak; o `resolvedor/gate-streak.ts`
 lê só o sentinela do loop legado do Comarka. R3 no resolvedor é diagnóstico e aviso.
 
+## 28. Etapa c0052-B1a: N filas por repo, primeira metade (M-54) (07/11/2026)
+
+Relatório: `~/orq-sessoes/relatorio-kit-c0052-b.md`. Decisões do Lucas de 07/11 (Q-A a Q-F).
+
+- **Qual fila.** `ORQ_CONFIG` = caminho do `000-config.json` da fila, relativo ao checkout
+  principal ou absoluto dentro dele. A pasta da fila é o diretório do config, e o nome é sempre
+  `000-config.json`. Fora do checkout, `..`, symlink, outro nome ou config ausente: o `lib.sh`
+  aborta (`[orq ERRO] ORQ_CONFIG ...`) e `fila-caminho.ts:caminhoConfig` lança. O `lib.sh` exporta
+  `ORQ_CONFIG` relativo, e os CLIs em TS (gates, juiz, decisao-cli, prevoo, gate de ticket) leem
+  por ele. Sem a variável: `docs/fila/000-config.json`, os caminhos de antes.
+- **Por fila, do config dela:** pasta e tickets, `branch_alvo`, `worktrees_prefixo` (worktree do
+  ticket e de merge), `runs_dir` (evidência, trilha, STATUS, cooldown e o lock
+  `<runs_dir>/.local-loop.lock`), `pausar_file` e o legado `.orq-pause` (na pasta da fila),
+  `launchd.label`, `launchd.start_interval` e o log do launchd (`<runs_dir>/launchd-agent.log`).
+- **Pausa só por fila** (Q-A): a pausa de uma não segura a outra. `orq pausar --todas [motivo]`
+  roda `orq pausar` com `ORQ_CONFIG` de cada fila (esta e `filas_irmas`), e cada trilha ganha a
+  sua `PAUSA`.
+- **`filas_irmas`** (chave opcional): pastas das outras filas do repo, relativas ao checkout.
+  Pré-voo **cat.9**, só com a chave: NO-GO com `runs_dir` repetido entre filas ou `runs_dir` ou
+  `pausar_file` fora da pasta da fila (Q-B).
+- **Dependência entre filas, só leitura** (Q-D): `razao_nao_processavel` procura o id na fila e,
+  sem achar, nas irmãs (`lib.sh:ticket_file_irma`), e lê só o status. Seleção, execução e escrita
+  ficam na própria fila. A conferência da dependência de irmã na branch alvo é do B1b.
+- **Gate de ticket.** A regra 7 aceita dependência de irmã. **C17** (erro, só ticket pendente): id
+  repetido na fila ou numa irmã (Q-E; 0 acusação no corpus do CI, do dashboard e das duas filas do
+  Comarka 93ecfa4).
+- **launchd.** `instalar-launchd.sh --config <000-config.json da fila>` instala o job dela, com
+  `ORQ_CONFIG` em `EnvironmentVariables`. Sem `--config`, o plist é byte a byte o de antes.
+- **Fora do B1a** (B1b): painel, resolvedor, triador, `instalar.sh` e migrações seguem lendo
+  `docs/fila`.
+
 ## 10. Divergências conhecidas
 
 O que este contrato **não** descreve como gostaria, e a peça que fecha cada uma.

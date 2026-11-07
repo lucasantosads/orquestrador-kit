@@ -62,6 +62,21 @@ O Comarka roda dois loops (`ORQ_LOOP`, `lib.sh:39-44` do Comarka; plist `com.com
 O kit tem uma fila por repo até o M-54 (etapas c0052-B1a e B1b). A config da fila apolo
 (`docs/fila/apolo/000-config.json`) nasce no Comarka, por commit `MOTOR:`, não no kit.
 
+### Etapa c0052-B1a (07/11/2026): o que o kit já sabe das duas filas
+
+`ORQ_CONFIG` escolhe o config da fila e a pasta da fila é o diretório dele; sem a variável, `docs/fila`
+como antes (CONTRATO §28). O config da fila apolo precisa de `branch_alvo: staging-apolo`,
+`worktrees_prefixo`, `runs_dir`, `pausar_file`, `liberacoes_file` e `decisoes_file` dentro de
+`docs/fila/apolo/`, `launchd.label` próprio e `filas_irmas: ["docs/fila"]` (a raiz declara
+`["docs/fila/apolo"]`). O histórico de runs do apolo fica em `docs/fila/runs` (o legado compartilha;
+o kit recusa `runs_dir` repetido). A pausa global do Comarka (`docs/fila/.orq-pause` segura os dois
+loops) deixa de existir: pausar tudo é `orq pausar --todas`. Falta o B1b: painel, resolvedor,
+triador e instalador.
+
+### Decisões pendentes do Lucas
+
+- orçamento e `custo_file` por fila: com `custo_file` próprio o teto diário vale por fila; decidir antes do corte do Comarka.
+
 
 Inventário de 02/10/2026. Fonte: `bash instalar.sh --atualizar ~/Projetos/comarka-operacional --dry-run`
 (kit 2.1.0-dev, comarka main 718206d): **126 diferenças** — 28 só no comarka, 74 só no kit, 24 nos dois com conteúdo diferente.
