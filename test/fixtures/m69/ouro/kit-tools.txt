@@ -1,0 +1,1 @@
+Read,Edit,Write,Glob,Grep,Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git restore:*),Bash(ls:*),Bash(cat:*),Bash(mkdir:*),Bash(sed:*),Bash(grep:*),Bash(npx vitest run test/calculo.test.ts),Bash(npx vitest run test/calculo.test.ts:*),Bash(true),Bash(true:*)

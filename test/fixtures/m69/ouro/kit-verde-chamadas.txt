@@ -1,0 +1,4 @@
+tsc --noEmit
+vitest run
+test-shell.sh 
+test-instalar.sh 

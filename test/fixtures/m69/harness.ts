@@ -27,6 +27,9 @@ export const CONFIGS = {
   comarka: join(M69, 'config-comarka-migrado.json'),
   ci: join(M69, 'config-ci.json'),
   dashboard: join(M69, 'config-dashboard.json'),
+  // Etapa KF: o config VIVO da fila do kit, não uma cópia. Mudar o config é
+  // sessão manual (ele está na zona proibida da própria fila) e regrava o ouro.
+  kit: join(REPO_ROOT, 'docs', 'fila-kit', '000-config.json'),
 } as const
 export type Repo = keyof typeof CONFIGS
 
@@ -104,6 +107,9 @@ export function cenario(vermelho: boolean): Cenario {
     'next-build': { saida: 'build ok\n', rc: 0 },
     'npm-run': { saida: 'build ok\n', rc: 0 },
     'npm-test': vitest,
+    // os gates `shell` e `instalar` da fila do kit (`bash scripts/kit/*.sh`)
+    'test-shell.sh-': { saida: 'TODOS OS SCRIPTS SAÍRAM rc 0\n', rc: 0 },
+    'test-instalar.sh-': { saida: 'TODOS OS CHECKS PASSARAM\n', rc: 0 },
   }
 }
 
@@ -139,6 +145,9 @@ export function checkoutDeGates(configTexto: string, c: Cenario): { raiz: string
     writeFileSync(join(bin, nome), STUB)
     chmodSync(join(bin, nome), 0o755)
   }
+  // Etapa KF: os gates da fila do kit rodam `bash scripts/kit/<script>.sh`.
+  mkdirSync(join(raiz, 'scripts', 'kit'), { recursive: true })
+  for (const nome of ['test-shell.sh', 'test-instalar.sh']) writeFileSync(join(raiz, 'scripts', 'kit', nome), STUB)
   for (const [k, v] of Object.entries(c)) {
     writeFileSync(join(stubDir, `${k}.out`), v.saida)
     writeFileSync(join(stubDir, `${k}.rc`), String(v.rc))

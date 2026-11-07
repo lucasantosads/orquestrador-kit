@@ -1,0 +1,6 @@
+rc=0
+ok   typecheck <ms>ms
+ok   testes <ms>ms
+ok   shell <ms>ms
+ok   instalar <ms>ms
+VEREDITO: APROVADO

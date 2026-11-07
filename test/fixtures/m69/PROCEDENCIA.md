@@ -17,7 +17,7 @@ Por que o Comarka vai migrado: o config dele roda hoje no motor legado de lá e 
 - `<repo>-prompt.txt` e `<repo>-tools.txt`: prompt e `--allowedTools` de uma tentativa real (`run_attempt`, com o `claude_run` interceptado);
 - `<repo>-{verde,vermelho}-gates.txt`, `-gate-falha.txt` e `-chamadas.txt`: `gates.ts --run-cli` com os comandos em stub. A saída de vitest é real (`test/fixtures/instavel-l11`). Os `ms` saem normalizados.
 
-O config da fila do próprio kit fica fora: é pendência da etapa KF, que cria `docs/fila/` no kit.
+Etapa KF (M-68): o `kit` de `CONFIGS` é o config vivo da fila do kit, `docs/fila-kit/000-config.json` (sem cópia). Os `kit-*.txt` do `ouro/` foram gravados num clone descartável no commit `ee8c4a7` (motor anterior à M69), com este harness, este teste e esse config copiados para dentro, por `M69_GRAVAR_OURO=1 vitest run test/orquestrador-selecao-ouro.test.ts -t kit`. Os gates `shell` e `instalar` chamam `bash scripts/kit/*.sh`: o checkout de papel ganha esses dois scripts como stub (o mesmo dos outros comandos), verdes nos dois cenários; o vermelho é o do vitest. Mudar esse config regrava os `kit-*.txt`.
 
 ## diffs-comarka/ (P2)
 

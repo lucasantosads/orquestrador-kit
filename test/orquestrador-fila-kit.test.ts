@@ -66,7 +66,7 @@ describe('KF-P2 · a fila do kit existe, em docs/fila-kit, e o kit segue sem doc
   it('suíte inteira: nenhum gate tem selecao_testes, e o config diz isso em _selecao_kit', () => {
     const c = cfg();
     expect(c.gates.filter((g: { selecao_testes?: unknown }) => g.selecao_testes !== undefined)).toEqual([]);
-    expect(c._selecao_kit).toMatch(/selecao_testes/);
+    expect(c._selecao_kit).toMatch(/chave de seleção de testes da M-69/);
   });
   it('claude_timeout_secs 4200: o executor roda as suítes duas vezes dentro do claude -p (Q-3)', () => {
     expect(cfg().claude_timeout_secs).toBe(4200);

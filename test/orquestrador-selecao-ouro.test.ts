@@ -5,8 +5,9 @@
  * `ee8c4a7` (antes da M69), rodando este mesmo arquivo com
  * `M69_GRAVAR_OURO=1`. Com os configs REAIS do Comarka (migrado pelo kit), do
  * CI e do dashboard, o prompt, o `--allowedTools`, o `gates.txt` e o
- * `gate-falha.txt` têm de sair iguais. O config da fila do próprio kit fica de
- * fora até a etapa KF criar `docs/fila/` no kit.
+ * `gate-falha.txt` têm de sair iguais. O config da fila do próprio kit
+ * (`docs/fila-kit/000-config.json`) entrou na etapa KF, com o ouro gravado
+ * pelo mesmo motor `ee8c4a7`.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
