@@ -26,6 +26,9 @@ const REGUA = [
   'scripts/orquestrador/gate-ticket.ts',
   'scripts/orquestrador/perfil.ts',
   'scripts/orquestrador/campos-do-motor.json',
+  'scripts/orquestrador/prevoo.ts',
+  'scripts/orquestrador/selecao-testes.ts',
+  'scripts/orquestrador/selecao-relatorio.ts',
   'schemas/**',
   'docs/fila-kit/000-config.json',
   'docs/fila-kit/liberacoes.json',
@@ -60,6 +63,11 @@ describe('KF-P2 · a fila do kit existe, em docs/fila-kit, e o kit segue sem doc
     ]);
     expect(c.enforcement.afrouxamento).toBe('todo_teste');
   });
+  it('suíte inteira: nenhum gate tem selecao_testes, e o config diz isso em _selecao_kit', () => {
+    const c = cfg();
+    expect(c.gates.filter((g: { selecao_testes?: unknown }) => g.selecao_testes !== undefined)).toEqual([]);
+    expect(c._selecao_kit).toMatch(/selecao_testes/);
+  });
   it('claude_timeout_secs 4200: o executor roda as suítes duas vezes dentro do claude -p (Q-3)', () => {
     expect(cfg().claude_timeout_secs).toBe(4200);
   });
@@ -68,6 +76,10 @@ describe('KF-P2 · a fila do kit existe, em docs/fila-kit, e o kit segue sem doc
 describe('KF-P2 · a régua está na zona proibida (KF-2, P-8)', () => {
   it('no_write_paths tem a régua inteira', () => {
     expect(cfg().zona_proibida.no_write_paths).toEqual(expect.arrayContaining(REGUA));
+  });
+  it('juiz.paths_alto_risco e paths_harness espelham a régua', () => {
+    expect(cfg().juiz.paths_alto_risco).toEqual(expect.arrayContaining(REGUA));
+    expect(cfg().paths_harness).toEqual(expect.arrayContaining(REGUA));
   });
   it.each(REGUA.map((g) => g.replace('**', 'veredito.schema.json')))('%s reprova mesmo pedido na allowlist', (arq) => {
     const r = enforce({ changedFiles: [arq], allowlist: [arq], diff: '', config: cfg() as unknown as EnforceConfig });

@@ -751,7 +751,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - o que é: as etapas do kit viram tickets que o loop do próprio kit executa em worktree, com as 4 suítes como gate e o juiz. O merge da `staging-kit` na `main` segue humano.
 - como entra no kit: fila em `docs/fila-kit/`, escolhida por `ORQ_CONFIG=docs/fila-kit/000-config.json` (M-54). O kit continua sem `docs/fila` (o harness de teste e as guardas dos `test-*.sh` dependem disso).
 - detalhes executáveis:
-  - régua em `zona_proibida.no_write_paths` do config do kit: gates, juiz, enforcement, decisão (inteira, com a CLI), gate de ticket, `perfil.ts` (piso de tools), `campos-do-motor.json`, `schemas/**`, o config e as liberações da fila, os comandos dos gates de shell, `vitest.config.ts`, `tsconfig.json`, `package*.json`, `CLAUDE.md`. Mudança na régua é sessão manual (camada 3).
+  - régua em `zona_proibida.no_write_paths` do config do kit: gates, juiz, enforcement, decisão (inteira, com a CLI), gate de ticket, `perfil.ts` (piso de tools), `campos-do-motor.json`, o pré-voo, o seletor de testes (`selecao-testes.ts`, `selecao-relatorio.ts`), `schemas/**`, o config e as liberações da fila, os comandos dos gates de shell, `vitest.config.ts`, `tsconfig.json`, `package*.json`, `CLAUDE.md`. Mudança na régua é sessão manual (camada 3).
   - afrouxamento de teste reprova em todo teste existente tocado (`enforcement.afrouxamento: todo_teste`, M-19).
   - os 4 gates começam com `env -u ORQ_CONFIG -u ORQ_GATE`: o `ORQ_CONFIG` do loop vaza para o gate (defeito `docs/defeitos/2026-11-07-orq-config-vaza-para-os-gates.md`) e o `ORQ_GATE=1` faz o `describeHarness` pular 28 arquivos de teste do motor.
   - o loop do kit divide a cota da assinatura com os outros loops, sem prioridade (risco 2 aceito).
