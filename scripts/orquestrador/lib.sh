@@ -39,8 +39,32 @@ fi
 
 # Fila/config/runs: SEMPRE no checkout principal (fonte única), nunca no ROOT de
 # execução. Sob fixture não-git, MAIN_CHECKOUT cai em ROOT e isto resolve igual.
-FILA_DIR="$MAIN_CHECKOUT/docs/fila"
-CONFIG="$FILA_DIR/000-config.json"
+#
+# Etapa c0052-B1a (M-54): N filas por repo. `ORQ_CONFIG` escolhe o config da
+# fila (relativo ao checkout principal, ou absoluto dentro dele) e a pasta da
+# fila é o diretório dele. Sem a variável, docs/fila como sempre. Fora do
+# checkout, `..`, symlink ou config ausente: aborta. Par de fila-caminho.ts.
+config_da_fila() {
+  local pedido="$1" abs dir_fis raiz_fis
+  case "$pedido" in /*) abs="$pedido" ;; *) abs="$MAIN_CHECKOUT/$pedido" ;; esac
+  [ -f "$abs" ] || { echo "ORQ_CONFIG '$pedido' não existe (checkout: $MAIN_CHECKOUT)"; return 1; }
+  [ -L "$abs" ] && { echo "ORQ_CONFIG '$pedido' é symlink (checkout: $MAIN_CHECKOUT)"; return 1; }
+  dir_fis="$(cd "$(dirname "$abs")" && pwd -P)"
+  raiz_fis="$(cd "$MAIN_CHECKOUT" && pwd -P)"
+  case "$dir_fis/" in
+    "$raiz_fis"/*) printf '%s\n' "${dir_fis#"$raiz_fis"/}/$(basename "$abs")" ;;
+    *) echo "ORQ_CONFIG '$pedido' fica fora do checkout principal ($MAIN_CHECKOUT)"; return 1 ;;
+  esac
+}
+if [ -n "${ORQ_CONFIG:-}" ]; then
+  _cfg_rel="$(config_da_fila "$ORQ_CONFIG")" || { printf '[orq ERRO] %s\n' "$_cfg_rel" >&2; exit 1; }
+  export ORQ_CONFIG="$_cfg_rel"
+  CONFIG="$MAIN_CHECKOUT/$_cfg_rel"
+  FILA_DIR="$(dirname "$CONFIG")"
+else
+  FILA_DIR="$MAIN_CHECKOUT/docs/fila"
+  CONFIG="$FILA_DIR/000-config.json"
+fi
 
 # --- Toolchain: o `tsx` (peça T1) --------------------------------------------
 # O motor é TypeScript e NADA dele roda sem `tsx` — gates, juiz, decisão, lock,
