@@ -220,6 +220,8 @@
   "_identidade": "Antes de qualquer gasto: origin DEVE conter repo_origin_deve_conter; identificador do banco/ambiente do .env DEVE bater com ambiente_id. Divergência = aborta o run inteiro.",
   "repo_origin_deve_conter": "lucasantosads/orquestrador-kit",
   "ambiente_id": "",
+  "_spec_dir": "Etapa KF P5: a pasta da spec que a cat.0 do pré-voo confere e o prompt do executor aponta. No kit a doutrina mora em doutrina/ (fonte), não em docs/orquestrador/skill/ (cópia instalada). Ausente = docs/orquestrador/skill; inválido = NO-GO cat.0.",
+  "spec_dir": "doutrina",
   "paths_harness": [
     "scripts/orquestrador/gates.ts",
     "scripts/orquestrador/juiz.ts",

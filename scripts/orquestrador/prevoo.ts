@@ -23,14 +23,14 @@
  */
 import { constants, accessSync, existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
-import { dirname, join, posix, relative, resolve } from 'node:path'
+import { dirname, isAbsolute, join, posix, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { caminhoConfig } from './fila-caminho.js'
 import { validarSelecao } from './selecao-testes.js'
 
 /**
- * Os arquivos da spec vendorizada que precisam existir COM CONTEÚDO em
- * `docs/orquestrador/skill/`. Pasta existir ≠ spec presente: o `--atualizar`
+ * Os arquivos da spec vendorizada que precisam existir COM CONTEÚDO na pasta
+ * da spec (`spec_dir`, ausente = `docs/orquestrador/skill/`). Pasta existir ≠ spec presente: o `--atualizar`
  * copia diretório, e diretório vazio passa em `test -d`.
  */
 export const ARQUIVOS_SPEC = [
@@ -41,6 +41,16 @@ export const ARQUIVOS_SPEC = [
   'templates/TICKET.md',
   'templates/config.json',
 ] as const
+
+/** Pasta da spec num repo instalado; `spec_dir` no config troca (etapa KF P5: no kit é `doutrina`). */
+export const SPEC_PADRAO = 'docs/orquestrador/skill'
+
+/** `spec_dir`: ausente = SPEC_PADRAO; vazio, absoluto, com `..` ou não-texto = null (NO-GO, nunca o padrão). */
+export function pastaDaSpec(v: unknown): string | null {
+  if (v === undefined) return SPEC_PADRAO
+  if (typeof v !== 'string' || !v || isAbsolute(v) || v.split('/').includes('..')) return null
+  return v.replace(/\/+$/, '')
+}
 
 /** Piso de arquivos COMMITADOS sob a spec. Menos que isso é spec no disco e fora do git. */
 export const MINIMO_COMMITADOS = 5
@@ -61,6 +71,7 @@ export interface Item {
 
 export interface PreVooConfig {
   repo_origin_deve_conter?: string
+  spec_dir?: unknown
   ambiente_id?: string
   branch_alvo?: string
   juiz?: { review_md?: string }
@@ -133,13 +144,25 @@ export function checarToolchain(deps: Pick<PreVooDeps, 'tsxLocal'>): Item {
 }
 
 /** cat.0 · spec vendorizada presente COM conteúdo e COMMITADA. */
-export function checarSpecVendorizada(deps: Pick<PreVooDeps, 'arquivoComConteudo' | 'contarArquivosCommitados'>): Item {
+export function checarSpecVendorizada(
+  deps: Pick<PreVooDeps, 'arquivoComConteudo' | 'contarArquivosCommitados'>,
+  specDir?: unknown,
+): Item {
+  const pasta = pastaDaSpec(specDir)
+  if (pasta === null) {
+    return {
+      ok: false,
+      token: 'cat.0',
+      item: 'pré-voo cat.0 (spec vendorizada): spec_dir',
+      motivo: `spec_dir inválido: ${JSON.stringify(specDir)} (caminho relativo ao checkout, sem ..)`,
+    }
+  }
   for (const rel of ARQUIVOS_SPEC) {
     if (!exigirBooleano(deps.arquivoComConteudo(rel), `arquivoComConteudo(${rel})`)) {
       return {
         ok: false,
         token: 'cat.0',
-        item: `pré-voo cat.0 (spec vendorizada): docs/orquestrador/skill/${rel}`,
+        item: `pré-voo cat.0 (spec vendorizada): ${pasta}/${rel}`,
         motivo: 'ausente ou vazio (test -s falhou)',
       }
     }
@@ -149,7 +172,7 @@ export function checarSpecVendorizada(deps: Pick<PreVooDeps, 'arquivoComConteudo
     return {
       ok: false,
       token: 'cat.0',
-      item: 'pré-voo cat.0 (spec vendorizada): docs/orquestrador/skill/',
+      item: `pré-voo cat.0 (spec vendorizada): ${pasta}/`,
       motivo: `git ls-files retornou ${n} arquivo(s) (< ${MINIMO_COMMITADOS}) — spec está no disco mas não commitada`,
     }
   }
@@ -349,7 +372,7 @@ export function preVooRelampago(entrada: { config: PreVooConfig; deps: PreVooDep
   const { config, deps } = entrada
   const checagens: [string, () => Item][] = [
     ['cat.7 (toolchain)', () => checarToolchain(deps)],
-    ['cat.0 (spec vendorizada)', () => checarSpecVendorizada(deps)],
+    ['cat.0 (spec vendorizada)', () => checarSpecVendorizada(deps, config.spec_dir)],
     ['cat.1 (identidade)', () => checarIdentidade({ config, ...deps })],
     ['cat.6 (estrutura da fila)', () => checarEstruturaFila(deps)],
     ...(config.filas_irmas?.length
@@ -455,7 +478,10 @@ export function preVooDepsReais(entrada: {
   custoFile: string
   git?: (...args: string[]) => SaidaGit
   hoje?: () => string
+  /** Pasta da spec já validada (`pastaDaSpec`); ausente = SPEC_PADRAO. */
+  specDir?: string
 }): PreVooDeps {
+  const spec = entrada.specDir ?? SPEC_PADRAO
   const rodarGit =
     entrada.git ??
     ((...args: string[]) =>
@@ -473,13 +499,13 @@ export function preVooDepsReais(entrada: {
     },
     arquivoComConteudo: (rel) => {
       try {
-        return statSync(join(entrada.repoRoot, 'docs/orquestrador/skill', rel)).size > 0
+        return statSync(join(entrada.repoRoot, spec, rel)).size > 0
       } catch {
         return false
       }
     },
     contarArquivosCommitados: () => {
-      const r = exigirGit(rodarGit('ls-files', 'docs/orquestrador/skill/'), 'git ls-files')
+      const r = exigirGit(rodarGit('ls-files', `${spec}/`), 'git ls-files')
       return r.status === 0 ? r.stdout.split('\n').filter(Boolean).length : 0
     },
     lerOrigin: () => {
@@ -570,7 +596,10 @@ export function main(argv: string[]): number {
   }
   const v = preVooRelampago({
     config: e.config,
-    deps: preVooDepsReais({ repoRoot: raiz, filaDir: e.filaDir, runsDir: e.runsDir, custoFile: e.custoFile }),
+    deps: preVooDepsReais({
+      repoRoot: raiz, filaDir: e.filaDir, runsDir: e.runsDir, custoFile: e.custoFile,
+      specDir: pastaDaSpec(e.config.spec_dir) ?? SPEC_PADRAO,
+    }),
   })
   process.stdout.write(render(v))
   return v.ok ? 0 : 1
