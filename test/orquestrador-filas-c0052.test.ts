@@ -213,3 +213,68 @@ describe('P3: o pré-voo recusa filas irmãs que dividem runs ou pausa', () => {
     }
   });
 });
+
+describe('P4: dependência entre filas só leitura e id repetido (C17)', () => {
+  /** Duas filas declaradas uma na outra, ou não (`declarar = false`). */
+  const filas = (declarar = true) => {
+    const raiz = duasFilas();
+    if (declarar) {
+      for (const [cfg, outra] of [['docs/fila/000-config.json', 'docs/fila/apolo'], [APOLO_CFG, 'docs/fila']] as const) {
+        const j = JSON.parse(readFileSync(join(raiz, cfg), 'utf8'));
+        writeFileSync(join(raiz, cfg), JSON.stringify({ ...j, filas_irmas: [outra] }));
+      }
+    }
+    return raiz;
+  };
+  /** O ticket real com outro status (o bloco json é o primeiro, e o status vem antes da prosa). */
+  const comStatus = (arq: string, status: string) =>
+    writeFileSync(arq, readFileSync(arq, 'utf8').replace(/"status": "[a-z_]+"/, `"status": "${status}"`));
+  const T1137 = 'docs/fila/1137-estado-plano-script.md';
+  const T1254 = 'docs/fila/1254-api-apolo-conhecimento-agente.md';
+  const T5031 = 'docs/fila/apolo/5031-apolo-escritor-tickets-v0.md';
+  const razao = (raiz: string, cfg: string, t: string) =>
+    bashNoFixture(raiz, `razao_nao_processavel "${raiz}/${t}"`, { ORQ_CONFIG: cfg }).stdout.trim();
+  const gate = (raiz: string, cfg: string, ...ids: string[]) => spawnSync(
+    join(REPO_ROOT, 'node_modules', '.bin', 'tsx'),
+    [join(REPO_ROOT, 'scripts', 'orquestrador', 'gate-ticket.ts'), '--relatorio', ...ids],
+    { cwd: raiz, encoding: 'utf8', env: { ...process.env, ORQ_CONFIG: cfg } },
+  ).stdout;
+
+  it('loop: 1254 (raiz) depende de 5197 (apolo, done): só passa com filas_irmas', () => {
+    const sem = filas(false); comStatus(join(sem, T1254), 'pendente');
+    expect(razao(sem, '', T1254)).toBe('dependencia:5197:inexistente');
+    const com = filas(); comStatus(join(com, T1254), 'pendente');
+    expect(razao(com, '', T1254)).toBe('liberacao:humano:migration-5197-aplicada');
+  });
+
+  it('loop: 5031 (apolo) lê o status do 1137 (raiz) e não seleciona nem grava lá', () => {
+    const raiz = filas(); comStatus(join(raiz, T5031), 'pendente');
+    expect(razao(raiz, APOLO_CFG, T5031)).toBe('');
+    comStatus(join(raiz, T1137), 'pendente');
+    expect(razao(raiz, APOLO_CFG, T5031)).toBe('dependencia:1137:pendente');
+    const sel = bashNoFixture(raiz, 'proximo_pendente', { ORQ_CONFIG: APOLO_CFG }).stdout.trim();
+    expect(sel).toBe('');
+  });
+
+  it('gate regra 7: dependência de irmã é aceita só com filas_irmas', () => {
+    const sem = filas(false); comStatus(join(sem, T5031), 'pendente');
+    expect(gate(sem, APOLO_CFG, '5031')).toContain("'1137' não é id de ticket da fila");
+    const com = filas(); comStatus(join(com, T5031), 'pendente');
+    expect(gate(com, APOLO_CFG, '5031')).not.toContain("'1137' não é id de ticket da fila");
+  });
+
+  it('C17: id repetido entre filas e na mesma fila, erro no pendente', () => {
+    const raiz = filas();
+    const dup = join(raiz, 'docs/fila/apolo/1137-copia-na-irma.md');
+    copyFileSync(join(raiz, T1137), dup);
+    comStatus(dup, 'pendente');
+    expect(gate(raiz, APOLO_CFG, '1137')).toContain(`1137-copia-na-irma.md:id id '1137' repetido em ${raiz}/${T1137}`);
+    const mesma = join(raiz, 'docs/fila/1137b-copia-na-raiz.md');
+    copyFileSync(join(raiz, T1137), mesma);
+    comStatus(mesma, 'pendente');
+    expect(gate(raiz, '', mesma)).toContain("id '1137' repetido");
+    const done = gate(raiz, '', join(raiz, T1137));
+    expect(done).toContain('GATE DE TICKET · 1 ticket(s)');
+    expect(done).not.toContain('repetido');
+  });
+});

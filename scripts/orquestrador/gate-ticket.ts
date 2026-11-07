@@ -25,7 +25,7 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join, posix, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { globToRegExp, matchesAllowlist } from './enforcement-core.js'
-import { filaDir as filaDaRaiz } from './fila-caminho.js'
+import { filaDir as filaDaRaiz, raizDaFila } from './fila-caminho.js'
 
 // ─── Vocabulário do ticket ────────────────────────────────────────────────
 
@@ -121,6 +121,7 @@ export const REGRAS: Readonly<Record<string, Regra>> = {
   '6v': { severidade: 'aviso', oque: 'critério que lê o texto do vitest e aprovaria uma suíte com falha', porque: 'era 53/34/272 FP; só o que aprovaria a falha: 0/23/250 medido na calibração, nunca chega a zero FP' },
   '6q': { severidade: 'aviso', oque: 'grep -q recebendo pipe', porque: '0/12/83 FP; causal 4 (Actus); o dano é do pipefail do executor' },
   '6b': { severidade: 'aviso', oque: 'objetivo cita caminho fora da allowlist', porque: '55/60/363 FP; causal 1 (488)' },
+  'C17': { severidade: 'erro', oque: 'id de ticket pendente repetido na fila ou numa fila irmã (filas_irmas)', porque: 'etapa c0052-B1a (M-54): corpus no relatório da etapa' },
   '7': { severidade: 'erro', oque: 'dependência é id da fila ou humano:<token> (C7, dependência órfã)', porque: '0/0/0 FP depois de conferir as 19 do snapshot' },
   '8': { severidade: 'aviso', oque: 'allowlist sobreposta com outro pendente sem dependência, nem transitiva (C8)', porque: 'era 3/15/119 FP só com a dependência direta; com o fecho (C8): 0/14/77 na calibração, 0 causal' },
   '9': { severidade: 'erro', oque: 'contexto_juiz existe na branch alvo e não está na allowlist', porque: '0/0/0 FP (só o Actus usa o campo)' },
@@ -186,6 +187,8 @@ export interface GateCfg {
    * Ausente = o check 9 reprova quem declarar contexto, em vez de adivinhar.
    */
   branch_alvo?: string
+  /** Tickets das `filas_irmas` (etapa c0052-B1a): só para a regra 7 e o C17, nunca validados aqui. */
+  irmas?: TicketLido[]
   /**
    * `gate_ticket.timeout_cmd_secs` do config: teto de cada execução de grep/awk
    * do check 10 (exemplos_regex, ticket 624). Ausente = 10 s.
@@ -1027,10 +1030,12 @@ export function lerFila(filaDir: string): TicketLido[] {
 export function carregarCfg(filaDir: string): GateCfg {
   const p = join(filaDir, '000-config.json')
   if (!existsSync(p)) return { proibido_no_cmd: [], cmd_prefixos_permitidos: [] }
-  const j = JSON.parse(readFileSync(p, 'utf8')) as { gate_ticket?: Partial<GateCfg>; branch_alvo?: unknown }
+  const j = JSON.parse(readFileSync(p, 'utf8')) as { gate_ticket?: Partial<GateCfg>; branch_alvo?: unknown; filas_irmas?: unknown }
   const g = j.gate_ticket ?? {}
+  const irmas = ehArray(j.filas_irmas) ? j.filas_irmas.flatMap((rel) => lerFila(join(raizDaFila(filaDir), String(rel)))) : []
   return {
     ...(typeof j.branch_alvo === 'string' && j.branch_alvo !== '' ? { branch_alvo: j.branch_alvo } : {}),
+    ...(irmas.length > 0 ? { irmas } : {}),
     // A CHAVE É `proibido_no_cmd`, e não `padroes_proibidos`: é o nome que está
     // no disco desde a Etapa 1, já semeado com os padrões que o
     // `autoalimentacao.md` §2 nomeia. Confirmado por grep, não por memória.
@@ -1822,7 +1827,7 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
 
   // 7. dependências: id existente na fila, ou `humano:<token>`.
   if (pendente && ehArray(t.dependencias)) {
-    const ids = new Set(fila.map((f) => (typeof f.json?.id === 'string' ? f.json.id : '')).filter(Boolean))
+    const ids = new Set([...fila, ...(cfg.irmas ?? [])].map((f) => (typeof f.json?.id === 'string' ? f.json.id : '')).filter(Boolean))
     t.dependencias.forEach((d, i) => {
       const dep = String(d)
       if (dep.startsWith('humano:')) {
@@ -1833,6 +1838,13 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
       }
       if (!ids.has(dep)) achado('7', `dependencias[${i}]`, `'${dep}' não é id de ticket da fila nem 'humano:<token>'`)
     })
+  }
+
+  // C17 (etapa c0052-B1a): id de ticket novo repetido na fila ou numa irmã. Com
+  // dois arquivos do mesmo id, o loop e a dependência pegam o primeiro em silêncio.
+  if (pendente && typeof t.id === 'string') {
+    const outros = [...fila, ...(cfg.irmas ?? [])].filter((f) => f.json?.id === t.id && resolve(f.arquivo) !== resolve(alvo.arquivo))
+    if (outros.length > 0) achado('C17', 'id', `id '${t.id}' repetido em ${outros.map((f) => f.arquivo).join(', ')}`)
   }
 
   // 8. allowlist sobreposta com outro pendente, sem dependência declarada

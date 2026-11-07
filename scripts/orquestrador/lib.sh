@@ -181,6 +181,19 @@ ticket_file_by_id() {
   return 0
 }
 
+# ticket_file_irma <id> -> o ticket do id numa das `filas_irmas` (etapa
+# c0052-B1a, M-54). Só para LER o status de dependência, como o loop apolo do
+# Comarka (lib.sh:113-130 lá): seleção, execução e escrita ficam na própria fila.
+ticket_file_irma() {
+  local id="$1" rel f
+  for rel in $(cfg '.filas_irmas // [] | .[]'); do
+    for f in $(find "$MAIN_CHECKOUT/$rel" -maxdepth 1 -type f -name '[0-9]*.md' 2>/dev/null | sort); do
+      [ "$(ticket_field "$f" '.id')" = "$id" ] && { echo "$f"; return 0; }
+    done
+  done
+  return 0
+}
+
 # ticket_set <arquivo> <jq-filter> [args-extra-do-jq...]
 # Reescreve SÓ o bloco json do .md preservando o resto (prosa) intacto.
 # Ex.: ticket_set f '.status = $s' --arg s done
@@ -818,6 +831,7 @@ razao_nao_processavel() {
       liberacao_ok "$dep" || { printf 'liberacao:%s\n' "$dep"; return 0; }
     else
       tf="$(ticket_file_by_id "$dep")"
+      [ -n "$tf" ] || tf="$(ticket_file_irma "$dep")"
       [ -n "$tf" ] || { printf 'dependencia:%s:inexistente\n' "$dep"; return 0; }
       st="$(ticket_field "$tf" '.status')"
       [ "$st" = "done" ] || { printf 'dependencia:%s:%s\n' "$dep" "$st"; return 0; }

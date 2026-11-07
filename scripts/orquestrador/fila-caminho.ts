@@ -34,3 +34,14 @@ export function caminhoConfig(raiz: string, env: Env = process.env): string {
 export function filaDir(raiz: string, env: Env = process.env): string {
   return dirname(caminhoConfig(raiz, env))
 }
+
+/**
+ * Checkout de uma pasta de fila, para resolver `filas_irmas` (relativas a ele).
+ * A pasta termina no diretório de `ORQ_CONFIG` (o lib.sh exporta relativo) ou
+ * em docs/fila; fora disso, dois níveis acima, o layout de docs/fila.
+ */
+export function raizDaFila(fila: string, env: Env = process.env): string {
+  const pedido = env.ORQ_CONFIG ?? ''
+  const rel = dirname(pedido !== '' && !isAbsolute(pedido) ? pedido : CONFIG_PADRAO)
+  return fila.endsWith(`/${rel}`) ? fila.slice(0, -rel.length - 1) : join(fila, '..', '..')
+}

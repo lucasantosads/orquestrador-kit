@@ -106,6 +106,8 @@ describe('7d1b-2 · a tabela única', () => {
       C15: 'erro', // etapa L13 (M-62): 0 FP medido
       C15o: 'aviso', // etapa L13: a forma no objetivo, com FP
       C16: 'aviso',
+      // etapa c0052-B1a (M-54): 0 acusação no corpus do CI, do dashboard e das duas filas do Comarka
+      C17: 'erro',
     });
   });
 
