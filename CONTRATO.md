@@ -2535,7 +2535,7 @@ Relatório: `~/orq-sessoes/relatorio-kit-fila-propria.md`. Decisões do Lucas de
   kit até o B1b.
 - **Régua.** `zona_proibida.no_write_paths` do config do kit: `gates.ts`, `juiz.ts`,
   `enforcement-core.ts`, `enforcement.sh`, `decisao.ts`, `decisao-cli.ts`, `gate-ticket.ts`,
-  `schemas/**`, o config e as liberações da fila, `scripts/kit/test-shell.sh`,
+  `perfil.ts` (piso de tools), `campos-do-motor.json`, `schemas/**`, o config e as liberações da fila, `scripts/kit/test-shell.sh`,
   `scripts/kit/test-instalar.sh`, `vitest.config.ts`, `tsconfig.json`, `package.json`,
   `package-lock.json`, `CLAUDE.md`. Mudança nesses arquivos é sessão manual. O loop roda o motor do
   checkout principal (`lib.sh:23-24`, `enforcement.sh:69`): o ticket não troca a régua que o julga.
@@ -2546,8 +2546,8 @@ Relatório: `~/orq-sessoes/relatorio-kit-fila-propria.md`. Decisões do Lucas de
 - **Gates.** Os 4 do kit (`tsc`, `vitest` com `TZ=UTC`, `test-shell.sh`, `test-instalar.sh`), binário
   local, cada um com `env -u ORQ_CONFIG -u ORQ_GATE` na frente: o `gates.ts` repassa o ambiente do loop
   (defeito `docs/defeitos/2026-11-07-orq-config-vaza-para-os-gates.md`) e liga `ORQ_GATE=1`, que faz
-  o `describeHarness` virar skip (28 arquivos de teste do motor, que no kit é o produto). `claude_timeout_secs` 2586
-  (soma medida das suítes com 50%).
+  o `describeHarness` virar skip (28 arquivos de teste do motor, que no kit é o produto). `claude_timeout_secs` 4200
+  (duas passadas das suítes dentro do `claude -p`, 2 × 1724 s medidos sob carga, mais 752 s de trabalho).
 - **Status na main.** O `autocommit_status_fila` commita na `main` do checkout principal do kit, e o
   preflight do executor exige esse checkout limpo. Merge de etapa e promoção da `staging-kit` passam a
   pausar a fila do kit e esperar `ocioso`; a `staging-kit` recebe a `main` a cada etapa manual, antes

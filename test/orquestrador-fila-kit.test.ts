@@ -24,6 +24,8 @@ const REGUA = [
   'scripts/orquestrador/decisao.ts',
   'scripts/orquestrador/decisao-cli.ts',
   'scripts/orquestrador/gate-ticket.ts',
+  'scripts/orquestrador/perfil.ts',
+  'scripts/orquestrador/campos-do-motor.json',
   'schemas/**',
   'docs/fila-kit/000-config.json',
   'docs/fila-kit/liberacoes.json',
@@ -57,6 +59,9 @@ describe('KF-P2 · a fila do kit existe, em docs/fila-kit, e o kit segue sem doc
       'staging-kit', 'main', 'kit-orq-', 'com.orquestrador-kit.orquestrador',
     ]);
     expect(c.enforcement.afrouxamento).toBe('todo_teste');
+  });
+  it('claude_timeout_secs 4200: o executor roda as suítes duas vezes dentro do claude -p (Q-3)', () => {
+    expect(cfg().claude_timeout_secs).toBe(4200);
   });
 });
 
