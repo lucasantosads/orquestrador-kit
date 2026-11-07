@@ -6,6 +6,7 @@
 - Item novo só entra pela leitura semanal, e só depois de fechar ou descartar outro.
 - Os conflitos ficam abertos até o Lucas decidir; cada um se decide no PASSO 0 da etapa que pegar o item.
 - Vídeo novo entra pela leitura semanal.
+- Exceção de 07/11/2026 (decisão Q2 do Lucas, plano c-0052): M-64 a M-67 (C-0052 M1, M5, M6 por área e C-0052 M10) entraram sem a leitura semanal e sem fechar outro item. A regra segue valendo para o resto.
 
 Status possíveis: ideia | triado | planejado | em-etapa | parcial | feito | descartado | substituído. "feito (antes de 28/10, arquivo:linha)" e "parcial: o que falta" vêm da conferência no código da etapa MELHORIAS-0.
 
@@ -18,7 +19,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 
 | ID | título | status | marco | ataca | evidência | depende de | fontes |
 |---|---|---|---|---|---|---|---|
-| M-01 | Contrato do veredito com objeção ancorada e meta-verificação | ideia | A | C2, C5 | medida | M-40 | base #1, v044, L3-07 |
+| M-01 | Contrato do veredito com objeção ancorada e meta-verificação | ideia | A | C2, C5 | medida | M-40 | base #1, v044, L3-07, C-0052 M9 |
 | M-02 | Retry informado que só insiste com fato externo novo | parcial | A | C2, C1, custo | medida | M-41, M-28 | base #2, v100, v051, L1-01, L5-01 |
 | M-03 | Alegação sem lastro e referência prometida e não lida | ideia | A | C5, C2 | medida | M-28 | base #21, v046, L3-06 |
 | M-04 | Consenso entre juízes paralelos (com conflito) | ideia | A | C5, C2, custo | medida | M-56 | base #25, v052, v061, L3-01, L2-05 |
@@ -34,15 +35,15 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 | M-15 | Ticket com 4 blocos de handoff | ideia | A | C1, C2 | opinião | | base #9, v095, L2-01 |
 | M-16 | Estado do ticket só-anexar ou versionado | parcial | A | C1 | opinião | | v095, v061, L2-02 |
 | M-17 | Contradição de spec exposta, nunca resolvida em silêncio | parcial | A | C1, C5 | opinião | M-03 | v093, L2-03 |
-| M-18 | Nível de revisão 0/1/2 com marcha baixa para código crítico | parcial | A | C5 | opinião | | base #18, v084, L2-10 |
-| M-19 | Anti-trapaça no diff | parcial | A | C5 | não registrada | | base #4 |
+| M-18 | Nível de revisão 0/1/2 com marcha baixa para código crítico | parcial | A | C5 | opinião | | base #18, v084, L2-10, C-0052 M2 |
+| M-19 | Anti-trapaça no diff | parcial | A | C5 | não registrada | | base #4, C-0052 M4 |
 | M-20 | Varredura de segredos e checklist auth/RLS/env | parcial | A | C5 | não registrada | | base #5 |
 | M-21 | Fila de merge com rebase e gates de novo | ideia | A | C1 | não registrada | | base #6 |
-| M-22 | criterios_privados no ticket | ideia | A | C5 | não registrada | | base #10 |
+| M-22 | criterios_privados no ticket | ideia | A | C5 | não registrada | | base #10, C-0052 M8 |
 | M-23 | Agente de testes antes do executor | ideia | A | C2, C5 | não registrada | | base #11 |
 | M-24 | Alarme de 0% de aprovação | ideia | A | C2, C5 | não registrada | M-41 | base #19 |
 | M-25 | Experimento: diagnóstico antes de bloquear | ideia | A | C1 | não registrada | | base (experimentos) |
-| M-26 | Decisão pendente: hooks PostToolUse e Stop | ideia | A | C2 | não registrada | | base (decisão pendente) |
+| M-26 | Hooks do executor: PreToolUse que nega; PostToolUse e Stop pendentes | ideia | A | C2 | não registrada | | base (decisão pendente), C-0052 M3 |
 | M-52 | Autopreferência do juiz do mesmo modelo (com conflito) | ideia | A | C5 | medida | M-56 | v100, L1-02 |
 | M-53 | Guardrail x north star com gate de regressão por dimensão | ideia | A | C2, C5 | relato | M-56 | base #22, v088, L1-03 |
 | M-55 | Versão do CLI no preflight e espera do limite pelo CLI | parcial | A | C1 | relato | | L6-19 |
@@ -54,7 +55,11 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 | M-61 | Experimento: ablação de scaffolding | ideia | A | custo, C2 | não registrada | M-56 | base (experimentos) |
 | M-62 | C15 e C16 do gate de ticket como erro para ticket novo | parcial | A | C2, C1 | medida | | relatório de bloqueios do dashboard, 30/10 |
 | M-10 | Validação da fila uma vez por lote, sem --no-verify | ideia | B | C1 | relato | | L6-15 |
-| M-54 | N filas por repo, cada uma com base, pausa e resolvedor | ideia | B | C1 | relato | | L6-06 |
+| M-54 | N filas por repo, cada uma com base, pausa e resolvedor | em-etapa (c0052-B1a) | B | C1 | relato | | L6-06, C-0052 (plano c-0052 07/11) |
+| M-64 | Config por caminho como base do kernel por arquivo | triado | B | C1 | relato | M-54 | C-0052 M1, plano c-0052 07/11 |
+| M-65 | Diff que toca a fila reprova no enforcement | parcial | B | C5, C1 | relato | | C-0052 M5, plano c-0052 07/11 |
+| M-66 | REVIEW.md do juiz por área | triado | B | C5 | relato | | C-0052 M6, plano c-0052 07/11 |
+| M-67 | Batimento do loop a cada ciclo | triado | B | C1 | relato | M-54 | C-0052 M10, plano c-0052 07/11 |
 | M-27 | Experimento best-of-N com funil e perda do seletor | ideia | C | C5, C2, custo | medida | M-29, M-56 | base (experimentos), v052, v044, v048, v053, v054, v050, L3-02, L3-09, L4-01, L4-02, L5-03 |
 | M-28 | Transcrição stream-json com extrator e taxonomia de falhas | ideia | C | C2, C3, custo | medida | | base #12, v061, v046, v048, L2-07, L3-05, L4-05 |
 | M-29 | Custo por ticket e por etapa, cache e contexto enxuto do juiz | parcial | C | custo, C2 | medida | M-56 | base (planejado), v089, v048, L1-09, L4-06 |
@@ -63,13 +68,13 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 | M-32 | PLAYBOOK por divulgação progressiva | ideia | C | custo, C2 | medida | M-08 | v079, L1-04 |
 | M-33 | Avaliador de processo e agente de melhoria semanal | ideia | C | C3, C2, C5 | medida | M-28, M-40 | base #24, v050, L5-04 |
 | M-34 | Smoke E2E na staging que abre rascunho de ticket | ideia | C | C5, C1 | relato | M-42 | base #7, v063, L1-07 |
-| M-35 | Cota antes de despachar com degraus de 70% e 95% | planejado | C | custo, C1 | relato | M-30 | base (planejado), v101, L1-06 |
+| M-35 | Cota antes de despachar com degraus de 70% e 95% | planejado | C | custo, C1 | relato | M-30 | base (planejado), v101, L1-06, C-0052 M7 |
 | M-36 | Resumo diário com link para o artefato de cada evento | ideia | C | C1, C5 | relato | M-28 | v063, L1-08 |
 | M-37 | Promoção pendente com idade, tamanho e alarme | parcial | C | C5 | relato | | L6-14 |
 | M-38 | API em lote para rodadas sem pressa | ideia | C | custo | opinião | M-56 | v061, L2-08 |
 | M-39 | Teto duro de turnos e dólares por claude -p | parcial | C | custo | não registrada | | base #13 |
 | M-40 | Ledger de objeções do juiz e agrupador semanal | ideia | C | C3, C2 | não registrada | M-01 | base #14 |
-| M-41 | Curva de aprovação por tentativa | parcial | C | C2 | não registrada | | base #16 |
+| M-41 | Curva de aprovação por tentativa | parcial | C | C2 | não registrada | | base #16, C-0052 M11 (valor no config, decisão por dado) |
 | M-42 | Caixa de decisões no celular | parcial | C | C1 | não registrada | | base #17 |
 | M-43 | Ordem de investimento: contexto, prompt, modelo | ideia | C | custo, C2 | não registrada | | base #23 |
 | M-44 | C5 em taxa e em absoluto | planejado | C | C5 | não registrada | | base (reforços) |
@@ -93,7 +98,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
   - meta-verificação faz duas perguntas por objeção: "o arquivo:linha existe no diff e o trecho mostra o problema alegado?" e "a nota segue das objeções apontadas?".
   - se o veredito era reprova e não sobra nenhuma objeção válida, vira estado insuficiente, não reprova.
   - taxa de objeções inventadas entra como métrica do juiz.
-- fontes: base #1, v044, L3-07
+- fontes: base #1, v044, L3-07, C-0052 M9 (objeção sem arquivo:linha descartada por código; prova contra o recall do ticket 5324 do Comarka)
 
 ### M-02 Retry informado que só insiste com fato externo novo
 - status: parcial (etapa L13): a assinatura do bloqueio de diff idêntico passou a incluir as mensagens dos commits da frente (`mensagens.txt`, scripts/orquestrador/executor.sh:1059 e :1286-1295, `e2ab076`): diff igual com mensagem nova chama o juiz de novo, sem reaproveitar gates. Falta o que já faltava: a etiqueta externo/interno por tentativa, o diff quase igual, o braço de controle em sombra e a curva por etiqueta.
@@ -268,7 +273,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - detalhes executáveis:
   - ticket de nível 2 que cria lógica nova numa zona crítica (não só edita) exige pseudocódigo humano num campo do ticket; sem ele, o validador na entrada barra.
 - conflitos: tensão (não marcada pelo lote) entre exigir pseudocódigo humano e o marco D (planejador escreve o lote sem humano). Não decidido. Decide no PASSO 0 da etapa que pegar o item.
-- fontes: base #18, v084, L2-10
+- fontes: base #18, v084, L2-10, C-0052 M2 (ticket vermelho não roda sem token humano; ticket 1592 do Comarka)
 
 ### M-19 Anti-trapaça no diff
 - status: parcial: o anti-afrouxamento já existe nos testes vizinhos ampliados (scripts/orquestrador/enforcement-core.ts:658-709, 8c); falta valer para o diff inteiro e cobrir `as any`, ts-ignore, try/catch novo e teste existente alterado
@@ -276,7 +281,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - como entra no kit: gate mecânico sobre o diff, antes do juiz.
 - detalhes executáveis:
   - padrões: assert afrouxado, .skip/.only, `as any`, ts-ignore, catch e try/catch novos, teste existente alterado.
-- fontes: base #4
+- fontes: base #4, C-0052 M4 (contagem no diff: try/catch, as any, @ts-ignore, eslint-disable, .skip)
 
 ### M-20 Varredura de segredos e checklist auth/RLS/env
 - status: parcial: a varredura de credencial já roda em toda tentativa (scripts/orquestrador/enforcement-core.ts:293-308); falta o checklist auth/RLS/env no material do juiz
@@ -300,7 +305,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - como entra no kit: campo criterios_privados no ticket, fora do prompt do executor.
 - detalhes executáveis:
   - nenhum detalhe além do nome na base.
-- fontes: base #10
+- fontes: base #10, C-0052 M8 (1 em cada 3 critérios com cmd oculto do executor)
 
 ### M-23 Agente de testes antes do executor
 - status: ideia
@@ -326,14 +331,15 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
   - nenhum detalhe além do nome na base.
 - fontes: base (experimentos)
 
-### M-26 Decisão pendente: hooks PostToolUse e Stop
+### M-26 Hooks do executor: PreToolUse que nega; PostToolUse e Stop pendentes
 - status: ideia
-- o que é: decisão pendente da base: hooks PostToolUse e Stop que devolvem erro ao executor durante a tentativa.
-- como entra no kit: depende da decisão; a regra atual é que mods do Claude Code entram só por --plugin-dir e só negam.
+- o que é: hooks do Claude Code no `claude -p` do executor. PreToolUse que nega (C-0052 M3: Edit em caminho de não-toque, Edit sem Read prévio) entra; PostToolUse e Stop que devolvem erro ao executor durante a tentativa seguem como decisão pendente da base.
+- como entra no kit: na montagem do `claude -p` (`executor.sh:1410-1413`); a regra atual é que mods do Claude Code entram só por --plugin-dir e só negam, e o PreToolUse que nega cabe nela.
 - detalhes executáveis:
-  - decidir antes de qualquer etapa que toque nos hooks.
-- conflitos: decisão em aberto na base, não resolvida aqui. Decide no PASSO 0 da etapa que pegar o item.
-- fontes: base (decisão pendente)
+  - PreToolUse: nega Edit ou Write em caminho de não-toque e Edit sem Read do mesmo arquivo na tentativa. No Comarka existe parcial no guarda-ferramenta.py do repo; o ticket 5318 do Comarka declara os hooks no kernel.
+  - PostToolUse e Stop: decidir antes de qualquer etapa que toque neles.
+- conflitos: PostToolUse e Stop em aberto na base, não resolvidos aqui. Decide no PASSO 0 da etapa que pegar o item.
+- fontes: base (decisão pendente), C-0052 M3 (título trocado na etapa c0052-B0, decisão Q-F do Lucas, 07/11/2026)
 
 ### M-27 Experimento best-of-N com funil e perda do seletor
 - status: ideia
@@ -431,7 +437,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
   - acima de 70% da janela, ticket de risco baixo desce um degrau de modelo.
   - acima de 95%, adia.
   - ticket de risco alto nunca desce por cota, só adia.
-- fontes: base (planejado), v101, L1-06
+- fontes: base (planejado), v101, L1-06, C-0052 M7 (ticket 1593 do Comarka)
 
 ### M-36 Resumo diário com link para o artefato de cada evento
 - status: ideia
@@ -481,7 +487,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - como entra no kit: métrica no painel.
 - detalhes executáveis:
   - quebras pedidas por outros itens: tipo de feedback (M-02), faixa de dificuldade (M-30, M-45).
-- fontes: base #16
+- fontes: base #16, C-0052 M11 (max_retries 2 para 1 é valor no config do Comarka, decidido pelo dado do ticket 5325)
 
 ### M-42 Caixa de decisões no celular
 - status: parcial: já existem `decisoes-pendentes.md` (scripts/orquestrador/lib.sh:1222) e o aviso de pausa por iMessage e macOS (scripts/orquestrador/resolvedor/pausa.ts:77-80, 7f-b5); falta o canal único para todas as decisões
@@ -593,13 +599,18 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - fontes: base #22, v088, L1-03
 
 ### M-54 N filas por repo, cada uma com base, pausa e resolvedor
-- status: ideia
+- status: em-etapa (c0052-B1a)
 - o que é: o Comarka roda plataforma e apolo com filas, staging e worktree próprias. A pausa global de uma sessão segurou os dois loops; o painel não pausa o segundo; o resolvedor só enxerga docs/fila; o validar-fila valida contra a base errada e critério que compara com a base nasce "reprovado por dívida pré-existente".
-- como entra no kit: conceito de N filas por repo no kit.
+- como entra no kit: conceito de N filas por repo no kit. Cada fila tem o seu `000-config.json`; a variável `ORQ_CONFIG` escolhe qual (caminho dentro do checkout principal), e a pasta da fila é o diretório do config. Sem `ORQ_CONFIG`, os caminhos de hoje.
 - detalhes executáveis:
-  - cada fila com base, staging, pausa e resolvedor próprios; caminho da fila configurável, não docs/fila fixo.
+  - por fila, vindos do config dela: pasta, branch alvo (`branch_alvo`), prefixo de worktree (`worktrees_prefixo`), `runs_dir` próprio (e com ele o lock), pausa (`pausar_file`), label launchd (`launchd.label`) e o log do launchd.
+  - pausa só por fila: pausar uma não segura a outra; `orq pausar --todas` grava um PAUSAR em cada fila (raiz e `filas_irmas`) com o mesmo motivo (decisão Q-A do Lucas, 07/11).
+  - pré-voo recusa duas filas com o mesmo `runs_dir` e fila irmã com `pausar_file` ou `runs_dir` fora da própria pasta.
+  - dependência entre filas só leitura, declarada em `filas_irmas`: o loop lê o status do ticket da irmã, nunca seleciona nem grava lá. A conferência da dependência de irmã na branch alvo fica para o B1b.
+  - gate de ticket: aceita dependência de irmã e acusa id repetido na fila e entre filas (C17, erro só para ticket novo).
+  - B1b: cartão por fila no painel, resolvedor, triador e instalador.
   - validar-fila roda contra a base da fila (staging-apolo, não staging-auto).
-- fontes: L6-06
+- fontes: L6-06, C-0052 (plano c-0052 07/11; Comarka 6df04cc e eb010cf)
 
 ### M-55 Versão do CLI no preflight e espera do limite pelo CLI
 - marco: A (mudou na etapa MELHORIAS-0)
@@ -686,6 +697,49 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
   - critério que só passa depois do trabalho é `alvo`, nunca `guarda`; a lista dos 32 disparos por ticket está no relatório da L14.
   - medida de sucesso: C5 sem disparo nos done do dashboard escritos depois da mudança.
 - fontes: etapa L14 (`~/orq-sessoes/relatorio-kit-l14.md` §4)
+
+### M-64 Config por caminho como base do kernel por arquivo
+- marco: B (entrou em 07/11 pela exceção Q2)
+- status: triado
+- o que é: o motor de código lê o kernel@1 do ADR-027 do Comarka, que embrulha o config v2 do kit num bloco, uma fonte só (decisão Q4 do Lucas, 07/11).
+- como entra no kit: sobre o `ORQ_CONFIG` do M-54; o kernel é mais uma forma de achar o config por caminho.
+- detalhes executáveis:
+  - comportamento igual ao config v2 de hoje, provado com os configs reais do CI e do dashboard.
+  - o espelho `codigo.json` do Comarka (ticket 5318) é ajustado no corte, não espelha mais o `000-config.json` atual.
+- depende de: M-54; tickets 5318 e 5320 do Comarka.
+- fontes: C-0052 M1, plano c-0052 07/11
+
+### M-65 Diff que toca a fila reprova no enforcement
+- marco: B (entrou em 07/11 pela exceção Q2)
+- status: parcial: só por config. O dashboard proíbe `docs/fila/000-config.json` e `docs/fila/liberacoes.json` em `zona_proibida.no_write_paths`, o CI não proíbe nada da fila; o motor não tem guarda fixa (`enforcement-core.ts:727-735`)
+- o que é: arquivo dentro da pasta da fila no diff do executor reprova, mesmo com a allowlist do ticket pedindo.
+- como entra no kit: regra fixa em `enforcement-core.ts`, antes do teste de `zona_proibida` (`:731`), contra a pasta resolvida pelo M-54, não contra o literal `docs/fila`.
+- detalhes executáveis:
+  - caso real: ticket com `docs/fila/**` na allowlist passa hoje (`enforcement-core.ts:735`, `fora_do_pathspec`).
+  - o status do ticket é escrito pelo harness no checkout principal (`executor.sh:1531`), nunca pela worktree, então a regra não pega escrita legítima do motor.
+  - violação com detalhe próprio, distinto de `zona_proibida`.
+- fontes: C-0052 M5, plano c-0052 07/11
+
+### M-66 REVIEW.md do juiz por área
+- marco: B (entrou em 07/11 pela exceção Q2)
+- status: triado
+- o que é: `juiz.review_md` aceita lista `[{prefixo, arquivo}]` além da string, e o juiz recebe o REVIEW da área dos arquivos do diff.
+- como entra no kit: leitura em `executor.sh:1004-1009` e validação em `prevoo.ts:256-270`; `juiz.ts:648-649` não muda (já recebe texto).
+- detalhes executáveis:
+  - string segue sendo o caso de hoje.
+  - área escolhida pelo prefixo dos arquivos do diff; prefixo mais longo vence; mais de uma área concatena até o teto do 8e (150 linhas, 8192 bytes por arquivo).
+  - cada REVIEW é commit humano no repo.
+- fontes: C-0052 M6, plano c-0052 07/11
+
+### M-67 Batimento do loop a cada ciclo
+- marco: B (entrou em 07/11 pela exceção Q2)
+- status: triado
+- o que é: a cada ciclo o loop bate o batimento `orq-loop-<fila>`. É a prova de uso do C-0052 no Comarka: `ops_jobs` com `orq-loop-plataforma` e `orq-loop-apolo`, meta 2 em 3 h.
+- como entra no kit: gancho perto de `local-loop.sh:878` ou canal http ao lado de `notificar()` (`lib.sh:1352`), nome da fila vindo do config do M-54.
+- detalhes executáveis:
+  - sem batimento por N ciclos o painel alarma (liga com o item 15 de `docs/migracao-comarka.md`).
+- depende de: ticket 1594 do Comarka; M-54.
+- fontes: C-0052 M10, plano c-0052 07/11
 
 ## Conflitos em aberto
 - M-04: L3-01 marcado como SUBSTITUI o item 25 da base (consenso simples contra consenso com filtro e peso medidos). Decide no PASSO 0 da etapa que pegar o item.
