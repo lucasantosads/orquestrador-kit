@@ -44,13 +44,16 @@ import {
 import { lerArvoreAlvo, testesVizinhos } from './gate-ticket.js'
 import { defaultToolsFromGates, pisoDoConfig, toolsDoTicket } from './perfil.js'
 import type { DecisaoConfig, SinalTentativa, Veredito } from './decisao.js'
+import { relative } from 'node:path'
+import { caminhoConfig, filaDir } from './fila-caminho.js'
 
 const [raiz, sub, ...args] = process.argv.slice(2)
 if (!raiz || !sub) {
   process.stderr.write('uso: decisao-cli.ts <raiz> <subcomando> [args]\n')
   process.exit(2)
 }
-const config = JSON.parse(readFileSync(`${raiz}/docs/fila/000-config.json`, 'utf8')) as DecisaoConfig
+const config = JSON.parse(readFileSync(caminhoConfig(raiz), 'utf8')) as DecisaoConfig
+const filaRel = relative(raiz, filaDir(raiz))
 const stdin = () => JSON.parse(readFileSync(0, 'utf8'))
 const out = (v: unknown) => process.stdout.write(JSON.stringify(v) + '\n')
 
@@ -135,7 +138,7 @@ switch (sub) {
     // A árvore é a do base_ticket (o teste vizinho não está no diff). Árvore
     // ilegível é erro alto: o executor não amplia sem saber.
     const e = stdin() as { gatesTxt: string; arquivosDoDiff: string[]; allowlist: string[]; worktree: string; base: string }
-    const arvore = lerArvoreAlvo(e.worktree, e.base, 'docs/fila')
+    const arvore = lerArvoreAlvo(e.worktree, e.base, filaRel)
     if (!arvore) {
       process.stderr.write(`vizinhos: não li a árvore de ${e.base} em ${e.worktree}\n`)
       process.exit(1)
@@ -147,7 +150,7 @@ switch (sub) {
   case 'instaveis': {
     // Mesma árvore e mesma régua do 'vizinhos': o vizinho C11 tem relação com o diff.
     const e = stdin() as { saida: string; arquivosDoDiff: string[]; allowlist: string[]; worktree: string; base: string }
-    const arvore = lerArvoreAlvo(e.worktree, e.base, 'docs/fila')
+    const arvore = lerArvoreAlvo(e.worktree, e.base, filaRel)
     if (!arvore) {
       process.stderr.write(`instaveis: não li a árvore de ${e.base} em ${e.worktree}\n`)
       process.exit(1)

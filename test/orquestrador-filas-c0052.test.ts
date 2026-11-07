@@ -8,10 +8,12 @@
  * 1254 da plataforma depende do 5197 do apolo).
  */
 import { describe, it, expect } from 'vitest';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, symlinkSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { REPO_ROOT, bashNoFixture, criarFixture, escrever } from './fixtures/orq-harness.js';
 import { caminhoConfig, filaDir } from '../scripts/orquestrador/fila-caminho.js';
+import { checarEstruturaFila, entradaDoCheckout, preVooDepsReais } from '../scripts/orquestrador/prevoo.js';
 
 const FX = join(REPO_ROOT, 'test', 'fixtures');
 const CFG_CI = join(FX, 'config', 'ci-000-config.json');
@@ -109,6 +111,10 @@ describe('ORQ_CONFIG fora do checkout principal aborta', () => {
       return 'docs/fila/link/000-config.json';
     }],
     ['config que não existe', () => 'docs/fila/nada/000-config.json'],
+    ['config com outro nome (P2)', (raiz) => {
+      escrever(join(raiz, 'docs', 'fila', 'apolo', 'config.json'), configIrma());
+      return 'docs/fila/apolo/config.json';
+    }],
   ];
   for (const [nome, caminho] of casos) {
     it(nome, () => {
@@ -121,4 +127,40 @@ describe('ORQ_CONFIG fora do checkout principal aborta', () => {
       expect(() => caminhoConfig(raiz, { ORQ_CONFIG: c })).toThrow(/ORQ_CONFIG/);
     });
   }
+});
+
+describe('P2: os CLIs em TS leem o config da fila escolhida', () => {
+  const TSX = join(REPO_ROOT, 'node_modules', '.bin', 'tsx');
+
+  it('prevoo.ts: a estrutura conferida (cat.6) é a da irmã', () => {
+    const raiz = duasFilas();
+    for (const d of ['docs/fila', 'docs/fila/apolo']) {
+      mkdirSync(join(raiz, d, 'rascunhos'), { recursive: true });
+      writeFileSync(join(raiz, d, 'liberacoes.json'), '{"$schema_versao": 2, "tokens": []}');
+    }
+    writeFileSync(join(raiz, 'docs', 'fila', '_TEMPLATE.md'), '# template\n');
+    const e = entradaDoCheckout(raiz, { ORQ_CONFIG: APOLO_CFG });
+    if ('erro' in e) throw new Error(e.erro);
+    expect([e.filaDir, e.runsDir]).toEqual([`${raiz}/docs/fila/apolo`, `${raiz}/docs/fila/apolo/runs`]);
+    const deps = preVooDepsReais({ repoRoot: raiz, filaDir: e.filaDir, runsDir: e.runsDir, custoFile: e.custoFile });
+    const item = checarEstruturaFila(deps);
+    expect(item.ok).toBe(false);
+    expect(item.item).toBe('pré-voo cat.6 (estrutura da fila): docs/fila/apolo/_TEMPLATE.md');
+  });
+
+  it('decisao-cli.ts: o prefixo da worktree é o da irmã', () => {
+    const raiz = duasFilas();
+    const r = spawnSync(TSX, [join(REPO_ROOT, 'scripts', 'orquestrador', 'decisao-cli.ts'), raiz, 'worktree', '5031'], {
+      encoding: 'utf8', env: { ...process.env, ORQ_CONFIG: APOLO_CFG },
+    });
+    expect(r.stdout.trim()).toContain('orq-apolo-5031');
+  });
+
+  it('gate-ticket.ts sem --fila lê a pasta da irmã', () => {
+    const raiz = duasFilas();
+    const r = spawnSync(TSX, [join(REPO_ROOT, 'scripts', 'orquestrador', 'gate-ticket.ts'), '--relatorio', '5031'], {
+      cwd: raiz, encoding: 'utf8', env: { ...process.env, ORQ_CONFIG: APOLO_CFG },
+    });
+    expect(r.stdout).toContain(`1 ticket(s) · fila ${raiz}/docs/fila/apolo\n`);
+  });
 });

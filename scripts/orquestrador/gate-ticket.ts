@@ -25,6 +25,7 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join, posix, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { globToRegExp, matchesAllowlist } from './enforcement-core.js'
+import { filaDir as filaDaRaiz } from './fila-caminho.js'
 
 // ─── Vocabulário do ticket ────────────────────────────────────────────────
 
@@ -1960,7 +1961,7 @@ function resolverAlvo(arg: string, filaDir: string, fila: TicketLido[]): TicketL
 }
 
 function main(argv: string[]): number {
-  let filaDir = join(process.cwd(), 'docs', 'fila')
+  let filaDir = filaDaRaiz(process.cwd())
   let relatorio = false
   let pendentes = false
   // --violacoes: imprime SÓ violação (sem aviso nem isenção). É a forma que o

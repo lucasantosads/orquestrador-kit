@@ -23,8 +23,9 @@
  */
 import { constants, accessSync, existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
-import { join, resolve } from 'node:path'
+import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { caminhoConfig } from './fila-caminho.js'
 
 /**
  * Os arquivos da spec vendorizada que precisam existir COM CONTEÚDO em
@@ -72,6 +73,8 @@ export interface PreVooDeps {
   lerOrigin: () => string
   lerEnv: () => string
   filaTemArquivo: (rel: string) => boolean
+  /** Pasta da fila relativa ao checkout, só para a mensagem (etapa c0052-B1a); ausente = docs/fila. */
+  filaRel?: string
   filaTemDir: (rel: string) => boolean
   lerLiberacoes: () => string
   /** Dia (AAAA-MM-DD) da última sondagem registrada, e se ela falhou. */
@@ -180,16 +183,17 @@ export function checarIdentidade(
 
 /** cat.6 · estrutura da fila — _TEMPLATE.md, liberacoes.json, rascunhos/, runs/. */
 export function checarEstruturaFila(
-  deps: Pick<PreVooDeps, 'filaTemArquivo' | 'filaTemDir' | 'lerLiberacoes'>,
+  deps: Pick<PreVooDeps, 'filaTemArquivo' | 'filaTemDir' | 'lerLiberacoes' | 'filaRel'>,
 ): Item {
+  const fila = deps.filaRel ?? 'docs/fila'
   for (const rel of ['_TEMPLATE.md', 'liberacoes.json']) {
     if (!exigirBooleano(deps.filaTemArquivo(rel), `filaTemArquivo(${rel})`)) {
-      return { ok: false, token: 'cat.6', item: `pré-voo cat.6 (estrutura da fila): docs/fila/${rel}`, motivo: 'ausente' }
+      return { ok: false, token: 'cat.6', item: `pré-voo cat.6 (estrutura da fila): ${fila}/${rel}`, motivo: 'ausente' }
     }
   }
   for (const rel of ['rascunhos', 'runs']) {
     if (!exigirBooleano(deps.filaTemDir(rel), `filaTemDir(${rel})`)) {
-      return { ok: false, token: 'cat.6', item: `pré-voo cat.6 (estrutura da fila): docs/fila/${rel}/`, motivo: 'ausente' }
+      return { ok: false, token: 'cat.6', item: `pré-voo cat.6 (estrutura da fila): ${fila}/${rel}/`, motivo: 'ausente' }
     }
   }
   try {
@@ -198,7 +202,7 @@ export function checarEstruturaFila(
     return {
       ok: false,
       token: 'cat.6',
-      item: 'pré-voo cat.6 (estrutura da fila): docs/fila/liberacoes.json',
+      item: `pré-voo cat.6 (estrutura da fila): ${fila}/liberacoes.json`,
       motivo: `JSON inválido — ${(e as Error).message}`,
     }
   }
@@ -435,6 +439,7 @@ export function preVooDepsReais(entrada: {
       }
       return ''
     },
+    filaRel: relative(entrada.repoRoot, entrada.filaDir),
     filaTemArquivo: (rel) => existsSync(join(entrada.filaDir, rel)),
     filaTemDir: (rel) => {
       try {
@@ -467,29 +472,41 @@ export function render(v: Veredito): string {
 }
 
 // --- CLI: `prevoo.ts <checkout>` (READ-ONLY) ---------------------------------
+type ConfigCli = PreVooConfig & { runs_dir?: string; orcamento?: { custo_file?: string } }
+
+/** Config e caminhos da fila escolhida por `ORQ_CONFIG` (etapa c0052-B1a); erro = texto do NO-GO. */
+export function entradaDoCheckout(raiz: string, env: Record<string, string | undefined> = process.env):
+  { config: ConfigCli; filaDir: string; runsDir: string; custoFile: string } | { erro: string } {
+  let configPath = join(raiz, 'docs/fila/000-config.json')
+  let config: ConfigCli
+  try {
+    configPath = caminhoConfig(raiz, env)
+    config = JSON.parse(readFileSync(configPath, 'utf8'))
+  } catch (e) {
+    return { erro: `${configPath}: ${(e as Error).message}` }
+  }
+  return {
+    config,
+    filaDir: dirname(configPath),
+    runsDir: join(raiz, config.runs_dir ?? 'docs/fila/runs'),
+    custoFile: join(raiz, config.orcamento?.custo_file ?? 'docs/fila/runs/custo.json'),
+  }
+}
+
 export function main(argv: string[]): number {
   const raiz = argv[0]
   if (!raiz) {
     process.stderr.write('uso: prevoo.ts <checkout-principal>\n')
     return 2
   }
-  let config: PreVooConfig & { runs_dir?: string; orcamento?: { custo_file?: string } } = {}
-  const configPath = join(raiz, 'docs/fila/000-config.json')
-  try {
-    config = JSON.parse(readFileSync(configPath, 'utf8'))
-  } catch (e) {
-    process.stdout.write(`NO-GO cat.6 · pré-voo (config) — ${configPath}: ${(e as Error).message}\n`)
+  const e = entradaDoCheckout(raiz)
+  if ('erro' in e) {
+    process.stdout.write(`NO-GO cat.6 · pré-voo (config) — ${e.erro}\n`)
     return 1
   }
-  const runsDir = join(raiz, config.runs_dir ?? 'docs/fila/runs')
   const v = preVooRelampago({
-    config,
-    deps: preVooDepsReais({
-      repoRoot: raiz,
-      filaDir: join(raiz, 'docs/fila'),
-      runsDir,
-      custoFile: join(raiz, config.orcamento?.custo_file ?? 'docs/fila/runs/custo.json'),
-    }),
+    config: e.config,
+    deps: preVooDepsReais({ repoRoot: raiz, filaDir: e.filaDir, runsDir: e.runsDir, custoFile: e.custoFile }),
   })
   process.stdout.write(render(v))
   return v.ok ? 0 : 1

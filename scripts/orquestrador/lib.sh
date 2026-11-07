@@ -47,6 +47,7 @@ fi
 config_da_fila() {
   local pedido="$1" abs dir_fis raiz_fis
   case "$pedido" in /*) abs="$pedido" ;; *) abs="$MAIN_CHECKOUT/$pedido" ;; esac
+  [ "$(basename "$abs")" = 000-config.json ] || { echo "ORQ_CONFIG '$pedido' não se chama 000-config.json"; return 1; }
   [ -f "$abs" ] || { echo "ORQ_CONFIG '$pedido' não existe (checkout: $MAIN_CHECKOUT)"; return 1; }
   [ -L "$abs" ] && { echo "ORQ_CONFIG '$pedido' é symlink (checkout: $MAIN_CHECKOUT)"; return 1; }
   dir_fis="$(cd "$(dirname "$abs")" && pwd -P)"

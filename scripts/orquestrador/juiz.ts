@@ -18,6 +18,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { dirname, join, normalize } from 'node:path'
 import { globToRegExp } from './enforcement-core.js'
+import { caminhoConfig } from './fila-caminho.js'
 
 export interface JuizCfg {
   juiz: {
@@ -770,7 +771,7 @@ if (process.argv.includes('--run-cli') && /juiz\.(ts|js)$/.test(process.argv[1] 
   const i = process.argv.indexOf('--run-cli')
   const raiz = process.argv[i + 1] ?? process.cwd()
   const sub = process.argv[i + 2] ?? ''
-  const cfg = JSON.parse(readFileSync(`${raiz}/docs/fila/000-config.json`, 'utf8')) as JuizCfg
+  const cfg = JSON.parse(readFileSync(caminhoConfig(raiz), 'utf8')) as JuizCfg
   const stdin = () => readFileSync(0, 'utf8')
   if (sub === 'nivel') {
     const e = JSON.parse(stdin()) as EntradaRisco

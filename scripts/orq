@@ -89,7 +89,10 @@ if [ "${1:-}" = config ]; then
   # (o caminho é `<checkout>/node_modules/.bin/tsx` por contrato), e o caso
   # `orq config resolve o tsx igual ao lib.sh` falha alto se divergir.
   if [ -x "$_main/node_modules/.bin/tsx" ]; then _tsx=( "$_main/node_modules/.bin/tsx" ); else _tsx=( npx --no-install tsx ); fi
-  ( cd "$ORQ_DIR/.." && "${_tsx[@]}" "$ORQ_DIR/orquestrador/config-cli.ts" "$_main/docs/fila/000-config.json" )
+  # ORQ_CONFIG (etapa c0052-B1a): o config da fila escolhida; a validação de
+  # caminho é a do lib.sh, que este verbo não carrega.
+  _cfg="${ORQ_CONFIG:-docs/fila/000-config.json}"; case "$_cfg" in /*) ;; *) _cfg="$_main/$_cfg" ;; esac
+  ( cd "$ORQ_DIR/.." && "${_tsx[@]}" "$ORQ_DIR/orquestrador/config-cli.ts" "$_cfg" )
   exit $?
 fi
 

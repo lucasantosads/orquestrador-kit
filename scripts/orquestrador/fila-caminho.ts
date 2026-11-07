@@ -9,7 +9,7 @@
  * O par em shell é `lib.sh:config_da_fila`; os dois dão a mesma resposta.
  */
 import { existsSync, lstatSync, realpathSync } from 'node:fs'
-import { dirname, isAbsolute, join, relative, sep } from 'node:path'
+import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path'
 
 export const CONFIG_PADRAO = 'docs/fila/000-config.json'
 
@@ -21,6 +21,8 @@ export function caminhoConfig(raiz: string, env: Env = process.env): string {
   if (pedido === '') return join(raiz, CONFIG_PADRAO)
   const abs = isAbsolute(pedido) ? pedido : join(raiz, pedido)
   const erro = (porque: string) => new Error(`ORQ_CONFIG '${pedido}' ${porque} (checkout: ${raiz})`)
+  // O nome é fixo: quem só tem a pasta (gate de ticket, painel) lê <pasta>/000-config.json.
+  if (basename(abs) !== '000-config.json') throw erro('não se chama 000-config.json')
   if (!existsSync(abs)) throw erro('não existe')
   if (lstatSync(abs).isSymbolicLink()) throw erro('é symlink')
   const rel = relative(realpathSync(raiz), realpathSync(abs))

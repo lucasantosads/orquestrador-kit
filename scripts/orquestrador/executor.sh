@@ -1528,7 +1528,7 @@ run_attempt() {
   # de quem chamou o executor, e com FORCE_COLOR ou CI nele o vitest colore o
   # placar ("Tests \e[22m \e[1m\e[32m2 passed"): gate que lê o placar com grep
   # reprovava com a suíte verde (test-sem-cor.sh).
-  NO_COLOR=1 FORCE_COLOR=0 "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/gates.ts" --run-cli "$wt" --config "$MAIN_CHECKOUT/docs/fila/000-config.json" \
+  NO_COLOR=1 FORCE_COLOR=0 "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/gates.ts" --run-cli "$wt" --config "$CONFIG" \
     --saida-falha "$rundir/gate-falha.txt" > "$rundir/gates.txt" 2>&1 || gates_rc=$?
   log "  gates: $([ "$gates_rc" = 0 ] && echo APROVADO || echo "REPROVADO (rc=$gates_rc)")"
   grep -qi 'reexecutar' "$rundir/gates.txt" && log "  gates: interrompidos — conjunto não vale parcialmente"
@@ -1552,7 +1552,7 @@ run_attempt() {
     decide_instaveis "$file" "$wt" "$rundir" "$base" "$gate_falho"
     if [ -n "$INSTAVEIS" ] && [ -z "$INST_RESTO" ]; then
       gates_rc=0
-      NO_COLOR=1 FORCE_COLOR=0 "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/gates.ts" --run-cli "$wt" --config "$MAIN_CHECKOUT/docs/fila/000-config.json" \
+      NO_COLOR=1 FORCE_COLOR=0 "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/gates.ts" --run-cli "$wt" --config "$CONFIG" \
         --retomar-depois "$gate_falho" > "$rundir/gates-retomada.txt" 2>&1 || gates_rc=$?
       { echo; echo "--- retomada depois de $gate_falho: FAIL só em instável que passou isolado ($(paste -sd, - <<<"$INSTAVEIS")), fora da conta ---"
         cat "$rundir/gates-retomada.txt"; } >> "$rundir/gates.txt"
