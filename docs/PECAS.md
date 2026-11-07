@@ -1193,15 +1193,20 @@
   fixtures em `test/fixtures/m69/` (configs reais, ouro do motor `ee8c4a7`, diffs reais do Comarka).
   Pendência da KF: o ouro com o config da fila do próprio kit.
 - **KF · o kit roda a própria fila (M-68, M-19 parcial, 07/11/2026).** Anti-afrouxamento em todo
-  teste existente tocado com `enforcement.afrouxamento: todo_teste` (`ded3972`); fila do kit em
+  teste existente tocado com `enforcement.afrouxamento: todo_teste` (`6de59a0`); fila do kit em
   `docs/fila-kit/`, escolhida por `ORQ_CONFIG`, com a régua em `zona_proibida`, gates com
-  `env -u ORQ_CONFIG` e `node_modules` sem barra no `.gitignore` (`9f6f21b`); canário 001 pendente
-  (`5bb0052`). CONTRATO §30. Falta: a cat.0 do pré-voo no kit (sem `docs/orquestrador/skill/`), a
-  `staging-kit`, o job e o primeiro ciclo.
+  `env -u ORQ_CONFIG` e `node_modules` sem barra no `.gitignore` (`5a6495c`); canário 001 pendente
+  (`d17dbb9`); gates sem `ORQ_GATE` (`8f988a3`); `claude_timeout_secs` 4200, `perfil.ts` e
+  `campos-do-motor.json` na régua (`c92e498`); pré-voo e seletor de testes na régua, suíte inteira
+  (`8c9fa2d`); `spec_dir` na cat.0 do pré-voo, o kit em `doutrina` (`5a3f151`), e no prompt do
+  executor (`90094d0`). Rebase sobre a M69 (`0a2b0ec`). CONTRATO §30. Falta: a `staging-kit`, o job
+  e o primeiro ciclo.
   *Evidência:* `~/orq-sessoes/relatorio-kit-fila-propria.md` (vermelho de cada peça, duração das
   suítes, corrente de merge).
   *Teste:* `orquestrador-afrouxamento-kf.test.ts` (fixtures reais `617d6ba` e `21cf14b` do kit em
-  `test/fixtures/afrouxamento-kf/`), `orquestrador-fila-kit.test.ts`.
+  `test/fixtures/afrouxamento-kf/`), `orquestrador-fila-kit.test.ts`,
+  `orquestrador-prevoo-spec-dir.test.ts`, `orquestrador-executor-spec-dir.test.ts` (configs reais e
+  ouro de `test/fixtures/m69/`). Defeito aberto: `docs/defeitos/2026-11-07-gate-shell-instavel-sob-carga.md`.
 
 ## PENDENTES
 

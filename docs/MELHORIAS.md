@@ -62,7 +62,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 | M-65 | Diff que toca a fila reprova no enforcement | parcial | B | C5, C1 | relato | | C-0052 M5, plano c-0052 07/11 |
 | M-66 | REVIEW.md do juiz por área | triado | B | C5 | relato | | C-0052 M6, plano c-0052 07/11 |
 | M-67 | Batimento do loop a cada ciclo | triado | B | C1 | relato | M-54 | C-0052 M10, plano c-0052 07/11 |
-| M-68 | O kit roda a própria fila | parcial (etapa KF): falta liberar a cat.0 do pré-voo no kit, criar a staging-kit, instalar o job e o primeiro ciclo | B | C1 | relato | M-54 | decisão K1 do Lucas 07/11, etapa KF |
+| M-68 | O kit roda a própria fila | parcial (etapa KF): falta criar a staging-kit, instalar o job e o primeiro ciclo | B | C1 | relato | M-54 | decisão K1 do Lucas 07/11, etapa KF |
 | M-69 | Gate de testes roda só os afetados, com modo sombra e a suíte inteira como rede | feito (etapa M69) | B | custo | medida | M-21 (rede da suíte inteira) | medição do Comarka 07/11 18:15, exceção 07/11 18:16 |
 | M-27 | Experimento best-of-N com funil e perda do seletor | ideia | C | C5, C2, custo | medida | M-29, M-56 | base (experimentos), v052, v044, v048, v053, v054, v050, L3-02, L3-09, L4-01, L4-02, L5-03 |
 | M-28 | Transcrição stream-json com extrator e taxonomia de falhas | ideia | C | C2, C3, custo | medida | | base #12, v061, v046, v048, L2-07, L3-05, L4-05 |
@@ -747,12 +747,14 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 
 ### M-68 O kit roda a própria fila
 - marco: B (entrou em 07/11 pela exceção K1)
-- status: parcial (etapa KF): falta liberar a cat.0 do pré-voo no kit (o kit não tem `docs/orquestrador/skill/`, `prevoo.ts:checarSpecVendorizada`), criar a `staging-kit`, instalar o job e o primeiro ciclo (o canário 001)
+- status: parcial (etapa KF): falta criar a `staging-kit`, instalar o job e o primeiro ciclo (o canário 001)
 - o que é: as etapas do kit viram tickets que o loop do próprio kit executa em worktree, com as 4 suítes como gate e o juiz. O merge da `staging-kit` na `main` segue humano.
 - como entra no kit: fila em `docs/fila-kit/`, escolhida por `ORQ_CONFIG=docs/fila-kit/000-config.json` (M-54). O kit continua sem `docs/fila` (o harness de teste e as guardas dos `test-*.sh` dependem disso).
 - detalhes executáveis:
   - régua em `zona_proibida.no_write_paths` do config do kit: gates, juiz, enforcement, decisão (inteira, com a CLI), gate de ticket, `perfil.ts` (piso de tools), `campos-do-motor.json`, o pré-voo, o seletor de testes (`selecao-testes.ts`, `selecao-relatorio.ts`), `schemas/**`, o config e as liberações da fila, os comandos dos gates de shell, `vitest.config.ts`, `tsconfig.json`, `package*.json`, `CLAUDE.md`. Mudança na régua é sessão manual (camada 3).
   - afrouxamento de teste reprova em todo teste existente tocado (`enforcement.afrouxamento: todo_teste`, M-19).
+  - `spec_dir: "doutrina"`: a cat.0 do pré-voo e o prompt do executor leem a doutrina na fonte (o kit não tem `docs/orquestrador/skill/`); ausente = a pasta de sempre, inválido = NO-GO cat.0.
+  - suíte inteira, sem `selecao_testes` (`_selecao_kit`); `claude_timeout_secs` 4200.
   - os 4 gates começam com `env -u ORQ_CONFIG -u ORQ_GATE`: o `ORQ_CONFIG` do loop vaza para o gate (defeito `docs/defeitos/2026-11-07-orq-config-vaza-para-os-gates.md`) e o `ORQ_GATE=1` faz o `describeHarness` pular 28 arquivos de teste do motor.
   - o loop do kit divide a cota da assinatura com os outros loops, sem prioridade (risco 2 aceito).
   - corrente de merge nova (pausar a fila do kit, esperar ocioso, `--no-ff` na main, staging-kit recebe a main antes de retomar): `~/orq-sessoes/relatorio-kit-fila-propria.md`, KF-4.

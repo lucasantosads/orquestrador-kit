@@ -2550,6 +2550,11 @@ Relatório: `~/orq-sessoes/relatorio-kit-fila-propria.md`. Decisões do Lucas de
   o `describeHarness` virar skip (28 arquivos de teste do motor, que no kit é o produto). `claude_timeout_secs` 4200
   (duas passadas das suítes dentro do `claude -p`, 2 × 1724 s medidos sob carga, mais 752 s de trabalho). Sem
   `selecao_testes`: a fila do kit roda a suíte inteira (`_selecao_kit`).
+- **Spec.** `spec_dir` (opcional): a pasta que a cat.0 do pré-voo confere (os 6 arquivos de
+  `ARQUIVOS_SPEC` com conteúdo e pelo menos 5 commitados) e que o prompt do executor aponta
+  (`<spec_dir>/EXECUTOR.md`). Ausente = `docs/orquestrador/skill`, byte a byte. Vazio, absoluto, com
+  `..` ou não-texto = NO-GO cat.0, nunca o padrão. No kit, `doutrina` (a fonte; o kit não tem a cópia
+  instalada). A cat.0 não confere `VERSAO`.
 - **Status na main.** O `autocommit_status_fila` commita na `main` do checkout principal do kit, e o
   preflight do executor exige esse checkout limpo. Merge de etapa e promoção da `staging-kit` passam a
   pausar a fila do kit e esperar `ocioso`; a `staging-kit` recebe a `main` a cada etapa manual, antes
