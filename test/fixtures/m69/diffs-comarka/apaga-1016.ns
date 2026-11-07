@@ -1,0 +1,7 @@
+D	fetch-openapi.js
+D	fetch-setup.js
+D	fix-schema.js
+D	patch-columns.js
+D	reset-db-password.js
+D	run-sql.js
+A	test/sem-segredo-no-repo.test.ts

@@ -1,0 +1,2 @@
+M	src/app/api/perf/dashboard/cliente/[cliente_id]/route.ts
+A	test/ficha-dados-leitura-completa.test.ts

@@ -1,0 +1,4 @@
+M	docs/plano/apolo/adr/ADR-022-ghl-todos-os-escopos.md
+M	src/lib/perf/ghl-oauth.ts
+M	test/fixtures/ghl-escopos-app.txt
+M	test/ghl-escopos-app.test.ts

@@ -18,3 +18,18 @@ Por que o Comarka vai migrado: o config dele roda hoje no motor legado de lá e 
 - `<repo>-{verde,vermelho}-gates.txt`, `-gate-falha.txt` e `-chamadas.txt`: `gates.ts --run-cli` com os comandos em stub. A saída de vitest é real (`test/fixtures/instavel-l11`). Os `ms` saem normalizados.
 
 O config da fila do próprio kit fica fora: é pendência da etapa KF, que cria `docs/fila/` no kit.
+
+## diffs-comarka/ (P2)
+
+`GIT_OPTIONAL_LOCKS=0 git diff --name-status <sha>^1 <sha>` no comarka-operacional, só leitura. Nos merges `frente/<id>`, o primeiro pai é a `staging-auto` antes do ticket, então o diff é o do ticket.
+
+| arquivo | sha | o que é |
+|---|---|---|
+| `src-1008.ns` | `aab851b` | merge do ticket 1008: uma rota em src e um teste novo |
+| `docs-1023.ns` | `f5a0fee` | merge do ticket 1023: só um doc |
+| `migration-1012.ns` | `cdf7249` | merge do ticket 1012: só uma migration |
+| `apaga-1016.ns` | `2c7b887` | merge do ticket 1016: apaga 6 scripts da raiz e cria um teste |
+| `package-022aac1.ns` | `022aac1` | commit de dependência: package.json e package-lock.json |
+| `fixture-c4409dc.ns` | `c4409dc` | commit que muda `test/fixtures/ghl-escopos-app.txt` |
+| `helper-4009a64.ns` | `4009a64` | commit que cria `test/helpers/carregar-tsx.ts` |
+| `renomeia-823ad7a.ns` | `823ad7a` | commit que renomeia uma migration (R100) |

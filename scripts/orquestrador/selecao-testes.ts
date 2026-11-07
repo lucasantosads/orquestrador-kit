@@ -16,6 +16,8 @@
  * vitest (2.1.9 e 4.1.9, medido no PASSO 0) e a base existe antes do agente — a
  * lista do diff não —, então o prompt e o `--allowedTools` levam o comando pronto.
  */
+import { matchesAllowlist } from './enforcement-core.js'
+
 export type ModoSelecao = 'inteira' | 'sombra' | 'afetados'
 
 export interface SelecaoTestes {
@@ -97,4 +99,67 @@ export function validarSelecao(config: { gates?: GateComSelecao[] }): string[] {
 export function gateDeSelecao(config: { gates?: GateComSelecao[] }): { nome: string; spec: SelecaoTestes } | null {
   const g = (config.gates ?? []).find((x) => x.selecao_testes !== undefined)
   return g ? { nome: g.nome, spec: g.selecao_testes as SelecaoTestes } : null
+}
+
+/** Uma linha de `git diff --name-status`: A/M/D/T e o destino do R/C, com a origem. */
+export interface ArquivoDiff {
+  status: string
+  caminho: string
+  origem?: string
+}
+
+export function lerNameStatus(saida: string): ArquivoDiff[] {
+  const out: ArquivoDiff[] = []
+  for (const l of saida.split('\n')) {
+    const [st, a, b] = l.split('\t')
+    if (!st || !a) continue
+    const status = st[0]!
+    out.push(b ? { status, caminho: b, origem: a } : { status, caminho: a })
+  }
+  return out
+}
+
+export interface Escolha {
+  /** `afetados` = o que roda (ou rodaria, na sombra) é `arquivos`; `inteira` = a suíte toda. */
+  modo_efetivo: 'inteira' | 'afetados'
+  motivo: string
+  arquivos: string[]
+}
+
+/** O `cmd_listar` já com a base: rc e saída, ou exceção quando nem rodou. */
+export type Listar = () => { rc: number; saida: string }
+
+/**
+ * A escolha, pura. Ordem: modo inteira; diff vazio; apaga ou renomeia; casa
+ * `suite_inteira_se`; o cálculo (erro ou rc != 0); conjunto vazio. Só então os
+ * afetados, com `testes_sempre` somado no fim, sem repetir. `testes_sempre` não
+ * salva um conjunto vazio: vazio é sinal de que o cálculo não viu o diff.
+ */
+export function escolherSelecao(diff: ArquivoDiff[], spec: SelecaoTestes, listar: Listar): Escolha {
+  const inteira = (motivo: string): Escolha => ({ modo_efetivo: 'inteira', motivo, arquivos: [] })
+  if (spec.modo === 'inteira') return inteira('modo inteira')
+  if (diff.length === 0) return inteira('diff vazio')
+  const some = diff.filter((d) => d.status === 'D' || d.status === 'R')
+  if (some.length) return inteira(`diff apaga ou renomeia: ${some.map((d) => `${d.caminho} (${d.status})`).join(', ')}`)
+  const globs = spec.suite_inteira_se ?? SUITE_INTEIRA_PADRAO
+  const casados = diff.flatMap((d) => {
+    const g = globs.find((x) => matchesAllowlist(d.caminho, [x]))
+    return g ? [`${d.caminho} (${g})`] : []
+  })
+  if (casados.length) return inteira(`diff casa suite_inteira_se: ${casados.join(', ')}`)
+  let r: { rc: number; saida: string }
+  try {
+    r = listar()
+  } catch (e) {
+    return inteira(`cmd_listar falhou (${(e as Error).message})`)
+  }
+  if (r.rc !== 0) return inteira(`cmd_listar falhou (rc ${r.rc})`)
+  const conjunto = [...new Set(r.saida.split('\n').map((l) => l.replace(/\x1B\[[0-9;]*m/g, '').trim()).filter((l) => l && !/\s/.test(l)))]
+  if (conjunto.length === 0) return inteira('conjunto afetado vazio')
+  const extra = (spec.testes_sempre ?? []).filter((t) => !conjunto.includes(t))
+  return {
+    modo_efetivo: 'afetados',
+    motivo: `${conjunto.length} arquivo(s) de teste afetado(s)${extra.length ? ` + ${extra.length} de testes_sempre` : ''}`,
+    arquivos: [...conjunto, ...extra],
+  }
 }

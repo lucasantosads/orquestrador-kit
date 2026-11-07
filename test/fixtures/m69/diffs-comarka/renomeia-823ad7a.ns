@@ -1,0 +1,3 @@
+R100	supabase/migrations/20261029120000_inteligencia_briefing_analista.sql	supabase/migrations/20261029193628_inteligencia_briefing_analista.sql
+M	test/apolo-briefing-analista.test.ts
+M	test/inteligencia/briefing-analista.test.ts
