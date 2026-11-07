@@ -2544,8 +2544,9 @@ Relatório: `~/orq-sessoes/relatorio-kit-fila-propria.md`. Decisões do Lucas de
   `enforcement-core.ts`) existente tocado pelo diff, modificado ou apagado. Teste criado fica de fora.
   O motivo da decisão é `afrouxamento em teste: <detalhe>`, sem retry, como na 8c.
 - **Gates.** Os 4 do kit (`tsc`, `vitest` com `TZ=UTC`, `test-shell.sh`, `test-instalar.sh`), binário
-  local, cada um com `env -u ORQ_CONFIG` na frente: o `gates.ts` repassa o ambiente do loop
-  (defeito `docs/defeitos/2026-11-07-orq-config-vaza-para-os-gates.md`). `claude_timeout_secs` 2586
+  local, cada um com `env -u ORQ_CONFIG -u ORQ_GATE` na frente: o `gates.ts` repassa o ambiente do loop
+  (defeito `docs/defeitos/2026-11-07-orq-config-vaza-para-os-gates.md`) e liga `ORQ_GATE=1`, que faz
+  o `describeHarness` virar skip (28 arquivos de teste do motor, que no kit é o produto). `claude_timeout_secs` 2586
   (soma medida das suítes com 50%).
 - **Status na main.** O `autocommit_status_fila` commita na `main` do checkout principal do kit, e o
   preflight do executor exige esse checkout limpo. Merge de etapa e promoção da `staging-kit` passam a

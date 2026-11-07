@@ -753,7 +753,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - detalhes executáveis:
   - régua em `zona_proibida.no_write_paths` do config do kit: gates, juiz, enforcement, decisão (inteira, com a CLI), gate de ticket, `schemas/**`, o config e as liberações da fila, os comandos dos gates de shell, `vitest.config.ts`, `tsconfig.json`, `package*.json`, `CLAUDE.md`. Mudança na régua é sessão manual (camada 3).
   - afrouxamento de teste reprova em todo teste existente tocado (`enforcement.afrouxamento: todo_teste`, M-19).
-  - os 4 gates começam com `env -u ORQ_CONFIG` (defeito `docs/defeitos/2026-11-07-orq-config-vaza-para-os-gates.md`).
+  - os 4 gates começam com `env -u ORQ_CONFIG -u ORQ_GATE`: o `ORQ_CONFIG` do loop vaza para o gate (defeito `docs/defeitos/2026-11-07-orq-config-vaza-para-os-gates.md`) e o `ORQ_GATE=1` faz o `describeHarness` pular 28 arquivos de teste do motor.
   - o loop do kit divide a cota da assinatura com os outros loops, sem prioridade (risco 2 aceito).
   - corrente de merge nova (pausar a fila do kit, esperar ocioso, `--no-ff` na main, staging-kit recebe a main antes de retomar): `~/orq-sessoes/relatorio-kit-fila-propria.md`, KF-4.
 - fontes: decisão K1 do Lucas (07/11), `~/orq-sessoes/SESSAO-KIT-fila-propria.md`

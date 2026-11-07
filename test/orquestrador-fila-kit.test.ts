@@ -75,10 +75,19 @@ describe('KF-P2 · a régua está na zona proibida (KF-2, P-8)', () => {
 });
 
 describe('KF-P2 · os gates não herdam o ORQ_CONFIG do loop (A2)', () => {
-  it('todo gate começa com env -u ORQ_CONFIG e a ordem é a da lista', () => {
+  it('todo gate começa com env -u ORQ_CONFIG -u ORQ_GATE e a ordem é a da lista', () => {
     const c = cfg();
-    for (const g of c.gates) expect(g.cmd, g.nome).toMatch(/^env -u ORQ_CONFIG /);
+    for (const g of c.gates) expect(g.cmd, g.nome).toMatch(/^env -u ORQ_CONFIG -u ORQ_GATE /);
     expect(c._execucao_dos_gates.ordem_obrigatoria).toEqual(c.gates.map((g: { nome: string }) => g.nome));
+  });
+  it('o gate de testes roda o harness: sob o ORQ_GATE=1 do gates.ts, describeHarness não vira skip', () => {
+    // gates.ts:448 roda o gate com ORQ_GATE=1, e orq-harness.ts:describeHarness é
+    // describe.skipIf(ORQ_GATE === '1'): sem o -u, 28 arquivos de teste do motor somem do gate do kit.
+    const testes = cfg().gates.find((g: { nome: string }) => g.nome === 'testes').cmd as string;
+    const sonda = testes.replace(/node_modules\/\.bin\/vitest run$/, `node -e "process.exit(process.env.ORQ_GATE === '1' ? 1 : 0)"`);
+    expect(sonda).not.toBe(testes);
+    const r = spawnSync('bash', ['-c', sonda], { env: { ...process.env, ORQ_GATE: '1' } });
+    expect(r.status).toBe(0);
   });
   it('com ORQ_CONFIG exportado, o lib.sh num fixture aborta sem o prefixo e carrega com ele', () => {
     const raiz = criarFixture();

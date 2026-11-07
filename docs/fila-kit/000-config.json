@@ -336,28 +336,28 @@
   "gates": [
     {
       "nome": "typecheck",
-      "cmd": "env -u ORQ_CONFIG node_modules/.bin/tsc --noEmit",
+      "cmd": "env -u ORQ_CONFIG -u ORQ_GATE node_modules/.bin/tsc --noEmit",
       "tipo": "exit_code",
       "papel": "typecheck",
       "descricao": "tsc do kit, zero erro hoje (sem baseline)."
     },
     {
       "nome": "testes",
-      "cmd": "env -u ORQ_CONFIG TZ=UTC node_modules/.bin/vitest run",
+      "cmd": "env -u ORQ_CONFIG -u ORQ_GATE TZ=UTC node_modules/.bin/vitest run",
       "tipo": "exit_code",
       "papel": "testes",
       "descricao": "vitest inteiro do kit."
     },
     {
       "nome": "shell",
-      "cmd": "env -u ORQ_CONFIG bash scripts/kit/test-shell.sh",
+      "cmd": "env -u ORQ_CONFIG -u ORQ_GATE bash scripts/kit/test-shell.sh",
       "tipo": "exit_code",
       "papel": "testes",
       "descricao": "os testes do motor que não são vitest, contra o fixture (peça K7b)."
     },
     {
       "nome": "instalar",
-      "cmd": "env -u ORQ_CONFIG bash scripts/kit/test-instalar.sh",
+      "cmd": "env -u ORQ_CONFIG -u ORQ_GATE bash scripts/kit/test-instalar.sh",
       "tipo": "exit_code",
       "papel": "testes",
       "descricao": "o instalador contra repos de teste."
@@ -400,7 +400,7 @@
     "afrouxamento": "todo_teste"
   },
   "_enforcement": "Etapa KF P1: anti-afrouxamento da 8c em todo teste existente tocado pelo diff, não só nos vizinhos ampliados (enforcement-core.ts:enforce). Teste criado pelo diff fica de fora. Os testes em shell (test-*.sh) não são cobertos pela regra: ficam com o juiz.",
-  "_gates_kit": "Os 4 gates começam com env -u ORQ_CONFIG: o lib.sh exporta ORQ_CONFIG (lib.sh:62) e gates.ts repassa o ambiente ao gate (gates.ts:448); os testes do kit carregam o lib.sh em fixture e abortariam com o ORQ_CONFIG do loop (docs/defeitos/2026-11-07-orq-config-vaza-para-os-gates.md). Binário local, TZ=UTC no vitest (o fechamento de toda etapa roda assim).",
+  "_gates_kit": "Os 4 gates começam com env -u ORQ_CONFIG -u ORQ_GATE. ORQ_CONFIG: o lib.sh a exporta (lib.sh:62) e gates.ts repassa o ambiente ao gate (gates.ts:448); os testes do kit carregam o lib.sh em fixture e abortariam com o ORQ_CONFIG do loop (docs/defeitos/2026-11-07-orq-config-vaza-para-os-gates.md). ORQ_GATE: gates.ts:448 liga ORQ_GATE=1, e test/fixtures/orq-harness.ts:describeHarness vira skip com ele (o harness do motor não é critério num repo instalado); no kit o motor é o produto, e sem o -u 28 arquivos de teste sumiriam do gate. Binário local, TZ=UTC no vitest.",
   "_zona_proibida_kit": "no_write_tables vazia de propósito: o kit não tem banco, e TODAS ligaria a regra 3 (DML cru em arquivo executável) contra os testes do enforcement, que carregam SQL como texto.",
   "_claude_timeout_kit": "Etapa KF, 07/11: soma das 4 suítes medidas na main ee8c4a7 (tsc 3 s, vitest 247 s, test-shell 1378 s na pior das duas rodadas, test-instalar 96 s = 1724 s) com 50% de folga = 2586 s. A máquina estava com load average de 44 a 59 (outros loops): é a condição em que este loop roda."
 }
