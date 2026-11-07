@@ -1,5 +1,68 @@
 # Migração comarka-operacional → kit
 
+## Estado em 07/11/2026 (comarka 93ecfa4, kit fb81911)
+
+Fonte: plano da sessão c-0052-motor-kit do Comarka (`~/orq-sessoes/plano-c0052-motor-kit-07nov.md`),
+conferido linha a linha por `git grep` no kit fb81911 na etapa c0052-B0
+(`~/orq-sessoes/relatorio-kit-c0052-b.md`, B0-1). O Comarka foi lido no 93ecfa4 só com
+`GIT_OPTIONAL_LOCKS=0 git show`. As seções abaixo desta são o estado de 28/10 e não foram reescritas.
+
+### Pré-requisitos (numeração de "Antes de migrar")
+
+| # | item | estado em 07/11 | arquivo:linha no kit fb81911 |
+|---|---|---|---|
+| 1 | recon no loop | portado (no pré-voo, `SPEC_DESATUALIZADA`) | `executor.sh:661` (prevoo_exec); commits 3c4992c, dd230de |
+| 2 | allowlist `dir/` para `dir/**` | portado | `enforcement-core.ts:191-192` |
+| 3 | comentário fora da varredura e DDL em teste | parcial: só `.sql` de teste; no kit os nomes são outros | `enforcement-core.ts:362` (removerComentariosDeLinha), `:385`, `:402` (ehTesteSql); `ehComentario`: não achado |
+| 4 | prioridade na seleção | aberto | `lib.sh:834` (proximo_pendente sem prioridade) |
+| 5 | gate streak no loop | parcial: só o resolvedor lê o sentinela legado | `resolvedor/gate-streak.ts:25-29`; `CONTRATO.md:2457` |
+| 6 | `Bash(git rm:*)` | aberto | `perfil.ts:19-30` (BASE_TOOLS); `git rm`: não achado |
+| 7 | limpar worktrees órfãs | aberto | só a do ticket corrente, `local-loop.sh:742`; `executor.sh:300` é `worktree prune` |
+| 8 | painel como serviço launchd | aberto | só `com.orquestrador.plist.template` (loop) e `resolvedor/com.orq.resolvedor.plist.template`; plist do painel: não achado |
+| 9 | doutrina regra 21 | aberto | `doutrina/SKILL.md:103` é a regra 20; regra 21: não achado |
+| 10 | gancho pós-drenagem | parcial: notificação sem gancho | `lib.sh:1352` (notificar) |
+| 11 | escopo no baseline do tsc | aberto | `gates.ts:224-230` (avaliaBaselineTsc); `baseline_scope`: não achado |
+| 12 | serve_up/serve_down | aberto | não achado em `scripts/` |
+| 13 | migrar-config com os nomes do comarka | aberto | mapa de renomes em `config-tabela.ts:31`, `:69`, `:78-87`; `worktree_prefix` e `disjuntor_sem_progresso_limite`: não achado |
+| 14 | orq-runner e `ORQ_EXEC_ROOT` | fechado pela Q3 (abaixo); remoção do suporte é peça futura | `lib.sh:20-24`; 14 ocorrências no motor fora de teste (lib.sh 6, `scripts/orq` 4, `orq-painel.py` 4) |
+| 15 | aviso de loop parado | parcial: alarme no painel, sem notificação; job descarregado não alarma | `orq-painel.py:939-952` (condição `carregado`, `:942`) |
+| PE 6df04cc | duas filas (`ORQ_LOOP`, `docs/fila/apolo`) | aberto: é o M-54 | `ORQ_LOOP` em `scripts/`: não achado |
+| PE fab89d5 | PID vivo no painel | aberto | `orq-painel.py:935` (launchd_exit sem olhar PID) |
+| PE 4318257 | sync da main ff-only | aberto | `local-loop.sh:878` só `git fetch`; `ff-only`: não achado |
+| PE 54fccc1 | runner com gitdir quebrado | some com a Q3 | `orq-runner`: não achado |
+
+### C-0052 M1 a M11
+
+| C-0052 | Comarka 93ecfa4 | kit fb81911 | arquivo:linha no kit | MELHORIAS | depende de ticket |
+|---|---|---|---|---|---|
+| M1 kernel por arquivo | não (`docs/plano/apolo/kernels/` ausente) | não; config com caminho fixo | `lib.sh:42-43`, `:90` | M-64 | 5318, 5320 |
+| M2 vermelho exige token | não | parcial: tokens `humano:*`; risco só alto/baixo do juiz | `lib.sh:791-794`; `juiz.ts:39-79` | M-18 | 1592 |
+| M3 PreToolUse no headless | parcial (guarda-ferramenta.py do repo) | não | montagem do `claude -p` em `executor.sh:1410-1413`; `--settings`: não achado | M-26 | 5318 |
+| M4 contagem no diff | não | não | `enforcement-core.ts:205` (addedLines) | M-19 | nenhum |
+| M5 diff na fila reprova | não (só allowlist) | parcial por config: o dashboard proíbe `docs/fila/000-config.json` e `liberacoes.json`; o motor não tem guarda fixa | `enforcement-core.ts:727-735`; `paths_harness` só em `_referencia-ci/000-config.ci.json:430` | M-65 | nenhum |
+| M6 REVIEW.md por área | REVIEW.md único, não lido | portado por repo (`juiz.review_md`, 8e) | `executor.sh:1004-1009`; `juiz.ts:137-140`, `:648-649`; `prevoo.ts:256-270` | M-66 | nenhum |
+| M7 70% e 95% de uso | não | não | `lib.sh:834` | M-35 | 1593 |
+| M8 1 em 3 critérios ocultos | só curl e avaliador ocultos (`executor.sh:81-88` do Comarka) | não | `schemas/ticket.schema.json:74` (sem flag oculta) | M-22 | nenhum |
+| M9 objeção sem arquivo:linha descartada | não | parcial: anexo de citações | `juiz.ts:538` (anexoCitacoes), `:699` (extrairVeredito) | M-01 | 5324 |
+| C-0052 M10 batimento por ciclo | não | não | `local-loop.sh:878`; `lib.sh:1352` | M-67 | 1594 |
+| M11 max_retries 2 para 1 | config `:5`, `lib.sh:61` | portado (chave obrigatória) | `lib.sh:93` | M-41 (fonte do dado) | 5325 |
+
+### Decisões do Lucas (07/11/2026)
+
+- Q1: convergir primeiro. C-0052 M3, M4, M5, M8 e M9 andam em paralelo no marco A; C-0052 M1, M2, M7 e C-0052 M10 vêm depois do corte.
+- Q2: exceção na regra de entrada do MELHORIAS. C-0052 M1, M5, M6 por área e C-0052 M10 entram já no marco B (M-64 a M-67).
+- Q3: abandonar o orq-runner e o `ORQ_EXEC_ROOT`; o Comarka roda nas worktrees do kit. Fecha o item 14 e o 54fccc1.
+  Remover o suporte a `ORQ_EXEC_ROOT` do kit (`lib.sh:20-24` e as 14 ocorrências no motor) é peça futura, não da etapa c0052-B.
+- Q4: o kernel@1 do ADR-027 do Comarka embrulha o config v2 do kit num bloco, uma fonte só; o espelho `codigo.json` é ajustado no corte.
+- Q5: corte liberado com 10 tickets por fila no modo sombra, cada um com o mesmo desfecho do legado ou divergência explicada.
+
+### Bloqueador do corte
+
+O Comarka roda dois loops (`ORQ_LOOP`, `lib.sh:39-44` do Comarka; plist `com.comarka.orquestrador-apolo`).
+O kit tem uma fila por repo até o M-54 (etapas c0052-B1a e B1b). A config da fila apolo
+(`docs/fila/apolo/000-config.json`) nasce no Comarka, por commit `MOTOR:`, não no kit.
+
+
 Inventário de 02/10/2026. Fonte: `bash instalar.sh --atualizar ~/Projetos/comarka-operacional --dry-run`
 (kit 2.1.0-dev, comarka main 718206d): **126 diferenças** — 28 só no comarka, 74 só no kit, 24 nos dois com conteúdo diferente.
 
@@ -16,7 +79,7 @@ para o kit antes da migração · **OBS** = obsoleto/artefato, já coberto pelo 
 
 ---
 
-## a) Só no comarka (28)
+## a) Só no comarka (28) (estado de 28/10, ver 07/11)
 
 | # | arquivo | o que faz | par no kit | classe |
 |---|---|---|---|---|
@@ -51,7 +114,7 @@ para o kit antes da migração · **OBS** = obsoleto/artefato, já coberto pelo 
 
 Totais: GEN 8 (#5, 7, 8, 10, 16, 20, 22, 28) · ESP 6 (#3, 4, 13, 24, 25, 27) · OBS 14.
 
-## b) Só no kit (74), por capacidade
+## b) Só no kit (74), por capacidade (estado de 28/10, ver 07/11)
 
 | capacidade | arquivos | o que traz | par no comarka |
 |---|---|---|---|
@@ -74,7 +137,7 @@ Totais: GEN 8 (#5, 7, 8, 10, 16, 20, 22, 28) · ESP 6 (#3, 4, 13, 24, 25, 27) ·
 Atenção: os testes vitest entram em `test/` do comarka, logo no `include` do tsconfig e no gate de tsc (baseline 3).
 Qualquer erro de tipo neles muda a contagem.
 
-## c) Nos dois, comportamento divergente (18)
+## c) Nos dois, comportamento divergente (18) (estado de 28/10, ver 07/11)
 
 | arquivo | diferença | o que o comarka tem e o kit não | classe |
 |---|---|---|---|
@@ -107,7 +170,7 @@ Qualquer erro de tipo neles muda a contagem.
 | `templates/TICKET.md` | o comarka tem o exemplo de `recon_esperado`; o kit tem `contexto_juiz`/`exemplos_regex` | exemplo de recon | GEN (com o recon) |
 | `templates/config.json` | o kit acrescenta branch_protegida, launchd, políticas; o comarka tem `proibicoes_absolutas` em prosa | — | kit é superconjunto (migrar a prosa é humano) |
 
-## d) Nos dois, diferença cosmética ou de caminho (6)
+## d) Nos dois, diferença cosmética ou de caminho (6) (estado de 28/10, ver 07/11)
 
 | arquivo | tipo |
 |---|---|
@@ -124,7 +187,7 @@ be8b0a7 → RunAtLoad (porte Actus 7b-7).
 
 ---
 
-## Antes de migrar
+## Antes de migrar (estado de 28/10, ver 07/11)
 
 ### Sobe para o kit: melhorias genéricas (10)
 
@@ -155,11 +218,11 @@ Opcionais (o comarka não perde nada que use todo dia): fetch com retry ao acord
 11. **Escopo no gate `baseline`** (o equivalente de `baseline_scope_regex`): sem ele a contagem do tsc do comarka (baseline 3, filtro `^\.next/`) deixa de valer.
 12. **Dev server para critério curl/localhost** (`serve_up/down`) como capacidade opcional de config.
 13. **`migrar-config` cobre os nomes do comarka**: `worktree_prefix` → `worktrees_prefixo` (sem isso volta a colisão com o actus) e `disjuntor_sem_progresso_limite` → `sem_progresso_limite`. Grep vazio hoje.
-14. **Execução fora do checkout principal**: o caso orq-runner/`ORQ_EXEC_ROOT` (defeito aberto 8fb9047) precisa de resposta no kit — suporte ou decisão escrita de abandonar o orq-runner — porque o `enforcement.sh` do comarka depende disso.
+14. **Execução fora do checkout principal**: o caso orq-runner/`ORQ_EXEC_ROOT` (defeito aberto 8fb9047) precisa de resposta no kit — suporte ou decisão escrita de abandonar o orq-runner — porque o `enforcement.sh` do comarka depende disso. Fechado pela Q3 (07/11): ver "Estado em 07/11/2026" no topo.
 
 Fica como configuração no comarka, sem mudança no kit: `zona_proibida` (lista C0), `launchd.label` + `start_interval: 900`, `perfis_tools`, `modelos.juiz_*` (de `avaliador_model`). Fica fora do motor: push por ticket e do autocommit (D11 proíbe; vira passo humano ou extensão do item 10).
 
-### PORTE-PENDENTE abertos no comarka
+### PORTE-PENDENTE abertos no comarka (estado de 28/10, ver 07/11)
 
 Atualização de 28/10/2026 (comarka 236b680, kit 2c0f469). Os 14 commits `PORTE-PENDENTE:` de 11 a 19/10 foram lidos com `git show` no Comarka e comparados ao código do kit por leitura e `git grep`, com arquivo:linha. Nada foi executado, salvo um `grep -qiE` com a regex do kit sobre as mensagens do caso 6ad8fbd. Resultado: 1 portado, 2 equivalentes, 11 abertos, mais 2 consertos sem prefixo (c2ae29b e 54fccc1) registrados como defeito em `docs/defeitos/`. Dos abertos, 4 formam o lote do gate de instável (dc90c8d, 906259f, 86dec07 Fix A, 9ee36a9), 1 tem destino "ficar no Comarka" (7464018) e 1 tem destino "descartar" (1f0ddc9). Estado e destino são proposta, até o Lucas confirmar.
 
@@ -187,7 +250,7 @@ Revisão de 28/10/2026 à tarde (comarka 6995f49): triagem do Lucas conferida sh
 | 54fccc1 (28/10) | `ensure_runner_worktree` move para `.quebrada-<ddHHMMSS>` e recria a runner quando o diretório existe com gitdir quebrado | **aberto**, sem prefixo PORTE-PENDENTE no commit de origem. Defeito registrado em `docs/defeitos/2026-10-28-runner-worktree-gitdir-quebrado.md`. O kit não tem `orq-runner`; falta verificar se `lib.sh:869-894` cobre "diretório sem gitdir" |
 | 457856c (17/10) | `harness: consertos das reprovas de 13 a 17/10`, 11 arquivos, cinco pedaços. (1) teste vizinho: allowlist ampliada, `vitest_vizinhos`, camada 15 do validar-fila. (2) evidência do attempt nunca sobrescrita (`preservar_rundir`, `.prevK`). (3) autocommit de status com rebase sobre a origin (`rebase_status_fila`). (4) `ritual-staging` espera o lock. (5) camada 16 do validar-fila: `falha_st_sem_rotulo` (aviso) e `grep_rota_sem_delimitador` (erro) | **misto, linha que faltava na tabela.** (1) **portado** no 8c (`docs/PECAS.md` 8c, `decisao.ts:817`, `gate-ticket.ts:1443`, `executor.sh:1236`). (2) **equivalente por desenho**: `slot_base_attempt` (`executor.sh:929`, peça 0b) numera o próximo attempt livre, nada é sobrescrito. (3) **não porta o rebase e o push** (D11); o aprendizado entra no lote do `4318257`: o status gravado pelo loop não pode desfazer reabertura humana feita na origin (caso 5159). (4) **fica no Comarka**, mesmo destino do `7464018`. (5) **aberto**: `gate-ticket.ts` não tem nada equivalente (os C2c e C14 tratam de `grep -c`, que é outra coisa). Portar como avisos novos no molde de C13 a C16, com medição de falso positivo no corpus |
 
-### Lado do comarka, na hora da migração (não é item do kit)
+### Lado do comarka, na hora da migração (não é item do kit) (estado de 28/10, ver 07/11)
 
 - Preencher as 32 chaves obrigatórias que faltam no `000-config.json` (orçamento, `branch_protegida`, `juiz.*`, `gate_ticket.*`, `ambiente_id`…).
 - `migrar-liberacoes`: a chave `liberadas` some. Ajustar quem lê: `prontos.py`, `orq-painel.py`, `orq-server.py`, `validar-fila.py`, `test-validar-fila.py`.
@@ -200,7 +263,7 @@ Revisão de 28/10/2026 à tarde (comarka 6995f49): triagem do Lucas conferida sh
 - Remover o writeback Notion (decidido 02/10): `writeback-notion.ts`, o passo 4 de `local-loop.sh:414-436`, a chamada em `.github/workflows/orquestrador.yml:84`, `test/writeback.test.ts` + `test/writeback-notion-chunking.test.ts`, e a chave `writeback_notion` em `docs/fila/000-config.json:14-15`.
 - Rodar a contagem do tsc com os testes vitest do kit dentro de `test/`.
 
-## Estimativa
+## Estimativa (estado de 28/10, ver 07/11)
 
 **15 itens precisam subir para o kit** antes de o comarka poder ser instalado sem perder capacidade:
 10 melhorias genéricas + 5 pontos de configuração/extensão. Os maiores são o recon no loop (1), a prioridade (4),
