@@ -1039,9 +1039,10 @@ cooldown_remaining_min() {
 #   PAUSA_FILE       o sentinela v1, relativo à raiz de EXECUÇÃO. Continua sendo
 #                    lido para que uma pausa já colocada por alguém não seja
 #                    silenciosamente ignorada por esta mudança.
-# Qualquer um dos dois presente = pausado.
+# Qualquer um dos dois presente = pausado. Os dois são da fila (etapa c0052-B1a):
+# o `.orq-pause` mora na pasta dela, e a pausa de uma fila não segura a irmã.
 CFG_PAUSAR_FILE="$MAIN_CHECKOUT/$(cfg '.pausar_file')"
-PAUSA_FILE="$ROOT/docs/fila/.orq-pause"
+PAUSA_FILE="$ROOT/${FILA_DIR#"$MAIN_CHECKOUT"/}/.orq-pause"
 
 # pausa_ativa -> 0 se a fila está pausada.
 pausa_ativa() { [ -f "$CFG_PAUSAR_FILE" ] || [ -f "$PAUSA_FILE" ]; }

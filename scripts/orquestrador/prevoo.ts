@@ -23,7 +23,7 @@
  */
 import { constants, accessSync, existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
-import { dirname, join, relative, resolve } from 'node:path'
+import { dirname, join, posix, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { caminhoConfig } from './fila-caminho.js'
 
@@ -63,6 +63,9 @@ export interface PreVooConfig {
   ambiente_id?: string
   branch_alvo?: string
   juiz?: { review_md?: string }
+  filas_irmas?: string[]
+  runs_dir?: string
+  pausar_file?: string | null
 }
 
 export interface PreVooDeps {
@@ -75,6 +78,8 @@ export interface PreVooDeps {
   filaTemArquivo: (rel: string) => boolean
   /** Pasta da fila relativa ao checkout, só para a mensagem (etapa c0052-B1a); ausente = docs/fila. */
   filaRel?: string
+  /** Texto do `<rel>/000-config.json` de uma fila irmã, ou null (cat.9). */
+  lerConfigFila?: (rel: string) => string | null
   filaTemDir: (rel: string) => boolean
   lerLiberacoes: () => string
   /** Dia (AAAA-MM-DD) da última sondagem registrada, e se ela falhou. */
@@ -257,6 +262,39 @@ export function checarUltimaSondagem(deps: Pick<PreVooDeps, 'ultimaSondagem' | '
 export const TETO_REVIEW_LINHAS = 150
 export const TETO_REVIEW_BYTES = 8192
 
+/**
+ * cat.9 · filas irmãs (etapa c0052-B1a, M-54). Só com `filas_irmas`: cada fila
+ * (esta e as irmãs) guarda `runs_dir` e `pausar_file` dentro da própria pasta, e
+ * nenhuma divide `runs_dir` com outra. Runs divididos juntam lock, STATUS, trilha
+ * e cooldown; pausa fora da pasta segura a fila errada.
+ */
+export function checarFilasIrmas(config: PreVooConfig, deps: Pick<PreVooDeps, 'filaRel' | 'lerConfigFila'>): Item | null {
+  if (!config.filas_irmas?.length) return null
+  const no = (motivo: string): Item => ({ ok: false, token: 'cat.9', item: 'pré-voo cat.9 (filas irmãs)', motivo })
+  const filas: [string, PreVooConfig][] = [[deps.filaRel ?? 'docs/fila', config]]
+  for (const rel of config.filas_irmas) {
+    try {
+      filas.push([posix.normalize(rel), JSON.parse(deps.lerConfigFila?.(rel) ?? 'null') ?? undefined])
+    } catch {
+      return no(`${rel}/000-config.json ilegível`)
+    }
+    if (!filas.at(-1)![1]) return no(`${rel}/000-config.json ausente`)
+  }
+  const runs = new Map<string, string>()
+  for (const [dir, c] of filas) {
+    const r = posix.normalize(c.runs_dir ?? 'docs/fila/runs')
+    if (runs.has(r)) return no(`runs_dir '${r}' repetido em ${runs.get(r)} e ${dir}`)
+    runs.set(r, dir)
+  }
+  for (const [dir, c] of filas) {
+    for (const chave of ['runs_dir', 'pausar_file'] as const) {
+      const v = c[chave]
+      if (typeof v === 'string' && !posix.normalize(v).startsWith(`${dir}/`)) return no(`${dir}: ${chave} '${v}' fora da pasta da fila`)
+    }
+  }
+  return { ok: true, token: 'cat.9', item: `filas irmãs (${filas.length} filas)` }
+}
+
 /** cat.8 · `juiz.review_md` existe na branch alvo e cabe nos tetos. Só roda com a chave. */
 export function checarReviewMd(config: PreVooConfig, deps: Pick<PreVooDeps, 'lerDaBranchAlvo'>): Item {
   const path = config.juiz?.review_md ?? ''
@@ -299,6 +337,9 @@ export function preVooRelampago(entrada: { config: PreVooConfig; deps: PreVooDep
     ['cat.0 (spec vendorizada)', () => checarSpecVendorizada(deps)],
     ['cat.1 (identidade)', () => checarIdentidade({ config, ...deps })],
     ['cat.6 (estrutura da fila)', () => checarEstruturaFila(deps)],
+    ...(config.filas_irmas?.length
+      ? [['cat.9 (filas irmãs)', () => checarFilasIrmas(config, deps)!] as [string, () => Item]]
+      : []),
     ...(config.juiz?.review_md
       ? [['cat.8 (review_md)', () => checarReviewMd(config, deps)] as [string, () => Item]]
       : []),
@@ -440,6 +481,13 @@ export function preVooDepsReais(entrada: {
       return ''
     },
     filaRel: relative(entrada.repoRoot, entrada.filaDir),
+    lerConfigFila: (rel) => {
+      try {
+        return readFileSync(join(entrada.repoRoot, rel, '000-config.json'), 'utf8')
+      } catch {
+        return null
+      }
+    },
     filaTemArquivo: (rel) => existsSync(join(entrada.filaDir, rel)),
     filaTemDir: (rel) => {
       try {

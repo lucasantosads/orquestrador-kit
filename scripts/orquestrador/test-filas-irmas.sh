@@ -5,6 +5,7 @@
 # por loop: branch alvo staging-apolo, prefixo fxa-, runs e pausa na pasta dela.
 #
 #   P2  seleção, status, worktree, runs e merge só na irmã; a raiz intocada.
+#   P3  pausa e lock por fila; `orq pausar --todas` pausa a raiz e as irmãs.
 #
 # Uso: bash scripts/orquestrador/test-filas-irmas.sh
 
@@ -74,6 +75,36 @@ confere "evidência em docs/fila/apolo/runs/902" [ -d "$r/docs/fila/apolo/runs/9
 confere "nada em docs/fila/runs/902" [ ! -e "$r/docs/fila/runs/902" ]
 confere "trilha da irmã tem o 902" grep -q ' 902 ' "$r/docs/fila/apolo/runs/events.log"
 [ "$FALHAS" = 0 ] || tail -40 "$FXE/saida"
+fxe_limpa
+
+echo "== P3: pausa e lock por fila =="
+irma_nova
+r="$FXE/repo"
+# lib <fila> <comando>: o lib.sh (e o local-loop, sourced) carregados na fila pedida.
+lib() {
+  ( cd "$r" && ORQ_TESTE=1 ORQ_EXEC_ROOT="$r" ORQ_CONFIG="$1" LOCAL_LOOP_SOURCED=1 PATH="$FXE/bin:$PATH" bash -c "
+      source '$r/scripts/orquestrador/local-loop.sh'; set +e; $2" ) 2>&1
+}
+echo "2026-11-07 10:00 | legado" > "$r/docs/fila/.orq-pause"
+confere ".orq-pause da raiz pausa a raiz" [ "$(lib '' 'pausa_ativa && echo sim')" = sim ]
+confere ".orq-pause da raiz não segura a irmã" [ -z "$(lib "$IRMA_CFG" 'pausa_ativa && echo sim')" ]
+rm -f "$r/docs/fila/.orq-pause"
+echo "2026-11-07 10:00 | irma" > "$r/docs/fila/apolo/PAUSAR"
+confere "PAUSAR da irmã não segura a raiz" [ -z "$(lib '' 'pausa_ativa && echo sim')" ]
+rm -f "$r/docs/fila/apolo/PAUSAR"
+mkdir -p "$r/docs/fila/runs"
+printf '%s\n%s\n' "$$" "$(date +%s)" > "$r/docs/fila/runs/.local-loop.lock"
+confere "lock vivo da raiz não encerra a irmã" grep -q '^adquiriu$' <<< "$(lib "$IRMA_CFG" 'lock_adquirir && echo adquiriu')"
+confere "lock vivo da raiz encerra a raiz" grep -q 'outro run vivo' <<< "$(lib '' 'lock_adquirir || echo recusou')"
+rm -f "$r/docs/fila/runs/.local-loop.lock" "$r/docs/fila/apolo/runs/.local-loop.lock"
+
+jq '.filas_irmas = ["docs/fila/apolo"]' "$r/docs/fila/000-config.json" > "$r/c.tmp" && mv "$r/c.tmp" "$r/docs/fila/000-config.json"
+jq '.filas_irmas = ["docs/fila"]' "$r/$IRMA_CFG" > "$r/c.tmp" && mv "$r/c.tmp" "$r/$IRMA_CFG"
+( cd "$r" && ORQ_TESTE=1 ORQ_EXEC_ROOT="$r" bash "$(git -C "$AQUI" rev-parse --show-toplevel)/scripts/orq" pausar --todas "janela de manutencao" ) >> "$FXE/saida" 2>&1
+confere "--todas: PAUSAR na raiz com o motivo" grep -q '| janela de manutencao$' "$r/docs/fila/PAUSAR"
+confere "--todas: PAUSAR na irmã com o motivo" grep -q '| janela de manutencao$' "$r/docs/fila/apolo/PAUSAR"
+confere "--todas: PAUSA na trilha da irmã" grep -q 'PAUSA ' "$r/docs/fila/apolo/runs/events.log"
+[ "$FALHAS" = 0 ] || tail -20 "$FXE/saida"
 fxe_limpa
 
 echo

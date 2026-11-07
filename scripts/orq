@@ -44,7 +44,8 @@
 #   orq versao           VERSAO do motor instalado (e compara com --kit <dir>)
 #   orq config           acusa placeholder e chave faltando em docs/fila/000-config.json
 #   orq prevoo           pré-voo relâmpago: GO/NO-GO, um item por linha (rc 1 em NO-GO)
-#   orq pausar [motivo]  cria o pausar_file (a drenagem para ENTRE tickets)
+#   orq pausar [--todas] [motivo]  cria o pausar_file (a drenagem para ENTRE tickets);
+#                        --todas: o desta fila e o de cada uma de filas_irmas
 #   orq retomar          remove o pausar_file
 #   orq liberar <humano:token> [nota]   registra a liberação humana (v2)
 #   orq triar <repo> [<id>] [--passada] [--forcar] [--sem-modelo]
@@ -432,6 +433,16 @@ cmd_versao() {
 # dur=<N>min`. As funções são do lib.sh (pausa_registrar, retomada_registrar),
 # para que terminal e painel não tenham duas réguas.
 cmd_pausar() {
+  # --todas (etapa c0052-B1a): a pausa é por fila; pausar tudo é pausar cada uma,
+  # pelo próprio `orq` com ORQ_CONFIG, para cada trilha ganhar a sua PAUSA.
+  if [ "${1:-}" = --todas ]; then
+    shift
+    local f
+    for f in "${FILA_DIR#"$MAIN_CHECKOUT"/}" $(cfg '.filas_irmas // [] | .[]'); do
+      ORQ_CONFIG="$f/000-config.json" "$0" pausar "$@" || return 1
+    done
+    return 0
+  fi
   printf '%s | %s\n' "$(date '+%Y-%m-%d %H:%M')" "${1:-pausa manual}" > "$PAUSAR_FILE"
   pausa_registrar terminal "${1:-pausa manual}"
   printf 'PAUSADO: %s\n' "$(cat "$PAUSAR_FILE")"

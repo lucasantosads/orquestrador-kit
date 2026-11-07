@@ -13,7 +13,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpa
 import { join } from 'node:path';
 import { REPO_ROOT, bashNoFixture, criarFixture, escrever } from './fixtures/orq-harness.js';
 import { caminhoConfig, filaDir } from '../scripts/orquestrador/fila-caminho.js';
-import { checarEstruturaFila, entradaDoCheckout, preVooDepsReais } from '../scripts/orquestrador/prevoo.js';
+import { checarEstruturaFila, checarFilasIrmas, entradaDoCheckout, preVooDepsReais } from '../scripts/orquestrador/prevoo.js';
 
 const FX = join(REPO_ROOT, 'test', 'fixtures');
 const CFG_CI = join(FX, 'config', 'ci-000-config.json');
@@ -162,5 +162,54 @@ describe('P2: os CLIs em TS leem o config da fila escolhida', () => {
       cwd: raiz, encoding: 'utf8', env: { ...process.env, ORQ_CONFIG: APOLO_CFG },
     });
     expect(r.stdout).toContain(`1 ticket(s) · fila ${raiz}/docs/fila/apolo\n`);
+  });
+});
+
+describe('P3: o pré-voo recusa filas irmãs que dividem runs ou pausa', () => {
+  /** Raiz e irmã declaradas uma na outra; `irma` troca o config da irmã. */
+  const declaradas = (irma: string) => {
+    const raiz = duasFilas(CFG_CI, irma);
+    for (const [cfg, outra] of [['docs/fila/000-config.json', 'docs/fila/apolo'], [APOLO_CFG, 'docs/fila']] as const) {
+      const j = JSON.parse(readFileSync(join(raiz, cfg), 'utf8'));
+      writeFileSync(join(raiz, cfg), JSON.stringify({ ...j, filas_irmas: [outra] }));
+    }
+    return raiz;
+  };
+  const cat9 = (raiz: string, orqConfig: string) => {
+    const e = entradaDoCheckout(raiz, { ORQ_CONFIG: orqConfig });
+    if ('erro' in e) throw new Error(e.erro);
+    const item = checarFilasIrmas(e.config, preVooDepsReais({ repoRoot: raiz, filaDir: e.filaDir, runsDir: e.runsDir, custoFile: e.custoFile }));
+    if (!item) throw new Error('cat.9 não rodou');
+    return item;
+  };
+
+  it('cada fila com runs e pausa na própria pasta: ok dos dois lados', () => {
+    const raiz = declaradas(configIrma());
+    expect(cat9(raiz, APOLO_CFG).ok).toBe(true);
+    expect(cat9(raiz, '').ok).toBe(true);
+  });
+
+  it('config da irmã copiado da raiz sem trocar pausar_file: NO-GO', () => {
+    const raiz = declaradas(configIrma(CFG_CI, { pausar_file: 'docs/fila/PAUSAR' }));
+    const r = cat9(raiz, APOLO_CFG);
+    expect(r.ok).toBe(false);
+    expect(r.motivo).toContain("docs/fila/apolo: pausar_file 'docs/fila/PAUSAR' fora da pasta da fila");
+    expect(cat9(raiz, '').ok).toBe(false);
+  });
+
+  it('duas filas com o mesmo runs_dir: NO-GO', () => {
+    const raiz = declaradas(configIrma(CFG_CI, { runs_dir: 'docs/fila/runs' }));
+    const r = cat9(raiz, '');
+    expect(r.ok).toBe(false);
+    expect(r.motivo).toContain("runs_dir 'docs/fila/runs' repetido em docs/fila e docs/fila/apolo");
+  });
+
+  it('sem filas_irmas (configs reais do CI e do dashboard): a checagem não entra', () => {
+    for (const cfg of [CFG_CI, CFG_DASH]) {
+      const raiz = duasFilas(cfg);
+      const e = entradaDoCheckout(raiz, {});
+      if ('erro' in e) throw new Error(e.erro);
+      expect(checarFilasIrmas(e.config, preVooDepsReais({ repoRoot: raiz, filaDir: e.filaDir, runsDir: e.runsDir, custoFile: e.custoFile }))).toBeNull();
+    }
   });
 });
