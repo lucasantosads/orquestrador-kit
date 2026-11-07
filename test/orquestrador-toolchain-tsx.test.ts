@@ -146,7 +146,8 @@ describe('as 16 chamadas do motor passam pela resolução única', () => {
     // 15 aqui: a 16ª é o `orq config`, despachado ANTES do lib.sh (caso abaixo).
     // A 14ª entrou no porte do Actus (c404986): o `gate_ticket` do pré-voo.
     // A 15ª entrou na L11 (P3): a retomada do `gates.ts --retomar-depois`.
-    expect(total).toBe(15);
+    // A 16ª entrou na M69 (P6): o `orq selecao`.
+    expect(total).toBe(16);
     for (const rel of ARQUIVOS) expect(codigo(rel)).not.toMatch(/\$\(tsx_bin\)/);
   });
 

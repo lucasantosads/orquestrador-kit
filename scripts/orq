@@ -44,6 +44,8 @@
 #   orq versao           VERSAO do motor instalado (e compara com --kit <dir>)
 #   orq config           acusa placeholder e chave faltando em docs/fila/000-config.json
 #   orq prevoo           pré-voo relâmpago: GO/NO-GO, um item por linha (rc 1 em NO-GO)
+#   orq selecao [--dias N]  relatório da sombra da seleção de testes (M69): tentativas,
+#                        escapes, minutos economizados e a regra da virada (padrão 7 dias)
 #   orq pausar [--todas] [motivo]  cria o pausar_file (a drenagem para ENTRE tickets);
 #                        --todas: o desta fila e o de cada uma de filas_irmas
 #   orq retomar          remove o pausar_file
@@ -382,6 +384,19 @@ cmd_validar() {
 # Divergir do kit também não é erro: o `orq` é read-only e não instala nada. Ele
 # informa; quem decide atualizar roda o instalar.sh, e é lá que estão as três
 # recusas que protegem uma drenagem viva.
+# --- orq selecao (etapa M69, P6) ----------------------------------------------
+# READ-ONLY: lê os selecao.json das tentativas desta fila (ORQ_CONFIG) e diz se a
+# regra da virada está cumprida. Virar o modo é decisão humana de config.
+cmd_selecao() {
+  local dias=7
+  case "${1:-}" in
+    '') ;;
+    --dias) dias="${2:-}"; case "$dias" in ''|*[!0-9]*) die "uso: orq selecao [--dias N]" ;; esac ;;
+    *) die "uso: orq selecao [--dias N]" ;;
+  esac
+  "${ORQ_TSX[@]}" "$ORQ_DIR/orquestrador/selecao-relatorio.ts" "$RUNS_BASE" "$dias" "${RUNS_BASE#"$MAIN_CHECKOUT"/}"
+}
+
 # --- orq prevoo ---------------------------------------------------------------
 # READ-ONLY, e sem NENHUMA chamada paga: a sondagem de modelo é lida de `runs/`,
 # não refeita (quem sonda é o `probe_modelos` do executor, ORQ-07).
@@ -494,6 +509,7 @@ case "${1:-}" in
   validar)    shift; cmd_validar "$@" ;;
   versao)     shift; cmd_versao "$@" ;;
   prevoo)     shift; cmd_prevoo "$@" ;;
+  selecao)    shift; cmd_selecao "$@" ;;
   config)     : ;;   # despachado no topo, antes do lib.sh — veja o comentário lá
   triar)      : ;;   # idem (etapa 7f)
   pausar)     shift; cmd_pausar "$@" ;;
