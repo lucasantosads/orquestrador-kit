@@ -1,0 +1,5 @@
+rc=0
+ok   tsc <ms>ms
+ok   vitest <ms>ms
+ok   build <ms>ms
+VEREDITO: APROVADO

@@ -1,0 +1,4 @@
+npm run typecheck:root
+npm run typecheck:web
+npm test
+npx vitest run --testNamePattern ^(?!.*E2E efêmero)

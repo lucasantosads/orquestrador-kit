@@ -46,6 +46,7 @@ import { defaultToolsFromGates, pisoDoConfig, toolsDoTicket } from './perfil.js'
 import type { DecisaoConfig, SinalTentativa, Veredito } from './decisao.js'
 import { relative } from 'node:path'
 import { caminhoConfig, filaDir } from './fila-caminho.js'
+import { validarSelecao } from './selecao-testes.js'
 
 const [raiz, sub, ...args] = process.argv.slice(2)
 if (!raiz || !sub) {
@@ -165,6 +166,13 @@ switch (sub) {
   case 'criterios-ampliados': {
     const e = stdin() as { criterios: { cmd?: unknown }[]; allowlist: string[]; ampliados: string[] }
     out(e.criterios.map((c) => (typeof c.cmd === 'string' ? { ...c, cmd: cmdComAmpliados(c.cmd, e.allowlist, e.ampliados) } : c)))
+    break
+  }
+  case 'validar-selecao': {
+    // Etapa M69: os erros de `gates[].selecao_testes`, um por linha no stderr; rc 2 se houver.
+    const erros = validarSelecao(config as unknown as Parameters<typeof validarSelecao>[0])
+    for (const m of erros) process.stderr.write(`${m}\n`)
+    process.exit(erros.length ? 2 : 0)
     break
   }
   default:

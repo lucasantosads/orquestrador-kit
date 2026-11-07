@@ -1,0 +1,24 @@
+rc=1
+ok   limpeza_artefatos <ms>ms
+ok   typecheck_root <ms>ms
+ok   typecheck_web <ms>ms
+FALHA testes_por_pacote <ms>ms [2 pacotes, 12p/0f] — AMBIENTE: 2 pacotes coletados < 9 do baseline — deficit de COLETA, nao regressao. Faltaram 7 bloco(s) de placar: leia a saida bruta do gate, identifique quais pacotes nao apareceram e so entao conclua a causa.
+VEREDITO: REPROVADO
+
+--- recorte de testes_por_pacote ---
+ RUN  v4.1.9 /Users/lucasantos/Projetos/_worktrees/orq-comarka-1523
+ ✓ test/estado-plano-orfas.test.ts (6 tests) <ms>ms
+     ✓ 2 orfas: mostra o total e as 2 sementes <ms>ms
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  13:50:31
+   Duration  1.58s (transform <ms>ms, setup <ms>ms, import <ms>ms, tests 1.46s, environment <ms>ms)
+ RUN  v4.1.9 /Users/lucasantos/Projetos/_worktrees/orq-comarka-1523
+ ✓ test/estado-plano-orfas.test.ts (6 tests) <ms>ms
+     ✓ 2 orfas: mostra o total e as 2 sementes <ms>ms
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  13:50:31
+   Duration  1.58s (transform <ms>ms, setup <ms>ms, import <ms>ms, tests 1.46s, environment <ms>ms)
+== services/*/ ==
+bash: line 0: cd: services/*/: No such file or directory

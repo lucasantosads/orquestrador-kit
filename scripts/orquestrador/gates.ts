@@ -12,6 +12,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { validarSelecao } from './selecao-testes.js'
 
 export interface Placar {
   pacotes: number
@@ -510,6 +511,12 @@ if (process.argv.includes('--run-cli')) {
     process.exit(2)
   }
   const config = JSON.parse(readFileSync(caminhoConfig, 'utf8')) as GatesConfig
+  // Etapa M69: `selecao_testes` inválida é falha alta, antes de qualquer gate.
+  const errosSelecao = validarSelecao(config)
+  if (errosSelecao.length) {
+    process.stderr.write(errosSelecao.map((m) => `gates.ts: ${m}\n`).join(''))
+    process.exit(2)
+  }
   carregarBaselinesErros(config, caminhoConfig)
   // Etapa L11: --retomar-depois <gate> e --saida-falha <arq> (a saída inteira do
   // gate que reprovou). Sem elas, tudo sai como antes.

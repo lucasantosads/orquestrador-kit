@@ -63,6 +63,7 @@ export const CHAVES_CONFIG: ChaveConfig[] = [
   { chave: 'executor_model', onde: 'executor.sh:168', obrigatoria: true },
   { chave: 'retry_final_model', onde: 'decisao.ts:292', obrigatoria: true },
   { chave: 'gates', onde: 'gates.ts:178, executor.sh:498', obrigatoria: true, nota: 'a lista de gates; vazia = nenhum gate roda' },
+  { chave: 'gates[].selecao_testes', onde: 'selecao-testes.ts:validarSelecao, gates.ts --run-cli, executor.sh:exigir_selecao_valida (decisao-cli validar-selecao)', obrigatoria: false, nota: 'etapa M69: só no gate de testes; ausente = inteira (hoje, byte a byte); valor inválido é falha alta' },
   { chave: '_execucao_dos_gates.ordem_obrigatoria', onde: 'gates.ts:176, executor.sh:382', obrigatoria: true, nota: 'gates.ts ERRA se a ordem divergir da lista' },
   { chave: '_execucao_dos_gates.interrupcao', onde: 'gates.ts:177', obrigatoria: true },
   { chave: 'zona_proibida', onde: 'enforcement-core.ts:211, executor.sh:364', obrigatoria: true, nota: 'a fronteira que o enforcement aplica' },

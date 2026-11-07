@@ -236,6 +236,32 @@
     ]
   },
   "_gates_papel": "Chave OPCIONAL por gate (peça K6b): \"papel\": \"typecheck\" | \"testes\" | \"build\" | \"lint\". É ela que decide o que a linha GATE da trilha diz sobre cada gate. Quando ausente, o papel é INFERIDO do nome (executor.sh, papel_do_gate: *typecheck*/*tsc*/*types* → typecheck; *lint* → lint; *build*/*compil* → build; *test*/*spec* → testes). Declare-a quando o nome do gate não disser o papel — um gate chamado `verificacao` sai como nao-configurado sem ela. Papel que não existe em gate nenhum do config aparece na trilha como `nao-configurado`, nunca `nao-rodou`.",
+  "_selecao_testes": {
+    "_descricao": "Etapa M69 (M-69). Chave OPCIONAL no gate de testes (papel testes, declarado ou inferido do nome): \"selecao_testes\": {...}. Ausente ou modo \"inteira\" = a suíte inteira roda e decide, o motor de antes byte a byte. \"sombra\": a inteira roda e decide; o motor só calcula o conjunto afetado com cmd_listar e grava selecao.json na tentativa e a linha SELECAO na trilha (escape = teste que falhou na inteira e não estava no conjunto). \"afetados\": o gate roda cmd_afetados; cai para a inteira quando o diff casa suite_inteira_se, apaga ou renomeia arquivo, ou o conjunto vem vazio ou não pode ser calculado. {base} é o sha de onde a worktree nasceu. testes_sempre: arquivos de teste que leem o código por fs, glob ou processo (fora do grafo de import) e rodam sempre junto dos afetados. rede_suite_inteira: texto do humano dizendo onde a suíte inteira roda; obrigatório em afetados. Valor inválido é falha alta (preflight adia; gates.ts sai rc 2). Ausente suite_inteira_se = a lista do exemplo (selecao-testes.ts, SUITE_INTEIRA_PADRAO). A virada para afetados é decisão humana de config, pela regra do CONTRATO.",
+    "exemplo": {
+      "modo": "sombra",
+      "cmd_afetados": "npx vitest run --changed {base}",
+      "cmd_listar": "npx vitest list --filesOnly --changed {base}",
+      "suite_inteira_se": [
+        "**/vitest.config.*",
+        "**/vite.config.*",
+        "**/vitest.workspace.*",
+        "**/package.json",
+        "**/package-lock.json",
+        "**/tsconfig*.json",
+        "**/vitest.setup.*",
+        "**/setupTests.*",
+        "**/test/setup.*",
+        "**/test/fixtures/**",
+        "**/test/helpers/**",
+        "**/migrations/**",
+        "**/*.d.ts",
+        "**/.env*"
+      ],
+      "testes_sempre": [],
+      "rede_suite_inteira": "<onde a suíte inteira roda — ex.: M-21 fila de merge; obrigatório só em afetados>"
+    }
+  },
   "launchd": {
     "label": "<ex: com.suaorg.orquestrador — OBRIGATÓRIO, um por repo>",
     "start_interval": 1800

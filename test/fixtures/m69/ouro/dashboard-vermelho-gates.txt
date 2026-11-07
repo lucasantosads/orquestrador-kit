@@ -1,0 +1,36 @@
+rc=1
+ok   typecheck <ms>ms
+FALHA testes <ms>ms — exit 1
+VEREDITO: REPROVADO
+
+--- recorte de testes ---
+ FAIL  test/estado-plano-orfas.test.ts > estado-plano: capacidades orfas > arquivo inexistente: 'sem leitura (' e rc 0, nunca zero
+AssertionError: rc=1 erro= stderr=Traceback (most recent call last):
+: expected '' to contain 'Capacidades órfãs: sem leitura ('
+ ❯ test/estado-plano-orfas.test.ts:79:30
+ ✓ test/conexoes-status-whatsapp.test.ts (7 tests) <ms>ms
+ ✓ test/ui-card-sem-animacao.test.tsx (3 tests) <ms>ms
+ ✓ test/carteira-view.test.ts (3 tests) <ms>ms
+ ✓ test/portal-previa-tela.test.tsx (4 tests) <ms>ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+  File "/Users/lucasantos/Projetos/_worktrees/orq-comarka-1523/scripts/roadmap/estado-plano.py", line 192, in <module>
+    sys.exit(main())
+  File "/Users/lucasantos/Projetos/_worktrees/orq-comarka-1523/scripts/roadmap/estado-plano.py", line 172, in main
+    bloco = montar_bloco(ler_tickets(), tokens_liberados(), datetime.date.today(), ler_orfas())
+  File "/Users/lucasantos/Projetos/_worktrees/orq-comarka-1523/scripts/roadmap/estado-plano.py", line 29, in ler_tickets
+    txt = open(p, encoding="utf-8", errors="replace").read()
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/lucasantos/Projetos/_worktrees/orq-comarka-1523/docs/fila/apolo/5997-molde-forma.md'
+- Expected
++ Received
+- Capacidades órfãs: sem leitura (
+     77|       ESTADO_PLANO_ORFAS: join(dir, "nao-existe.json"),
+     78|     });
+     79|     expect(r.saida, diag(r)).toContain("Capacidades órfãs: sem leitura…
+       |                              ^
+     80|     expect(r.saida, diag(r)).not.toContain("sem consumidor há 7 dias):…
+     81|     estruturaIntacta(r);
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed | 1418 passed (1419)
+      Tests  1 failed | 13905 passed (13906)
+   Start at  13:49:49
+   Duration  41.53s (transform 23.49s, setup <ms>ms, import 124.47s, tests 58.15s, environment <ms>ms)

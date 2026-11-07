@@ -1,0 +1,5 @@
+rc=0
+ok   typecheck <ms>ms
+ok   testes <ms>ms
+ok   build <ms>ms
+VEREDITO: APROVADO

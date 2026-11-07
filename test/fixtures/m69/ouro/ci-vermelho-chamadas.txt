@@ -1,0 +1,3 @@
+npm run typecheck:root
+npm run typecheck:web
+npm test

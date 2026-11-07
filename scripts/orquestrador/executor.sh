@@ -62,6 +62,7 @@ preflight() {
   jq -e . "$CONFIG" >/dev/null 2>&1 || die "preflight: $CONFIG não é JSON válido"
   exigir_linkar_env_valido
   exigir_principal_sem_env
+  exigir_selecao_valida
   # Sem a lista, todo ticket pareceria edição alheia e nada do loop seria commitado (8b).
   jq -e 'type == "array" and length > 0' "$CAMPOS_DO_MOTOR_FILE" >/dev/null 2>&1 || die "preflight: $CAMPOS_DO_MOTOR_FILE ausente ou inválido"
   for f in $(ticket_files); do
@@ -328,6 +329,17 @@ linkar_env_cfg() {
 exigir_linkar_env_valido() {
   local v; v="$(linkar_env_cfg)"
   case "$v" in true|false) ;; *) die "preflight: ${v#invalido } — worktree.linkar_env aceita só true ou false" ;; esac
+}
+
+# exigir_selecao_valida — etapa M69. `gates[].selecao_testes` inválida aborta o
+# preflight (ADIADO motivo=preflight). Sem a chave em gate nenhum, nada roda: o
+# jq decide, e o TS (decisao-cli, a mesma fila de ORQ_CONFIG) só é chamado
+# quando há o que validar.
+exigir_selecao_valida() {
+  jq -e '[.gates[]? | select(has("selecao_testes"))] | length > 0' "$CONFIG" >/dev/null 2>&1 || return 0
+  local erros
+  erros="$(decisao validar-selecao 2>&1)" \
+    || die "preflight: $(printf '%s' "$erros" | paste -sd ';' - | sed 's/;/; /g')"
 }
 
 # exigir_principal_sem_env — K1 (dashboard-comercial, 24/10/2026). Com
