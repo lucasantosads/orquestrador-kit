@@ -118,6 +118,7 @@ export const CHAVES_CONFIG: ChaveConfig[] = [
   // config do CI, do fixture ou do checkout.
   { chave: 'zona_proibida.prefixos_sem_ddl', onde: 'enforcement-core.ts:460', obrigatoria: false, nota: 'regra E: CREATE/ALTER/DROP de objeto com o prefixo. No Actus e no Comarka é no_write_prefixes' },
   { chave: 'enforcement.padroes_proibidos_no_diff', onde: 'enforcement-core.ts:533', obrigatoria: false, nota: 'regra F: lista de {nome, regex, motivo}, flags inline (?i)/(?is). No Actus mora em zona_proibida' },
+  { chave: 'enforcement.afrouxamento', onde: 'enforcement-core.ts:enforce', obrigatoria: false, nota: "etapa KF (M-68): 'ampliados' (ausente) = anti-afrouxamento só nos vizinhos ampliados (8c); 'todo_teste' = em todo teste existente tocado pelo diff" },
   { chave: 'enforcement.testes_sql.glob', onde: 'enforcement-core.ts:384', obrigatoria: false, nota: 'quem ENTRA na exceção de teste-SQL (no Actus, supabase/tests/**). Tira o arquivo da regra B e o cobra nas 4 condições do checarTesteSql. Repo com regra B ligada e testes .sql fora do migrations.dir PRECISA declará-lo, ou a regra B reprova esses arquivos' },
 
   // --- piso de tools (peça T17) ---------------------------------------------

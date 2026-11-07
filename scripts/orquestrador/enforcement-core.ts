@@ -73,6 +73,12 @@ export interface TestesSqlRegra {
 export interface EnforcementRegras {
   padroes_proibidos_no_diff?: PadraoProibido[] | undefined
   testes_sql?: TestesSqlRegra | undefined
+  /**
+   * Etapa KF (M-68): onde vale o anti-afrouxamento da 8c. `ampliados` (ou
+   * ausente) = só nos vizinhos ampliados, como antes; `todo_teste` = em todo
+   * arquivo de teste existente tocado pelo diff (o criado fica de fora).
+   */
+  afrouxamento?: 'ampliados' | 'todo_teste' | undefined
 }
 
 export interface EnforceConfig {
@@ -655,6 +661,9 @@ export function violacoesDePadrao(arquivo: string, texto: string, config: Enforc
   return v
 }
 
+/** Onde mora teste, em qualquer repo da frota (a régua da 8c, uma só; decisao.ts importa). */
+export const RE_ARQ_TESTE = /(^|\/)(test|tests|__tests__)\/|\.(test|spec)\.[^/]*$/
+
 // ─── Etapa 8c · anti-afrouxamento nos testes vizinhos ampliados ───────────────
 // Contagem LÍQUIDA por linha no diff do arquivo (removidas com o padrão >
 // acrescentadas com o padrão), a mesma régua da guarda do R1 (resolvedor/r1.ts).
@@ -675,16 +684,17 @@ const REGRAS_AFROUXAMENTO: { nome: string; re: RegExp; cai: boolean }[] = [
 ]
 
 /** Linhas removidas e acrescentadas por arquivo, e se o arquivo foi apagado. */
-function linhasPorArquivo(diff: string): Map<string, { add: string[]; rem: string[]; apagado: boolean }> {
-  const out = new Map<string, { add: string[]; rem: string[]; apagado: boolean }>()
-  let atual: { add: string[]; rem: string[]; apagado: boolean } | undefined
+function linhasPorArquivo(diff: string): Map<string, { add: string[]; rem: string[]; apagado: boolean; criado: boolean }> {
+  const out = new Map<string, { add: string[]; rem: string[]; apagado: boolean; criado: boolean }>()
+  let atual: { add: string[]; rem: string[]; apagado: boolean; criado: boolean } | undefined
   for (const l of diff.split('\n')) {
     const cab = /^diff --git a\/\S+ b\/(\S+)$/.exec(l)
     if (cab) {
-      atual = { add: [], rem: [], apagado: false }
+      atual = { add: [], rem: [], apagado: false, criado: false }
       out.set(cab[1]!, atual)
     } else if (!atual) continue
     else if (l.startsWith('deleted file')) atual.apagado = true
+    else if (l.startsWith('new file')) atual.criado = true
     else if (l.startsWith('+++') || l.startsWith('---')) continue
     else if (l.startsWith('+')) atual.add.push(l.slice(1))
     else if (l.startsWith('-')) atual.rem.push(l.slice(1))
@@ -692,11 +702,12 @@ function linhasPorArquivo(diff: string): Map<string, { add: string[]; rem: strin
   return out
 }
 
-export function violacoesDeAfrouxamento(diff: string, ampliados: string[]): Violation[] {
-  if (ampliados.length === 0) return []
+export function violacoesDeAfrouxamento(diff: string, ampliados: string[], todoTeste = false): Violation[] {
+  if (ampliados.length === 0 && !todoTeste) return []
   const v: Violation[] = []
-  for (const [arquivo, { add, rem, apagado }] of linhasPorArquivo(diff)) {
-    if (!ampliados.includes(arquivo)) continue
+  for (const [arquivo, { add, rem, apagado, criado }] of linhasPorArquivo(diff)) {
+    const alvo = ampliados.includes(arquivo) || (todoTeste && !criado && RE_ARQ_TESTE.test(arquivo))
+    if (!alvo) continue
     if (apagado) {
       v.push({ tipo: 'afrouxamento', detalhe: `${arquivo}: apaga o arquivo de teste` })
       continue
@@ -836,7 +847,7 @@ export function enforce(input: EnforceInput): EnforceResult {
     }
   }
 
-  v.push(...violacoesDeAfrouxamento(input.diff, input.ampliados ?? []))
+  v.push(...violacoesDeAfrouxamento(input.diff, input.ampliados ?? [], input.config.enforcement?.afrouxamento === 'todo_teste'))
 
   return { ok: v.length === 0, violations: v }
 }

@@ -8,7 +8,7 @@
  * causas aparece hardcoded aqui.
  */
 
-import { matchesAllowlist } from './enforcement-core.js'
+import { matchesAllowlist, RE_ARQ_TESTE } from './enforcement-core.js'
 
 export interface DecisaoConfig {
   executor_model: string
@@ -459,7 +459,8 @@ export function decidirDesfecho(config: DecisaoConfig, sinal: SinalTentativa): V
     }
   }
   if (sinal.enforcementViolado) {
-    // Etapa 8c: afrouxamento num teste vizinho ampliado manda sobre qualquer
+    // Etapa 8c: afrouxamento num teste (vizinho ampliado ou, com
+    // `enforcement.afrouxamento: todo_teste`, qualquer teste existente) manda sobre qualquer
     // outra violação. Mérito (a ampliação era a chance de ajustar o teste), mas
     // sem retry: nenhuma regra de retry nomeia a causa, e `decidirRetry` bloqueia.
     // Nunca `refatiar`: a pergunta "ampliar ou fatiar?" já foi respondida.
@@ -468,7 +469,7 @@ export function decidirDesfecho(config: DecisaoConfig, sinal: SinalTentativa): V
       return {
         desfecho: 'reprovado',
         causa: 'afrouxamento',
-        motivo: `afrouxamento em teste vizinho ampliado: ${afrouxa.map((x) => x.detalhe ?? '').join('; ')}`,
+        motivo: `afrouxamento em teste: ${afrouxa.map((x) => x.detalhe ?? '').join('; ')}`,
         contaComoRetry: true,
         cooldown: false,
       }
@@ -798,9 +799,6 @@ export function arquivosBaseVermelha(entrada: {
 }
 
 // ─── 7 · teste vizinho liberado só quando falha (etapa 8c) ─────────────────
-
-/** Onde mora teste, em qualquer repo da frota (a mesma régua do gate de ticket). */
-const RE_ARQ_TESTE = /(^|\/)(test|tests|__tests__)\/|\.(test|spec)\.[^/]*$/
 
 export interface ParVizinho {
   teste: string
