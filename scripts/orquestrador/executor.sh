@@ -892,6 +892,18 @@ so_testes_reprovaram() {
   [ "$n" -gt 0 ]
 }
 
+# event_selecao <id> <rundir> — etapa M69 (P3). Uma linha SELECAO por tentativa
+# que tem rundir/selecao.json (modo sombra); sem ele, nenhuma. Fica FORA da linha
+# GATE: o que a trilha diz sobre os gates não muda em modo nenhum.
+event_selecao() {
+  local id="$1" f="$2/selecao.json"
+  [ -s "$f" ] || return 0
+  event "$id" SELECAO "$(jq -r '"modo=\(.modo) efetivo=\(.escolha.modo_efetivo) n=\(.escolha.arquivos | length)"
+    + " escape=\(if .escape == true then "sim" elif .escape == false then "nao" else "indeterminado" end)"
+    + " escapes=\(.escapes | join(",")) s_inteira=\(.segundos_inteira) s_afetados=\(.segundos_afetados_estimados)"
+    + " motivo=\(.escolha.motivo)"' "$f" 2>/dev/null || echo "selecao.json ilegível")"
+}
+
 # event_gate <id> <rundir> <enf_ok>
 # fora_do_pathspec= so entra quando o ENFORCEMENT reprova: e o dado que
 # transforma um beco sem saida em ticket acionavel (colisao de teste na SKILL).
@@ -1540,9 +1552,13 @@ run_attempt() {
   # de quem chamou o executor, e com FORCE_COLOR ou CI nele o vitest colore o
   # placar ("Tests \e[22m \e[1m\e[32m2 passed"): gate que lê o placar com grep
   # reprovava com a suíte verde (test-sem-cor.sh).
+  # Etapa M69: --base e --selecao-json só valem com `selecao_testes` em sombra
+  # (gates.ts grava selecao.json); sem a chave o gates.ts os ignora.
   NO_COLOR=1 FORCE_COLOR=0 "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/gates.ts" --run-cli "$wt" --config "$CONFIG" \
-    --saida-falha "$rundir/gate-falha.txt" > "$rundir/gates.txt" 2>&1 || gates_rc=$?
+    --saida-falha "$rundir/gate-falha.txt" --base "$base" --selecao-json "$rundir/selecao.json" \
+    > "$rundir/gates.txt" 2>&1 || gates_rc=$?
   log "  gates: $([ "$gates_rc" = 0 ] && echo APROVADO || echo "REPROVADO (rc=$gates_rc)")"
+  event_selecao "$(ticket_field "$file" '.id')" "$rundir"
   grep -qi 'reexecutar' "$rundir/gates.txt" && log "  gates: interrompidos — conjunto não vale parcialmente"
   # Peça 7b-2: o PAPEL do gate que reprovou vai para o decisao.ts, que separa
   # "o runner não rodou" (gate_crash, adia) de "o código está errado" (mérito).

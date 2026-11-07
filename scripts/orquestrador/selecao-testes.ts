@@ -17,6 +17,7 @@
  * lista do diff não —, então o prompt e o `--allowedTools` levam o comando pronto.
  */
 import { matchesAllowlist } from './enforcement-core.js'
+import { arquivosFalhosDoVitest } from './decisao.js'
 
 export type ModoSelecao = 'inteira' | 'sombra' | 'afetados'
 
@@ -163,3 +164,78 @@ export function escolherSelecao(diff: ArquivoDiff[], spec: SelecaoTestes, listar
     arquivos: [...conjunto, ...extra],
   }
 }
+
+/** `✓ test/x.test.ts (6 tests) 1464ms` -> duração por arquivo, das linhas do reporter padrão. */
+export function duracoesPorArquivo(saida: string): Map<string, number> {
+  const m = new Map<string, number>()
+  for (const bruta of saida.split('\n')) {
+    const l = bruta.replace(/\x1B\[[0-9;]*m/g, '')
+    const r = /^\s*[✓❯×↓]\s+(\S+)\s+\(\d+ tests?[^)]*\)\s+(\d+(?:\.\d+)?)(ms|s)\s*$/.exec(l)
+    if (r) m.set(r[1]!, Number(r[2]) * (r[3] === 's' ? 1000 : 1))
+  }
+  return m
+}
+
+/**
+ * Quanto teria custado rodar só os afetados. `por_arquivo`: todo arquivo do
+ * conjunto tem duração na saída da inteira, e a fração é a soma deles sobre a
+ * soma de todos (o tempo de parede vem da inteira, então o paralelismo entra
+ * igual nos dois lados). `proporcional`: nº de arquivos do conjunto sobre o
+ * `Test Files (N)`. Inteira escolhida = o mesmo tempo.
+ */
+export function estimarSegundos(escolha: Escolha, saida: string, segundosInteira: number | null): { segundos_afetados_estimados: number | null; estimativa: 'por_arquivo' | 'proporcional' | 'igual_inteira' | 'sem_dados' } {
+  if (segundosInteira === null) return { segundos_afetados_estimados: null, estimativa: 'sem_dados' }
+  if (escolha.modo_efetivo === 'inteira') return { segundos_afetados_estimados: segundosInteira, estimativa: 'igual_inteira' }
+  const d = duracoesPorArquivo(saida)
+  const total = [...d.values()].reduce((s, n) => s + n, 0)
+  const arred = (n: number) => Math.round(n * 10) / 10
+  if (total > 0 && escolha.arquivos.every((a) => d.has(a))) {
+    const parte = escolha.arquivos.reduce((s, a) => s + d.get(a)!, 0)
+    return { segundos_afetados_estimados: arred((segundosInteira * parte) / total), estimativa: 'por_arquivo' }
+  }
+  const n = [...saida.replace(/\x1B\[[0-9;]*m/g, '').matchAll(/^\s*Test Files\s.*\((\d+)\)\s*$/gm)].pop()?.[1]
+  if (n && Number(n) > 0) return { segundos_afetados_estimados: arred((segundosInteira * Math.min(escolha.arquivos.length, Number(n))) / Number(n)), estimativa: 'proporcional' }
+  return { segundos_afetados_estimados: null, estimativa: 'sem_dados' }
+}
+
+/**
+ * O registro da sombra (selecao.json da tentativa). Puro: o gate já rodou, o
+ * diff e o `listar` chegam prontos. `testes_rodou` falso = um gate anterior
+ * reprovou e o de testes não rodou. `escape`: teste que falhou na inteira e NÃO
+ * estava no conjunto afetado; null = a inteira falhou sem arquivo legível.
+ */
+export function registroSombra(e: {
+  base: string
+  diff: ArquivoDiff[]
+  spec: SelecaoTestes
+  listar: Listar
+  gate: string
+  resultado?: { ok: boolean; saida: string; ms: number } | undefined
+}) {
+  const escolha = escolherSelecao(e.diff, e.spec, e.listar)
+  const r = e.resultado
+  const segundos = r ? Math.round(r.ms / 100) / 10 : null
+  const falhas = r && !r.ok ? arquivosFalhosDoVitest(r.saida) : []
+  let escape: boolean | null = false
+  let escapes: string[] = []
+  if (r && !r.ok && escolha.modo_efetivo === 'afetados') {
+    escapes = falhas.filter((f) => !escolha.arquivos.includes(f))
+    escape = falhas.length === 0 ? null : escapes.length > 0
+  }
+  return {
+    modo: 'sombra' as const,
+    base: e.base,
+    arquivos_do_diff: e.diff.map((d) => d.caminho),
+    escolha,
+    gate: e.gate,
+    testes_rodou: !!r,
+    inteira_ok: r ? r.ok : null,
+    falhas_da_inteira: falhas,
+    escape,
+    escapes,
+    segundos_inteira: segundos,
+    ...estimarSegundos(escolha, r?.saida ?? '', segundos),
+  }
+}
+
+export type RegistroSombra = ReturnType<typeof registroSombra>

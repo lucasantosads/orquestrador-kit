@@ -147,10 +147,13 @@ export function rodarGatesCli(
   configTexto: string,
   c: Cenario,
   extra: string[] = [],
+  preparar?: (raiz: string) => string[],
 ): { rc: number; gatesTxt: string; falha: string; chamadas: string; raiz: string } {
   const { raiz, env, stubDir } = checkoutDeGates(configTexto, c)
   const falhaArq = join(raiz, 'gate-falha.txt')
-  const r = spawnSync(TSX, [GATES, '--run-cli', raiz, '--config', join(raiz, 'docs', 'fila', '000-config.json'), '--saida-falha', falhaArq, ...extra], {
+  // `preparar` monta o diff no checkout (P3) e devolve mais argumentos.
+  const mais = preparar ? preparar(raiz) : []
+  const r = spawnSync(TSX, [GATES, '--run-cli', raiz, '--config', join(raiz, 'docs', 'fila', '000-config.json'), '--saida-falha', falhaArq, ...extra, ...mais], {
     encoding: 'utf8',
     cwd: raiz,
     env,

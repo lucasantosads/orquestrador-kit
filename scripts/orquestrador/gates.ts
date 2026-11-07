@@ -12,7 +12,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
-import { validarSelecao } from './selecao-testes.js'
+import { gateDeSelecao, lerNameStatus, registroSombra, validarSelecao } from './selecao-testes.js'
 
 export interface Placar {
   pacotes: number
@@ -542,6 +542,28 @@ if (process.argv.includes('--run-cli')) {
     process.stdout.write(`\n--- recorte de ${falho.nome} ---\n${recorteDeFalha(falho.saida).join('\n')}\n`)
     const saidaFalha = opt('--saida-falha')
     if (saidaFalha) writeFileSync(saidaFalha, falho.saida)
+  }
+  // Etapa M69 (P3): sombra. A inteira já decidiu acima; aqui só se calcula o
+  // conjunto afetado e se grava o que teria acontecido. Nada vai ao stdout:
+  // o gates.txt sai igual ao de hoje.
+  const sel = gateDeSelecao(config)
+  const base = opt('--base')
+  const selJson = opt('--selecao-json')
+  if (sel && sel.spec.modo === 'sombra' && base && selJson && depoisDe === undefined) {
+    const ns = spawnSync('git', ['-C', raiz, 'diff', '--name-status', `${base}...HEAD`], { encoding: 'utf8' })
+    const exec = execBash(raiz)
+    const reg = registroSombra({
+      base,
+      diff: ns.status === 0 ? lerNameStatus(ns.stdout) : [],
+      spec: sel.spec,
+      listar: () => {
+        const r = exec(sel.spec.cmd_listar!.replaceAll('{base}', base))
+        return { rc: r.exitCode, saida: r.saida }
+      },
+      gate: sel.nome,
+      resultado: v.gates.find((g) => g.nome === sel.nome),
+    })
+    writeFileSync(selJson, `${JSON.stringify(reg, null, 2)}\n`)
   }
   process.exit(v.ok ? 0 : 1)
 }
