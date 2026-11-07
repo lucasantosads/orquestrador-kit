@@ -435,7 +435,7 @@ linha_selecao_prompt() {
 
 build_prompt() {
   # ampliada/bloco_viz: por argumento ou, sem ele, a ampliação do drive em curso (8c)
-  local file="$1" motivo="$2" tools="${3:-}" ampliada="${4-${VIZ_AMPLIADA:-}}" bloco_viz="${5-${VIZ_BLOCO:-}}" id objetivo allow criterios spec="" lista t linha_sel
+  local file="$1" motivo="$2" tools="${3:-}" ampliada="${4-${VIZ_AMPLIADA:-}}" bloco_viz="${5-${VIZ_BLOCO:-}}" id objetivo allow criterios spec="" sd lista t linha_sel
   id="$(ticket_field "$file" '.id')"
   objetivo="$(ticket_field "$file" '.objetivo')"
   allow="$(ticket_field "$file" '.pathspec_allowlist | join("\n  - ")')"
@@ -452,7 +452,9 @@ build_prompt() {
   # custo-e-contexto §2): a SKILL.md é para humanos, juiz de ticket e planejador.
   # Apontar o executor para ela é 23k de contexto que não muda o veredicto e onde
   # ele tem onde se perder.
-  [ -f "$MAIN_CHECKOUT/docs/orquestrador/skill/EXECUTOR.md" ] && spec="A doutrina que vale para você está em docs/orquestrador/skill/EXECUTOR.md (leitura, NUNCA escrita). NÃO leia docs/orquestrador/skill/SKILL.md nem docs/orquestrador/skill/references/: não muda o que você tem de fazer e queima contexto."
+  # A pasta é o `spec_dir` da cat.0 do pré-voo (etapa KF P5b; no kit, `doutrina`); ausente = a de sempre.
+  sd="$(cfg '.spec_dir // "docs/orquestrador/skill"')"; sd="${sd%/}"
+  [ -f "$MAIN_CHECKOUT/$sd/EXECUTOR.md" ] && spec="A doutrina que vale para você está em $sd/EXECUTOR.md (leitura, NUNCA escrita). NÃO leia $sd/SKILL.md nem $sd/references/: não muda o que você tem de fazer e queima contexto."
 
   # A lista vem da MESMA string que vai em `--allowedTools`, quebrada na vírgula
   # exatamente como o CLI a lê. Sem argumento, deriva — assim nenhum chamador

@@ -43,7 +43,7 @@ export const CHAVES_CONFIG: ChaveConfig[] = [
   { chave: 'worktrees_dir', onde: 'lib.sh:57', obrigatoria: true, nota: 'RELATIVO ao checkout principal (lib.sh:77)' },
   { chave: 'diff_cap_linhas', onde: 'lib.sh:58', obrigatoria: true, nota: 'CFG_DIFF_CAP; também decisao.ts:201' },
   { chave: 'repo_origin_deve_conter', onde: 'lib.sh:67', obrigatoria: true, nota: 'preflight de identidade; executor.sh:104-108 aborta o run inteiro' },
-  { chave: 'spec_dir', onde: 'prevoo.ts:checarSpecVendorizada', obrigatoria: false, nota: 'etapa KF P5: pasta da spec; ausente = docs/orquestrador/skill, inválido = NO-GO cat.0' },
+  { chave: 'spec_dir', onde: 'prevoo.ts:checarSpecVendorizada, executor.sh:run_attempt (prompt)', obrigatoria: false, nota: 'etapa KF P5: pasta da spec; ausente = docs/orquestrador/skill, inválido = NO-GO cat.0' },
   { chave: 'ambiente_id', onde: 'lib.sh:68', obrigatoria: true, nota: 'preflight de identidade contra o .env; executor.sh:111-114' },
   { chave: 'pausar_file', onde: 'lib.sh:615', obrigatoria: true, nota: 'CFG_PAUSAR_FILE, o kill switch em arquivo' },
   { chave: 'orcamento.custo_file', onde: 'lib.sh:845', obrigatoria: true, nota: 'CFG_CUSTO_FILE, o ledger' },

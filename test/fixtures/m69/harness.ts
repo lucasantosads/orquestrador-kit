@@ -55,9 +55,13 @@ export function configCom(repo: Repo, ajuste?: (c: Record<string, unknown>) => v
  * Uma tentativa real (`run_attempt`) até a chamada do agente: o `claude_run`
  * interceptado grava o argv e encerra. Prompt e tools são os da MESMA chamada.
  */
-export function promptETools(configTexto: string): { prompt: string; tools: string; base: string; stderr: string } {
+export function promptETools(
+  configTexto: string,
+  preparar?: (checkout: string) => void,
+): { prompt: string; tools: string; base: string; stderr: string } {
   const fx = criarFixture([])
   writeFileSync(join(fx, 'docs', 'fila', '000-config.json'), configTexto)
+  preparar?.(fx)
   escreverTicket(fx, TICKET)
   const wt = join(fx, 'wt')
   mkdirSync(join(wt, 'src'), { recursive: true })
