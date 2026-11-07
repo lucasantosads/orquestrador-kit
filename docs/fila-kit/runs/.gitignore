@@ -1,0 +1,5 @@
+# Evidência de run é efêmera: fica no disco, nunca no git.
+# Sem isto, o run suja a árvore e o preflight do run SEGUINTE morre.
+*
+!.gitkeep
+!.gitignore
