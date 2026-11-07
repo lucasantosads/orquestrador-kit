@@ -59,6 +59,7 @@
     <string>--max-old-space-size=4096</string>
     <key>NODE_DIR</key>
     <string>{{NODE_DIR}}</string>
+    <key>ORQ_CONFIG</key><string>{{ORQ_CONFIG}}</string>
   </dict>
 
   <key>StartInterval</key>
@@ -71,8 +72,8 @@
   <true/>
 
   <key>StandardOutPath</key>
-  <string>{{CHECKOUT}}/docs/fila/runs/launchd-agent.log</string>
+  <string>{{RUNS}}/launchd-agent.log</string>
   <key>StandardErrorPath</key>
-  <string>{{CHECKOUT}}/docs/fila/runs/launchd-agent.log</string>
+  <string>{{RUNS}}/launchd-agent.log</string>
 </dict>
 </plist>

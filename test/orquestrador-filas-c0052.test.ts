@@ -9,9 +9,10 @@
  */
 import { describe, it, expect } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { REPO_ROOT, bashNoFixture, criarFixture, escrever } from './fixtures/orq-harness.js';
+import { REPO_ROOT, bashNoFixture, checkoutReal, comLaunchctlStub, criarFixture, escrever } from './fixtures/orq-harness.js';
+import { tmpdir } from 'node:os';
 import { caminhoConfig, filaDir } from '../scripts/orquestrador/fila-caminho.js';
 import { checarEstruturaFila, checarFilasIrmas, entradaDoCheckout, preVooDepsReais } from '../scripts/orquestrador/prevoo.js';
 
@@ -276,5 +277,50 @@ describe('P4: dependência entre filas só leitura e id repetido (C17)', () => {
     const done = gate(raiz, '', join(raiz, T1137));
     expect(done).toContain('GATE DE TICKET · 1 ticket(s)');
     expect(done).not.toContain('repetido');
+  });
+});
+
+describe('P5: instalar-launchd.sh --config instala o job da fila irmã', () => {
+  const FX = checkoutReal();
+  const instalador = join(FX, 'scripts', 'orquestrador', 'instalar-launchd.sh');
+  const dry = (dir: string, ...args: string[]) => {
+    const stub = comLaunchctlStub();
+    return spawnSync('bash', [join(dir, 'scripts', 'orquestrador', 'instalar-launchd.sh'), '--dry-run', ...args], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, ...stub.env },
+    });
+  };
+
+  it('--config da irmã: label, ORQ_CONFIG e log da fila dela', () => {
+    const cfg = JSON.parse(readFileSync(join(FX, 'docs', 'fila', '000-config.json'), 'utf8'));
+    escrever(join(FX, APOLO_CFG), JSON.stringify({
+      ...cfg, launchd: { label: 'com.fixture.orquestrador-apolo', start_interval: 600 }, runs_dir: 'docs/fila/apolo/runs',
+    }));
+    try {
+      const r = dry(FX, '--config', APOLO_CFG);
+      expect(r.status, r.stderr).toBe(0);
+      expect(r.stdout).toContain('<string>com.fixture.orquestrador-apolo</string>');
+      expect(r.stdout).toContain(`<key>ORQ_CONFIG</key><string>${APOLO_CFG}</string>`);
+      expect(r.stdout).toContain(`<string>${FX}/docs/fila/apolo/runs/launchd-agent.log</string>`);
+      expect(r.stdout).toContain('<integer>600</integer>');
+      const fora = dry(FX, '--config', '/private/tmp/000-config.json');
+      expect(fora.status).not.toBe(0);
+      expect(fora.stderr).toContain('ORQ_CONFIG');
+    } finally {
+      rmSync(join(FX, 'docs', 'fila', 'apolo'), { recursive: true, force: true });
+    }
+  });
+
+  it('sem --config: o plist é byte a byte o do instalador do fb81911', () => {
+    const velho = realpathSync(mkdtempSync(join(tmpdir(), 'orq-launchd-fb81911-')));
+    mkdirSync(join(velho, 'scripts', 'orquestrador'), { recursive: true });
+    for (const f of ['instalar-launchd.sh', 'com.orquestrador.plist.template', 'launchd-run.sh']) {
+      const r = spawnSync('git', ['-C', REPO_ROOT, 'show', `fb81911:scripts/orquestrador/${f}`], { encoding: 'utf8' });
+      writeFileSync(join(velho, 'scripts', 'orquestrador', f), r.stdout, { mode: 0o755 });
+    }
+    escrever(join(velho, 'docs', 'fila', '000-config.json'), readFileSync(join(FX, 'docs', 'fila', '000-config.json'), 'utf8'));
+    const antes = dry(velho);
+    const agora = dry(FX);
+    expect(antes.status, antes.stderr).toBe(0);
+    expect(agora.stdout).toBe(antes.stdout.split(velho).join(FX));
   });
 });

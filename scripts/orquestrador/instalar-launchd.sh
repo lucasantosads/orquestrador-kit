@@ -12,6 +12,10 @@ set -euo pipefail
 # Uso:
 #   bash scripts/orquestrador/instalar-launchd.sh            instala e carrega
 #   bash scripts/orquestrador/instalar-launchd.sh --dry-run  so imprime o plist
+#   bash scripts/orquestrador/instalar-launchd.sh --config docs/fila/apolo/000-config.json
+#                                                 o job da fila desse config (etapa
+#                                                 c0052-B1a): label, intervalo e log
+#                                                 dela, e ORQ_CONFIG no ambiente do job
 #   bash scripts/orquestrador/instalar-launchd.sh --permitir-tmp
 #                                                 instala mesmo de um checkout
 #                                                 sob /tmp (veja a guarda K6e)
@@ -45,17 +49,28 @@ set -euo pipefail
 
 DRY=0
 PERMITIR_TMP=0
-for a in "$@"; do
-  case "$a" in
+ORQ_CONFIG_FILA=''
+while [ "$#" -gt 0 ]; do
+  case "$1" in
     --dry-run)      DRY=1 ;;
     --permitir-tmp) PERMITIR_TMP=1 ;;
-    *) echo "uso: $0 [--dry-run] [--permitir-tmp]" >&2; exit 2 ;;
+    --config)       ORQ_CONFIG_FILA="${2:-}"; [ -n "$ORQ_CONFIG_FILA" ] || { echo "uso: --config <caminho do 000-config.json>" >&2; exit 2; }; shift ;;
+    *) echo "uso: $0 [--dry-run] [--permitir-tmp] [--config <caminho do 000-config.json>]" >&2; exit 2 ;;
   esac
+  shift
 done
 
 UID_NUM="$(id -u)"
 CHECKOUT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CONFIG="$CHECKOUT/docs/fila/000-config.json"
+# Sem --config, os caminhos de sempre (o plist sai byte a byte o de antes). Com
+# ele, a validação é a do lib.sh (dentro do checkout, sem symlink, nome fixo).
+RUNS_REL='docs/fila/runs'
+if [ -n "$ORQ_CONFIG_FILA" ]; then
+  ORQ_CONFIG_FILA="$(ORQ_CONFIG="$ORQ_CONFIG_FILA" bash -c "source '$CHECKOUT/scripts/orquestrador/lib.sh' && printf '%s' \"\$ORQ_CONFIG\"")" || exit 1
+  CONFIG="$CHECKOUT/$ORQ_CONFIG_FILA"
+  RUNS_REL="$(jq -r '.runs_dir // "docs/fila/runs"' "$CONFIG")"
+fi
 TEMPLATE="$CHECKOUT/scripts/orquestrador/com.orquestrador.plist.template"
 
 [ -f "$CONFIG" ] || { echo "ERRO: config ausente: $CONFIG" >&2; exit 1; }
@@ -95,10 +110,15 @@ NODE_DIR="$(cd "$(dirname "$NODE_BIN")" && pwd)"
 # renderiza -> stdout. Um lugar so monta o plist, e o --dry-run mostra
 # exatamente o que a instalacao gravaria.
 renderiza() {
+  # Sem --config a linha do ORQ_CONFIG some do plist; com ele, leva o caminho.
+  local env_cfg='/{{ORQ_CONFIG}}/d'
+  [ -z "$ORQ_CONFIG_FILA" ] || env_cfg="s|{{ORQ_CONFIG}}|$ORQ_CONFIG_FILA|g"
   sed -e "s|{{LABEL}}|$LABEL|g" \
       -e "s|{{CHECKOUT}}|$CHECKOUT|g" \
       -e "s|{{NODE_DIR}}|$NODE_DIR|g" \
       -e "s|{{START_INTERVAL}}|$START_INTERVAL|g" \
+      -e "s|{{RUNS}}|$CHECKOUT/$RUNS_REL|g" \
+      -e "$env_cfg" \
       "$TEMPLATE"
 }
 
@@ -153,9 +173,9 @@ if [ "$DRY" = 1 ]; then
   exit 0
 fi
 
-# O plist manda stdout/stderr para docs/fila/runs/. Sem a pasta, o launchd nao
+# O plist manda stdout/stderr para o runs da fila. Sem a pasta, o launchd nao
 # carrega o job e a falha aparece so no log do sistema.
-mkdir -p "$CHECKOUT/docs/fila/runs"
+mkdir -p "$CHECKOUT/$RUNS_REL"
 
 echo "LABEL    = $LABEL"
 echo "CHECKOUT = $CHECKOUT"
@@ -186,7 +206,7 @@ echo "bootstrap OK: $LABEL carregado em gui/$UID_NUM"
 
 echo ""
 echo "verificar:   launchctl print gui/$UID_NUM/$LABEL | head -20"
-echo "log do job:  tail -f $CHECKOUT/docs/fila/runs/launchd-agent.log"
-echo "log do loop: tail -f $CHECKOUT/docs/fila/runs/launchd.log"
-echo "pausar fila: ./scripts/orq pausar \"motivo\""
+echo "log do job:  tail -f $CHECKOUT/$RUNS_REL/launchd-agent.log"
+echo "log do loop: tail -f $CHECKOUT/$RUNS_REL/launchd.log"
+echo "pausar fila: ${ORQ_CONFIG_FILA:+ORQ_CONFIG=$ORQ_CONFIG_FILA }./scripts/orq pausar \"motivo\""
 echo "desinstalar: launchctl bootout gui/$UID_NUM/$LABEL && rm -f \"$DST\""
