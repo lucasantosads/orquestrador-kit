@@ -56,6 +56,7 @@ Fora de escopo: as outras citações velhas do mesmo arquivo (linhas 38, 40 a 46
     }
   ],
   "status": "pendente",
-  "notas_status": "recusado: "
+  "notas_status": "recusado: ",
+  "tentativas": 1
 }
 ```
