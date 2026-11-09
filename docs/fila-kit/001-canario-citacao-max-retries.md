@@ -55,8 +55,8 @@ Fora de escopo: as outras citações velhas do mesmo arquivo (linhas 38, 40 a 46
       "espera": "avaliador"
     }
   ],
-  "status": "pendente",
-  "notas_status": "recusado: ",
-  "tentativas": 1
+  "status": "bloqueado",
+  "notas_status": "bloqueado: base_vermelha — gate testes falhou só em arquivo(s) fora do diff e da allowlist: test/orquestrador-migrations-aplicar.test.ts; evidência: /Users/lucasantos/Projetos/orquestrador-kit/docs/fila-kit/runs/001/attempt-0/gates.txt",
+  "tentativas": 0
 }
 ```
