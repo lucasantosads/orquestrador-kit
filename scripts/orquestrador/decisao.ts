@@ -67,12 +67,14 @@ export interface Recusa {
 /**
  * Enquanto QUALQUER papel estiver pendente, só os tickets da allowlist rodam.
  * Recusa não é falha do ticket: não consome retry, não bloqueia. Sai com o
- * código do config.
+ * código do config. Sem a chave no config, a restrição é inativa (defeito KF-1:
+ * a fila do kit não a tem, e ler `r.ativa` de `undefined` matava todo ticket).
  */
 export function avaliaRestricaoExecucao(config: DecisaoConfig, ticketSlug: string): Recusa {
-  const r = config.restricao_execucao
+  // O tipo descreve a chave quando presente; o JSON do config pode não tê-la.
+  const r = config.restricao_execucao as DecisaoConfig['restricao_execucao'] | undefined
   const pendentes = papeisPendentes(config)
-  if (!r.ativa || pendentes.length === 0) return { permitido: true, exitCode: 0 }
+  if (!r?.ativa || pendentes.length === 0) return { permitido: true, exitCode: 0 }
   if (r.tickets_permitidos.includes(ticketSlug)) return { permitido: true, exitCode: 0 }
   return {
     permitido: false,
