@@ -5,6 +5,10 @@ node_modules
 docs/fila/runs/
 # fila do próprio kit (etapa KF): pausa local da máquina.
 docs/fila-kit/PAUSAR
+# plist INSTANCIADO pelo instalar-launchd.sh (<launchd.label>.plist, caminhos desta
+# máquina). Sem esta linha ele suja a árvore e o preflight adia o ticket (defeito
+# 2026-11-09). O template termina em .plist.template e não casa.
+scripts/orquestrador/*.plist
 *.log
 # Exceção: `events-quebrado.log` é FIXTURE de teste (a trilha corrompida que o
 # reparar-trilha.sh conserta), não log de execução. Sem esta linha o `*.log`
