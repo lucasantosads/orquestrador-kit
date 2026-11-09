@@ -1207,6 +1207,15 @@
   `test/fixtures/afrouxamento-kf/`), `orquestrador-fila-kit.test.ts`,
   `orquestrador-prevoo-spec-dir.test.ts`, `orquestrador-executor-spec-dir.test.ts` (configs reais e
   ouro de `test/fixtures/m69/`). Defeito aberto: `docs/defeitos/2026-11-07-gate-shell-instavel-sob-carga.md`.
+- **DEFEITO-KF · os dois defeitos do canário 001 da fila do kit (09/11/2026).** `restricao_execucao`
+  ausente = inativa no `decisao.ts`, como o `config-chaves.ts` promete (`9198a4d`); o plist que o
+  `instalar-launchd.sh` instancia em `scripts/orquestrador/` fica fora do git do kit, por linha no
+  `.gitignore` (`bc06333`). Defeitos fechados: `docs/defeitos/2026-11-09-restricao-execucao-ausente.md`
+  e `docs/defeitos/2026-11-09-plist-launchd-suja-arvore-do-kit.md` (cada um anota o que ficou fora).
+  *Evidência:* `~/orq-sessoes/relatorio-kit-defeito-kf.md` (vermelho e verde de cada peça).
+  *Teste:* `orquestrador-defeito-kf-restricao.test.ts` (config real da fila do kit em
+  `test/fixtures/defeito-kf/`, `config-comarka.json` e `config-dashboard.json` da M69),
+  `orquestrador-defeito-kf-plist.test.ts` (checkout git descartável, `launchctl` stub).
 
 ## PENDENTES
 
