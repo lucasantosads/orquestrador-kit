@@ -179,7 +179,10 @@ sem chamar modelo e sem consumir tentativa. Desbloqueio: $(cfg '.restricao_execu
   out="$(mktemp)"
   # json aqui também: a sondagem custa, e custo não medido é custo que escapa do
   # gate. A detecção de modelo recusado é por TEXTO e sobrevive ao envelope JSON.
-  claude_run "$ROOT" "$out" 60 -- -p "responda apenas: ok" --output-format json --model "$m" || rc=$?
+  claude_run "$ROOT" "$out" 60 -- -p "responda apenas: ok" --output-format json --model "$m" \
+    --strict-mcp-config || rc=$?
+  # --strict-mcp-config sem --mcp-config = nenhum MCP (2.1.8): a sondagem herdava
+  # os conectores claude.ai da conta (GHL e Supabase com escrita). Padrão do juiz.
   custo_registrar probe '---' 0 "$out"
 
   # ADIA: rede/sessão/cota/relógio/5xx. Não é defeito de nada — o ambiente caiu.
@@ -1453,10 +1456,14 @@ run_attempt() {
     # (regra 17). O diff continua vindo do git, não do stdout — o que o agente
     # diz que fez nunca foi entrada de nada aqui.
     [ -n "$piso" ] && log "  piso de negação: $piso"
+    # --strict-mcp-config sem --mcp-config = nenhum MCP (2.1.8). Sem ela o agente
+    # via os conectores claude.ai da conta (mcp__claude_ai_GHL__execute_operation,
+    # mcp__claude_ai_Supabase__execute_sql), e a escrita dependia só de permissão:
+    # um allow em settings.local.json do usuário bastava. Fronteira, não permissão.
     claude_run "$wt" "$saida" "$(cfg '.claude_timeout_secs')" -- \
       -p "$(cat "$prompt")" --output-format json --model "$modelo" \
       --max-turns "$turns" --allowedTools "$tools" \
-      ${piso:+--disallowedTools "$piso"} || rc=$?
+      ${piso:+--disallowedTools "$piso"} --strict-mcp-config || rc=$?
     custo_registrar executor "$(ticket_field "$file" '.id')" "$attempt" "$saida"
   fi
   DUR=$(( $(date +%s) - t0 ))

@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 2.1.8 · 2026-11-12
+
+- **Executor sem MCP.** `executor.sh`: a sondagem de modelo e a chamada do agente passam
+  `--strict-mcp-config` (sem `--mcp-config`), o padrão do juiz. Antes, os conectores claude.ai da
+  conta (GHL e Supabase com escrita) ficavam visíveis ao agente e só a permissão segurava.
+  Teste: `orquestrador-executor-sem-mcp.test.ts`. Sonda paga: `scripts/kit/sonda-mcp.sh`
+  (sem flag 661 `mcp__claude_ai_*`, com flag 0). Defeito: `docs/defeitos/2026-11-12-executor-herda-mcp-da-conta.md`.
+- **Defeitos registrados, não corrigidos:** `docs/defeitos/2026-11-12-lock-stale-importa-lock-js.md`
+  (lock órfão nunca é recuperado) e `docs/defeitos/2026-11-12-kill-do-grupo-sem-teste.md`.
+- **Falha conhecida, de ambiente, não corrigida aqui:** `orquestrador-resolvedor-job-claude.test.ts`
+  ("peça 3: o claude no PATH do job") falha antes de qualquer mudança (b59937b: 1 arquivo, 2090
+  testes verdes). A pré-condição monta um PATH "sem claude" com `NODE_DIR` dentro, e numa máquina
+  com Claude Code instalado pelo npm do nvm o `claude` mora nesse mesmo diretório
+  (`~/.nvm/versions/node/v24.21.0/bin/claude`): `command -v claude` acha, e o `expect(...).toBe(1)`
+  da linha 50 recebe 0.
+
 ## 2.1.0-dev · 2026-09-08
 
 - Importa o harness do conteudos-infinitos @711ab5e (peças 0 a 13 e peça 1). Ver ORIGEM.md.

@@ -1217,6 +1217,14 @@
   `test/fixtures/defeito-kf/`, `config-comarka.json` e `config-dashboard.json` da M69),
   `orquestrador-defeito-kf-plist.test.ts` (checkout git descartável, `launchctl` stub).
 
+- **2.1.8 · executor sem MCP (12/11/2026).** A sondagem (`probe_modelos`) e o agente
+  (`run_attempt`) passam `--strict-mcp-config` sem `--mcp-config`, como o juiz. Medido com o
+  `claude` real (`scripts/kit/sonda-mcp.sh`): 661 ferramentas `mcp__claude_ai_*` sem a flag, 0 com.
+  Defeito fechado: `docs/defeitos/2026-11-12-executor-herda-mcp-da-conta.md`. Abertos, só
+  registrados: `docs/defeitos/2026-11-12-lock-stale-importa-lock-js.md` e
+  `docs/defeitos/2026-11-12-kill-do-grupo-sem-teste.md`.
+  *Teste:* `orquestrador-executor-sem-mcp.test.ts` (vermelho com o `executor.sh` de b59937b).
+
 ## PENDENTES
 
 - **Fila de melhorias do motor:** `docs/MELHORIAS.md` (M-01 a M-62, status e marco de cada uma).

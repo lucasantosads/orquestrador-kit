@@ -1,0 +1,9 @@
+# Saída da scripts/kit/sonda-mcp.sh, 12/11/2026, Mac do Lucas (escritorio-os).
+# Fonte: evento init do claude -p --output-format stream-json --verbose --model haiku --max-turns 1, cwd vazio.
+# Só nomes de ferramenta; nenhum dado de conta.
+
+== sem-flag: claude 2.1.321, mcp_servers=38, tools=689, mcp__claude_ai_*=661
+mcp__claude_ai_GHL__execute_operation
+mcp__claude_ai_Supabase__execute_sql
+
+== com-flag: claude 2.1.321, mcp_servers=0, tools=25, mcp__claude_ai_*=0
