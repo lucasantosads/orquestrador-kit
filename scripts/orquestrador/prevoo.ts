@@ -74,6 +74,8 @@ export interface PreVooConfig {
   spec_dir?: unknown
   ambiente_id?: string
   branch_alvo?: string
+  branch_principal?: string
+  branch_protegida?: string
   juiz?: { review_md?: string }
   filas_irmas?: string[]
   runs_dir?: string
@@ -101,6 +103,22 @@ export interface PreVooDeps {
   hoje: () => string
   /** `git show <branch>:<path>`; `null` quando o arquivo não existe lá (cat.8). */
   lerDaBranchAlvo?: (branch: string, path: string) => string | null
+  /**
+   * cat.11: o git ignora um `node_modules` que NÃO é diretório (o symlink da
+   * worktree)? `null` = não é repo git (nada a perguntar).
+   */
+  ignoraNodeModulesSymlink?: () => boolean | null
+  /**
+   * cat.12: relação entre a principal e a alvo. `contem` = a principal é
+   * ancestral da alvo (ff da promoção possível); `atras` = a alvo é ancestral
+   * da principal (a principal andou e a alvo ficou para trás); `divergiu` =
+   * nenhuma contém a outra; `sem_branch` = uma das duas não existe aqui.
+   */
+  relacaoAlvoPrincipal?: (alvo: string, principal: string) => 'contem' | 'atras' | 'divergiu' | 'sem_branch'
+  /** Worktree onde a branch está em checkout, ou null (para o comando de conserto). */
+  worktreeDaBranch?: (branch: string) => string | null
+  /** Raiz do checkout, só para o comando de conserto (cat.12). */
+  repoRoot?: string
 }
 
 /**
@@ -348,6 +366,74 @@ export function checarReviewMd(config: PreVooConfig, deps: Pick<PreVooDeps, 'ler
   return { ok: true, ...item, motivo: `${path}: ${linhas} linhas, ${bytes} bytes` }
 }
 
+/**
+ * cat.11 · `node_modules` sem barra no .gitignore (etapa 2.2.0, A1-10).
+ *
+ * Na worktree do loop o `node_modules` é SYMLINK (executor.sh:
+ * linkar_node_modules), e `node_modules/` (com barra) só casa diretório. Sem a
+ * linha sem barra, o symlink aparece como arquivo solto e todo ticket reprova
+ * por `arquivo_solto` com os gates verdes (1ª drenagem do escritorio-os).
+ */
+export function checarGitignoreNodeModules(deps: Pick<PreVooDeps, 'ignoraNodeModulesSymlink'>): Item | null {
+  if (!deps.ignoraNodeModulesSymlink) return null
+  const r = deps.ignoraNodeModulesSymlink()
+  if (r === null) return { ok: true, info: true, token: 'cat.11', item: '.gitignore node_modules', motivo: 'não é repo git' }
+  if (exigirBooleano(r, 'ignoraNodeModulesSymlink()')) return { ok: true, token: 'cat.11', item: '.gitignore node_modules (sem barra) ignora o symlink da worktree' }
+  return {
+    ok: false,
+    token: 'cat.11',
+    item: '.gitignore node_modules',
+    motivo:
+      "o .gitignore não ignora o symlink node_modules da worktree (só `node_modules/`, com barra, casa diretório): acrescente a linha `node_modules` (sem barra) ao .gitignore, ou rode instalar.sh --atualizar, que a acrescenta",
+  }
+}
+
+/**
+ * cat.12 · a branch alvo contém a principal (etapa 2.2.0, A1-11, AP-060).
+ *
+ * As worktrees dos tickets nascem da alvo e a promoção é `merge --ff-only` da
+ * alvo na principal. Conserto de ambiente commitado na principal que não está
+ * na alvo nunca chega aos tickets (2ª drenagem do escritorio-os repetiu a 1ª),
+ * e com as duas divergidas a promoção não tem fast-forward. NO-GO com o
+ * comando exato.
+ */
+function aplicaCat12(config: PreVooConfig, deps: Pick<PreVooDeps, 'relacaoAlvoPrincipal'>): boolean {
+  const alvo = config.branch_alvo
+  const principal = config.branch_principal ?? config.branch_protegida
+  return !!deps.relacaoAlvoPrincipal && !!alvo && !!principal && !principal.startsWith('<') && !alvo.startsWith('<') && alvo !== principal
+}
+
+export function checarAlvoContemPrincipal(
+  config: PreVooConfig,
+  deps: Pick<PreVooDeps, 'relacaoAlvoPrincipal' | 'worktreeDaBranch' | 'repoRoot'>,
+): Item | null {
+  if (!aplicaCat12(config, deps)) return null
+  const alvo = config.branch_alvo!
+  const principal = (config.branch_principal ?? config.branch_protegida)!
+  const rel = deps.relacaoAlvoPrincipal!(alvo, principal)
+  const item = `${alvo} contém ${principal}`
+  if (rel === 'contem') return { ok: true, token: 'cat.12', item }
+  if (rel === 'sem_branch') return { ok: true, info: true, token: 'cat.12', item, motivo: `${alvo} ou ${principal} não existe neste checkout` }
+  const wt = deps.worktreeDaBranch?.(alvo) ?? null
+  const repo = deps.repoRoot ?? '.'
+  if (rel === 'atras') {
+    const cmd = wt ? `git -C ${wt} merge --ff-only ${principal}` : `git -C ${repo} fetch . ${principal}:${alvo}`
+    return {
+      ok: false,
+      token: 'cat.12',
+      item,
+      motivo: `${principal} andou e ${alvo} ficou para trás: as worktrees dos tickets nascem de ${alvo} sem o que está em ${principal}. Conserto (fast-forward, sem perda): ${cmd}`,
+    }
+  }
+  const cmd = wt ? `git -C ${wt} merge --no-ff ${principal}` : `git -C ${repo} checkout ${alvo} && git -C ${repo} merge --no-ff ${principal}`
+  return {
+    ok: false,
+    token: 'cat.12',
+    item,
+    motivo: `${alvo} e ${principal} divergiram (nenhuma contém a outra): a promoção por fast-forward é impossível. Conserto (humano, com o loop pausado): ${cmd}`,
+  }
+}
+
 export interface Veredito {
   ok: boolean
   itens: Item[]
@@ -382,6 +468,12 @@ export function preVooRelampago(entrada: { config: PreVooConfig; deps: PreVooDep
       ? [['cat.8 (review_md)', () => checarReviewMd(config, deps)] as [string, () => Item]]
       : []),
     ...(checarSelecao(config) ? [['cat.10 (selecao_testes)', () => checarSelecao(config)!] as [string, () => Item]] : []),
+    ...(deps.ignoraNodeModulesSymlink
+      ? [['cat.11 (.gitignore node_modules)', () => checarGitignoreNodeModules(deps)!] as [string, () => Item]]
+      : []),
+    ...(aplicaCat12(config, deps)
+      ? [['cat.12 (alvo contém principal)', () => checarAlvoContemPrincipal(config, deps)!] as [string, () => Item]]
+      : []),
     ['cat.3 (sondagem de modelo)', () => checarUltimaSondagem(deps)],
   ]
   const itens: Item[] = []
@@ -545,6 +637,36 @@ export function preVooDepsReais(entrada: {
       return r.status === 0 ? r.stdout : null
     },
     hoje: entrada.hoje ?? (() => diaLocal()),
+    ignoraNodeModulesSymlink: () => {
+      const g = rodarGit('rev-parse', '--git-dir')
+      if (g.error || g.status !== 0) return null
+      // Caminho que não existe: o git o trata como ARQUIVO, que é como ele vê o
+      // symlink da worktree. `node_modules/` não casa; `node_modules` casa.
+      const r = exigirGit(rodarGit('check-ignore', '-q', '--no-index', 'orq-prevoo-sonda/node_modules'), 'git check-ignore')
+      return r.status === 0
+    },
+    relacaoAlvoPrincipal: (alvo, principal) => {
+      const existe = (b: string) => rodarGit('rev-parse', '--verify', '--quiet', `refs/heads/${b}`).status === 0
+      if (!existe(alvo) || !existe(principal)) return 'sem_branch'
+      const anc = (a: string, b: string) => {
+        const r = exigirGit(rodarGit('merge-base', '--is-ancestor', a, b), `git merge-base --is-ancestor ${a} ${b}`)
+        if (r.status !== 0 && r.status !== 1) throw new Error(`git merge-base saiu ${r.status}`)
+        return r.status === 0
+      }
+      if (anc(principal, alvo)) return 'contem'
+      return anc(alvo, principal) ? 'atras' : 'divergiu'
+    },
+    worktreeDaBranch: (branch) => {
+      const r = rodarGit('worktree', 'list', '--porcelain')
+      if (r.status !== 0) return null
+      let atual = ''
+      for (const l of r.stdout.split('\n')) {
+        if (l.startsWith('worktree ')) atual = l.slice(9)
+        else if (l === `branch refs/heads/${branch}`) return atual
+      }
+      return null
+    },
+    repoRoot: entrada.repoRoot,
   }
 }
 

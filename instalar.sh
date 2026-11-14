@@ -313,6 +313,31 @@ relatar_gitignore() {
   [ "$faltando" = 0 ] || printf '\nO instalador NÃO edita o .gitignore de repo existente: ele é do dono.\n'
 }
 
+# garantir_gitignore_node_modules <repo> (etapa 2.2.0, A1-10)
+# A ÚNICA linha que o instalador escreve num .gitignore existente, e só quando o
+# git diz que ela falta. Na worktree do loop o node_modules é SYMLINK
+# (executor.sh:linkar_node_modules) e `node_modules/` (com barra) só casa
+# diretório: sem a forma sem barra todo ticket vira `arquivo_solto` com os
+# gates verdes (1ª drenagem do escritorio-os, 12/11/2026). Relatar e não
+# escrever (a regra do relatar_gitignore) deixou o repo quebrado duas drenagens
+# seguidas; esta linha é pré-condição do motor, não gosto do dono.
+garantir_gitignore_node_modules() {
+  local repo="$1"
+  git -C "$repo" rev-parse --git-dir >/dev/null 2>&1 || return 0
+  if git -C "$repo" check-ignore -q --no-index orq-sonda/node_modules 2>/dev/null; then
+    printf '.gitignore: node_modules (sem barra) já ignorado\n'
+    return 0
+  fi
+  {
+    [ ! -s "$repo/.gitignore" ] || [ -z "$(tail -c1 "$repo/.gitignore")" ] || printf '\n'
+    printf '%s\n' \
+      '# `node_modules` sem barra: na worktree do loop ele é SYMLINK (executor.sh:linkar_node_modules),' \
+      '# e `node_modules/` não casa symlink. Sem esta linha todo ticket vira arquivo_solto.' \
+      'node_modules'
+  } >> "$repo/.gitignore"
+  printf '.gitignore: +node_modules (sem barra) — commite o .gitignore junto do motor\n'
+}
+
 # 1 quando alguma migração RECUSOU (hoje só o config, peça M1). Não é erro: é o
 # instalador funcionando. Vira rc 1 do `--atualizar`, para que quem chamou por
 # script não leia "atualizado" onde houve um passo por fazer.
@@ -516,6 +541,7 @@ atualizar() {
   printf '           repo %s\n\n' "$repo"
   vendorizar_motor "$repo"
   printf 'copiado: scripts/orquestrador/ · scripts/orq · scripts/roadmap/ · docs/orquestrador/skill/ (+ VERSAO %s)\n' "$VERSAO"
+  garantir_gitignore_node_modules "$repo"
   printf 'copiado: %s teste(s) de harness e %s fixture(s) de teste (peça K8d)\n\n' \
     "$(printf '%s\n' $TESTES_HARNESS | wc -l | tr -d ' ')" \
     "$(printf '%s\n' $FIXTURES_HARNESS | wc -l | tr -d ' ')"
