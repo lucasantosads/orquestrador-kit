@@ -51,8 +51,8 @@ Recon feito pelo chat do projeto Orquestrador em 14/11/2026 contra a origin/main
       "espera": "avaliador"
     }
   ],
-  "status": "bloqueado",
-  "notas_status": "bloqueado: SPEC_CONFLITANTE — na tentativa 1 o agente declarou 1 conflito(s) entre o ticket e o código; sem enforcement, sem juiz, sem merge, tentativa devolvida. Conflitos: o ticket diz: o ticket diz que o config do fixture tem tabela em zona_proibida.no_write_tables · o código diz: o config do fixture traz a string \"TODAS\" (negação total), não lista; tratei TODAS como qualquer tabela proibida · fixture/docs/fila/000-config.json:143. Evidência: runs/003/attempt-0/conflitos.json e o diff em runs/003/attempt-0/diff.patch. Decida a spec antes de reabrir.",
+  "status": "obsoleto",
+  "notas_status": "superado pela etapa 2.2.0 (A1-14): o contra-teste de arquivo solto lê a tabela da zona_proibida do config (status anterior: bloqueado)",
   "tentativas": 0
 }
 ```

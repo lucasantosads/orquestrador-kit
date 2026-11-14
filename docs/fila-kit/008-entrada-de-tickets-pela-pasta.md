@@ -48,8 +48,8 @@ Recon feito pelo chat do projeto Orquestrador em 14/11/2026 contra a main a3a90d
       "espera": "avaliador"
     }
   ],
-  "status": "pendente",
-  "notas_status": "",
+  "status": "obsoleto",
+  "notas_status": "superado pela etapa 2.2.0 (P1): a entrada autônoma de tickets é o planejador; entrada por pasta fica fora (status anterior: pendente)",
   "tentativas": 0
 }
 ```

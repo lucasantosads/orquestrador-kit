@@ -47,8 +47,8 @@ Recon feito pelo chat do projeto Orquestrador em 14/11/2026 contra a origin/main
       "espera": "avaliador"
     }
   ],
-  "status": "bloqueado",
-  "notas_status": "bloqueado: base_vermelha — gate testes falhou só em arquivo(s) fora do diff e da allowlist: test/orquestrador-resolvedor-job-claude.test.ts; evidência: /Users/lucasantos/Projetos/orquestrador-kit/docs/fila-kit/runs/006/attempt-0/gates.txt",
+  "status": "obsoleto",
+  "notas_status": "superado pela etapa 2.2.0 (A1-10): instalar.sh acrescenta node_modules sem barra e o pré-voo cat.11 acusa (status anterior: bloqueado)",
   "tentativas": 0
 }
 ```

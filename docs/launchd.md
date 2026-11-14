@@ -116,6 +116,18 @@ Em ordem de preferência:
 
 Retomar: `scripts/orq retomar`.
 
+## O que um disparo faz (2.2.0)
+
+Um disparo do launchd é um ciclo inteiro, num processo e num lock: pré-voo →
+planejador (se `loops.planejador.ativo` e pendentes < `planejador.limiar_fila`)
+→ drenagem → promotor (se `promotor.modo: auto`) → avisos e relatório. O
+segundo disparo que chega com o primeiro vivo morre no lock (`outro run vivo`,
+rc 0); lock de run morto vira `RECUPERADO motivo=lock-orfao`.
+
+Drenagem manual fora do launchd: `scripts/orq drenar`. Ela sobe desacoplada
+(nohup + sessão nova, PPID 1) e devolve o PID, então fechar o terminal ou a
+sessão do Claude Code não mata o loop no meio do ticket (AP-076).
+
 ## Onde olhar depois
 
 | Quero saber | Comando |
@@ -126,6 +138,8 @@ Retomar: `scripts/orq retomar`.
 | quanto gastou hoje | `scripts/orq custo` |
 | o disparo do launchd rodou? | `tail -40 docs/fila/runs/launchd.log` |
 | avisos de fim de drenagem | `tail -10 docs/fila/runs/notificacoes.log` |
+| relatório da última execução com novidade | `ls -t docs/fila/runs/relatorios/ \| head -1` |
+| o loop morreu? | `scripts/orq` diz `loop morto desde HH:MM (pid N)` |
 
 `docs/fila/runs/` é ignorado pelo git: nada disso suja a árvore nem viaja para a
 staging.

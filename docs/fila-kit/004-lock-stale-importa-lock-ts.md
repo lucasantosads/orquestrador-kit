@@ -52,8 +52,8 @@ Recon feito pelo chat do projeto Orquestrador em 14/11/2026 contra a origin/main
       "espera": "avaliador"
     }
   ],
-  "status": "bloqueado",
-  "notas_status": "bloqueado: base_vermelha — gate testes falhou só em arquivo(s) fora do diff e da allowlist: test/orquestrador-resolvedor-job-claude.test.ts, test/orquestrador-agendamento.test.ts, test/orquestrador-migrations-aplicar.test.ts, test/orquestrador-prevoo.test.ts, test/orquestrador-toolchain-tsx.test.ts; evidência: /Users/lucasantos/Projetos/orquestrador-kit/docs/fila-kit/runs/004/attempt-0/gates.txt",
+  "status": "obsoleto",
+  "notas_status": "superado pela etapa 2.2.0 (A1-1): lock_stale importa lock.ts e checagem que falha é LOCK_ERRO (status anterior: bloqueado)",
   "tentativas": 0
 }
 ```

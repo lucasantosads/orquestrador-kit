@@ -20,6 +20,8 @@ disparo (agendador ou ciclo do modo contínuo)
   8. notificação de fim · liberar lock
 ```
 
+**Ordem implementada desde a 2.2.0** (`scripts/orquestrador/autonomo.ts`, chamado pelo `local-loop.sh`): lock → pausa → pré-voo ⚡ → reconcile → **planejador** (se pendentes < limiar) → executor (drenagem) → autocommit da fila → **promotor** → **avisos e relatório**. O planejador vem ANTES da drenagem para o lote recém-escrito ser drenado no mesmo disparo; o promotor vem depois, para promover o que a drenagem mergeou.
+
 Planejador e sentinela **nunca** rodam fora dessa sequência. Não há daemon deles. Modo contínuo = `sleep intervalo_min` e volta ao passo 0, relendo tudo.
 
 ## 1. Estados e campos novos do ticket
@@ -98,6 +100,18 @@ Custo do gate: passos 1 a 5 são script (zero token). Passo 6 é barato e raro. 
 
 **O planejador nunca:** cria frente ou bloco, edita mapa além de status, escreve em paths do harness, gera ticket para frente que não está `pronta`, ultrapassa o lote.
 
+### 3.1 Implementação (etapa 2.2.0, `autonomo.ts:planejar`)
+
+- **Config:** `loops.planejador.{ativo, modo: auto|dry_run}`; `planejador.{limiar_fila, lote (teto 5), reserva_orcamento_pct, regras_ticket, liberacao_automatica: bloco_atual|nenhuma, modelo_juiz_lote}`. No kit tudo nasce desligado.
+- **Frente:** a primeira `pronta` com deps `concluida` de bloco `em_andamento` cujos tickets estão todos fora do caminho de execução (`done`, `descartado`, `obsoleto`). Frente com ticket `bloqueado` não ganha lote: vira aviso `frente_bloqueada` (tapar bloqueio com ticket novo esconde o defeito). O mapa é lido da **branch alvo**, onde o promotor escreve o fechamento.
+- **Escrita do lote:** `claude -p --strict-mcp-config --setting-sources project`, modelo `modelos.planejador`, com Read/Grep/Glob numa worktree descartável da alvo (recon de verdade, só leitura; Bash/Edit/Write negados). O prompt carrega a frente, o bloco, os tickets da frente, os descartes de 7 dias, o arquivo `regras_ticket`, o `_TEMPLATE.md` da fila e um ticket real como exemplo de formato.
+- **IDs:** sequenciais globais, atribuídos pelo script (maior id da fila + 1). Dependência interna do lote vem como `#n` e o script troca pelo id.
+- **Gate:** `gate-ticket.ts --violacoes` em cada candidato (violação ⇒ `descartado motivo=gate`), depois o **juiz de lote**: segundo `claude -p` de contexto limpo, sem ferramenta e sem conector (`--tools "" --strict-mcp-config`), que recebe só os candidatos, as regras e a frente. Reprovado ⇒ `descartado motivo=juiz_lote` com o motivo em `notas_status`; veredito ausente ⇒ `descartado motivo=juiz_lote_ilegivel`.
+- **Saída:** `modo: auto` ⇒ aprovado vira `pendente` (com `gate_ok`); `dry_run` ⇒ fica `candidato`. O lote é commitado no checkout principal com o trailer `Orq-Planejador`, por índice temporário (o índice de quem trabalha no checkout não muda).
+- **Frente parcial:** frente `pronta` com todos os tickets `done` ⇒ o planejador compara a entrega com os objetivos e escreve só o que falta, ou responde `entrega_coberta`. `fecha_frente: true` marca o lote que, pronto, cobre a entrega. O fechamento (frente `concluida`) é do promotor, quando todos os tickets da frente estão `done` e na principal.
+- **Dúvida de escopo:** linha em `decisoes-pendentes.md`, frente `bloqueada_humano` (na alvo) e aviso `decisao_pendente`. Nunca inventa decisão.
+- **Liberação automática (DEC-036):** com `bloco_atual`, frente concluída libera (`rascunho` → `pronta`) as frentes do MESMO bloco com deps concluídas, até 2 prontas por bloco (lint 7). Bloco novo nunca: aviso `bloco_novo`.
+
 ## 4. Sentinela
 
 **Gatilho:** `sentinela.ativo: true` e ≥1 merge na drenagem corrente (ou `sentinela.rodar_sem_merge: true` para varredura diária).
@@ -174,6 +188,21 @@ Lidos no passo 0 de toda drenagem **e entre tickets**. `orq pausar` / `orq retom
 
 **Ritual humano (20 min):** ler relatório → validar DoD de blocos → aplicar `.sql` → resolver decisões (`/arquitetar --decisoes`) → responder tokens de `liberacoes.json` → **merge staging → principal** (humano, sempre, `--no-ff`) → promover baseline da sentinela. Se o smoke do item 3 está vermelho, a promoção não acontece e o motivo vai para decisão pendente.
 
+### 6.1 Promotor automático (etapa 2.2.0, `promotor.modo: auto`)
+
+`promotor.modo: humano` (o padrão) é o ritual acima, sem mudança. Com `auto` (DEC-035 do escritorio-os), o merge staging → principal passa a ser do promotor, no fim de cada drenagem em que a alvo está à frente da principal, e **nunca** há push:
+
+1. **Bloqueios duros, sem juiz:** checkout principal sujo ou fora da branch principal; diff com path de `promotor.paths_gate_humano` (ex.: `supabase/migrations/**`, aviso `migration_pendente` com o sha256 de cada arquivo) ou da zona proibida.
+2. **Sincronia:** a principal anda com os commits de status da fila (o loop commita lá); eles entram na alvo por `merge --no-ff` (sem conflito, nenhum ticket toca a fila). Conflito ⇒ `PROMOCAO_RECUSADA motivo=sync_conflito`. Por isso o pré-voo cat.12 aceita a principal à frente SÓ na fila.
+3. **Gates em primeiro plano** numa worktree destacada e limpa no topo da alvo: `promotor.gates` (nomes de `gates[]` ou `lint-mapa`).
+4. **Juiz de promoção:** `claude -p --strict-mcp-config`, modelo `promotor.modelo_juiz` (opus), contexto limpo; entrada = diff principal..alvo (sem a fila), tickets incluídos (trailer `Orq-Ticket`), regras do repo; saída `{aprovar, motivos, resumo}`.
+5. **Aprovado:** `git merge --ff-only <alvo>` na principal, evento `PROMOVIDO`; writeback de frente concluída (mapa.json + MAPA.md) e liberação automática num commit próprio na alvo, e ff de novo. **Recusado:** `PROMOCAO_RECUSADA motivo=...` e aviso; a fila segue drenando na alvo.
+6. **Push pendente:** principal local à frente de `origin/<principal>` ⇒ aviso `push_pendente` com o resumo do diff, o veredito do juiz e o comando, que é do humano.
+
+### 6.2 Avisos e relatório por execução (etapa 2.2.0)
+
+`avisos.hook_cmd` recebe no stdin, uma vez por execução com novidade, `{tipo, nivel: acao|info, titulo, texto, dados, ts}`; `dados.relatorio_md` é o relatório gravado em `runs/relatorios/AAAA-MM-DD-HHMM.md`. Tipos de ação: `push_pendente`, `migration_pendente`, `decisao_pendente`, `frente_bloqueada`, `bloco_novo`, `promocao_recusada`, `orcamento`, `ambiente`. Nível `acao` também vira notificação nativa. O mesmo aviso (tipo + chave), sem mudança, não repete em `avisos.dedupe_horas` (24). Disparo sem novidade (nada processado, nada promovido, nenhum aviso) não chama o hook. Falha do hook vira evento `AVISO_HOOK rc=N` e nunca derruba o loop.
+
 ## 7. Contrato do `orq` (v2, tudo read-only exceto os marcados ✎)
 
 | Comando | Faz |
@@ -190,6 +219,7 @@ Lidos no passo 0 de toda drenagem **e entre tickets**. `orq pausar` / `orq retom
 | `orq mapa-repo` ✎ | regenera `docs/orquestrador/REPO-MAP.md` (escreve só esse arquivo) |
 | `orq promover <id>` ✎ | candidato → pendente (uso humano no dry-run) |
 | `orq pausar` / `orq retomar` ✎ | cria/remove `docs/fila/PAUSAR` |
+| `orq drenar` | sobe a drenagem DESACOPLADA (nohup + sessão nova, PPID 1) e devolve o PID; com loop vivo no lock, só diz qual (2.2.0) |
 
 Nenhum subcomando mata processo, edita ticket em execução ou toca a staging.
 

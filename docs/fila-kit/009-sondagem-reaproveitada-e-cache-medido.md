@@ -45,8 +45,8 @@ Recon feito pelo chat do projeto Orquestrador em 14/11/2026 contra a main a3a90d
       "espera": "avaliador"
     }
   ],
-  "status": "bloqueado",
-  "notas_status": "bloqueado: SPEC_CONFLITANTE — na tentativa 1 o agente declarou 1 conflito(s) entre o ticket e o código; sem enforcement, sem juiz, sem merge, tentativa devolvida. Conflitos: o ticket diz: o ticket manda mudar custo_registrar no executor.sh · o código diz: custo_registrar vive em lib.sh (fora da allowlist), então o executor.sh o embrulha (custo_registrar_base + campo novo) · scripts/orquestrador/lib.sh:1442 · IMPEDIMENTO: test/orquestrador-custo.test.ts:49 usa toEqual no registro de custo e vai falhar com o campo novo; está fora da allowlist, não toquei. Não rodei typecheck, shell nem instalar (fora da lista de comandos autorizados).. Evidência: runs/009/attempt-0/conflitos.json e o diff em runs/009/attempt-0/diff.patch. Decida a spec antes de reabrir.",
+  "status": "obsoleto",
+  "notas_status": "superado pela etapa 2.2.0: fora do escopo da etapa, que tirou a fila-kit do caminho; o custo da sondagem segue em M-29 (status anterior: bloqueado)",
   "tentativas": 0
 }
 ```
