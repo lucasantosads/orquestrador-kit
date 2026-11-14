@@ -19,13 +19,39 @@
  *   - rc 1 se houve violação, 0 se não;
  *   - `--relatorio` imprime TUDO (inclusive o que passou) e sai 0.
  */
-import { spawnSync } from 'node:child_process'
-import { readFileSync, readdirSync, existsSync, realpathSync } from 'node:fs'
+import { spawnSync, type SpawnSyncOptionsWithStringEncoding, type SpawnSyncReturns } from 'node:child_process'
+import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, posix, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { globToRegExp, matchesAllowlist } from './enforcement-core.js'
 import { filaDir as filaDaRaiz, raizDaFila } from './fila-caminho.js'
+
+/**
+ * spawnSync com a entrada por ARQUIVO, nunca por pipe (etapa 2.2.0, A1-4). Com
+ * `{ input }` o node escreve no pipe do filho; quando o filho sai antes de ler
+ * tudo (`grep -q` casa na 1ª linha) e a entrada passa do buffer do pipe, a
+ * escrita dá EPIPE e o spawnSync devolve `error`, que o gate lia como "não
+ * rodou" ou "não casou". Com o arquivo como stdin o filho lê o que quiser e
+ * sai quando quiser.
+ */
+export function spawnComEntrada(
+  bin: string,
+  args: string[],
+  entrada: string,
+  opts: Omit<SpawnSyncOptionsWithStringEncoding, 'input' | 'stdio'> = { encoding: 'utf8' },
+): SpawnSyncReturns<string> {
+  const dir = mkdtempSync(join(tmpdir(), 'gate-entrada-'))
+  const arq = join(dir, 'entrada')
+  writeFileSync(arq, entrada)
+  const fd = openSync(arq, 'r')
+  try {
+    return spawnSync(bin, args, { ...opts, encoding: 'utf8', stdio: [fd, 'pipe', 'pipe'] })
+  } finally {
+    closeSync(fd)
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
 
 // ─── Vocabulário do ticket ────────────────────────────────────────────────
 
@@ -482,7 +508,7 @@ function casaEspera(saida: string, espera: string, grep: string): boolean {
   const e = espera.trim()
   if (/^\d+$/.test(e)) return o === e
   if (o === e) return true
-  return spawnSync(grep, ['-qE', '--', e], { input: o, encoding: 'utf8' }).status === 0
+  return spawnComEntrada(grep, ['-qE', '--', e], o).status === 0
 }
 
 /**
@@ -519,8 +545,7 @@ export function leituraDoVitest(cmd: string, espera: string, exec: ExecRegex): L
     }
   }
   const roda = (entrada: string) => {
-    const r = spawnSync('/bin/bash', ['-c', resto!], {
-      input: entrada,
+    const r = spawnComEntrada('/bin/bash', ['-c', resto!], entrada, {
       encoding: 'utf8',
       cwd: tmpdir(),
       timeout: exec.timeoutMs,
@@ -925,7 +950,7 @@ export function casaExemplo(ex: ExemploRegex, texto: string, exec: ExecRegex): {
     ferramenta === 'awk'
       ? [`/${ex.regex}/ { f = 1 } END { exit f ? 0 : 1 }`]
       : [...(ex.flags ?? '-E').split(/\s+/).filter(Boolean), '--', ex.regex]
-  const r = spawnSync(bin, args, { input: `${texto}\n`, encoding: 'utf8', timeout: exec.timeoutMs })
+  const r = spawnComEntrada(bin, args, `${texto}\n`, { encoding: 'utf8', timeout: exec.timeoutMs })
   if (r.error) throw new GateNaoRodou(`${bin} não rodou: ${r.error.message}`)
   if (r.status === 0) return { casa: true }
   if (r.status === 1) return { casa: false }
