@@ -1,3 +1,4 @@
+# teste que falhou: test/estado-plano-orfas.test.ts > estado-plano: capacidades orfas > arquivo inexistente: 'sem leitura (' e rc 0, nunca zero
  [32m✓[39m test/conexoes-status-whatsapp.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 4[2mms[22m[39m
  [32m✓[39m test/ui-card-sem-animacao.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
  [32m✓[39m test/carteira-view.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 2[2mms[22m[39m

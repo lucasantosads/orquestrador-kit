@@ -1,5 +1,64 @@
 # CHANGELOG
 
+## 2.2.0 · 2026-11-14
+
+Operação autônoma (planejador, promotor e avisos) e os 14 defeitos achados na instalação
+num repo novo. Cada item tem teste que falha contra a 2.1.8 e passa aqui.
+
+### A1 · defeitos
+
+- **A1-1** `lock_stale` importa `lock.ts` (não `lock.js`); checagem que falha vira `LOCK_ERRO` e
+  `exit 2`, nunca "vivo". Teste: `orquestrador-220-lock-orfao.test.ts`.
+- **A1-2** `claude_run` cria sessão própria (`setsid` por perl ou python3) e mata o grupo no
+  timeout e no sinal do executor. Teste: `orquestrador-220-claude-run-grupo.test.ts`.
+- **A1-3** peça 3 do job do resolvedor usa um diretório de node só do teste (antes falhava em
+  máquina com o claude instalado pelo npm do nvm). Teste: `orquestrador-resolvedor-job-claude.test.ts`.
+- **A1-4** gate de ticket passa a entrada por arquivo: sem EPIPE com `grep -q` e entrada grande.
+  Teste: `orquestrador-220-gate-epipe.test.ts`.
+- **A1-5** pré-voo antes do lock: já valia na 2.1.8 (teste passa contra ela); a falha observada
+  vinha do diff de um ticket que reescreveu `lock_adquirir || exit 0`. Registrado, sem mudança.
+- **A1-6** `orq` e painel dizem "loop morto desde HH:MM (pid N)". Teste: `orquestrador-220-loop-morto.test.ts`.
+- **A1-7** `env` do `spawnSync` tipado como `ProcessEnv` parcial: `tsc` limpo num repo Next.
+  Teste: `orquestrador-220-tsc-next.test.ts`.
+- **A1-8** `orq custo` sem argumento mostra hoje e o último dia com registro. Teste: `orquestrador-220-orq-custo.test.ts`.
+- **A1-9** `orq` de dentro de uma worktree lê a fila dela (verbos de leitura). Teste: `orquestrador-220-orq-worktree.test.ts`.
+- **A1-10/A1-11** pré-voo cat.11 (`node_modules` sem barra no `.gitignore`) e cat.12 (a alvo
+  contém a principal, com o comando de conserto); `instalar.sh --atualizar` acrescenta
+  `node_modules`. Teste: `orquestrador-220-prevoo-ambiente.test.ts`.
+- **A1-12** `gate-falha.txt` começa com `# teste que falhou: <arquivo> > <nome>` e o REPROVADO
+  leva `teste=<arquivo>::<nome>`. Os gabaritos de `test/fixtures/m69/ouro/*-vermelho-gate-falha.txt`
+  ganham essa linha (mesma em todos os modos de seleção). Teste: `orquestrador-220-gate-teste-falho.test.ts`.
+- **A1-13** `orq drenar` sobe o loop desacoplado (`nohup` + `setsid`) e devolve o PID; com loop
+  vivo não sobe outro. Teste: `orquestrador-220-orq-drenar.test.ts`.
+- **A1-14** contra-teste de arquivo solto lê a tabela da `zona_proibida` do config. Teste em
+  `orquestrador-arquivo-solto.test.ts`.
+
+### A2 · operação autônoma (`scripts/orquestrador/autonomo.ts`)
+
+- **P1 planejador** (M-46): com a fila abaixo de `planejador.limiar_fila`, escolhe a primeira
+  frente pronta, pede o lote ao modelo (sem MCP, `--setting-sources project`, regras de
+  `planejador.regras_ticket` no prompt), dá os IDs, passa cada ticket pelo gate de ticket e por um
+  juiz de lote sem ferramenta; reprovado sai `descartado` com motivo; aprovado vira `pendente`
+  (modo auto) ou `candidato` (dry_run). Dúvida vira decisão pendente e frente `bloqueada_humano`.
+  Teste: `orquestrador-220-planejador.test.ts`.
+- **P2 promotor** (M-37): `promotor.modo: auto` sincroniza principal → alvo, para sem juiz em path
+  de `paths_gate_humano` (aviso `migration_pendente` com sha256), roda os gates na ponta da alvo
+  numa worktree descartável, chama o juiz de promoção e faz `merge --ff-only` na principal;
+  fecha a frente no mapa e libera a próxima conforme `planejador.liberacao_automatica`. Nunca
+  faz push: avisa `push_pendente`. Teste: `orquestrador-220-promotor.test.ts`.
+- **P3 avisos e P4 relatório** (M-36, M-42): uma chamada a `avisos.hook_cmd` por disparo com
+  novidade (JSON `{tipo, nivel, titulo, texto, dados, ts}`), dedupe de 24 h, relatório em
+  `runs/relatorios/AAAA-MM-DD-HHMM.md`; hook que falha vira `AVISO_HOOK rc=1` e não derruba o loop.
+  Teste: `orquestrador-220-avisos.test.ts` e `orquestrador-220-ciclo.test.ts`.
+- **Config**: `planejador.regras_ticket`, `planejador.liberacao_automatica`, `promotor`, `avisos`
+  no template, desligados por padrão; `orq config` valida os valores. Teste: `orquestrador-220-config.test.ts`.
+- **Status novos de ticket**: `candidato` e `descartado` (terminal).
+- **Fila do kit**: 002 a 009 marcados `obsoleto`, superados por esta etapa.
+
+### Não entrou
+
+- `orq promover <id>` para virar candidato de dry_run em pendente.
+
 ## 2.1.8 · 2026-11-12
 
 - **Executor sem MCP.** `executor.sh`: a sondagem de modelo e a chamada do agente passam

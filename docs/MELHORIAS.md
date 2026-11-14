@@ -66,24 +66,24 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 | M-69 | Gate de testes roda só os afetados, com modo sombra e a suíte inteira como rede | feito (etapa M69) | B | custo | medida | M-21 (rede da suíte inteira) | medição do Comarka 07/11 18:15, exceção 07/11 18:16 |
 | M-27 | Experimento best-of-N com funil e perda do seletor | ideia | C | C5, C2, custo | medida | M-29, M-56 | base (experimentos), v052, v044, v048, v053, v054, v050, L3-02, L3-09, L4-01, L4-02, L5-03 |
 | M-28 | Transcrição stream-json com extrator e taxonomia de falhas | ideia | C | C2, C3, custo | medida | | base #12, v061, v046, v048, L2-07, L3-05, L4-05 |
-| M-29 | Custo por ticket e por etapa, cache e contexto enxuto do juiz | parcial | C | custo, C2 | medida | M-56 | base (planejado), v089, v048, L1-09, L4-06 |
+| M-29 | Custo por ticket e por etapa, cache e contexto enxuto do juiz | parcial (etapa 2.2.0): orq custo sem argumento mostra hoje e o último dia com registro; falta custo por etapa no painel, P95, taxa de cache, alerta e contexto enxuto do juiz | C | custo, C2 | medida | M-56 | base (planejado), v089, v048, L1-09, L4-06 |
 | M-30 | Roteamento do executor por risco e dificuldade | parcial | C | custo, C2 | medida | M-41, M-45 | base (planejado), v053, v048, L4-04 |
 | M-31 | Juiz num modelo abaixo do executor em risco baixo | parcial | C | custo | medida | M-56, M-30 | v052, L3-03 |
 | M-32 | PLAYBOOK por divulgação progressiva | ideia | C | custo, C2 | medida | M-08 | v079, L1-04 |
 | M-33 | Avaliador de processo e agente de melhoria semanal | ideia | C | C3, C2, C5 | medida | M-28, M-40 | base #24, v050, L5-04 |
 | M-34 | Smoke E2E na staging que abre rascunho de ticket | ideia | C | C5, C1 | relato | M-42 | base #7, v063, L1-07 |
 | M-35 | Cota antes de despachar com degraus de 70% e 95% | planejado | C | custo, C1 | relato | M-30 | base (planejado), v101, L1-06, C-0052 M7 |
-| M-36 | Resumo diário com link para o artefato de cada evento | ideia | C | C1, C5 | relato | M-28 | v063, L1-08 |
-| M-37 | Promoção pendente com idade, tamanho e alarme | parcial | C | C5 | relato | | L6-14 |
+| M-36 | Resumo diário com link para o artefato de cada evento | parcial (etapa 2.2.0): relatório por execução em runs/relatorios/AAAA-MM-DD-HHMM.md, enviado ao hook de avisos; falta o link para o artefato em cada linha | C | C1, C5 | relato | M-28 | v063, L1-08 |
+| M-37 | Promoção pendente com idade, tamanho e alarme | parcial (etapa 2.2.0): promotor com gates na ponta da alvo, juiz de promoção, ff-only na principal, eventos PROMOVIDO/PROMOCAO_RECUSADA e aviso push_pendente; falta idade e tamanho da promoção pendente no painel e o alarme por limiar | C | C5 | relato | | L6-14 |
 | M-38 | API em lote para rodadas sem pressa | ideia | C | custo | opinião | M-56 | v061, L2-08 |
 | M-39 | Teto duro de turnos e dólares por claude -p | parcial | C | custo | não registrada | | base #13 |
 | M-40 | Ledger de objeções do juiz e agrupador semanal | ideia | C | C3, C2 | não registrada | M-01 | base #14 |
 | M-41 | Curva de aprovação por tentativa | parcial | C | C2 | não registrada | | base #16, C-0052 M11 (valor no config, decisão por dado) |
-| M-42 | Caixa de decisões no celular | parcial | C | C1 | não registrada | | base #17 |
+| M-42 | Caixa de decisões no celular | parcial (etapa 2.2.0): avisos de ação (decisao_pendente, migration_pendente, push_pendente) saem por avisos.hook_cmd com dedupe de 24 h; falta a caixa de decisões com resposta | C | C1 | não registrada | | base #17 |
 | M-43 | Ordem de investimento: contexto, prompt, modelo | ideia | C | custo, C2 | não registrada | | base #23 |
 | M-44 | C5 em taxa e em absoluto | planejado | C | C5 | não registrada | | base (reforços) |
 | M-45 | minutos_humano_estimado no ticket | ideia | D | C2, C1 | medida | M-41 | v046, L3-04 |
-| M-46 | Guardas do planejador com perguntas, critério estável e piso de tamanho | planejado | D | C1, C2, custo | medida | M-42 | base (planejado), v061, v044, v050, L2-04, L3-08, L5-05 |
+| M-46 | Guardas do planejador com perguntas, critério estável e piso de tamanho | parcial (etapa 2.2.0): planejador por frente com IDs do script, gate de ticket, juiz de lote em contexto limpo, descarte com motivo e dúvida virando decisão pendente; falta as 5 categorias antes de escrever, critério rodado 2 vezes na base e piso de tamanho | D | C1, C2, custo | medida | M-42 | base (planejado), v061, v044, v050, L2-04, L3-08, L5-05 |
 | M-47 | Fusão de candidatos para saídas em texto | ideia | D | C2, C1 | medida | M-46 | v053, L4-03 |
 | M-48 | Reserva de ids e de versões de migration para escritores paralelos | ideia | D | C1 | relato | | L6-02, L6-09 |
 | M-49 | validar-fila confere aderência à semente do roadmap | ideia | D | C2 | relato | M-46 | L6-08 |
@@ -375,7 +375,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - fontes: base #12, v061, v046, v048, L2-07, L3-05, L4-05
 
 ### M-29 Custo por ticket e por etapa, cache e contexto enxuto do juiz
-- status: parcial: custo por papel, ticket e tentativa, com tokens de cache, já é gravado (scripts/orquestrador/lib.sh:1398-1437) e o `orq custo` agrega (scripts/orq:281-310); falta custo por etapa no painel, P95, taxa de cache, alerta sobre média móvel e o contexto enxuto do juiz
+- status: parcial (etapa 2.2.0): orq custo sem argumento mostra hoje e o último dia com registro; falta custo por etapa no painel, P95, taxa de cache, alerta e contexto enxuto do juiz
 - o que é: medir custo por ticket e por etapa, usar prompt caching e enxugar o material do juiz. A leitura acrescenta a régua de verificação de qualquer corte e a extração por documento em vez de documento inteiro.
 - como entra no kit: custo por etapa no registro da tentativa; painel do marco C; corte só com prova.
 - detalhes executáveis:
@@ -444,7 +444,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - fontes: base (planejado), v101, L1-06, C-0052 M7 (ticket 1593 do Comarka)
 
 ### M-36 Resumo diário com link para o artefato de cada evento
-- status: ideia
+- status: parcial (etapa 2.2.0): relatório por execução em runs/relatorios/AAAA-MM-DD-HHMM.md, enviado ao hook de avisos; falta o link para o artefato em cada linha
 - o que é: o valor do resumo vem de clicar no que parece estranho, o que só funciona se cada linha leva ao artefato real.
 - como entra no kit: cada linha do resumo diário (merge, reprova, resgate, bloqueio) leva caminho do diff, da transcrição (M-28) e do veredito.
 - detalhes executáveis:
@@ -453,7 +453,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - fontes: v063, L1-08
 
 ### M-37 Promoção pendente com idade, tamanho e alarme
-- status: parcial: o painel já tem o indicador "Última promoção", sempre "sem dado" (scripts/orquestrador/orq-painel.py:833-837); falta o evento PROMOCAO no contrato, idade, tamanho e alarme
+- status: parcial (etapa 2.2.0): promotor com gates na ponta da alvo, juiz de promoção, ff-only na principal, eventos PROMOVIDO/PROMOCAO_RECUSADA e aviso push_pendente; falta idade e tamanho da promoção pendente no painel e o alarme por limiar
 - o que é: done não é produção. Captura de conversas GHL e crons do Apolo ficaram done na staging-auto por 2 dias, com o banco em zero linhas, até um recon manual. A última promoção para a main tinha sido em 15/10, com 176 commits pendentes. Detalhe do K12 (painel, "última promoção").
 - como entra no kit: campo de última promoção no contrato e no painel.
 - detalhes executáveis:
@@ -494,7 +494,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - fontes: base #16, C-0052 M11 (max_retries 2 para 1 é valor no config do Comarka, decidido pelo dado do ticket 5325)
 
 ### M-42 Caixa de decisões no celular
-- status: parcial: já existem `decisoes-pendentes.md` (scripts/orquestrador/lib.sh:1222) e o aviso de pausa por iMessage e macOS (scripts/orquestrador/resolvedor/pausa.ts:77-80, 7f-b5); falta o canal único para todas as decisões
+- status: parcial (etapa 2.2.0): avisos de ação (decisao_pendente, migration_pendente, push_pendente) saem por avisos.hook_cmd com dedupe de 24 h; falta a caixa de decisões com resposta
 - o que é: decisões humanas pendentes chegam ao celular.
 - como entra no kit: canal único para o que precisa de humano.
 - detalhes executáveis:
@@ -527,7 +527,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - fontes: v046, L3-04
 
 ### M-46 Guardas do planejador com perguntas, critério estável e piso de tamanho
-- status: planejado
+- status: parcial (etapa 2.2.0): planejador por frente com IDs do script, gate de ticket, juiz de lote em contexto limpo, descarte com motivo e dúvida virando decisão pendente; falta as 5 categorias antes de escrever, critério rodado 2 vezes na base e piso de tamanho
 - o que é: guardas já planejadas: recon de fonte, DAG, teto, sobre-decomposição, suposicoes[]. A leitura acrescenta perguntas antes do contrato, checagem de critério por execução repetida e piso de tamanho.
 - como entra no kit: etapas do planejador antes de o ticket entrar na fila.
 - detalhes executáveis:

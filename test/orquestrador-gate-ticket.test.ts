@@ -150,7 +150,7 @@ describe('check 2 · campos obrigatórios (só para pendente)', () => {
   });
 
   it('BOM: terminal sem campo nenhum passa — para done/obsoleto/bloqueado, basta parsear', () => {
-    expect([...STATUS_TERMINAIS]).toEqual(['done', 'obsoleto', 'bloqueado']);
+    expect([...STATUS_TERMINAIS]).toEqual(['done', 'obsoleto', 'bloqueado', 'descartado']);
     for (const st of STATUS_TERMINAIS) {
       const dir = criarFila([{ id: '901', slug: 'ja-foi', status: st }]);
       expect(violacoes(dir, '901'), st).toEqual([]);
@@ -232,6 +232,10 @@ describe('check 4 · status dentro do vocabulário da fila', () => {
       'bloqueado',
       'obsoleto',
       'refatiar',
+      // 2.2.0 (P1): o planejador escreve `candidato` em dry_run e `descartado`
+      // (terminal) para o que o gate de ticket ou o juiz de lote reprovou.
+      'candidato',
+      'descartado',
     ]);
     const dir = criarFila(STATUS_VALIDOS.map((s, i) => pendenteBom({ id: `90${i}`, status: s })));
     for (let i = 0; i < STATUS_VALIDOS.length; i++) expect(violacoes(dir, `90${i}`)).toEqual([]);
