@@ -15,9 +15,9 @@
  * Nenhum launchctl de verdade, nenhum claude de verdade: só stubs.
  */
 import { spawnSync } from 'node:child_process'
-import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { ambiente } from './resolvedor-repo.js'
 
@@ -25,7 +25,12 @@ const RAIZ = join(import.meta.dirname, '..')
 const DIR = join(RAIZ, 'scripts', 'orquestrador', 'resolvedor')
 const STUB = join(import.meta.dirname, 'fixtures', 'claude-envelope', 'triador-stub.sh')
 const FX243 = join(import.meta.dirname, 'fixtures', 'triador-custo-real', 'conteudos-243')
-const NODE_DIR = dirname(process.execPath)
+// O diretório do node é do TESTE, com o node e nada mais (etapa 2.2.0, A1-3).
+// Até a 2.1.8 era `dirname(process.execPath)`: numa máquina em que o node do nvm
+// tem um `claude` instalado ao lado (npm -g), o "PATH sem claude" achava esse
+// claude e o caso falhava conforme o PATH de quem rodava a suíte.
+const NODE_DIR = mkdtempSync(join(tmpdir(), 'resolvedor-node-'))
+symlinkSync(process.execPath, join(NODE_DIR, 'node'))
 const hoje = () => new Date().toISOString().slice(0, 10)
 
 describe('peça 3: o claude no PATH do job', () => {
