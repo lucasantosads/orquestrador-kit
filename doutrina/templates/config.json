@@ -165,8 +165,25 @@
     "limiar_fila": 3,
     "lote": 3,
     "max_frentes_por_drenagem": 1,
-    "reserva_orcamento_pct": 20
+    "reserva_orcamento_pct": 20,
+    "regras_ticket": "",
+    "liberacao_automatica": "nenhuma",
+    "modelo_juiz_lote": "opus"
   },
+  "_planejador": "Etapa 2.2.0 (autonomo.ts, autoalimentacao §3). Liga por loops.planejador.ativo; loops.planejador.modo auto|dry_run. regras_ticket: caminho de um arquivo do repo anexado ao prompt do planejador e ao do juiz de lote (vazio = sem regras). liberacao_automatica: bloco_atual = frente concluída libera (rascunho -> pronta) as frentes do MESMO bloco com deps concluídas, até 2 prontas por bloco; nenhuma = só o humano libera. Bloco novo nunca: vira aviso bloco_novo.",
+  "promotor": {
+    "modo": "humano",
+    "modelo_juiz": "opus",
+    "paths_gate_humano": [],
+    "gates": ["typecheck", "testes", "build", "lint-mapa"],
+    "timeout_gate_secs": 1800
+  },
+  "_promotor": "Etapa 2.2.0 (DEC-035 do escritorio-os). modo humano (padrão) = a §6 da doutrina: o merge staging -> principal é humano. modo auto = no fim da drenagem, com a alvo à frente da principal: sincroniza a principal na alvo, bloqueia sem juiz se o diff toca paths_gate_humano ou a zona proibida (aviso migration_pendente com sha256), roda `gates` (nomes de gates[] ou lint-mapa) numa worktree limpa no topo da alvo, chama o juiz de promoção (claude -p --strict-mcp-config, modelo_juiz) e faz merge --ff-only na principal. NUNCA push.",
+  "avisos": {
+    "hook_cmd": "",
+    "dedupe_horas": 24
+  },
+  "_avisos": "Etapa 2.2.0. hook_cmd: comando (bash -c, cwd = checkout) que recebe no stdin o JSON {tipo, nivel: acao|info, titulo, texto, dados, ts}, uma vez por execução com novidade; dados.relatorio_md traz o relatório (runs/relatorios/). Nível acao também vira notificação nativa. O mesmo aviso (tipo + chave) não repete em dedupe_horas. Falha do hook vira evento AVISO_HOOK e nunca derruba o loop. Vazio = sem hook.",
   "sentinela": {
     "_descricao": "Todas as fontes read-only. Começar com suite_completa e smoke; runtime_errors e advisors só com credencial read-only no ambiente do agendador.",
     "fontes": [

@@ -109,6 +109,19 @@ export function validarConfig(cfg: unknown): Violacao[] {
     }
   }
 
+  // 2b. valores fechados da operação autônoma (etapa 2.2.0): valor fora da
+  //     lista não liga nem desliga nada em silêncio, é violação.
+  for (const [k, ok] of [
+    ['loops.planejador.modo', ['auto', 'dry_run']],
+    ['planejador.liberacao_automatica', ['bloco_atual', 'nenhuma']],
+    ['promotor.modo', ['humano', 'auto']],
+  ] as const) {
+    const val = emCaminho(c, k)
+    if (!ausente(val) && !(ok as readonly string[]).includes(String(val))) {
+      v.push({ chave: k, mensagem: `valor ${JSON.stringify(val)} fora de ${ok.join(' | ')}` })
+    }
+  }
+
   // 3. gates: cada um precisa de `nome`, e de um PAPEL que o executor consiga
   //    ver. Gate sem papel não some da execução — ele some da TRILHA: a linha
   //    GATE o reporta como `nao-configurado`, que é o vocabulário de "o repo

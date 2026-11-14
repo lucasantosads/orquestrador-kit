@@ -131,6 +131,22 @@ export const CHAVES_CONFIG: ChaveConfig[] = [
   // --- agendamento (peça K6c) -----------------------------------------------
   { chave: 'launchd.label', onde: 'instalar-launchd.sh:47', obrigatoria: true, nota: 'NÃO tem default: o instalador RECUSA sem ele. Um label por repo — dois repos com o mesmo label são o MESMO job para o launchd' },
   { chave: 'launchd.start_interval', onde: 'instalar-launchd.sh:59', obrigatoria: false, nota: 'ausente vira 1800, o valor medido em 06/set/2026' },
+  // --- operação autônoma (etapa 2.2.0, autonomo.ts): tudo opcional, nasce desligado ---
+  { chave: 'loops.planejador.ativo', onde: 'local-loop.sh:etapa_planejador, autonomo.ts:planejar', obrigatoria: false, nota: 'ausente = desligado' },
+  { chave: 'loops.planejador.modo', onde: 'autonomo.ts:planejar', obrigatoria: false, nota: 'auto | dry_run; ausente = dry_run' },
+  { chave: 'planejador.limiar_fila', onde: 'autonomo.ts:planejar', obrigatoria: false, nota: 'ausente = 3' },
+  { chave: 'planejador.lote', onde: 'autonomo.ts:planejar', obrigatoria: false, nota: 'ausente = 3 (teto 5)' },
+  { chave: 'planejador.reserva_orcamento_pct', onde: 'autonomo.ts:planejar', obrigatoria: false, nota: 'ausente = 20' },
+  { chave: 'planejador.regras_ticket', onde: 'autonomo.ts:lerRegras', obrigatoria: false, nota: 'arquivo do repo anexado ao planejador e ao juiz de lote' },
+  { chave: 'planejador.liberacao_automatica', onde: 'autonomo.ts:writebackFrentes', obrigatoria: false, nota: 'bloco_atual | nenhuma; ausente = nenhuma' },
+  { chave: 'planejador.modelo_juiz_lote', onde: 'autonomo.ts:modelos', obrigatoria: false, nota: 'ausente = modelos.juiz_ticket' },
+  { chave: 'promotor.modo', onde: 'local-loop.sh:etapa_promotor, autonomo.ts:promover', obrigatoria: false, nota: 'humano | auto; ausente = humano (doutrina §6)' },
+  { chave: 'promotor.modelo_juiz', onde: 'autonomo.ts:modelos', obrigatoria: false, nota: 'ausente = opus' },
+  { chave: 'promotor.paths_gate_humano', onde: 'autonomo.ts:promover', obrigatoria: false, nota: 'globs que bloqueiam a promoção sem juiz' },
+  { chave: 'promotor.gates', onde: 'autonomo.ts:gatesDoPromotor', obrigatoria: false, nota: 'nomes de gates[] ou lint-mapa' },
+  { chave: 'avisos.hook_cmd', onde: 'autonomo.ts:cicloFim', obrigatoria: false, nota: 'vazio = sem hook' },
+  { chave: 'avisos.dedupe_horas', onde: 'autonomo.ts:cicloFim', obrigatoria: false, nota: 'ausente = 24' },
+
 ]
 
 /** Só as obrigatórias, na ordem em que foram levantadas. */
