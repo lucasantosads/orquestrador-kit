@@ -654,6 +654,13 @@ export function preVooDepsReais(entrada: {
         return r.status === 0
       }
       if (anc(principal, alvo)) return 'contem'
+      // A principal à frente SÓ na fila é o estado normal entre drenagens: o
+      // loop commita status de ticket nela, e o promotor sincroniza esses
+      // commits na alvo antes do ff. Só mudança FORA da fila é o AP-060.
+      const fila = relative(entrada.repoRoot, entrada.filaDir)
+      const base = exigirGit(rodarGit('merge-base', alvo, principal), 'git merge-base').stdout.trim()
+      const mudou = exigirGit(rodarGit('diff', '--name-only', base, principal), 'git diff --name-only').stdout.split('\n').filter(Boolean)
+      if (mudou.every((f) => fila !== '' && (f === fila || f.startsWith(`${fila}/`)))) return 'contem'
       return anc(alvo, principal) ? 'atras' : 'divergiu'
     },
     worktreeDaBranch: (branch) => {

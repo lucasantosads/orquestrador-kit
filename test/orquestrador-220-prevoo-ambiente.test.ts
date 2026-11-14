@@ -47,7 +47,9 @@ describe('A1-10 · pré-voo acusa .gitignore sem `node_modules` sem barra', () =
 describe('A1-11 · pré-voo exige que a alvo contenha a principal', () => {
   it('principal à frente: NO-GO cat.12 com o fast-forward exato; depois do comando, GO', () => {
     const antes = git('rev-parse', 'main').stdout.trim()
-    git('commit', '-q', '--allow-empty', '-m', 'conserto de ambiente só na main')
+    writeFileSync(join(fx, 'conserto-de-ambiente.txt'), 'x\n')
+    git('add', 'conserto-de-ambiente.txt')
+    git('commit', '-q', '-m', 'conserto de ambiente só na main')
     const r = prevoo()
     expect(r.rc, r.out).toBe(1)
     expect(r.out).toMatch(/^NO-GO cat\.12 · staging-auto contém main .*Conserto \(fast-forward, sem perda\): git -C \S+ fetch \. main:staging-auto/m)
@@ -61,7 +63,9 @@ describe('A1-11 · pré-voo exige que a alvo contenha a principal', () => {
   it('divergidas: NO-GO cat.12 dizendo que o ff é impossível, com merge --no-ff de conserto', () => {
     const alvo0 = git('rev-parse', 'staging-auto').stdout.trim()
     const main0 = git('rev-parse', 'main').stdout.trim()
-    git('commit', '-q', '--allow-empty', '-m', 'só na main')
+    writeFileSync(join(fx, 'so-na-main.txt'), 'x\n')
+    git('add', 'so-na-main.txt')
+    git('commit', '-q', '-m', 'só na main')
     git('update-ref', 'refs/heads/staging-auto', git('commit-tree', `${alvo0}^{tree}`, '-p', alvo0, '-m', 'só na alvo').stdout.trim())
     try {
       const r = prevoo()
@@ -70,6 +74,22 @@ describe('A1-11 · pré-voo exige que a alvo contenha a principal', () => {
     } finally {
       git('update-ref', 'refs/heads/staging-auto', alvo0)
       git('reset', '-q', '--hard', main0)
+    }
+  }, 60_000)
+
+  it('principal à frente SÓ na fila (status do loop): GO — o promotor sincroniza', () => {
+    const main0 = git('rev-parse', 'main').stdout.trim()
+    const alvo0 = git('rev-parse', 'staging-auto').stdout.trim()
+    writeFileSync(join(fx, 'docs', 'fila', '900-status.md'), '# 900\n')
+    git('add', 'docs/fila/900-status.md')
+    git('commit', '-q', '-m', 'fila: 900 done')
+    try {
+      const r = prevoo()
+      expect(r.out).toMatch(/^ok +cat\.12 /m)
+      expect(r.rc, r.out).toBe(0)
+    } finally {
+      git('reset', '-q', '--hard', main0)
+      git('update-ref', 'refs/heads/staging-auto', alvo0)
     }
   }, 60_000)
 })

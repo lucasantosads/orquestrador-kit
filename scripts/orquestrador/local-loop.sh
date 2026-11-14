@@ -824,6 +824,8 @@ prevoo_ou_sai() {
   event '---' PREVOO_NOGO "item=$token"
   notificar "Orquestrador: pré-voo NO-GO" "${linha:-rc=$rc}"
   status_set "estado=ocioso" "fase=—" "ticket=—" "motivo=prevoo_nogo $token"
+  # O NO-GO também é aviso de ambiente (com dedupe de 24 h no autonomo.ts).
+  etapa_ciclo_fim
   say "========== local-loop fim (pré-voo NO-GO) =========="
   exit 1
 }
@@ -869,6 +871,58 @@ autocommit_status_fila() {
   say "autocommit fila: commit $(git -C "$MAIN_CHECKOUT" rev-parse --short HEAD) em $BRANCH_PROTEGIDA ($ids) — sem push"
 }
 
+# --- OPERAÇÃO AUTÔNOMA (etapa 2.2.0): planejador, promotor, avisos ------------
+# O ciclo de um disparo: pré-voo -> planejador (se pendentes < limiar) ->
+# drenagem -> promotor -> avisos e relatório. Tudo nasce desligado no config
+# (loops.planejador.ativo, promotor.modo, avisos.hook_cmd) e mora em
+# autonomo.ts; aqui só a ordem. Falha de uma etapa é registrada e não derruba
+# as outras: o planejador que quebrou não impede a drenagem do que já existe.
+CICLO_DESDE=0
+
+ciclo_marcar_inicio() {
+  CICLO_DESDE=0
+  [ ! -f "$EVENTS_FILE" ] || CICLO_DESDE="$(wc -l < "$EVENTS_FILE" | tr -d ' ')"
+  [ -n "$CICLO_DESDE" ] || CICLO_DESDE=0
+}
+
+autonomo() {
+  local sub="$1"; shift
+  "${ORQ_TSX[@]}" "$ORQ_LIB_DIR/autonomo.ts" "$sub" --checkout "$MAIN_CHECKOUT" --config "$CONFIG" "$@" 2>&1
+}
+
+etapa_planejador() {
+  [ "$(cfg '.loops.planejador.ativo // false')" = true ] || return 0
+  if pausa_ativa; then say "planejador: pausa ativa — não roda"; return 0; fi
+  local stwt saida
+  stwt="$(ensure_staging_worktree)" || { say "planejador: sem worktree da alvo — não roda"; return 0; }
+  status_set "estado=executando" "fase=planejador" "ticket=—" "desde=$(date '+%H:%M:%S')" "desde_epoch=$(date +%s)"
+  saida="$(autonomo planejar --alvo-wt "$stwt")" || say "planejador: saiu com erro (não fatal)"
+  printf '%s\n' "$saida" | while IFS= read -r l; do say "  planejador> $l"; done
+  status_set "estado=ocioso" "fase=—"
+}
+
+etapa_promotor() {
+  if pausa_ativa; then say "promotor: pausa ativa — não roda"; return 0; fi
+  local modo stwt saida
+  modo="$(cfg '.promotor.modo // "humano"')"
+  if [ "$modo" != auto ]; then
+    # Modo humano (padrão): a §6 da doutrina segue valendo; só o aviso de push.
+    autonomo push-pendente >/dev/null 2>&1 || true
+    return 0
+  fi
+  stwt="$(ensure_staging_worktree)" || { say "promotor: sem worktree da alvo — não roda"; return 0; }
+  status_set "estado=executando" "fase=promotor" "ticket=—" "desde=$(date '+%H:%M:%S')" "desde_epoch=$(date +%s)"
+  saida="$(autonomo promover --alvo-wt "$stwt")" || say "promotor: saiu com erro (não fatal)"
+  printf '%s\n' "$saida" | while IFS= read -r l; do say "  promotor> $l"; done
+  status_set "estado=ocioso" "fase=—"
+}
+
+etapa_ciclo_fim() {
+  local saida
+  saida="$(autonomo ciclo-fim --desde "$CICLO_DESDE")" || say "avisos: saiu com erro (não fatal)"
+  printf '%s\n' "$saida" | while IFS= read -r l; do say "  avisos> $l"; done
+}
+
 main_local_loop() {
   mkdir -p "$(dirname "$LOG")"
   exec >>"$LOG" 2>&1
@@ -880,6 +934,7 @@ main_local_loop() {
   # rc 1 = outro run vivo: sai 0, o segundo disparo não é erro. A checagem que
   # não roda sai 2 de dentro do lock_adquirir, já com LOCK_ERRO na trilha.
   lock_adquirir || exit 0
+  ciclo_marcar_inicio
   # KILL SWITCH, leitura 1 de 2: ANTES de qualquer escrita. O reconcile mexe em
   # status de ticket, então "pausado" precisa valer antes dele — pausar e mesmo
   # assim ver a fila mudar é o que faz alguém desconfiar do kill switch. A
@@ -899,8 +954,11 @@ main_local_loop() {
   prevoo_ou_sai
   git -C "$REPO" fetch origin --quiet 2>/dev/null || say "aviso: fetch falhou (segue offline)"
   bash "$ORQ_LIB_DIR/executor.sh" --reconcile || say "aviso: reconcile falhou (não fatal)"
+  etapa_planejador
   drenar
   autocommit_status_fila
+  etapa_promotor
+  etapa_ciclo_fim
   say "========== local-loop fim =========="
 }
 

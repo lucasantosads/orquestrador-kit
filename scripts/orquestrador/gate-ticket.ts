@@ -63,6 +63,11 @@ export const STATUS_VALIDOS = [
   'bloqueado',
   'obsoleto',
   'refatiar',
+  // Etapa 2.2.0 (planejador, autoalimentacao §1): `candidato` é o lote do
+  // planejador em dry_run aguardando `orq promover`; `descartado` é o que o
+  // gate de ticket ou o juiz de lote reprovou (terminal, nunca reexecutado).
+  'candidato',
+  'descartado',
 ] as const
 
 /**
@@ -70,7 +75,7 @@ export const STATUS_VALIDOS = [
  * "basta parsear". Cobrar campo obrigatório de ticket `done` seria cobrar de
  * quem já entregou — e a fila tem 63 deles, escritos sob schemas anteriores.
  */
-export const STATUS_TERMINAIS = ['done', 'obsoleto', 'bloqueado'] as const
+export const STATUS_TERMINAIS = ['done', 'obsoleto', 'bloqueado', 'descartado'] as const
 
 /**
  * Campos que um ticket `pendente` PRECISA ter para o executor poder lê-lo.
