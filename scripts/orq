@@ -63,6 +63,30 @@
 set -euo pipefail
 ORQ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# --- de dentro de uma worktree, a fila é a DELA (etapa 2.2.0, A1-9, AP-066) ---
+# O lib.sh resolve o checkout pelo --git-common-dir: chamado de uma worktree, o
+# `orq` lia a fila do checkout principal (outra branch) e quem conferia a fila
+# ou o mapa da sua frente via a de outro lugar. Quando o diretório de onde o
+# `orq` foi chamado é uma worktree LIGADA do mesmo repo deste script e tem fila,
+# os verbos de LEITURA usam o toplevel dela. Os que mexem no loop (pausar,
+# retomar, liberar, drenar) seguem no principal: é lá que o loop lê.
+if [ -z "${ORQ_EXEC_ROOT:-}" ] && [ -z "${ORQ_CHECKOUT:-}" ]; then
+  case "${1:-}" in
+    pausar|retomar|liberar|drenar) ;;
+    *)
+      _wt_top="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || true)"
+      _wt_gd="$(git -C "$PWD" rev-parse --path-format=absolute --git-dir 2>/dev/null || true)"
+      _wt_gc="$(git -C "$PWD" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+      _sc_gc="$(git -C "$ORQ_DIR" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+      if [ -n "$_wt_top" ] && [ "$_wt_gd" != "$_wt_gc" ] && [ "$_wt_gc" = "$_sc_gc" ] \
+         && [ -f "$_wt_top/${ORQ_CONFIG:-docs/fila/000-config.json}" ]; then
+        export ORQ_CHECKOUT="$_wt_top"
+        printf 'orq: worktree %s (não o checkout principal)\n' "$_wt_top" >&2
+      fi
+      ;;
+  esac
+fi
+
 # --- `orq config` roda ANTES do lib.sh, e tem de rodar -------------------------
 # O `lib.sh` lê o config no carregamento (`cfg` nas linhas 52-58): com um
 # 000-config.json que não parseia, o `jq` morre e `set -e` derruba o `orq`
@@ -84,7 +108,7 @@ if [ "${1:-}" = config ]; then
   [ "$#" = 1 ] || { printf '[orq ERRO] orq config não recebe argumento (recebi %s)\n' "$2" >&2; exit 1; }
   _root="${ORQ_EXEC_ROOT:-$(cd "$ORQ_DIR/.." && pwd)}"
   _gc="$(git -C "$_root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
-  if [ -n "$_gc" ] && [ -d "$_gc" ]; then _main="$(cd "$_gc/.." && pwd)"; else _main="$_root"; fi
+  if [ -n "${ORQ_CHECKOUT:-}" ]; then _main="$ORQ_CHECKOUT"; elif [ -n "$_gc" ] && [ -d "$_gc" ]; then _main="$(cd "$_gc/.." && pwd)"; else _main="$_root"; fi
   # O `tsx` pela MESMA regra do lib.sh (peça T1): binário local do checkout, ou
   # `npx --no-install` — nunca `npx` cru, que baixa da rede o que não acha. Esta
   # é a quinta linha duplicada deste bloco, pelo mesmo motivo das quatro acima:

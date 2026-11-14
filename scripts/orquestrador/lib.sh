@@ -31,7 +31,12 @@ ROOT="${ORQ_EXEC_ROOT:-$(cd "$ORQ_LIB_DIR/../.." && pwd)}"
 # re-selecionava um ticket já pronto. node_modules/.env.local (não-versionados)
 # e worktrees_dir também são relativos a ELE — não à raiz de execução.
 _git_common="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
-if [ -n "$_git_common" ] && [ -d "$_git_common" ]; then
+# ORQ_CHECKOUT (etapa 2.2.0, A1-9): o `scripts/orq` chamado de dentro de uma
+# worktree pede a fila DELA para os verbos de leitura. Só o `orq` exporta; o
+# loop e o executor nunca (a fila deles é a do checkout principal, sempre).
+if [ -n "${ORQ_CHECKOUT:-}" ] && [ -d "$ORQ_CHECKOUT" ]; then
+  MAIN_CHECKOUT="$(cd "$ORQ_CHECKOUT" && pwd)"
+elif [ -n "$_git_common" ] && [ -d "$_git_common" ]; then
   MAIN_CHECKOUT="$(cd "$_git_common/.." && pwd)"
 else
   MAIN_CHECKOUT="$ROOT"   # fallback: fora de git (fixtures de teste), execução == principal
