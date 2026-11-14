@@ -102,7 +102,8 @@ export function rodar(dir: string, cmd: string, espera: string): { saida: string
   const r = spawnSync('bash', ['-c', HARNESS, 'prova', dir, cmd], {
     encoding: 'utf8',
     timeout: 10_000,
-    env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', HOME: dir, LANG: 'C' },
+    // `as NodeJS.ProcessEnv`: num repo Next a ProcessEnv exige NODE_ENV (A1-7).
+    env: { ...({} as NodeJS.ProcessEnv), PATH: '/usr/bin:/bin:/usr/sbin:/sbin', HOME: dir, LANG: 'C' },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   const saida = `${r.stdout ?? ''}${r.status === 0 ? '' : r.stderr ?? ''}`.trim().replaceAll(dir, '<arvore>')

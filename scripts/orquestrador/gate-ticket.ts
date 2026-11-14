@@ -549,7 +549,8 @@ export function leituraDoVitest(cmd: string, espera: string, exec: ExecRegex): L
       encoding: 'utf8',
       cwd: tmpdir(),
       timeout: exec.timeoutMs,
-      env: { PATH: '/usr/bin:/bin', LC_ALL: 'C' },
+      // `as NodeJS.ProcessEnv`: num repo Next a ProcessEnv exige NODE_ENV (A1-7).
+      env: { ...({} as NodeJS.ProcessEnv), PATH: '/usr/bin:/bin', LC_ALL: 'C' },
     })
     if (r.error) throw new GateNaoRodou(`/bin/bash não rodou o trecho do 6v: ${r.error.message}`)
     return `${r.stdout ?? ''}${r.stderr ?? ''}`
