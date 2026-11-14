@@ -35,29 +35,49 @@ say() { printf '[%s] %s\n' "$(ts)" "$*"; }
 
 # --- LOCK (lock.ts do ORQ-02 decide se é órfão) ------------------------------
 # Formato: linha 1 = PID, linha 2 = epoch. A decisão de "stale?" é do TS testado.
+#
+# lock_stale: rc 0 = órfão, rc 3 = vivo, QUALQUER outro rc = a checagem não
+# rodou (etapa 2.2.0, A1-1). Até a 2.1.8 o import era de `lock.js`, que não
+# existe: o tsx falhava com rc 1 e o rc 1 era lido como "vivo", então lock de
+# run morto nunca era removido e toda drenagem seguinte encerrava em "outro run
+# vivo" sem alarme. O "vivo" agora é um rc que só o script bem-sucedido dá.
 lock_stale() {
   [ -f "$LOCK" ] || return 1
   "${ORQ_TSX[@]}" -e "
-    import {parseLockFile, isLockStale} from '$ORQ_LIB_DIR/lock.js';
+    import {parseLockFile, isLockStale} from '$ORQ_LIB_DIR/lock.ts';
     import {readFileSync} from 'node:fs';
     const l = parseLockFile(readFileSync('$LOCK','utf8'));
     if (!l) process.exit(0);
     const vivo = (pid) => { try { process.kill(pid, 0); return true } catch { return false } };
-    process.exit(isLockStale(l, Math.floor(Date.now()/1000), $LOCK_MAX_AGE, vivo) ? 0 : 1);
+    process.exit(isLockStale(l, Math.floor(Date.now()/1000), $LOCK_MAX_AGE, vivo) ? 0 : 3);
   "
 }
 
+# lock_adquirir: rc 0 = lock é deste run; rc 1 = outro run vivo (o segundo
+# disparo não é erro); a checagem do lock que falha é erro alto: evento,
+# notificação e `exit 2` do PROCESSO (nunca um rc que o chamador leia como vivo).
 lock_adquirir() {
   mkdir -p "$(dirname "$LOCK")"
   if [ -f "$LOCK" ]; then
-    if lock_stale; then
-      say "lock órfão (pid $(head -1 "$LOCK" 2>/dev/null)) — removendo"
-      event '---' RECUPERADO "motivo=lock-orfao" "pid=$(head -1 "$LOCK" 2>/dev/null || echo '?')"
-      rm -f "$LOCK"
-    else
-      say "outro run vivo (pid $(head -1 "$LOCK" 2>/dev/null)) — encerrando"
-      return 1
-    fi
+    local rc=0
+    lock_stale || rc=$?
+    case "$rc" in
+      0)
+        say "lock órfão (pid $(head -1 "$LOCK" 2>/dev/null)) — removendo"
+        event '---' RECUPERADO "motivo=lock-orfao" "pid=$(head -1 "$LOCK" 2>/dev/null || echo '?')"
+        rm -f "$LOCK"
+        ;;
+      3)
+        say "outro run vivo (pid $(head -1 "$LOCK" 2>/dev/null)) — encerrando"
+        return 1
+        ;;
+      *)
+        say "ERRO: a checagem do lock não rodou (rc=$rc, ${ORQ_TSX[*]}) — lock $LOCK intocado; encerrando"
+        event '---' LOCK_ERRO "motivo=checagem-falhou" "rc=$rc" "pid=$(head -1 "$LOCK" 2>/dev/null || echo '?')"
+        notificar "Orquestrador: checagem do lock falhou" "rc=$rc ao decidir se o lock $LOCK é órfão; a fila não drena até isso ser visto" 2>/dev/null || true
+        exit 2
+        ;;
+    esac
   fi
   printf '%s\n%s\n' "$$" "$(date +%s)" > "$LOCK"
   trap 'rm -f "$LOCK"' EXIT
@@ -857,6 +877,8 @@ main_local_loop() {
   # TOOLCHAIN antes de tudo: o `lock_adquirir` logo abaixo já é TypeScript
   # (`lock_stale` roda `tsx -e`), e sem tsx ele responde errado em silêncio.
   tsx_ou_sai
+  # rc 1 = outro run vivo: sai 0, o segundo disparo não é erro. A checagem que
+  # não roda sai 2 de dentro do lock_adquirir, já com LOCK_ERRO na trilha.
   lock_adquirir || exit 0
   # KILL SWITCH, leitura 1 de 2: ANTES de qualquer escrita. O reconcile mexe em
   # status de ticket, então "pausado" precisa valer antes dele — pausar e mesmo
