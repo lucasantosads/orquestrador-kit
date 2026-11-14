@@ -165,9 +165,15 @@ cmd_status() {
     #
     # A troca é NA LEITURA: o `orq` é read-only por construção, e quem reescreve
     # o STATUS.md é o loop (ou o launchd-run, ao recuperar). Aqui só se lê melhor.
-    local congelado
+    local congelado morto
+    # LOOP MORTO (etapa 2.2.0, A1-6): STATUS `executando` com o pid do lock
+    # morto. Vem antes do congelado: ele diz desde quando e qual pid.
+    morto="$(loop_morto_info)"
     congelado="$(status_congelado_secs)"
-    if [ -n "$congelado" ]; then
+    if [ -n "$morto" ]; then
+      awk -v m="loop morto desde ${morto%% *} (pid ${morto#* }) — o STATUS ficou como o loop o deixou" \
+        '/^ESTADO/ { print "ESTADO   " m; next } { print }' "$STATUS_FILE"
+    elif [ -n "$congelado" ]; then
       awk -v m="MORTO há $(dur_humana "$congelado") (DESDE passou do claude_timeout_secs — o processo não está mais vivo)" \
         '/^ESTADO/ { print "ESTADO   " m; next } { print }' "$STATUS_FILE"
     else

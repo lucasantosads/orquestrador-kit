@@ -706,6 +706,25 @@ status_campo() {
 # que isso não é "demorando" — é processo que não existe mais e STATUS que ficou.
 # Em 2026-09-06 o STATUS ficou `executando` desde 12:38 e assim passou 22 h,
 # enquanto todo disparo do launchd saía 0.
+# loop_morto_info -> "HH:MM PID" quando o STATUS diz `executando` e o pid do
+# lock da drenagem não existe mais; vazio em qualquer outro caso (etapa 2.2.0,
+# A1-6). HH:MM é a hora da última linha da trilha: o último sinal de vida do
+# loop. Lock ausente não decide nada aqui (o trap de saída o remove; quem fica
+# com STATUS executando sem lock é o congelado da peça 11, pela régua do tempo).
+loop_morto_info() {
+  local lock="$RUNS_BASE/.local-loop.lock" pid quando
+  [ "$(status_campo estado)" = executando ] || return 0
+  [ -s "$lock" ] || return 0
+  pid="$(head -1 "$lock" 2>/dev/null | tr -d '[:space:]')"
+  case "$pid" in ''|*[!0-9]*) return 0 ;; esac
+  kill -0 "$pid" 2>/dev/null && return 0
+  # EPERM (processo de outro usuário) é vivo: só "não existe" é morto.
+  ps -p "$pid" >/dev/null 2>&1 && return 0
+  quando="$(tail -n 1 "$EVENTS_FILE" 2>/dev/null | cut -c12-16)"
+  case "$quando" in [0-2][0-9]:[0-5][0-9]) ;; *) quando="$(status_campo desde | cut -c1-5)" ;; esac
+  printf '%s %s' "${quando:-?}" "$pid"
+}
+
 status_congelado_secs() {
   local estado epoch tout agora
   estado="$(status_campo estado)"

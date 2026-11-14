@@ -665,13 +665,41 @@ def coletar_repo(r, t, prazo=None):
     rep["alarmes"], rep["alarmes_sem_dado"] = alarmes_do_repo(rep, cfg, rep["job"], st, eventos, t)
     # "está andando ou parou": com o job mudo, morto por erro ou uma execução
     # além do timeout, o cartão não diz "rodando" nem "ocioso".
-    trava = next((a for a in rep["alarmes"] if a["id"] in ("launchd_exit", "mudo", "execucao_longa")), None)
+    morto = loop_morto(runs, st, eventos)
+    if morto:
+        # Etapa 2.2.0, A1-6: o STATUS diz executando e o pid do lock não existe.
+        rep["estado"] = {"tipo": "morto", "rotulo": "loop morto",
+                         "titulo": f"loop morto desde {morto['desde']} (pid {morto['pid']})",
+                         "detalhe": f"o STATUS ficou em executando ({(st or {}).get('ticket') or '?'}); "
+                                    "o próximo disparo recupera o lock órfão"}
+    trava = None if morto else next((a for a in rep["alarmes"] if a["id"] in ("launchd_exit", "mudo", "execucao_longa")), None)
     if trava and rep["estado"]["tipo"] in ("rodando", "ocioso"):
         rep["estado"] = {"tipo": "travado", "rotulo": "travado",
                          "titulo": trava["texto"].split(";")[0], "detalhe": rep["estado"]["titulo"]}
     rep["_interno"] = {"cfg": cfg, "eventos": eventos, "tickets": tickets, "raz": raz,
                        "por_id": por_id, "st": st}
     return rep
+
+
+def loop_morto(runs, st, eventos):
+    """{pid, desde} quando o STATUS diz executando e o pid do lock da drenagem
+    não existe mais; None em qualquer outro caso (etapa 2.2.0, A1-6). Mesma
+    régua do lib.sh:loop_morto_info: lock ausente não decide."""
+    if not st or st.get("estado") != "executando":
+        return None
+    try:
+        pid = int((runs / ".local-loop.lock").read_text(encoding="utf-8").split()[0])
+    except (OSError, ValueError, IndexError):
+        return None
+    try:
+        os.kill(pid, 0)
+        return None
+    except ProcessLookupError:
+        pass
+    except PermissionError:
+        return None
+    ult = eventos[-1]["ts"] if eventos else None
+    return {"pid": pid, "desde": hhmm(ult) if ult else (st.get("desde") or "?")[:5]}
 
 
 def inicio_do_ticket(eventos, tid):
