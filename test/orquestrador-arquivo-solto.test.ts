@@ -23,7 +23,7 @@ import { describeHarness, REPO_ROOT, configDeReferencia } from './fixtures/orq-h
 
 const EXECUTOR = join(REPO_ROOT, 'scripts', 'orquestrador', 'executor.sh');
 
-function fixtureRepo(maxRetries = 0): { fx: string; wt: string } {
+function fixtureRepo(maxRetries = 0, tabelas?: string[]): { fx: string; wt: string } {
   const tmp = mkdtempSync(join(tmpdir(), 'orq-631-'));
   const fx = join(tmp, 'repo');
   mkdirSync(join(fx, 'docs', 'fila', 'runs'), { recursive: true });
@@ -36,6 +36,7 @@ function fixtureRepo(maxRetries = 0): { fx: string; wt: string } {
   cfg.gates = [];
   cfg._execucao_dos_gates = { ...cfg._execucao_dos_gates, ordem_obrigatoria: [] };
   cfg.max_retries = maxRetries;
+  if (tabelas) (cfg.zona_proibida as Record<string, unknown>).no_write_tables = tabelas;
   writeFileSync(join(fx, 'docs', 'fila', '000-config.json'), JSON.stringify(cfg, null, 2));
   const ticket = {
     id: '901',
@@ -143,11 +144,21 @@ describeHarness('631: arquivo solto', () => {
     expect(veredito.causa).toBe('enforcement');
   }, 180_000);
 
-  it('contra-teste: arquivo solto que casa zona proibida -> refatiar', () => {
-    const { fx, wt } = fixtureRepo();
+  // A tabela vem da zona_proibida do config do repo (etapa 2.2.0, A1-14). Até a
+  // 2.1.8 era `public.leads` fixo: num repo cuja zona não tem essa tabela (o
+  // escritorio-os usa os esquemas core/bancario/trabalhista) só saía
+  // fora_do_pathspec e o caso falhava sem defeito nenhum no motor.
+  const tabelaDaZona = (fx: string): string => {
+    const t = (JSON.parse(readFileSync(join(fx, 'docs', 'fila', '000-config.json'), 'utf8')) as {
+      zona_proibida: { no_write_tables: string[] | string };
+    }).zona_proibida.no_write_tables;
+    return Array.isArray(t) ? t[0]! : 'public.qualquer_tabela';
+  };
+  const contraZona = (tabelas?: string[]) => {
+    const { fx, wt } = fixtureRepo(0, tabelas);
     const stub =
       `echo a > a.ts && ${COMMIT} add a.ts && ${COMMIT} commit -qm trabalho && ` +
-      `printf 'insert into public.leads (id) values (1);\\n' > rascunho.sql`;
+      `printf 'insert into ${tabelaDaZona(fx)} (id) values (1);\\n' > rascunho.sql`;
     const { log, veredito, rundir } = tentativa(fx, wt, stub);
 
     expect(soltos(rundir), log).toContain('rascunho.sql');
@@ -156,6 +167,14 @@ describeHarness('631: arquivo solto', () => {
     expect(enf.violations.some((v) => v.tipo !== 'fora_do_pathspec'), JSON.stringify(enf)).toBe(true);
     expect(veredito.desfecho).toBe('refatiar');
     expect(veredito.causa).toBe('enforcement');
+  };
+
+  it('contra-teste: arquivo solto que casa zona proibida -> refatiar', () => {
+    contraZona();
+  }, 180_000);
+
+  it('contra-teste com zona de tabelas nomeadas sem public.leads (como no escritorio-os) -> refatiar', () => {
+    contraZona(['core.teses', 'core.usuarios']);
   }, 180_000);
 
   it('contra-teste: um solto mais um commitado fora da allowlist (violação mista) -> refatiar', () => {
