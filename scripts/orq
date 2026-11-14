@@ -291,7 +291,24 @@ cmd_ticket_git() {
 
 # --- orq custo [dia] ----------------------------------------------------------
 cmd_custo() {
-  local dia="${1:-$(date '+%Y-%m-%d')}"
+  # Sem argumento: o dia corrente E o último dia com registro, quando for outro
+  # (etapa 2.2.0, A1-8). A drenagem das 23:47 sumia do placar da manhã seguinte.
+  if [ "$#" = 0 ]; then
+    local hoje_d ultimo
+    hoje_d="$(date '+%Y-%m-%d')"
+    cmd_custo_dia "$hoje_d"
+    ultimo="$( [ -s "$CUSTO_FILE" ] && jq -r --arg h "$hoje_d" '[.dias // {} | to_entries[] | select((.value | length) > 0) | .key | select(. != $h)] | sort | last // empty' "$CUSTO_FILE" 2>/dev/null || true)"
+    if [ -n "$ultimo" ]; then
+      printf '\n'
+      cmd_custo_dia "$ultimo" "(último dia com registro)"
+    fi
+    return 0
+  fi
+  cmd_custo_dia "$1"
+}
+
+cmd_custo_dia() {
+  local dia="$1" rotulo="${2:-}"
   local teto_usd teto_tok
   teto_usd="$(cfg '.orcamento.usd_dia')"; teto_tok="$(cfg '.orcamento.tokens_dia')"
   if [ ! -s "$CUSTO_FILE" ]; then
@@ -303,11 +320,11 @@ cmd_custo() {
     aprovacao_de_primeira "$dia"
     return 0
   fi
-  jq -r --arg d "$dia" --argjson tu "$teto_usd" --argjson tt "$teto_tok" '
+  jq -r --arg d "$dia" --arg rot "$rotulo" --argjson tu "$teto_usd" --argjson tt "$teto_tok" '
     (.dias[$d] // []) as $r
     | ($r | map(.custo_usd // 0) | add // 0) as $usd
     | ($r | map((.tokens_in // 0) + (.tokens_out // 0)) | add // 0) as $tok
-    | "DIA      \($d)",
+    | "DIA      \($d)\(if $rot != "" then "  " + $rot else "" end)",
       "CHAMADAS \($r | length)",
       "CUSTO    US$ \($usd * 100 | round / 100) / \($tu)  ·  \($tok) / \($tt) tokens",
       "ESTOUROU \(if $usd >= $tu or $tok >= $tt then "SIM — a drenagem encerra em ocioso, MOTIVO orcamento" else "não" end)",
