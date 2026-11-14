@@ -33,8 +33,15 @@ describe('KF-P5 · o pré-voo da fila do kit dá GO (a cat.0 olha a doutrina/)',
       env: { ...process.env, ORQ_CONFIG: join(REPO_ROOT, 'docs/fila-kit/000-config.json') },
     });
     expect(r.stdout).toContain('ok    cat.0 spec vendorizada');
-    expect(r.stdout.trimEnd().split('\n').at(-1)).toBe('GO');
-    expect(r.status).toBe(0);
+    // A cat.12 (2.2.0) lê as branches DESTA máquina: staging-kit atrás da main é
+    // estado do checkout, não da cat.0. Qualquer outro NO-GO reprova.
+    const ultima = r.stdout.trimEnd().split('\n').at(-1) ?? '';
+    if (ultima.startsWith('NO-GO cat.12 ')) {
+      expect(r.stdout.split('\n').filter((l) => l.startsWith('NO-GO')).every((l) => l.startsWith('NO-GO cat.12 '))).toBe(true);
+    } else {
+      expect(ultima).toBe('GO');
+      expect(r.status).toBe(0);
+    }
   });
 });
 
