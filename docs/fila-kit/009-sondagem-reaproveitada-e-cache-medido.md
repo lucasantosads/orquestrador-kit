@@ -47,6 +47,6 @@ Recon feito pelo chat do projeto Orquestrador em 14/11/2026 contra a main a3a90d
   ],
   "status": "pendente",
   "notas_status": "",
-  "tentativas": 0
+  "tentativas": 1
 }
 ```
