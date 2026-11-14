@@ -45,8 +45,8 @@ Recon feito pelo chat do projeto Orquestrador em 14/11/2026 contra a origin/main
       "espera": "avaliador"
     }
   ],
-  "status": "pendente",
-  "notas_status": "",
-  "tentativas": 1
+  "status": "bloqueado",
+  "notas_status": "bloqueado: SPEC_CONFLITANTE — na tentativa 1 o agente declarou 1 conflito(s) entre o ticket e o código; sem enforcement, sem juiz, sem merge, tentativa devolvida. Conflitos: o ticket diz: o ticket diz que o kill do grupo funciona e o defeito vira corrigido · o código diz: o claude_run real não mata o neto (set -m em subshell sem job control não cria grupo, kill -\"$pid\" cai no fallback) · scripts/orquestrador/lib.sh:1559. Evidência: runs/005/attempt-0/conflitos.json e o diff em runs/005/attempt-0/diff.patch. Decida a spec antes de reabrir.",
+  "tentativas": 0
 }
 ```
