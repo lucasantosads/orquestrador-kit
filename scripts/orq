@@ -49,6 +49,7 @@
 #   orq pausar [--todas] [motivo]  cria o pausar_file (a drenagem para ENTRE tickets);
 #                        --todas: o desta fila e o de cada uma de filas_irmas
 #   orq retomar          remove o pausar_file
+#   orq drenar           sobe a drenagem DESACOPLADA (nohup + sessão nova, PPID 1) e devolve o PID
 #   orq liberar <humano:token> [nota]   registra a liberação humana (v2)
 #   orq triar <repo> [<id>] [--passada] [--forcar] [--sem-modelo]
 #                        triador de bloqueios (7f): diagnóstico em ~/.orq/diagnosticos,
@@ -544,8 +545,27 @@ cmd_liberar() {
   ( cd "$ORQ_DIR/.." && "${ORQ_TSX[@]}" "$ORQ_DIR/orquestrador/liberar-cli.ts" "$arq" "$@" )
 }
 
+# --- orq drenar (etapa 2.2.0, A1-13) -------------------------------------------
+# A drenagem manual morria com a sessão que a chamou (AP-076). Aqui ela sobe
+# DESACOPLADA (nohup + sessão nova, PPID 1) e o `orq` sai na hora com o PID.
+# Não escreve arquivo nenhum: quem escreve é o loop, como num disparo do launchd.
+# Com loop vivo no lock não sobe outro (o segundo morreria no lock de qualquer
+# jeito; dizer qual pid está rodando é mais útil).
+cmd_drenar() {
+  local vivo pid script="${ORQ_DRENAR_SCRIPT:-$ORQ_DIR/orquestrador/local-loop.sh}"
+  vivo="$(loop_vivo_pid)"
+  if [ -n "$vivo" ]; then
+    printf 'loop já vivo (pid %s): nada subiu. Acompanhe com: orq eventos\n' "$vivo"
+    return 0
+  fi
+  pid="$(drenar_desacoplado "$script")"
+  printf 'DRENAGEM pid=%s (desacoplada: sobrevive a este terminal)\n' "$pid"
+  printf 'acompanhe: orq eventos · orq · parar entre tickets: orq pausar\n'
+}
+
 case "${1:-}" in
   ''|status)  cmd_status ;;
+  drenar)     cmd_drenar ;;
   fila)       cmd_fila ;;
   eventos)    shift; cmd_eventos "$@" ;;
   erro)       cmd_erro ;;

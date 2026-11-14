@@ -730,6 +730,34 @@ loop_morto_info() {
   printf '%s %s' "${quando:-?}" "$pid"
 }
 
+# loop_vivo_pid -> o pid do lock da drenagem quando ele está vivo; vazio se não
+# há lock ou o pid morreu (etapa 2.2.0, A1-13: `orq drenar` não sobe um segundo).
+loop_vivo_pid() {
+  local lock="$RUNS_BASE/.local-loop.lock" pid
+  [ -s "$lock" ] || return 0
+  pid="$(head -1 "$lock" 2>/dev/null | tr -d '[:space:]')"
+  case "$pid" in ''|*[!0-9]*) return 0 ;; esac
+  if kill -0 "$pid" 2>/dev/null || ps -p "$pid" >/dev/null 2>&1; then printf '%s' "$pid"; fi
+}
+
+# drenar_desacoplado <script> -> sobe <script> fora de qualquer sessão (nohup +
+# setsid; o subshell intermediário sai na hora, então o PPID vira 1) e imprime
+# o PID. É o que faz a drenagem manual sobreviver ao terminal ou à sessão do
+# Claude Code que a chamou (etapa 2.2.0, A1-13, AP-076).
+drenar_desacoplado() {
+  local script="$1" pid
+  local -a sess
+  if command -v perl >/dev/null 2>&1; then
+    sess=( perl -e 'use POSIX (); POSIX::setsid(); exec { $ARGV[0] } @ARGV or exit 127;' )
+  else
+    sess=( python3 -c 'import os,sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' )
+  fi
+  # O `cd` vai SEPARADO: `cd && nohup ... &` poria a lista inteira num subshell
+  # em segundo plano, e o $! seria o dele (que segura o stdout de quem chamou).
+  pid="$( ( cd "$MAIN_CHECKOUT" || exit 1; nohup "${sess[@]}" bash "$script" </dev/null >/dev/null 2>&1 & echo $! ) )"
+  printf '%s' "$pid"
+}
+
 status_congelado_secs() {
   local estado epoch tout agora
   estado="$(status_campo estado)"
