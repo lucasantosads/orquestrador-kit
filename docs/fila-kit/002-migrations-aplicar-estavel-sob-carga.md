@@ -54,6 +54,6 @@ Recon feito pelo chat do projeto Orquestrador em 14/11/2026 contra a origin/main
   ],
   "status": "pendente",
   "notas_status": "",
-  "tentativas": 0
+  "tentativas": 1
 }
 ```
