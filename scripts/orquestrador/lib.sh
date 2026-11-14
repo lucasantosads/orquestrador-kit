@@ -1553,24 +1553,58 @@ claude_run() {
   local dir="$1" outf="$2" secs="$3"; shift 3
   [ "${1:-}" = "--" ] && shift
   local rc=0
-  # Process group próprio: o watchdog mata o GRUPO, não só a casca.
-  # Sem `set -m` + `exec`, $pid é o subshell e o `claude` filho vira órfão
-  # (PPID 1), seguindo a queimar cota depois do desfecho por timeout.
-  ( set -m; cd "$dir" && exec claude "$@" ) > "$outf" 2>&1 &
+  # SESSÃO (e grupo) própria de verdade, criada por setsid (etapa 2.2.0, A1-2).
+  # O `( set -m; exec claude )` de antes não criava grupo nenhum: num subshell
+  # sem job control o `set -m` chega tarde (o fork já aconteceu), o
+  # `kill -TERM -<pid>` falhava, o fallback matava só o líder e o NETO (um
+  # `npx vitest` que o agente disparou) seguia vivo, órfão. Com setsid o pid do
+  # agente é líder de sessão e de grupo (pgid == pid), e o `kill -<pid>` alcança
+  # todos os descendentes que não saíram do grupo. perl é o caminho no macOS
+  # (sem `setsid` de linha de comando); python3 é o reserva.
+  local -a sess
+  if command -v perl >/dev/null 2>&1; then
+    sess=( perl -e 'use POSIX (); POSIX::setsid(); exec { $ARGV[0] } @ARGV or exit 127;' )
+  else
+    sess=( python3 -c 'import os,sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' )
+  fi
+  ( cd "$dir" && exec "${sess[@]}" claude "$@" ) > "$outf" 2>&1 &
   local pid=$!
+  # Global de propósito: o trap de sinal do executor (trap_sinal) mata este
+  # grupo antes de sair. Sessão própria escapa do sinal que o launchd manda ao
+  # grupo do job; sem isto, o executor morto deixaria o agente órfão.
+  ORQ_CLAUDE_GRUPO="$pid"
   ( sleep "$secs"
     kill -TERM -"$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null
     sleep 10
     kill -KILL -"$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null
   ) >/dev/null 2>&1 &
   local wpid=$!
+  ORQ_CLAUDE_WATCHDOG="$wpid"
   wait "$pid" 2>/dev/null || rc=$?
   # claude terminou sozinho: mata o watchdog para não segurar o run 30min.
   kill "$wpid" 2>/dev/null || true
   wait "$wpid" 2>/dev/null || true
-  # 143 = TERM, 137 = KILL: foi o watchdog que cortou => timeout.
-  if [ "$rc" = 143 ] || [ "$rc" = 137 ]; then rc=124; fi
+  ORQ_CLAUDE_GRUPO=''; ORQ_CLAUDE_WATCHDOG=''
+  # 143 = TERM, 137 = KILL: foi o watchdog que cortou => timeout. O líder já
+  # morreu; o resto do grupo (o neto que ignorou o TERM ou ainda não o
+  # recolheu) leva KILL agora, sem esperar os 10 s do watchdog morto acima.
+  if [ "$rc" = 143 ] || [ "$rc" = 137 ]; then
+    kill -KILL -"$pid" 2>/dev/null || true
+    rc=124
+  fi
   return "$rc"
+}
+
+# claude_run_encerrar — mata o grupo do agente em curso (se houver) e o
+# watchdog dele. Chamado pelo trap de sinal do executor: quem morre por sinal
+# leva o agente junto, como levava quando os dois dividiam o grupo do launchd.
+claude_run_encerrar() {
+  [ -z "${ORQ_CLAUDE_WATCHDOG:-}" ] || kill "$ORQ_CLAUDE_WATCHDOG" 2>/dev/null || true
+  if [ -n "${ORQ_CLAUDE_GRUPO:-}" ]; then
+    kill -TERM -"$ORQ_CLAUDE_GRUPO" 2>/dev/null || true
+    kill -KILL -"$ORQ_CLAUDE_GRUPO" 2>/dev/null || true
+  fi
+  ORQ_CLAUDE_GRUPO=''; ORQ_CLAUDE_WATCHDOG=''
 }
 
 # --- Veredicto mecânico de critério (código verifica, modelo julga) -----------

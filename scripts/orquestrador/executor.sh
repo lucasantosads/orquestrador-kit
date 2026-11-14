@@ -2303,6 +2303,9 @@ trap_sinal() {
   local sinal="$1" numero="$2"
   trap - EXIT TERM INT
   DESFECHO_NOMEADO=1
+  # O agente roda em sessão própria (claude_run, etapa 2.2.0): o sinal que matou
+  # o executor não o alcança sozinho.
+  claude_run_encerrar
   registrar_morte "$((128 + numero))" "$sinal"
   exit "$((128 + numero))"
 }
