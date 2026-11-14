@@ -1631,6 +1631,18 @@ claude_run_encerrar() {
   ORQ_CLAUDE_GRUPO=''; ORQ_CLAUDE_WATCHDOG=''
 }
 
+# teste_falho_token <gate-falha.txt> -> `<arquivo>::<nome>` do PRIMEIRO teste que
+# falhou (cabeçalho `# teste que falhou:` do gates.ts), sem espaço (vira `_`) e
+# com no máximo 160 caracteres: é campo de evento, token grepável (CONTRATO
+# §4.1). Vazio quando o gate não foi de teste (etapa 2.2.0, A1-12).
+teste_falho_token() {
+  local l
+  l="$(sed -n 's/^# teste que falhou: //p' "$1" 2>/dev/null | head -1)"
+  [ -n "$l" ] || return 0
+  l="${l/ > /::}"
+  printf '%s' "$l" | tr ' ' '_' | cut -c1-160
+}
+
 # --- Veredicto mecânico de critério (código verifica, modelo julga) -----------
 # criterio_match <saida> <espera> -> 0 se casa. Regra:
 #   - 'espera' puramente numérica  => IGUALDADE exata (evita "13" casar "3");

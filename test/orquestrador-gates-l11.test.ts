@@ -66,7 +66,13 @@ describe('L11-P2 · gates.ts --saida-falha e --retomar-depois', () => {
       const arq = join(raiz, 'saida-vitest.txt');
       const com = gates(raiz, cfg, '--saida-falha', arq);
       expect(com.out).toBe(sem.out);
-      expect(readFileSync(arq, 'utf8')).toBe(readFileSync(VITEST_1523, 'utf8'));
+      // 2.2.0 (A1-12): cabeçalho `# teste que falhou:` por teste, depois a saída inteira.
+      const gravado = readFileSync(arq, 'utf8');
+      const cru = readFileSync(VITEST_1523, 'utf8');
+      expect(gravado.endsWith(cru)).toBe(true);
+      const cab = gravado.slice(0, gravado.length - cru.length);
+      expect(cab.split('\n').filter(Boolean).every((l) => l.startsWith('# teste que falhou: '))).toBe(true);
+      expect(cab).toMatch(/^# teste que falhou: \S+\.test\.ts > /);
     } finally {
       rmSync(raiz, { recursive: true, force: true });
     }

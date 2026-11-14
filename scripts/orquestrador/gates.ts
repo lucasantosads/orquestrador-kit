@@ -424,6 +424,32 @@ export function rodarGates(config: GatesConfig, exec: (cmd: string) => Execucao,
 const PADRAO_FALHA =
   /^\s*(FAIL|✕|×|❯|AssertionError|Error:|Expected:|Received:)|error TS\d+|\bexpected\b.*\bto\b/
 
+/**
+ * Os testes que falharam, lidos da saída do runner (etapa 2.2.0, A1-12): a
+ * linha `FAIL  <arquivo> > <describe> > <it>` do vitest e o `● a › b` do jest
+ * (este com o arquivo do `FAIL <arquivo>` anterior). Sem duplicata, na ordem.
+ */
+export function testesQueFalharam(saida: string): { arquivo: string; nome: string }[] {
+  const out: { arquivo: string; nome: string }[] = []
+  const vistos = new Set<string>()
+  let arquivoJest = ''
+  for (const cru of saida.split('\n')) {
+    const l = cru.replace(/\x1B\[[0-9;]*m/g, '').trimEnd()
+    const v = /^\s*FAIL\s+(\S+\.(?:test|spec)\.[cm]?[jt]sx?)\s+>\s+(.+)$/.exec(l)
+    const j = /^\s*FAIL\s+(\S+\.(?:test|spec)\.[cm]?[jt]sx?)\s*$/.exec(l)
+    const b = /^\s*●\s+(.+›.+)$/.exec(l)
+    let par: { arquivo: string; nome: string } | null = null
+    if (v) par = { arquivo: v[1]!, nome: v[2]!.trim() }
+    else if (j) arquivoJest = j[1]!
+    else if (b && arquivoJest) par = { arquivo: arquivoJest, nome: b[1]!.replace(/\s*›\s*/g, ' > ').trim() }
+    if (par && !vistos.has(`${par.arquivo}\0${par.nome}`)) {
+      vistos.add(`${par.arquivo}\0${par.nome}`)
+      out.push(par)
+    }
+  }
+  return out
+}
+
 export function recorteDeFalha(saida: string, max = 40): string[] {
   const linhas = saida.split('\n').map((l) => l.replace(/\x1B\[[0-9;]*m/g, '').trimEnd())
   const marcadas = linhas.filter((l) => l.trim() && PADRAO_FALHA.test(l))
@@ -566,7 +592,10 @@ if (process.argv.includes('--run-cli')) {
   if (falho) {
     process.stdout.write(`\n--- recorte de ${falho.nome} ---\n${recorteDeFalha(falho.saida).join('\n')}\n`)
     const saidaFalha = opt('--saida-falha')
-    if (saidaFalha) writeFileSync(saidaFalha, falho.saida)
+    // Cabeçalho com arquivo e nome de cada teste que falhou (2.2.0, A1-12), em
+    // linhas `#` que nenhum leitor da saída do runner confunde com FAIL.
+    const cab = testesQueFalharam(falho.saida).map((t) => `# teste que falhou: ${t.arquivo} > ${t.nome}\n`).join('')
+    if (saidaFalha) writeFileSync(saidaFalha, cab + falho.saida)
   }
   // Etapa M69 (P3): sombra. A inteira já decidiu acima; aqui só se calcula o
   // conjunto afetado e se grava o que teria acontecido. Nada vai ao stdout:

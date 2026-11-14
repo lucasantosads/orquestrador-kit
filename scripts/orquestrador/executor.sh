@@ -1411,6 +1411,7 @@ conflitos_declarados() {
       else {ticket: (.[0] // ""), codigo: (.[1] // ""), ref: ""} end)'
 }
 run_attempt() {
+  TESTE_FALHO=''   # 2.2.0 A1-12: nunca o de uma tentativa anterior
   local file="$1" wt="$2" rundir="$3" modelo="$4" motivo_anterior="$5" attempt="${6:-0}" base_fixo="${7:-}" rundir_anterior="${8:-}"
   CONFLITOS_N=0; CONFLITOS_MOTIVO=""
   local prompt saida rc=0 t0 base sinal veredito tools
@@ -1591,7 +1592,11 @@ run_attempt() {
   grep -qi 'reexecutar' "$rundir/gates.txt" && log "  gates: interrompidos — conjunto não vale parcialmente"
   # Peça 7b-2: o PAPEL do gate que reprovou vai para o decisao.ts, que separa
   # "o runner não rodou" (gate_crash, adia) de "o código está errado" (mérito).
+  TESTE_FALHO=''
   if [ "$gates_rc" != 0 ]; then
+    # Etapa 2.2.0 (A1-12): arquivo e nome do teste que falhou, para o evento.
+    TESTE_FALHO="$(teste_falho_token "$rundir/gate-falha.txt")"
+    [ -z "$TESTE_FALHO" ] || log "  teste que falhou: $TESTE_FALHO"
     gate_falho="$(grep -E '^FALHA ' "$rundir/gates.txt" 2>/dev/null | head -1 | awk '{print $2}' || true)"
     [ -z "$gate_falho" ] || papel_falho="$(papel_do_gate "$gate_falho" \
       "$(jq -r --arg n "$gate_falho" '.gates[]? | select(.nome == $n) | .papel // empty' "$CONFIG" 2>/dev/null || true)")"
@@ -2173,7 +2178,7 @@ drive_ticket() {
     # e o MESMO diff da anterior bloqueia na hora, sem 3ª volta. A anterior é
     # lida da trilha, e pode ser de outra drenagem (o 461 do Actus: 717, 717, 717).
     if awk -v id="$id" '$2 == id' "$EVENTS_FILE" 2>/dev/null | decisao repeticao "$sub" "$DIFF_LINES" >/dev/null 2>&1; then
-      event "$id" REPROVADO "motivo=$tok" "sub=$sub" "attempt=$((attempt + 1))" "diff=$DIFF_LINES"
+      event "$id" REPROVADO "motivo=$tok" "sub=$sub" "attempt=$((attempt + 1))" "diff=$DIFF_LINES" ${TESTE_FALHO:+"teste=$TESTE_FALHO"}
       ticket_set_status "$file" "bloqueado"
       ticket_set_nota "$file" "repetição: 2ª reprovação igual à anterior (sub=$sub, diff=$DIFF_LINES), sem 3ª volta. $MOTIVO"
       ticket_commit "$file" "fila: $id bloqueado (repeticao)"
@@ -2181,7 +2186,7 @@ drive_ticket() {
       status_set "estado=ocioso" "ultimo=$id BLOQUEADO $(date '+%H:%M:%S') (${DUR}s)" "motivo=bloqueado: repeticao ($sub, diff $DIFF_LINES)"
       DESFECHO_NOMEADO=1; log "BLOQUEADO por repetição: sub=$sub diff=$DIFF_LINES igual à reprovação anterior"; cleanup_worktree "$id" "$wt"; return 0
     fi
-    event "$id" REPROVADO "motivo=$tok" "sub=$sub" "attempt=$((attempt + 1))" "diff=$DIFF_LINES"
+    event "$id" REPROVADO "motivo=$tok" "sub=$sub" "attempt=$((attempt + 1))" "diff=$DIFF_LINES" ${TESTE_FALHO:+"teste=$TESTE_FALHO"}
 
     plano="$(printf '%s' "$(cat "$rundir/veredito.json")" | decisao retry "$attempt" "$modelo")"
     if [ "$(printf '%s' "$plano" | jq -r '.deveTentar')" != true ]; then
