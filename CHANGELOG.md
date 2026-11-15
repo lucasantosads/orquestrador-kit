@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 2.2.1 · 2026-11-15
+
+Três defeitos do repo instalado (ciclo 5 da operação autônoma). Relatório: `docs/etapa-2.2.1.md`.
+
+- **D5** promotor: alvo à frente só por commit de sincronia (árvore igual à principal) faz ff sem
+  juiz e sem gates, `PROMOVIDO motivo=sincronia`, nenhum aviso. Teste: `orquestrador-221-promotor-sincronia.test.ts`.
+- **D6** login do claude expirado (M-11): em qualquer chamada vira `AMBIENTE causa=auth`, pausa
+  `runs/.pausa-auth`, notificação nativa sempre e aviso `ambiente` ("rodar claude e /login"); não
+  conta tentativa; a sonda haiku do disparo seguinte remove só a pausa auth. Testes:
+  `orquestrador-221-auth.test.ts`, `orquestrador-221-auth-drenagem.test.ts`.
+- **D7** gate de ticket, C18: candidato do planejador com critério de suíte inteira é descartado
+  com motivo `criterio_suite_inteira` (C18p, aviso, nos pendentes); configurável em `gate_ticket`.
+  Teste: `orquestrador-221-criterio-suite-inteira.test.ts`.
+
 ## 2.2.0 · 2026-11-14
 
 Operação autônoma (planejador, promotor e avisos) e os 14 defeitos achados na instalação

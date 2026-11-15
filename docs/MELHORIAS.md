@@ -30,7 +30,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 | M-07 | Revisão LLM do lote na entrada, só marcando | ideia | A | C2, C1 | relato | M-42 | v061, L6-16, L2-11 |
 | M-08 | Higiene do PLAYBOOK com formato, lastro e obsolescência | parcial | A | C3, C2, C1 | relato | | base #15, v079, v061, v031, L1-05, L2-06, L5-02 |
 | M-09 | Migration com drop ou delete recusada na entrada | parcial | A | C1 | relato | | L6-12 |
-| M-11 | Auth expirada pausa com dono e avisa o humano | parcial | A | C1 | relato | M-42 | L6-18 |
+| M-11 | Auth expirada pausa com dono e avisa o humano | feito (etapa 2.2.1) | A | C1 | relato | M-42 | L6-18 |
 | M-12 | Juiz por dimensão binário com teto de palavras | ideia | A | C2, C5, custo | relato | | base #3, v102, L2-09 |
 | M-13 | Teto de diff no kit (limiar por repo) | parcial | A | C2, C5 | relato | | base #8 |
 | M-14 | Confiança declarada pelo modelo nunca vira limiar | parcial | A | C5 | relato | M-40 | v048, L4-07 |
@@ -204,7 +204,7 @@ Ordenada por marco e, dentro do marco, por ID. Os IDs não mudam.
 - fontes: L6-15
 
 ### M-11 Auth expirada pausa com dono e avisa o humano
-- status: parcial (L12): o resíduo de 1 ticket do defeito docs/defeitos/2026-10-28-disjuntor-conta-falha-de-infra.md foi fechado na L12 (o ADIADO motivo=preflight já é AMBIENTE no 1º ticket e nada soma em .adiamentos, scripts/orquestrador/local-loop.sh:586-611; caso 4 de scripts/orquestrador/test-ambiente-adiado.sh:130), então a sessão não precisa mais pausar à mão para o ticket não bloquear. Já existiam a causa `sessao` que adia sem consumir tentativa (scripts/orquestrador/decisao.ts:234, scripts/orquestrador/executor.sh:154-191) e o aviso de AMBIENTE na entrada e na saída (scripts/orquestrador/local-loop.sh:710-728). Falta a pausa com dono e o motivo literal "auth do claude expirada, ação exclusiva do humano no terminal do Mac", e o aviso pela caixa de decisões (M-42)
+- status: feito (etapa 2.2.1): login expirado em qualquer chamada (executor, juízes, planejador, sonda, hook) vira `AMBIENTE causa=auth`, pausa do tipo auth (`runs/.pausa-auth`, motivo "auth do claude expirada: rodar claude e /login no terminal do Mac"), notificação nativa sem depender do hook e aviso `ambiente` pela caixa (M-42); a sonda haiku do início do disparo remove só a pausa auth (`orquestrador-221-auth*.test.ts`). Antes: parcial (L12)
 - o que é: o defeito 2026-10-28-disjuntor-conta-falha-de-infra pede que falha de ambiente não conte no disjuntor. Falta a outra metade: auth expirada só o humano resolve no terminal do Mac (`/login` não funciona pelo Remote Control) e ninguém é avisado.
 - como entra no kit: preflight detecta auth expirada, pausa com dono e motivo e manda aviso pela caixa de decisões (M-42).
 - detalhes executáveis:

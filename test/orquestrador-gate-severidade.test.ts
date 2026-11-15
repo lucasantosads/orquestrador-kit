@@ -108,6 +108,9 @@ describe('7d1b-2 · a tabela única', () => {
       C16: 'aviso',
       // etapa c0052-B1a (M-54): 0 acusação no corpus do CI, do dashboard e das duas filas do Comarka
       C17: 'erro',
+      // 2.2.1 D7: critério de suíte inteira (erro só no lote do planejador).
+      C18: 'erro',
+      C18p: 'aviso',
     });
   });
 

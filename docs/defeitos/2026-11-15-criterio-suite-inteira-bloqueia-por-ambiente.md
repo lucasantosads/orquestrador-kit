@@ -1,6 +1,6 @@
 # Defeito: critério-guarda com a suíte inteira bloqueia ticket certo por falha de ambiente
 
-Origem: ciclo 5 do primeiro repo com a operação autônoma (2.2.0), 14/11/2026. Estado: **aberto**.
+Origem: ciclo 5 do primeiro repo com a operação autônoma (2.2.0), 14/11/2026. Estado: **parcial (etapa 2.2.1)**: pedidos 1 e 2 entraram (prompt do planejador sem a guarda da suíte inteira; gate de ticket descarta o candidato com `criterio_suite_inteira`, regra C18, e avisa no pendente, C18p). O pedido 3 (reclassificar como ambiente o critério de suíte inteira que reprova com o gate `testes` verde) segue aberto.
 
 ## O que aconteceu
 
