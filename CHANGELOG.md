@@ -59,6 +59,10 @@ num repo novo. Cada item tem teste que falha contra a 2.1.8 e passa aqui.
 - **D3 (ciclo 5)** merge suspenso pela pausa (K3) é retomado: sem pausa, a drenagem mergeia
   na alvo todo ticket em `aguardando_merge` antes de escolher pendentes (`MERGE ... retomado=1`).
   Antes ele ficava parado para sempre. Teste: `orquestrador-220-merge-retomado.test.ts`.
+- **D4 (ciclo 5)** recusa do juiz de promoção volta à fila: os motivos ficam no estado da frente
+  de cada ticket do intervalo; o planejador volta a essa frente (mesmo coberta) e o 1º ticket do
+  lote corrige os motivos; uma vez por recusa; a promoção aprovada apaga. Antes, a recusa só
+  avisava e o mesmo conteúdo seria recusado a cada disparo. Teste: `orquestrador-220-recusa-replaneja.test.ts`.
 - **Config**: `planejador.regras_ticket`, `planejador.liberacao_automatica`, `promotor`, `avisos`
   no template, desligados por padrão; `orq config` valida os valores. Teste: `orquestrador-220-config.test.ts`.
 - **Status novos de ticket**: `candidato` e `descartado` (terminal).

@@ -440,7 +440,8 @@ function lerRegras(ctx: Ctx): string {
   }
 }
 
-function estadoPlanejador(ctx: Ctx): Record<string, { coberta_em?: string; fecha_com?: string[]; descartes?: { ts: string; motivo: string; objetivo: string }[] }> {
+type RecusaPromocao = { ts: string; motivos: string[]; tickets: string[]; alvo: string; planejada?: string }
+function estadoPlanejador(ctx: Ctx): Record<string, { coberta_em?: string; fecha_com?: string[]; descartes?: { ts: string; motivo: string; objetivo: string }[]; recusa?: RecusaPromocao }> {
   return lerJson(join(ctx.runsDir, 'planejador', 'estado.json')) ?? {}
 }
 function gravarEstadoPlanejador(ctx: Ctx, e: ReturnType<typeof estadoPlanejador>): void {
@@ -454,7 +455,7 @@ function arquivosDaFrente(ctx: Ctx, frente: Frente, teto = 200): string[] {
   return ls.filter((f) => casaGlob(f, frente.allowlist)).slice(0, teto)
 }
 
-export function promptPlanejador(ctx: Ctx, bloco: Bloco, frente: Frente, daFrente: TicketFila[], descartes: string[], lote: number, proximo: number): string {
+export function promptPlanejador(ctx: Ctx, bloco: Bloco, frente: Frente, daFrente: TicketFila[], descartes: string[], lote: number, proximo: number, recusa?: RecusaPromocao): string {
   const regras = lerRegras(ctx)
   const tickets = daFrente.map((t) => ({
     id: t.json.id,
@@ -488,6 +489,17 @@ export function promptPlanejador(ctx: Ctx, bloco: Bloco, frente: Frente, daFrent
     tickets.length ? JSON.stringify(tickets, null, 2) : '(nenhum)',
     '',
     descartes.length ? `## Descartes recentes desta frente (não repita o erro)\n${descartes.join('\n')}\n` : '',
+    recusa
+      ? [
+          `## Promoção recusada pelo juiz (${recusa.ts}, tickets ${recusa.tickets.join(', ')}): corrija PRIMEIRO`,
+          'O código destes tickets já está na branch alvo, mas o juiz de promoção recusou levá-lo à principal pelos',
+          'motivos abaixo. O PRIMEIRO ticket do lote corrige exatamente estes motivos, só nos arquivos citados, sem',
+          'mudar comportamento; os motivos valem como regra. Só depois, se faltar parte da entrega, escreva o resto.',
+          'Não responda entrega_coberta: true enquanto houver motivo sem ticket de correção.',
+          ...recusa.motivos.map((m) => `- ${m}`),
+          '',
+        ].join('\n')
+      : '',
     '## Arquivos versionados que casam a allowlist da frente',
     arquivosDaFrente(ctx, frente).join('\n') || '(nenhum: a frente cria arquivos novos)',
     '',
@@ -629,6 +641,12 @@ export function planejar(ctx: Ctx): ResultadoPlanejador {
     }
     if (daFrente.some((t) => !TERMINAIS.has(String(t.json.status)))) continue
     const est = estadoPlanejador(ctx)[c.frente.id]
+    // Recusa do juiz de promoção (2.2.0, D4): a frente volta, mesmo coberta ou
+    // com fecha_com cumprido, para o lote que corrige os motivos.
+    if (est?.recusa && !est.recusa.planejada) {
+      escolha = c
+      break
+    }
     if (est?.coberta_em) continue
     if (est?.fecha_com?.length && est.fecha_com.every((id) => fila.some((t) => String(t.json.id) === id && t.json.status === 'done'))) continue
     escolha = c
@@ -653,7 +671,7 @@ export function planejar(ctx: Ctx): ResultadoPlanejador {
   // A escrita do lote: cwd numa worktree descartável da alvo, só leitura.
   const pasta = join(ctx.runsDir, 'planejador', tsLocal(ctx.agora()).replace(/[:]/g, '').slice(0, 15))
   mkdirSync(pasta, { recursive: true })
-  const prompt = promptPlanejador(ctx, bloco, frente, daFrente, descartes, lote, proximo)
+  const prompt = promptPlanejador(ctx, bloco, frente, daFrente, descartes, lote, proximo, est[frente.id]?.recusa)
   writeFileSync(join(pasta, 'prompt.txt'), prompt)
   const wtLeitura = worktreeDescartavel(ctx, 'planejador')
   let r: RespostaClaude
@@ -809,6 +827,8 @@ export function planejar(ctx: Ctx): ResultadoPlanejador {
   // Só o lote INTEIRO fecha a frente (2.2.0, D2): com descarte, o que caiu
   // falta na entrega, e a frente segue aberta para o próximo planejamento.
   if (saida.fecha_frente === true && res.aprovados.length > 0 && res.descartados.length === 0) ef.fecha_com = [...res.aprovados]
+  // A recusa vira lote uma vez só (D4): outra recusa, com motivos novos, reabre.
+  if (ef.recusa && res.aprovados.length > 0) ef.recusa.planejada = tsLocal(ctx.agora())
   e[frente.id] = ef
   gravarEstadoPlanejador(ctx, e)
 
@@ -1026,6 +1046,28 @@ export function avisoPushPendente(ctx: Ctx, juiz?: { resumo?: string; motivos?: 
   })
 }
 
+/**
+ * Recusa do juiz de promoção no estado do planejador (2.2.0, D4): cada frente
+ * dos tickets do intervalo guarda os motivos, e o planejador volta a ela com a
+ * correção como 1º ticket. `null` apaga (promoção aprovada).
+ */
+function marcarRecusaNasFrentes(ctx: Ctx, fila: TicketFila[], tickets: string[], r: RecusaPromocao | null): void {
+  const frentes = new Set(tickets.map((id) => fila.find((t) => String(t.json.id) === id)?.json.frente).filter((f): f is string => typeof f === 'string'))
+  if (frentes.size === 0) return
+  const e = estadoPlanejador(ctx)
+  let mudou = false
+  for (const f of frentes) {
+    if (r) {
+      e[f] = { ...(e[f] ?? {}), recusa: { ...r, tickets: tickets.filter((id) => fila.find((t) => String(t.json.id) === id)?.json.frente === f) } }
+      mudou = true
+    } else if (e[f]?.recusa) {
+      delete e[f]!.recusa
+      mudou = true
+    }
+  }
+  if (mudou) gravarEstadoPlanejador(ctx, e)
+}
+
 export function promover(ctx: Ctx): ResultadoPromotor {
   const pr = ctx.cfg.promotor ?? {}
   const res: ResultadoPromotor = { rodou: false, promovido: false, motivo: '' }
@@ -1152,13 +1194,17 @@ export function promover(ctx: Ctx): ResultadoPromotor {
   if (!v || typeof v.aprovar !== 'boolean') return recusa('juiz_ilegivel', `O juiz de promoção não deu veredito legível (rc=${rj.rc}). Evidência: ${pasta}`)
   writeFileSync(join(pasta, 'veredito.json'), `${JSON.stringify(v, null, 2)}\n`)
   const juiz = { resumo: String(v.resumo ?? ''), motivos: Array.isArray(v.motivos) ? v.motivos.map(String) : [] }
-  if (!v.aprovar) return recusa('juiz', `O juiz de promoção recusou: ${juiz.motivos.join('; ') || juiz.resumo}`, { tickets: tickets.join(',') || '-' })
+  if (!v.aprovar) {
+    marcarRecusaNasFrentes(ctx, fila, tickets, { ts: tsLocal(ctx.agora()), motivos: juiz.motivos.length ? juiz.motivos : [juiz.resumo], tickets, alvo: para.slice(0, 8) })
+    return recusa('juiz', `O juiz de promoção recusou: ${juiz.motivos.join('; ') || juiz.resumo}`, { tickets: tickets.join(',') || '-' })
+  }
 
   // Aprovado: ff-only na principal. Nunca push.
   const ff = git(ctx.checkout, 'merge', '--ff-only', '-q', alvo)
   if (ff.rc !== 0) return recusa('ff_impossivel', `git merge --ff-only ${alvo} falhou: ${ff.err.trim().slice(0, 500)}`)
   res.promovido = true
   evento(ctx.runsDir, '---', 'PROMOVIDO', { de: de.slice(0, 8), para: para.slice(0, 8), tickets: tickets.join(',') || '-' })
+  marcarRecusaNasFrentes(ctx, fila, tickets, null)
 
   // Writeback de frente concluída, em commit próprio na alvo, e ff de novo.
   const fechadas = writebackFrentes(ctx)
