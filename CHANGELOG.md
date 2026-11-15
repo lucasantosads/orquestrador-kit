@@ -50,6 +50,12 @@ num repo novo. Cada item tem teste que falha contra a 2.1.8 e passa aqui.
   novidade (JSON `{tipo, nivel, titulo, texto, dados, ts}`), dedupe de 24 h, relatório em
   `runs/relatorios/AAAA-MM-DD-HHMM.md`; hook que falha vira `AVISO_HOOK rc=1` e não derruba o loop.
   Teste: `orquestrador-220-avisos.test.ts` e `orquestrador-220-ciclo.test.ts`.
+- **D1 (ciclo 5 do repo instalado)** gate de ticket, regra 9: referência do `contexto_juiz` que
+  ainda não existe na alvo é aceita quando está listada na allowlist de um ticket de
+  `dependencias` não terminado (o lote do planejador cita o arquivo que o 1º ticket cria).
+  Teste: `orquestrador-220-planejador-lote.test.ts`.
+- **D2 (ciclo 5)** `fecha_com` só é gravado com o lote inteiro aprovado: com descarte, a frente
+  segue aberta. Teste: `orquestrador-220-planejador-lote.test.ts`.
 - **Config**: `planejador.regras_ticket`, `planejador.liberacao_automatica`, `promotor`, `avisos`
   no template, desligados por padrão; `orq config` valida os valores. Teste: `orquestrador-220-config.test.ts`.
 - **Status novos de ticket**: `candidato` e `descartado` (terminal).

@@ -1929,7 +1929,7 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
   }
 
   // 9. contexto_juiz — só em ticket pendente, como 5–8: é o que ainda vai rodar.
-  if (pendente) for (const c of checarContextoJuiz(alvo, cfg)) achado(c.regra, c.campo, c.mensagem)
+  if (pendente) for (const c of checarContextoJuiz(alvo, cfg, fila)) achado(c.regra, c.campo, c.mensagem)
 
   return v
 }
@@ -1951,8 +1951,23 @@ export function existeNaBranch(filaDir: string, branch: string, caminho: string)
  * declarar de novo duplica e confunde). Caminho só coberto por GLOB da allowlist
  * é AVISO: é o caso do 501 (allowlist `supabase/migrations/*.sql`, referência a
  * 0264), em que o próprio ticket proíbe tocar a referência por critério.
+ *
+ * Etapa 2.2.0 (D1, lote do planejador): referência que ainda não existe na alvo
+ * é aceita quando está LISTADA na allowlist de um ticket de `dependencias` que
+ * ainda não terminou. O ticket só roda depois da dependência mergeada, e aí o
+ * arquivo existe. Sem a dependência declarada, segue violação.
  */
-function checarContextoJuiz(alvo: TicketLido, cfg: GateCfg): Violacao[] {
+function criadoPorDependencia(t: Record<string, unknown>, fila: TicketLido[], caminho: string): boolean {
+  const deps = ehArray(t.dependencias) ? t.dependencias.map(String) : []
+  return fila.some((f) => {
+    const j = f.json
+    if (!j || !deps.includes(String(j.id))) return false
+    if ((STATUS_TERMINAIS as readonly string[]).includes(String(j.status)) && j.status !== 'done') return false
+    return ehArray(j.pathspec_allowlist) && j.pathspec_allowlist.map(String).includes(caminho)
+  })
+}
+
+function checarContextoJuiz(alvo: TicketLido, cfg: GateCfg, fila: TicketLido[] = []): Violacao[] {
   const t = alvo.json
   if (!t || t.contexto_juiz === undefined) return []
   const arq = basename(alvo.arquivo)
@@ -1967,7 +1982,7 @@ function checarContextoJuiz(alvo: TicketLido, cfg: GateCfg): Violacao[] {
     const campo = `contexto_juiz[${i}]`
     if (!cfg.branch_alvo) {
       v.push({ arquivo: arq, campo, regra: '9', mensagem: `sem branch_alvo no 000-config.json para conferir que '${c}' existe` })
-    } else if (!existeNaBranch(dirname(alvo.arquivo), cfg.branch_alvo, c)) {
+    } else if (!existeNaBranch(dirname(alvo.arquivo), cfg.branch_alvo, c) && !criadoPorDependencia(t, fila, c)) {
       v.push({ arquivo: arq, campo, regra: '9', mensagem: `'${c}' não existe na branch alvo '${cfg.branch_alvo}'` })
     }
     if (allow.includes(c)) {

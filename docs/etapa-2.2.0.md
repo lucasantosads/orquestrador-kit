@@ -4,7 +4,7 @@ Fonte: SPEC de operação autônoma do repo instalado (DEC-034 a DEC-037). Base:
 (`cdaa10d`). Branch: `conserto/2.2.0`. MELHORIAS: M-46, M-37, M-36, M-42, M-29.
 
 Vermelho = o teste novo rodado contra o motor 2.1.8 (código da 2.1.8, teste da 2.2.0).
-Verde = suíte completa na ponta da branch: 158 arquivos, 2136 testes, 0 falhas;
+Verde = suíte completa na ponta da branch: 159 arquivos, 2139 testes, 0 falhas;
 `scripts/kit/test-instalar.sh` "TODOS OS CHECKS PASSARAM"; `tsc --noEmit` limpo.
 Base 2.1.8: 2092 verdes e 1 falha (peça 3 do job do resolvedor, A1-3).
 
@@ -27,6 +27,8 @@ Base 2.1.8: 2092 verdes e 1 falha (peça 3 do job do resolvedor, A1-3).
 | P2 promotor | `orquestrador-220-promotor.test.ts` | `autonomo.js` não existe |
 | P3/P4 avisos e relatório | `orquestrador-220-avisos.test.ts` | `autonomo.js` não existe |
 | ciclo no local-loop | `orquestrador-220-ciclo.test.ts` | rc 127 (etapas do ciclo ausentes) |
+| D1 contexto_juiz de dependência do lote (ciclo 5) | `orquestrador-220-planejador-lote.test.ts` | `expected [ { id: '002', motivo: 'gate' } ] to deeply equal []` |
+| D2 fecha_com com lote parcial (ciclo 5) | `orquestrador-220-planejador-lote.test.ts` | `expected [ '001' ] to be undefined` |
 | config | `orquestrador-220-config.test.ts` | `Cannot read properties of undefined (reading 'modo')`; chaves ausentes |
 
 Testes antigos ajustados de propósito: `orquestrador-gate-ticket.test.ts` (status `candidato` e

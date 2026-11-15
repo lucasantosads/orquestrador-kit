@@ -806,7 +806,9 @@ export function planejar(ctx: Ctx): ResultadoPlanejador {
     ...(ef.descartes ?? []),
     ...res.descartados.map((d) => ({ ts: tsLocal(ctx.agora()), motivo: d.motivo, objetivo: String(jsons[ids.indexOf(d.id)]?.objetivo ?? '').slice(0, 200) })),
   ].slice(-40)
-  if (saida.fecha_frente === true && res.aprovados.length > 0) ef.fecha_com = [...res.aprovados]
+  // Só o lote INTEIRO fecha a frente (2.2.0, D2): com descarte, o que caiu
+  // falta na entrega, e a frente segue aberta para o próximo planejamento.
+  if (saida.fecha_frente === true && res.aprovados.length > 0 && res.descartados.length === 0) ef.fecha_com = [...res.aprovados]
   e[frente.id] = ef
   gravarEstadoPlanejador(ctx, e)
 
