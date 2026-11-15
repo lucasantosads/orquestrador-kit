@@ -172,6 +172,8 @@ export const REGRAS: Readonly<Record<string, Regra>> = {
   'C9': { severidade: 'aviso', oque: 'item da allowlist no checkout e fora da branch alvo (topologia)', porque: 'Comarka: 0/1/0 FP, 0 causal' },
   'C11': { severidade: 'aviso', oque: 'arquivo de src/ da allowlist importado direto (relativo ou paths do tsconfig) ou citado por teste fora dela, na árvore da branch alvo (teste vizinho)', porque: 'etapa 8a: 180/368 FP nos done aprovados de primeira do Comarka (04-17/10, versão que rodou); pega o teste real em 14 de 19 resgates de allowlist (pré-voo). testes_conferidos não isenta: com a isenção, 87/368 e 3 de 19. A C11 antiga (basename) media 22/24/122 no corpus do kit' },
   'C12': { severidade: 'aviso', oque: 'item sem extensão da allowlist sem arquivo nem diretório pai na branch alvo', porque: 'executor do Comarka: 0 disparo, sem dado' },
+  'C18': { severidade: 'erro', oque: 'candidato do planejador com critério que roda a suíte inteira (vitest run sem arquivo, npm test, npm run build, next build): motivo criterio_suite_inteira', porque: 'etapa 2.2.1 D7: 031 do repo instalado bloqueou por retry_sem_mudanca (14/11 22:55) com o gate testes verde e o mesmo vitest falhando por ambiente no critério; a guarda da suíte inteira já é o gate testes/build' },
+  'C18p': { severidade: 'aviso', oque: 'ticket pendente (fora do lote do planejador) com critério que roda a suíte inteira', porque: 'etapa 2.2.1 D7: pendente já na fila não é bloqueado no pré-voo pela regra nova; o sinal fica para quem escreve' },
   '10x': { severidade: 'erro', oque: 'exemplos_regex contra o padrão do cmd', porque: 'era 0/8/0 FP, todos das aspas escapadas e do grep -v de comentário' },
 }
 
@@ -230,6 +232,17 @@ export interface GateCfg {
    * por cima da tabela `REGRAS`. Ausente = a tabela inteira.
    */
   severidade?: Record<string, Severidade>
+  /**
+   * Etapa 2.2.1 (D7): o gate roda sobre candidatos do planejador (`--candidatos`).
+   * Só aí o critério de suíte inteira é a regra C18 (erro); fora, é C18p (aviso).
+   */
+  candidatos?: boolean
+  /**
+   * `gate_ticket.cmds_suite_inteira` (2.2.1 D7): regex (texto) de cmd que roda a
+   * suíte inteira, no lugar de `CMDS_SUITE_INTEIRA`. O `vitest run` sem arquivo é
+   * sempre conferido; desligar é `gate_ticket.severidade.C18: "off"`.
+   */
+  cmds_suite_inteira?: string[]
 }
 
 /** O ticket como ele chega do disco: sem promessa nenhuma sobre os campos. */
@@ -306,6 +319,39 @@ export function mascararAspas(cmd: string): string {
     }
   }
   return out.join('')
+}
+
+// ─── C18 (etapa 2.2.1, D7): critério que roda a suíte inteira ─────────────
+
+/** Padrões do kit, sobre o cmd com as aspas mascaradas. */
+export const CMDS_SUITE_INTEIRA = ['\\bnpm\\s+test\\b', '\\bnpm\\s+run\\s+build\\b', '\\bnext\\s+build\\b']
+
+/**
+ * O cmd roda a suíte inteira do repo? `vitest run` sem argumento posicional
+ * (flags e redirecionamentos não contam) ou um dos padrões. A guarda da suíte
+ * inteira é o gate `testes`/`build`: repetida no critério, uma falha de
+ * ambiente vira `criterio_qualidade` e queima o retry (031, 14/11).
+ */
+export function cmdRodaSuiteInteira(cmd: string, padroes: string[] = CMDS_SUITE_INTEIRA): boolean {
+  const vis = mascararAspas(cmd)
+  if (padroes.some((p) => new RegExp(p).test(vis))) return true
+  for (const m of vis.matchAll(/\bvitest\s+run\b/g)) {
+    const resto = vis.slice(m.index! + m[0].length).split(/\|\||&&|[|;&)]/)[0] ?? ''
+    const toks = resto.trim().split(/\s+/).filter(Boolean)
+    let posicional = false
+    for (let i = 0; i < toks.length; i++) {
+      const t = toks[i]!
+      if (t.startsWith('-')) continue
+      if (/^\d*[<>]/.test(t)) {
+        if (/^\d*[<>]+&?$/.test(t)) i++ // `> arquivo`: o alvo é o próximo token
+        continue
+      }
+      posicional = true
+      break
+    }
+    if (!posicional) return true
+  }
+  return false
 }
 
 /**
@@ -1076,6 +1122,7 @@ export function carregarCfg(filaDir: string): GateCfg {
       : [],
     ...(typeof g.timeout_cmd_secs === 'number' && g.timeout_cmd_secs > 0 ? { timeout_cmd_secs: g.timeout_cmd_secs } : {}),
     ...(g.severidade !== undefined ? { severidade: lerSeveridade(g.severidade, p) } : {}),
+    ...(ehArray(g.cmds_suite_inteira) ? { cmds_suite_inteira: g.cmds_suite_inteira.map(String) } : {}),
   }
 }
 
@@ -1802,6 +1849,13 @@ export function validarTicket(alvo: TicketLido, fila: TicketLido[], cfg: GateCfg
           if (saidaVaziaPossivel(cr.cmd, esp)) {
             achado('C2v', campo, `espera numérica ('${esp}'), mas um test/[ encadeado por && vem antes do número: se ele falhar a saída sai vazia e o critério reprova por forma, não por número`)
           }
+          if (cmdRodaSuiteInteira(cr.cmd, cfg.cmds_suite_inteira)) {
+            achado(
+              cfg.candidatos ? 'C18' : 'C18p',
+              campo,
+              'criterio_suite_inteira: o critério roda a suíte inteira (vitest run sem arquivo, npm test, npm run build ou next build); essa guarda já é o gate testes/build, e repetida aqui uma falha de ambiente vira criterio_qualidade e queima o retry (031, 14/11) — rode só o arquivo de teste do ticket',
+            )
+          }
           if (grepPerl(cr.cmd)) achado('C2P', campo, 'grep -P não existe no /usr/bin/grep do macOS — use -E')
           const origens = refsOrigin(cr.cmd)
           if (origens.length > 0) {
@@ -2028,6 +2082,8 @@ function main(argv: string[]): number {
   // --dependencias-alvo (etapa L13, P3): imprime só os caminhos de
   // `dependenciasForaDaAlvo`, um por linha, e sai 0. É o pré-voo do executor.
   let dependencias = false
+  // --candidatos (2.2.1 D7): o lote do planejador; liga a C18 como erro.
+  let candidatos = false
   const args: string[] = []
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!
@@ -2041,6 +2097,8 @@ function main(argv: string[]): number {
       soViolacoes = true
     } else if (a === '--dependencias-alvo') {
       dependencias = true
+    } else if (a === '--candidatos') {
+      candidatos = true
     } else {
       args.push(a)
     }
@@ -2058,6 +2116,7 @@ function main(argv: string[]): number {
     }
     throw e
   }
+  if (candidatos) cfg.candidatos = true
 
   let alvos: TicketLido[]
   if (pendentes) {

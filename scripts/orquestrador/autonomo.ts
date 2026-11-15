@@ -518,8 +518,10 @@ export function promptPlanejador(ctx: Ctx, bloco: Bloco, frente: Frente, daFrent
         ? `Continue a frente: escreva até ${lote} tickets que avançam a entrega sem repetir os existentes. fecha_frente: true só se, com eles, a entrega fica coberta.`
         : `A frente ainda não tem ticket: escreva o primeiro lote (até ${lote} tickets), na ordem de execução. fecha_frente: true só se o lote cobre a entrega inteira.`,
     '- Granularidade: um ticket = uma mudança revisável (diff_estimado <= 600), allowlist mínima (<= 8 paths) e',
-    '  dentro da allowlist da frente; critério `alvo` executável que FALHA hoje e passa depois; guarda de typecheck',
-    '  e da suíte inteira; um critério `avaliador` com o que o juiz deve conferir.',
+    '  dentro da allowlist da frente; critério `alvo` executável que FALHA hoje e passa depois (rodando só o',
+    '  arquivo de teste do ticket); um critério `avaliador` com o que o juiz deve conferir. Typecheck e suíte inteira',
+    '  são os gates do loop: critério com `vitest run` sem arquivo, `npm test`, `npm run build` ou `next build` é',
+    '  descartado no gate (criterio_suite_inteira).',
     '- Dependência entre tickets do lote: use "#1", "#2" (posição no lote); para ticket existente use o id.',
     '- Nunca escreva em caminho fora da allowlist da frente. Nunca invente decisão de produto: se faltar uma',
     '  decisão humana para escrever o ticket, responda duvida com a pergunta exata e tickets: [].',
@@ -585,7 +587,7 @@ export function gateDeTicket(ctx: Ctx, ids: string[]): Map<string, string[]> {
   if (ids.length === 0) return out
   const tsx = join(ctx.checkout, 'node_modules', '.bin', 'tsx')
   const gate = join(dirname(fileURLToPath(import.meta.url)), 'gate-ticket.ts')
-  const r = spawnSync(existsSync(tsx) ? tsx : 'npx', [...(existsSync(tsx) ? [] : ['--no-install', 'tsx']), gate, '--fila', ctx.filaDir, '--violacoes', ...ids], {
+  const r = spawnSync(existsSync(tsx) ? tsx : 'npx', [...(existsSync(tsx) ? [] : ['--no-install', 'tsx']), gate, '--fila', ctx.filaDir, '--violacoes', '--candidatos', ...ids], {
     encoding: 'utf8',
     cwd: ctx.checkout,
     timeout: 300_000,
@@ -784,7 +786,8 @@ export function planejar(ctx: Ctx): ResultadoPlanejador {
   const viol = gateDeTicket(ctx, ids)
   ids.forEach((id, i) => {
     const v = viol.get(id)
-    if (v?.length) descartar(i, 'gate', v.join(' | '))
+    // 2.2.1 D7: critério de suíte inteira tem motivo próprio na trilha.
+    if (v?.length) descartar(i, v.some((x) => x.includes('criterio_suite_inteira:')) ? 'criterio_suite_inteira' : 'gate', v.join(' | '))
   })
   const vivos = ids.map((id, i) => ({ id, i })).filter(({ i }) => jsons[i]!.status !== 'descartado')
   if (vivos.length > 0) {
