@@ -121,6 +121,39 @@ merge_em_alvo() {
   return 1
 }
 
+# retomar_merges_suspensos <worktree da alvo> (etapa 2.2.0, D3). O K3 deixa em
+# `aguardando_merge` o ticket aprovado com o PAUSAR posto durante a execução, com
+# a frente intacta; a escolha da drenagem só vê `pendente`, e nada o retomava.
+# Aqui, sem pausa, cada um entra na alvo pelo mesmo `merge_em_alvo`, ANTES dos
+# pendentes (um pendente pode depender dele), sem chamar o executor de novo.
+# Usa os contadores `drenados` e `bloqueados` da drenagem que chamou.
+retomar_merges_suspensos() {
+  local stwt="$1" f id
+  pausa_ativa && return 0
+  for f in $(ticket_files); do
+    [ "$(ticket_field "$f" '.status')" = "aguardando_merge" ] || continue
+    id="$(ticket_field "$f" '.id')"
+    say "  $id aprovado em aguardando_merge (merge suspenso) — mergeando em $BRANCH_ALVO"
+    status_set "fase=merge" "ticket=$id"
+    if merge_em_alvo "$id" "$stwt"; then
+      ticket_set_status "$f" done
+      ticket_zera_tentativas "$f"
+      ticket_set_nota "$f" "mergeado em $BRANCH_ALVO pela drenagem (merge retomado depois da pausa)"
+      ticket_commit "$f" "fila: $id done (mergeado em $BRANCH_ALVO)"
+      event "$id" MERGE "alvo=$BRANCH_ALVO" "sha=$(git -C "$stwt" rev-parse --short HEAD 2>/dev/null || echo '?')" "retomado=1"
+      status_set "ultimo=$id DONE $(date '+%H:%M:%S') (merge em $BRANCH_ALVO)"
+      cleanup_frente "$id"
+      drenados=$((drenados + 1))
+    else
+      ticket_set_status "$f" bloqueado
+      ticket_set_nota "$f" "aprovado mas merge em $BRANCH_ALVO falhou (retomada depois da pausa)"
+      ticket_commit "$f" "fila: $id bloqueado (merge falhou)"
+      event "$id" BLOQUEADO "motivo=merge_falhou"
+      bloqueados=$((bloqueados + 1))
+    fi
+  done
+}
+
 pendentes_processaveis() {
   local f n=0
   for f in $(ticket_files); do
@@ -461,6 +494,7 @@ drenar() {
   say "drenagem iniciando (alvo=$BRANCH_ALVO, worktree=$stwt)"
   event '---' DRENAGEM_INICIO "alvo=$BRANCH_ALVO" "processaveis=$(pendentes_processaveis)"
   status_set "estado=executando" "fase=drenagem" "ticket=—" "motivo="
+  retomar_merges_suspensos "$stwt"
   while :; do
     if pausa_ativa; then
       say "PAUSA ativa: $(pausa_motivo) — encerrando entre tickets"

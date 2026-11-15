@@ -56,6 +56,9 @@ num repo novo. Cada item tem teste que falha contra a 2.1.8 e passa aqui.
   Teste: `orquestrador-220-planejador-lote.test.ts`.
 - **D2 (ciclo 5)** `fecha_com` só é gravado com o lote inteiro aprovado: com descarte, a frente
   segue aberta. Teste: `orquestrador-220-planejador-lote.test.ts`.
+- **D3 (ciclo 5)** merge suspenso pela pausa (K3) é retomado: sem pausa, a drenagem mergeia
+  na alvo todo ticket em `aguardando_merge` antes de escolher pendentes (`MERGE ... retomado=1`).
+  Antes ele ficava parado para sempre. Teste: `orquestrador-220-merge-retomado.test.ts`.
 - **Config**: `planejador.regras_ticket`, `planejador.liberacao_automatica`, `promotor`, `avisos`
   no template, desligados por padrão; `orq config` valida os valores. Teste: `orquestrador-220-config.test.ts`.
 - **Status novos de ticket**: `candidato` e `descartado` (terminal).
