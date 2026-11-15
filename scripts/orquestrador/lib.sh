@@ -1110,8 +1110,18 @@ cooldown_remaining_min() {
 CFG_PAUSAR_FILE="$MAIN_CHECKOUT/$(cfg '.pausar_file')"
 PAUSA_FILE="$ROOT/${FILA_DIR#"$MAIN_CHECKOUT"/}/.orq-pause"
 
+# AUTH_PAUSA_FILE (etapa 2.2.1, D6): a pausa do TIPO auth. Quem a cria é o
+# motor, ao ver o login do claude expirado em qualquer chamada; quem a remove é
+# a sonda do início do disparo (local-loop.sh, auth_sonda_inicio) quando o login
+# volta, ou o humano (`orq retomar`). Mora em runs/ (ignorado pelo git) e é
+# arquivo próprio para a sonda remover SÓ ela, nunca o PAUSAR humano.
+AUTH_PAUSA_FILE="$RUNS_BASE/.pausa-auth"
+
 # pausa_ativa -> 0 se a fila está pausada.
-pausa_ativa() { [ -f "$CFG_PAUSAR_FILE" ] || [ -f "$PAUSA_FILE" ]; }
+pausa_ativa() { [ -f "$CFG_PAUSAR_FILE" ] || [ -f "$PAUSA_FILE" ] || [ -f "$AUTH_PAUSA_FILE" ]; }
+
+# auth_pausa_ativa -> 0 se a pausa do tipo auth está de pé.
+auth_pausa_ativa() { [ -f "$AUTH_PAUSA_FILE" ]; }
 
 # pausa_conteudo -> a 1ª linha CRUA da primeira sentinela presente
 # ("<AAAA-MM-DD HH:MM> | motivo"), sem o caminho. É o que pausa_registro e
@@ -1119,7 +1129,7 @@ pausa_ativa() { [ -f "$CFG_PAUSAR_FILE" ] || [ -f "$PAUSA_FILE" ]; }
 # prefixar o caminho (porte do 514) e deixou de servir para isso.
 pausa_conteudo() {
   local f
-  for f in "$CFG_PAUSAR_FILE" "$PAUSA_FILE"; do
+  for f in "$CFG_PAUSAR_FILE" "$PAUSA_FILE" "$AUTH_PAUSA_FILE"; do
     [ -f "$f" ] && { head -1 "$f" 2>/dev/null || true; return 0; }
   done
   return 0
@@ -1130,7 +1140,7 @@ pausa_conteudo() {
 # olhando para ele, qual arquivo segurava o loop.
 pausa_motivo() {
   local f p out=""
-  for f in "$CFG_PAUSAR_FILE" "$PAUSA_FILE"; do
+  for f in "$CFG_PAUSAR_FILE" "$PAUSA_FILE" "$AUTH_PAUSA_FILE"; do
     [ -f "$f" ] || continue
     p="${f#"$MAIN_CHECKOUT"/}"; p="${p#"$ROOT"/}"
     out="${out:+$out; }$p: $(tr '\n' ' ' < "$f" 2>/dev/null | sed 's/ *$//')"
@@ -1470,6 +1480,68 @@ notificar() {
   return 0
 }
 
+# notificar_nativo <titulo> <corpo> (etapa 2.2.1, D6) — a notificação NATIVA
+# sem olhar o `canal_notificacao`: é o canal do que só o humano resolve no Mac
+# (login do claude), e não pode depender do hook, que também usa o claude.
+# Registra no NOTIF_FILE como o `notificar`. Em teste (ORQ_TESTE=1) só chama o
+# ORQ_NATIVO_CMD, se dado: nenhuma notificação de verdade sai da suíte.
+notificar_nativo() {
+  local titulo="${1:-Orquestrador}" corpo="${2:-}" cmd="${ORQ_NATIVO_CMD:-osascript}" t c
+  mkdir -p "$RUNS_BASE" 2>/dev/null || true
+  printf '%s | %s | %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z' 2>/dev/null || echo '?')" "$titulo" "$corpo" \
+    >> "$NOTIF_FILE" 2>/dev/null || true
+  if [ "${ORQ_TESTE:-0}" = 1 ] && [ -z "${ORQ_NATIVO_CMD:-}" ]; then return 0; fi
+  command -v "$cmd" >/dev/null 2>&1 || { log "notificação nativa: $cmd ausente — vale o arquivo ($NOTIF_FILE)"; return 0; }
+  t="$(printf '%s' "$titulo" | tr -d '"\\')"
+  c="$(printf '%s' "$corpo"  | tr -d '"\\')"
+  "$cmd" -e "display notification \"$c\" with title \"$t\"" >/dev/null 2>&1 \
+    || log "notificação nativa: $cmd falhou — vale o arquivo ($NOTIF_FILE)"
+  return 0
+}
+
+# --- LOGIN DO CLAUDE EXPIRADO (etapa 2.2.1, D6) -------------------------------
+# Trilha real: 15/11 15:04, "Failed to authenticate: OAuth session expired and
+# could not be refreshed". Só o humano resolve (no terminal do Mac: `claude` e
+# `/login`), e cada chamada seguinte falha igual. A regra, para QUALQUER chamada
+# (executor, juízes, planejador, sonda, hook):
+#   - a trilha ganha `--- AMBIENTE causa=auth papel=<quem>`;
+#   - a pausa do tipo auth (AUTH_PAUSA_FILE) é criada, se não existia; e só na
+#     criação: notificação NATIVA e o aviso tipo `ambiente` (hook do ciclo);
+#   - nada conta tentativa: o desfecho do ticket é adiado (juiz ilegível ou
+#     preflight), e a drenagem trata a volta com a pausa auth como AMBIENTE.
+# O texto vem do CLI; a busca é na cauda da saída e só com rc != 0 (um agente
+# que escreve código de OAuth não pode pausar a fila por texto do próprio trabalho).
+AUTH_REGEX='OAuth (session|token) (has )?expired|could not be refreshed|Failed to authenticate|authentication_error|Invalid API key|Please run /login|not logged in'
+
+# auth_falhou <arquivo-de-saída> -> 0 se a saída é a falha de login do CLI.
+auth_falhou() {
+  [ -f "${1:-}" ] || return 1
+  tail -c 4000 "$1" 2>/dev/null | grep -qiE "$AUTH_REGEX"
+}
+
+AUTH_TEXTO='O login do claude CLI expirou e a fila pausou (pausa auth). Ação: rodar claude e /login no terminal do Mac. O próximo disparo faz uma sonda barata e, passando, retoma sozinho.'
+
+# auth_falha_registrar <papel> — evento, pausa, notificação nativa e aviso.
+auth_falha_registrar() {
+  local papel="${1:-claude}" nova=0 quando
+  mkdir -p "$RUNS_BASE" 2>/dev/null || true
+  quando="$(date '+%Y-%m-%d %H:%M')"
+  if [ ! -f "$AUTH_PAUSA_FILE" ]; then
+    printf '%s | auth do claude expirada (%s): rodar claude e /login no terminal do Mac\n' "$quando" "$papel" > "$AUTH_PAUSA_FILE"
+    nova=1
+  fi
+  event '---' AMBIENTE "causa=auth" "papel=$papel"
+  [ "$nova" = 1 ] || return 0
+  event '---' PAUSA "motivo=auth" "por=motor"
+  log "AUTH: login do claude expirado ($papel) — fila pausada (pausa auth); rodar claude e /login"
+  notificar_nativo "Orquestrador: login do claude expirado" "A fila pausou. Rodar claude e /login no terminal do Mac; o próximo disparo confere e retoma."
+  mkdir -p "$RUNS_BASE/avisos" 2>/dev/null || true
+  jq -nc --arg t "Login do claude expirado ($papel)" --arg x "$AUTH_TEXTO" --arg k "auth:$quando" \
+    '{tipo: "ambiente", nivel: "acao", titulo: $t, texto: $x, chave: $k}' \
+    >> "$RUNS_BASE/avisos/ciclo.jsonl" 2>/dev/null || true
+  return 0
+}
+
 # notificar_fim <aprovados> <bloqueados> <adiados> <dur_min>
 notificar_fim() {
   local ap="${1:-0}" bl="${2:-0}" ad="${3:-0}" dur="${4:-0}" ultimo
@@ -1643,6 +1715,11 @@ claude_run() {
   if [ "$rc" = 143 ] || [ "$rc" = 137 ]; then
     kill -KILL -"$pid" 2>/dev/null || true
     rc=124
+  fi
+  # 2.2.1 D6: login expirado em QUALQUER chamada pelo claude_run (sonda do
+  # executor, agente, juiz). O papel vem de ORQ_CLAUDE_PAPEL, se quem chamou deu.
+  if [ "$rc" != 0 ] && [ "$rc" != 124 ] && auth_falhou "$outf"; then
+    auth_falha_registrar "${ORQ_CLAUDE_PAPEL:-executor}"
   fi
   return "$rc"
 }

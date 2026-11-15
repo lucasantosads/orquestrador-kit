@@ -179,7 +179,7 @@ sem chamar modelo e sem consumir tentativa. Desbloqueio: $(cfg '.restricao_execu
   out="$(mktemp)"
   # json aqui também: a sondagem custa, e custo não medido é custo que escapa do
   # gate. A detecção de modelo recusado é por TEXTO e sobrevive ao envelope JSON.
-  claude_run "$ROOT" "$out" 60 -- -p "responda apenas: ok" --output-format json --model "$m" \
+  ORQ_CLAUDE_PAPEL=sonda claude_run "$ROOT" "$out" 60 -- -p "responda apenas: ok" --output-format json --model "$m" \
     --strict-mcp-config || rc=$?
   # --strict-mcp-config sem --mcp-config = nenhum MCP (2.1.8): a sondagem herdava
   # os conectores claude.ai da conta (GHL e Supabase com escrita). Padrão do juiz.
@@ -1089,7 +1089,7 @@ run_juiz() {
     # `--disable-slash-commands` = nenhuma skill.
     local cwd_juiz
     cwd_juiz="$(mktemp -d "${TMPDIR:-/tmp}/orq-juiz.XXXXXX")" || die "juiz: mktemp -d falhou"
-    claude_run "$cwd_juiz" "$raw" "$(cfg '.claude_timeout_secs')" -- \
+    ORQ_CLAUDE_PAPEL=juiz_ticket claude_run "$cwd_juiz" "$raw" "$(cfg '.claude_timeout_secs')" -- \
       -p "$(cat "$prompt")" --output-format json --model "$modelo" \
       --tools "" --allowedTools "" --max-turns 1 \
       --strict-mcp-config --disable-slash-commands || rc=$?
@@ -1461,7 +1461,7 @@ run_attempt() {
     # via os conectores claude.ai da conta (mcp__claude_ai_GHL__execute_operation,
     # mcp__claude_ai_Supabase__execute_sql), e a escrita dependia só de permissão:
     # um allow em settings.local.json do usuário bastava. Fronteira, não permissão.
-    claude_run "$wt" "$saida" "$(cfg '.claude_timeout_secs')" -- \
+    ORQ_CLAUDE_PAPEL=executor claude_run "$wt" "$saida" "$(cfg '.claude_timeout_secs')" -- \
       -p "$(cat "$prompt")" --output-format json --model "$modelo" \
       --max-turns "$turns" --allowedTools "$tools" \
       ${piso:+--disallowedTools "$piso"} --strict-mcp-config || rc=$?

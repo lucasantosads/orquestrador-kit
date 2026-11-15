@@ -399,11 +399,12 @@ describe('read-only por construção', () => {
     expect(fonte).not.toContain('.local-loop.lock');
   });
 
-  it('a única escrita é o pausar_file', () => {
+  // 2.2.1 D6: `orq retomar` também remove a pausa auth (runs/.pausa-auth); escrever, só o pausar_file.
+  it('a única escrita é o pausar_file; remoção, só das sentinelas de pausa', () => {
     const escritas = fonte.match(/^[^#\n]*(>|>>)\s*"\$[A-Z_]+"/gm) ?? [];
     for (const e of escritas) expect(e).toContain('PAUSAR_FILE');
     const remocoes = fonte.match(/^[^#\n]*rm\s+-[a-z]*f[a-z]*\s+.*$/gm) ?? [];
-    for (const e of remocoes) expect(e).toContain('PAUSAR_FILE');
+    for (const e of remocoes) expect(e).toMatch(/\$(PAUSAR_FILE|AUTH_PAUSA_FILE)\b/);
   });
 
   it('é executável', () => {

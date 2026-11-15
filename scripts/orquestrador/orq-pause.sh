@@ -22,7 +22,8 @@ rel() { local p="${1#"$MAIN_CHECKOUT"/}"; printf '%s' "${p#"$ROOT"/}"; }
 if [ "${1:-}" = "--off" ]; then
   n=0
   ini="$(pausa_inicio_epoch 2>/dev/null || true)"
-  for f in "$CFG_PAUSAR_FILE" "$PAUSA_FILE"; do
+  # 2.2.1 D6: a pausa auth (runs/.pausa-auth) sai junto: quem retoma à mão já fez o /login.
+  for f in "$CFG_PAUSAR_FILE" "$PAUSA_FILE" "$AUTH_PAUSA_FILE"; do
     if [ -f "$f" ]; then
       rm -f "$f"
       echo "removida: $(rel "$f")"
@@ -38,7 +39,7 @@ if [ "${1:-}" = "--off" ]; then
   fi
 elif [ "${1:-}" = "--status" ]; then
   n=0
-  for f in "$CFG_PAUSAR_FILE" "$PAUSA_FILE"; do
+  for f in "$CFG_PAUSAR_FILE" "$PAUSA_FILE" "$AUTH_PAUSA_FILE"; do
     if [ -f "$f" ]; then
       echo "PAUSADA: $(rel "$f"): $(cat "$f")"
       n=$((n + 1))

@@ -516,6 +516,13 @@ cmd_pausar() {
 # o motivo livre não existe mais em lugar nenhum.
 cmd_retomar() {
   local reg ini quem quando cont
+  # 2.2.1 D6: a pausa do tipo auth (login do claude expirado) também sai aqui.
+  if [ -f "$AUTH_PAUSA_FILE" ]; then
+    printf 'pausa auth: %s\n' "$(head -1 "$AUTH_PAUSA_FILE" 2>/dev/null)"
+    rm -f "$AUTH_PAUSA_FILE"
+    retomada_registrar terminal ""
+    echo "pausa auth removida (o próximo disparo usa o claude: confira o /login)"
+  fi
   if [ -f "$PAUSAR_FILE" ]; then
     cont="$(head -1 "$PAUSAR_FILE" 2>/dev/null || true)"
     reg="$(pausa_registro)"

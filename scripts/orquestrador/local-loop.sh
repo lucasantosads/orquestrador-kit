@@ -647,6 +647,11 @@ drenar() {
         if [ -z "$amb_ids" ] && printf '%s\n' "$evs" | awk '$3 == "ADIADO" && $4 == "motivo=preflight" { a = 1 } END { exit !a }'; then
           amb_ids="$prox_id"; amb_txt="$causa"
         fi
+        # 2.2.1 D6: a vez dele terminou com a pausa auth de pé (login do claude
+        # expirado em alguma chamada): não é do ticket, nada soma.
+        if [ -z "$amb_ids" ] && auth_pausa_ativa; then
+          amb_ids="$prox_id"; amb_txt="auth: login do claude expirado (rodar claude e /login)"; norm=auth
+        fi
         if [ -n "$amb_ids" ]; then
           sem_progresso_desfazer "$sp_backup"
           contador_desfazer "$ad_backup" .adiamentos
@@ -957,6 +962,32 @@ etapa_ciclo_fim() {
   printf '%s\n' "$saida" | while IFS= read -r l; do say "  avisos> $l"; done
 }
 
+# --- SONDA DE AUTH (etapa 2.2.1, D6) ------------------------------------------
+# Uma chamada barata (haiku por padrão, `sonda_auth.modelo` no config), sem MCP,
+# sem ferramenta e fora do repo. Passou: remove a pausa auth (`RETOMADA
+# por=sonda_auth`). Falhou: a pausa fica; se foi de novo o login, o claude_run
+# já gravou `AMBIENTE causa=auth papel=sonda` (sem notificar de novo).
+auth_sonda_inicio() {
+  auth_pausa_ativa || return 0
+  local out cwd rc=0 ini
+  out="$(mktemp "${TMPDIR:-/tmp}/orq-sonda-auth.XXXXXX")" || return 0
+  cwd="$(mktemp -d "${TMPDIR:-/tmp}/orq-sonda-auth-cwd.XXXXXX")" || { rm -f "$out"; return 0; }
+  ORQ_CLAUDE_PAPEL=sonda claude_run "$cwd" "$out" 60 -- -p "responda apenas: ok" --output-format json \
+    --model "$(cfg '.sonda_auth.modelo // "haiku"')" --strict-mcp-config --tools "" --max-turns 1 \
+    --disable-slash-commands || rc=$?
+  custo_registrar sonda_auth '---' 0 "$out" 2>/dev/null || true
+  if [ "$rc" = 0 ] && ! auth_falhou "$out"; then
+    ini="$(stat -f %m "$AUTH_PAUSA_FILE" 2>/dev/null || stat -c %Y "$AUTH_PAUSA_FILE" 2>/dev/null || true)"
+    rm -f "$AUTH_PAUSA_FILE"
+    retomada_registrar sonda_auth "$ini"
+    say "sonda auth: login do claude ok — pausa auth removida"
+  else
+    say "sonda auth: falhou (rc=$rc) — pausa auth fica ($(head -1 "$AUTH_PAUSA_FILE" 2>/dev/null))"
+  fi
+  rm -rf "$out" "$cwd"
+  return 0
+}
+
 main_local_loop() {
   mkdir -p "$(dirname "$LOG")"
   exec >>"$LOG" 2>&1
@@ -969,6 +1000,10 @@ main_local_loop() {
   # não roda sai 2 de dentro do lock_adquirir, já com LOCK_ERRO na trilha.
   lock_adquirir || exit 0
   ciclo_marcar_inicio
+  # 2.2.1 D6: com a pausa auth de pé, o disparo começa pela sonda barata; se o
+  # login voltou, ela remove SÓ a pausa auth e o disparo segue (a leitura da
+  # pausa logo abaixo ainda vale para o PAUSAR humano).
+  auth_sonda_inicio
   # KILL SWITCH, leitura 1 de 2: ANTES de qualquer escrita. O reconcile mexe em
   # status de ticket, então "pausado" precisa valer antes dele — pausar e mesmo
   # assim ver a fila mudar é o que faz alguém desconfiar do kill switch. A

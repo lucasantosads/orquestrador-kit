@@ -199,6 +199,45 @@ export const rodarClaudeReal: RodarClaude = ({ cwd, args, timeoutSecs }) => {
   return { rc, saida: saida + (r.stderr ? `\n${r.stderr}` : ''), texto: typeof envelope?.result === 'string' ? envelope.result : saida, envelope }
 }
 
+// ─── login do claude expirado (etapa 2.2.1, D6) ─────────────────────────────
+
+/** O mesmo AUTH_REGEX do lib.sh: a falha de login do CLI (15/11 15:04, OAuth expirado). */
+export const AUTH_RE = /OAuth (session|token) (has )?expired|could not be refreshed|Failed to authenticate|authentication_error|Invalid API key|Please run \/login|not logged in/i
+
+export const AUTH_TEXTO =
+  'O login do claude CLI expirou e a fila pausou (pausa auth). Ação: rodar claude e /login no terminal do Mac. O próximo disparo faz uma sonda barata e, passando, retoma sozinho.'
+
+/** A chamada falhou por login? Só com rc != 0 (ou envelope de erro), olhando a cauda da saída. */
+export function ehFalhaAuth(r: Pick<RespostaClaude, 'rc' | 'saida' | 'envelope'>): boolean {
+  if (r.rc === 124) return false
+  if (r.rc === 0 && r.envelope?.is_error !== true) return false
+  return AUTH_RE.test(r.saida.slice(-4000))
+}
+
+export function arqPausaAuth(ctx: Pick<Ctx, 'runsDir'>): string {
+  return join(ctx.runsDir, '.pausa-auth')
+}
+
+/**
+ * Falha de login em `papel`: `AMBIENTE causa=auth`, a pausa do tipo auth (o
+ * mesmo arquivo do lib.sh, que o `pausa_ativa` lê) e, só na criação dela, a
+ * notificação NATIVA e o aviso tipo `ambiente`. Nada aqui conta tentativa.
+ */
+export function falhaAuth(ctx: Pick<Ctx, 'runsDir' | 'agora'>, papel: string): void {
+  const arq = arqPausaAuth(ctx)
+  const nova = !existsSync(arq)
+  const quando = tsLocal(ctx.agora()).slice(0, 16).replace('T', ' ')
+  if (nova) {
+    mkdirSync(dirname(arq), { recursive: true })
+    writeFileSync(arq, `${quando} | auth do claude expirada (${papel}): rodar claude e /login no terminal do Mac\n`)
+  }
+  evento(ctx.runsDir, '---', 'AMBIENTE', { causa: 'auth', papel })
+  if (!nova) return
+  evento(ctx.runsDir, '---', 'PAUSA', { motivo: 'auth', por: 'motor' })
+  notificarNativo('Orquestrador: login do claude expirado', 'A fila pausou. Rodar claude e /login no terminal do Mac; o próximo disparo confere e retoma.')
+  enfileirarAviso(ctx.runsDir, { tipo: 'ambiente', nivel: 'acao', titulo: `Login do claude expirado (${papel})`, texto: AUTH_TEXTO, chave: `auth:${quando}` })
+}
+
 /** Registra o usage do envelope em custo.json (mesmo formato do lib.sh:custo_registrar). */
 export function registrarCusto(ctx: Ctx, papel: string, ticket: string, r: RespostaClaude): void {
   if (process.env.ORQ_TESTE === '1' && !process.env.ORQ_TESTE_CUSTO) return
@@ -698,6 +737,10 @@ export function planejar(ctx: Ctx): ResultadoPlanejador {
   }
   writeFileSync(join(pasta, 'saida.json'), r.saida)
   registrarCusto(ctx, 'planejador', frente.id, r)
+  if (ehFalhaAuth(r)) {
+    falhaAuth(ctx, 'planejador')
+    return { ...res, motivo: 'auth' }
+  }
   const saida = extrairJson(r.texto)
   if (!saida || typeof saida !== 'object') {
     evento(ctx.runsDir, '---', 'REPOSICAO', { motivo: 'parse', frente: frente.id, rc: r.rc })
@@ -801,6 +844,13 @@ export function planejar(ctx: Ctx): ResultadoPlanejador {
     })
     rmSync(cwdJuiz, { recursive: true, force: true })
     writeFileSync(join(pasta, 'juiz-lote.saida.json'), rj.saida)
+    if (ehFalhaAuth(rj)) {
+      // Os candidatos ainda não foram commitados: saem do disco, o próximo
+      // disparo depois do login escreve o lote de novo.
+      falhaAuth(ctx, 'juiz_lote')
+      for (const a of arquivos) rmSync(a, { force: true })
+      return { ...res, escritos: [], descartados: [], aprovados: [], motivo: 'auth' }
+    }
     registrarCusto(ctx, 'juiz_lote', frente.id, rj)
     const vj = extrairJson(rj.texto)
     const vereditos = new Map<string, { aprovado: boolean; motivo: string }>()
@@ -1203,6 +1253,11 @@ export function promover(ctx: Ctx): ResultadoPromotor {
   rmSync(cwdJuiz, { recursive: true, force: true })
   writeFileSync(join(pasta, 'juiz.saida.json'), rj.saida)
   registrarCusto(ctx, 'juiz_promocao', tickets.join(',') || '-', rj)
+  if (ehFalhaAuth(rj)) {
+    // Não é recusa: ninguém julgou. Sem PROMOCAO_RECUSADA e sem aviso de recusa.
+    falhaAuth(ctx, 'juiz_promocao')
+    return { ...res, motivo: 'auth' }
+  }
   const v = extrairJson(rj.texto)
   if (!v || typeof v.aprovar !== 'boolean') return recusa('juiz_ilegivel', `O juiz de promoção não deu veredito legível (rc=${rj.rc}). Evidência: ${pasta}`)
   writeFileSync(join(pasta, 'veredito.json'), `${JSON.stringify(v, null, 2)}\n`)
@@ -1372,10 +1427,12 @@ export function houveNovidade(linhas: string[], avisos: Aviso[]): boolean {
 }
 
 export function notificarNativo(titulo: string, texto: string): void {
-  if (process.env.ORQ_TESTE === '1') return
+  // ORQ_NATIVO_CMD (2.2.1): o osascript trocável; em teste, só ele é chamado.
+  const cmd = process.env.ORQ_NATIVO_CMD || 'osascript'
+  if (process.env.ORQ_TESTE === '1' && !process.env.ORQ_NATIVO_CMD) return
   const t = titulo.replace(/["\\]/g, '')
   const c = texto.replace(/["\\]/g, '').slice(0, 240)
-  spawnSync('osascript', ['-e', `display notification "${c}" with title "${t}"`], { timeout: 10_000 })
+  spawnSync(cmd, ['-e', `display notification "${c}" with title "${t}"`], { timeout: 10_000 })
 }
 
 export function cicloFim(ctx: Ctx, desde: number): { novidade: boolean; enviados: string[]; relatorio?: string; hookRc?: number | null } {
@@ -1397,6 +1454,8 @@ export function cicloFim(ctx: Ctx, desde: number): { novidade: boolean; enviados
     if (ev === 'ORCAMENTO') brutos.push({ tipo: 'orcamento', nivel: 'acao', titulo: 'Teto de orçamento do dia atingido', texto: l.split(' ').slice(2).join(' '), chave: diaLocal(ctx.agora()) })
     // Sem o timestamp: o mesmo NO-GO a cada 30 min é o MESMO aviso (dedupe de 24 h).
     const semTs = l.split(' ').slice(2).join(' ')
+    // AMBIENTE causa=auth já tem aviso próprio (falhaAuth / lib.sh:auth_falha_registrar).
+    if (ev === 'AMBIENTE' && / causa=auth\b/.test(l)) continue
     if (ev === 'AMBIENTE' || ev === 'PREVOO_NOGO' || ev === 'LOCK_ERRO') brutos.push({ tipo: 'ambiente', nivel: 'acao', titulo: `Ambiente: ${ev}`, texto: semTs, chave: semTs })
   }
   const estadoArq = join(ctx.runsDir, 'avisos', 'estado.json')
@@ -1436,6 +1495,8 @@ export function cicloFim(ctx: Ctx, desde: number): { novidade: boolean; enviados
     hookRc = r.status
     // Falha do hook nunca derruba o loop: vira evento e segue.
     evento(ctx.runsDir, '---', 'AVISO_HOOK', { rc: r.status ?? 'timeout', tipo: payload.tipo, nivel: payload.nivel, avisos: avisos.length })
+    // 2.2.1 D6: o hook que usa o claude (Notion) também acusa o login expirado.
+    if (r.status !== 0 && r.status !== null && AUTH_RE.test(`${r.stdout ?? ''}\n${r.stderr ?? ''}`.slice(-4000))) falhaAuth(ctx, 'hook')
   }
   for (const a of avisos) {
     estado[idAviso(a)] = { hash: hashAviso(a), ts: tsLocal(ctx.agora()) }
