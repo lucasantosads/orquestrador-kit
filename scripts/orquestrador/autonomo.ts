@@ -1120,6 +1120,16 @@ export function promover(ctx: Ctx): ResultadoPromotor {
   const para = git(ctx.checkout, 'rev-parse', alvo).out.trim()
   res.de = de
   res.para = para
+
+  // 2.2.1 D5: alvo à frente só por commit de sincronia (árvore igual à
+  // principal). Não há o que julgar nem o que testar: ff direto, sem juiz,
+  // sem gates e sem aviso.
+  if (git(ctx.checkout, 'diff', '--quiet', principal, alvo).rc === 0) {
+    const ff = git(ctx.checkout, 'merge', '--ff-only', '-q', alvo)
+    if (ff.rc !== 0) return recusa('ff_impossivel', `git merge --ff-only ${alvo} falhou: ${ff.err.trim().slice(0, 500)}`)
+    evento(ctx.runsDir, '---', 'PROMOVIDO', { de: de.slice(0, 8), para: para.slice(0, 8), motivo: 'sincronia' })
+    return { ...res, promovido: true, motivo: 'sincronia', tickets: [] }
+  }
   const arquivos = arquivosDoDiff(ctx, principal, alvo)
   const tickets = ticketsDoIntervalo(ctx, principal, alvo)
   res.tickets = tickets
